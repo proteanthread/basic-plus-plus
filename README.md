@@ -1,6 +1,8 @@
 BASIC++ (IB) Interpreter
 Core Implementation
 
+I don't care what you do with my code, just don't take my code and sell and don't take my code, modify my code, and sell it. This code is not for sale.
+
 The subject of this project is a minimal, portable interpreter for the BASIC language. The implementation is contained within a single C source file, a design choice intended to facilitate maximum portability and ease of distribution across disparate operating systems and architectures with minimal build-system dependencies. This implementation is architected as a foundational framework, explicitly designed not as a monolithic, static entity, but as a core upon which future capabilities are intended to be constructed via a formalized modular architecture.
 
 Primary design considerations are memory footprint optimization and source code lucidity. The former objective ensures viability for resource-constrained environments, such as 8-bit microcontrollers, embedded systems, or legacy hardware emulators where memory is a severely limited commodity. The latter objective, lucidity, renders the source code suitable for pedagogical review. It serves as a clear, annotated example of foundational interpreter design, illustrating concepts such as tokenization, recursive-descent parsing, and environment management in a comprehensible manner. Execution velocity, while a consideration, is posited as a subordinate objective to these primary goals. This trade-off is deliberate; clarity and portability have been prioritized over complex, platform-specific optimizations, ensuring that the core remains verifiable and maintainable. The architecture is, therefore, explicitly provisioned for future, modular extensibility as outlined in Section 6.
