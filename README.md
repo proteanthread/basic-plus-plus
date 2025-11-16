@@ -1,7 +1,7 @@
 BASIC++ (IB) Interpreter
 Core Implementation
 
-I don't care what you do with my code, just don't take my code and sell and don't take my code, modify my code, and sell it. This code is not for sale.
+I don't care what you do with my code, just don't take my code and sell and or don't take my code, modify my code, and sell it. This code is not for sale.
 
 The subject of this project is a minimal, portable interpreter for the BASIC language. The implementation is contained within a single C source file, a design choice intended to facilitate maximum portability and ease of distribution across disparate operating systems and architectures with minimal build-system dependencies. This implementation is architected as a foundational framework, explicitly designed not as a monolithic, static entity, but as a core upon which future capabilities are intended to be constructed via a formalized modular architecture.
 
