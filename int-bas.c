@@ -2,6 +2,9 @@
  * AUTHOR: BASIC++ Community
  * FILENAME: ib.c
  * VERSION: 1.0.0
+ *
+ * just a prototype
+ *
  * SYSTEM: POSIX and FreeDOS
  * DESCRIPTION: A minimal, portable interpreter core prioritizing source lucidity 
  * and a static memory footprint. Features 8-bit signed arithmetic, strict left-to-right 
