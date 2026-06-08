@@ -5,6 +5,8 @@
  * AUTHOR:      BASIC++ Community (Jeff)
  * DESCRIPTION: BASIC++ (IB) Interpreter
  *
+ * a prototype
+ *
  * This is a minimal, portable BASIC interpreter written in a single C file.
  * It is designed as a framework, prioritizing memory optimization and clarity,
  * with speed as a secondary goal. It is intended to be easily expandable.
