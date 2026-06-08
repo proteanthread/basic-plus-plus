@@ -1,109 +1,568 @@
 # BASIC++ (protoBASIC) Interpreter
-Core Implementation
+**Core Implementation — Version 0.21.0**
 
-I don't care what you do with my code, just don't take my code and sell and or don't take my code, modify my code, and sell it. This code is not for sale.
+I don't care what you do with my code, just don't take my code and sell it and/or don't take my code, modify my code, and sell it. This code is not for sale.
 
 ### I do encourage you to fork this into your own dialect.  All the tools are there.
 
-The subject of this project is a minimal, portable interpreter for the BASIC language. The implementation is contained within a single C source file, a design choice intended to facilitate maximum portability and ease of distribution across disparate operating systems and architectures with minimal build-system dependencies. This implementation is architected as a foundational framework, explicitly designed not as a monolithic, static entity, but as a core upon which future capabilities are intended to be constructed via a formalized modular architecture.
+---
 
-Primary design considerations are memory footprint optimization and source code lucidity. The former objective ensures viability for resource-constrained environments, such as 8-bit microcontrollers, embedded systems, or legacy hardware emulators where memory is a severely limited commodity. The latter objective, lucidity, renders the source code suitable for pedagogical review. It serves as a clear, annotated example of foundational interpreter design, illustrating concepts such as tokenization, recursive-descent parsing, and environment management in a comprehensible manner. Execution velocity, while a consideration, is posited as a subordinate objective to these primary goals. This trade-off is deliberate; clarity and portability have been prioritized over complex, platform-specific optimizations, ensuring that the core remains verifiable and maintainable. The architecture is, therefore, explicitly provisioned for future, modular extensibility as outlined in Section 6.
+## Abstract
+
+The subject of this project is a portable, multi-dialect interpreter for the BASIC programming language. The implementation is contained within 29 ANSI C89/C90 source files and 29 corresponding header files, comprising approximately 27,000 lines of code. This architectural partitioning reflects the system's evolution from a monolithic prototype into a modular, layered interpreter engine while retaining the original design philosophy: maximum portability and zero external dependencies. The codebase compiles cleanly on any platform with a standards-compliant C compiler — no third-party libraries, no package managers, no runtime frameworks.
+
+BASIC++ is architected as a foundational framework, explicitly designed not as a monolithic, static entity, but as a core upon which future capabilities are intended to be constructed via a formalized modular architecture. The interpreter ships with 12 historically accurate dialect profiles, a runtime dialect-switching engine, a configurable security sandbox, a virtual device layer, a module system, a native code transpiler, and a comprehensive suite of 35 documentation files.
+
+Primary design considerations are memory footprint optimization and source code lucidity. The former objective ensures viability for resource-constrained environments, such as embedded systems, legacy hardware emulators, or vintage operating systems (FreeDOS, CP/M) where memory is a severely limited commodity. The latter objective, lucidity, renders the source code suitable for pedagogical review. It serves as a clear, annotated example of foundational interpreter design, illustrating concepts such as tokenization, recursive-descent parsing, virtual machine formalization, and environment management in a comprehensible manner. Execution velocity, while a consideration, is posited as a subordinate objective to these primary goals. This trade-off is deliberate; clarity and portability have been prioritized over complex, platform-specific optimizations, ensuring that the core remains verifiable and maintainable.
+
+
+---
 
 
 ## Section 1: Core Features
-The interpreter provides an implementation of a rudimentary BASIC dialect, designated "IB Core." This dialect is predicated entirely on 8-bit signed integer arithmetic, a fundamental design constraint of this core implementation. This constraint dramatically simplifies the runtime engine, obviates the need for a floating-point unit or complex software-based floating-point libraries, and establishes a deterministic mathematical environment.
 
-### 1.1. Data Type
-All numeric operations, constants, and variable storage are constrained to 8-bit signed integers, commensurate with the signed char data type in the C language. This provides a supported numerical range from -128 to +127. Any arithmetic operation resulting in an overflow or underflow of this range (e.g., 127 + 1) will exhibit 'wrap-around' behavior, as is characteristic of two's-complement arithmetic. This behavior is deterministic: an operation exceeding +127 will wrap to -128, and one below -128 will wrap to +127. Furthermore, all division operations (/) are integer-based, meaning any fractional component of a quotient is truncated, not rounded. This specific behavior (e.g., 7 / 3 evaluates to 2) is essential to the definition of an "integer-only" dialect.
+The interpreter provides a comprehensive implementation of BASIC with support for 12 distinct dialect profiles, runtime dialect switching, and a union-mode parser that accepts the combined keyword set of all supported dialects by default.
+
+### 1.1. Data Types
+
+BASIC++ supports three fundamental data types:
+
+- **Integers** — 32-bit signed (`long`), providing a range of −2,147,483,648 to +2,147,483,647. All integer division is truncating (e.g., `7 / 3` evaluates to `2`).
+- **Floating-point** — Double-precision IEEE 754 (`double`), activated via numeric literals containing a decimal point (e.g., `3.14`) or via dialect configuration. Supports the full suite of transcendental functions: `SIN`, `COS`, `TAN`, `ATN`, `SQR`, `LOG`, `EXP`.
+- **Strings** — Variable-length character sequences up to 255 characters, managed via a pooled allocator. String variables are denoted by the `$` suffix (e.g., `A$`, `NAME$`).
 
 ### 1.2. Variable Storage
-A static allocation of 26 numeric variables is provided, identified by the alphabetical characters A through Z. This fixed, minimal namespace is a deliberate design choice that simplifies the interpreter's variable management (a direct array-index lookup) and ensures a predictable, static memory footprint. No mechanisms for dynamic variable creation, variable-length names, aliasing, or user-defined data types are provided within this core implementation. All variables are global in scope and are initialized to zero upon the execution of the RUN directive.
+
+The variable system provides three tiers of storage:
+
+| Tier | Capacity | Scope | Description |
+|:-----|:---------|:------|:------------|
+| Single-letter | 26 numeric (`A`–`Z`), 26 string (`A$`–`Z$`) | Global | Direct array-index lookup, zero overhead |
+| Named variables | Up to 256 identifiers, 31 characters max | Global | Hash-based lookup (e.g., `SCORE`, `PLAYER_NAME$`) |
+| DIM arrays | Up to 64 arrays, 2 dimensions max, 8,192 total elements | Global | Row-major flat pool, supports numeric and string arrays |
+
+All variables are initialized to zero (numeric) or empty string (string) upon `RUN`. The `CLEAR` command resets all variable storage without affecting the stored program.
 
 ### 1.3. Parser
-Expression evaluation is conducted via a simple, recursive-descent parser. A defining characteristic of this parser is its strict left-to-right evaluation, which does not observe standard mathematical operator precedence. For example, the expression 3 + 4 * 5 will be evaluated as (3 + 4) * 5, yielding 35. This contrasts with a standard precedence-observing parser, which would evaluate 3 + (4 * 5) to yield 23. This simplification is conducive to a minimal parser implementation and is a documented characteristic of this dialect. Support for the four fundamental arithmetic operators (+, -, *, /) is included. Sub-expressions encapsulated in parentheses are syntactically supported and are evaluated recursively. This permits the explicit enforcement of evaluation order by the programmer (e.g., 3 + (4 * 5) will be correctly evaluated as 23), providing a necessary manual override for the parser's non-precedence behavior.
 
-### 1.4. Implemented Directives (Commands)
-The set of implemented language commands provides foundational capabilities for program flow, data manipulation, and termination. These directives include:
-Data I/O: PRINT, LPRINT, LET (for variable assignment), and INPUT (for user data entry from the console).
-Program Flow: GOTO, GOSUB, RETURN (for unconditional branching and subroutine logic), and IF...THEN (for single-line conditional execution).
-Program Structure & Environment: REM (for program annotation), END, STOP (for program termination), BEEP (for audio signaling), SYSTEM (reserved for future module use), QUIT, and EXIT (for terminating the interpreter process).
+Expression evaluation is conducted via a recursive-descent parser with correct mathematical operator precedence:
+
+```
+^                     (highest — exponentiation)
+- (unary), NOT        (negation)
+*, /, \               (multiply, divide, integer-divide)
+MOD                   (modulo)
++, -                  (add, subtract, string concatenation)
+=, <>, <, >, <=, >=   (comparison)
+AND                   (bitwise/logical AND)
+OR, XOR               (bitwise/logical OR, exclusive OR)
+EQV, IMP              (equivalence, implication — lowest)
+```
+
+Sub-expressions encapsulated in parentheses are evaluated recursively, permitting explicit enforcement of evaluation order. The parser supports both line-numbered program mode and unnumbered direct (immediate) mode execution.
+
+### 1.4. Implemented Directives
+
+The interpreter implements over 220 keywords spanning the following categories:
+
+**Data I/O:** `PRINT`, `PRINT USING`, `LPRINT`, `INPUT`, `LINE INPUT`, `READ`, `DATA`, `RESTORE`, `WRITE`
+
+**Assignment:** `LET` (optional), `SWAP`, `CONST`
+
+**Program Flow:** `GOTO`, `GOSUB`, `RETURN`, `IF...THEN...ELSE`, `FOR...NEXT`, `WHILE...WEND`, `DO...LOOP`, `SELECT CASE`, `ON...GOTO`, `ON...GOSUB`, `EXIT`
+
+**Subroutines & Functions:** `SUB...END SUB`, `FUNCTION...END FUNCTION`, `CALL`, `DEF FN`, `SHARED`, `STATIC`
+
+**Arrays & Matrices:** `DIM`, `REDIM`, `ERASE`, `OPTION BASE`, `MAT READ`, `MAT PRINT`, `MAT` arithmetic (`+`, `-`, `*`), `MAT ZER`, `MAT CON`, `MAT IDN`, `MAT TRN`, `MAT INV`
+
+**File I/O:** `OPEN`, `CLOSE`, `INPUT #`, `PRINT #`, `LINE INPUT #`, `WRITE #`, `GET`, `PUT`, `SEEK`, `LOF`, `LOC`, `EOF`, `FIELD`, `LSET`, `RSET`
+
+**Error Handling:** `ON ERROR GOTO`, `RESUME`, `RESUME NEXT`, `ERR`, `ERL`, `ERROR`
+
+**String Functions:** `LEN`, `LEFT$`, `RIGHT$`, `MID$`, `ASC`, `CHR$`, `VAL`, `STR$`, `INSTR`, `LCASE$`, `UCASE$`, `LTRIM$`, `RTRIM$`, `SPACE$`, `STRING$`, `HEX$`, `OCT$`
+
+**Graphics & Sound:** `SCREEN`, `PSET`, `PRESET`, `LINE`, `CIRCLE`, `DRAW`, `PAINT`, `PALETTE`, `COLOR`, `SOUND`, `PLAY`, `BEEP`
+
+**Screen & Console:** `CLS`, `LOCATE`, `WIDTH`, `CSRLIN`, `POS`, `INKEY$`, `KEY`
+
+**User-Defined Types:** `TYPE...END TYPE`, typed variable fields, arrays of records
+
+**System & Shell:** `SHELL`, `SHELL$()`, `EXEC`, `ENVIRON`, `ENVIRON$()`, `CHDIR`, `MKDIR`, `RMDIR`, `KILL`, `NAME`, `FILES`
+
+**Memory:** `PEEK`, `POKE`, `DEF SEG`, `VARPTR`, `FRE`
+
+**Environment:** `NEW`, `RUN`, `LIST`, `SAVE`, `LOAD`, `MERGE`, `CHAIN`, `RENUM`, `DELETE`, `AUTO`, `EDIT`, `TRON`, `TROFF`, `STOP`, `CONT`, `BREAK`, `VARS`, `VER`, `HELP`, `INFO`, `CATALOG`, `DIR`, `BYE`
+
+**Security:** `SECURITY LEVEL`, `SECURITY REPORT`
+
+**Extensibility:** `DIALECT`, `ALIAS`, `MODULE`, `OPTION STRICT`, `COMPILE`
 
 ### 1.5. Environment Directives
-A distinct set of directives, which are not intended for use within a stored program line (i.e., they cannot be preceded by a line number), are provided for managing the runtime environment and the program itself. These directives operate at the "edit" level. They include: RUN (to initiate execution), LIST (to display the stored program), NEW (to clear program memory), SAVE (to persist program memory to storage), and LOAD (to retrieve a program from storage).
+
+A distinct set of directives, which operate at the "edit" level outside stored programs, are provided for managing the runtime environment:
+
+| Command | Function |
+|:--------|:---------|
+| `RUN [line]` | Execute program (optionally from a specific line) |
+| `LIST [n1[-n2]]` | Display stored program lines |
+| `NEW` | Clear program memory and variables |
+| `SAVE "filename"` | Persist program to disk |
+| `LOAD "filename"` | Retrieve program from disk |
+| `MERGE "filename"` | Merge file into current program |
+| `RENUM [start [, step]]` | Renumber program lines |
+| `DELETE n1-n2` | Delete a range of program lines |
+| `AUTO [start [, step]]` | Automatic line numbering mode |
+| `EDIT line` | Edit a specific program line |
+| `SELFTEST` | Run built-in diagnostic test suite |
+| `VER` | Display version, copyright, and build date |
+| `HELP [keyword]` | Display help for a command or topic |
+| `BYE` | Exit the interpreter to the OS prompt |
 
 ### 1.6. Input/Output Operations
-The core implementation provides two distinct output directives. The PRINT directive supports the output of both string literals (delimited by quotation marks) and the current value of any of the 26 numeric variables to the primary console display (standard output). The LPRINT directive, while syntactically similar, is specified to redirect its output to an external file designated as lprint.out. This mechanism simulates the behavior of a physical line printer device, providing a method for persistent data logging. This file-based implementation serves as the portable foundation for the project's long-term goal of supporting PDF or PostScript output via a more advanced plugin.
+
+The core implementation provides multiple output pathways:
+
+- **`PRINT`** — Output to the primary console (standard output) with support for string literals, numeric expressions, format specifiers (`,` zone-based, `;` packed), and `PRINT USING` for formatted output with template strings.
+- **`LPRINT`** — Redirects output to the error device (`lprint.out`), simulating a physical line printer.
+- **File I/O** — Full GW-BASIC/QBasic-compatible file operations supporting sequential (`INPUT`, `OUTPUT`, `APPEND`), random-access (`RANDOM`), and binary (`BINARY`) modes across 8 simultaneous file channels (`#1` through `#8`).
+- **Shell integration** — `SHELL "command"` for synchronous execution, `SHELL$("command")` for output capture, pipe (`|`) and redirect (`>`, `>>`) operators.
 
 
-## Section 2: Compilation (GCC)
-The C source code is designed for high portability and is compilable on systems featuring a standards-compliant C compiler. The following examples utilize the GNU Compiler Collection (GCC), and the provided flags are recommended for specific build goals.
-
-### 2.1. Compilation for Portability and Size *(Recommended)*
-
-gcc -Wall -Os -o ib ib.c
-
-This incantation invokes the compiler with -Wall to enable all high-priority warnings, a best practice for identifying potential portability issues or unsafe code. Crucially, it uses -Os, which instructs the compiler to optimize specifically for the size of the resulting executable binary. This optimization level is often the primary concern in memory-constrained systems, such as the target CP/M or embedded environments.
-
-### 2.2. Compilation for Execution Speed
-
-gcc -Wall -O2 -o ib ib.c
-
-This command, by contrast, uses the -O2 flag. This flag enables a more aggressive set of optimization passes (such as loop unrolling and function inlining) focused on increasing the execution velocity of the program. This may come at the cost of a slightly larger binary file and a significantly longer compilation time. This build is suitable for desktop systems where performance is prioritized over footprint.
-
-### 2.3. Compilation for Debugging</i> *(Symbolic Inclusion)*
-
-gcc -Wall -g -o ib ib.c
-
-This command utilizes the -g flag to instruct the compiler to include debugging symbols (such as DWARF) within the final executable. This symbolic information is essential for using a debugger (such as GDB) to trace program execution, inspect variables, and analyze the call stack, which is an indispensable part of the development and troubleshooting process.
+---
 
 
-## Section 3: Memory Allocation and Layout
-The user-addressable memory within the interpreter, as well as its internal state management structures (such as the GOSUB stack), are defined by static, fixed-size arrays. The dimensions of these arrays are established at compile-time via #define constants, ensuring a predictable and static memory footprint for the entire interpreter process.
+## Section 2: Multi-Dialect Engine
 
-### 3.1. Memory Allocation Table
-The default allocation, which directly dictates the interpreter's capacity, is as follows:
+BASIC++ is unique in its ability to emulate 12 historically accurate BASIC dialects within a single interpreter. Each dialect profile configures statement separators, operator behavior, ready prompts, print zone widths, feature gates, and keyword availability.
 
-| Memory Area       | Constant      | Size         | Calculation (assuming 4-byte int)     | Total Size   |
-| :---------------- | :------------ | :----------- | :------------------------------------ | :----------- |
-| Program Storage   | MAX_LINES     | 500 lines    | 500 * (127 chars + 4 bytes for line#) | 64.0 KB      |
-| Variable Storage  | NUM_VARIABLES | 26 vars      | 26 * 1 byte (signed char)             | 26 bytes     |
-| GOSUB Stack       | STACK_SIZE    | 64 levels    | 64 * 4 bytes (int)                    | 256 bytes    |
-| **Total**         |               |              |                                       | **~64.2 KB** |
+### 2.1. Supported Dialects
 
-It is noted that the "kbytes Free" message, displayed at interpreter initialization, reports exclusively on the 'Program Storage' allocation (the Line structure array), which, following integer division, equates to 63 KB. This figure does not include the negligible-by-comparison variable and stack allocations, as it is intended to inform the user of the space available for their BASIC program lines.
+| Code | Dialect | Year | Prompt | Separator | Notes |
+|:-----|:--------|:-----|:-------|:----------|:------|
+| `PATB` | Palo Alto Tiny BASIC | 1976 | `READY` | `;` | Li-Chen Wang. Integer-only, `@()` arrays, `#` for `<>` |
+| `TRS1` | TRS-80 Level I | 1977 | `READY` | `:` | Leininger. Integer-only, 26 vars, basic strings |
+| `TRS2` | TRS-80 Level II | 1979 | `READY` | `:` | Microsoft. Full float, string arrays, multi-dim |
+| `GWBS` | GW-BASIC | 1983 | `Ok` | `:` | Microsoft. IBM PC workhorse, WHILE/WEND, ON ERROR |
+| `EC55` | ECMA-55 Minimal BASIC | 1978 | `READY` | `:` | ISO standard. Requires LET, formal specification |
+| `E116` | ECMA-116 Full BASIC | 1986 | `READY` | `:` | ISO standard. Structured flow, matrices, exceptions |
+| `QBAS` | QBasic | 1991 | `Ok` | `:` | Microsoft. SUB/FUNCTION, SELECT CASE, long names |
+| `AINT` | Apple II Integer BASIC | 1977 | `>` | `:` | Wozniak. Integer-only, no float, limited strings |
+| `ASFT` | AppleSoft BASIC | 1977 | `]` | `:` | Microsoft for Apple II. Full float, standard MS |
+| `ATRI` | Atari BASIC | 1979 | `READY` | `:` | Shepardson. Tokenized storage, CLR, DIM strings |
+| `C64B` | Commodore BASIC v2 | 1982 | `READY.` | `:` | Microsoft 6502. PEEK/POKE/SYS, limited error handling |
+| `COCO` | Color Computer BASIC | 1980 | `OK` | `:` | Microsoft Extended Color BASIC for Tandy CoCo |
 
-### 3.2. Adjustment of Memory Allocations
-Alterations to these memory limitations are effectuated by modifying the appropriate #define pre-processor constants within the ib.c source file. Subsequent recompilation of the interpreter is mandatory for such changes to take effect. This compile-time configuration is a deliberate design choice, precluding runtime memory negotiation (e.g., malloc()). This approach ensures that the interpreter's resource requirements are fixed and verifiable, a critical attribute for high-reliability systems, embedded applications, or legacy operating systems (like FreeDOS) where dynamic memory management is complex or unreliable.
+### 2.2. Dialect Switching
+
+Dialects can be switched at any time during a session:
+
+```basic
+DIALECT "QBAS"        ' Switch to QBasic mode
+DIALECT "C64B"        ' Switch to Commodore 64 mode
+DIALECT LIST          ' List all available dialects
+```
+
+### 2.3. Strict Mode
+
+By default, BASIC++ operates in **union mode**, where all keywords from all dialects are accepted. Enabling strict mode restricts the parser to only the keywords that belong to the active dialect's historical feature set:
+
+```basic
+OPTION STRICT         ' Enable dialect-strict parsing
+OPTION STRICT OFF     ' Return to union mode
+```
+
+### 2.4. Keyword Aliasing
+
+The `ALIAS` system allows keyword remapping for localization or personal preference:
+
+```basic
+ALIAS "IMPRIME" = PRINT       ' Spanish alias for PRINT
+ALIAS "ESCRIBE" = WRITE       ' Spanish alias for WRITE
+ALIAS LIST                    ' Show active aliases
+ALIAS CLEAR ALL               ' Remove all aliases
+```
 
 
-## Section 4: Operational Use
-The interpreter operates via a standard REPL (Read-Evaluate-Print Loop) interface, a common paradigm for interactive language shells. This interface provides two distinct contexts for operation: Direct Mode and Program Mode.
-
-### 4.1. Direct Mode
-The direct, or "immediate," execution context is invoked when directives are entered without a preceding line number (e.g., PRINT 10 + 5). Such directives are evaluated and executed immediately upon entry. This mode is principally utilized for testing, for debugging individual commands, for performing simple "calculator" style calculations, or for inspecting the current state of variables (e.g., PRINT A).
-
-### 4.2. Program Mode
-The "stored program" context is invoked when directives are entered with a preceding line number (e.g., 10 PRINT "HELLO"). Such lines are not executed; instead, they are parsed and passed to the store_line() function, which inserts them into the 'Program Storage' array. This array is maintained in a state sorted by line number. This allows for the construction of a persistent (session-local), ordered program that can be executed as a whole.
-
-### 4.3. Program Execution
-The RUN directive initiates sequential execution of the stored program. This directive is a destructive operation in that it first clears the 'Variable Storage' and 'GOSUB Stack' to a zeroed state, ensuring that the program executes in a clean, predictable environment (i.e., all variables are 0, and the stack is empty). Execution then begins at the lowest extant line number found in the 'Program Storage'. The LIST directive provides a textual representation of the in-memory program, displaying all currently stored lines in ascending numerical order to the console.
+---
 
 
-## Section 5: Halting Non-Terminating Execution
-In the event a BASIC program enters a non-terminating (i.e., endless) loop, which is a common possibility given the GOTO directive, execution of the interpreter process may be forcibly terminated. This is accomplished by issuing an interrupt signal (SIGINT) via the Ctrl+C key combination from the controlling terminal. This action is not handled by the interpreter itself; rather, it is handled by the host operating system (e.t., the Linux kernel or the FreeDOS command shell), which will unconditionally halt the interpreter process and return control to the host command-line shell.
+## Section 3: Security Sandboxing
+
+BASIC++ includes a three-tier security model that controls access to sensitive operations. This is critical for environments where untrusted BASIC programs may be executed (e.g., BBS systems, educational labs, online services).
+
+### 3.1. Security Levels
+
+| Level | Name | File Read | File Write | Shell | Network |
+|:------|:-----|:----------|:-----------|:------|:--------|
+| 0 | `OPEN` | ✅ | ✅ | ✅ | ✅ |
+| 1 | `STANDARD` | ✅ | ✅ | ❌ | ❌ |
+| 2 | `RESTRICTED` | ❌ | ❌ | ❌ | ❌ |
+
+```basic
+SECURITY LEVEL 2      ' Lock down to restricted mode
+SECURITY REPORT       ' Display current security posture
+```
 
 
-## Section 6: Future Expansion Trajectory
-The architecture of this interpreter is explicitly provisioned for future expansion. The current monolithic design is a foundational step, intended to be refactored into a dynamic-dispatch engine as specified in the project's internal architecture proposals. The following classifications for extensibility have been identified. These systems are not yet implemented but constitute the formal specification and roadmap for future development.
+---
 
-### 6.1. Addons
-This classification is designated for the most advanced extensibility, involving the incorporation of inline foreign language code. This system would provide meta-directives (e.g., $LANG: C) to allow a user to embed, compile, and link source code from other languages, such as Assembly, Pascal, or C, directly within a BASIC program file. This represents the ultimate goal of a mixed-language development environment, likely implemented via a "BASIC-to-C" transpiler and external compiler-chaining.
 
-### 6.2. Merge
-This classification refers to functionality for BASIC source code amalgamation, specifically the $MERGE directive. This system must maintain strict compliance with the behavioral standards of ECMA-55 (Minimal BASIC), ECMA-116 (Full BASIC), and/or QBASIC/QuickBASIC. Its function is to load a BASIC program file from storage and combine it with the program already resident in memory, with lines from the incoming file overwriting any pre-existing lines with identical numbers or subroutines. This is the foundational pillar for user-level code sharing.
+## Section 4: Architecture
 
-### 6.3. Modules
-This classification defines the primary system for C-level code extensibility. A "Module" is a compiled C-code entity (e.g., an object file or shared library) that adds new keywords and syntactic features to the interpreter. This system is responsible for language syntax modification, enabling the creation of dialect-specific feature sets (e.g., adding a GRAPHICS module to provide PSET and LINE, or a SOUND module to provide PLAY). This is the mechanism by which the interpreter will evolve from "Core" to "Full" BASIC.
+### 4.1. Source File Organization
 
-### 6.4. Plugins
-This classification defines a specialized subset of Modules. A "Plugin" is a C-code module designated for low-level hardware mapping, system emulation, and direct memory interfacing. A Plugin functions as a "driver," abstracting the hardware. For example, a SOUND Module (Pillar 6.3) would provide the SOUND keyword, but it would call a SOUND Plugin (e.g., pc_speaker.plugin for DOS or oss.plugin for Linux) to actually generate the audio. This architectural separation of semantics (Module) from implementation (Plugin) is the key to achieving cross-platform portability for hardware-dependent features.
+The interpreter is organized into 29 compilation units:
+
+| File | Purpose |
+|:-----|:--------|
+| `main.c` | Boot sequence, REPL loop, shutdown |
+| `lexer.c/h` | Tokenizer with 223-keyword table, alias support |
+| `parser.c/h` | Recursive-descent parser with direct execution dispatch |
+| `runtime.c/h` | Runtime state, call stack, FOR/NEXT frames |
+| `memory.c/h` | Pool allocator, program store, scratch buffer |
+| `value.c/h` | Tagged union value system (int, float, string) |
+| `stringpool.c/h` | Compact string allocator with GC-safe pooling |
+| `dialect.c/h` | 12 dialect profiles, strict mode, feature gating |
+| `errors.c/h` | Error codes, BASIC-style error messages |
+| `fileio.c/h` | Sequential, random-access, and binary file I/O |
+| `vdev.c/h` | Virtual device layer (console, error, file, user) |
+| `vm.c/h` | Virtual machine formalization, opcode dispatch table |
+| `funcreg.c/h` | Function registry with override support |
+| `builtins.c/h` | Built-in math and string function implementations |
+| `detok.c/h` | Detokenizer for LIST, diagnostics, and debugging |
+| `exec.c/h` | Program execution engine (RUN loop) |
+| `ast.c/h` | Abstract syntax tree node types |
+| `codegen.c/h` | C code generator for the transpiler |
+| `compiler.c/h` | BASIC-to-C transpiler driver |
+| `security.c/h` | Security level enforcement and operation gating |
+| `module.c/h` | Module registration and lifecycle |
+| `mod_stdlib.c/h` | Standard library module (built-in) |
+| `mod_usb.c/h` | USB HID and serial device module |
+| `help.c/h` | Interactive help system |
+| `selftest.c/h` | Built-in self-test suite |
+| `memmap.c/h` | Virtual memory maps (MSDOS, C64, Atari, Apple, ZX) |
+| `platform.c/h` | Platform detection and OS abstraction |
+| `gfxbuf.c/h` | Graphics framebuffer (320×200, 16 colors) |
+| `bytecode.c/h` | Bytecode compilation infrastructure |
+| `config.h` | All compile-time constants and limits |
+
+### 4.2. Memory Layout
+
+All interpreter memory is defined by static, fixed-size pools. Dimensions are established at compile-time via `#define` constants in `config.h`, ensuring a predictable and verifiable memory footprint.
+
+| Memory Area | Constant | Default Size | Description |
+|:------------|:---------|:-------------|:------------|
+| Program Storage | `MAX_PROGRAM_LINES` | 4,096 lines | Stored BASIC program lines |
+| Program Pool | `PROGRAM_MEMORY_SIZE` | 64 KB | Raw program text storage |
+| Variable Pool | `VARIABLE_MEMORY_SIZE` | 64 KB | Variable and array storage |
+| Scratch Pool | `SCRATCH_MEMORY_SIZE` | 64 KB | Temporary token/expression buffers |
+| String Pool | `MAX_STRING_POOL` | 32 KB | Runtime string allocations |
+| Array Elements | `MAX_ARRAY_ELEMENTS` | 8,192 | Flat pool shared across all arrays |
+| Virtual Memory | `MAX_MEM_SEGMENT` | 64 KB | PEEK/POKE address space |
+| Call Stack | `MAX_STACK_DEPTH` | 256 levels | GOSUB, FOR/NEXT, SUB/FUNCTION frames |
+| File Channels | `MAX_FILE_CHANNELS` | 8 | Simultaneous open files |
+
+### 4.3. Adjustment of Memory Allocations
+
+Alterations to these memory limitations are effectuated by modifying the appropriate `#define` pre-processor constants within `config.h`. Subsequent recompilation of the interpreter is mandatory for such changes to take effect. This compile-time configuration is a deliberate design choice, precluding runtime memory negotiation. This approach ensures that the interpreter's resource requirements are fixed and verifiable, a critical attribute for high-reliability systems, embedded applications, or legacy operating systems where dynamic memory management is complex or unreliable.
+
+
+---
+
+
+## Section 5: Compilation
+
+The C source code is designed for high portability and is compilable on any system featuring a standards-compliant C compiler. No external libraries, package managers, or build frameworks are required.
+
+### 5.1. Quick Build
+
+```bash
+# Windows (MSVC — from Developer Command Prompt)
+cl /TC /W3 /O2 /Fe:basicpp.exe *.c
+
+# Linux / macOS (GCC or Clang)
+gcc -O2 -o basicpp *.c -lm
+clang -O2 -o basicpp *.c -lm
+
+# FreeDOS (OpenWatcom)
+wcc -ml -0 -za -wx *.c
+wlink name basicpp.exe file *.obj
+```
+
+### 5.2. Compilation for Portability and Size *(Recommended)*
+
+```bash
+gcc -Wall -Os -o basicpp *.c -lm
+```
+
+This incantation invokes the compiler with `-Wall` to enable all high-priority warnings, a best practice for identifying potential portability issues or unsafe code. Crucially, it uses `-Os`, which instructs the compiler to optimize specifically for the size of the resulting executable binary. This optimization level is often the primary concern in memory-constrained systems, such as the target embedded environments.
+
+### 5.3. Compilation for Execution Speed
+
+```bash
+gcc -Wall -O2 -o basicpp *.c -lm
+```
+
+This command uses the `-O2` flag, enabling a more aggressive set of optimization passes (such as loop unrolling and function inlining) focused on increasing execution velocity. This may come at the cost of a slightly larger binary file. This build is suitable for desktop systems where performance is prioritized over footprint.
+
+### 5.4. Compilation for Debugging *(Symbolic Inclusion)*
+
+```bash
+gcc -Wall -g -O0 -DDEBUG -o basicpp *.c -lm
+```
+
+This command utilizes the `-g` flag to include debugging symbols (such as DWARF) within the final executable. The `-DDEBUG` flag enables debug-mode assertions and verbose diagnostics within the interpreter. This symbolic information is essential for using a debugger (such as GDB) to trace program execution, inspect variables, and analyze the call stack.
+
+### 5.5. Using the Makefile
+
+A `Makefile` is provided for incremental builds:
+
+```bash
+make              # GCC release build (default)
+make debug        # GCC debug build with symbols
+make msvc         # MSVC build (from VS command prompt)
+make watcom       # OpenWatcom build (FreeDOS)
+make clean        # Remove build artifacts
+```
+
+
+---
+
+
+## Section 6: Operational Use
+
+The interpreter operates via a standard REPL (Read-Evaluate-Print Loop) interface. This interface provides two distinct contexts for operation: Direct Mode and Program Mode.
+
+### 6.1. Direct Mode
+
+The direct, or "immediate," execution context is invoked when directives are entered without a preceding line number. Such directives are evaluated and executed immediately upon entry. This mode is principally utilized for testing, debugging, performing calculations, or inspecting variable state.
+
+```
+> PRINT 10 + 5
+     15
+> A = 42 : PRINT A * 2
+     84
+> DIALECT "QBAS" : PRINT "Now in QBasic mode"
+Now in QBasic mode
+```
+
+### 6.2. Program Mode
+
+The "stored program" context is invoked when directives are entered with a preceding line number. Such lines are not executed; instead, they are inserted into the Program Storage array, maintained in sorted order by line number.
+
+```
+> 10 PRINT "Hello, World!"
+> 20 FOR I = 1 TO 5
+> 30 PRINT I; " ";
+> 40 NEXT I
+> 50 END
+> LIST
+10 PRINT "Hello, World!"
+20 FOR I = 1 TO 5
+30 PRINT I; " ";
+40 NEXT I
+50 END
+> RUN
+Hello, World!
+ 1  2  3  4  5
+```
+
+### 6.3. Program Execution
+
+The `RUN` directive initiates sequential execution of the stored program. This directive first clears Variable Storage and the Call Stack to a zeroed state, ensuring that the program executes in a clean, predictable environment. Execution begins at the lowest extant line number. The `BYE` command exits the interpreter entirely, returning control to the operating system.
+
+
+---
+
+
+## Section 7: Halting Non-Terminating Execution
+
+In the event a BASIC program enters a non-terminating loop, which is a common possibility given the `GOTO` directive, execution may be interrupted by two mechanisms:
+
+1. **`Ctrl+C` (SIGINT)** — Issuing an interrupt signal from the controlling terminal. The host operating system will halt the interpreter process and return control to the command shell.
+2. **`STOP` / `BREAK`** — If placed within a program, the `STOP` statement suspends execution and enters direct mode, allowing inspection of variables. Execution may be resumed with `CONT`. The `BREAK` command sets breakpoints for the interactive debugger.
+
+
+---
+
+
+## Section 8: Virtual Device Layer
+
+BASIC++ abstracts all I/O through a virtual device (`VDev`) interface, enabling portability across operating systems and hardware configurations without modifying the core interpreter.
+
+### 8.1. Built-In Devices
+
+| Device | ID | Function |
+|:-------|:---|:---------|
+| Console | `dev_con` | Primary screen output and keyboard input |
+| Error | `dev_err` | Error/diagnostic output (stderr) |
+| File | `dev_file` | File I/O channels (#1 through #8) |
+| Printer | `dev_lpt` | LPRINT output device |
+
+### 8.2. Virtual Memory Maps
+
+The `MEMMAP` system provides pre-configured virtual address spaces that emulate classic platforms:
+
+```basic
+MEMMAP "C64"          ' Commodore 64 memory layout
+MEMMAP "MSDOS"        ' IBM PC / MS-DOS layout
+MEMMAP "APPLE2"       ' Apple II memory map
+MEMMAP "ATARI8"       ' Atari 400/800 layout
+MEMMAP "ZX"           ' ZX Spectrum layout
+```
+
+### 8.3. Graphics Framebuffer
+
+A 320×200, 16-color virtual framebuffer is provided, matching QBasic `SCREEN 1`. Graphics are rendered to the terminal using Unicode half-block characters.
+
+
+---
+
+
+## Section 9: Module System
+
+The module system provides C-level code extensibility. Modules add new keywords, functions, and hardware abstractions to the interpreter.
+
+### 9.1. Built-In Modules
+
+| Module | Description |
+|:-------|:------------|
+| `STDLIB` | Standard library — core mathematical and string functions |
+| `USB` | USB HID (gamepads, joysticks) and USB serial (FTDI, CH340, Arduino) |
+
+### 9.2. Creating External Modules
+
+External modules follow the `ModuleInterface` contract: an `init()`, `shutdown()`, and keyword registration via `funcreg_override()`. See `External_Modules.txt` for the complete API specification.
+
+
+---
+
+
+## Section 10: Transpiler
+
+BASIC++ includes a BASIC-to-C transpiler that converts stored programs into standalone C source code, compilable into native executables with no runtime dependency on the interpreter.
+
+```basic
+10 PRINT "Hello, World!"
+20 END
+COMPILE "hello"       ' Generates hello.c
+```
+
+The generated C code is self-contained ANSI C89, suitable for compilation on any target platform.
+
+
+---
+
+
+## Section 11: Future Expansion Trajectory
+
+The architecture is explicitly provisioned for future expansion. The following classifications for extensibility have been identified:
+
+### 11.1. Addons
+
+This classification is designated for the most advanced extensibility, involving the incorporation of inline foreign language code. This system would provide meta-directives (e.g., `$LANG: C`) to allow a user to embed, compile, and link source code from other languages, such as Assembly, Pascal, or C, directly within a BASIC program file. This represents the ultimate goal of a mixed-language development environment, likely implemented via a transpiler and external compiler-chaining.
+
+### 11.2. Merge
+
+This classification refers to functionality for BASIC source code amalgamation, specifically the `MERGE` directive. This system maintains strict compliance with the behavioral standards of ECMA-55 (Minimal BASIC), ECMA-116 (Full BASIC), and/or QBasic/QuickBASIC. Its function is to load a BASIC program file from storage and combine it with the program already resident in memory, with lines from the incoming file overwriting any pre-existing lines with identical numbers. This is the foundational pillar for user-level code sharing.
+
+### 11.3. Modules
+
+This classification defines the primary system for C-level code extensibility. A "Module" is a compiled C-code entity that adds new keywords and syntactic features to the interpreter. This system is responsible for language syntax modification, enabling the creation of dialect-specific feature sets (e.g., adding a GRAPHICS module to provide `PSET` and `LINE`, or a SOUND module to provide `PLAY`). This is the mechanism by which the interpreter evolves from "Core" to "Full" BASIC.
+
+### 11.4. Plugins
+
+This classification defines a specialized subset of Modules. A "Plugin" is a C-code module designated for low-level hardware mapping, system emulation, and direct memory interfacing. A Plugin functions as a "driver," abstracting the hardware. For example, a SOUND Module (Section 11.3) provides the `SOUND` keyword, but it calls a SOUND Plugin (e.g., `pc_speaker.plugin` for DOS or `oss.plugin` for Linux) to actually generate the audio. This architectural separation of semantics (Module) from implementation (Plugin) is the key to achieving cross-platform portability for hardware-dependent features.
+
+
+---
+
+
+## Section 12: Documentation
+
+A comprehensive documentation suite of 35 reference manuals and tutorials is included:
+
+| Document | Subject |
+|:---------|:--------|
+| `Users_Guide.txt` | Getting started, environment, commands |
+| `Programmers_Guide.txt` | Complete language reference |
+| `How_To_Compile.txt` | Building from source on all platforms |
+| `Quick_Reference.txt` | Alphabetical keyword reference card |
+| `Self_Programming.txt` | Meta-programming and self-modification |
+| `Scripting_Functions.txt` | Shell integration, pipes, redirects |
+| `Mixing_Dialects.txt` | Multi-dialect programming |
+| `Using_Aliases.txt` | Keyword remapping with ALIAS |
+| `Arrays_And_Matrices.txt` | DIM, REDIM, MAT operations, sorting |
+| `File_IO.txt` | Sequential, random-access, binary files |
+| `Older_Dialects.txt` | Emulating classic systems and memory maps |
+| `Creating_Dialects.txt` | Building custom dialect configurations |
+| `Advanced_DEF.txt` | DEF FN, FUNCTION/SUB, closures |
+| `External_Modules.txt` | Modules, plug-ins, system services |
+| `Error_Handling.txt` | ON ERROR, RESUME, ERR, ERL |
+| `Graphics_Sound.txt` | SCREEN, DRAW, LINE, SOUND, PLAY |
+| `Debugging.txt` | TRON, TROFF, STOP, CONT, BREAK |
+| `Security.txt` | Sandboxing and trust levels |
+| `Secure_Coding.txt` | Writing safe and defensive BASIC++ code |
+| `Virtual_Devices.txt` | VDev system, INP, OUT, custom devices |
+| `Virtual_Machines.txt` | Virtual machines, consoles, terminals |
+| `Virtual_Filesystem.txt` | Safe local file access |
+| `Virtual_Network.txt` | TCP, UDP, TLS, Telnet, SSH, FTP, IRC, HTTP |
+| `USB_Devices.txt` | USB HID and serial device support |
+| `Compiling_BASIC_Programs.txt` | Transpile BASIC to native executables |
+| `Memory_Maps.txt` | Creating and using MEMMAP presets |
+| `User_Defined_Types.txt` | TYPE...END TYPE, records, typed fields |
+| `Screen_And_Console.txt` | LOCATE, COLOR, CLS, WIDTH, PRINT USING |
+| `Subroutines_And_Functions.txt` | GOSUB, SUB/FUNCTION, DEF FN, CALL |
+| `String_Handling.txt` | String functions, pool architecture |
+| `Internals_And_Architecture.txt` | Boot sequence, memory, parser pipeline |
+
+
+---
+
+
+## Section 13: Example Session
+
+```
+BASIC++ 0.21.0
+@COPYLEFT ALL WRONGS RESERVED
+Jun  8 2026
+
+Ready.
+> 10 INPUT "Your name"; N$
+> 20 PRINT "Hello, "; N$; "!"
+> 30 FOR I = 1 TO 3
+> 40 PRINT I; " Mississippi..."
+> 50 NEXT I
+> 60 END
+> RUN
+Your name? World
+Hello, World!
+ 1 Mississippi...
+ 2 Mississippi...
+ 3 Mississippi...
+> SAVE "hello.bas"
+> BYE
+Goodbye.
+```
+
+
+---
+
+
+## Section 14: Project Statistics
+
+| Metric | Value |
+|:-------|:------|
+| Source files | 29 `.c` + 29 `.h` |
+| Lines of code | ~27,000 |
+| Keywords | 223 |
+| Dialect profiles | 12 |
+| Documentation files | 35 |
+| External dependencies | **Zero** |
+| C standard | ANSI C89/C90 |
+| License | @COPYLEFT ALL WRONGS RESERVED |
+
+
+---
+
+*BASIC++ — Because the world needed one more BASIC interpreter.*
