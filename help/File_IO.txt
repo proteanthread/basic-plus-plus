@@ -1,0 +1,2177 @@
+FILE I/O IN BASIC++
+===================
+Version 0.21.0
+
+BASIC++ provides complete file I/O with three modes: sequential,
+random-access, and binary.  Up to 8 files can be open at once.
+
+This manual covers both the core file I/O reference AND a
+comprehensive tutorial on accessing legacy devices, mixing old
+and new I/O paradigms, and bridging the gap between how
+classic machines accessed hardware and how modern systems work.
+
+
+TABLE OF CONTENTS
+=================
+
+  Part I:   Core File I/O Reference
+  1.  Sequential Files
+  2.  Random-Access Files
+  3.  Binary Files
+  4.  File Management Commands
+  5.  File Functions
+  6.  IOCTL / IOCTL$
+  7.  LOCK and UNLOCK
+  8.  PRINT USING with Files
+  9.  Tips and Best Practices
+
+  Part II:  Legacy Devices — How Classic Machines Did I/O
+  10. The Device Model: Then and Now
+  11. How GW-BASIC Accessed Devices
+  12. How Commodore BASIC Accessed Devices
+  13. How Apple BASIC Accessed Devices
+  14. How TRS-80 BASIC Accessed Devices
+  15. How Atari BASIC Accessed Devices
+  16. How FreeDOS Accesses Devices
+  17. The Problem: Every System Was Different
+
+  Part III: The BASIC++ Unified Device Model
+  18. The VDev Architecture (Overview)
+  19. Built-In Devices (CON:, ERR:, FILE:)
+  20. How OPEN Maps to VDev Devices
+  21. The Device Channel Table
+  22. Mixing Legacy and Modern Devices
+
+  Part IV:  Tutorials — Accessing Legacy Devices the Modern Way
+  23. Tutorial: Printer Access (LPT/Parallel)
+      23.1 How legacy BASIC did it
+      23.2 How BASIC++ does it
+      23.3 Building a Printer VDev
+  24. Tutorial: Serial Port Access (COM/RS-232)
+      24.1 How legacy BASIC did it
+      24.2 How BASIC++ does it
+      24.3 Building a Serial VDev
+  25. Tutorial: Keyboard and Console Devices
+      25.1 SCRN: and KYBD: on legacy systems
+      25.2 How BASIC++ handles console I/O
+  26. Tutorial: Cassette Tape / Storage Devices
+      26.1 How legacy BASIC saved to tape
+      26.2 Emulating tape with a VDev
+  27. Tutorial: Sound and Music Devices
+      27.1 Legacy SOUND/PLAY statements
+      27.2 VDev-based audio routing
+  28. Tutorial: Network as a Device
+      28.1 There was no network in legacy BASIC
+      28.2 Building a TCP/HTTP VDev
+  29. Tutorial: Clipboard as a Device
+      29.1 Building a clipboard VDev
+  30. Tutorial: Pipe / IPC as a Device
+      30.1 Building a process pipe VDev
+
+  Part V:   Mixing and Matching Devices Across Dialects
+  31. The Mix-and-Match Principle
+  32. GW-BASIC Device Names in BASIC++
+  33. Commodore Device Numbers in BASIC++
+  34. Using Legacy OPEN Syntax with Modern Devices
+  35. Cross-Dialect Device Compatibility Table
+  36. Routing Legacy I/O Through Modern VDevs
+  37. Routing Modern I/O Through Legacy Patterns
+
+  Part VI:  Security and File Safety
+  38. Why Security Matters for Device I/O
+  39. The Three Security Levels
+  40. The Permission Matrix for File/Device Operations
+  41. How Security Gates Protect Device Access
+  42. Sandboxing Untrusted Programs
+  43. Safe Path Handling
+  44. Safe Device Access Patterns
+  45. Auditing Device Operations
+
+  Part VII: Cross-Platform Device Behavior
+  46. Windows Device Behavior
+  47. Linux Device Behavior
+  48. FreeDOS Device Behavior
+  49. Platform Abstraction via VDev
+  50. Writing Portable Device Code
+
+  51. Quick Reference Tables
+  52. Related Manuals
+
+
+=====================================================================
+
+           PART I: CORE FILE I/O REFERENCE
+
+=====================================================================
+
+
+=====================================================================
+1. SEQUENTIAL FILES
+=====================================================================
+
+Sequential files are text files read or written line by line.
+
+1.1  Opening
+
+  OPEN "data.txt" FOR INPUT AS #1      Read-only
+  OPEN "data.txt" FOR OUTPUT AS #1     Write (overwrite)
+  OPEN "data.txt" FOR APPEND AS #1     Write (add to end)
+
+1.2  Writing
+
+  PRINT #1, "Hello World"              Write a line
+  PRINT #1, A; ","; B; ","; C          Formatted output
+  PRINT #1, USING "##.##"; 3.14        Formatted number
+  WRITE #1, A, B$, C                   Comma-delimited, quoted
+
+  PRINT #1, writes like PRINT but to the file.
+  WRITE #1, writes machine-readable: strings in quotes,
+  values separated by commas, newline at end.
+
+1.3  Reading
+
+  INPUT #1, A$                         Read next value
+  INPUT #1, A, B, C                    Read multiple values
+  LINE INPUT #1, A$                    Read entire line
+
+  INPUT #1 reads comma-separated values (matching WRITE# format).
+  LINE INPUT #1 reads raw text including commas.
+
+1.4  End-of-File
+
+  EOF(1)           Returns -1 (true) if at end, 0 if not
+  LOF(1)           Length of file in bytes
+
+  10 OPEN "data.txt" FOR INPUT AS #1
+  20 WHILE NOT EOF(1)
+  30   LINE INPUT #1, A$
+  40   PRINT A$
+  50 WEND
+  60 CLOSE #1
+
+1.5  Closing
+
+  CLOSE #1                Close channel 1
+  CLOSE #1, #2, #3        Close multiple channels
+  CLOSE                   Close ALL open files
+  RESET                   Same as CLOSE (all channels)
+
+
+=====================================================================
+2. RANDOM-ACCESS FILES
+=====================================================================
+
+Random-access files store fixed-length records.  You can read
+or write any record by number, like a database.
+
+2.1  Opening
+
+  OPEN "data.dat" FOR RANDOM AS #1 LEN = 40
+
+  LEN specifies the record length in bytes (default 128,
+  maximum 256).  The file is opened for both reading and
+  writing.  If the file doesn't exist, it is created.
+
+2.2  Field Mapping
+
+  FIELD #1, 20 AS N$, 10 AS C$, 10 AS P$
+
+  This maps string variables to regions of the record buffer:
+    N$ occupies bytes 0-19  (20 bytes)
+    C$ occupies bytes 20-29 (10 bytes)
+    P$ occupies bytes 30-39 (10 bytes)
+    Total: 40 bytes = LEN
+
+  The total of all field widths must equal (or be less than)
+  the record length.  Up to 16 field mappings per channel.
+
+2.3  Writing Records
+
+  LSET N$ = "Alice Smith"        Left-justify, pad with spaces
+  LSET C$ = "New York"           Left-justify
+  RSET P$ = "10001"              Right-justify, pad with spaces
+  PUT #1, 1                      Write as record 1
+
+2.4  Reading Records
+
+  GET #1, 1                      Read record 1
+  PRINT N$                       "Alice Smith         "
+  PRINT C$                       "New York  "
+  PRINT P$                       "     10001"
+
+2.5  Numeric Data in Records
+
+  MKI$/CVI for integers (2 bytes):
+    LSET A$ = MKI$(42)           Store integer
+    GET #1, 1
+    PRINT CVI(A$)                Retrieve: 42
+
+  MKS$/CVS for single-precision (4 bytes):
+    LSET B$ = MKS$(3.14)
+
+  MKD$/CVD for double-precision (8 bytes):
+    LSET C$ = MKD$(3.14159265)
+
+2.6  Complete Example
+
+  10 OPEN "phones.dat" FOR RANDOM AS #1 LEN = 50
+  20 FIELD #1, 25 AS N$, 15 AS P$, 10 AS C$
+  30 LSET N$ = "Alice Smith"
+  40 LSET P$ = "555-0101"
+  50 LSET C$ = "New York"
+  60 PUT #1, 1
+  70 GET #1, 1
+  80 PRINT "Name: "; N$
+  90 CLOSE #1
+
+
+=====================================================================
+3. BINARY FILES
+=====================================================================
+
+Binary files provide raw byte-level access.
+
+  OPEN "data.bin" FOR BINARY AS #1
+
+  GET #1, position               Read byte(s) at position
+  PUT #1, position               Write byte(s) at position
+
+  SEEK #1, position              Move to byte position
+  LOC(1)                         Current byte position
+  LOF(1)                         File size in bytes
+
+  Positions are 1-based.  GET #1, 1 reads the first byte.
+
+
+=====================================================================
+4. FILE MANAGEMENT COMMANDS
+=====================================================================
+
+  FILES                          List files in current directory
+  FILES "*.bas"                  List matching files
+  KILL "filename"                Delete a file
+  NAME "old" AS "new"            Rename a file
+  CHDIR "path"                   Change directory
+  MKDIR "dirname"                Create directory
+  RMDIR "dirname"                Remove directory
+
+
+=====================================================================
+5. FILE FUNCTIONS
+=====================================================================
+
+  EOF(n)         End-of-file check (-1 = yes, 0 = no)
+  LOF(n)         File length in bytes
+  LOC(n)         Current position in file
+  SEEK #n, pos   Move file pointer to position pos
+
+
+=====================================================================
+6. IOCTL / IOCTL$
+=====================================================================
+
+  IOCTL #n, command$     Send control string to channel
+  PRINT IOCTL$(n)        Get channel status
+
+  IOCTL$ returns: "I"=Input, "O"=Output, "A"=Append,
+  "R"=Random, "B"=Binary, ""=Closed
+
+  Example:
+    OPEN "test.dat" FOR RANDOM AS #1
+    PRINT IOCTL$(1)              ' prints "R"
+
+
+=====================================================================
+7. LOCK AND UNLOCK
+=====================================================================
+
+  LOCK #n [, start TO end]       Lock file region
+  UNLOCK #n [, start TO end]     Unlock file region
+
+  On Windows, uses native OS file locking (_locking).
+  On other platforms, accepted but has no effect.
+
+
+=====================================================================
+8. PRINT USING WITH FILES
+=====================================================================
+
+  PRINT #1, USING "###.##"; value
+
+  Format characters:
+    #     Digit position         .     Decimal point
+    ,     Insert comma           +     Print sign
+    -     Trailing minus         **    Fill with asterisks
+    $$    Dollar sign            ^^^^  Scientific notation
+    !     First character        &     Entire string
+    \ \   Fixed-width string
+
+
+=====================================================================
+9. TIPS AND BEST PRACTICES
+=====================================================================
+
+  - Always CLOSE files when done (prevents data loss)
+  - Use RESET to close all files at once
+  - LOF works on all file modes
+  - Sequential OUTPUT truncates existing files
+  - APPEND preserves existing content
+  - Random-access files grow automatically when you PUT
+    beyond the current end
+  - Field variables share the record buffer — changing
+    one doesn't affect the others until PUT/GET
+  - Check EOF() BEFORE reading, not after
+  - Use ON ERROR GOTO to handle file-not-found errors
+  - Use WRITE #/INPUT # for machine-readable data
+  - Use PRINT # for human-readable output
+
+
+=====================================================================
+
+  PART II: LEGACY DEVICES — HOW CLASSIC MACHINES DID I/O
+
+=====================================================================
+
+
+=====================================================================
+10. THE DEVICE MODEL: THEN AND NOW
+=====================================================================
+
+On classic computers, there was no clean separation between
+"files" and "devices."  A printer, a serial port, a cassette
+deck, and a disk file were all accessed through the same I/O
+statements — but the syntax and addressing varied wildly
+between machines.
+
+  THEN (legacy):
+    Every machine had its own way to address devices.
+    GW-BASIC used device names like "LPT1:" and "COM1:".
+    Commodore used device numbers (1=tape, 4=printer, 8=disk).
+    Apple used slot numbers (PR#1, IN#1).
+    TRS-80 used special commands (LPRINT).
+    There was NO standard.
+
+  NOW (BASIC++):
+    All I/O goes through the VDev (Virtual Device) system.
+    Legacy device names and numbers are translated to VDev
+    slots.  New devices can be registered at runtime.
+    The BASIC program doesn't need to know whether it's
+    talking to a real printer, a file, or a network socket.
+
+The key insight:
+
+    Legacy: OPEN "COM1:9600" -> hardware RS-232 port
+    BASIC++: OPEN "COM1:9600" -> VDev slot -> whatever
+             implementation is registered for COM1:
+
+This abstraction lets you:
+  - Run legacy programs that OPEN "LPT1:" (routes to file or PDF)
+  - Emulate Commodore's OPEN 4,4 (routes to a VDev)
+  - Create new devices that legacy syntax can talk to
+  - Mix old and new I/O in the same program
+
+
+=====================================================================
+11. HOW GW-BASIC ACCESSED DEVICES
+=====================================================================
+
+GW-BASIC (and IBM BASICA, and MS-BASIC for DOS) used
+special device names in the OPEN statement:
+
+  OPEN "SCRN:" FOR OUTPUT AS #1    Screen output
+  OPEN "KYBD:" FOR INPUT AS #1     Keyboard input
+  OPEN "LPT1:" FOR OUTPUT AS #1    Printer (parallel port)
+  OPEN "COM1:9600,N,8,1" AS #1    Serial port
+  OPEN "CAS1:" FOR OUTPUT AS #1    Cassette recorder
+
+  These device names were hardcoded into GW-BASIC's runtime.
+  When you OPENed "LPT1:", GW-BASIC didn't open a file —
+  it connected channel #1 directly to the parallel port
+  hardware at I/O address 0x378.
+
+  Example — printing on GW-BASIC:
+    10 OPEN "LPT1:" FOR OUTPUT AS #1
+    20 PRINT #1, "Hello Printer!"
+    30 PRINT #1, CHR$(12)    ' form feed (eject page)
+    40 CLOSE #1
+
+  Or using LPRINT (shortcut that skips the OPEN):
+    10 LPRINT "Hello Printer!"
+    20 LPRINT CHR$(12)
+
+  Serial port example:
+    10 OPEN "COM1:9600,N,8,1" FOR RANDOM AS #1
+    20 PRINT #1, "ATZ"         ' Send modem command
+    30 LINE INPUT #1, A$       ' Read response
+    40 PRINT A$
+    50 CLOSE #1
+
+
+=====================================================================
+12. HOW COMMODORE BASIC ACCESSED DEVICES
+=====================================================================
+
+Commodore BASIC used a numbered device system:
+
+  Device  #  Description
+  ------  -  -----------
+  0          Keyboard
+  1          Cassette tape (Datasette)
+  2          RS-232 (user port serial)
+  3          Screen
+  4-7        Printer (serial bus)
+  8-15       Disk drive (serial bus)
+
+  Commodore OPEN syntax:
+    OPEN logical#, device#, secondary# [, "filename"]
+
+  Examples:
+    OPEN 1, 1, 0, "DATA"       Open cassette for read
+    OPEN 1, 1, 1, "DATA"       Open cassette for write
+    OPEN 1, 8, 2, "DATA,S,R"   Open disk file for read
+    OPEN 1, 8, 3, "DATA,S,W"   Open disk file for write
+    OPEN 1, 4                   Open printer
+
+  Then use PRINT# and INPUT# as normal:
+    PRINT#1, "Hello"
+    INPUT#1, A$
+
+  The key difference from GW-BASIC:
+  - GW-BASIC uses NAMED devices ("LPT1:", "COM1:")
+  - Commodore uses NUMBERED devices (4=printer, 8=disk)
+  - BASIC++ translates both to VDev slots
+
+
+=====================================================================
+13. HOW APPLE BASIC ACCESSED DEVICES
+=====================================================================
+
+Apple II used slot-based I/O:
+
+  Slots 0-7 on the Apple II motherboard held expansion cards.
+  Each slot had an I/O range and ROM space.
+
+  Common slot assignments:
+    Slot 1: Printer interface card
+    Slot 2: Serial/modem card
+    Slot 3: 80-column card
+    Slot 6: Disk drive controller
+    Slot 7: ProDOS clock card
+
+  AppleSoft device commands:
+    PR#1            Redirect output to slot 1 (printer)
+    IN#1            Redirect input from slot 1
+    PR#0            Restore output to screen
+    IN#0            Restore input from keyboard
+
+  After PR#1, ALL PRINT output goes to the printer.
+  After IN#2, ALL INPUT comes from the serial card.
+  There was no file-style OPEN — just global redirection.
+
+  Example — printing on Apple II:
+    10 PR#1         ' Redirect to printer
+    20 PRINT "Hello Printer!"
+    30 PRINT CHR$(12)  ' Form feed
+    40 PR#0         ' Back to screen
+
+  Disk I/O used special Ctrl-D commands:
+    10 D$ = CHR$(4)
+    20 PRINT D$; "OPEN DATA"
+    30 PRINT D$; "WRITE DATA"
+    40 PRINT "Hello"
+    50 PRINT D$; "CLOSE DATA"
+
+
+=====================================================================
+14. HOW TRS-80 BASIC ACCESSED DEVICES
+=====================================================================
+
+TRS-80 Level II BASIC:
+  - LPRINT for printer output (no OPEN needed)
+  - LLIST for listing program on printer
+  - No OPEN-based device access
+  - Disk I/O via TRSDOS commands
+
+  Example:
+    10 LPRINT "Hello Printer!"
+    20 LPRINT USING "##.##"; 3.14
+
+TRS-80 Model III/4 added device files:
+  - /P for printer: OPEN "/P" FOR OUTPUT AS #1
+  - /CL for comm link
+
+
+=====================================================================
+15. HOW ATARI BASIC ACCESSED DEVICES
+=====================================================================
+
+Atari BASIC used a device prefix system:
+
+  Device Prefix    Description
+  C:               Cassette
+  D:               Disk drive
+  E:               Screen editor
+  K:               Keyboard
+  P:               Printer
+  R:               RS-232 port
+  S:               Screen (graphics)
+
+  Atari OPEN syntax:
+    OPEN #1, 4, 0, "P:"           Open printer for output
+    OPEN #1, 4, 0, "D:DATA.TXT"   Open disk file for output
+    OPEN #1, 6, 0, "R:"           Open RS-232 for I/O
+    OPEN #1, 4, 0, "C:"           Open cassette for output
+
+  The device prefix is part of the filename string.
+  This is closer to the modern VDev approach than any
+  other classic system.
+
+
+=====================================================================
+16. HOW FREEDOS ACCESSES DEVICES
+=====================================================================
+
+FreeDOS inherits the DOS device model:
+
+  CON       Console (keyboard + screen)
+  PRN       First printer (LPT1)
+  AUX       First serial port (COM1)
+  NUL       Null device (discard output)
+  COM1-COM4 Serial ports
+  LPT1-LPT3 Parallel (printer) ports
+  CLOCK$    System clock
+
+  These are "magic filenames" — you can OPEN them like files:
+    OPEN "PRN" FOR OUTPUT AS #1
+    PRINT #1, "Hello Printer!"
+    CLOSE #1
+
+  Under FreeDOS, BASIC++ simply passes these names to fopen().
+  The DOS kernel redirects them to the appropriate device.
+
+
+=====================================================================
+17. THE PROBLEM: EVERY SYSTEM WAS DIFFERENT
+=====================================================================
+
+Here's the same operation — "print to printer" — on 6 systems:
+
+  GW-BASIC:       OPEN "LPT1:" FOR OUTPUT AS #1
+                   PRINT #1, "Hello"
+
+  Commodore:       OPEN 1, 4
+                   PRINT#1, "Hello"
+
+  Apple II:        PR#1
+                   PRINT "Hello"
+                   PR#0
+
+  TRS-80:          LPRINT "Hello"
+
+  Atari:           OPEN #1, 4, 0, "P:"
+                   PRINT #1, "Hello"
+
+  FreeDOS:         OPEN "PRN" FOR OUTPUT AS #1
+                   PRINT #1, "Hello"
+
+SIX COMPLETELY DIFFERENT SYNTAXES for the same thing.
+
+If you're porting a program between systems, you'd need to
+rewrite every I/O statement.  BASIC++ solves this with the
+VDev system — ONE interface, ANY device.
+
+
+=====================================================================
+
+       PART III: THE BASIC++ UNIFIED DEVICE MODEL
+
+=====================================================================
+
+
+=====================================================================
+18. THE VDEV ARCHITECTURE (OVERVIEW)
+=====================================================================
+
+The VDev (Virtual Device) system is BASIC++'s answer to the
+chaos of legacy device access.  It provides a single,
+uniform interface for ALL I/O:
+
+  struct VDev {
+      const char *name;          /* "CON:", "SER:", etc. */
+      int  (*dev_putc)(VDev*, int);     /* write char */
+      int  (*dev_puts)(VDev*, const char*); /* write string */
+      int  (*dev_getc)(VDev*);          /* read char */
+      int  (*dev_gets)(VDev*, char*, int); /* read line */
+      int  (*dev_flush)(VDev*);         /* flush buffer */
+      int  (*dev_cls)(VDev*);           /* clear/reset */
+      int  (*dev_open)(VDev*, const char*, const char*);
+      int  (*dev_close)(VDev*);         /* close */
+      void *user_data;                  /* device state */
+  };
+
+16 device slots:
+  Slot 0: CON:  (Console — stdout + stdin)
+  Slot 1: ERR:  (Error — stderr)
+  Slot 2: FILE: (File I/O — fopen/fclose)
+  Slots 3-15: User-registerable (VDEV_USER+)
+
+Every PRINT goes through dev_puts().
+Every INPUT goes through dev_gets().
+Every file operation goes through the FILE: device.
+No direct OS calls from the interpreter core.
+
+
+=====================================================================
+19. BUILT-IN DEVICES (CON:, ERR:, FILE:)
+=====================================================================
+
+CON: (Console Device, Slot 0)
+  The default I/O device.  PRINT writes here.
+  INPUT reads from here.
+  - dev_putc: putchar()
+  - dev_puts: fputs(stdout)
+  - dev_getc: getchar()
+  - dev_gets: fgets(stdin)
+  - dev_cls: platform-specific clear screen
+  - dev_flush: fflush(stdout)
+
+ERR: (Error Device, Slot 1)
+  Error messages and diagnostic output.
+  - dev_putc: fputc(stderr)
+  - dev_puts: fputs(stderr)
+  - Other ops: NULL (not applicable)
+
+FILE: (File Device, Slot 2)
+  All file I/O goes through here.
+  The fileio.c channel table sits on top of this device.
+  - dev_open: fopen()
+  - dev_close: fclose()
+  - dev_puts: fprintf(fp, ...)
+  - dev_gets: fgets(fp, ...)
+
+
+=====================================================================
+20. HOW OPEN MAPS TO VDEV DEVICES
+=====================================================================
+
+When BASIC++ encounters an OPEN statement, it decides what
+to do based on the filename:
+
+  1. CHECK FOR DEVICE NAMES
+     If the filename matches a known device name:
+       "CON:"   -> route to VDEV_CON
+       "SCRN:"  -> route to VDEV_CON (alias)
+       "KYBD:"  -> route to VDEV_CON input
+       "ERR:"   -> route to VDEV_ERR
+       "LPT1:"  -> route to registered LPT VDev (or file)
+       "COM1:"  -> route to registered COM VDev (or file)
+       "NUL:"   -> route to registered NUL VDev
+
+  2. CHECK FOR DEVICE PREFIXES
+     Atari-style "D:", "P:", "R:" prefixes:
+       "P:filename" -> printer device
+       "R:filename" -> RS-232 device
+
+  3. CHECK FOR REGISTERED USER DEVICES
+     Scan VDEV_USER through VDEV_MAX for name match.
+
+  4. DEFAULT: TREAT AS FILE
+     If no device match, pass the name to FILE: device
+     (fopen with the given mode).
+
+This multi-level dispatch means legacy programs that OPEN
+device names work transparently in BASIC++.
+
+
+=====================================================================
+21. THE DEVICE CHANNEL TABLE
+=====================================================================
+
+The 8 file channels (#1-#8) can each be connected to
+either a file OR a virtual device:
+
+  Channel #1: open for "data.txt"    -> FILE: device
+  Channel #2: open for "LPT1:"      -> LPT VDev
+  Channel #3: open for "COM1:9600"   -> Serial VDev
+  Channel #4: open for "NUL:"       -> Null VDev
+
+Once connected, PRINT #n and INPUT #n route through the
+appropriate device.  The BASIC program doesn't need to
+know whether channel #2 is a file or a printer.
+
+
+=====================================================================
+22. MIXING LEGACY AND MODERN DEVICES
+=====================================================================
+
+In one program, you can mix:
+  - Standard file I/O (OPEN "file.txt")
+  - Legacy device names (OPEN "LPT1:")
+  - Modern VDev devices (OPEN "NET:http://example.com")
+  - Virtual devices (OPEN "LOG:app.log")
+
+  10 REM File I/O channel
+  20 OPEN "data.txt" FOR INPUT AS #1
+  30 REM Printer via legacy name
+  40 OPEN "LPT1:" FOR OUTPUT AS #2
+  50 REM Serial port via legacy name
+  60 OPEN "COM1:9600,N,8,1" FOR RANDOM AS #3
+  70 REM Log file via VDev
+  80 OPEN "LOG:debug.txt" FOR OUTPUT AS #4
+  90 REM
+  100 WHILE NOT EOF(1)
+  110   LINE INPUT #1, A$
+  120   PRINT #2, A$        ' To printer
+  130   PRINT #3, A$        ' To serial port
+  140   PRINT #4, A$        ' To log file
+  150 WEND
+  160 CLOSE
+
+
+=====================================================================
+
+  PART IV: TUTORIALS — ACCESSING LEGACY DEVICES THE MODERN WAY
+
+=====================================================================
+
+
+=====================================================================
+23. TUTORIAL: PRINTER ACCESS (LPT/PARALLEL)
+=====================================================================
+
+
+---------------------------------------------------------------------
+23.1  How Legacy BASIC Did It
+---------------------------------------------------------------------
+
+  GW-BASIC:
+    OPEN "LPT1:" FOR OUTPUT AS #1
+    PRINT #1, "Report Title"
+    CLOSE #1
+    ' OR simply:
+    LPRINT "Report Title"
+
+  Commodore:
+    OPEN 1, 4          ' Device 4 = printer
+    PRINT#1, "Report Title"
+    CLOSE 1
+
+  Apple II:
+    PR#1               ' Redirect ALL output to slot 1
+    PRINT "Report Title"
+    PR#0               ' Back to screen
+
+  Each system talked to physically different hardware:
+    GW-BASIC:   Centronics parallel port at 0x378
+    Commodore:  Serial IEEE-488 bus
+    Apple II:   Super Serial Card in slot 1
+    Atari:      SIO serial bus (850 interface)
+
+
+---------------------------------------------------------------------
+23.2  How BASIC++ Does It
+---------------------------------------------------------------------
+
+BASIC++ routes printer access through a VDev.  You can:
+
+  Option A: Use the legacy GW-BASIC syntax
+    OPEN "LPT1:" FOR OUTPUT AS #1
+    PRINT #1, "Hello Printer!"
+    CLOSE #1
+
+  If no LPT VDev is registered, BASIC++ falls through to
+  the OS — on FreeDOS, "LPT1:" is a valid device name
+  that the OS handles.  On Windows, it may route to a
+  local printer.  On Linux, it fails (no LPT1: device).
+
+  Option B: Use LPRINT (available in all dialects)
+    LPRINT "Hello Printer!"
+
+  Option C: Register a VDev that captures print output
+    and routes it to a file, PDF generator, or modern
+    printer API.
+
+
+---------------------------------------------------------------------
+23.3  Building a Printer VDev
+---------------------------------------------------------------------
+
+  /* mod_printer.c - Modern printer via VDev */
+
+  static FILE *printer_fp = NULL;
+
+  static int printer_open(VDev *d, const char *path,
+                           const char *mode)
+  {
+      (void)d; (void)mode;
+  #if defined(_WIN32)
+      /* Windows: open the default printer spool file */
+      printer_fp = fopen("PRNTOUT.TXT", "a");
+  #elif defined(__linux__)
+      /* Linux: pipe to lp command */
+      printer_fp = popen("lp", "w");
+  #else
+      /* FreeDOS: open LPT1 directly */
+      printer_fp = fopen("PRN", "w");
+  #endif
+      (void)path;
+      return printer_fp ? 0 : -1;
+  }
+
+  static int printer_puts(VDev *d, const char *s)
+  {
+      (void)d;
+      if (!printer_fp) return -1;
+      fputs(s, printer_fp);
+      return 0;
+  }
+
+  static int printer_close(VDev *d)
+  {
+      (void)d;
+      if (printer_fp) {
+  #if defined(__linux__)
+          pclose(printer_fp);
+  #else
+          fclose(printer_fp);
+  #endif
+          printer_fp = NULL;
+      }
+      return 0;
+  }
+
+  Now from BASIC:
+    OPEN "LPT1:" FOR OUTPUT AS #1
+    ' Routes to our printer VDev -> pipes to OS print system
+    PRINT #1, "===================="
+    PRINT #1, "     SALES REPORT"
+    PRINT #1, "===================="
+    PRINT #1, USING "Item ###: $###.##"; 1; 49.99
+    CLOSE #1
+
+  The BASIC code looks EXACTLY like 1983 GW-BASIC, but
+  underneath it's using the modern OS print system.
+
+
+=====================================================================
+24. TUTORIAL: SERIAL PORT ACCESS (COM/RS-232)
+=====================================================================
+
+
+---------------------------------------------------------------------
+24.1  How Legacy BASIC Did It
+---------------------------------------------------------------------
+
+  GW-BASIC:
+    OPEN "COM1:9600,N,8,1" FOR RANDOM AS #1
+    PRINT #1, "ATZ"           ' Send modem command
+    LINE INPUT #1, R$         ' Read response
+    PRINT R$
+    CLOSE #1
+
+  The "9600,N,8,1" string means:
+    9600 baud, No parity, 8 data bits, 1 stop bit
+
+  Commodore:
+    OPEN 1, 2, 0, CHR$(6)+CHR$(0)   ' Device 2 = RS-232
+    ' Control byte sets baud rate
+
+  Atari:
+    OPEN #1, 13, 0, "R:"     ' Device R: = RS-232
+
+
+---------------------------------------------------------------------
+24.2  How BASIC++ Does It
+---------------------------------------------------------------------
+
+  The same GW-BASIC syntax works:
+    OPEN "COM1:9600,N,8,1" FOR RANDOM AS #1
+
+  If a Serial VDev is registered, it intercepts the OPEN,
+  parses the baud/parity/bits parameters, and connects
+  to the serial port via the OS API.
+
+
+---------------------------------------------------------------------
+24.3  Building a Serial VDev
+---------------------------------------------------------------------
+
+  /* mod_serial.c - Serial port VDev */
+
+  #if defined(_WIN32)
+  #include <windows.h>
+  static HANDLE serial_handle = INVALID_HANDLE_VALUE;
+
+  static int serial_open(VDev *d, const char *path,
+                          const char *mode)
+  {
+      /* Parse "COM1:9600,N,8,1" */
+      DCB dcb;
+      char port[16] = "\\\\.\\COM1";
+      int baud = 9600;
+      (void)d; (void)mode;
+
+      /* Extract port and baud from path string */
+      sscanf(path, "COM%*d:%d", &baud);
+
+      serial_handle = CreateFileA(port,
+          GENERIC_READ | GENERIC_WRITE,
+          0, NULL, OPEN_EXISTING, 0, NULL);
+      if (serial_handle == INVALID_HANDLE_VALUE) return -1;
+
+      GetCommState(serial_handle, &dcb);
+      dcb.BaudRate = baud;
+      dcb.ByteSize = 8;
+      dcb.Parity   = NOPARITY;
+      dcb.StopBits = ONESTOPBIT;
+      SetCommState(serial_handle, &dcb);
+      return 0;
+  }
+
+  static int serial_puts(VDev *d, const char *s)
+  {
+      DWORD written;
+      (void)d;
+      if (serial_handle == INVALID_HANDLE_VALUE) return -1;
+      WriteFile(serial_handle, s, (DWORD)strlen(s),
+                &written, NULL);
+      return 0;
+  }
+  #endif
+
+  From BASIC:
+    OPEN "COM1:9600,N,8,1" FOR RANDOM AS #1
+    PRINT #1, "ATZ"           ' Same as GW-BASIC in 1983!
+    CLOSE #1
+
+  SECURITY NOTE: Serial port access requires CAP_IO |
+  CAP_SYSTEM.  The serial VDev module must declare these
+  capabilities, and the security gate must allow them.
+
+
+=====================================================================
+25. TUTORIAL: KEYBOARD AND CONSOLE DEVICES
+=====================================================================
+
+
+---------------------------------------------------------------------
+25.1  SCRN: and KYBD: on Legacy Systems
+---------------------------------------------------------------------
+
+  GW-BASIC:
+    OPEN "SCRN:" FOR OUTPUT AS #1    ' Screen output
+    PRINT #1, "Hello Screen"
+    OPEN "KYBD:" FOR INPUT AS #2     ' Keyboard input
+    LINE INPUT #2, K$
+
+  These were rarely used — PRINT and INPUT already go to
+  the screen and keyboard.  But they allowed treating the
+  console as a file channel, useful for programs that
+  dynamically switch between file and console output.
+
+
+---------------------------------------------------------------------
+25.2  How BASIC++ Handles Console I/O
+---------------------------------------------------------------------
+
+  BASIC++ maps SCRN: and KYBD: to the CON: device (slot 0):
+
+    OPEN "SCRN:" FOR OUTPUT AS #1
+    ' Routes to VDEV_CON -> printf/putchar
+
+    OPEN "KYBD:" FOR INPUT AS #1
+    ' Routes to VDEV_CON -> fgets(stdin)
+
+  This works transparently.  A program can write to both
+  a file and the screen using the same PRINT # syntax:
+
+    OPEN "report.txt" FOR OUTPUT AS #1
+    OPEN "SCRN:" FOR OUTPUT AS #2
+    FOR I = 1 TO 10
+      PRINT #1, "Line "; I       ' To file
+      PRINT #2, "Line "; I       ' To screen
+    NEXT I
+    CLOSE
+
+
+=====================================================================
+26. TUTORIAL: CASSETTE TAPE / STORAGE DEVICES
+=====================================================================
+
+
+---------------------------------------------------------------------
+26.1  How Legacy BASIC Saved to Tape
+---------------------------------------------------------------------
+
+  TRS-80 Level I: CSAVE and CLOAD
+    CSAVE "MYPROG"      ' Save program to cassette
+    CLOAD "MYPROG"      ' Load program from cassette
+
+  Commodore:
+    SAVE "MYPROG", 1    ' Save to device 1 (cassette)
+    LOAD "MYPROG", 1    ' Load from device 1
+
+  Cassette storage was sequential — you had to fast-forward
+  or rewind to find programs.  Data was encoded as audio
+  tones (Kansas City Standard, typically 300-1200 baud).
+
+
+---------------------------------------------------------------------
+26.2  Emulating Tape with a VDev
+---------------------------------------------------------------------
+
+  A tape VDev could:
+  - Store "tape" contents in a regular file (tape_image.cas)
+  - Implement sequential-only access (no seeking)
+  - Add realistic "load time" delays (for authenticity)
+  - Play audio tones through the speaker (fun!)
+
+  static int tape_open(VDev *d, const char *path,
+                       const char *mode)
+  {
+      /* Open the tape image file */
+      d->user_data = fopen("tape.cas", mode[0] == 'r' ? "rb" : "wb");
+      (void)path;
+      return d->user_data ? 0 : -1;
+  }
+
+  From BASIC:
+    DIALECT "C64B"
+    OPEN 1, 1, 0, "MYPROG"    ' Commodore tape syntax
+    ' Routes to tape VDev -> reads from tape.cas file
+
+
+=====================================================================
+27. TUTORIAL: SOUND AND MUSIC DEVICES
+=====================================================================
+
+
+---------------------------------------------------------------------
+27.1  Legacy SOUND/PLAY Statements
+---------------------------------------------------------------------
+
+  GW-BASIC:
+    SOUND 440, 18           ' 440 Hz for 1 second (18 ticks)
+    PLAY "CDEFGAB"          ' Play musical notes
+
+  Commodore:
+    POKE 54296, 15          ' Volume max (SID chip)
+    POKE 54277, 9           ' Attack/Decay
+    POKE 54278, 0           ' Sustain/Release
+    POKE 54273, 17 : POKE 54272, 37  ' Frequency
+    POKE 54276, 17          ' Gate on (triangle wave)
+
+  CoCo:
+    SOUND 220, 10           ' 220 Hz for 10 units
+    PLAY "T120O4L4CDEFGAB"  ' Play with tempo/octave
+
+
+---------------------------------------------------------------------
+27.2  VDev-Based Audio Routing
+---------------------------------------------------------------------
+
+  A sound VDev routes audio commands to the host OS:
+
+    OPEN "SND:" FOR OUTPUT AS #1
+    PRINT #1, "TONE 440 1000"     ' 440 Hz, 1000ms
+    PRINT #1, "PLAY CDEFGAB"
+    CLOSE #1
+
+  The SND: VDev parses commands and calls vdev_sound()
+  or platform-specific audio APIs.
+
+
+=====================================================================
+28. TUTORIAL: NETWORK AS A DEVICE
+=====================================================================
+
+
+---------------------------------------------------------------------
+28.1  There Was No Network in Legacy BASIC
+---------------------------------------------------------------------
+
+  Classic home computers had no network capability.  Network
+  access was the domain of mainframes and minicomputers.
+  The closest thing was a modem via the serial port.
+
+  BASIC++ can add network access as a device, making it
+  accessible through familiar OPEN/PRINT#/INPUT# syntax.
+
+
+---------------------------------------------------------------------
+28.2  Building a TCP/HTTP VDev
+---------------------------------------------------------------------
+
+  /* mod_net.c - Network device */
+
+  #if defined(_WIN32)
+  #include <winsock2.h>
+  #pragma comment(lib, "ws2_32.lib")
+  static SOCKET net_socket = INVALID_SOCKET;
+
+  static int net_open(VDev *d, const char *path,
+                       const char *mode)
+  {
+      /* path = "NET:hostname:port" */
+      WSADATA wsa;
+      struct sockaddr_in server;
+      char host[256];
+      int port = 80;
+      (void)d; (void)mode;
+
+      if (security_check(SECOP_SYSTEM, 0) != 0)
+          return -1;  /* Security denied */
+
+      WSAStartup(MAKEWORD(2,2), &wsa);
+      sscanf(path, "NET:%255[^:]:%d", host, &port);
+      net_socket = socket(AF_INET, SOCK_STREAM, 0);
+      /* ... connect to server ... */
+      return 0;
+  }
+  #endif
+
+  From BASIC:
+    OPEN "NET:example.com:80" FOR RANDOM AS #1
+    PRINT #1, "GET / HTTP/1.0"
+    PRINT #1, "Host: example.com"
+    PRINT #1, ""
+    WHILE NOT EOF(1)
+      LINE INPUT #1, A$
+      PRINT A$
+    WEND
+    CLOSE #1
+
+  SECURITY: Network access requires CAP_NETWORK | CAP_IO.
+  At SEC_STANDARD this is allowed.  At SEC_RESTRICTED it
+  is BLOCKED — the OPEN fails with "SORRY? Security:
+  module not permitted at level RESTRICTED."
+
+
+=====================================================================
+29. TUTORIAL: CLIPBOARD AS A DEVICE
+=====================================================================
+
+  OPEN "CLIP:" FOR OUTPUT AS #1
+  PRINT #1, "Text for clipboard"
+  CLOSE #1
+
+  OPEN "CLIP:" FOR INPUT AS #1
+  LINE INPUT #1, C$
+  PRINT "From clipboard: "; C$
+  CLOSE #1
+
+  The CLIP: VDev uses platform APIs:
+    Windows: OpenClipboard/SetClipboardData/GetClipboardData
+    Linux:   xclip or xsel via popen
+    FreeDOS: Not available (returns empty string)
+
+
+=====================================================================
+30. TUTORIAL: PIPE / IPC AS A DEVICE
+=====================================================================
+
+  OPEN "PIPE:sort" FOR RANDOM AS #1
+  PRINT #1, "Banana"
+  PRINT #1, "Apple"
+  PRINT #1, "Cherry"
+  ' Read sorted output back
+  LINE INPUT #1, A$    ' "Apple"
+  LINE INPUT #1, B$    ' "Banana"
+  LINE INPUT #1, C$    ' "Cherry"
+  CLOSE #1
+
+  The PIPE: VDev uses popen() to execute an external command
+  and connects its stdin/stdout to the file channel.
+
+  SECURITY: Requires CAP_SYSTEM.  Blocked at SEC_STANDARD
+  and SEC_RESTRICTED.
+
+
+=====================================================================
+
+    PART V: MIXING AND MATCHING DEVICES ACROSS DIALECTS
+
+=====================================================================
+
+
+=====================================================================
+31. THE MIX-AND-MATCH PRINCIPLE
+=====================================================================
+
+Just as BASIC++ lets you mix keywords from different dialects,
+it lets you mix device access patterns from different systems:
+
+  10 REM Mix GW-BASIC device name with Commodore DATA
+  20 OPEN "LPT1:" FOR OUTPUT AS #1
+  30 DATA "Alice", 30, "Bob", 25, "Carol", 35
+  40 FOR I = 1 TO 3
+  50   READ N$, AGE
+  60   PRINT #1, USING "\          \  ###"; N$; AGE
+  70 NEXT I
+  80 CLOSE #1
+
+  10 REM Mix Atari-style prefix with QBasic-style IF
+  20 OPEN "D:REPORT.TXT" FOR OUTPUT AS #1
+  30 IF LOF(1) > 0 THEN
+  40   PRINT "File exists, appending..."
+  50 END IF
+  60 CLOSE #1
+
+The VDev system makes this possible because ALL device
+syntaxes route through the same OPEN dispatcher.
+
+
+=====================================================================
+32. GW-BASIC DEVICE NAMES IN BASIC++
+=====================================================================
+
+BASIC++ recognizes ALL GW-BASIC device names:
+
+  GW-BASIC Name    BASIC++ Behavior
+  -------------    ----------------
+  "SCRN:"          Routes to CON: (VDEV_CON)
+  "KYBD:"          Routes to CON: (VDEV_CON input)
+  "LPT1:"          Routes to LPT VDev if registered,
+                   else passes to OS (works on FreeDOS)
+  "LPT2:", "LPT3:" Same as LPT1: with port number
+  "COM1:params"    Routes to Serial VDev if registered,
+                   else passes to OS
+  "COM2:params"    Same as COM1: with port number
+  "CAS1:"          Routes to Tape VDev if registered,
+                   else error
+  "NUL:"           Routes to Null VDev (discards output)
+
+  If no VDev is registered for a device name, BASIC++
+  falls through to fopen() — which works on FreeDOS
+  (where COM1 and LPT1 are real device names) but may
+  fail on Linux.
+
+
+=====================================================================
+33. COMMODORE DEVICE NUMBERS IN BASIC++
+=====================================================================
+
+When using the COCO or C64B dialect, the Commodore-style
+OPEN syntax is recognized:
+
+  OPEN logical#, device#, secondary# [, "filename"]
+
+  Device #    Maps To
+  --------    -------
+  0           CON: (keyboard)
+  1           TAPE: VDev (cassette emulation)
+  2           SER: VDev (RS-232)
+  3           CON: (screen)
+  4-7         LPT: VDev (printer)
+  8-15        FILE: (disk drive)
+
+  Example:
+    DIALECT "C64B"
+    OPEN 1, 8, 2, "DATA,S,R"      ' Disk file read
+    ' Translates to: OPEN "DATA" FOR INPUT AS #1
+
+    OPEN 2, 4                      ' Printer
+    ' Translates to: routes to LPT VDev on channel #2
+
+
+=====================================================================
+34. USING LEGACY OPEN SYNTAX WITH MODERN DEVICES
+=====================================================================
+
+Legacy syntax works with modern VDev devices:
+
+  GW-BASIC syntax -> modern VDev:
+    OPEN "COM1:9600" FOR RANDOM AS #1
+    ' Routes to a TCP socket VDev instead of a physical COM port
+
+  Commodore syntax -> modern file:
+    DIALECT "C64B"
+    OPEN 1, 8, 2, "DATA.CSV,S,R"
+    ' Routes to a standard file open
+
+  Atari syntax -> modern device:
+    OPEN #1, 4, 0, "P:"
+    ' Routes to PDF printer VDev
+
+
+=====================================================================
+35. CROSS-DIALECT DEVICE COMPATIBILITY TABLE
+=====================================================================
+
+  Operation      GW-BASIC        Commodore       Atari
+  ---------      --------        ---------       -----
+  Screen out     OPEN "SCRN:"    OPEN 1,3        OPEN #1,8,0,"S:"
+  Keyboard in    OPEN "KYBD:"    (no OPEN)       OPEN #1,4,0,"K:"
+  Printer        OPEN "LPT1:"   OPEN 1,4        OPEN #1,8,0,"P:"
+  Serial         OPEN "COM1:"   OPEN 1,2,0,...   OPEN #1,13,0,"R:"
+  Tape           OPEN "CAS1:"   OPEN 1,1,0,...   OPEN #1,4,0,"C:"
+  Disk file      OPEN "F.TXT"   OPEN 1,8,2,"F"  OPEN #1,4,0,"D:F"
+  Null           OPEN "NUL:"    (none)           (none)
+
+  BASIC++ Equivalent (all dialects):
+  Screen:   OPEN "CON:" FOR OUTPUT AS #1
+  Keyboard: OPEN "CON:" FOR INPUT AS #1
+  Printer:  OPEN "LPT:" FOR OUTPUT AS #1  (or VDev name)
+  Serial:   OPEN "SER:9600" FOR RANDOM AS #1  (or VDev name)
+  File:     OPEN "filename" FOR mode AS #n
+  Null:     OPEN "NUL:" FOR OUTPUT AS #1
+
+
+=====================================================================
+36. ROUTING LEGACY I/O THROUGH MODERN VDEVS
+=====================================================================
+
+Example: Route GW-BASIC's LPT1: to a PDF file:
+
+  Register a VDev named "LPT1:" that writes to a PDF:
+
+  static int pdf_puts(VDev *d, const char *s)
+  {
+      FILE *fp = (FILE *)d->user_data;
+      if (fp) fputs(s, fp);    /* Write to PDF staging file */
+      return 0;
+  }
+
+  Now the legacy program works unchanged:
+    10 OPEN "LPT1:" FOR OUTPUT AS #1
+    20 PRINT #1, "Quarterly Report"
+    30 PRINT #1, "================"
+    40 PRINT #1, USING "Sales: $###,###.##"; 1234567.89
+    50 CLOSE #1
+
+  The user sees: "Program printed to LPT1:" but the output
+  actually went to a PDF file.  Zero code changes needed.
+
+
+=====================================================================
+37. ROUTING MODERN I/O THROUGH LEGACY PATTERNS
+=====================================================================
+
+Example: Access a REST API using Commodore-style syntax:
+
+  Register VDev device #8 as an HTTP client:
+
+  DIALECT "C64B"
+  OPEN 1, 8, 2, "HTTP://API.EXAMPLE.COM/DATA,S,R"
+  ' Device 8 = "disk drive" — but routed to HTTP VDev
+  INPUT#1, RESULT$
+  PRINT RESULT$
+  CLOSE 1
+
+  The Commodore programmer's muscle memory works:
+  device 8 = "disk" = "data source."  Whether it's a
+  1541 floppy drive or an HTTP API is an implementation
+  detail hidden by the VDev layer.
+
+
+=====================================================================
+
+             PART VI: SECURITY AND FILE SAFETY
+
+=====================================================================
+
+
+=====================================================================
+38. WHY SECURITY MATTERS FOR DEVICE I/O
+=====================================================================
+
+Devices are MORE dangerous than files:
+
+  A file operation can:
+    - Read sensitive data
+    - Overwrite important files
+    - Delete files
+
+  A device operation can ALSO:
+    - Send data to external hardware
+    - Execute system commands (via PIPE:)
+    - Open network connections (via NET:)
+    - Access clipboard (privacy leak)
+    - Control GPIO pins (physical hardware!)
+
+The security system protects ALL of these through the
+same capability gate that protects file operations.
+
+
+=====================================================================
+39. THE THREE SECURITY LEVELS
+=====================================================================
+
+  SEC_OPEN (Default):
+    Everything allowed.  No restrictions.
+    Use for trusted programs you wrote yourself.
+
+  SEC_STANDARD:
+    File I/O allowed (OPEN, PRINT#, INPUT#, etc.)
+    Module activation allowed (except CAP_SYSTEM modules)
+    BLOCKED: COMPILE, CHAIN, SYSTEM, SHELL
+    BLOCKED: Modules requiring CAP_SYSTEM
+
+  SEC_RESTRICTED:
+    ALL I/O blocked.  No files, no devices, no network.
+    Only math, string operations, and console PRINT/INPUT.
+    The program cannot touch the filesystem or any device.
+
+  Setting the level:
+    basicpp --security=standard myprogram.bas
+    SECURITY "RESTRICTED"
+
+
+=====================================================================
+40. THE PERMISSION MATRIX FOR FILE/DEVICE OPERATIONS
+=====================================================================
+
+  Operation              SEC_OPEN  SEC_STANDARD  SEC_RESTRICTED
+  ---------              --------  ------------  --------------
+  OPEN file for INPUT      YES        YES            NO
+  OPEN file for OUTPUT     YES        YES            NO
+  OPEN file for APPEND     YES        YES            NO
+  OPEN file for RANDOM     YES        YES            NO
+  OPEN file for BINARY     YES        YES            NO
+  PRINT # to file          YES        YES            NO
+  INPUT # from file        YES        YES            NO
+  KILL (delete file)       YES        YES            NO
+  NAME ... AS (rename)     YES        YES            NO
+  MKDIR / RMDIR            YES        YES            NO
+  CHDIR                    YES        YES            NO
+  SAVE / LOAD              YES        YES            NO
+  BSAVE / BLOAD            YES        YES            NO
+  MERGE                    YES        YES            NO
+  COMPILE                  YES         NO            NO
+  CHAIN                    YES         NO            NO
+  SYSTEM / SHELL           YES         NO            NO
+  MODULE (CAP_SYSTEM)      YES         NO            NO
+  MODULE (CAP_IO)          YES        YES            NO
+  MODULE (CAP_NETWORK)     YES        YES            NO
+  PRINT to console         YES        YES           YES
+  INPUT from console       YES        YES           YES
+  CLS                      YES        YES           YES
+  BEEP / SOUND             YES        YES           YES
+
+
+=====================================================================
+41. HOW SECURITY GATES PROTECT DEVICE ACCESS
+=====================================================================
+
+Every device operation passes through TWO security gates:
+
+  GATE 1: FILE I/O SECURITY (security.c)
+    Called before any OPEN, PRINT#, INPUT#, KILL, etc.
+    Checks: security_check(SECOP_FILE_READ, line_num)
+    or:     security_check(SECOP_FILE_WRITE, line_num)
+
+    If denied: "SORRY? Security: file write not permitted
+    at level RESTRICTED in line 10"
+
+  GATE 2: MODULE CAPABILITY CHECK (module.c)
+    Called before any module activation.
+    Checks: security_module_allowed(module->capabilities)
+
+    If denied: "Module 'SERIAL' blocked by security level
+    STANDARD."
+
+  This means a VDev module that requires CAP_SYSTEM cannot
+  be activated at SEC_STANDARD — even if file I/O itself
+  is allowed.  The module's higher capability requirement
+  triggers a separate denial.
+
+  FLOW:
+
+    User types: OPEN "COM1:9600" FOR RANDOM AS #1
+
+    1. Parser calls security_check(SECOP_FILE_WRITE, line)
+       -> SEC_OPEN: allowed
+       -> SEC_STANDARD: allowed
+       -> SEC_RESTRICTED: DENIED (stops here)
+
+    2. OPEN dispatcher checks for "COM1:" device name
+       -> Finds Serial VDev
+
+    3. Serial VDev's module was activated with CAP_SYSTEM
+       -> Already passed gate 2 at module activation time
+
+    4. Serial VDev's dev_open() is called
+       -> Connects to hardware
+
+  At SEC_RESTRICTED, step 1 blocks everything.
+  At SEC_STANDARD, step 1 allows files but step 2 blocked
+  the CAP_SYSTEM serial module at activation time.
+
+
+=====================================================================
+42. SANDBOXING UNTRUSTED PROGRAMS
+=====================================================================
+
+When running a program you downloaded or received from
+someone else:
+
+  RECOMMENDED APPROACH:
+
+    basicpp --security=restricted untrusted.bas
+
+  At SEC_RESTRICTED, the program:
+    - CAN print to the console
+    - CAN read from the keyboard
+    - CAN do math and string operations
+    - CAN use FOR/NEXT, WHILE/WEND, IF/THEN
+    - CANNOT open any file
+    - CANNOT delete any file
+    - CANNOT access any device
+    - CANNOT load modules
+    - CANNOT compile or chain
+    - CANNOT execute system commands
+
+  The program is effectively "math-only" — it can compute
+  and display results but cannot affect the outside world.
+
+  FOR MODERATE TRUST:
+
+    basicpp --security=standard semifrusted.bas
+
+  At SEC_STANDARD, the program:
+    - CAN open and read/write files
+    - CAN use file I/O modules (CAP_FILE)
+    - CANNOT compile to native code
+    - CANNOT chain to other programs
+    - CANNOT execute system commands
+    - CANNOT activate CAP_SYSTEM modules
+
+
+=====================================================================
+43. SAFE PATH HANDLING
+=====================================================================
+
+  Path traversal attacks:
+    A malicious program could try:
+      OPEN "../../../etc/passwd" FOR INPUT AS #1
+      OPEN "C:\Windows\System32\config\SAM" FOR INPUT AS #1
+
+  Current protection (SEC_OPEN): No path restrictions.
+  This matches classic BASIC behavior.
+
+  Recommended practices:
+    1. Run untrusted programs at SEC_RESTRICTED
+    2. Use CHDIR to set a safe working directory first
+    3. Validate filenames before passing to OPEN:
+
+       10 INPUT "Filename: "; F$
+       20 IF INSTR(F$, "..") > 0 THEN PRINT "Invalid!": END
+       30 IF INSTR(F$, "/") > 0 THEN PRINT "Invalid!": END
+       40 IF INSTR(F$, "\") > 0 THEN PRINT "Invalid!": END
+       50 OPEN F$ FOR INPUT AS #1
+
+  Reserved Windows filenames to watch for:
+    CON, PRN, AUX, NUL, COM1-COM9, LPT1-LPT9
+    These are devices, not files — opening "CON" reads
+    from the console, not a file named "CON".
+
+
+=====================================================================
+44. SAFE DEVICE ACCESS PATTERNS
+=====================================================================
+
+  PATTERN 1: Check before opening
+
+    10 ON ERROR GOTO 100
+    20 OPEN "COM1:9600" FOR RANDOM AS #1
+    30 ON ERROR GOTO 0
+    40 PRINT "Serial port opened"
+    50 GOTO 200
+    100 PRINT "Cannot open serial port"
+    110 RESUME 200
+    200 REM Continue...
+
+  PATTERN 2: Check security level first
+
+    10 IF SECURITY$ = "RESTRICTED" THEN
+    20   PRINT "File access disabled"
+    30   END
+    40 END IF
+    50 OPEN "data.txt" FOR INPUT AS #1
+
+  PATTERN 3: Graceful fallback
+
+    10 REM Try printer, fall back to file, fall back to screen
+    20 ON ERROR GOTO 100
+    30 OPEN "LPT1:" FOR OUTPUT AS #1
+    40 GOTO 200
+    100 ON ERROR GOTO 150
+    110 OPEN "printout.txt" FOR OUTPUT AS #1
+    120 GOTO 200
+    150 OPEN "SCRN:" FOR OUTPUT AS #1
+    160 RESUME 200
+    200 REM Output goes to whatever worked
+    210 PRINT #1, "Report output"
+    220 CLOSE #1
+
+
+=====================================================================
+45. AUDITING DEVICE OPERATIONS
+=====================================================================
+
+For security-sensitive applications, log what files and
+devices are accessed:
+
+  ' Audit wrapper subroutine
+  5000 REM === AUDIT OPEN ===
+  5010 REM Input: F$ = filename, M$ = mode
+  5020 OPEN "audit.log" FOR APPEND AS #8
+  5030 PRINT #8, DATE$; " "; TIME$; " OPEN "; F$; " FOR "; M$
+  5040 CLOSE #8
+  5050 RETURN
+
+  ' Usage
+  10 F$ = "data.txt" : M$ = "INPUT"
+  20 GOSUB 5000
+  30 OPEN F$ FOR INPUT AS #1
+
+  The audit log records every file access with timestamps.
+
+
+=====================================================================
+
+        PART VII: CROSS-PLATFORM DEVICE BEHAVIOR
+
+=====================================================================
+
+
+=====================================================================
+46. WINDOWS DEVICE BEHAVIOR
+=====================================================================
+
+  Device Name     Behavior on Windows
+  -----------     -------------------
+  CON             Console (keyboard + screen)
+  PRN             Default printer
+  NUL             Null device (discard output)
+  COM1-COM9       Serial ports (via CreateFile)
+  LPT1-LPT3      Parallel ports (if available)
+  CLOCK$          System clock
+
+  Windows special behaviors:
+  - File names are case-insensitive
+  - Device names are reserved (CON.TXT = CON, not a file)
+  - Path separator: \ (but / also works)
+  - Line endings in text mode: \r\n
+  - File locking supported (_locking)
+  - Long filenames up to 260 characters
+
+
+=====================================================================
+47. LINUX DEVICE BEHAVIOR
+=====================================================================
+
+  Device Name     Behavior on Linux
+  -----------     -----------------
+  /dev/ttyS0      Serial port (COM1 equivalent)
+  /dev/ttyUSB0    USB serial adapter
+  /dev/lp0        Parallel printer
+  /dev/null       Null device
+  /dev/random     Random number generator
+  /dev/gpio*      GPIO pins (embedded systems)
+  /dev/snd/*      Sound devices
+
+  Linux special behaviors:
+  - File names are case-SENSITIVE
+  - No reserved device names (but /dev/* is special)
+  - Path separator: / only
+  - Line endings in text mode: \n
+  - File locking: no-op in current build
+  - GW-BASIC device names (LPT1:, COM1:) not recognized
+    by the OS — VDev must translate
+
+  IMPORTANT: On Linux, "LPT1:" is NOT a valid path.
+  The LPT VDev must translate it to /dev/lp0 or pipe
+  to the lp command.
+
+
+=====================================================================
+48. FREEDOS DEVICE BEHAVIOR
+=====================================================================
+
+  Device Name     Behavior on FreeDOS
+  -----------     -------------------
+  CON             Console (keyboard + screen)
+  PRN             First printer (LPT1)
+  AUX             First serial port (COM1)
+  NUL             Null device
+  COM1-COM4       Serial ports
+  LPT1-LPT3      Parallel ports
+  CLOCK$          System clock
+
+  FreeDOS special behaviors:
+  - GW-BASIC device names work natively via fopen()
+  - 8.3 filename format (unless LFNAPI loaded)
+  - Case-insensitive
+  - Path separator: \ (but / also works)
+  - Line endings: \r\n
+  - Ctrl-Z (0x1A) means EOF in text mode
+  - Limited to ~15 file handles per process
+  - Direct hardware access possible (IN/OUT)
+
+
+=====================================================================
+49. PLATFORM ABSTRACTION VIA VDEV
+=====================================================================
+
+The VDev system hides platform differences:
+
+  BASIC code:
+    OPEN "LPT1:" FOR OUTPUT AS #1
+    PRINT #1, "Hello Printer!"
+    CLOSE #1
+
+  On Windows:
+    VDev routes to "PRN" -> Windows printer spool
+
+  On Linux:
+    VDev routes to popen("lp", "w") -> CUPS print system
+
+  On FreeDOS:
+    VDev passes "LPT1:" to fopen() -> DOS LPT driver
+
+  The BASIC program is IDENTICAL on all three platforms.
+  The VDev handles the translation internally.
+
+
+=====================================================================
+50. WRITING PORTABLE DEVICE CODE
+=====================================================================
+
+  DO:
+  - Use forward slash / for path separators
+  - Use ON ERROR GOTO to handle device failures
+  - Fall back gracefully when devices aren't available
+  - Use VDev names when possible (CON:, NUL:, etc.)
+  - Test on at least 2 platforms
+
+  DON'T:
+  - Hardcode absolute paths ("C:\data" or "/home/user")
+  - Assume a device exists (check with ON ERROR GOTO)
+  - Assume case sensitivity (or insensitivity)
+  - Assume line ending format (let text mode handle it)
+  - Use BIOS calls or port I/O directly (use VDevs)
+
+
+=====================================================================
+51. QUICK REFERENCE TABLES
+=====================================================================
+
+  FILE OPEN MODES:
+
+    Mode     Syntax               Read Write Create Truncate
+    ----     ------               ---- ----- ------ --------
+    INPUT    FOR INPUT            YES  NO    NO     NO
+    OUTPUT   FOR OUTPUT           NO   YES   YES    YES
+    APPEND   FOR APPEND           NO   YES   YES    NO
+    RANDOM   FOR RANDOM           YES  YES   YES    NO
+    BINARY   FOR BINARY           YES  YES   YES    NO
+
+  DEVICE NAME TRANSLATION:
+
+    Legacy Name    VDev Slot    Fallback
+    -----------    ---------    --------
+    SCRN:          VDEV_CON     (always available)
+    KYBD:          VDEV_CON     (always available)
+    CON:           VDEV_CON     (always available)
+    ERR:           VDEV_ERR     (always available)
+    LPT1:-LPT3:   VDEV_USER+n  fopen("PRN")
+    COM1:-COM9:    VDEV_USER+n  fopen("COM1")
+    CAS1:          VDEV_USER+n  error
+    NUL:           VDEV_USER+n  fopen("NUL")
+    NET:           VDEV_USER+n  error
+    CLIP:          VDEV_USER+n  error
+    PIPE:          VDEV_USER+n  error
+    LOG:           VDEV_USER+n  error
+    SND:           VDEV_USER+n  error
+
+  SECURITY GATES:
+
+    Operation         Gate 1 (File I/O)    Gate 2 (Module)
+    ---------         -----------------    ---------------
+    OPEN file         SECOP_FILE_READ/WR   n/a
+    OPEN LPT1:        SECOP_FILE_WRITE     CAP_IO check
+    OPEN COM1:        SECOP_FILE_WRITE     CAP_IO|CAP_SYSTEM
+    OPEN NET:         SECOP_FILE_WRITE     CAP_NETWORK
+    OPEN PIPE:        SECOP_FILE_WRITE     CAP_SYSTEM
+    OPEN CLIP:        SECOP_FILE_WRITE     CAP_IO
+    PRINT to console  (no check)           (no check)
+    INPUT from kbd    (no check)           (no check)
+
+
+=====================================================================
+52. RELATED MANUALS
+=====================================================================
+
+  R_Virtual_Devices.txt         Complete VDev system reference
+  V_Virtual_Machines.txt        VM architecture and I/O routing
+  W_Virtual_Filesystem.txt      File access architecture (deep dive)
+  M_External_Modules.txt        Building device modules
+  Q_Security.txt                Security system reference
+  F_Mixing_Dialects.txt         Mixing features across dialects
+  J_Implementing_Dialects.txt   Implementing retro dialect accuracy
+  T_Compiling_BASIC_Programs.txt Cross-platform compilation
+
+
+=====================================================================
+
+      PART VIII: FUTUREPROOFING FILE I/O (PHASE 16 / VDEV2)
+
+=====================================================================
+
+
+=====================================================================
+53. WHY FUTUREPROOF?
+=====================================================================
+
+The original BASIC I/O model assumed a small set of devices:
+keyboard, screen, printer, serial port, cassette, and files.
+That was sufficient in 1983.
+
+Today's devices include:
+  - GPIO pins (Raspberry Pi, Arduino)
+  - I2C/SPI sensors (temperature, humidity, accelerometer)
+  - Touchscreens and multi-touch panels
+  - Cameras and video capture
+  - GPS, gyroscope, NFC
+  - Bluetooth and BLE peripherals
+  - USB devices (flash drives, HID devices, MIDI)
+  - Network sockets, WebSockets, REST APIs
+  - Clipboard, process pipes, IPC
+  - GPU compute, AI accelerators
+
+And tomorrow's devices will include things we can't predict.
+
+BASIC++ futureproofs by making devices PLUGGABLE:
+  1. Any device is just a VDev with function pointers
+  2. Any VDev can be opened via a file channel
+  3. New device classes can be added without changing core code
+  4. Security gates protect every device access
+  5. BASIC programs discover devices at runtime
+
+
+=====================================================================
+54. THE VDEV2 EXTENDED ARCHITECTURE
+=====================================================================
+
+Phase 16 extends VDev with new capabilities:
+
+  ORIGINAL VDev (character I/O):
+    name, dev_putc, dev_puts, dev_flush, dev_cls,
+    dev_getc, dev_gets, dev_open, dev_close, user_data
+
+  VDEV2 ADDITIONS:
+
+    Metadata:
+      dev_class       VDevClass enum (GPIO, SENSOR, etc.)
+      dev_caps        VDCAP_ bitfield (READ, WRITE, BINARY...)
+      dev_version     Version string ("1.0")
+      dev_description Human-readable description
+      dev_req_caps    Required CAP_ flags for security
+
+    Binary I/O:
+      dev_read(d, buf, len)    Read raw bytes
+      dev_write(d, buf, len)   Write raw bytes
+      dev_seek(d, offset, wh)  Seek to position
+
+    Control:
+      dev_ioctl(d, cmd, arg)   Structured control commands
+
+    Status:
+      dev_status(d)            0=ready, 1=busy, -1=error
+      dev_poll(d)              1=data available, 0=no data
+      dev_info(d, key)         Key-value metadata queries
+
+  ALL new fields are optional (NULL = not supported).
+  Existing VDev code works unchanged.
+
+
+=====================================================================
+55. DEVICE CLASSES
+=====================================================================
+
+Every device belongs to a class:
+
+  Class           Code  Description
+  -----           ----  -----------
+  VDCLASS_CONSOLE   1   Terminal, screen, keyboard
+  VDCLASS_FILE      2   File system
+  VDCLASS_SERIAL    3   RS-232, UART, USB-serial
+  VDCLASS_PRINTER   4   Line printer, PDF output
+  VDCLASS_AUDIO     5   Sound card, speaker, MIDI
+  VDCLASS_NETWORK   6   TCP, UDP, HTTP, WebSocket
+  VDCLASS_GPIO      7   Digital I/O pins (RPi, Arduino)
+  VDCLASS_I2C       8   I2C bus (sensors, displays)
+  VDCLASS_SPI       9   SPI bus (SD cards, flash)
+  VDCLASS_SENSOR   10   Accelerometer, GPS, gyro, temp
+  VDCLASS_DISPLAY  11   Framebuffer, LCD, OLED, GUI
+  VDCLASS_STORAGE  12   Block device, SD card, USB drive
+  VDCLASS_HID      13   Touchscreen, joystick, gamepad
+  VDCLASS_CAMERA   14   Camera, video capture
+  VDCLASS_BRIDGE   15   External MCU (Arduino via serial)
+  VDCLASS_BLUETOOTH 16  Bluetooth / BLE devices
+  VDCLASS_CLIPBOARD 17  System clipboard
+  VDCLASS_PIPE     18   Process pipe / IPC
+  VDCLASS_TIMER    19   Hardware/software timer
+  VDCLASS_CUSTOM   99   User-defined
+
+Classes are metadata — they don't restrict what a device
+does.  A GPIO device CAN implement dev_puts if it wants to
+accept text commands.  But the class tells BASIC programs
+and the security system what KIND of device it is.
+
+
+=====================================================================
+56. DEVICE-BACKED CHANNELS
+=====================================================================
+
+Channels #1-#16 can now route to VDev devices:
+
+  Traditional (file-backed):
+    OPEN "data.txt" FOR INPUT AS #1
+    ' Channel #1 -> FILE: device -> fopen("data.txt")
+
+  New (device-backed):
+    OPEN "GPIO17:" FOR OUTPUT AS #1
+    ' Channel #1 -> GPIO17 VDev -> gpio_pin_write()
+
+  How it works:
+    1. OPEN detects "GPIO17:" as a device name
+    2. Calls vdev_find_by_name("GPIO17:")
+    3. If found, calls fileio_open_device(chan, dev_id, ...)
+    4. The channel enters FCHAN_DEVICE mode
+    5. PRINT #1 calls vdev_puts() on the GPIO VDev
+    6. CLOSE #1 calls vdev_close() on the GPIO VDev
+
+  From the BASIC program's perspective, it's just OPEN/PRINT/CLOSE.
+  Whether the channel goes to a file or a GPIO pin is transparent.
+
+
+=====================================================================
+57. BINARY DEVICE I/O
+=====================================================================
+
+Character-based I/O (puts/gets) works for text devices.
+Binary devices need raw bytes:
+
+  Sensors return structured data (4-byte float for temperature).
+  Cameras return image buffers (thousands of bytes).
+  Block devices read/write sectors (512-byte blocks).
+
+  Binary I/O via VDev2:
+    OPEN "SENSOR:" FOR BINARY AS #1
+    GET #1, buffer$, 4         ' Read 4 bytes (float)
+    CLOSE #1
+
+  Under the hood:
+    GET #1 calls vdev_read(d, buf, 4) on the sensor VDev.
+    The sensor's dev_read function reads from the I2C bus
+    and returns 4 bytes of raw temperature data.
+
+
+=====================================================================
+58. IOCTL2: EXTENDED DEVICE CONTROL
+=====================================================================
+
+The original IOCTL sent a single string command.
+IOCTL2 uses standardized integer command codes:
+
+  Standard commands:
+    VDIO_RESET        0    Reset device to defaults
+    VDIO_GET_STATUS   1    Get device status word
+    VDIO_SET_BAUD     2    Set baud rate (serial)
+    VDIO_SET_PIN      3    Set pin mode (GPIO)
+    VDIO_GET_PIN      4    Get pin value (GPIO)
+    VDIO_SET_ADDR     5    Set I2C/SPI address
+    VDIO_SET_TIMEOUT  6    Set I/O timeout (ms)
+    VDIO_GET_ERROR    7    Get last error code
+    VDIO_ENUMERATE    8    List sub-devices
+    VDIO_USER       256    First user-defined command
+
+  From BASIC (future syntax):
+    IOCTL #1, VDIO_SET_BAUD, 9600
+    IOCTL #1, VDIO_SET_PIN, 17, "OUTPUT"
+    S = IOCTL$(#1, VDIO_GET_STATUS)
+
+
+=====================================================================
+59. DEVICE DISCOVERY FROM BASIC
+=====================================================================
+
+  DEVICES                     List all registered devices
+  D = DEVICECOUNT             Number of devices
+  N$ = DEVICE$(n)             Name of device n
+  C$ = DEVICECLASS$(n)        Class of device n
+  V$ = DEVICEINFO$(n, "key")  Query device metadata
+
+  Find devices by class:
+    FOR I = 0 TO DEVICECOUNT - 1
+      IF DEVICECLASS$(I) = "GPIO" THEN
+        PRINT "GPIO device: "; DEVICE$(I)
+      END IF
+    NEXT I
+
+
+=====================================================================
+60. TUTORIAL: GPIO ON RASPBERRY PI
+=====================================================================
+
+  MODULE "GPIO"
+  10 REM Turn on LED on GPIO pin 17
+  20 OPEN "GPIO17:" FOR OUTPUT AS #1
+  30 PRINT #1, "1"         ' Set pin HIGH
+  40 FOR I = 1 TO 5
+  50   PRINT #1, "1" : SLEEP 500
+  60   PRINT #1, "0" : SLEEP 500
+  70 NEXT I
+  80 CLOSE #1
+
+  The GPIO module registers VDevs for each configured pin.
+  Each pin VDev has class VDCLASS_GPIO and caps VDCAP_RW.
+  Security requires CAP_GPIO permission.
+
+
+=====================================================================
+61. TUTORIAL: I2C SENSOR READING
+=====================================================================
+
+  MODULE "I2C"
+  10 REM Read temperature from I2C sensor at address 0x48
+  20 OPEN "I2C:0x48" FOR INPUT AS #1
+  30 IOCTL #1, VDIO_SET_ADDR, &H48
+  40 GET #1, T$, 2              ' Read 2 bytes
+  50 TEMP = CVI(T$) / 256.0     ' Convert to degrees
+  60 PRINT "Temperature: "; TEMP; " C"
+  70 CLOSE #1
+
+
+=====================================================================
+62. TUTORIAL: ARDUINO BRIDGE
+=====================================================================
+
+  MODULE "ARDUINO"
+  10 REM Arduino connected via USB serial
+  20 OPEN "ARDUINO:" FOR RANDOM AS #1
+  30 PRINT #1, "LED:ON"       ' Send command
+  40 LINE INPUT #1, R$        ' Read response
+  50 PRINT "Arduino says: "; R$
+  60 CLOSE #1
+
+  The Arduino bridge module:
+  - Registers a VDev with class VDCLASS_BRIDGE
+  - Opens the serial port to the Arduino
+  - Translates PRINT # to serial writes
+  - Translates INPUT # to serial reads
+  - Security: CAP_IO | CAP_USB
+
+
+=====================================================================
+63. TUTORIAL: TOUCHSCREEN / HID DEVICE
+=====================================================================
+
+  MODULE "TOUCH"
+  10 REM Poll touchscreen for input
+  20 OPEN "TOUCH:" FOR INPUT AS #1
+  30 WHILE 1
+  40   IF POLL(#1) THEN
+  50     LINE INPUT #1, E$    ' Read touch event
+  60     PRINT "Touch: "; E$  ' "TAP 320 240" or "SWIPE LEFT"
+  70   END IF
+  80   SLEEP 16               ' ~60 FPS polling rate
+  90 WEND
+  100 CLOSE #1
+
+  dev_poll() returns 1 when a touch event is queued.
+  dev_gets() returns the event as a parseable string.
+
+
+=====================================================================
+64. TUTORIAL: CAMERA CAPTURE
+=====================================================================
+
+  MODULE "CAMERA"
+  10 REM Capture a single frame
+  20 OPEN "CAM0:" FOR INPUT AS #1
+  30 IOCTL #1, VDIO_RESET         ' Initialize camera
+  40 GET #1, FRAME$, 65536        ' Read 64K of image data
+  50 OPEN "photo.raw" FOR BINARY AS #2
+  60 PUT #2, 1, FRAME$            ' Save to file
+  70 CLOSE #2
+  80 CLOSE #1
+  90 PRINT "Photo saved!"
+
+  Security: CAP_CAMERA required.
+  Camera VDev provides binary frames via dev_read().
+
+
+=====================================================================
+65. TUTORIAL: BLUETOOTH DEVICE
+=====================================================================
+
+  MODULE "BLUETOOTH"
+  10 REM Scan for BLE devices
+  20 DEVICES                      ' List all devices
+  30 OPEN "BT:" FOR RANDOM AS #1
+  40 IOCTL #1, VDIO_ENUMERATE     ' Start BLE scan
+  50 LINE INPUT #1, D$            ' Read discovered device
+  60 PRINT "Found: "; D$
+  70 CLOSE #1
+
+
+=====================================================================
+66. FUTUREPROOFING GUIDELINES
+=====================================================================
+
+For device module authors:
+
+  1. ALWAYS set dev_class and dev_caps
+     These enable discovery and security gating.
+
+  2. ALWAYS set dev_description
+     Users see this in DEVICES output.
+
+  3. ALWAYS set dev_req_caps
+     The security system uses this to gate access.
+
+  4. IMPLEMENT dev_status where possible
+     Programs need to check if a device is ready.
+
+  5. IMPLEMENT dev_poll for event-driven devices
+     Non-blocking I/O is essential for modern apps.
+
+  6. USE binary I/O for non-text data
+     dev_read/dev_write handle raw bytes.
+     dev_putc/dev_puts are for text only.
+
+  7. USE IOCTL2 for configuration
+     Don't overload OPEN parameters. Use IOCTL commands.
+
+  8. DECLARE security capabilities honestly
+     A GPIO module should require CAP_GPIO.
+     A network module should require CAP_NETWORK.
+     Under-declaring leads to security holes.
+
+  9. HANDLE cleanup in dev_close
+     Release hardware resources, close connections.
+
+  10. RETURN meaningful errors
+      -1 for failure, 0 for success.
+      Use dev_info("error") for detailed messages.
+
+
+=====================================================================
+52. RELATED MANUALS (UPDATED)
+=====================================================================
+
+  R_Virtual_Devices.txt         Complete VDev/VDev2 system reference
+  V_Virtual_Machines.txt        VM architecture and device bus
+  W_Virtual_Filesystem.txt      File access and device file resolution
+  M_External_Modules.txt        Building device modules
+  Q_Security.txt                Security system reference
+  K_Creating_Dialects.txt       Dialect + device integration
+  F_Mixing_Dialects.txt         Mixing features across dialects
+
+
+=====================================================================
+END OF DOCUMENT
+=====================================================================

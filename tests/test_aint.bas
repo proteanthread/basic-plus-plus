@@ -1,0 +1,92 @@
+1 REM =====================================================
+2 REM  TEST_AINT.BAS - Apple II Integer BASIC Dialect Test
+3 REM =====================================================
+4 REM  Dialect: AINT (Apple II Integer BASIC, Wozniak 1977)
+5 REM  Features: Integer-only, LET required, no strings,
+6 REM            DIM arrays, no DATA/READ, no WHILE,
+7 REM            no DO/LOOP, no extended vars, no ON ERROR,
+8 REM            no CLS, no TRON, no float
+9 REM  Prompt: ">"
+10 REM =====================================================
+11 REM  Usage: DIALECT "AINT" : LOAD "tests/test_aint.bas" : RUN
+12 REM =====================================================
+13 LET P=0
+14 LET F=0
+
+100 TEST "Integer Arithmetic"
+110 LET A=2+3
+120 ASSERT A=5
+130 LET B=10-7
+140 ASSERT B=3
+150 LET C=6*7
+160 ASSERT C=42
+170 LET D=100/10
+180 ASSERT D=10
+190 LET E=-(-5)
+195 ASSERT E=5
+196 ENDTEST
+
+200 TEST "Order of Operations"
+210 LET A=2+3*4
+220 ASSERT A=14
+230 LET B=(2+3)*4
+240 ASSERT B=20
+250 ENDTEST
+
+300 TEST "Comparisons"
+310 ASSERT 5>3
+320 ASSERT 3<5
+330 ASSERT 5>=5
+340 ASSERT 5<=5
+350 ASSERT 5=5
+360 ASSERT 5<>3
+370 ENDTEST
+
+400 TEST "IF/THEN"
+410 LET X=0
+420 IF 1>0 THEN LET X=1
+430 ASSERT X=1
+440 LET X=0
+450 IF 0>1 THEN LET X=1
+460 ASSERT X=0
+470 ENDTEST
+
+500 TEST "FOR/NEXT"
+510 LET S=0
+520 FOR I=1 TO 5
+530 LET S=S+I
+540 NEXT I
+550 ASSERT S=15
+560 ASSERT I=6
+570 ENDTEST
+
+600 TEST "GOSUB/RETURN"
+610 LET R=0
+620 GOSUB 660
+630 ASSERT R=77
+640 ENDTEST
+650 GOTO 700
+660 LET R=77
+670 RETURN
+
+700 TEST "DIM Array"
+710 DIM A(10)
+720 FOR I=0 TO 10
+730 LET A(I)=I*2
+740 NEXT I
+750 ASSERT A(0)=0
+760 ASSERT A(5)=10
+770 ASSERT A(10)=20
+780 ENDTEST
+
+800 TEST "ABS and SGN"
+810 ASSERT ABS(-7)=7
+820 ASSERT ABS(7)=7
+830 ASSERT SGN(-5)=-1
+840 ASSERT SGN(0)=0
+850 ASSERT SGN(5)=1
+860 ENDTEST
+
+9000 PRINT ""
+9010 PRINT "=== APPLE II INTEGER BASIC TESTS COMPLETE ==="
+9020 END

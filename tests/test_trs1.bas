@@ -1,0 +1,107 @@
+1 REM =====================================================
+2 REM  TEST_TRS1.BAS - TRS-80 Level I BASIC Dialect Test
+3 REM =====================================================
+4 REM  Dialect: TRS1 (TRS-80 Level I, Leininger 1977)
+5 REM  Features: Integer-only, THEN keyword, DIM arrays,
+6 REM            DATA/READ, CLS, colon separator,
+7 REM            limited strings, no WHILE, no ON ERROR,
+8 REM            no extended vars, no float
+9 REM =====================================================
+10 REM  Usage: DIALECT "TRS1" : LOAD "tests/test_trs1.bas" : RUN
+11 REM =====================================================
+12 LET P=0
+13 LET F=0
+
+100 TEST "Integer Arithmetic"
+110 ASSERT 2+3=5
+120 ASSERT 10-7=3
+130 ASSERT 6*7=42
+140 ASSERT 100/10=10
+150 ASSERT -(-5)=5
+160 ASSERT 2+3*4=14
+170 ASSERT (2+3)*4=20
+180 ENDTEST
+
+200 TEST "Variables A-Z"
+210 A=1
+220 B=2
+230 C=A+B
+240 ASSERT C=3
+250 Z=26
+260 ASSERT Z=26
+270 ENDTEST
+
+300 TEST "IF/THEN"
+310 X=0
+320 IF 1>0 THEN X=1
+330 ASSERT X=1
+340 X=0
+350 IF 0>1 THEN X=1
+360 ASSERT X=0
+370 ENDTEST
+
+400 TEST "FOR/NEXT"
+410 S=0
+420 FOR I=1 TO 5
+430 S=S+I
+440 NEXT I
+450 ASSERT S=15
+460 ASSERT I=6
+470 ENDTEST
+
+500 TEST "GOSUB/RETURN"
+510 R=0
+520 GOSUB 560
+530 ASSERT R=77
+540 ENDTEST
+550 GOTO 600
+560 R=77
+570 RETURN
+
+600 TEST "DIM Array"
+610 DIM A(10)
+620 FOR I=0 TO 10
+630 A(I)=I*3
+640 NEXT I
+650 ASSERT A(0)=0
+660 ASSERT A(5)=15
+670 ASSERT A(10)=30
+680 ENDTEST
+
+700 TEST "DATA/READ/RESTORE"
+710 READ A, B, C
+720 ASSERT A=10
+730 ASSERT B=20
+740 ASSERT C=30
+750 RESTORE
+760 READ X
+770 ASSERT X=10
+780 ENDTEST
+790 DATA 10, 20, 30
+
+800 TEST "ABS and SGN"
+810 ASSERT ABS(-7)=7
+820 ASSERT ABS(7)=7
+830 ASSERT SGN(-5)=-1
+840 ASSERT SGN(0)=0
+850 ASSERT SGN(5)=1
+860 ENDTEST
+
+900 TEST "CLS"
+910 REM CLS should not error in TRS-80
+920 CLS
+930 ENDTEST
+
+950 TEST "String Variable"
+960 A$="HELLO"
+970 ASSERT LEN(A$)=5
+980 ENDTEST
+
+990 TEST "Multi-Statement Line"
+995 A=1: B=2: C=A+B
+996 ASSERT C=3
+997 ENDTEST
+
+9000 PRINT ""
+9010 PRINT "=== TRS-80 LEVEL I TESTS COMPLETE ==="
+9020 END
