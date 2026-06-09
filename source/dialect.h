@@ -293,4 +293,46 @@ int dialect_keyword_allowed(KeywordId kw);
  */
 unsigned int dialect_get_flag(void);
 
+/* =====================================================================
+ * Dialect Registration (Phase 21 — Contributor Architecture)
+ * =====================================================================
+ * Each dialect lives in its own source file (dialect_gwbs.c, etc.)
+ * and registers itself via dialect_register() at boot time.
+ *
+ * This allows contributors to maintain individual dialect files
+ * independently and enables conditional compilation (#ifdef) to
+ * include or exclude specific dialects for embedded builds.
+ */
+
+/*
+ * dialect_register - Register a dialect configuration.
+ *
+ * Called by each dialect_*.c file during dialect_register_all().
+ * The config is copied into the internal table at slot config->id.
+ * Returns 0 on success, -1 if id is out of range.
+ */
+int dialect_register(const DialectConfig *config);
+
+/*
+ * dialect_register_all - Register all compiled-in dialects.
+ *
+ * Called once from main.c during boot, before dialect_init().
+ * Calls each dialect_register_XXXX() function.
+ */
+void dialect_register_all(void);
+
+/* Per-dialect registration functions (one per dialect_*.c file) */
+void dialect_register_patb(void);
+void dialect_register_trs1(void);
+void dialect_register_trs2(void);
+void dialect_register_gwbs(void);
+void dialect_register_ecma55(void);
+void dialect_register_ecma116(void);
+void dialect_register_qbasic(void);
+void dialect_register_aint(void);
+void dialect_register_asft(void);
+void dialect_register_atari(void);
+void dialect_register_c64(void);
+void dialect_register_coco(void);
+
 #endif /* BASICPP_DIALECT_H */

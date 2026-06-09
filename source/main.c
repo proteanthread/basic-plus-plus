@@ -157,6 +157,9 @@ int main(void)
     /* ----- Initialize platform detection (Phase 16) ----- */
     platform_init();
 
+    /* ----- Register all compiled-in dialects (Phase 21) ----- */
+    dialect_register_all();
+
     /* ----- Initialize dialect system ----- */
     dialect_init(DIALECT_TINY_BASIC);
 
