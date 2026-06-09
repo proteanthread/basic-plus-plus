@@ -170,7 +170,7 @@ int main(void) {
     printf("%s", "LUNAR");
     printf("\n");
   L20: /* Line 20 */
-    printf("%s", bpp_tab((int)(bpp_vars[43])));
+    printf("%s", bpp_tab((int)(15)));
     printf("%s", "CREATIVE COMPUTING MORRISTOWN, NEW JERSEY");
     printf("\n");
   L25: /* Line 25 */

@@ -367,7 +367,7 @@ int main(void) {
     printf("%s", "OH WELL.");
     printf("\n");
   L615: /* Line 615 */
-    printf("%s", "THAT'S TWNETY GUESSES.  MY NUMBER WAS");
+    printf("%s", "THAT'S TWENTY GUESSES.  MY NUMBER WAS");
     { double _v = (((100 * *bpp_dim_ref("A", (int)(1), 0)) + (10 * *bpp_dim_ref("A", (int)(2), 0))) + *bpp_dim_ref("A", (int)(3), 0)); if (_v == (double)(long)_v) printf("%*ld", bpp_print_width, (long)_v); else printf("%g", _v); }
     printf("\n");
   L620: /* Line 620 */
