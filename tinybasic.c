@@ -1,6 +1,9 @@
 /* * PROJECT: Tiny BASIC Interpreter C89 Port
  * AUTHOR: BASIC++ Community
  * FILENAME: tinybasic.c
+ *
+ * prototype: based on Palo Alto TinyBASIC
+ * 
  * VERSION: 1.0.0
  * SYSTEM: POSIX and FreeDOS
  * DESCRIPTION: A strictly compliant ANSI C89 port of Li-Chen Wang's Tiny BASIC,
