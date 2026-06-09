@@ -6,11 +6,10 @@
  * Compiler driver interface.
  *
  * PURPOSE:
- *   Orchestrates the compilation pipeline: reads stored program
- *   lines, builds ASTs, and invokes the code generator to produce
- *   a C89 source file.
+ * Orchestrates the compilation pipeline: reads stored program
+ * lines, builds ASTs, and invokes the code generator to produce
+ * a C89 source file.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -23,8 +22,8 @@
  * compiler_compile - Compile the stored program to a C source file.
  *
  * Parameters:
- *   program   - the program store containing stored BASIC lines
- *   filename  - output filename (e.g., "output.c")
+ * program - the program store containing stored BASIC lines
+ * filename - output filename (e.g., "output.c")
  *
  * Returns 0 on success, -1 on error.
  * Prints diagnostic messages to stdout on success, error messages

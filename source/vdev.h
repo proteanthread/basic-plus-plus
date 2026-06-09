@@ -3,79 +3,78 @@
  * BASIC++ Interpreter - vdev.h
  * =====================================================================
  *
- * Virtual Device System interface (VDev2 - Phase 16).
+ * Virtual Device System interface (VDev2).
  *
  * PURPOSE:
- *   Provides a portable abstraction layer between the BASIC++ interpreter
- *   core and all host I/O operations. Every byte of input and output
- *   passes through a VDev - the interpreter never calls printf, fgets,
- *   fopen, or any stdio function directly. This isolation guarantees:
+ * Provides a portable abstraction layer between the BASIC++ interpreter
+ * core and all host I/O operations. Every byte of input and output
+ * passes through a VDev - the interpreter never calls printf, fgets,
+ * fopen, or any stdio function directly. This isolation guarantees:
  *
- *     1. Deterministic behavior across platforms
- *     2. Clean separation of language semantics from host services
- *     3. Extensibility - custom devices can be registered at runtime
- *     4. Testability - I/O can be intercepted and verified
- *     5. Security - device access can be gated by capability checks
+ * 1. Deterministic behavior across platforms
+ * 2. Clean separation of language semantics from host services
+ * 3. Extensibility - custom devices can be registered at runtime
+ * 4. Testability - I/O can be intercepted and verified
+ * 5. Security - device access can be gated by capability checks
  *
- * VDEV2 EXTENSIONS (Phase 16 - Futureproofing):
- *   The original VDev was character-based (putc/puts/getc/gets) —
- *   designed for 1970s-80s devices (TTYs, printers, serial ports).
- *   VDev2 adds:
- *     - Device classes (VDCLASS_GPIO, VDCLASS_SENSOR, etc.)
- *     - Per-device capability flags (VDCAP_READ, VDCAP_BINARY, etc.)
- *     - Binary I/O (dev_read/dev_write for raw byte buffers)
- *     - Seekable devices (dev_seek)
- *     - Extended control (dev_ioctl with integer command codes)
- *     - Status and polling (dev_status/dev_poll for non-blocking I/O)
- *     - Device info queries (dev_info for key-value metadata)
- *     - Device discovery (find by name, find by class, enumerate)
- *     - 64 device slots (up from 16) for modern device counts
+ * VDEV2 EXTENSIONS (- Futureproofing):
+ * The original VDev was character-based (putc/puts/getc/gets) -
+ * designed for 1970s-80s devices (TTYs, printers, serial ports).
+ * VDev2 adds:
+ * - Device classes (VDCLASS_GPIO, VDCLASS_SENSOR, etc.)
+ * - Per-device capability flags (VDCAP_READ, VDCAP_BINARY, etc.)
+ * - Binary I/O (dev_read/dev_write for raw byte buffers)
+ * - Seekable devices (dev_seek)
+ * - Extended control (dev_ioctl with integer command codes)
+ * - Status and polling (dev_status/dev_poll for non-blocking I/O)
+ * - Device info queries (dev_info for key-value metadata)
+ * - Device discovery (find by name, find by class, enumerate)
+ * - 64 device slots (up from 16) for modern device counts
  *
- *   BACKWARD COMPATIBILITY:
- *     All new fields are optional. Existing VDev code that only sets
- *     the original fields (name, dev_putc, dev_puts, etc.) continues
- *     to work unchanged — new fields are zero/NULL by default via
- *     memset in vdev_register() or static initialization.
+ * BACKWARD COMPATIBILITY:
+ * All new fields are optional. Existing VDev code that only sets
+ * the original fields (name, dev_putc, dev_puts, etc.) continues
+ * to work unchanged - new fields are zero/NULL by default via
+ * memset in vdev_register() or static initialization.
  *
  * BUILT-IN DEVICES:
- *   VDEV_CON  - Console device (stdout + stdin)
- *   VDEV_ERR  - Error output device (stderr)
- *   VDEV_FILE - File I/O device (fopen/fclose/fprintf/fgets)
+ * VDEV_CON - Console device (stdout + stdin)
+ * VDEV_ERR - Error output device (stderr)
+ * VDEV_FILE - File I/O device (fopen/fclose/fprintf/fgets)
  *
  * HOW TO WRITE EXTERNAL DEVICES:
- *   1. Allocate a VDev struct (static or heap).
- *   2. Fill in name, dev_class, dev_caps, and function pointers.
- *   3. Set unsupported operations to NULL.
- *   4. Call vdev_register() to add it to the device table.
- *   5. Access it by ID via vdev_get() or by name via vdev_find_by_name().
+ * 1. Allocate a VDev struct (static or heap).
+ * 2. Fill in name, dev_class, dev_caps, and function pointers.
+ * 3. Set unsupported operations to NULL.
+ * 4. Call vdev_register() to add it to the device table.
+ * 5. Access it by ID via vdev_get() or by name via vdev_find_by_name().
  *
- *   Example - a GPIO pin device (Raspberry Pi):
+ * Example - a GPIO pin device (Raspberry Pi):
  *
- *     static int gpio_read(VDev *d, void *buf, int len) {
- *         int *val = (int *)buf;
- *         (void)len;
- *         *val = gpio_pin_read((int)(long)d->user_data);
- *         return sizeof(int);
- *     }
- *     static int gpio_write(VDev *d, const void *buf, int len) {
- *         int val = *(const int *)buf;
- *         (void)len;
- *         gpio_pin_write((int)(long)d->user_data, val);
- *         return sizeof(int);
- *     }
+ * static int gpio_read(VDev *d, void *buf, int len) {
+ * int *val = (int *)buf;
+ * (void)len;
+ * *val = gpio_pin_read((int)(long)d->user_data);
+ * return sizeof(int);
+ * }
+ * static int gpio_write(VDev *d, const void *buf, int len) {
+ * int val = *(const int *)buf;
+ * (void)len;
+ * gpio_pin_write((int)(long)d->user_data, val);
+ * return sizeof(int);
+ * }
  *
- *     VDev gpio_dev;
- *     memset(&gpio_dev, 0, sizeof(gpio_dev));
- *     gpio_dev.name = "GPIO17:";
- *     gpio_dev.dev_class = VDCLASS_GPIO;
- *     gpio_dev.dev_caps = VDCAP_READ | VDCAP_WRITE | VDCAP_BINARY;
- *     gpio_dev.dev_read = gpio_read;
- *     gpio_dev.dev_write = gpio_write;
- *     gpio_dev.dev_description = "GPIO pin 17";
- *     gpio_dev.user_data = (void *)17;
- *     vdev_register(&gpio_dev);
+ * VDev gpio_dev;
+ * memset(&gpio_dev, 0, sizeof(gpio_dev));
+ * gpio_dev.name = "GPIO17:";
+ * gpio_dev.dev_class = VDCLASS_GPIO;
+ * gpio_dev.dev_caps = VDCAP_READ | VDCAP_WRITE | VDCAP_BINARY;
+ * gpio_dev.dev_read = gpio_read;
+ * gpio_dev.dev_write = gpio_write;
+ * gpio_dev.dev_description = "GPIO pin 17";
+ * gpio_dev.user_data = (void *)17;
+ * vdev_register(&gpio_dev);
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -86,60 +85,60 @@
  * Device Identifiers
  * =====================================================================
  * Built-in device IDs. Custom devices start at VDEV_USER.
- * Phase 16: Expanded from 16 to 64 slots for modern device counts.
+ * Expanded from 16 to 64 slots for modern device counts.
  */
 typedef enum VDevId {
-    VDEV_CON  = 0,    /* Console device - stdout + stdin */
-    VDEV_ERR  = 1,    /* Error device - stderr */
-    VDEV_FILE = 2,    /* File I/O device */
-    VDEV_USER = 3,    /* First user-registerable slot */
-    VDEV_MAX  = 64    /* Maximum device slots (was 16) */
+ VDEV_CON = 0, /* Console device - stdout + stdin */
+ VDEV_ERR = 1, /* Error device - stderr */
+ VDEV_FILE = 2, /* File I/O device */
+ VDEV_USER = 3, /* First user-registerable slot */
+ VDEV_MAX = 64 /* Maximum device slots (was 16) */
 } VDevId;
 
 /* =====================================================================
- * Device Classes (Phase 16)
+ * Device Classes
  * =====================================================================
  * Every device belongs to a class that describes its general type.
  * Used for discovery (vdev_find_by_class), documentation, and
- * security scoping. A class is metadata — it does not constrain
+ * security scoping. A class is metadata - it does not constrain
  * which function pointers the device implements.
  *
  * WHY THIS EXISTS:
- *   Modern systems have many device types. A program may need to
- *   say "find me a sensor" or "find me a serial port" without
- *   knowing the specific device name. Device classes enable this.
+ * Modern systems have many device types. A program may need to
+ * say "find me a sensor" or "find me a serial port" without
+ * knowing the specific device name. Device classes enable this.
  *
  * FUTUREPROOFING:
- *   New classes can be added without breaking existing code.
- *   Just add a new enum value before VDCLASS_CUSTOM.
- *   VDCLASS_CUSTOM (99) is reserved for user-defined classes.
+ * New classes can be added without breaking existing code.
+ * Just add a new enum value before VDCLASS_CUSTOM.
+ * VDCLASS_CUSTOM (99) is reserved for user-defined classes.
  */
 typedef enum VDevClass {
-    VDCLASS_UNKNOWN  = 0,   /* unclassified / legacy device */
-    VDCLASS_CONSOLE  = 1,   /* terminal, screen, keyboard */
-    VDCLASS_FILE     = 2,   /* file system */
-    VDCLASS_SERIAL   = 3,   /* RS-232, UART, USB-serial */
-    VDCLASS_PRINTER  = 4,   /* line printer, PDF output */
-    VDCLASS_AUDIO    = 5,   /* sound card, speaker, MIDI */
-    VDCLASS_NETWORK  = 6,   /* TCP, UDP, HTTP, WebSocket */
-    VDCLASS_GPIO     = 7,   /* digital I/O pins (RPi, Arduino) */
-    VDCLASS_I2C      = 8,   /* I2C bus (sensors, displays) */
-    VDCLASS_SPI      = 9,   /* SPI bus (SD cards, flash) */
-    VDCLASS_SENSOR   = 10,  /* accelerometer, GPS, gyro, temp */
-    VDCLASS_DISPLAY  = 11,  /* framebuffer, LCD, OLED, GUI */
-    VDCLASS_STORAGE  = 12,  /* block device, SD card, USB drive */
-    VDCLASS_HID      = 13,  /* touchscreen, joystick, gamepad */
-    VDCLASS_CAMERA   = 14,  /* camera, video capture */
-    VDCLASS_BRIDGE   = 15,  /* external MCU (Arduino via serial) */
-    VDCLASS_BLUETOOTH = 16, /* Bluetooth/BLE devices */
-    VDCLASS_CLIPBOARD = 17, /* system clipboard */
-    VDCLASS_PIPE     = 18,  /* process pipe / IPC */
-    VDCLASS_TIMER    = 19,  /* hardware/software timer */
-    VDCLASS_CUSTOM   = 99   /* user-defined class */
+ VDCLASS_UNKNOWN = 0, /* unclassified / legacy device */
+ VDCLASS_CONSOLE = 1, /* terminal, screen, keyboard */
+ VDCLASS_FILE = 2, /* file system */
+ VDCLASS_SERIAL = 3, /* RS-232, UART, USB-serial */
+ VDCLASS_PRINTER = 4, /* line printer, PDF output */
+ VDCLASS_AUDIO = 5, /* sound card, speaker, MIDI */
+ VDCLASS_NETWORK = 6, /* TCP, UDP, HTTP, WebSocket */
+ VDCLASS_GPIO = 7, /* digital I/O pins (RPi, Arduino) */
+ VDCLASS_I2C = 8, /* I2C bus (sensors, displays) */
+ VDCLASS_SPI = 9, /* SPI bus (SD cards, flash) */
+ VDCLASS_SENSOR = 10, /* accelerometer, GPS, gyro, temp */
+ VDCLASS_DISPLAY = 11, /* framebuffer, LCD, OLED, GUI */
+ VDCLASS_STORAGE = 12, /* block device, SD card, USB drive */
+ VDCLASS_HID = 13, /* touchscreen, joystick, gamepad */
+ VDCLASS_CAMERA = 14, /* camera, video capture */
+ VDCLASS_BRIDGE = 15, /* external MCU (Arduino via serial) */
+ VDCLASS_BLUETOOTH = 16, /* Bluetooth/BLE devices */
+ VDCLASS_CLIPBOARD = 17, /* system clipboard */
+ VDCLASS_PIPE = 18, /* process pipe / IPC */
+ VDCLASS_TIMER = 19, /* hardware/software timer */
+ VDCLASS_CUSTOM = 99 /* user-defined class */
 } VDevClass;
 
 /* =====================================================================
- * Per-Device Capability Flags (Phase 16)
+ * Per-Device Capability Flags
  * =====================================================================
  * Each registered device declares its capabilities via a bitfield.
  * These flags describe WHAT the device CAN DO, independent of
@@ -148,40 +147,40 @@ typedef enum VDevClass {
  * The interpreter and BASIC programs can query these flags via
  * vdev_info() or DEVICECAP$() to adapt behavior.
  */
-#define VDCAP_NONE     0x0000u  /* no capabilities */
-#define VDCAP_READ     0x0001u  /* device supports reading */
-#define VDCAP_WRITE    0x0002u  /* device supports writing */
-#define VDCAP_BINARY   0x0004u  /* device supports binary I/O */
-#define VDCAP_SEEK     0x0008u  /* device supports seeking */
-#define VDCAP_ASYNC    0x0010u  /* device supports non-blocking */
-#define VDCAP_HOTPLUG  0x0020u  /* device can appear/disappear */
-#define VDCAP_CONTROL  0x0040u  /* device supports IOCTL2 */
-#define VDCAP_STATUS   0x0080u  /* device has queryable status */
-#define VDCAP_EVENT    0x0100u  /* device can generate events */
-#define VDCAP_DUPLEX   0x0200u  /* device supports full-duplex */
-#define VDCAP_BLOCK    0x0400u  /* device does block I/O */
+#define VDCAP_NONE 0x0000u /* no capabilities */
+#define VDCAP_READ 0x0001u /* device supports reading */
+#define VDCAP_WRITE 0x0002u /* device supports writing */
+#define VDCAP_BINARY 0x0004u /* device supports binary I/O */
+#define VDCAP_SEEK 0x0008u /* device supports seeking */
+#define VDCAP_ASYNC 0x0010u /* device supports non-blocking */
+#define VDCAP_HOTPLUG 0x0020u /* device can appear/disappear */
+#define VDCAP_CONTROL 0x0040u /* device supports IOCTL2 */
+#define VDCAP_STATUS 0x0080u /* device has queryable status */
+#define VDCAP_EVENT 0x0100u /* device can generate events */
+#define VDCAP_DUPLEX 0x0200u /* device supports full-duplex */
+#define VDCAP_BLOCK 0x0400u /* device does block I/O */
 
 /* Convenience macros */
-#define VDCAP_RW       (VDCAP_READ | VDCAP_WRITE)
-#define VDCAP_STREAM   (VDCAP_READ | VDCAP_WRITE | VDCAP_DUPLEX)
+#define VDCAP_RW (VDCAP_READ | VDCAP_WRITE)
+#define VDCAP_STREAM (VDCAP_READ | VDCAP_WRITE | VDCAP_DUPLEX)
 #define VDCAP_FILELIKE (VDCAP_RW | VDCAP_BINARY | VDCAP_SEEK)
 
 /* =====================================================================
- * IOCTL2 Command Codes (Phase 16)
+ * IOCTL2 Command Codes
  * =====================================================================
  * Standardized command codes for dev_ioctl(). Devices may define
  * their own commands starting at VDIO_USER.
  */
-#define VDIO_RESET       0   /* reset device to default state */
-#define VDIO_GET_STATUS  1   /* get device status word */
-#define VDIO_SET_BAUD    2   /* set baud rate (serial) */
-#define VDIO_SET_PIN     3   /* set pin mode (GPIO) */
-#define VDIO_GET_PIN     4   /* get pin value (GPIO) */
-#define VDIO_SET_ADDR    5   /* set I2C/SPI address */
-#define VDIO_SET_TIMEOUT 6   /* set I/O timeout (ms) */
-#define VDIO_GET_ERROR   7   /* get last error code */
-#define VDIO_ENUMERATE   8   /* list sub-devices */
-#define VDIO_USER        256 /* first user-defined command */
+#define VDIO_RESET 0 /* reset device to default state */
+#define VDIO_GET_STATUS 1 /* get device status word */
+#define VDIO_SET_BAUD 2 /* set baud rate (serial) */
+#define VDIO_SET_PIN 3 /* set pin mode (GPIO) */
+#define VDIO_GET_PIN 4 /* get pin value (GPIO) */
+#define VDIO_SET_ADDR 5 /* set I2C/SPI address */
+#define VDIO_SET_TIMEOUT 6 /* set I/O timeout (ms) */
+#define VDIO_GET_ERROR 7 /* get last error code */
+#define VDIO_ENUMERATE 8 /* list sub-devices */
+#define VDIO_USER 256 /* first user-defined command */
 
 /* Forward declaration */
 typedef struct VDev VDev;
@@ -195,66 +194,66 @@ typedef struct VDev VDev;
  * The helper functions in vdev.c return error codes for NULL ops.
  *
  * BACKWARD COMPATIBILITY:
- *   The first 10 fields (name through user_data) are identical to
- *   the original VDev struct. Code that only sets these fields
- *   works unchanged — the new fields default to 0/NULL.
+ * The first 10 fields (name through user_data) are identical to
+ * the original VDev struct. Code that only sets these fields
+ * works unchanged - the new fields default to 0/NULL.
  *
- * NEW FIELDS (Phase 16):
- *   dev_class       - Device classification for discovery
- *   dev_caps        - What the device can do (VDCAP_ flags)
- *   dev_version     - Version string (informational)
- *   dev_description - Human-readable description
- *   dev_req_caps    - Required module CAP_ flags for security
- *   dev_read        - Binary read (raw bytes)
- *   dev_write       - Binary write (raw bytes)
- *   dev_seek        - Seek to position (for seekable devices)
- *   dev_ioctl       - Extended control commands
- *   dev_status      - Device health/readiness check
- *   dev_poll        - Non-blocking data availability check
- *   dev_info        - Key-value metadata queries
+ * NEW FIELDS:
+ * dev_class - Device classification for discovery
+ * dev_caps - What the device can do (VDCAP_ flags)
+ * dev_version - Version string (informational)
+ * dev_description - Human-readable description
+ * dev_req_caps - Required module CAP_ flags for security
+ * dev_read - Binary read (raw bytes)
+ * dev_write - Binary write (raw bytes)
+ * dev_seek - Seek to position (for seekable devices)
+ * dev_ioctl - Extended control commands
+ * dev_status - Device health/readiness check
+ * dev_poll - Non-blocking data availability check
+ * dev_info - Key-value metadata queries
  */
 struct VDev {
-    /* === Original fields (Phase 3 — DO NOT REORDER) === */
-    const char *name;
+ /* === Original fields (- DO NOT REORDER) === */
+ const char *name;
 
-    /* Output operations */
-    int  (*dev_putc)(VDev *d, int ch);
-    int  (*dev_puts)(VDev *d, const char *s);
-    int  (*dev_flush)(VDev *d);
-    int  (*dev_cls)(VDev *d);
+ /* Output operations */
+ int (*dev_putc)(VDev *d, int ch);
+ int (*dev_puts)(VDev *d, const char *s);
+ int (*dev_flush)(VDev *d);
+ int (*dev_cls)(VDev *d);
 
-    /* Input operations */
-    int  (*dev_getc)(VDev *d);
-    int  (*dev_gets)(VDev *d, char *buf, int max);
+ /* Input operations */
+ int (*dev_getc)(VDev *d);
+ int (*dev_gets)(VDev *d, char *buf, int max);
 
-    /* File operations */
-    int  (*dev_open)(VDev *d, const char *path, const char *mode);
-    int  (*dev_close)(VDev *d);
+ /* File operations */
+ int (*dev_open)(VDev *d, const char *path, const char *mode);
+ int (*dev_close)(VDev *d);
 
-    /* Device-specific state (e.g., FILE*, terminal handle, etc.) */
-    void *user_data;
+ /* Device-specific state (e.g., FILE*, terminal handle, etc.) */
+ void *user_data;
 
-    /* === Phase 16: VDev2 Extensions === */
+ /* === VDev2 Extensions === */
 
-    /* Metadata */
-    VDevClass    dev_class;       /* device classification */
-    unsigned int dev_caps;        /* VDCAP_ capability bitfield */
-    const char  *dev_version;     /* version string, or NULL */
-    const char  *dev_description; /* human-readable description */
-    unsigned int dev_req_caps;    /* required module CAP_ flags */
+ /* Metadata */
+ VDevClass dev_class; /* device classification */
+ unsigned int dev_caps; /* VDCAP_ capability bitfield */
+ const char *dev_version; /* version string, or NULL */
+ const char *dev_description; /* human-readable description */
+ unsigned int dev_req_caps; /* required module CAP_ flags */
 
-    /* Binary I/O (for sensors, cameras, raw data, block devices) */
-    int  (*dev_read)(VDev *d, void *buf, int len);
-    int  (*dev_write)(VDev *d, const void *buf, int len);
-    long (*dev_seek)(VDev *d, long offset, int whence);
+ /* Binary I/O (for sensors, cameras, raw data, block devices) */
+ int (*dev_read)(VDev *d, void *buf, int len);
+ int (*dev_write)(VDev *d, const void *buf, int len);
+ long (*dev_seek)(VDev *d, long offset, int whence);
 
-    /* Extended control (replaces single-string IOCTL) */
-    int  (*dev_ioctl)(VDev *d, int cmd, void *arg);
+ /* Extended control (replaces single-string IOCTL) */
+ int (*dev_ioctl)(VDev *d, int cmd, void *arg);
 
-    /* Status and discovery */
-    int  (*dev_status)(VDev *d);
-    int  (*dev_poll)(VDev *d);
-    const char *(*dev_info)(VDev *d, const char *key);
+ /* Status and discovery */
+ int (*dev_status)(VDev *d);
+ int (*dev_poll)(VDev *d);
+ const char *(*dev_info)(VDev *d, const char *key);
 };
 
 /* =====================================================================
@@ -288,7 +287,7 @@ VDev *vdev_get(int id);
 int vdev_register(VDev *dev);
 
 /* =====================================================================
- * Device Discovery (Phase 16)
+ * Device Discovery
  * =====================================================================
  * These functions allow BASIC programs and modules to find devices
  * by name or class without knowing their slot IDs.
@@ -346,7 +345,7 @@ int vdev_flush(VDev *d);
 int vdev_cls(VDev *d);
 
 /* =====================================================================
- * Binary I/O Convenience (Phase 16)
+ * Binary I/O Convenience
  * =====================================================================
  * These wrap the new dev_read/dev_write/dev_seek function pointers.
  * NULL-safe: return -1 if the device or function pointer is NULL.
@@ -372,7 +371,7 @@ int vdev_write(VDev *d, const void *buf, int len);
 long vdev_seek(VDev *d, long offset, int whence);
 
 /* =====================================================================
- * Control & Status Convenience (Phase 16)
+ * Control & Status Convenience
  * =====================================================================
  */
 
@@ -411,6 +410,6 @@ const char *vdev_info(VDev *d, const char *key);
 void vdev_beep(void);
 void vdev_sound(int freq_hz, int duration_ms);
 void vdev_sleep(int duration_ms);
-int  vdev_inkey(void);
+int vdev_inkey(void);
 
 #endif /* BASICPP_VDEV_H */

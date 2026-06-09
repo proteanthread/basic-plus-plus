@@ -3,9 +3,8 @@
  * BASIC++ Interpreter - mod_stdlib.h
  * =====================================================================
  *
- * Standard Library Module header (Phase 14).
+ * Standard Library Module header.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 

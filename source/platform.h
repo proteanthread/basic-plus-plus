@@ -3,21 +3,20 @@
  * BASIC++ Interpreter - platform.h
  * =====================================================================
  *
- * Cross-platform abstraction layer (Phase 16).
+ * Cross-platform abstraction layer.
  *
  * PURPOSE:
- *   Provides compile-time platform detection and a runtime API
- *   for querying platform info, compiler identity, and word sizes.
- *   Enables BASIC programs to introspect the host environment
- *   via the SYSTEM command.
+ * Provides compile-time platform detection and a runtime API
+ * for querying platform info, compiler identity, and word sizes.
+ * Enables BASIC programs to introspect the host environment
+ * via the SYSTEM command.
  *
  * SUPPORTED PLATFORMS:
- *   DOS      - FreeDOS + OpenWatcom (16-bit large model)
- *   Windows  - Win32/Win64 + MSVC
- *   Linux    - x86/x86_64/ARM + GCC/Clang
- *   POSIX    - macOS, BSD, other Unix + GCC/Clang
+ * DOS - FreeDOS + OpenWatcom (16-bit large model)
+ * Windows - Win32/Win64 + MSVC
+ * Linux - x86/x86_64/ARM + GCC/Clang
+ * POSIX - macOS, BSD, other Unix + GCC/Clang
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -29,12 +28,12 @@
  * =====================================================================
  */
 typedef enum PlatformId {
-    PLAT_DOS      = 0,
-    PLAT_WINDOWS  = 1,
-    PLAT_LINUX    = 2,
-    PLAT_POSIX    = 3,   /* macOS, BSD, other Unix */
-    PLAT_UNKNOWN  = 4,
-    PLAT_COUNT    = 5
+ PLAT_DOS = 0,
+ PLAT_WINDOWS = 1,
+ PLAT_LINUX = 2,
+ PLAT_POSIX = 3, /* macOS, BSD, other Unix */
+ PLAT_UNKNOWN = 4,
+ PLAT_COUNT = 5
 } PlatformId;
 
 /* =====================================================================
@@ -42,14 +41,14 @@ typedef enum PlatformId {
  * =====================================================================
  */
 typedef struct PlatformInfo {
-    PlatformId   id;
-    const char  *name;          /* "Windows", "FreeDOS", etc. */
-    const char  *short_name;    /* "WIN", "DOS", "LNX", "UNX" */
-    const char  *compiler;      /* "MSVC", "Watcom", "GCC", etc. */
-    const char  *compiler_ver;  /* "19.x", "1.9", "13.x", etc. */
-    int          ptr_size;      /* sizeof(void*) */
-    int          int_size;      /* sizeof(int) */
-    int          long_size;     /* sizeof(long) */
+ PlatformId id;
+ const char *name; /* "Windows", "FreeDOS", etc. */
+ const char *short_name; /* "WIN", "DOS", "LNX", "UNX" */
+ const char *compiler; /* "MSVC", "Watcom", "GCC", etc. */
+ const char *compiler_ver; /* "19.x", "1.9", "13.x", etc. */
+ int ptr_size; /* sizeof(void*) */
+ int int_size; /* sizeof(int) */
+ int long_size; /* sizeof(long) */
 } PlatformInfo;
 
 /* =====================================================================

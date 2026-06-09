@@ -6,23 +6,22 @@
  * Implementation of the memory management subsystem.
  *
  * DESIGN RATIONALE:
- *   The interpreter uses explicit memory pools rather than calling
- *   malloc()/free() for individual objects. This approach:
+ * The interpreter uses explicit memory pools rather than calling
+ * malloc()/free() for individual objects. This approach:
  *
- *   1. Prevents fragmentation - bump allocation is contiguous.
- *   2. Makes memory usage predictable and bounded.
- *   3. Simplifies cleanup - free the pool, done.
- *   4. Works well on memory-constrained systems (FreeDOS).
- *   5. Allows SIZE to report accurate free-space counts.
+ * 1. Prevents fragmentation - bump allocation is contiguous.
+ * 2. Makes memory usage predictable and bounded.
+ * 3. Simplifies cleanup - free the pool, done.
+ * 4. Works well on memory-constrained systems (FreeDOS).
+ * 5. Allows SIZE to report accurate free-space counts.
  *
- *   The program store uses a sorted array rather than a linked list
- *   because:
- *   - Binary search for GOTO targets is O(log n).
- *   - Sequential iteration for RUN is cache-friendly.
- *   - Insertion/deletion with memmove is O(n) but n <= 4096,
- *     and program editing is infrequent compared to execution.
+ * The program store uses a sorted array rather than a linked list
+ * because:
+ * - Binary search for GOTO targets is O(log n).
+ * - Sequential iteration for RUN is cache-friendly.
+ * - Insertion/deletion with memmove is O(n) but n <= 4096,
+ * and program editing is infrequent compared to execution.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -45,21 +44,21 @@
  */
 static int init_pool(MemoryPool *pool, long size)
 {
-    pool->base = (char *)malloc((size_t)size);
-    if (pool->base == NULL) {
-        pool->size = 0;
-        pool->used = 0;
-        return -1;
-    }
-    pool->size = size;
-    pool->used = 0;
+ pool->base = (char *)malloc((size_t)size);
+ if (pool->base == NULL) {
+ pool->size = 0;
+ pool->used = 0;
+ return -1;
+ }
+ pool->size = size;
+ pool->used = 0;
 
-    /*
-     * Zero the pool memory. This ensures variables and array
-     * elements start at zero, matching BASIC convention.
-     */
-    memset(pool->base, 0, (size_t)size);
-    return 0;
+ /*
+ * Zero the pool memory. This ensures variables and array
+ * elements start at zero, matching BASIC convention.
+ */
+ memset(pool->base, 0, (size_t)size);
+ return 0;
 }
 
 /*
@@ -70,73 +69,73 @@ static int init_pool(MemoryPool *pool, long size)
  */
 static void free_pool(MemoryPool *pool)
 {
-    if (pool->base != NULL) {
-        free(pool->base);
-        pool->base = NULL;
-    }
-    pool->size = 0;
-    pool->used = 0;
+ if (pool->base != NULL) {
+ free(pool->base);
+ pool->base = NULL;
+ }
+ pool->size = 0;
+ pool->used = 0;
 }
 
 /*
  * mem_init - Allocate all memory pools and the program store.
  *
  * Allocation order:
- *   1. Variable pool (for A-Z variables and @() array)
- *   2. Scratch pool (for temporary tokens and parse buffers)
- *   3. Program line array (for sorted ProgramLine storage)
+ * 1. Variable pool (for A-Z variables and @() array)
+ * 2. Scratch pool (for temporary tokens and parse buffers)
+ * 3. Program line array (for sorted ProgramLine storage)
  *
  * If any allocation fails, all previously allocated pools are freed
  * and -1 is returned. The caller should report ERR_SORRY.
  */
 int mem_init(MemorySystem *mem)
 {
-    /* Initialize all fields to safe defaults */
-    mem->variable.base = NULL;
-    mem->variable.size = 0;
-    mem->variable.used = 0;
-    mem->scratch.base = NULL;
-    mem->scratch.size = 0;
-    mem->scratch.used = 0;
-    mem->program.lines = NULL;
-    mem->program.count = 0;
-    mem->program.capacity = 0;
+ /* Initialize all fields to safe defaults */
+ mem->variable.base = NULL;
+ mem->variable.size = 0;
+ mem->variable.used = 0;
+ mem->scratch.base = NULL;
+ mem->scratch.size = 0;
+ mem->scratch.used = 0;
+ mem->program.lines = NULL;
+ mem->program.count = 0;
+ mem->program.capacity = 0;
 
-    /* Allocate variable pool */
-    if (init_pool(&mem->variable, VARIABLE_MEMORY_SIZE) != 0) {
-        return -1;
-    }
+ /* Allocate variable pool */
+ if (init_pool(&mem->variable, VARIABLE_MEMORY_SIZE) != 0) {
+ return -1;
+ }
 
-    /* Allocate scratch pool */
-    if (init_pool(&mem->scratch, SCRATCH_MEMORY_SIZE) != 0) {
-        free_pool(&mem->variable);
-        return -1;
-    }
+ /* Allocate scratch pool */
+ if (init_pool(&mem->scratch, SCRATCH_MEMORY_SIZE) != 0) {
+ free_pool(&mem->variable);
+ return -1;
+ }
 
-    /*
-     * Allocate program line array.
-     *
-     * We use a separate malloc for the line array rather than
-     * carving it from a pool because ProgramLine structs are
-     * relatively large (260+ bytes each) and the array needs
-     * to be contiguous for memmove operations during insert/delete.
-     */
-    mem->program.lines = (ProgramLine *)malloc(
-        (size_t)MAX_PROGRAM_LINES * sizeof(ProgramLine)
-    );
-    if (mem->program.lines == NULL) {
-        free_pool(&mem->scratch);
-        free_pool(&mem->variable);
-        return -1;
-    }
-    mem->program.count = 0;
-    mem->program.capacity = MAX_PROGRAM_LINES;
+ /*
+ * Allocate program line array.
+ *
+ * We use a separate malloc for the line array rather than
+ * carving it from a pool because ProgramLine structs are
+ * relatively large (260+ bytes each) and the array needs
+ * to be contiguous for memmove operations during insert/delete.
+ */
+ mem->program.lines = (ProgramLine *)malloc(
+ (size_t)MAX_PROGRAM_LINES * sizeof(ProgramLine)
+ );
+ if (mem->program.lines == NULL) {
+ free_pool(&mem->scratch);
+ free_pool(&mem->variable);
+ return -1;
+ }
+ mem->program.count = 0;
+ mem->program.capacity = MAX_PROGRAM_LINES;
 
-    /* Zero the line array for clean initial state */
-    memset(mem->program.lines, 0,
-           (size_t)MAX_PROGRAM_LINES * sizeof(ProgramLine));
+ /* Zero the line array for clean initial state */
+ memset(mem->program.lines, 0,
+ (size_t)MAX_PROGRAM_LINES * sizeof(ProgramLine));
 
-    return 0;
+ return 0;
 }
 
 /*
@@ -144,15 +143,15 @@ int mem_init(MemorySystem *mem)
  */
 void mem_shutdown(MemorySystem *mem)
 {
-    free_pool(&mem->variable);
-    free_pool(&mem->scratch);
+ free_pool(&mem->variable);
+ free_pool(&mem->scratch);
 
-    if (mem->program.lines != NULL) {
-        free(mem->program.lines);
-        mem->program.lines = NULL;
-    }
-    mem->program.count = 0;
-    mem->program.capacity = 0;
+ if (mem->program.lines != NULL) {
+ free(mem->program.lines);
+ mem->program.lines = NULL;
+ }
+ mem->program.count = 0;
+ mem->program.capacity = 0;
 }
 
 /*
@@ -169,19 +168,19 @@ void mem_shutdown(MemorySystem *mem)
  */
 void *mem_pool_alloc(MemoryPool *pool, long nbytes)
 {
-    char *ptr;
+ char *ptr;
 
-    if (nbytes <= 0) {
-        return NULL;
-    }
+ if (nbytes <= 0) {
+ return NULL;
+ }
 
-    if (pool->used + nbytes > pool->size) {
-        return NULL;  /* insufficient space */
-    }
+ if (pool->used + nbytes > pool->size) {
+ return NULL; /* insufficient space */
+ }
 
-    ptr = pool->base + pool->used;
-    pool->used += nbytes;
-    return (void *)ptr;
+ ptr = pool->base + pool->used;
+ pool->used += nbytes;
+ return (void *)ptr;
 }
 
 /*
@@ -193,7 +192,7 @@ void *mem_pool_alloc(MemoryPool *pool, long nbytes)
  */
 void mem_pool_reset(MemoryPool *pool)
 {
-    pool->used = 0;
+ pool->used = 0;
 }
 
 /*
@@ -203,7 +202,7 @@ void mem_pool_reset(MemoryPool *pool)
  */
 long mem_pool_available(MemoryPool *pool)
 {
-    return pool->size - pool->used;
+ return pool->size - pool->used;
 }
 
 /* =====================================================================
@@ -222,22 +221,22 @@ long mem_pool_available(MemoryPool *pool)
  */
 static int find_insert_pos(ProgramStore *store, int line_number)
 {
-    int low = 0;
-    int high = store->count - 1;
-    int mid;
+ int low = 0;
+ int high = store->count - 1;
+ int mid;
 
-    while (low <= high) {
-        mid = low + (high - low) / 2;
-        if (store->lines[mid].line_number == line_number) {
-            return mid;  /* exact match */
-        } else if (store->lines[mid].line_number < line_number) {
-            low = mid + 1;
-        } else {
-            high = mid - 1;
-        }
-    }
+ while (low <= high) {
+ mid = low + (high - low) / 2;
+ if (store->lines[mid].line_number == line_number) {
+ return mid; /* exact match */
+ } else if (store->lines[mid].line_number < line_number) {
+ low = mid + 1;
+ } else {
+ high = mid - 1;
+ }
+ }
 
-    return low;  /* insertion point */
+ return low; /* insertion point */
 }
 
 /*
@@ -253,45 +252,45 @@ static int find_insert_pos(ProgramStore *store, int line_number)
  * Returns 0 on success, -1 if the store is full.
  */
 int program_insert(ProgramStore *store, int line_number,
-                   const char *full_text)
+ const char *full_text)
 {
-    int pos;
-    int i;
+ int pos;
+ int i;
 
-    pos = find_insert_pos(store, line_number);
+ pos = find_insert_pos(store, line_number);
 
-    /* Check if this is a replacement of an existing line */
-    if (pos < store->count &&
-        store->lines[pos].line_number == line_number) {
-        /* Replace existing line text */
-        strncpy(store->lines[pos].text, full_text, MAX_LINE_LENGTH);
-        store->lines[pos].text[MAX_LINE_LENGTH] = '\0';
-        return 0;
-    }
+ /* Check if this is a replacement of an existing line */
+ if (pos < store->count &&
+ store->lines[pos].line_number == line_number) {
+ /* Replace existing line text */
+ strncpy(store->lines[pos].text, full_text, MAX_LINE_LENGTH);
+ store->lines[pos].text[MAX_LINE_LENGTH] = '\0';
+ return 0;
+ }
 
-    /* Inserting a new line - check capacity */
-    if (store->count >= store->capacity) {
-        error_raise(ERR_SORRY, 0);
-        return -1;
-    }
+ /* Inserting a new line - check capacity */
+ if (store->count >= store->capacity) {
+ error_raise(ERR_SORRY, 0);
+ return -1;
+ }
 
-    /*
-     * Shift lines from pos..count-1 up by one position.
-     * We use a manual loop instead of memmove for clarity and
-     * because we're moving structs (memmove would work too, but
-     * this is explicit about what's happening).
-     */
-    for (i = store->count; i > pos; i--) {
-        store->lines[i] = store->lines[i - 1];
-    }
+ /*
+ * Shift lines from pos..count-1 up by one position.
+ * We use a manual loop instead of memmove for clarity and
+ * because we're moving structs (memmove would work too, but
+ * this is explicit about what's happening).
+ */
+ for (i = store->count; i > pos; i--) {
+ store->lines[i] = store->lines[i - 1];
+ }
 
-    /* Insert the new line */
-    store->lines[pos].line_number = line_number;
-    strncpy(store->lines[pos].text, full_text, MAX_LINE_LENGTH);
-    store->lines[pos].text[MAX_LINE_LENGTH] = '\0';
-    store->count++;
+ /* Insert the new line */
+ store->lines[pos].line_number = line_number;
+ strncpy(store->lines[pos].text, full_text, MAX_LINE_LENGTH);
+ store->lines[pos].text[MAX_LINE_LENGTH] = '\0';
+ store->count++;
 
-    return 0;
+ return 0;
 }
 
 /*
@@ -304,24 +303,24 @@ int program_insert(ProgramStore *store, int line_number,
  */
 int program_delete(ProgramStore *store, int line_number)
 {
-    int pos;
-    int i;
+ int pos;
+ int i;
 
-    pos = find_insert_pos(store, line_number);
+ pos = find_insert_pos(store, line_number);
 
-    /* Verify we found an exact match */
-    if (pos >= store->count ||
-        store->lines[pos].line_number != line_number) {
-        return -1;  /* line not found (not an error in BASIC) */
-    }
+ /* Verify we found an exact match */
+ if (pos >= store->count ||
+ store->lines[pos].line_number != line_number) {
+ return -1; /* line not found (not an error in BASIC) */
+ }
 
-    /* Shift lines down to fill the gap */
-    for (i = pos; i < store->count - 1; i++) {
-        store->lines[i] = store->lines[i + 1];
-    }
+ /* Shift lines down to fill the gap */
+ for (i = pos; i < store->count - 1; i++) {
+ store->lines[i] = store->lines[i + 1];
+ }
 
-    store->count--;
-    return 0;
+ store->count--;
+ return 0;
 }
 
 /*
@@ -331,16 +330,16 @@ int program_delete(ProgramStore *store, int line_number)
  */
 int program_find(ProgramStore *store, int line_number)
 {
-    int pos;
+ int pos;
 
-    pos = find_insert_pos(store, line_number);
+ pos = find_insert_pos(store, line_number);
 
-    if (pos < store->count &&
-        store->lines[pos].line_number == line_number) {
-        return pos;
-    }
+ if (pos < store->count &&
+ store->lines[pos].line_number == line_number) {
+ return pos;
+ }
 
-    return -1;
+ return -1;
 }
 
 /*
@@ -356,15 +355,15 @@ int program_find(ProgramStore *store, int line_number)
  */
 int program_find_next(ProgramStore *store, int line_number)
 {
-    int pos;
+ int pos;
 
-    pos = find_insert_pos(store, line_number);
+ pos = find_insert_pos(store, line_number);
 
-    if (pos < store->count) {
-        return pos;
-    }
+ if (pos < store->count) {
+ return pos;
+ }
 
-    return -1;  /* no line at or after this number */
+ return -1; /* no line at or after this number */
 }
 
 /*
@@ -375,7 +374,7 @@ int program_find_next(ProgramStore *store, int line_number)
  */
 void program_clear(ProgramStore *store)
 {
-    store->count = 0;
+ store->count = 0;
 }
 
 /*
@@ -390,15 +389,15 @@ void program_clear(ProgramStore *store)
  */
 void program_list(ProgramStore *store, int from, int to)
 {
-    int i;
+ int i;
 
-    for (i = 0; i < store->count; i++) {
-        if (from > 0 && store->lines[i].line_number < from) {
-            continue;
-        }
-        if (to > 0 && store->lines[i].line_number > to) {
-            break;  /* lines are sorted, so no more matches */
-        }
-        printf("%s\n", store->lines[i].text);
-    }
+ for (i = 0; i < store->count; i++) {
+ if (from > 0 && store->lines[i].line_number < from) {
+ continue;
+ }
+ if (to > 0 && store->lines[i].line_number > to) {
+ break; /* lines are sorted, so no more matches */
+ }
+ printf("%s\n", store->lines[i].text);
+ }
 }

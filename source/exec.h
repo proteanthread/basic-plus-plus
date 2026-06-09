@@ -6,27 +6,26 @@
  * Executor interface - the runtime execution loop.
  *
  * PURPOSE:
- *   Provides the main program execution loop (exec_run) which
- *   iterates through stored program lines, tokenizes each line,
- *   and dispatches to the parser for execution.
+ * Provides the main program execution loop (exec_run) which
+ * iterates through stored program lines, tokenizes each line,
+ * and dispatches to the parser for execution.
  *
  * WHY THIS IS SEPARATE FROM parser.c:
- *   The parser handles single-line parsing and expression evaluation.
- *   The executor handles the program-level execution flow: line
- *   sequencing, GOTO target resolution, and the RUN loop. This
- *   separation keeps each module focused and testable.
+ * The parser handles single-line parsing and expression evaluation.
+ * The executor handles the program-level execution flow: line
+ * sequencing, GOTO target resolution, and the RUN loop. This
+ * separation keeps each module focused and testable.
  *
  * HOW IT WORKS:
- *   exec_run() resets the runtime state, then enters a loop:
- *     1. Get the current line from the program store.
- *     2. Initialize the lexer on the line's text.
- *     3. Skip the line number tokens.
- *     4. Call parser_execute_line() to parse and execute.
- *     5. Check if GOTO/GOSUB changed next_index.
- *     6. If so, jump to the new target; otherwise advance.
- *     7. If current_index exceeds program size, stop.
+ * exec_run() resets the runtime state, then enters a loop:
+ * 1. Get the current line from the program store.
+ * 2. Initialize the lexer on the line's text.
+ * 3. Skip the line number tokens.
+ * 4. Call parser_execute_line() to parse and execute.
+ * 5. Check if GOTO/GOSUB changed next_index.
+ * 6. If so, jump to the new target; otherwise advance.
+ * 7. If current_index exceeds program size, stop.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -40,9 +39,9 @@
  *
  * Resets all variables and the stack, then executes lines
  * sequentially from the first stored line. Execution stops on:
- *   - END or STOP statement
- *   - Running past the last line
- *   - Runtime error
+ * - END or STOP statement
+ * - Running past the last line
+ * - Runtime error
  *
  * This is called by the RUN command.
  */

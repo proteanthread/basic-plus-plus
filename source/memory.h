@@ -6,31 +6,30 @@
  * Memory management subsystem interface.
  *
  * PURPOSE:
- *   Manages three explicit memory pools and provides a program
- *   storage system. All dynamic memory used by the interpreter
- *   flows through this module - no other module calls malloc()
- *   directly (except for one-time setup allocations).
+ * Manages three explicit memory pools and provides a program
+ * storage system. All dynamic memory used by the interpreter
+ * flows through this module - no other module calls malloc()
+ * directly (except for one-time setup allocations).
  *
  * MEMORY LAYOUT:
- *   +---------------------------+
- *   | Program Store (line array)|  <- ProgramLine array, sorted by line#
- *   +---------------------------+
- *   | Variable Pool (64K)       |  <- A-Z variables + @() array
- *   +---------------------------+
- *   | Scratch Pool (64K)        |  <- temporary buffers, reset per stmt
- *   +---------------------------+
+ * +---------------------------+
+ * | Program Store (line array)| <- ProgramLine array, sorted by line#
+ * +---------------------------+
+ * | Variable Pool (64K) | <- A-Z variables + @() array
+ * +---------------------------+
+ * | Scratch Pool (64K) | <- temporary buffers, reset per stmt
+ * +---------------------------+
  *
- *   The program store is a separate allocation (array of ProgramLine
- *   structs). The variable and scratch pools are flat byte arrays
- *   with bump allocation.
+ * The program store is a separate allocation (array of ProgramLine
+ * structs). The variable and scratch pools are flat byte arrays
+ * with bump allocation.
  *
  * HOW TO EXTEND:
- *   To add new pools (e.g., string storage), add a new MemoryPool
- *   field to MemorySystem and initialize it in mem_init(). All
- *   pool operations (alloc, reset, bounds check) work generically
- *   on any MemoryPool.
+ * To add new pools (e.g., string storage), add a new MemoryPool
+ * field to MemorySystem and initialize it in mem_init(). All
+ * pool operations (alloc, reset, bounds check) work generically
+ * on any MemoryPool.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -48,14 +47,14 @@
  * to reclaim all space (used for the scratch pool between statements).
  *
  * Fields:
- *   base - pointer to the start of the allocated block.
- *   size - total size of the block in bytes.
- *   used - current watermark (bytes allocated so far).
+ * base - pointer to the start of the allocated block.
+ * size - total size of the block in bytes.
+ * used - current watermark (bytes allocated so far).
  */
 typedef struct MemoryPool {
-    char *base;
-    long  size;
-    long  used;
+ char *base;
+ long size;
+ long used;
 } MemoryPool;
 
 /* =====================================================================
@@ -66,13 +65,13 @@ typedef struct MemoryPool {
  * lines - LIST and SAVE reproduce them verbatim.
  *
  * Fields:
- *   line_number - the BASIC line number (1-32767).
- *   text        - the full line text including the line number prefix.
- *                 Null-terminated, max MAX_LINE_LENGTH characters.
+ * line_number - the BASIC line number (1-32767).
+ * text - the full line text including the line number prefix.
+ * Null-terminated, max MAX_LINE_LENGTH characters.
  */
 typedef struct ProgramLine {
-    int  line_number;
-    char text[MAX_LINE_LENGTH + 1];
+ int line_number;
+ char text[MAX_LINE_LENGTH + 1];
 } ProgramLine;
 
 /* =====================================================================
@@ -83,14 +82,14 @@ typedef struct ProgramLine {
  * for GOTO targets and sequential iteration for RUN.
  *
  * Fields:
- *   lines    - pointer to the array of ProgramLine structs.
- *   count    - number of lines currently stored.
- *   capacity - maximum number of lines (MAX_PROGRAM_LINES).
+ * lines - pointer to the array of ProgramLine structs.
+ * count - number of lines currently stored.
+ * capacity - maximum number of lines (MAX_PROGRAM_LINES).
  */
 typedef struct ProgramStore {
-    ProgramLine *lines;
-    int          count;
-    int          capacity;
+ ProgramLine *lines;
+ int count;
+ int capacity;
 } ProgramStore;
 
 /* =====================================================================
@@ -101,9 +100,9 @@ typedef struct ProgramStore {
  * of ProgramLine) rather than flat byte allocation.
  */
 typedef struct MemorySystem {
-    MemoryPool   variable;
-    MemoryPool   scratch;
-    ProgramStore program;
+ MemoryPool variable;
+ MemoryPool scratch;
+ ProgramStore program;
 } MemorySystem;
 
 /* =====================================================================
@@ -174,7 +173,7 @@ long mem_pool_available(MemoryPool *pool);
  * Returns 0 on success, -1 if the program store is full (ERR_SORRY).
  */
 int program_insert(ProgramStore *store, int line_number,
-                   const char *full_text);
+ const char *full_text);
 
 /*
  * program_delete - Delete a program line by number.

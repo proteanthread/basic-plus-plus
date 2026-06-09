@@ -6,18 +6,17 @@
  * Implementation of the classic Tiny BASIC error handling model.
  *
  * DESIGN RATIONALE:
- *   The error system is intentionally simple. It uses a single global
- *   error flag rather than exceptions, longjmp, or error return codes
- *   threaded through every function. This matches the original Tiny
- *   BASIC design where errors immediately print a message and abort
- *   the current statement.
+ * The error system is intentionally simple. It uses a single global
+ * error flag rather than exceptions, longjmp, or error return codes
+ * threaded through every function. This matches the original Tiny
+ * BASIC design where errors immediately print a message and abort
+ * the current statement.
  *
- *   The global flag approach works because:
- *   1. The interpreter is single-threaded.
- *   2. Only one statement executes at a time.
- *   3. Error recovery always means "return to prompt."
+ * The global flag approach works because:
+ * 1. The interpreter is single-threaded.
+ * 2. Only one statement executes at a time.
+ * 3. Error recovery always means "return to prompt."
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -28,8 +27,8 @@
  * Module State
  * =====================================================================
  * current_error: The currently active error code, or ERR_NONE if
- *   no error is pending. This is set by error_raise() and cleared
- *   by error_clear().
+ * no error is pending. This is set by error_raise() and cleared
+ * by error_clear().
  */
 static ErrorCode current_error = ERR_NONE;
 
@@ -55,12 +54,12 @@ static int beep_on_error = 1;
  */
 const char *error_message(ErrorCode code)
 {
-    switch (code) {
-        case ERR_WHAT:  return "WHAT?";
-        case ERR_HOW:   return "HOW?";
-        case ERR_SORRY: return "SORRY.";
-        default:        return "";
-    }
+ switch (code) {
+ case ERR_WHAT: return "WHAT?";
+ case ERR_HOW: return "HOW?";
+ case ERR_SORRY: return "SORRY.";
+ default: return "";
+ }
 }
 
 /*
@@ -75,26 +74,26 @@ const char *error_message(ErrorCode code)
  */
 void error_raise(ErrorCode code, int line_num)
 {
-    if (code == ERR_NONE) {
-        return;
-    }
+ if (code == ERR_NONE) {
+ return;
+ }
 
-    current_error = code;
+ current_error = code;
 
-    /* If ON ERROR GOTO is active, suppress the message */
-    if (suppress_output) {
-        return;
-    }
+ /* If ON ERROR GOTO is active, suppress the message */
+ if (suppress_output) {
+ return;
+ }
 
-    if (beep_on_error) {
-        printf("\a");  /* BEL - audible error beep */
-    }
+ if (beep_on_error) {
+ printf("\a"); /* BEL - audible error beep */
+ }
 
-    if (line_num > 0) {
-        printf("%s AT LINE %d\n", error_message(code), line_num);
-    } else {
-        printf("%s\n", error_message(code));
-    }
+ if (line_num > 0) {
+ printf("%s AT LINE %d\n", error_message(code), line_num);
+ } else {
+ printf("%s\n", error_message(code));
+ }
 }
 
 /*
@@ -102,7 +101,7 @@ void error_raise(ErrorCode code, int line_num)
  */
 void error_clear(void)
 {
-    current_error = ERR_NONE;
+ current_error = ERR_NONE;
 }
 
 /*
@@ -112,7 +111,7 @@ void error_clear(void)
  */
 int error_occurred(void)
 {
-    return (current_error != ERR_NONE) ? 1 : 0;
+ return (current_error != ERR_NONE) ? 1 : 0;
 }
 
 /*
@@ -120,7 +119,7 @@ int error_occurred(void)
  */
 ErrorCode error_get(void)
 {
-    return current_error;
+ return current_error;
 }
 
 /*
@@ -130,7 +129,7 @@ ErrorCode error_get(void)
  */
 void error_set_suppress(int suppress)
 {
-    suppress_output = suppress;
+ suppress_output = suppress;
 }
 
 /*
@@ -141,7 +140,7 @@ void error_set_suppress(int suppress)
  */
 void error_set_beep(int on)
 {
-    beep_on_error = on ? 1 : 0;
+ beep_on_error = on ? 1 : 0;
 }
 
 /*
@@ -149,5 +148,5 @@ void error_set_beep(int on)
  */
 int error_get_beep(void)
 {
-    return beep_on_error;
+ return beep_on_error;
 }

@@ -3,13 +3,12 @@
  * BASIC++ Interpreter - help.h
  * =====================================================================
  *
- * Help & introspection system (Phase 19).
+ * Help & introspection system.
  *
  * Provides built-in documentation so BASIC++ is self-describing.
  * The interpreter can explain its own commands, functions, and
  * system state without external documentation.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 

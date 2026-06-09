@@ -6,31 +6,30 @@
  * Error handling subsystem interface.
  *
  * PURPOSE:
- *   Provides the classic Tiny BASIC error model:
- *     WHAT?   - syntax error (malformed statement or expression)
- *     HOW?    - runtime error (illegal operation, bad line number, etc.)
- *     SORRY.  - resource error (out of memory, stack overflow)
+ * Provides the classic Tiny BASIC error model:
+ * WHAT? - syntax error (malformed statement or expression)
+ * HOW? - runtime error (illegal operation, bad line number, etc.)
+ * SORRY. - resource error (out of memory, stack overflow)
  *
- *   Errors are non-fatal: they print a message, set an error flag,
- *   and cause the current statement to abort. The REPL loop checks
- *   the flag and returns to the prompt. No longjmp, no exceptions,
- *   no stack unwinding.
+ * Errors are non-fatal: they print a message, set an error flag,
+ * and cause the current statement to abort. The REPL loop checks
+ * the flag and returns to the prompt. No longjmp, no exceptions,
+ * no stack unwinding.
  *
  * HOW IT WORKS:
- *   1. Any module calls error_raise(code, line_num) on error.
- *   2. error_raise() prints the message and sets the global flag.
- *   3. The caller checks error_occurred() and returns early.
- *   4. The REPL loop (or runtime loop) detects the error and
- *      returns to the prompt.
- *   5. error_clear() resets the flag for the next input.
+ * 1. Any module calls error_raise(code, line_num) on error.
+ * 2. error_raise() prints the message and sets the global flag.
+ * 3. The caller checks error_occurred() and returns early.
+ * 4. The REPL loop (or runtime loop) detects the error and
+ * returns to the prompt.
+ * 5. error_clear() resets the flag for the next input.
  *
  * HOW TO EXTEND:
- *   To add new error codes (e.g., for file I/O errors in future
- *   phases), add entries to the ErrorCode enum and update
- *   error_message() in errors.c. The three-message model can
- *   be extended while maintaining backward compatibility.
+ * To add new error codes (e.g., for file I/O errors in future
+ * phases), add entries to the ErrorCode enum and update
+ * error_message() in errors.c. The three-message model can
+ * be extended while maintaining backward compatibility.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -40,18 +39,18 @@
 /* =====================================================================
  * Error Codes
  * =====================================================================
- * ERR_NONE:  No error (default state).
- * ERR_WHAT:  Syntax error - unexpected token, malformed statement.
- * ERR_HOW:   Runtime error - GOTO to nonexistent line, division
- *            by zero, stack underflow, etc.
+ * ERR_NONE: No error (default state).
+ * ERR_WHAT: Syntax error - unexpected token, malformed statement.
+ * ERR_HOW: Runtime error - GOTO to nonexistent line, division
+ * by zero, stack underflow, etc.
  * ERR_SORRY: Resource error - out of memory, stack overflow,
- *            too many program lines.
+ * too many program lines.
  */
 typedef enum ErrorCode {
-    ERR_NONE = 0,
-    ERR_WHAT,
-    ERR_HOW,
-    ERR_SORRY
+ ERR_NONE = 0,
+ ERR_WHAT,
+ ERR_HOW,
+ ERR_SORRY
 } ErrorCode;
 
 /*
@@ -62,9 +61,9 @@ typedef enum ErrorCode {
  * Sets the global error flag so callers can detect and abort.
  *
  * Parameters:
- *   code     - the error category (ERR_WHAT, ERR_HOW, ERR_SORRY)
- *   line_num - the BASIC line number where the error occurred,
- *              or 0 for immediate mode errors.
+ * code - the error category (ERR_WHAT, ERR_HOW, ERR_SORRY)
+ * line_num - the BASIC line number where the error occurred,
+ * or 0 for immediate mode errors.
  */
 void error_raise(ErrorCode code, int line_num);
 

@@ -6,35 +6,34 @@
  * Function Registry System implementation.
  *
  * PURPOSE:
- *   Implements the centralized function registry. All built-in
- *   functions, dialect overrides, and module-registered functions
- *   live in this table. The parser dispatches function calls
- *   through this registry instead of using hardcoded switch/if
- *   chains.
+ * Implements the centralized function registry. All built-in
+ * functions, dialect overrides, and module-registered functions
+ * live in this table. The parser dispatches function calls
+ * through this registry instead of using hardcoded switch/if
+ * chains.
  *
  * WHY THIS EXISTS:
- *   The specification requires a formal function dispatch table
- *   that supports:
- *     1. Runtime introspection ("what functions are available?")
- *     2. Dialect overrides ("PRINT in Commodore mode")
- *     3. Module extension ("add DOUBLE() from my module")
- *     4. Safety classification ("is this function pure?")
+ * The specification requires a formal function dispatch table
+ * that supports:
+ * 1. Runtime introspection ("what functions are available?")
+ * 2. Dialect overrides ("PRINT in Commodore mode")
+ * 3. Module extension ("add DOUBLE() from my module")
+ * 4. Safety classification ("is this function pure?")
  *
  * DATA STRUCTURE:
- *   A flat static array of FunctionEntry structs. Linear scan
- *   for lookup is O(n) but n < 128, so this is negligible.
- *   The simplicity ensures:
- *     - No dynamic allocation required
- *     - Deterministic behavior on all platforms
- *     - No hash table overhead or collision handling
- *     - C89-safe without any advanced data structures
+ * A flat static array of FunctionEntry structs. Linear scan
+ * for lookup is O(n) but n < 128, so this is negligible.
+ * The simplicity ensures:
+ * - No dynamic allocation required
+ * - Deterministic behavior on all platforms
+ * - No hash table overhead or collision handling
+ * - C89-safe without any advanced data structures
  *
  * HOW TO EXTEND:
- *   External modules register functions by calling
- *   funcreg_register() with a filled FunctionEntry struct.
- *   See funcreg.h for detailed examples.
+ * External modules register functions by calling
+ * funcreg_register() with a filled FunctionEntry struct.
+ * See funcreg.h for detailed examples.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -61,8 +60,8 @@ static int reg_count = 0;
  */
 void funcreg_init(void)
 {
-    memset(registry, 0, sizeof(registry));
-    reg_count = 0;
+ memset(registry, 0, sizeof(registry));
+ reg_count = 0;
 }
 
 /* =====================================================================
@@ -72,40 +71,40 @@ void funcreg_init(void)
  * success, -1 if the table is full.
  *
  * DUPLICATE HANDLING:
- *   If a function with the same keyword already exists, the new
- *   entry replaces it. This allows dialect modules to override
- *   built-in functions by re-registering with a different handler.
- *   Only overridable functions may be replaced (enforced by the
- *   replacement check).
+ * If a function with the same keyword already exists, the new
+ * entry replaces it. This allows dialect modules to override
+ * built-in functions by re-registering with a different handler.
+ * Only overridable functions may be replaced (enforced by the
+ * replacement check).
  */
 int funcreg_register(const FunctionEntry *entry)
 {
-    int i;
+ int i;
 
-    if (entry == NULL) return -1;
+ if (entry == NULL) return -1;
 
-    /*
-     * Check for existing entry with same keyword.
-     * If found and overridable, replace it.
-     * This allows dialects to swap function behavior.
-     */
-    for (i = 0; i < reg_count; i++) {
-        if (registry[i].keyword == entry->keyword &&
-            registry[i].name != NULL) {
-            /* Replace - overridable check is done at a higher level
-             * (funcreg_override). Direct registration always succeeds
-             * for initial registration by builtins. */
-            memcpy(&registry[i], entry, sizeof(FunctionEntry));
-            return 0;
-        }
-    }
+ /*
+ * Check for existing entry with same keyword.
+ * If found and overridable, replace it.
+ * This allows dialects to swap function behavior.
+ */
+ for (i = 0; i < reg_count; i++) {
+ if (registry[i].keyword == entry->keyword &&
+ registry[i].name != NULL) {
+ /* Replace - overridable check is done at a higher level
+ * (funcreg_override). Direct registration always succeeds
+ * for initial registration by builtins. */
+ memcpy(&registry[i], entry, sizeof(FunctionEntry));
+ return 0;
+ }
+ }
 
-    /* New entry - append */
-    if (reg_count >= MAX_FUNCTIONS) return -1;
+ /* New entry - append */
+ if (reg_count >= MAX_FUNCTIONS) return -1;
 
-    memcpy(&registry[reg_count], entry, sizeof(FunctionEntry));
-    reg_count++;
-    return 0;
+ memcpy(&registry[reg_count], entry, sizeof(FunctionEntry));
+ reg_count++;
+ return 0;
 }
 
 /* =====================================================================
@@ -115,13 +114,13 @@ int funcreg_register(const FunctionEntry *entry)
  */
 const FunctionEntry *funcreg_find_by_keyword(KeywordId kw)
 {
-    int i;
-    for (i = 0; i < reg_count; i++) {
-        if (registry[i].keyword == kw && registry[i].name != NULL) {
-            return &registry[i];
-        }
-    }
-    return NULL;
+ int i;
+ for (i = 0; i < reg_count; i++) {
+ if (registry[i].keyword == kw && registry[i].name != NULL) {
+ return &registry[i];
+ }
+ }
+ return NULL;
 }
 
 /* =====================================================================
@@ -132,29 +131,29 @@ const FunctionEntry *funcreg_find_by_keyword(KeywordId kw)
  */
 const FunctionEntry *funcreg_find_by_name(const char *name)
 {
-    int i;
-    if (name == NULL) return NULL;
+ int i;
+ if (name == NULL) return NULL;
 
-    for (i = 0; i < reg_count; i++) {
-        const char *rn = registry[i].name;
-        const char *qn = name;
+ for (i = 0; i < reg_count; i++) {
+ const char *rn = registry[i].name;
+ const char *qn = name;
 
-        if (rn == NULL) continue;
+ if (rn == NULL) continue;
 
-        /* Case-insensitive string compare (C89-safe) */
-        while (*rn && *qn) {
-            if (toupper((unsigned char)*rn) !=
-                toupper((unsigned char)*qn)) {
-                break;
-            }
-            rn++;
-            qn++;
-        }
-        if (*rn == '\0' && *qn == '\0') {
-            return &registry[i];
-        }
-    }
-    return NULL;
+ /* Case-insensitive string compare (C89-safe) */
+ while (*rn && *qn) {
+ if (toupper((unsigned char)*rn) !=
+ toupper((unsigned char)*qn)) {
+ break;
+ }
+ rn++;
+ qn++;
+ }
+ if (*rn == '\0' && *qn == '\0') {
+ return &registry[i];
+ }
+ }
+ return NULL;
 }
 
 /* =====================================================================
@@ -168,19 +167,19 @@ const FunctionEntry *funcreg_find_by_name(const char *name)
  */
 int funcreg_override(KeywordId kw, FuncHandler handler)
 {
-    int i;
-    if (handler == NULL) return -1;
+ int i;
+ if (handler == NULL) return -1;
 
-    for (i = 0; i < reg_count; i++) {
-        if (registry[i].keyword == kw && registry[i].name != NULL) {
-            if (!registry[i].overridable) {
-                return -1;  /* Core function - cannot override */
-            }
-            registry[i].handler = handler;
-            return 0;
-        }
-    }
-    return -1;  /* Not found */
+ for (i = 0; i < reg_count; i++) {
+ if (registry[i].keyword == kw && registry[i].name != NULL) {
+ if (!registry[i].overridable) {
+ return -1; /* Core function - cannot override */
+ }
+ registry[i].handler = handler;
+ return 0;
+ }
+ }
+ return -1; /* Not found */
 }
 
 /* =====================================================================
@@ -188,7 +187,7 @@ int funcreg_override(KeywordId kw, FuncHandler handler)
  */
 int funcreg_count(void)
 {
-    return reg_count;
+ return reg_count;
 }
 
 /* =====================================================================
@@ -198,6 +197,6 @@ int funcreg_count(void)
  */
 const FunctionEntry *funcreg_get(int index)
 {
-    if (index < 0 || index >= reg_count) return NULL;
-    return &registry[index];
+ if (index < 0 || index >= reg_count) return NULL;
+ return &registry[index];
 }
