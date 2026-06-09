@@ -249,7 +249,7 @@ int main(void) {
     printf("%s", "HERE WE GO...");
     printf("\n");
   L350: /* Line 350 */
-    /* REM   */
+    /* REM  */
   L360: /* Line 360 */
     bpp_vars[5] = 0;
   L370: /* Line 370 */

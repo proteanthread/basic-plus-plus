@@ -517,7 +517,7 @@ int main(void) {
     if ((((double)(rand() % (int)(1))) < (((bpp_vars[18] - bpp_vars[16]) * 0.10000000000000001) + 0.20000000000000001))) { goto L1320;
  }
   L1300: /* Line 1300 */
-    printf("%s", "YOU WENT OVER THE NAXIMUM SPEED AND MADE IT!");
+    printf("%s", "YOU WENT OVER THE MAXIMUM SPEED AND MADE IT!");
     printf("\n");
   L1310: /* Line 1310 */
     { int _ra = bpp_gosub_stack[--bpp_gosub_sp];

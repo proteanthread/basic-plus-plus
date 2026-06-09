@@ -185,7 +185,7 @@ int main(void) {
     printf("%s", "MY NAME IS CREATIVE COMPUTER.");
     printf("\n");
   L20: /* Line 20 */
-    printf("%s", "WHAT'S YOUR NAME (FIRST AND LAST");
+    printf("%s", "WHAT'S YOUR NAME (FIRST AND LAST)");
     printf("? ");
     fflush(stdout);
     { char _buf[256]; int _len;

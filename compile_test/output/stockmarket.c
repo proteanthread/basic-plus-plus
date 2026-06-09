@@ -180,17 +180,17 @@ int main(void) {
   L100: /* Line 100 */
     /* REM  STOCK MARKET SIMULATION     -STOCK- */
   L101: /* Line 101 */
-    /* REM  REVISED 8/18/70 (D. PESSEL, L. BRAUN, C. LOSIK)   */
+    /* REM  REVISED 8/18/70 (D. PESSEL, L. BRAUN, C. LOSIK) */
   L102: /* Line 102 */
-    /* REM  IMP VRBLS: A-MRKT TRND SLP; B5-BRKRGE FEE; C-TTL CSH ASSTS;     */
+    /* REM  IMP VRBLS: A-MRKT TRND SLP; B5-BRKRGE FEE; C-TTL CSH ASSTS; */
   L103: /* Line 103 */
     /* REM  C5-TTL CSH ASSTS (TEMP); C(I)-CHNG IN STK VAL; D-TTL ASSTS; */
   L104: /* Line 104 */
-    /* REM  E1,E2-LRG CHNG MISC; I-STCK #; I1,I2-STCKS W LRG CHNG;  */
+    /* REM  E1,E2-LRG CHNG MISC; I-STCK #; I1,I2-STCKS W LRG CHNG; */
   L105: /* Line 105 */
     /* REM  N1,N2-LRG CHNG DAY CNTS; P5-TTL DAYS PRCHSS; P(I)-PRTFL CNTNTS; */
   L106: /* Line 106 */
-    /* REM  Q9-NEW CYCL?; S4-SGN OF A; S5-TTL DYS SLS; S(I)-VALUE/SHR;  */
+    /* REM  Q9-NEW CYCL?; S4-SGN OF A; S5-TTL DYS SLS; S(I)-VALUE/SHR; */
   L107: /* Line 107 */
     /* REM  T-TTL STCK ASSTS; T5-TTL VAL OF TRNSCTNS; */
   L108: /* Line 108 */
@@ -201,7 +201,7 @@ int main(void) {
     bpp_dim_alloc("Z", (int)(5), 0);
     bpp_dim_alloc("C", (int)(5), 0);
   L112: /* Line 112 */
-    /* REM  SLOPE OF MARKET TREND:A  (SAME FOR ALL STOCKS)  */
+    /* REM  SLOPE OF MARKET TREND:A  (SAME FOR ALL STOCKS) */
   L113: /* Line 113 */
     bpp_vars[23] = 1;
   L114: /* Line 114 */
@@ -219,7 +219,7 @@ int main(void) {
   L120: /* Line 120 */
     bpp_vars[4] = 0;
   L121: /* Line 121 */
-    /* REM  INTRODUCTION  */
+    /* REM  INTRODUCTION */
   L122: /* Line 122 */
     printf("%s", "DO YOU WANT THE INSTRUCTIONS (YES-TYPE 1, NO-TYPE 0)");
   L123: /* Line 123 */
@@ -279,9 +279,9 @@ int main(void) {
     printf("%s", "-----GOOD LUCK!-----");
     printf("\n");
   L200: /* Line 200 */
-    /* REM  GENERATION OF STOCK TABLE; INPUT REQUESTS   */
+    /* REM  GENERATION OF STOCK TABLE; INPUT REQUESTS */
   L210: /* Line 210 */
-    /* REM  INITIAL STOCK VALUES  */
+    /* REM  INITIAL STOCK VALUES */
   L220: /* Line 220 */
     *bpp_dim_ref("S", (int)(1), 0) = 100;
   L230: /* Line 230 */
@@ -304,12 +304,12 @@ int main(void) {
   L269: /* Line 269 */
     bpp_vars[0] = (-(bpp_vars[0]));
   L270: /* Line 270 */
-    /* REM  RANDOMIZE INITIAL VALUES  */
+    /* REM  RANDOMIZE INITIAL VALUES */
   L280: /* Line 280 */
     bpp_gosub_stack[bpp_gosub_sp++] = 0; goto L830;
   bpp_ret_0:;
   L285: /* Line 285 */
-    /* REM  INITIAL PORTFOLIO CONTENTS  */
+    /* REM  INITIAL PORTFOLIO CONTENTS */
   L290: /* Line 290 */
     bpp_vars[8] = 1;
   bpp_for_0:;
@@ -325,7 +325,7 @@ int main(void) {
   L330: /* Line 330 */
         printf("\n");
   L333: /* Line 333 */
-    /* REM  INITIALIZE CASH ASSETS:C  */
+    /* REM  INITIALIZE CASH ASSETS:C */
   L335: /* Line 335 */
     bpp_vars[2] = 10000;
   L338: /* Line 338 */
@@ -364,7 +364,7 @@ int main(void) {
   L360: /* Line 360 */
         printf("\n");
   L361: /* Line 361 */
-    /* REM  NYSE AVERAGE:Z5; TEMP. VALUE:Z4; NET CHANGE:Z6  */
+    /* REM  NYSE AVERAGE:Z5; TEMP. VALUE:Z4; NET CHANGE:Z6 */
   L363: /* Line 363 */
     bpp_vars[25] = bpp_vars[25];
   L364: /* Line 364 */
@@ -386,7 +386,7 @@ int main(void) {
   L392: /* Line 392 */
     bpp_vars[25] = (floor((((bpp_vars[25] - bpp_vars[25]) * 100) + 0.5)) / 100);
   L393: /* Line 393 */
-    /* REM  TOTAL ASSETS:D  */
+    /* REM  TOTAL ASSETS:D */
   L394: /* Line 394 */
     bpp_vars[3] = (bpp_vars[19] + bpp_vars[2]);
   L395: /* Line 395 */
@@ -432,7 +432,7 @@ int main(void) {
     if ((bpp_vars[16] < 1)) { goto L998;
  }
   L416: /* Line 416 */
-    /* REM  INPUT TRANSACTIONS  */
+    /* REM  INPUT TRANSACTIONS */
   L420: /* Line 420 */
     printf("%s", "WHAT IS YOUR TRANSACTION IN");
     printf("\n");
@@ -512,31 +512,32 @@ int main(void) {
     bpp_vars[8] += 1;
     if (bpp_vars[8] <= 5) goto bpp_for_2;
   L622: /* Line 622 */
-    /* REM  TOTAL VALUE OF TRANSACTIONS:T5  */
+    /* REM  TOTAL VALUE OF TRANSACTIONS:T5 */
   L625: /* Line 625 */
     bpp_vars[19] = (bpp_vars[15] + bpp_vars[18]);
   L630: /* Line 630 */
-    /* REM  BROKERAGE FEE:B5  */
+    /* REM  BROKERAGE FEE:B5 */
   L640: /* Line 640 */
     bpp_vars[1] = (floor((((0.01 * bpp_vars[19]) * 100) + 0.5)) / 100);
   L650: /* Line 650 */
     /* REM  CASH ASSETS=OLD CASH ASSETS-TOTAL PURCHASES */
   L652: /* Line 652 */
-    /* REM  -BROKERAGE FEES+TOTAL SALES:C5  */
+    /* REM  -BROKERAGE FEES+TOTAL SALES:C5 */
   L654: /* Line 654 */
     bpp_vars[2] = (((bpp_vars[2] - bpp_vars[15]) - bpp_vars[1]) + bpp_vars[18]);
   L656: /* Line 656 */
     if ((bpp_vars[2] >= 0)) { goto L674;
  }
   L658: /* Line 658 */
-    { double _v = ("YOU HAVE USED $" - bpp_vars[2]); if (_v == (double)(long)_v) printf("%*ld", bpp_print_width, (long)_v); else printf("%g", _v); }
+    printf("%s", "YOU HAVE USED $");
+    { double _v = (-(bpp_vars[2])); if (_v == (double)(long)_v) printf("%*ld", bpp_print_width, (long)_v); else printf("%g", _v); }
     printf("\n");
   L660: /* Line 660 */
     goto L420;
   L674: /* Line 674 */
     bpp_vars[2] = bpp_vars[2];
   L675: /* Line 675 */
-    /* REM  CALCULATE NEW PORTFOLIO   */
+    /* REM  CALCULATE NEW PORTFOLIO */
   L680: /* Line 680 */
     bpp_vars[8] = 1;
   bpp_for_3:;
@@ -546,14 +547,14 @@ int main(void) {
     bpp_vars[8] += 1;
     if (bpp_vars[8] <= 5) goto bpp_for_3;
   L710: /* Line 710 */
-    /* REM  CALCULATE NEW STOCK VALUES  */
+    /* REM  CALCULATE NEW STOCK VALUES */
   L720: /* Line 720 */
     bpp_gosub_stack[bpp_gosub_sp++] = 1; goto L830;
   bpp_ret_1:;
   L750: /* Line 750 */
     /* REM  PRINT PORTFOLIO */
   L751: /* Line 751 */
-    /* REM  BELL RINGING-DIFFERENT ON MANY COMPUTERS  */
+    /* REM  BELL RINGING-DIFFERENT ON MANY COMPUTERS */
   L755: /* Line 755 */
         printf("\n");
   L756: /* Line 756 */
@@ -621,15 +622,15 @@ int main(void) {
   L830: /* Line 830 */
     /* REM  RANDOMLY PRODUCE NEW STOCK VALUES BASED ON PREVIOUS */
   L831: /* Line 831 */
-    /* REM  DAY'S VALUES  */
+    /* REM  DAY'S VALUES */
   L832: /* Line 832 */
     /* REM  N1,N2 ARE RANDOM NUMBERS OF DAYS WHICH RESPECTIVELY */
   L833: /* Line 833 */
     /* REM  DETERMINE WHEN STOCK I1 WILL INCREASE 10 PTS. AND STOCK */
   L834: /* Line 834 */
-    /* REM  I2 WILL DECREASE 10 PTS.  */
+    /* REM  I2 WILL DECREASE 10 PTS. */
   L840: /* Line 840 */
-    /* REM  IF N1 DAYS HAVE PASSED, PICK AN I1, SET E1, DETERMINE NEW N1  */
+    /* REM  IF N1 DAYS HAVE PASSED, PICK AN I1, SET E1, DETERMINE NEW N1 */
   L841: /* Line 841 */
     if ((bpp_vars[13] > 0)) { goto L850;
  }
@@ -640,7 +641,7 @@ int main(void) {
   L847: /* Line 847 */
     bpp_vars[4] = 1;
   L850: /* Line 850 */
-    /* REM  IF N2 DAYS HAVE PASSED, PICK AN I2, SET E2, DETERMINE NEW N2  */
+    /* REM  IF N2 DAYS HAVE PASSED, PICK AN I2, SET E2, DETERMINE NEW N2 */
   L851: /* Line 851 */
     if ((bpp_vars[13] > 0)) { goto L860;
  }
@@ -697,7 +698,7 @@ int main(void) {
     if ((floor((bpp_vars[8] + 0.5)) != floor((bpp_vars[8] + 0.5)))) { goto L945;
  }
   L938: /* Line 938 */
-    /* REM  ADD 10 PTS. TO THIS STOCK;  RESET E1  */
+    /* REM  ADD 10 PTS. TO THIS STOCK;  RESET E1 */
   L939: /* Line 939 */
     bpp_vars[22] = 10;
   L943: /* Line 943 */
@@ -737,7 +738,7 @@ int main(void) {
     bpp_vars[8] += 1;
     if (bpp_vars[8] <= 5) goto bpp_for_4;
   L972: /* Line 972 */
-    /* REM  AFTER T8 DAYS RANDOMLY CHANGE TREND SIGN AND SLOPE  */
+    /* REM  AFTER T8 DAYS RANDOMLY CHANGE TREND SIGN AND SLOPE */
   L973: /* Line 973 */
     bpp_vars[19] = (bpp_vars[19] - 1);
   L974: /* Line 974 */
@@ -751,7 +752,7 @@ int main(void) {
         default: goto bpp_end;
       } }
   L985: /* Line 985 */
-    /* REM  RANDOMLY CHANGE TREND SIGN AND SLOPE (A), AND DURATION  */
+    /* REM  RANDOMLY CHANGE TREND SIGN AND SLOPE (A), AND DURATION */
   L986: /* Line 986 */
     /* REM  OF TREND (T8) */
   L990: /* Line 990 */
