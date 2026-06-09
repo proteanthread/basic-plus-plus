@@ -6,24 +6,23 @@
  * Detokenizer module interface.
  *
  * PURPOSE:
- *   Converts tokens back into human-readable text. This is a
- *   standalone diagnostic module used for:
+ * Converts tokens back into human-readable text. This is a
+ * standalone diagnostic module used for:
  *
- *   1. Debugging - display the token stream from any line.
- *   2. Future compiler support - reconstruct source from tokens.
- *   3. Validation - verify that tokenization is reversible.
+ * 1. Debugging - display the token stream from any line.
+ * 2. Future compiler support - reconstruct source from tokens.
+ * 3. Validation - verify that tokenization is reversible.
  *
- *   In Phase 1, since programs are stored as plain text (not
- *   tokenized), the detokenizer is primarily a debugging tool.
- *   It becomes essential in future phases if tokenized storage
- *   or binary program formats are introduced.
+ * since programs are stored as plain text (not
+ * tokenized), the detokenizer is primarily a debugging tool.
+ * It becomes essential in future phases if tokenized storage
+ * or binary program formats are introduced.
  *
  * HOW TO EXTEND:
- *   As new token types are added (e.g., for new operators or
- *   keywords), update detok_token_to_string() in detok.c to
- *   handle them.
+ * As new token types are added (e.g., for new operators or
+ * keywords), update detok_token_to_string() in detok.c to
+ * handle them.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -42,9 +41,9 @@
  * terminator), or -1 if the buffer is too small.
  *
  * Parameters:
- *   tok     - pointer to the token to convert
- *   buf     - output buffer
- *   bufsize - size of the output buffer
+ * tok - pointer to the token to convert
+ * buf - output buffer
+ * bufsize - size of the output buffer
  */
 int detok_token_to_string(const Token *tok, char *buf, int bufsize);
 
@@ -56,7 +55,7 @@ int detok_token_to_string(const Token *tok, char *buf, int bufsize);
  * debugging the lexer.
  *
  * Parameters:
- *   source - null-terminated source line
+ * source - null-terminated source line
  */
 void detok_dump_line(const char *source);
 

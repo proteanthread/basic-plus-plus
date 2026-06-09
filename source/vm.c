@@ -3,20 +3,19 @@
  * BASIC++ Interpreter - vm.c
  * =====================================================================
  *
- * Virtual Machine formalization layer (Phase 12).
+ * Virtual Machine formalization layer.
  *
  * IMPLEMENTATION:
- *   - Static dispatch table maps KeywordId -> VMOpcode
- *   - Opcode name table for trace/debug output
- *   - State machine get/set with VMState enum
- *   - Expression evaluation stack (bounded, checked)
- *   - Control flow primitives (jump, call, return, halt, stop)
+ * - Static dispatch table maps KeywordId -> VMOpcode
+ * - Opcode name table for trace/debug output
+ * - State machine get/set with VMState enum
+ * - Expression evaluation stack (bounded, checked)
+ * - Control flow primitives (jump, call, return, halt, stop)
  *
  * The dispatch table is built once at boot by vm_init() and
  * remains constant during execution. Handler registration
  * is through the static table below.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -32,33 +31,33 @@
  * Index matches VMOpcode enum values.
  */
 static const char *opcode_names[OP_COUNT] = {
-    "NOP",
-    "PRINT",   "LET",      "INPUT",
-    "GOTO",    "GOSUB",    "RETURN",   "IF",
-    "FOR",     "NEXT",     "WHILE",    "WEND",
-    "DO",      "LOOP",     "END",      "STOP",
-    "REM",     "DATA",     "READ",     "RESTORE",
-    "DIM",     "DEF",      "ON",
-    "TRON",    "TROFF",    "CLS",
-    "LIST",    "RUN",      "NEW",
-    "SAVE",    "LOAD",     "COMPILE",
-    "MAT",     "OPEN",     "CLOSE",
-    "CHAIN",   "MERGE",    "DIALECT",
-    "BSAVE",   "BLOAD",
-    "MODULE",
-    "SECURITY",
-    "SYSTEM",
-    "BREAK",   "CONT",
-    "VARS",
-    "ASSERT",  "TEST",
-    "ENDTEST", "SELFTEST",
-    "HELP",    "INFO",
-    "CATALOG",
-    "RENUM",   "DELETE",
-    "VER",
-    "BYE",
-    "ASSIGN",
-    "UNKNOWN"
+ "NOP",
+ "PRINT", "LET", "INPUT",
+ "GOTO", "GOSUB", "RETURN", "IF",
+ "FOR", "NEXT", "WHILE", "WEND",
+ "DO", "LOOP", "END", "STOP",
+ "REM", "DATA", "READ", "RESTORE",
+ "DIM", "DEF", "ON",
+ "TRON", "TROFF", "CLS",
+ "LIST", "RUN", "NEW",
+ "SAVE", "LOAD", "COMPILE",
+ "MAT", "OPEN", "CLOSE",
+ "CHAIN", "MERGE", "DIALECT",
+ "BSAVE", "BLOAD",
+ "MODULE",
+ "SECURITY",
+ "SYSTEM",
+ "BREAK", "CONT",
+ "VARS",
+ "ASSERT", "TEST",
+ "ENDTEST", "SELFTEST",
+ "HELP", "INFO",
+ "CATALOG",
+ "RENUM", "DELETE",
+ "VER",
+ "BYE",
+ "ASSIGN",
+ "UNKNOWN"
 };
 
 /* =====================================================================
@@ -69,79 +68,79 @@ static const char *opcode_names[OP_COUNT] = {
  * (they are sub-keywords like AS, ERROR, THEN, STEP, TO).
  */
 typedef struct KeywordOpcodeMap {
-    KeywordId keyword;
-    VMOpcode  opcode;
+ KeywordId keyword;
+ VMOpcode opcode;
 } KeywordOpcodeMap;
 
 static const KeywordOpcodeMap kw_opcode_map[] = {
-    { KW_PRINT,    OP_PRINT   },
-    { KW_LET,      OP_LET     },
-    { KW_INPUT,    OP_INPUT   },
-    { KW_GOTO,     OP_GOTO    },
-    { KW_GOSUB,    OP_GOSUB   },
-    { KW_RETURN,   OP_RETURN  },
-    { KW_IF,       OP_IF      },
-    { KW_FOR,      OP_FOR     },
-    { KW_NEXT,     OP_NEXT    },
-    { KW_WHILE,    OP_WHILE   },
-    { KW_WEND,     OP_WEND    },
-    { KW_DO,       OP_DO      },
-    { KW_LOOP,     OP_LOOP    },
-    { KW_END,      OP_END     },
-    { KW_STOP,     OP_STOP    },
-    { KW_REM,      OP_REM     },
-    { KW_DATA,     OP_DATA    },
-    { KW_READ,     OP_READ    },
-    { KW_RESTORE,  OP_RESTORE },
-    { KW_DIM,      OP_DIM     },
-    { KW_DEF,      OP_DEF     },
-    { KW_ON,       OP_ON      },
-    { KW_TRON,     OP_TRON    },
-    { KW_TROFF,    OP_TROFF   },
-    { KW_CLS,      OP_CLS     },
-    { KW_LIST,     OP_LIST    },
-    { KW_RUN,      OP_RUN     },
-    { KW_NEW,      OP_NEW     },
-    { KW_SAVE,     OP_SAVE    },
-    { KW_LOAD,     OP_LOAD    },
-    { KW_COMPILE,  OP_COMPILE },
-    { KW_MAT,      OP_MAT     },
-    { KW_OPEN,     OP_OPEN    },
-    { KW_CLOSE,    OP_CLOSE   },
-    { KW_CHAIN,    OP_CHAIN   },
-    { KW_MERGE,    OP_MERGE   },
-    { KW_DIALECT,  OP_DIALECT },
-    /* Phase 13 */
-    { KW_BSAVE,   OP_BSAVE   },
-    { KW_BLOAD,   OP_BLOAD   },
-    /* Phase 14 */
-    { KW_MODULE,  OP_MODULE  },
-    /* Phase 15 */
-    { KW_SECURITY, OP_SECURITY },
-    /* Phase 16 */
-    { KW_SYSTEM,   OP_SYSTEM   },
-    /* Phase 17 */
-    { KW_BREAK,    OP_BREAK    },
-    { KW_CONT,     OP_CONT     },
-    { KW_VARS,     OP_VARS     },
-    /* Phase 18 */
-    { KW_ASSERT,   OP_ASSERT   },
-    { KW_TEST,     OP_TEST     },
-    { KW_ENDTEST,  OP_ENDTEST  },
-    { KW_SELFTEST, OP_SELFTEST },
-    /* Phase 19 */
-    { KW_HELP,     OP_HELP     },
-    { KW_INFO,     OP_INFO     },
-    { KW_CATALOG,  OP_CATALOG  },
-    /* Phase 20 */
-    { KW_RENUM,    OP_RENUM    },
-    { KW_DELETE,   OP_DELETE   },
-    { KW_VER,      OP_VER      },
-    { KW_BYE,      OP_BYE      }
+ { KW_PRINT, OP_PRINT },
+ { KW_LET, OP_LET },
+ { KW_INPUT, OP_INPUT },
+ { KW_GOTO, OP_GOTO },
+ { KW_GOSUB, OP_GOSUB },
+ { KW_RETURN, OP_RETURN },
+ { KW_IF, OP_IF },
+ { KW_FOR, OP_FOR },
+ { KW_NEXT, OP_NEXT },
+ { KW_WHILE, OP_WHILE },
+ { KW_WEND, OP_WEND },
+ { KW_DO, OP_DO },
+ { KW_LOOP, OP_LOOP },
+ { KW_END, OP_END },
+ { KW_STOP, OP_STOP },
+ { KW_REM, OP_REM },
+ { KW_DATA, OP_DATA },
+ { KW_READ, OP_READ },
+ { KW_RESTORE, OP_RESTORE },
+ { KW_DIM, OP_DIM },
+ { KW_DEF, OP_DEF },
+ { KW_ON, OP_ON },
+ { KW_TRON, OP_TRON },
+ { KW_TROFF, OP_TROFF },
+ { KW_CLS, OP_CLS },
+ { KW_LIST, OP_LIST },
+ { KW_RUN, OP_RUN },
+ { KW_NEW, OP_NEW },
+ { KW_SAVE, OP_SAVE },
+ { KW_LOAD, OP_LOAD },
+ { KW_COMPILE, OP_COMPILE },
+ { KW_MAT, OP_MAT },
+ { KW_OPEN, OP_OPEN },
+ { KW_CLOSE, OP_CLOSE },
+ { KW_CHAIN, OP_CHAIN },
+ { KW_MERGE, OP_MERGE },
+ { KW_DIALECT, OP_DIALECT },
+ 
+ { KW_BSAVE, OP_BSAVE },
+ { KW_BLOAD, OP_BLOAD },
+ 
+ { KW_MODULE, OP_MODULE },
+ 
+ { KW_SECURITY, OP_SECURITY },
+ 
+ { KW_SYSTEM, OP_SYSTEM },
+ 
+ { KW_BREAK, OP_BREAK },
+ { KW_CONT, OP_CONT },
+ { KW_VARS, OP_VARS },
+ 
+ { KW_ASSERT, OP_ASSERT },
+ { KW_TEST, OP_TEST },
+ { KW_ENDTEST, OP_ENDTEST },
+ { KW_SELFTEST, OP_SELFTEST },
+ 
+ { KW_HELP, OP_HELP },
+ { KW_INFO, OP_INFO },
+ { KW_CATALOG, OP_CATALOG },
+ 
+ { KW_RENUM, OP_RENUM },
+ { KW_DELETE, OP_DELETE },
+ { KW_VER, OP_VER },
+ { KW_BYE, OP_BYE }
 };
 
 #define KW_OPCODE_MAP_SIZE \
-    (int)(sizeof(kw_opcode_map) / sizeof(kw_opcode_map[0]))
+ (int)(sizeof(kw_opcode_map) / sizeof(kw_opcode_map[0]))
 
 /* =====================================================================
  * Fast Lookup Table: KeywordId -> VMOpcode
@@ -157,20 +156,20 @@ static int vm_initialized = 0;
  */
 void vm_init(void)
 {
-    int i;
+ int i;
 
-    /* Initialize all keywords to OP_UNKNOWN */
-    for (i = 0; i < KW_COUNT; i++) {
-        kw_to_opcode[i] = OP_UNKNOWN;
-    }
+ /* Initialize all keywords to OP_UNKNOWN */
+ for (i = 0; i < KW_COUNT; i++) {
+ kw_to_opcode[i] = OP_UNKNOWN;
+ }
 
-    /* Populate from the mapping table */
-    for (i = 0; i < KW_OPCODE_MAP_SIZE; i++) {
-        kw_to_opcode[kw_opcode_map[i].keyword] =
-            kw_opcode_map[i].opcode;
-    }
+ /* Populate from the mapping table */
+ for (i = 0; i < KW_OPCODE_MAP_SIZE; i++) {
+ kw_to_opcode[kw_opcode_map[i].keyword] =
+ kw_opcode_map[i].opcode;
+ }
 
-    vm_initialized = 1;
+ vm_initialized = 1;
 }
 
 /* =====================================================================
@@ -179,23 +178,23 @@ void vm_init(void)
  */
 VMOpcode vm_resolve_opcode(KeywordId kw)
 {
-    if (kw < 0 || kw >= KW_COUNT) {
-        return OP_UNKNOWN;
-    }
-    return kw_to_opcode[kw];
+ if (kw < 0 || kw >= KW_COUNT) {
+ return OP_UNKNOWN;
+ }
+ return kw_to_opcode[kw];
 }
 
 /* =====================================================================
  * vm_get_handler - Get handler for an opcode.
  * =====================================================================
- * Phase 12 infrastructure: returns NULL. Handlers are currently
+ * infrastructure: returns NULL. Handlers are currently
  * dispatched through parser.c's switch. Future phases will register
  * handlers here for full table-driven dispatch.
  */
 VMHandler vm_get_handler(VMOpcode op)
 {
-    (void)op;
-    return NULL;  /* handlers live in parser.c switch for now */
+ (void)op;
+ return NULL; /* handlers live in parser.c switch for now */
 }
 
 /* =====================================================================
@@ -204,28 +203,28 @@ VMHandler vm_get_handler(VMOpcode op)
  */
 const char *vm_opcode_name(VMOpcode op)
 {
-    if (op < 0 || op >= OP_COUNT) {
-        return "UNKNOWN";
-    }
-    return opcode_names[op];
+ if (op < 0 || op >= OP_COUNT) {
+ return "UNKNOWN";
+ }
+ return opcode_names[op];
 }
 
 /* =====================================================================
  * vm_dispatch - Resolve keyword and return opcode.
  * =====================================================================
- * Phase 12: resolves the opcode for logging/tracing. Actual handler
+ * resolves the opcode for logging/tracing. Actual handler
  * dispatch is still done by parser.c's switch statement.
  */
 VMOpcode vm_dispatch(KeywordId kw, Lexer *lex, void *rt, int line_num)
 {
-    VMOpcode op = vm_resolve_opcode(kw);
-    VMHandler handler = vm_get_handler(op);
+ VMOpcode op = vm_resolve_opcode(kw);
+ VMHandler handler = vm_get_handler(op);
 
-    if (handler != NULL) {
-        handler(lex, rt, line_num);
-    }
-    /* If no handler registered, caller falls through to parser */
-    return op;
+ if (handler != NULL) {
+ handler(lex, rt, line_num);
+ }
+ /* If no handler registered, caller falls through to parser */
+ return op;
 }
 
 /* =====================================================================
@@ -235,39 +234,39 @@ VMOpcode vm_dispatch(KeywordId kw, Lexer *lex, void *rt, int line_num)
 
 void vm_set_state(void *rt_ptr, VMState state)
 {
-    RuntimeState *rt = (RuntimeState *)rt_ptr;
-    rt->vm_state = state;
+ RuntimeState *rt = (RuntimeState *)rt_ptr;
+ rt->vm_state = state;
 
-    /* Keep legacy flags in sync for backward compatibility */
-    switch (state) {
-        case VM_RUNNING:
-            rt->running = 1;
-            rt->stopped = 0;
-            break;
-        case VM_PAUSED:
-            rt->running = 0;
-            rt->stopped = 1;
-            break;
-        case VM_HALTED:
-            rt->running = 0;
-            rt->stopped = 1;
-            break;
-        case VM_ERROR:
-            rt->running = 0;
-            rt->stopped = 0;
-            break;
-        case VM_STOPPED:
-        default:
-            rt->running = 0;
-            rt->stopped = 0;
-            break;
-    }
+ /* Keep legacy flags in sync for backward compatibility */
+ switch (state) {
+ case VM_RUNNING:
+ rt->running = 1;
+ rt->stopped = 0;
+ break;
+ case VM_PAUSED:
+ rt->running = 0;
+ rt->stopped = 1;
+ break;
+ case VM_HALTED:
+ rt->running = 0;
+ rt->stopped = 1;
+ break;
+ case VM_ERROR:
+ rt->running = 0;
+ rt->stopped = 0;
+ break;
+ case VM_STOPPED:
+ default:
+ rt->running = 0;
+ rt->stopped = 0;
+ break;
+ }
 }
 
 VMState vm_get_state(void *rt_ptr)
 {
-    RuntimeState *rt = (RuntimeState *)rt_ptr;
-    return rt->vm_state;
+ RuntimeState *rt = (RuntimeState *)rt_ptr;
+ return rt->vm_state;
 }
 
 /* =====================================================================
@@ -277,40 +276,40 @@ VMState vm_get_state(void *rt_ptr)
 
 void vm_eval_init(VMEvalStack *stk)
 {
-    stk->top = -1;
+ stk->top = -1;
 }
 
 int vm_eval_push(VMEvalStack *stk, BValue val)
 {
-    if (stk->top >= VM_EVAL_STACK_SIZE - 1) {
-        error_raise(ERR_SORRY, 0);
-        return -1;
-    }
-    stk->items[++stk->top] = val;
-    return 0;
+ if (stk->top >= VM_EVAL_STACK_SIZE - 1) {
+ error_raise(ERR_SORRY, 0);
+ return -1;
+ }
+ stk->items[++stk->top] = val;
+ return 0;
 }
 
 BValue vm_eval_pop(VMEvalStack *stk)
 {
-    if (stk->top < 0) {
-        error_raise(ERR_HOW, 0);
-        return bval_int(0);
-    }
-    return stk->items[stk->top--];
+ if (stk->top < 0) {
+ error_raise(ERR_HOW, 0);
+ return bval_int(0);
+ }
+ return stk->items[stk->top--];
 }
 
 BValue vm_eval_peek(VMEvalStack *stk)
 {
-    if (stk->top < 0) {
-        error_raise(ERR_HOW, 0);
-        return bval_int(0);
-    }
-    return stk->items[stk->top];
+ if (stk->top < 0) {
+ error_raise(ERR_HOW, 0);
+ return bval_int(0);
+ }
+ return stk->items[stk->top];
 }
 
 int vm_eval_depth(VMEvalStack *stk)
 {
-    return stk->top + 1;
+ return stk->top + 1;
 }
 
 /* =====================================================================
@@ -328,18 +327,18 @@ int vm_eval_depth(VMEvalStack *stk)
  */
 void vm_jump(void *rt_ptr, int target_line, int line_num)
 {
-    RuntimeState *rt = (RuntimeState *)rt_ptr;
-    int i;
+ RuntimeState *rt = (RuntimeState *)rt_ptr;
+ int i;
 
-    for (i = 0; i < rt->program->count; i++) {
-        if (rt->program->lines[i].line_number == target_line) {
-            rt->next_index = i;
-            return;
-        }
-    }
+ for (i = 0; i < rt->program->count; i++) {
+ if (rt->program->lines[i].line_number == target_line) {
+ rt->next_index = i;
+ return;
+ }
+ }
 
-    /* Line not found */
-    error_raise(ERR_HOW, line_num);
+ /* Line not found */
+ error_raise(ERR_HOW, line_num);
 }
 
 /*
@@ -350,17 +349,17 @@ void vm_jump(void *rt_ptr, int target_line, int line_num)
  */
 void vm_call(void *rt_ptr, int target_line, int line_num)
 {
-    RuntimeState *rt = (RuntimeState *)rt_ptr;
-    StackFrame frame;
+ RuntimeState *rt = (RuntimeState *)rt_ptr;
+ StackFrame frame;
 
-    frame.type = FRAME_GOSUB;
-    frame.data.gosub.return_index = rt->current_index + 1;
+ frame.type = FRAME_GOSUB;
+ frame.data.gosub.return_index = rt->current_index + 1;
 
-    if (runtime_push(rt, &frame) != 0) {
-        return;  /* stack full - runtime_push raised ERR_SORRY */
-    }
+ if (runtime_push(rt, &frame) != 0) {
+ return; /* stack full - runtime_push raised ERR_SORRY */
+ }
 
-    vm_jump(rt_ptr, target_line, line_num);
+ vm_jump(rt_ptr, target_line, line_num);
 }
 
 /*
@@ -371,16 +370,16 @@ void vm_call(void *rt_ptr, int target_line, int line_num)
  */
 void vm_return_sub(void *rt_ptr, int line_num)
 {
-    RuntimeState *rt = (RuntimeState *)rt_ptr;
-    StackFrame frame;
+ RuntimeState *rt = (RuntimeState *)rt_ptr;
+ StackFrame frame;
 
-    if (runtime_pop(rt, FRAME_GOSUB, &frame) != 0) {
-        /* runtime_pop already raised ERR_HOW */
-        (void)line_num;
-        return;
-    }
+ if (runtime_pop(rt, FRAME_GOSUB, &frame) != 0) {
+ /* runtime_pop already raised ERR_HOW */
+ (void)line_num;
+ return;
+ }
 
-    rt->next_index = frame.data.gosub.return_index;
+ rt->next_index = frame.data.gosub.return_index;
 }
 
 /*
@@ -388,7 +387,7 @@ void vm_return_sub(void *rt_ptr, int line_num)
  */
 void vm_halt(void *rt_ptr)
 {
-    vm_set_state(rt_ptr, VM_HALTED);
+ vm_set_state(rt_ptr, VM_HALTED);
 }
 
 /*
@@ -396,5 +395,5 @@ void vm_halt(void *rt_ptr)
  */
 void vm_stop(void *rt_ptr)
 {
-    vm_set_state(rt_ptr, VM_PAUSED);
+ vm_set_state(rt_ptr, VM_PAUSED);
 }

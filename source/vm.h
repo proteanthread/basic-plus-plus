@@ -3,41 +3,40 @@
  * BASIC++ Interpreter - vm.h
  * =====================================================================
  *
- * Virtual Machine formalization layer (Phase 12).
+ * Virtual Machine formalization layer.
  *
  * PURPOSE:
- *   Formalizes the interpreter's execution engine into a proper
- *   virtual machine with:
- *     1. Execution state machine (VMState)
- *     2. Instruction opcode enumeration (VMOpcode)
- *     3. Dispatch table (keyword -> handler mapping)
- *     4. Expression evaluation stack (VMEvalStack)
- *     5. Control flow primitives (jump, call, return, halt, stop)
+ * Formalizes the interpreter's execution engine into a proper
+ * virtual machine with:
+ * 1. Execution state machine (VMState)
+ * 2. Instruction opcode enumeration (VMOpcode)
+ * 3. Dispatch table (keyword -> handler mapping)
+ * 4. Expression evaluation stack (VMEvalStack)
+ * 5. Control flow primitives (jump, call, return, halt, stop)
  *
  * WHY THIS EXISTS:
- *   Before Phase 12, execution was ad-hoc:
- *     - exec.c had a raw while-loop checking rt->running
- *     - Statement dispatch was a giant switch in parser.c
- *     - Flow control was scattered across parser.c and exec.c
- *     - No formal execution states - just boolean flags
+ * Before , execution was ad-hoc:
+ * - exec.c had a raw while-loop checking rt->running
+ * - Statement dispatch was a giant switch in parser.c
+ * - Flow control was scattered across parser.c and exec.c
+ * - No formal execution states - just boolean flags
  *
- *   This formalization provides the foundation for:
- *     - Phase 13: Bytecode format (.BPP)
- *     - Phase 14: Module system (sandboxed dispatch)
- *     - Phase 15: Security (capability-gated handlers)
- *     - Phase 16: Cross-platform backends
+ * This formalization provides the foundation for:
+ * - Bytecode format (.BPP)
+ * - Module system (sandboxed dispatch)
+ * - Security (capability-gated handlers)
+ * - Cross-platform backends
  *
  * DISPATCH MODEL:
- *   At boot, vm_init() builds a static dispatch table mapping each
- *   KeywordId to a VMOpcode and handler function pointer. During
- *   execution, the VM resolves the first keyword on each line to
- *   an opcode, then calls the registered handler.
+ * At boot, vm_init() builds a static dispatch table mapping each
+ * KeywordId to a VMOpcode and handler function pointer. During
+ * execution, the VM resolves the first keyword on each line to
+ * an opcode, then calls the registered handler.
  *
- *   Handler signature: void handler(Lexer*, RuntimeState*, int)
- *   This matches the existing parse_xxx() functions exactly,
- *   so migration is zero-cost.
+ * Handler signature: void handler(Lexer*, RuntimeState*, int)
+ * This matches the existing parse_xxx() functions exactly,
+ * so migration is zero-cost.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -58,20 +57,20 @@ struct RuntimeState_tag;
  * rt->running (int) and rt->stopped (int) with a single enum.
  *
  * State transitions:
- *   VM_STOPPED -> VM_RUNNING  (RUN command)
- *   VM_RUNNING -> VM_PAUSED   (STOP statement)
- *   VM_RUNNING -> VM_HALTED   (END statement)
- *   VM_RUNNING -> VM_ERROR    (runtime error)
- *   VM_PAUSED  -> VM_RUNNING  (CONT - future)
- *   VM_ERROR   -> VM_STOPPED  (error handled, back to REPL)
- *   VM_HALTED  -> VM_STOPPED  (program finished)
+ * VM_STOPPED -> VM_RUNNING (RUN command)
+ * VM_RUNNING -> VM_PAUSED (STOP statement)
+ * VM_RUNNING -> VM_HALTED (END statement)
+ * VM_RUNNING -> VM_ERROR (runtime error)
+ * VM_PAUSED -> VM_RUNNING (CONT - future)
+ * VM_ERROR -> VM_STOPPED (error handled, back to REPL)
+ * VM_HALTED -> VM_STOPPED (program finished)
  */
 typedef enum VMState {
-    VM_STOPPED = 0,  /* not running - idle at REPL */
-    VM_RUNNING,      /* normal execution in progress */
-    VM_PAUSED,       /* STOP encountered (resumable) */
-    VM_ERROR,        /* error state */
-    VM_HALTED        /* END encountered (terminal) */
+ VM_STOPPED = 0, /* not running - idle at REPL */
+ VM_RUNNING, /* normal execution in progress */
+ VM_PAUSED, /* STOP encountered (resumable) */
+ VM_ERROR, /* error state */
+ VM_HALTED /* END encountered (terminal) */
 } VMState;
 
 /* =====================================================================
@@ -85,34 +84,34 @@ typedef enum VMState {
  * OP_UNKNOWN is the fallback for unrecognized tokens.
  */
 typedef enum VMOpcode {
-    OP_NOP = 0,
-    OP_PRINT,    OP_LET,      OP_INPUT,
-    OP_GOTO,     OP_GOSUB,    OP_RETURN,   OP_IF,
-    OP_FOR,      OP_NEXT,     OP_WHILE,    OP_WEND,
-    OP_DO,       OP_LOOP,     OP_END,      OP_STOP,
-    OP_REM,      OP_DATA,     OP_READ,     OP_RESTORE,
-    OP_DIM,      OP_DEF,      OP_ON,
-    OP_TRON,     OP_TROFF,    OP_CLS,
-    OP_LIST,     OP_RUN,      OP_NEW,
-    OP_SAVE,     OP_LOAD,     OP_COMPILE,
-    OP_MAT,      OP_OPEN,     OP_CLOSE,
-    OP_CHAIN,    OP_MERGE,    OP_DIALECT,
-    OP_BSAVE,    OP_BLOAD,    /* Phase 13 bytecode */
-    OP_MODULE,                 /* Phase 14 module system */
-    OP_SECURITY,               /* Phase 15 security */
-    OP_SYSTEM,                 /* Phase 16 cross-platform */
-    OP_BREAK,    OP_CONT,      /* Phase 17 debugger */
-    OP_VARS,
-    OP_ASSERT,   OP_TEST,      /* Phase 18 test framework */
-    OP_ENDTEST,  OP_SELFTEST,
-    OP_HELP,     OP_INFO,      /* Phase 19 introspection */
-    OP_CATALOG,
-    OP_RENUM,    OP_DELETE,     /* Phase 20 final polish */
-    OP_VER,
-    OP_BYE,      /* exit interpreter */
-    OP_ASSIGN,   /* bare variable assignment */
-    OP_UNKNOWN,  /* unrecognized - fallback */
-    OP_COUNT     /* sentinel - must be last */
+ OP_NOP = 0,
+ OP_PRINT, OP_LET, OP_INPUT,
+ OP_GOTO, OP_GOSUB, OP_RETURN, OP_IF,
+ OP_FOR, OP_NEXT, OP_WHILE, OP_WEND,
+ OP_DO, OP_LOOP, OP_END, OP_STOP,
+ OP_REM, OP_DATA, OP_READ, OP_RESTORE,
+ OP_DIM, OP_DEF, OP_ON,
+ OP_TRON, OP_TROFF, OP_CLS,
+ OP_LIST, OP_RUN, OP_NEW,
+ OP_SAVE, OP_LOAD, OP_COMPILE,
+ OP_MAT, OP_OPEN, OP_CLOSE,
+ OP_CHAIN, OP_MERGE, OP_DIALECT,
+ OP_BSAVE, OP_BLOAD, /* bytecode */
+ OP_MODULE, /* module system */
+ OP_SECURITY, /* security */
+ OP_SYSTEM, /* cross-platform */
+ OP_BREAK, OP_CONT, /* debugger */
+ OP_VARS,
+ OP_ASSERT, OP_TEST, /* test framework */
+ OP_ENDTEST, OP_SELFTEST,
+ OP_HELP, OP_INFO, /* introspection */
+ OP_CATALOG,
+ OP_RENUM, OP_DELETE, /* final polish */
+ OP_VER,
+ OP_BYE, /* exit interpreter */
+ OP_ASSIGN, /* bare variable assignment */
+ OP_UNKNOWN, /* unrecognized - fallback */
+ OP_COUNT /* sentinel - must be last */
 } VMOpcode;
 
 /* =====================================================================
@@ -120,9 +119,9 @@ typedef enum VMOpcode {
  * =====================================================================
  * Every statement handler follows this uniform signature.
  * The handler receives:
- *   lex      - lexer positioned after the statement keyword
- *   rt       - runtime state (as opaque pointer for C89 compat)
- *   line_num - current BASIC line number (for errors)
+ * lex - lexer positioned after the statement keyword
+ * rt - runtime state (as opaque pointer for C89 compat)
+ * line_num - current BASIC line number (for errors)
  *
  * Note: We use void* for rt to avoid circular includes between
  * vm.h and runtime.h. Handlers cast to (RuntimeState*) internally.
@@ -135,10 +134,10 @@ typedef void (*VMHandler)(Lexer *lex, void *rt, int line_num);
  * Maps an opcode to its handler and metadata.
  */
 typedef struct VMDispatchEntry {
-    VMOpcode    opcode;     /* the opcode this entry handles */
-    KeywordId   keyword;    /* the keyword that maps to this opcode */
-    VMHandler   handler;    /* function pointer to execute */
-    const char *name;       /* human-readable name (for trace/debug) */
+ VMOpcode opcode; /* the opcode this entry handles */
+ KeywordId keyword; /* the keyword that maps to this opcode */
+ VMHandler handler; /* function pointer to execute */
+ const char *name; /* human-readable name (for trace/debug) */
 } VMDispatchEntry;
 
 /* =====================================================================
@@ -146,15 +145,15 @@ typedef struct VMDispatchEntry {
  * =====================================================================
  * A bounded stack for expression evaluation. This provides the
  * infrastructure for stack-based expression evaluation (used by
- * future bytecode VM in Phase 13). The current recursive evaluator
+ * future bytecode VM in ). The current recursive evaluator
  * continues to work alongside this stack.
  *
  * Operations are bounds-checked. Overflow raises ERR_SORRY,
  * underflow raises ERR_HOW.
  */
 typedef struct VMEvalStack {
-    BValue items[VM_EVAL_STACK_SIZE];
-    int    top;   /* index of top element, -1 = empty */
+ BValue items[VM_EVAL_STACK_SIZE];
+ int top; /* index of top element, -1 = empty */
 } VMEvalStack;
 
 /* =====================================================================
@@ -206,7 +205,7 @@ VMOpcode vm_dispatch(KeywordId kw, Lexer *lex, void *rt, int line_num);
  * =====================================================================
  */
 
-void    vm_set_state(void *rt, VMState state);
+void vm_set_state(void *rt, VMState state);
 VMState vm_get_state(void *rt);
 
 /* =====================================================================
@@ -214,11 +213,11 @@ VMState vm_get_state(void *rt);
  * =====================================================================
  */
 
-void   vm_eval_init(VMEvalStack *stk);
-int    vm_eval_push(VMEvalStack *stk, BValue val);
+void vm_eval_init(VMEvalStack *stk);
+int vm_eval_push(VMEvalStack *stk, BValue val);
 BValue vm_eval_pop(VMEvalStack *stk);
 BValue vm_eval_peek(VMEvalStack *stk);
-int    vm_eval_depth(VMEvalStack *stk);
+int vm_eval_depth(VMEvalStack *stk);
 
 /* =====================================================================
  * Control Flow Primitives

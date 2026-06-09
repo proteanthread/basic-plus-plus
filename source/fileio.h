@@ -6,27 +6,26 @@
  * File I/O subsystem interface.
  *
  * PURPOSE:
- *   Handles SAVE, LOAD, and (future) MERGE and CHAIN commands.
- *   All file operations use plain ASCII text format - no binary
- *   file formats.
+ * Handles SAVE, LOAD, and (future) MERGE and CHAIN commands.
+ * All file operations use plain ASCII text format - no binary
+ * file formats.
  *
  * FILE FORMAT:
- *   Saved files are plain text with one program line per file line.
- *   Each line is stored exactly as the user entered it, including
- *   the line number prefix. Example:
+ * Saved files are plain text with one program line per file line.
+ * Each line is stored exactly as the user entered it, including
+ * the line number prefix. Example:
  *
- *     10 PRINT "HELLO"
- *     20 LET A=5
- *     30 GOTO 10
+ * 10 PRINT "HELLO"
+ * 20 LET A=5
+ * 30 GOTO 10
  *
- *   This format can be loaded by any text editor and is compatible
- *   with the LOAD command.
+ * This format can be loaded by any text editor and is compatible
+ * with the LOAD command.
  *
  * HOW TO EXTEND:
- *   MERGE and CHAIN are stubbed - implement the actual logic in
- *   fileio.c when needed (Phase 3). The interface is already defined.
+ * MERGE and CHAIN are stubbed - implement the actual logic in
+ * fileio.c when needed. The interface is already defined.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -35,7 +34,7 @@
 
 #include <stdio.h>
 #include "memory.h"
-#include "vdev.h"   /* VDev, VDevClass */
+#include "vdev.h" /* VDev, VDevClass */
 
 /*
  * fileio_save - Save the program to a file.
@@ -45,8 +44,8 @@
  * -1 on failure (raises ERR_HOW).
  *
  * Parameters:
- *   store    - pointer to the program store
- *   filename - null-terminated filename string
+ * store - pointer to the program store
+ * filename - null-terminated filename string
  */
 int fileio_save(ProgramStore *store, const char *filename);
 
@@ -60,8 +59,8 @@ int fileio_save(ProgramStore *store, const char *filename);
  * Returns 0 on success, -1 on failure (raises ERR_HOW).
  *
  * Parameters:
- *   store    - pointer to the program store
- *   filename - null-terminated filename string
+ * store - pointer to the program store
+ * filename - null-terminated filename string
  */
 int fileio_load(ProgramStore *store, const char *filename);
 
@@ -71,7 +70,7 @@ int fileio_load(ProgramStore *store, const char *filename);
  * Like LOAD but does not clear the existing program. Lines from
  * the file overwrite existing lines with the same number.
  *
- * STUBBED - not implemented in Phase 1.
+ * STUBBED - not implemented in 
  */
 int fileio_merge(ProgramStore *store, const char *filename);
 
@@ -81,90 +80,90 @@ int fileio_merge(ProgramStore *store, const char *filename);
  * Loads a program and begins execution, optionally preserving
  * variable values.
  *
- * STUBBED - not implemented in Phase 1.
+ * STUBBED - not implemented in 
  */
 int fileio_chain(ProgramStore *store, const char *filename);
 
 /* =====================================================================
- * Phase 11: File Channel I/O
+ * File Channel I/O
  * =====================================================================
  *
  * SYNTAX (GW-BASIC / QBasic compatible):
- *   OPEN "filename" FOR INPUT AS #1
- *   OPEN "filename" FOR OUTPUT AS #2
- *   OPEN "filename" FOR APPEND AS #3
- *   CLOSE #1
- *   PRINT #2, expr
- *   INPUT #1, var
+ * OPEN "filename" FOR INPUT AS #1
+ * OPEN "filename" FOR OUTPUT AS #2
+ * OPEN "filename" FOR APPEND AS #3
+ * CLOSE #1
+ * PRINT #2, expr
+ * INPUT #1, var
  *
  * Channels are numbered 1..MAX_FILE_CHANNELS.
  * Each channel holds an open FILE* (or VDev*) and its mode.
  *
  * DESIGN:
- *   - Static channel table (no dynamic allocation)
- *   - Modes: INPUT, OUTPUT, APPEND, RANDOM, BINARY, DEVICE
- *   - FCHAN_DEVICE routes I/O through a VDev instead of FILE*
- *   - ANSI C stdio for file-backed channels, VDev for device-backed
+ * - Static channel table (no dynamic allocation)
+ * - Modes: INPUT, OUTPUT, APPEND, RANDOM, BINARY, DEVICE
+ * - FCHAN_DEVICE routes I/O through a VDev instead of FILE*
+ * - ANSI C stdio for file-backed channels, VDev for device-backed
  *
- * Phase 16: MAX_FILE_CHANNELS raised from 8 to 16.
- *   Channels can now be backed by virtual devices (FCHAN_DEVICE).
+ * MAX_FILE_CHANNELS raised from 8 to 16.
+ * Channels can now be backed by virtual devices (FCHAN_DEVICE).
  */
 
 /* File channel modes */
-#define FCHAN_CLOSED  0
-#define FCHAN_INPUT   1
-#define FCHAN_OUTPUT  2
-#define FCHAN_APPEND  3
-#define FCHAN_RANDOM  4
-#define FCHAN_BINARY  5
-#define FCHAN_DEVICE  6   /* Phase 16: device-backed channel */
+#define FCHAN_CLOSED 0
+#define FCHAN_INPUT 1
+#define FCHAN_OUTPUT 2
+#define FCHAN_APPEND 3
+#define FCHAN_RANDOM 4
+#define FCHAN_BINARY 5
+#define FCHAN_DEVICE 6 /* device-backed channel */
 
 /* Maximum record length for RANDOM files (GW-BASIC default=128) */
-#define MAX_RECORD_LEN  256
+#define MAX_RECORD_LEN 256
 
 /* Maximum field mappings per channel */
-#define MAX_FIELD_MAPS  16
+#define MAX_FIELD_MAPS 16
 
 /*
  * FieldMap - Maps a string variable to a slice of
- * the record buffer.  Established by FIELD #n.
+ * the record buffer. Established by FIELD #n.
  *
  * name/name_len identify the variable (A$-Z$ or named).
  * offset is the byte offset within the record buffer.
  * width is the field width in bytes.
  */
 typedef struct FieldMap {
-    char name[32];    /* variable name (upper-cased) */
-    int  name_len;    /* length of name */
-    int  offset;      /* byte offset in record buffer */
-    int  width;       /* field width in bytes */
+ char name[32]; /* variable name (upper-cased) */
+ int name_len; /* length of name */
+ int offset; /* byte offset in record buffer */
+ int width; /* field width in bytes */
 } FieldMap;
 
 /* ECMA-116 file organization types */
-#define FORG_SEQUENTIAL  0   /* sequential access (default) */
-#define FORG_RELATIVE    1   /* record-indexed random access */
-#define FORG_STREAM      2   /* byte-stream access */
+#define FORG_SEQUENTIAL 0 /* sequential access (default) */
+#define FORG_RELATIVE 1 /* record-indexed random access */
+#define FORG_STREAM 2 /* byte-stream access */
 
 /* ECMA-116 record types */
-#define FREC_DISPLAY     0   /* text/human-readable (default) */
-#define FREC_INTERNAL    1   /* binary/machine-format */
+#define FREC_DISPLAY 0 /* text/human-readable (default) */
+#define FREC_INTERNAL 1 /* binary/machine-format */
 
 /* File channel entry */
 typedef struct FileChannel {
-    FILE *fp;         /* open file pointer, or NULL */
-    int   mode;       /* FCHAN_CLOSED .. FCHAN_DEVICE */
-    VDev *vdev;       /* Phase 16: device-backed channel (or NULL) */
+ FILE *fp; /* open file pointer, or NULL */
+ int mode; /* FCHAN_CLOSED .. FCHAN_DEVICE */
+ VDev *vdev; /* device-backed channel (or NULL) */
 
-    /* Random-access support */
-    int       record_len;   /* LEN = n (default 128) */
-    char      record_buf[MAX_RECORD_LEN]; /* record buffer */
-    FieldMap  fields[MAX_FIELD_MAPS]; /* field mappings */
-    int       field_count;  /* number of active fields */
-    long      current_rec;  /* current record position (1-based) */
+ /* Random-access support */
+ int record_len; /* LEN = n (default 128) */
+ char record_buf[MAX_RECORD_LEN]; /* record buffer */
+ FieldMap fields[MAX_FIELD_MAPS]; /* field mappings */
+ int field_count; /* number of active fields */
+ long current_rec; /* current record position (1-based) */
 
-    /* ECMA-116 Enhanced Files metadata */
-    int       e116_org;     /* FORG_* organization */
-    int       e116_rec;     /* FREC_* record type */
+ /* ECMA-116 Enhanced Files metadata */
+ int e116_org; /* FORG_* organization */
+ int e116_rec; /* FREC_* record type */
 } FileChannel;
 
 /*
@@ -186,19 +185,19 @@ void fileio_channels_cleanup(void);
  * Returns 0 on success, -1 on error.
  */
 int fileio_open(int chan, const char *filename,
-                int mode, int line_num);
+ int mode, int line_num);
 
 /*
  * fileio_open_random - Open for RANDOM with record length.
  */
 int fileio_open_random(int chan, const char *filename,
-                       int rec_len, int line_num);
+ int rec_len, int line_num);
 
 /*
  * fileio_open_binary - Open for BINARY.
  */
 int fileio_open_binary(int chan, const char *filename,
-                       int line_num);
+ int line_num);
 
 /*
  * fileio_close - Close a file channel.
@@ -223,7 +222,7 @@ int fileio_print_newline(int chan, int line_num);
  * success, -1 on error or EOF.
  */
 int fileio_input_line(int chan, char *buf,
-                      int max_len, int line_num);
+ int max_len, int line_num);
 
 /*
  * fileio_eof - Check if a file channel is at end-of-file.
@@ -249,7 +248,7 @@ FILE *fileio_get_fp(int chan);
  * Returns 0 on success, -1 on error.
  */
 int fileio_set_field(int chan, FieldMap *flds,
-                     int count, int line_num);
+ int count, int line_num);
 
 /*
  * fileio_get_record - Read a record from a random-access
@@ -275,7 +274,7 @@ int fileio_put_record(int chan, long rec, int line_num);
  * sets *out_len to the field width.
  */
 const char *fileio_get_field_value(int chan,
-    const char *name, int name_len, int *out_len);
+ const char *name, int name_len, int *out_len);
 
 /*
  * fileio_set_field_value - Write a value into a field
@@ -284,9 +283,9 @@ const char *fileio_get_field_value(int chan,
  * justify: 0=LSET (left), 1=RSET (right)
  */
 int fileio_set_field_value(int chan,
-    const char *name, int name_len,
-    const char *data, int data_len,
-    int justify, int line_num);
+ const char *name, int name_len,
+ const char *data, int data_len,
+ int justify, int line_num);
 
 /* =====================================================================
  * Binary File Operations
@@ -300,7 +299,7 @@ int fileio_set_field_value(int chan,
  * Returns bytes actually read, or -1 on error.
  */
 int fileio_get_binary(int chan, long pos,
-                      char *buf, int len, int line_num);
+ char *buf, int len, int line_num);
 
 /*
  * fileio_put_binary - Write bytes to a binary file.
@@ -310,8 +309,8 @@ int fileio_get_binary(int chan, long pos,
  * Returns 0 on success, -1 on error.
  */
 int fileio_put_binary(int chan, long pos,
-                      const char *buf, int len,
-                      int line_num);
+ const char *buf, int len,
+ int line_num);
 
 /* =====================================================================
  * File Locking
@@ -324,14 +323,14 @@ int fileio_put_binary(int chan, long pos,
  * Returns 0 on success, -1 on error.
  */
 int fileio_lock(int chan, long start, long end,
-                int line_num);
+ int line_num);
 
 /*
  * fileio_unlock - Unlock a byte range in a file.
  * Returns 0 on success, -1 on error.
  */
 int fileio_unlock(int chan, long start, long end,
-                  int line_num);
+ int line_num);
 
 /*
  * fileio_get_channel_mode - Return the mode of a channel.
@@ -340,7 +339,7 @@ int fileio_unlock(int chan, long start, long end,
 int fileio_get_channel_mode(int chan);
 
 /* =====================================================================
- * Device-Backed Channels (Phase 16)
+ * Device-Backed Channels
  * ===================================================================*/
 
 /*
@@ -350,17 +349,17 @@ int fileio_get_channel_mode(int chan);
  * instead of stdio. The channel operates in FCHAN_DEVICE mode.
  *
  * Parameters:
- *   chan      - channel number (1..MAX_FILE_CHANNELS)
- *   dev_id   - VDev slot ID (from vdev_register or vdev_find_by_name)
- *   mode     - open mode hint for dev_open ("r", "w", "rw")
- *   path     - device path/parameters (passed to dev_open)
- *   line_num - BASIC line number for error reporting
+ * chan - channel number (1..MAX_FILE_CHANNELS)
+ * dev_id - VDev slot ID (from vdev_register or vdev_find_by_name)
+ * mode - open mode hint for dev_open ("r", "w", "rw")
+ * path - device path/parameters (passed to dev_open)
+ * line_num - BASIC line number for error reporting
  *
  * Returns 0 on success, -1 on error.
  */
 int fileio_open_device(int chan, int dev_id,
-                       const char *mode, const char *path,
-                       int line_num);
+ const char *mode, const char *path,
+ int line_num);
 
 /*
  * fileio_get_channel_vdev - Get the VDev for a device channel.
@@ -369,7 +368,7 @@ int fileio_open_device(int chan, int dev_id,
 VDev *fileio_get_channel_vdev(int chan);
 
 /* =====================================================================
- * ECMA-116 Enhanced Files Module (Phase 5)
+ * ECMA-116 Enhanced Files Module
  * ===================================================================*/
 
 /*
@@ -382,7 +381,7 @@ void fileio_set_e116_metadata(int chan, int org, int rec);
 /*
  * fileio_set_pointer - Move the file pointer.
  * pos: record number (RELATIVE) or byte position (STREAM).
- *   0 = POINTER BEGIN, -1 = POINTER END.
+ * 0 = POINTER BEGIN, -1 = POINTER END.
  * Returns 0 on success, -1 on error.
  */
 int fileio_set_pointer(int chan, long pos, int line_num);
@@ -414,6 +413,6 @@ int fileio_erase_channel(int chan, int line_num);
  * Returns 0 on success, -1 on error.
  */
 int fileio_rewrite_record(int chan, const char *data,
-                          int len, int line_num);
+ int len, int line_num);
 
 #endif /* BASICPP_FILEIO_H */

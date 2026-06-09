@@ -3,12 +3,11 @@
  * BASIC++ Interpreter - selftest.h
  * =====================================================================
  *
- * Self-test framework (Phase 18).
+ * Self-test framework.
  *
  * Provides a built-in validation suite that the interpreter can
  * run on itself - "the interpreter tests itself."
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 

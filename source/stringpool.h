@@ -6,21 +6,20 @@
  * Simple bump-allocator string pool for BASIC string values.
  *
  * PURPOSE:
- *   Provides memory for string values during program execution.
- *   Strings are allocated from a contiguous block and never
- *   individually freed. The entire pool is reset at the start
- *   of each RUN, reclaiming all string memory.
+ * Provides memory for string values during program execution.
+ * Strings are allocated from a contiguous block and never
+ * individually freed. The entire pool is reset at the start
+ * of each RUN, reclaiming all string memory.
  *
  * DESIGN RATIONALE:
- *   Most BASIC programs create a modest number of strings. A simple
- *   bump allocator avoids the complexity of garbage collection while
- *   being fast and predictable. The pool is sized to hold typical
- *   BASIC programs' string data (32K default).
+ * Most BASIC programs create a modest number of strings. A simple
+ * bump allocator avoids the complexity of garbage collection while
+ * being fast and predictable. The pool is sized to hold typical
+ * BASIC programs' string data (32K default).
  *
- *   If a program exhausts the string pool, ERR_SORRY is raised.
- *   The user can increase MAX_STRING_POOL in config.h.
+ * If a program exhausts the string pool, ERR_SORRY is raised.
+ * The user can increase MAX_STRING_POOL in config.h.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -34,9 +33,9 @@
  * =====================================================================
  */
 typedef struct StringPool {
-    char *base;     /* start of allocated block */
-    long  size;     /* total size in bytes */
-    long  used;     /* current allocation watermark */
+ char *base; /* start of allocated block */
+ long size; /* total size in bytes */
+ long used; /* current allocation watermark */
 } StringPool;
 
 /*

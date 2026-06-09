@@ -6,32 +6,31 @@
  * Entry point, REPL (Read-Eval-Print Loop), and bootstrap.
  *
  * PURPOSE:
- *   This module provides:
- *   1. The main() entry point.
- *   2. Memory subsystem initialization and shutdown.
- *   3. The interactive REPL loop (classic BASIC prompt style).
- *   4. Input classification (line storage vs. immediate execution).
+ * This module provides:
+ * 1. The main() entry point.
+ * 2. Memory subsystem initialization and shutdown.
+ * 3. The interactive REPL loop (classic BASIC prompt style).
+ * 4. Input classification (line storage vs. immediate execution).
  *
  * REPL BEHAVIOR (Palo Alto Tiny BASIC compatible):
- *   - On startup, prints a banner with version and dialect info.
- *   - Prints "READY" and a prompt ("> ").
- *   - Reads a line of input.
- *   - If the line starts with a digit -> it's a program line:
- *     - If only a line number -> delete that line.
- *     - Otherwise -> store the line (insert or replace).
- *   - If the line starts with a letter or keyword -> immediate mode:
- *     - Tokenize and execute immediately.
- *     - Results are printed; errors return to prompt.
- *   - After any error, prints "READY" and returns to prompt.
- *   - On EOF (Ctrl-Z on Windows, Ctrl-D on Unix) -> exit.
+ * - On startup, prints a banner with version and dialect info.
+ * - Prints "READY" and a prompt ("> ").
+ * - Reads a line of input.
+ * - If the line starts with a digit -> it's a program line:
+ * - If only a line number -> delete that line.
+ * - Otherwise -> store the line (insert or replace).
+ * - If the line starts with a letter or keyword -> immediate mode:
+ * - Tokenize and execute immediately.
+ * - Results are printed; errors return to prompt.
+ * - After any error, prints "READY" and returns to prompt.
+ * - On EOF (Ctrl-Z on Windows, Ctrl-D on Unix) -> exit.
  *
  * DESIGN RATIONALE:
- *   The REPL is kept minimal. It classifies input and delegates
- *   to the appropriate subsystem. No parsing logic lives here
- *   (that's in parser.c). No execution logic lives here (that's
- *   in exec.c). Main.c is glue code.
+ * The REPL is kept minimal. It classifies input and delegates
+ * to the appropriate subsystem. No parsing logic lives here
+ * (that's in parser.c). No execution logic lives here (that's
+ * in exec.c). Main.c is glue code.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -76,28 +75,28 @@
  */
 static int parse_line_number(const char *input, int *end_pos)
 {
-    int pos = 0;
-    int num = 0;
+ int pos = 0;
+ int num = 0;
 
-    /* Skip leading whitespace */
-    while (input[pos] == ' ' || input[pos] == '\t') {
-        pos++;
-    }
+ /* Skip leading whitespace */
+ while (input[pos] == ' ' || input[pos] == '\t') {
+ pos++;
+ }
 
-    /* Check for digit */
-    if (!isdigit((unsigned char)input[pos])) {
-        *end_pos = pos;
-        return 0;
-    }
+ /* Check for digit */
+ if (!isdigit((unsigned char)input[pos])) {
+ *end_pos = pos;
+ return 0;
+ }
 
-    /* Parse the number */
-    while (isdigit((unsigned char)input[pos])) {
-        num = num * 10 + (input[pos] - '0');
-        pos++;
-    }
+ /* Parse the number */
+ while (isdigit((unsigned char)input[pos])) {
+ num = num * 10 + (input[pos] - '0');
+ pos++;
+ }
 
-    *end_pos = pos;
-    return num;
+ *end_pos = pos;
+ return num;
 }
 
 /*
@@ -108,13 +107,13 @@ static int parse_line_number(const char *input, int *end_pos)
  */
 static int is_blank_after(const char *input, int pos)
 {
-    while (input[pos] != '\0') {
-        if (input[pos] != ' ' && input[pos] != '\t') {
-            return 0;
-        }
-        pos++;
-    }
-    return 1;
+ while (input[pos] != '\0') {
+ if (input[pos] != ' ' && input[pos] != '\t') {
+ return 0;
+ }
+ pos++;
+ }
+ return 1;
 }
 
 /*
@@ -124,10 +123,10 @@ static int is_blank_after(const char *input, int pos)
  */
 static void strip_newline(char *str)
 {
-    int len = (int)strlen(str);
-    while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r')) {
-        str[--len] = '\0';
-    }
+ int len = (int)strlen(str);
+ while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r')) {
+ str[--len] = '\0';
+ }
 }
 
 /* =====================================================================
@@ -137,187 +136,187 @@ static void strip_newline(char *str)
 
 int main(void)
 {
-    MemorySystem memory;
-    RuntimeState runtime;
-    char input_buf[INPUT_BUFFER_SIZE];
+ MemorySystem memory;
+ RuntimeState runtime;
+ char input_buf[INPUT_BUFFER_SIZE];
 
-    /* ----- Print startup banner ----- */
-    printf("\n");
-    printf("%s %s\n", BASICPP_NAME, BASICPP_VERSION);
-    printf("%s\n", BASICPP_COPYRIGHT);
-    printf("%s\n", __DATE__);
-    printf("\n");
+ /* ----- Print startup banner ----- */
+ printf("\n");
+ printf("%s %s\n", BASICPP_NAME, BASICPP_VERSION);
+ printf("%s\n", BASICPP_COPYRIGHT);
+ printf("%s\n", __DATE__);
+ printf("\n");
 
-    /* ----- Initialize memory subsystem ----- */
-    if (mem_init(&memory) != 0) {
-        printf("SORRY. Cannot allocate memory.\n");
-        return 1;
-    }
+ /* ----- Initialize memory subsystem ----- */
+ if (mem_init(&memory) != 0) {
+ printf("SORRY. Cannot allocate memory.\n");
+ return 1;
+ }
 
-    /* ----- Initialize platform detection (Phase 16) ----- */
-    platform_init();
+ /* Initialize platform detection */
+ platform_init();
 
-    /* ----- Register all compiled-in dialects (Phase 21) ----- */
-    dialect_register_all();
+ /* Register all compiled-in dialects */
+ dialect_register_all();
 
-    /* ----- Initialize dialect system ----- */
-    dialect_init(DIALECT_TINY_BASIC);
+ /* ----- Initialize dialect system ----- */
+ dialect_init(DIALECT_TINY_BASIC);
 
-    /* ----- Initialize virtual device system (Phase 6) ----- */
-    vdev_init();
+ /* Initialize virtual device system */
+ vdev_init();
 
-    /* ----- Initialize function registry (Phase 7) ----- */
-    funcreg_init();
+ /* Initialize function registry */
+ funcreg_init();
 
-    /* ----- Initialize security system (Phase 15) ----- */
-    security_init(SEC_OPEN);
+ /* Initialize security system */
+ security_init(SEC_OPEN);
 
-    /* ----- Initialize module system (Phase 14) ----- */
-    module_system_init();
-    mod_stdlib_register();
-    mod_usb_register();     /* Phase 16: USB devices (user activates) */
-    module_activate("STDLIB", NULL);
+ /* Initialize module system */
+ module_system_init();
+ mod_stdlib_register();
+ mod_usb_register(); /* USB devices (user activates) */
+ module_activate("STDLIB", NULL);
 
-    /* ----- Apply dialect-specific overrides (Phase 8) ----- */
-    dialect_apply();
+ /* Apply dialect-specific overrides */
+ dialect_apply();
 
-    /* ----- Initialize file channels (Phase 11) ----- */
-    fileio_channels_init();
+ /* Initialize file channels */
+ fileio_channels_init();
 
-    /* ----- Initialize VM dispatch table (Phase 12) ----- */
-    vm_init();
+ /* Initialize VM dispatch table */
+ vm_init();
 
-    /* ----- Initialize graphics framebuffer ----- */
-    gfxbuf_init();
+ /* ----- Initialize graphics framebuffer ----- */
+ gfxbuf_init();
 
-    /* ----- Initialize runtime state ----- */
-    runtime_init(&runtime, &memory.program, &memory);
+ /* ----- Initialize runtime state ----- */
+ runtime_init(&runtime, &memory.program, &memory);
 
-    /* ----- REPL loop ----- */
-    printf("%s\n", BASICPP_READY);
+ /* ----- REPL loop ----- */
+ printf("%s\n", BASICPP_READY);
 
-    for (;;) {
-        int line_num;
-        int end_pos;
+ for (;;) {
+ int line_num;
+ int end_pos;
 
-        /* --- AUTO mode prompt --- */
-        if (runtime.auto_line > 0) {
-            /*
-             * AUTO mode is active. Print the line number
-             * as the prompt. If the user enters text, it
-             * becomes the content of that line. If the
-             * user enters an empty line or '.', AUTO
-             * mode is cancelled.
-             */
-            printf("%d ", runtime.auto_line);
-            fflush(stdout);
+ /* --- AUTO mode prompt --- */
+ if (runtime.auto_line > 0) {
+ /*
+ * AUTO mode is active. Print the line number
+ * as the prompt. If the user enters text, it
+ * becomes the content of that line. If the
+ * user enters an empty line or '.', AUTO
+ * mode is cancelled.
+ */
+ printf("%d ", runtime.auto_line);
+ fflush(stdout);
 
-            if (fgets(input_buf, INPUT_BUFFER_SIZE,
-                      stdin) == NULL) {
-                /* EOF - exit AUTO and interpreter */
-                printf("\n");
-                break;
-            }
-            strip_newline(input_buf);
+ if (fgets(input_buf, INPUT_BUFFER_SIZE,
+ stdin) == NULL) {
+ /* EOF - exit AUTO and interpreter */
+ printf("\n");
+ break;
+ }
+ strip_newline(input_buf);
 
-            /* Cancel on empty line or '.' */
-            if (input_buf[0] == '\0' ||
-                (input_buf[0] == '.' &&
-                 input_buf[1] == '\0')) {
-                runtime.auto_line = 0;
-                runtime.auto_step = 0;
-                printf("%s\n", BASICPP_READY);
-                continue;
-            }
+ /* Cancel on empty line or '.' */
+ if (input_buf[0] == '\0' ||
+ (input_buf[0] == '.' &&
+ input_buf[1] == '\0')) {
+ runtime.auto_line = 0;
+ runtime.auto_step = 0;
+ printf("%s\n", BASICPP_READY);
+ continue;
+ }
 
-            /* Build full line: "linenum content" */
-            {
-                char full_line[INPUT_BUFFER_SIZE + 16];
-                sprintf(full_line, "%d %s",
-                        runtime.auto_line, input_buf);
-                program_insert(&memory.program,
-                    runtime.auto_line, full_line);
-            }
+ /* Build full line: "linenum content" */
+ {
+ char full_line[INPUT_BUFFER_SIZE + 16];
+ sprintf(full_line, "%d %s",
+ runtime.auto_line, input_buf);
+ program_insert(&memory.program,
+ runtime.auto_line, full_line);
+ }
 
-            /* Advance to next line */
-            runtime.auto_line += runtime.auto_step;
-            if (runtime.auto_line > LINE_NUMBER_MAX) {
-                runtime.auto_line = 0;
-                runtime.auto_step = 0;
-                printf("Line number overflow.\n");
-                printf("%s\n", BASICPP_READY);
-            }
-            continue;
-        }
+ /* Advance to next line */
+ runtime.auto_line += runtime.auto_step;
+ if (runtime.auto_line > LINE_NUMBER_MAX) {
+ runtime.auto_line = 0;
+ runtime.auto_step = 0;
+ printf("Line number overflow.\n");
+ printf("%s\n", BASICPP_READY);
+ }
+ continue;
+ }
 
-        /* Print prompt */
-        printf("%s", BASICPP_PROMPT);
-        fflush(stdout);
+ /* Print prompt */
+ printf("%s", BASICPP_PROMPT);
+ fflush(stdout);
 
-        /* Read input line */
-        if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
-            /* EOF - exit gracefully */
-            printf("\n");
-            break;
-        }
+ /* Read input line */
+ if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+ /* EOF - exit gracefully */
+ printf("\n");
+ break;
+ }
 
-        /* Strip trailing newline */
-        strip_newline(input_buf);
+ /* Strip trailing newline */
+ strip_newline(input_buf);
 
-        /* Skip empty lines */
-        if (input_buf[0] == '\0') {
-            continue;
-        }
+ /* Skip empty lines */
+ if (input_buf[0] == '\0') {
+ continue;
+ }
 
-        /* Clear any previous error state */
-        error_clear();
+ /* Clear any previous error state */
+ error_clear();
 
-        /* Reset scratch pool for this input cycle */
-        mem_pool_reset(&memory.scratch);
+ /* Reset scratch pool for this input cycle */
+ mem_pool_reset(&memory.scratch);
 
-        /* ----- Classify input ----- */
-        line_num = parse_line_number(input_buf, &end_pos);
+ /* ----- Classify input ----- */
+ line_num = parse_line_number(input_buf, &end_pos);
 
-        if (line_num > 0) {
-            /*
-             * Input starts with a line number.
-             *
-             * If the rest of the line is blank, this is a
-             * delete command (entering just "10" deletes line 10).
-             *
-             * Otherwise, store the entire line (including the
-             * line number prefix) in the program store.
-             */
-            if (line_num > LINE_NUMBER_MAX) {
-                error_raise(ERR_HOW, 0);
-            } else if (is_blank_after(input_buf, end_pos)) {
-                /* Delete line */
-                program_delete(&memory.program, line_num);
-            } else {
-                /* Store line */
-                program_insert(&memory.program, line_num, input_buf);
-            }
-        } else {
-            /*
-             * Immediate mode - tokenize and execute.
-             *
-             * The input is a command or statement to execute
-             * right now (e.g., "PRINT 2+3" or "RUN" or "LIST").
-             */
-            Lexer lex;
+ if (line_num > 0) {
+ /*
+ * Input starts with a line number.
+ *
+ * If the rest of the line is blank, this is a
+ * delete command (entering just "10" deletes line 10).
+ *
+ * Otherwise, store the entire line (including the
+ * line number prefix) in the program store.
+ */
+ if (line_num > LINE_NUMBER_MAX) {
+ error_raise(ERR_HOW, 0);
+ } else if (is_blank_after(input_buf, end_pos)) {
+ /* Delete line */
+ program_delete(&memory.program, line_num);
+ } else {
+ /* Store line */
+ program_insert(&memory.program, line_num, input_buf);
+ }
+ } else {
+ /*
+ * Immediate mode - tokenize and execute.
+ *
+ * The input is a command or statement to execute
+ * right now (e.g., "PRINT 2+3" or "RUN" or "LIST").
+ */
+ Lexer lex;
 
-            lexer_init(&lex, input_buf);
-            parser_execute_line(&lex, &runtime, 0);
-        }
+ lexer_init(&lex, input_buf);
+ parser_execute_line(&lex, &runtime, 0);
+ }
 
-        /* After any error, print READY again */
-        if (error_occurred()) {
-            printf("%s\n", BASICPP_READY);
-        }
-    }
+ /* After any error, print READY again */
+ if (error_occurred()) {
+ printf("%s\n", BASICPP_READY);
+ }
+ }
 
-    /* ----- Shutdown ----- */
-    mem_shutdown(&memory);
+ /* ----- Shutdown ----- */
+ mem_shutdown(&memory);
 
-    return 0;
+ return 0;
 }

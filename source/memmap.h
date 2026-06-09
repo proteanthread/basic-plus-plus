@@ -6,27 +6,26 @@
  * Pluggable memory map system for PEEK/POKE emulation.
  *
  * PURPOSE:
- *   Allows the interpreter to emulate the memory layout of various
- *   8-bit computer platforms. When a map is selected via MEMMAP,
- *   the 64K virtual memory segment is pre-filled with correct
- *   ROM values, hardware register defaults, screen memory, and
- *   I/O register shadows so that PEEK returns the values a real
- *   program would expect.
+ * Allows the interpreter to emulate the memory layout of various
+ * 8-bit computer platforms. When a map is selected via MEMMAP,
+ * the 64K virtual memory segment is pre-filled with correct
+ * ROM values, hardware register defaults, screen memory, and
+ * I/O register shadows so that PEEK returns the values a real
+ * program would expect.
  *
  * SUPPORTED PLATFORMS:
- *   MSDOS   - MS-DOS (BIOS Data Area, IVT stubs)
- *   C64     - Commodore 64 (KERNAL, VIC-II, SID, screen RAM)
- *   C128    - Commodore 128
- *   VIC20   - VIC-20
- *   PLUS4   - Commodore Plus/4
- *   PET     - Commodore PET 2001/4032/8032
- *   ATARI8  - Atari 400/800/XL/XE (ANTIC, POKEY, GTIA)
- *   APPLE2  - Apple II / IIe
- *   TRS80   - TRS-80 Model I/III
- *   SPECTRUM - ZX Spectrum 48K
- *   NONE    - Bare 64K, all zeros
+ * MSDOS - MS-DOS (BIOS Data Area, IVT stubs)
+ * C64 - Commodore 64 (KERNAL, VIC-II, SID, screen RAM)
+ * C128 - Commodore 128
+ * VIC20 - VIC-20
+ * PLUS4 - Commodore Plus/4
+ * PET - Commodore PET 2001/4032/8032
+ * ATARI8 - Atari 400/800/XL/XE (ANTIC, POKEY, GTIA)
+ * APPLE2 - Apple II / IIe
+ * TRS80 - TRS-80 Model I/III
+ * SPECTRUM - ZX Spectrum 48K
+ * NONE - Bare 64K, all zeros
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -38,18 +37,18 @@
  * =====================================================================
  */
 typedef enum MemMapType {
-    MMAP_NONE = 0,   /* Bare 64K, no presets */
-    MMAP_MSDOS,      /* MS-DOS (default) */
-    MMAP_C64,        /* Commodore 64 */
-    MMAP_C128,       /* Commodore 128 */
-    MMAP_VIC20,      /* VIC-20 */
-    MMAP_PLUS4,      /* Commodore Plus/4 */
-    MMAP_PET,        /* Commodore PET */
-    MMAP_ATARI8,     /* Atari 400/800/XL/XE */
-    MMAP_APPLE2,     /* Apple II/IIe */
-    MMAP_TRS80,      /* TRS-80 Model I/III */
-    MMAP_SPECTRUM,   /* ZX Spectrum 48K */
-    MMAP_COUNT       /* sentinel */
+ MMAP_NONE = 0, /* Bare 64K, no presets */
+ MMAP_MSDOS, /* MS-DOS (default) */
+ MMAP_C64, /* Commodore 64 */
+ MMAP_C128, /* Commodore 128 */
+ MMAP_VIC20, /* VIC-20 */
+ MMAP_PLUS4, /* Commodore Plus/4 */
+ MMAP_PET, /* Commodore PET */
+ MMAP_ATARI8, /* Atari 400/800/XL/XE */
+ MMAP_APPLE2, /* Apple II/IIe */
+ MMAP_TRS80, /* TRS-80 Model I/III */
+ MMAP_SPECTRUM, /* ZX Spectrum 48K */
+ MMAP_COUNT /* sentinel */
 } MemMapType;
 
 /*
@@ -60,8 +59,8 @@ typedef enum MemMapType {
  * hardware registers, screen memory, etc.).
  *
  * Parameters:
- *   mem  - pointer to 64K memory array
- *   type - which platform memory map to load
+ * mem - pointer to 64K memory array
+ * type - which platform memory map to load
  */
 void memmap_init(unsigned char *mem, MemMapType type);
 

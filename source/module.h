@@ -3,32 +3,31 @@
  * BASIC++ Interpreter - module.h
  * =====================================================================
  *
- * Module System interface (Phase 14).
+ * Module System interface.
  *
  * PURPOSE:
- *   Provides a unified framework for packaging and managing
- *   interpreter extensions. Modules group related functions,
- *   devices, and dialect extensions into named, versioned units
- *   with declared capabilities.
+ * Provides a unified framework for packaging and managing
+ * interpreter extensions. Modules group related functions,
+ * devices, and dialect extensions into named, versioned units
+ * with declared capabilities.
  *
  * MODULE CLASSES:
- *   MOD_LIBRARY   - Function library (registers via funcreg)
- *   MOD_DIALECT   - Dialect extension (configures via dialect)
- *   MOD_DEVICE    - Virtual device driver (registers via vdev)
- *   MOD_EXTENSION - General extension (any combination)
+ * MOD_LIBRARY - Function library (registers via funcreg)
+ * MOD_DIALECT - Dialect extension (configures via dialect)
+ * MOD_DEVICE - Virtual device driver (registers via vdev)
+ * MOD_EXTENSION - General extension (any combination)
  *
  * LIFECYCLE:
- *   1. module_system_init() - clears the module table
- *   2. module_register()    - registers a module descriptor
- *   3. module_activate()    - calls the module's init callback
- *   4. module_deactivate()  - calls cleanup, marks inactive
+ * 1. module_system_init() - clears the module table
+ * 2. module_register() - registers a module descriptor
+ * 3. module_activate() - calls the module's init callback
+ * 4. module_deactivate() - calls cleanup, marks inactive
  *
  * CAPABILITY FLAGS:
- *   Each module declares what system resources it needs via
- *   a bitfield. Phase 15 (Security) will gate activation
- *   based on these capabilities.
+ * Each module declares what system resources it needs via
+ * a bitfield. (Security) will gate activation
+ * based on these capabilities.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -42,35 +41,35 @@
  * =====================================================================
  */
 typedef enum ModuleClass {
-    MOD_LIBRARY   = 0,   /* function library */
-    MOD_DIALECT   = 1,   /* dialect extension */
-    MOD_DEVICE    = 2,   /* virtual device driver */
-    MOD_EXTENSION = 3    /* general extension */
+ MOD_LIBRARY = 0, /* function library */
+ MOD_DIALECT = 1, /* dialect extension */
+ MOD_DEVICE = 2, /* virtual device driver */
+ MOD_EXTENSION = 3 /* general extension */
 } ModuleClass;
 
 /* =====================================================================
  * Capability Flags (bitfield)
  * =====================================================================
  * Declares what system resources a module uses. These are
- * informational in Phase 14 and will be enforced in Phase 15.
+ * informational in and will be enforced in 
  */
-#define CAP_NONE      0x0000u
-#define CAP_MATH      0x0001u   /* mathematical functions */
-#define CAP_STRING    0x0002u   /* string manipulation */
-#define CAP_IO        0x0004u   /* I/O operations */
-#define CAP_FILE      0x0008u   /* file system access */
-#define CAP_SYSTEM    0x0010u   /* system-level operations */
-#define CAP_GRAPHICS  0x0020u   /* graphics device */
-#define CAP_SOUND     0x0040u   /* sound device */
-#define CAP_NETWORK   0x0080u   /* network (TCP, HTTP, etc.) */
-/* Phase 16: Modern device capabilities */
-#define CAP_GPIO      0x0100u   /* GPIO / digital I/O pins */
-#define CAP_I2C       0x0200u   /* I2C bus access */
-#define CAP_SPI       0x0400u   /* SPI bus access */
-#define CAP_SENSOR    0x0800u   /* sensor hardware (accel, GPS) */
-#define CAP_CAMERA    0x1000u   /* camera / video capture */
-#define CAP_BLUETOOTH 0x2000u   /* Bluetooth / BLE */
-#define CAP_USB       0x4000u   /* USB device access */
+#define CAP_NONE 0x0000u
+#define CAP_MATH 0x0001u /* mathematical functions */
+#define CAP_STRING 0x0002u /* string manipulation */
+#define CAP_IO 0x0004u /* I/O operations */
+#define CAP_FILE 0x0008u /* file system access */
+#define CAP_SYSTEM 0x0010u /* system-level operations */
+#define CAP_GRAPHICS 0x0020u /* graphics device */
+#define CAP_SOUND 0x0040u /* sound device */
+#define CAP_NETWORK 0x0080u /* network (TCP, HTTP, etc.) */
+/* Modern device capabilities */
+#define CAP_GPIO 0x0100u /* GPIO / digital I/O pins */
+#define CAP_I2C 0x0200u /* I2C bus access */
+#define CAP_SPI 0x0400u /* SPI bus access */
+#define CAP_SENSOR 0x0800u /* sensor hardware (accel, GPS) */
+#define CAP_CAMERA 0x1000u /* camera / video capture */
+#define CAP_BLUETOOTH 0x2000u /* Bluetooth / BLE */
+#define CAP_USB 0x4000u /* USB device access */
 
 /* =====================================================================
  * Module Descriptor
@@ -79,13 +78,13 @@ typedef enum ModuleClass {
  * expected to be string literals (not heap-allocated).
  */
 typedef struct ModuleInfo {
-    const char    *name;          /* display name (e.g., "STDLIB") */
-    const char    *version;       /* version string (e.g., "1.0") */
-    const char    *description;   /* one-line description */
-    ModuleClass    mod_class;     /* module class */
-    unsigned int   capabilities;  /* CAP_ bitfield */
-    int          (*init)(void *); /* init callback (rt=RuntimeState*) */
-    void         (*cleanup)(void);/* cleanup callback (may be NULL) */
+ const char *name; /* display name (e.g., "STDLIB") */
+ const char *version; /* version string (e.g., "1.0") */
+ const char *description; /* one-line description */
+ ModuleClass mod_class; /* module class */
+ unsigned int capabilities; /* CAP_ bitfield */
+ int (*init)(void *); /* init callback (rt=RuntimeState*) */
+ void (*cleanup)(void);/* cleanup callback (may be NULL) */
 } ModuleInfo;
 
 /* =====================================================================
@@ -118,8 +117,8 @@ int module_register(const ModuleInfo *info);
  * is a no-op (idempotent).
  *
  * Parameters:
- *   name - module name (case-insensitive)
- *   rt   - opaque pointer to RuntimeState (passed to init)
+ * name - module name (case-insensitive)
+ * rt - opaque pointer to RuntimeState (passed to init)
  *
  * Returns 0 on success, -1 if not found or init failed.
  */

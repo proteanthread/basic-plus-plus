@@ -6,40 +6,39 @@
  * Built-in function handler declarations.
  *
  * PURPOSE:
- *   Declares all built-in BASIC++ function handlers and the
- *   registration function that populates the function registry.
- *   These handlers were extracted from parser.c to enable:
- *     1. Registry-based dispatch (instead of inline switch/if)
- *     2. Dialect overrides (swap handlers at runtime)
- *     3. Module extensions (same handler signature)
- *     4. Clean separation of function logic from parsing logic
+ * Declares all built-in BASIC++ function handlers and the
+ * registration function that populates the function registry.
+ * These handlers were extracted from parser.c to enable:
+ * 1. Registry-based dispatch (instead of inline switch/if)
+ * 2. Dialect overrides (swap handlers at runtime)
+ * 3. Module extensions (same handler signature)
+ * 4. Clean separation of function logic from parsing logic
  *
  * HANDLER SIGNATURE:
- *   All handlers use the uniform FuncHandler signature:
+ * All handlers use the uniform FuncHandler signature:
  *
- *     BValue handler(BValue *args, int argc, void *rt)
+ * BValue handler(BValue *args, int argc, void *rt)
  *
- *   The 'rt' parameter is an opaque pointer to RuntimeState.
- *   Handlers that need runtime services (RND seed, string pool)
- *   cast it to (RuntimeState*) internally.
+ * The 'rt' parameter is an opaque pointer to RuntimeState.
+ * Handlers that need runtime services (RND seed, string pool)
+ * cast it to (RuntimeState*) internally.
  *
  * CATEGORIES:
- *   Handlers are organized by category:
- *     FCAT_MATH   - ABS, SGN, INT, SQR, SIN, COS, TAN, ATN,
- *                   LOG, EXP
- *     FCAT_STRING - LEN, ASC, VAL, CHR$, STR$, LEFT$, RIGHT$,
- *                   MID$
- *     FCAT_UTIL   - RND, SIZE
+ * Handlers are organized by category:
+ * FCAT_MATH - ABS, SGN, INT, SQR, SIN, COS, TAN, ATN,
+ * LOG, EXP
+ * FCAT_STRING - LEN, ASC, VAL, CHR$, STR$, LEFT$, RIGHT$,
+ * MID$
+ * FCAT_UTIL - RND, SIZE
  *
  * HOW TO ADD A NEW BUILT-IN:
- *   1. Write a handler function in builtins.c with the FuncHandler
- *      signature.
- *   2. Declare it in this header.
- *   3. Add a FunctionEntry to the registration table in
- *      builtins_register().
- *   4. If needed, add a keyword to lexer.h/c and detok.c.
+ * 1. Write a handler function in builtins.c with the FuncHandler
+ * signature.
+ * 2. Declare it in this header.
+ * 3. Add a FunctionEntry to the registration table in
+ * builtins_register().
+ * 4. If needed, add a keyword to lexer.h/c and detok.c.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -60,7 +59,7 @@
  * built-in functions. Must be called after funcreg_init() and
  * before any program execution.
  *
- * Boot sequence position: Phase 4 ("Standard Library Init").
+ * Boot sequence position: ("Standard Library Init").
  */
 void builtins_register(void);
 
@@ -107,7 +106,7 @@ BValue builtin_rnd(BValue *args, int argc, void *rt);
 BValue builtin_size(BValue *args, int argc, void *rt);
 
 /* =====================================================================
- * I/O Function Handlers (Phase 11)
+ * I/O Function Handlers
  * =====================================================================
  * EOF checks file channel end-of-file status.
  */

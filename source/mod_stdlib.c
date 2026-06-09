@@ -3,18 +3,17 @@
  * BASIC++ Interpreter - mod_stdlib.c
  * =====================================================================
  *
- * Standard Library Module (Phase 14).
+ * Standard Library Module.
  *
  * PURPOSE:
- *   Wraps the existing built-in function registration (builtins.c)
- *   as a formal module. This is the reference module demonstrating
- *   the Phase 14 module system.
+ * Wraps the existing built-in function registration (builtins.c)
+ * as a formal module. This is the reference module demonstrating
+ * the module system.
  *
- *   The STDLIB module is auto-activated at boot, so all built-in
- *   functions (ABS, SIN, LEN, LEFT$, etc.) remain available
- *   without any user action.
+ * The STDLIB module is auto-activated at boot, so all built-in
+ * functions (ABS, SIN, LEN, LEFT$, etc.) remain available
+ * without any user action.
  *
- * ANSI C89/C90 COMPLIANT
  * =====================================================================
  */
 
@@ -32,9 +31,9 @@
  */
 static int stdlib_init(void *rt)
 {
-    (void)rt;
-    builtins_register();
-    return 0;
+ (void)rt;
+ builtins_register();
+ return 0;
 }
 
 /*
@@ -46,13 +45,13 @@ static int stdlib_init(void *rt)
  * Cleanup: none (functions persist in registry)
  */
 static const ModuleInfo stdlib_module_info = {
-    "STDLIB",                           /* name */
-    "1.0",                              /* version */
-    "Standard function library",        /* description */
-    MOD_LIBRARY,                        /* mod_class */
-    CAP_MATH | CAP_STRING,              /* capabilities */
-    stdlib_init,                        /* init */
-    NULL                                /* cleanup (none) */
+ "STDLIB", /* name */
+ "1.0", /* version */
+ "Standard function library", /* description */
+ MOD_LIBRARY, /* mod_class */
+ CAP_MATH | CAP_STRING, /* capabilities */
+ stdlib_init, /* init */
+ NULL /* cleanup (none) */
 };
 
 /*
@@ -63,5 +62,5 @@ static const ModuleInfo stdlib_module_info = {
  */
 void mod_stdlib_register(void)
 {
-    module_register(&stdlib_module_info);
+ module_register(&stdlib_module_info);
 }
