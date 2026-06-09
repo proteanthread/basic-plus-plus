@@ -1,3 +1,5 @@
+[![GitGem](https://gitgem.org/api/badge/github/proteanthread/basic-plus-plus.svg)](https://gitgem.org/github/proteanthread/basic-plus-plus)
+
 # BASIC++ (protoBASIC) Interpreter
 **Core Implementation — Version 0.21.0**
 
