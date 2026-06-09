@@ -1089,11 +1089,11 @@
 
 
 =====================================================================
-  END OF TUTORIAL J
+  END OF TUTORIAL
 =====================================================================
-  Next: Tutorial K — Creating Dialects
-  Previous: Tutorial I — File I/O
-  See also: Tutorial H — Virtual Machines
+  Next: Tutorial  — Creating Dialects
+  Previous: Tutorial — File I/O
+  See also: Tutorial — Virtual Machines
             vdev.h — Virtual Device header (source reference)
             fileio.h — File I/O header (source reference)
 =====================================================================
