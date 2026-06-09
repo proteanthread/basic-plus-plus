@@ -68,6 +68,7 @@ DOCUMENTATION
   Virtual_Filesystem.txt        Safe local file access (deep dive)
   Virtual_Network.txt           TCP, UDP, TLS, Telnet, SSH, FTP, IRC,
                                 NNTP, SMTP, HTTP, WebSockets, IRATA/PLATO
+  Virtual_Consoles.txt		How STDOUT and STDERR work in BASIC++
   USB_Devices.txt               USB HID (gamepads, joysticks), USB serial
                                 (FTDI, CH340, Arduino), device enumeration
   User_Defined_Types.txt        TYPE...END TYPE, typed variables, fields,
