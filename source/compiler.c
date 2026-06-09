@@ -102,7 +102,7 @@ int compiler_compile(ProgramStore *program, const char *filename)
     /* Pass 2: Generate code */
     if (success) {
         error_clear();
-        if (codegen_emit(out, ast_lines, program->count) != 0) {
+        if (codegen_emit(out, ast_lines, program->count, program) != 0) {
             printf("Code generation failed.\n");
             success = 0;
         }

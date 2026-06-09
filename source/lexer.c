@@ -826,6 +826,10 @@ void lexer_next(Lexer *lex)
         /* Try keyword match first */
         kw = match_keyword(lex->source + start, len);
 
+        /* NOTE: GW-BASIC greedy keyword extraction is not implemented.
+         * Programs with no-space patterns (e.g. IFR1>.98THEN) need
+         * source preprocessing to add spaces around keywords. */
+
         if (kw != KW_COUNT) {
             lex->current.type = TOK_KEYWORD;
             lex->current.value.keyword = kw;

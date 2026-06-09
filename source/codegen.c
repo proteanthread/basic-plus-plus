@@ -27,9 +27,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "codegen.h"
 #include "ast.h"
 #include "errors.h"
+#include "lexer.h"
 
 /* =====================================================================
  * Internal helpers
@@ -52,7 +54,7 @@ static void emit_runtime_shim(FILE *out)
         "static double bpp_vars[26];           /* A-Z */\n"
         "static char bpp_strvars[26][256];     /* A$-Z$ */\n"
         "static double bpp_at_array[4096];     /* @() legacy array */\n"
-        "static int bpp_print_width = 6;\n"
+        "static int bpp_print_width = 14;\n"
         "\n"
         "/* === GOSUB Stack === */\n"
         "#define BPP_MAX_STACK 256\n"
@@ -88,6 +90,38 @@ static void emit_runtime_shim(FILE *out)
         "        }\n"
         "    }\n"
         "    fprintf(stderr, \"Array not found: %%s\\n\", nm);\n"
+        "    exit(1);\n"
+        "    return NULL;\n"
+        "}\n"
+        "\n"
+        "/* === String DIM arrays === */\n"
+        "#define BPP_MAX_STRDIM 26\n"
+        "#define BPP_MAX_STRDIM_SIZE 256\n"
+        "static struct { char nm[16]; int d1; int d2;\n"
+        "    char data[BPP_MAX_STRDIM_SIZE][256]; } bpp_strdims[BPP_MAX_STRDIM];\n"
+        "static int bpp_strdim_count = 0;\n"
+        "\n"
+        "static char *bpp_strdim_ref(const char *nm, int i1, int i2) {\n"
+        "    int k;\n"
+        "    (void)i2;\n"
+        "    for (k = 0; k < bpp_strdim_count; k++) {\n"
+        "        if (strcmp(bpp_strdims[k].nm, nm) == 0) {\n"
+        "            if (i1 < 0 || i1 >= BPP_MAX_STRDIM_SIZE) i1 = 0;\n"
+        "            return bpp_strdims[k].data[i1];\n"
+        "        }\n"
+        "    }\n"
+        "    /* Auto-create */\n"
+        "    if (bpp_strdim_count < BPP_MAX_STRDIM) {\n"
+        "        int j;\n"
+        "        strncpy(bpp_strdims[bpp_strdim_count].nm, nm, 15);\n"
+        "        bpp_strdims[bpp_strdim_count].nm[15] = '\\0';\n"
+        "        for (j = 0; j < BPP_MAX_STRDIM_SIZE; j++)\n"
+        "            bpp_strdims[bpp_strdim_count].data[j][0] = '\\0';\n"
+        "        bpp_strdim_count++;\n"
+        "        if (i1 < 0 || i1 >= BPP_MAX_STRDIM_SIZE) i1 = 0;\n"
+        "        return bpp_strdims[bpp_strdim_count-1].data[i1];\n"
+        "    }\n"
+        "    fprintf(stderr, \"String array not found: %%s\\n\", nm);\n"
         "    exit(1);\n"
         "    return NULL;\n"
         "}\n"
@@ -160,6 +194,22 @@ static void emit_runtime_shim(FILE *out)
         "    return t;\n"
         "}\n"
         "\n"
+        "/* === TAB helper === */\n"
+        "static const char *bpp_tab(int col) {\n"
+        "    static char buf[256];\n"
+        "    int i;\n"
+        "    if (col < 0) col = 0;\n"
+        "    if (col > 255) col = 255;\n"
+        "    for (i = 0; i < col; i++) buf[i] = ' ';\n"
+        "    buf[col] = '\\0';\n"
+        "    return buf;\n"
+        "}\n"
+        "\n"
+        "/* === DEF FN support === */\n"
+        "#define BPP_MAX_FN 26\n"
+        "typedef double (*BppFnPtr)(double);\n"
+        "static double bpp_fn_param;\n"
+        "\n"
     );
 }
 
@@ -171,10 +221,16 @@ static int expr_is_string(AstExpr *e)
     if (!e) return 0;
     if (e->type == EXPR_STRING_LIT) return 1;
     if (e->type == EXPR_STRING_VAR) return 1;
+    if (e->type == EXPR_DIM_ACCESS) {
+        int nlen = (int)strlen(e->v.dim_access.name);
+        if (nlen > 0 && e->v.dim_access.name[nlen-1] == '$')
+            return 1;
+    }
     if (e->type == EXPR_FUNC_CALL) {
         switch (e->v.func_call.func) {
             case FUNC_CHR: case FUNC_STR:
             case FUNC_LEFT: case FUNC_RIGHT: case FUNC_MID:
+            case FUNC_TAB:
                 return 1;
             default:
                 return 0;
@@ -186,6 +242,11 @@ static int expr_is_string(AstExpr *e)
     }
     if (e->type == EXPR_BINOP && e->v.binop.op == BOP_CONCAT)
         return 1;
+    if (e->type == EXPR_NAMED_VAR) {
+        int nlen = e->v.named.name_len;
+        if (nlen > 0 && e->v.named.name[nlen - 1] == '$')
+            return 1;
+    }
     return 0;
 }
 
@@ -233,9 +294,17 @@ static void emit_expr(FILE *out, AstExpr *e)
             break;
 
         case EXPR_NAMED_VAR:
-            /* Named vars map to first letter for simplicity */
-            fprintf(out, "bpp_vars[%d]",
-                    (int)(e->v.named.name[0] - 'A'));
+            /* Named vars: check for trailing $ for string vars */
+            {
+                int nlen = e->v.named.name_len;
+                if (nlen > 0 && e->v.named.name[nlen - 1] == '$') {
+                    fprintf(out, "bpp_strvars[%d]",
+                            (int)(e->v.named.name[0] - 'A'));
+                } else {
+                    fprintf(out, "bpp_vars[%d]",
+                            (int)(e->v.named.name[0] - 'A'));
+                }
+            }
             break;
 
         case EXPR_ARRAY_AT:
@@ -245,18 +314,31 @@ static void emit_expr(FILE *out, AstExpr *e)
             break;
 
         case EXPR_DIM_ACCESS:
-            fprintf(out, "*bpp_dim_ref(\"%s\", (int)(",
-                    e->v.dim_access.name);
-            emit_expr(out, e->v.dim_access.idx1);
-            fprintf(out, "), ");
-            if (e->v.dim_access.idx2) {
-                fprintf(out, "(int)(");
-                emit_expr(out, e->v.dim_access.idx2);
+            {
+                int is_str = 0;
+                int nlen = (int)strlen(e->v.dim_access.name);
+                if (nlen > 0 && e->v.dim_access.name[nlen-1] == '$')
+                    is_str = 1;
+                if (is_str) {
+                    char nm[2];
+                    nm[0] = e->v.dim_access.name[0];
+                    nm[1] = '\0';
+                    fprintf(out, "bpp_strdim_ref(\"%s\", (int)(", nm);
+                } else {
+                    fprintf(out, "*bpp_dim_ref(\"%s\", (int)(",
+                            e->v.dim_access.name);
+                }
+                emit_expr(out, e->v.dim_access.idx1);
+                fprintf(out, "), ");
+                if (e->v.dim_access.idx2) {
+                    fprintf(out, "(int)(");
+                    emit_expr(out, e->v.dim_access.idx2);
+                    fprintf(out, ")");
+                } else {
+                    fprintf(out, "0");
+                }
                 fprintf(out, ")");
-            } else {
-                fprintf(out, "0");
             }
-            fprintf(out, ")");
             break;
 
         case EXPR_BINOP:
@@ -306,24 +388,60 @@ static void emit_expr(FILE *out, AstExpr *e)
                     fprintf(out, ")");
                     break;
                 case BOP_EQ:
-                    emit_expr(out, e->v.binop.left);
-                    fprintf(out, " == ");
-                    emit_expr(out, e->v.binop.right);
+                    if (expr_is_string(e->v.binop.left) ||
+                        expr_is_string(e->v.binop.right)) {
+                        fprintf(out, "(strcmp(");
+                        emit_expr(out, e->v.binop.left);
+                        fprintf(out, ", ");
+                        emit_expr(out, e->v.binop.right);
+                        fprintf(out, ") == 0)");
+                    } else {
+                        emit_expr(out, e->v.binop.left);
+                        fprintf(out, " == ");
+                        emit_expr(out, e->v.binop.right);
+                    }
                     break;
                 case BOP_NE:
-                    emit_expr(out, e->v.binop.left);
-                    fprintf(out, " != ");
-                    emit_expr(out, e->v.binop.right);
+                    if (expr_is_string(e->v.binop.left) ||
+                        expr_is_string(e->v.binop.right)) {
+                        fprintf(out, "(strcmp(");
+                        emit_expr(out, e->v.binop.left);
+                        fprintf(out, ", ");
+                        emit_expr(out, e->v.binop.right);
+                        fprintf(out, ") != 0)");
+                    } else {
+                        emit_expr(out, e->v.binop.left);
+                        fprintf(out, " != ");
+                        emit_expr(out, e->v.binop.right);
+                    }
                     break;
                 case BOP_LT:
-                    emit_expr(out, e->v.binop.left);
-                    fprintf(out, " < ");
-                    emit_expr(out, e->v.binop.right);
+                    if (expr_is_string(e->v.binop.left) ||
+                        expr_is_string(e->v.binop.right)) {
+                        fprintf(out, "(strcmp(");
+                        emit_expr(out, e->v.binop.left);
+                        fprintf(out, ", ");
+                        emit_expr(out, e->v.binop.right);
+                        fprintf(out, ") < 0)");
+                    } else {
+                        emit_expr(out, e->v.binop.left);
+                        fprintf(out, " < ");
+                        emit_expr(out, e->v.binop.right);
+                    }
                     break;
                 case BOP_GT:
-                    emit_expr(out, e->v.binop.left);
-                    fprintf(out, " > ");
-                    emit_expr(out, e->v.binop.right);
+                    if (expr_is_string(e->v.binop.left) ||
+                        expr_is_string(e->v.binop.right)) {
+                        fprintf(out, "(strcmp(");
+                        emit_expr(out, e->v.binop.left);
+                        fprintf(out, ", ");
+                        emit_expr(out, e->v.binop.right);
+                        fprintf(out, ") > 0)");
+                    } else {
+                        emit_expr(out, e->v.binop.left);
+                        fprintf(out, " > ");
+                        emit_expr(out, e->v.binop.right);
+                    }
                     break;
                 case BOP_LE:
                     emit_expr(out, e->v.binop.left);
@@ -335,6 +453,27 @@ static void emit_expr(FILE *out, AstExpr *e)
                     fprintf(out, " >= ");
                     emit_expr(out, e->v.binop.right);
                     break;
+                case BOP_POW:
+                    fprintf(out, "pow(");
+                    emit_expr(out, e->v.binop.left);
+                    fprintf(out, ", ");
+                    emit_expr(out, e->v.binop.right);
+                    fprintf(out, ")");
+                    break;
+                case BOP_AND:
+                    fprintf(out, "((");
+                    emit_expr(out, e->v.binop.left);
+                    fprintf(out, ") && (");
+                    emit_expr(out, e->v.binop.right);
+                    fprintf(out, "))");
+                    break;
+                case BOP_OR:
+                    fprintf(out, "((");
+                    emit_expr(out, e->v.binop.left);
+                    fprintf(out, ") || (");
+                    emit_expr(out, e->v.binop.right);
+                    fprintf(out, "))");
+                    break;
             }
             fprintf(out, ")");
             break;
@@ -342,6 +481,10 @@ static void emit_expr(FILE *out, AstExpr *e)
         case EXPR_UNOP:
             if (e->v.unop.op == UOP_NEG) {
                 fprintf(out, "(-(");
+                emit_expr(out, e->v.unop.operand);
+                fprintf(out, "))");
+            } else if (e->v.unop.op == UOP_NOT) {
+                fprintf(out, "(!(");
                 emit_expr(out, e->v.unop.operand);
                 fprintf(out, "))");
             }
@@ -457,6 +600,17 @@ static void emit_expr(FILE *out, AstExpr *e)
                     emit_expr(out, e->v.func_call.args[2]);
                     fprintf(out, "))");
                     break;
+                case FUNC_TAB:
+                    fprintf(out, "bpp_tab((int)(");
+                    emit_expr(out, e->v.func_call.args[0]);
+                    fprintf(out, "))");
+                    break;
+                case FUNC_FN_USER:
+                    fprintf(out, "bpp_fn_%c(",
+                            e->v.func_call.fn_letter);
+                    emit_expr(out, e->v.func_call.args[0]);
+                    fprintf(out, ")");
+                    break;
             }
             break;
     }
@@ -529,6 +683,14 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
                             for (i = 0; i < indent; i++)
                                 fprintf(out, "    ");
                         }
+                    } else {
+                        /* NULL expr = tab advance (comma separator) */
+                        fprintf(out,
+                            "printf(\"%%*s\", bpp_print_width, \"\");\n");
+                        if (pi < s->v.print.item_count - 1) {
+                            for (i = 0; i < indent; i++)
+                                fprintf(out, "    ");
+                        }
                     }
                 }
                 if (!s->v.print.trailing_comma) {
@@ -562,29 +724,50 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
             break;
 
         case STMT_LET_DIM:
-            fprintf(out, "*bpp_dim_ref(\"%s\", (int)(",
-                    s->v.let_dim.name);
-            emit_expr(out, s->v.let_dim.idx1);
-            fprintf(out, "), ");
-            if (s->v.let_dim.idx2) {
-                fprintf(out, "(int)(");
-                emit_expr(out, s->v.let_dim.idx2);
-                fprintf(out, ")");
-            } else {
-                fprintf(out, "0");
+            {
+                int is_str = (s->v.let_dim.name[1] == '$');
+                if (is_str) {
+                    /* String array: strncpy into bpp_strdim_ref(...) */
+                    char nm[2];
+                    nm[0] = s->v.let_dim.name[0];
+                    nm[1] = '\0';
+                    fprintf(out, "strncpy(bpp_strdim_ref(\"%s\", (int)(",
+                            nm);
+                    emit_expr(out, s->v.let_dim.idx1);
+                    fprintf(out, "), ");
+                    if (s->v.let_dim.idx2) {
+                        fprintf(out, "(int)(");
+                        emit_expr(out, s->v.let_dim.idx2);
+                        fprintf(out, ")");
+                    } else {
+                        fprintf(out, "0");
+                    }
+                    fprintf(out, "), ");
+                    emit_expr(out, s->v.let_dim.value);
+                    fprintf(out, ", 255);\n");
+                } else {
+                    /* Numeric array */
+                    fprintf(out, "*bpp_dim_ref(\"%s\", (int)(",
+                            s->v.let_dim.name);
+                    emit_expr(out, s->v.let_dim.idx1);
+                    fprintf(out, "), ");
+                    if (s->v.let_dim.idx2) {
+                        fprintf(out, "(int)(");
+                        emit_expr(out, s->v.let_dim.idx2);
+                        fprintf(out, ")");
+                    } else {
+                        fprintf(out, "0");
+                    }
+                    fprintf(out, ") = ");
+                    emit_expr(out, s->v.let_dim.value);
+                    fprintf(out, ";\n");
+                }
             }
-            fprintf(out, ") = ");
-            emit_expr(out, s->v.let_dim.value);
-            fprintf(out, ";\n");
             break;
 
         case STMT_IF:
             fprintf(out, "if (");
-            emit_expr(out, s->v.if_stmt.left);
-            fprintf(out, " ");
-            emit_relop(out, s->v.if_stmt.relop);
-            fprintf(out, " ");
-            emit_expr(out, s->v.if_stmt.right);
+            emit_expr(out, s->v.if_stmt.condition);
             fprintf(out, ") { ");
             emit_stmt(out, s->v.if_stmt.then_stmt, 0);
             fprintf(out, " }\n");
@@ -743,9 +926,39 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
                             fprintf(out, "    ");
                     }
                     if (s->v.read.var_types[ri] == 0) {
+                        /* Simple numeric variable */
                         fprintf(out, "bpp_vars[%d] = bpp_read_num();\n",
                             (int)(s->v.read.var_names[ri] - 'A'));
+                    } else if (s->v.read.var_types[ri] == 2) {
+                        /* 1D Array element */
+                        const char *dn = s->v.read.dim_names[ri];
+                        if (dn[0] == '\0') {
+                            char nm[2];
+                            nm[0] = s->v.read.var_names[ri]; nm[1] = '\0';
+                            dn = nm;
+                            fprintf(out, "*bpp_dim_ref(\"%s\", (int)(", dn);
+                        } else {
+                            fprintf(out, "*bpp_dim_ref(\"%s\", (int)(", dn);
+                        }
+                        emit_expr(out, s->v.read.var_indices[ri]);
+                        fprintf(out, "), 0) = bpp_read_num();\n");
+                    } else if (s->v.read.var_types[ri] == 3) {
+                        /* 2D Array element */
+                        const char *dn = s->v.read.dim_names[ri];
+                        if (dn[0] == '\0') {
+                            char nm[2];
+                            nm[0] = s->v.read.var_names[ri]; nm[1] = '\0';
+                            dn = nm;
+                            fprintf(out, "*bpp_dim_ref(\"%s\", (int)(", dn);
+                        } else {
+                            fprintf(out, "*bpp_dim_ref(\"%s\", (int)(", dn);
+                        }
+                        emit_expr(out, s->v.read.var_indices[ri]);
+                        fprintf(out, "), (int)(");
+                        emit_expr(out, s->v.read.var_indices2[ri]);
+                        fprintf(out, ")) = bpp_read_num();\n");
                     } else {
+                        /* String variable */
                         fprintf(out,
                             "sprintf(bpp_strvars[%d], \"%%g\","
                             " bpp_read_num());\n",
@@ -767,6 +980,32 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
                 s->type == STMT_WHILE ? "WHILE" :
                 s->type == STMT_WEND ? "WEND" :
                 s->type == STMT_DO ? "DO" : "LOOP");
+            break;
+
+        case STMT_ON_GOTO:
+            {
+                int oi;
+                fprintf(out, "{ int _sel = (int)(");
+                emit_expr(out, s->v.on_goto.selector);
+                fprintf(out, ");\n");
+                for (oi = 0; oi < s->v.on_goto.target_count; oi++) {
+                    for (i = 0; i < indent + 1; i++)
+                        fprintf(out, "    ");
+                    fprintf(out, "if (_sel == %d) goto L%d;\n",
+                            oi + 1, s->v.on_goto.targets[oi]);
+                }
+                for (i = 0; i < indent; i++)
+                    fprintf(out, "    ");
+                fprintf(out, "}\n");
+            }
+            break;
+
+        case STMT_DEF_FN:
+            /* DEF FNA(X) = expr
+             * We emit a static function at the statement location.
+             * The function uses bpp_fn_param as the parameter. */
+            fprintf(out, "/* DEF FN%c - defined as inline */\n",
+                    s->v.def_fn.func_name);
             break;
     }
 }
@@ -893,7 +1132,71 @@ static ForSite *find_for_for_next(ForSite *sites, int count,
  * =====================================================================
  */
 
-int codegen_emit(FILE *out, AstLine *lines, int line_count)
+/*
+ * emit_data_init - Scan raw program lines for DATA statements
+ * and emit initialization code for bpp_data_pool[].
+ *
+ * DATA values are extracted from the original source text by
+ * finding lines that contain "DATA" followed by a comma-separated
+ * list of numeric values.
+ */
+static void emit_data_init(FILE *out, ProgramStore *program)
+{
+    int i;
+    int data_idx = 0;
+
+    if (!program) return;
+
+    for (i = 0; i < program->count; i++) {
+        const char *line = program->lines[i].text;
+        const char *p = line;
+        int found_data = 0;
+
+        /* Skip line number */
+        while (*p && isdigit((unsigned char)*p)) p++;
+        while (*p == ' ') p++;
+
+        /* Check for DATA keyword */
+        if ((p[0]=='D'||p[0]=='d') && (p[1]=='A'||p[1]=='a') &&
+            (p[2]=='T'||p[2]=='t') && (p[3]=='A'||p[3]=='a') &&
+            (p[4]==' ' || p[4]=='\0' || isdigit((unsigned char)p[4]) ||
+             p[4]=='-' || p[4]=='+' || p[4]=='.')) {
+            p += 4;
+            while (*p == ' ') p++;
+            found_data = 1;
+        }
+
+        if (!found_data) continue;
+
+        /* Parse comma-separated numeric values */
+        while (*p && *p != '\0' && *p != '\r' && *p != '\n') {
+            double val;
+            char *endp;
+
+            while (*p == ' ') p++;
+            if (*p == '\0' || *p == '\r' || *p == '\n') break;
+
+            val = strtod(p, &endp);
+            if (endp == p) break;  /* not a number */
+            p = endp;
+
+            fprintf(out, "    bpp_data_pool[%d] = %.17g;\n",
+                    data_idx, val);
+            data_idx++;
+
+            while (*p == ' ') p++;
+            if (*p == ',') { p++; continue; }
+            break;
+        }
+    }
+
+    if (data_idx > 0) {
+        fprintf(out, "    bpp_data_count = %d;\n", data_idx);
+    }
+}
+
+int codegen_emit(FILE *out, AstLine *lines, int line_count,
+                 ProgramStore *program)
 {
     int i;
     GosubSite gosub_sites[MAX_GOSUB_SITES];
@@ -908,8 +1211,30 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count)
     /* Emit runtime shim */
     emit_runtime_shim(out);
 
+    /* Emit user-defined functions (DEF FN) as static functions */
+    for (i = 0; i < line_count; i++) {
+        AstStmt *s = lines[i].stmts;
+        while (s) {
+            if (s->type == STMT_DEF_FN) {
+                char fc = s->v.def_fn.func_name;
+                char pn = s->v.def_fn.param_name;
+                fprintf(out, "static double bpp_fn_%c(double %c) {\n",
+                        fc, pn);
+                fprintf(out, "    return ");
+                emit_expr(out, s->v.def_fn.body);
+                fprintf(out, ";\n}\n\n");
+            }
+            s = s->next;
+        }
+    }
+
     /* Emit main function */
     fprintf(out, "int main(void) {\n");
+
+    /* Emit DATA initialization */
+    emit_data_init(out, program);
+    fprintf(out, "\n");
+
 
     /* Emit each BASIC line as a labeled block */
     for (i = 0; i < line_count; i++) {
@@ -1042,11 +1367,7 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count)
                     int gi;
                     long tgt = gs->v.gosub.target->v.ival;
                     fprintf(out, "    if (");
-                    emit_expr(out, s->v.if_stmt.left);
-                    fprintf(out, " ");
-                    emit_relop(out, s->v.if_stmt.relop);
-                    fprintf(out, " ");
-                    emit_expr(out, s->v.if_stmt.right);
+                    emit_expr(out, s->v.if_stmt.condition);
                     fprintf(out, ") { ");
                     for (gi = 0; gi < gosub_count; gi++) {
                         if (gosub_sites[gi].line_num == ln &&
