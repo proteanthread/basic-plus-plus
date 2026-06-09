@@ -1,0 +1,1493 @@
+THE BASIC++ USB DEVICE SYSTEM
+===============================
+Version 0.21.0
+
+This manual explains how BASIC++ programs access USB
+devices — joysticks, gamepads, keyboards, serial adapters,
+and storage devices — through the Virtual Device (VDev)
+framework.
+
+Unlike a quick reference, this manual gives you deep
+understanding.  By the time you finish reading it, you will
+know:
+
+  - How the USB module integrates with the VDev framework
+  - What each of the three USB virtual devices does
+  - How to enumerate connected USB devices
+  - How to read HID reports from joysticks and gamepads
+  - How to communicate with USB-to-serial adapters
+  - How USB security and capabilities work
+  - How the platform abstraction handles Windows and Linux
+  - How to write robust, portable USB programs
+
+
+TABLE OF CONTENTS
+=================
+
+  Part I:   Architecture
+  1.  Overview: The USB Module
+  2.  The Three USB Virtual Devices
+  3.  How It Fits Into the VDev Framework
+  4.  Platform Support Matrix
+  5.  Security: CAP_USB and CAP_IO
+
+  Part II:  Activating the USB Module
+  6.  MODULE "USB"
+  7.  Device Discovery (DEVICES Command)
+  8.  Error Handling and Diagnostics
+
+  Part III: USB Device Enumeration
+  9.  Scanning for Connected Devices
+  10. The Enumeration List
+  11. Platform-Specific Discovery
+      11.1 Linux: /dev/hidraw* and /dev/ttyUSB*
+      11.2 Windows: COM Port Probing
+      11.3 FreeDOS: Stub Behavior
+
+  Part IV:  HID Devices (Joysticks, Gamepads, Keyboards)
+  12. What Is HID?
+  13. Opening a HID Device
+  14. Reading HID Reports
+  15. Parsing Report Data
+      15.1 Gamepad Report Format
+      15.2 Joystick Report Format
+      15.3 Keyboard Report Format
+  16. Polling and Non-Blocking Reads
+  17. HID Device Information
+  18. Complete Gamepad Example
+
+  Part V:   USB-to-Serial Adapters
+  19. What Is USB-Serial?
+  20. Supported Chipsets
+  21. Opening a Serial Port
+  22. Serial Communication
+      22.1 Writing Data (PRINT #, PUT #)
+      22.2 Reading Data (INPUT #, GET #)
+      22.3 Line-Oriented I/O
+  23. Baud Rate and Serial Configuration
+  24. Timeouts and Buffer Management
+  25. Complete Arduino Communication Example
+
+  Part VI:  Advanced Topics
+  26. IOCTL Commands
+  27. Hot-Plug Detection
+  28. Multiple Simultaneous Devices
+  29. Raw Binary I/O
+  30. Building a USB Device Monitor
+
+  Part VII: Error Reference
+  31. USB Error Codes
+  32. Troubleshooting Checklist
+
+  Part VIII: Complete Examples
+  33. Example: USB Device Scanner
+  34. Example: Gamepad-Controlled Game
+  35. Example: Serial Data Logger
+  36. Example: Arduino Bridge
+  37. Keyword Quick Reference
+
+
+======================================================================
+Part I:  ARCHITECTURE
+======================================================================
+
+
+1.  OVERVIEW: THE USB MODULE
+-------------------------------
+
+The USB module is an optional extension that provides
+USB device access for BASIC++ programs.  It is not loaded
+by default — you must activate it with MODULE "USB" before
+using any USB features.
+
+The module registers three virtual devices:
+
+  Device    Class          Purpose
+  ────────  ─────────────  ──────────────────────────────
+  USB:      VDCLASS_STORAGE  General USB enumeration
+  HID:      VDCLASS_HID      Human Interface Devices
+  USBSER:   VDCLASS_SERIAL   USB-to-serial adapters
+
+These devices become available in the DEVICES list and
+can be opened with OPEN, read with GET/INPUT, written
+with PUT/PRINT, and controlled with IOCTL — just like
+any other VDev device.
+
+
+2.  THE THREE USB VIRTUAL DEVICES
+------------------------------------
+
+2.1  USB: (General USB Device)
+
+  The USB: device provides device enumeration — it lets
+  you discover what USB devices are connected to the
+  system.  Think of it as a directory listing for USB.
+
+  Capabilities: VDCAP_READ | VDCAP_CONTROL |
+                VDCAP_STATUS | VDCAP_HOTPLUG
+
+  You open USB:, issue an ENUMERATE ioctl, then read
+  device names one at a time.
+
+
+2.2  HID: (Human Interface Device)
+
+  The HID: device reads input from USB HID devices such
+  as joysticks, gamepads, game controllers, flight sticks,
+  and USB keyboards.
+
+  Capabilities: VDCAP_READ | VDCAP_BINARY |
+                VDCAP_CONTROL | VDCAP_STATUS |
+                VDCAP_HOTPLUG
+
+  HID devices send "reports" — small binary packets
+  (typically 8-64 bytes) containing the current state of
+  all buttons, axes, and hats.  You read these reports
+  with GET # and parse the bytes.
+
+
+2.3  USBSER: (USB-to-Serial Adapter)
+
+  The USBSER: device provides access to USB-to-serial
+  adapters — the chips that let you talk to Arduinos,
+  microcontrollers, GPS modules, barcode scanners, and
+  other serial devices over USB.
+
+  Capabilities: VDCAP_STREAM | VDCAP_BINARY |
+                VDCAP_CONTROL | VDCAP_STATUS |
+                VDCAP_HOTPLUG
+
+  Supported chipsets:
+    - FTDI (FT232R, FT2232H, etc.)
+    - CH340/CH341
+    - CP2102/CP2104 (Silicon Labs)
+    - PL2303 (Prolific)
+    - CDC ACM (generic USB serial)
+
+  The device supports both text I/O (PRINT #, INPUT #)
+  and binary I/O (GET #, PUT #).
+
+
+3.  HOW IT FITS INTO THE VDEV FRAMEWORK
+------------------------------------------
+
+The USB module sits on top of the VDev2 framework
+(see Virtual_Devices.txt for full VDev architecture).
+
+  Layer   Component            USB Module Role
+  ──────  ───────────────────  ───────────────────────────
+  1       BASIC statements     OPEN "HID:" AS #1
+  2       File channel table   Channel #1 -> HID: VDev
+  3       VDev dispatch        dev_read(), dev_ioctl()
+  4       USB module code      mod_usb.c handlers
+  5       Platform APIs        Linux: /dev/hidrawN
+                               Windows: HID.dll / COM ports
+  6       USB hardware         Physical USB controller
+
+When you write:
+
+  100 MODULE "USB"
+  110 OPEN "HID:" FOR INPUT AS #1
+  120 GET #1, J$, 8
+
+The system:
+
+  1. MODULE "USB" calls mod_usb_register(), which
+     registers USB:, HID:, and USBSER: as VDevs
+  2. OPEN "HID:" looks up the HID: VDev and calls
+     hid_open(), which opens /dev/hidraw0 (Linux) or
+     initializes the HID API (Windows)
+  3. GET #1, J$, 8 calls hid_read() which reads 8 bytes
+     of HID report data from the device
+
+
+4.  PLATFORM SUPPORT MATRIX
+------------------------------
+
+  Feature              Linux          Windows         FreeDOS
+  ───────────────────  ─────────────  ──────────────  ─────────
+  USB enumeration      /dev/ scan     SetupAPI/COM    Stub
+  HID reports          /dev/hidrawN   HID.dll         N/A
+  USB serial read      /dev/ttyUSBN   CreateFile      N/A
+  USB serial write     /dev/ttyACMN   WriteFile       N/A
+  Baud rate control    tcsetattr      SetCommState    N/A
+  Hot-plug detect      inotify/poll   SetupAPI        N/A
+
+  Linux notes:
+    - User must have read permission on /dev/hidraw*
+      (add user to the 'input' group, or use udev rules)
+    - /dev/ttyUSB* requires 'dialout' group membership
+    - Non-blocking I/O uses O_NONBLOCK flag
+
+  Windows notes:
+    - HID.dll and SetupAPI.lib are system libraries
+    - BASIC++ loads HID.dll dynamically at runtime
+    - COM ports are accessed via \\.\COMn paths
+    - No special permissions needed for HID/serial
+
+  FreeDOS notes:
+    - USB is generally not available under FreeDOS
+    - The module compiles but returns stub errors
+    - Use native DOS serial ports (COM1:-COM4:) instead
+
+
+5.  SECURITY: CAP_USB AND CAP_IO
+------------------------------------
+
+USB access requires two capability flags:
+
+  Flag      Hex      Purpose
+  ────────  ───────  ────────────────────────────────
+  CAP_USB   0x4000   Permission to access USB devices
+  CAP_IO    0x0004   Permission for I/O operations
+
+Both must be present.  The USB module declares its
+required capabilities as (CAP_USB | CAP_IO).
+
+  Sandbox Level      USB Access
+  ───────────────    ──────────────────────────────
+  SEC_RESTRICTED     DENIED — module won't activate
+  SEC_STANDARD       DENIED — no CAP_USB by default
+  SEC_TRUSTED        ALLOWED — full USB access
+  SEC_SYSTEM         ALLOWED — full system access
+
+To grant USB access in standard mode:
+
+  basicpp --capabilities=USB,IO program.bas
+
+Or in the program module header:
+
+  MODULE "MyUSBApp"
+    CAPABILITY CAP_USB
+    CAPABILITY CAP_IO
+  END MODULE
+
+Without proper capabilities, OPEN "HID:" raises
+ESECURITY (ERR 200): "USB access denied."
+
+
+======================================================================
+Part II:  ACTIVATING THE USB MODULE
+======================================================================
+
+
+6.  MODULE "USB"
+------------------
+
+The USB module must be explicitly activated before use:
+
+  100 MODULE "USB"
+  110 PRINT "USB module loaded!"
+
+This call:
+
+  1. Looks up "USB" in the module registry
+  2. Verifies CAP_USB | CAP_IO capabilities
+  3. Calls usb_module_init() which:
+     a. Clears all device state
+     b. Registers USB: VDev (VDCLASS_STORAGE)
+     c. Registers HID: VDev (VDCLASS_HID)
+     d. Registers USBSER: VDev (VDCLASS_SERIAL)
+
+If the module is already loaded, MODULE "USB" is a no-op.
+
+To check if the module loaded successfully:
+
+  100 ON ERROR GOTO 900
+  110 MODULE "USB"
+  120 PRINT "USB ready!"
+  130 GOTO 999
+  900 PRINT "USB module failed: "; ERROR$(ERR)
+  910 IF ERR = 200 THEN
+  920   PRINT "Missing CAP_USB capability."
+  930   PRINT "Run with: basicpp --capabilities=USB,IO"
+  940 END IF
+  999 END
+
+
+7.  DEVICE DISCOVERY (DEVICES COMMAND)
+-----------------------------------------
+
+After loading the USB module, the DEVICES command lists
+all registered VDevs, including the three USB devices:
+
+  100 MODULE "USB"
+  110 DEVICES
+
+Output:
+
+  Registered devices:
+    CON:      Console (terminal I/O)
+    ERR:      Error output
+    FILE:     File system
+    USB:      USB device enumeration and access
+    HID:      USB HID (joystick, gamepad, keyboard)
+    USBSER:   USB serial adapter (FTDI, CH340, CP2102)
+
+You can also query device information programmatically:
+
+  100 MODULE "USB"
+  110 D$ = DEVICE INFO$("HID:", "description")
+  120 PRINT D$
+  130 REM Output: USB HID (joystick, gamepad, keyboard)
+
+  200 V$ = DEVICE INFO$("USBSER:", "version")
+  210 PRINT "USBSER version: "; V$
+  220 REM Output: USBSER version: 1.0
+
+
+8.  ERROR HANDLING AND DIAGNOSTICS
+-------------------------------------
+
+USB operations can fail for many reasons: device not
+connected, permission denied, device busy, etc.  Always
+use error handling:
+
+  100 MODULE "USB"
+  110 ON ERROR GOTO 900
+  120 OPEN "HID:" FOR INPUT AS #1
+  130 PRINT "HID device opened!"
+  140 GOTO 200
+  900 PRINT "USB Error: "; ERR; " - "; ERROR$(ERR)
+  910 REM Common errors:
+  920 REM   200 = Security denied (no CAP_USB)
+  930 REM   250 = Device not found
+  940 REM   251 = Device busy (already open)
+  950 REM   252 = Device I/O error
+  960 REM   253 = Device not supported on platform
+  970 END
+
+To query the last error from a device:
+
+  100 E$ = DEVICE INFO$("HID:", "error")
+  110 IF LEN(E$) > 0 THEN
+  120   PRINT "Last HID error: "; E$
+  130 END IF
+
+
+======================================================================
+Part III:  USB DEVICE ENUMERATION
+======================================================================
+
+
+9.  SCANNING FOR CONNECTED DEVICES
+--------------------------------------
+
+Before opening a specific device, you should enumerate
+what's connected.  The USB: device handles this:
+
+  100 MODULE "USB"
+  110 OPEN "USB:" FOR INPUT AS #1
+  120 REM -- Trigger enumeration --
+  130 IOCTL #1, 8, COUNT%     : REM VDIO_ENUMERATE = 8
+  140 PRINT "Found "; COUNT%; " USB device(s):"
+  150 PRINT "────────────────────────────────────"
+  160 FOR I% = 1 TO COUNT%
+  170   LINE INPUT #1, DEV$
+  180   PRINT "  "; I%; ": "; DEV$
+  190 NEXT I%
+  200 CLOSE #1
+
+Output on a typical Linux system:
+
+  Found 4 USB device(s):
+  ────────────────────────────────────
+    1: /dev/hidraw0
+    2: /dev/hidraw1
+    3: /dev/ttyUSB0
+    4: /dev/ttyACM0
+
+Output on a typical Windows system:
+
+  Found 3 USB device(s):
+  ────────────────────────────────────
+    1: COM3
+    2: COM5
+    3: COM7
+
+
+10.  THE ENUMERATION LIST
+----------------------------
+
+The enumeration list is a snapshot taken at the moment
+you call VDIO_ENUMERATE.  It does not update in real
+time.  If devices are plugged in or removed after
+enumeration, you need to re-enumerate:
+
+  100 REM -- Re-enumerate after hot-plug event --
+  110 IOCTL #1, 8, COUNT%     : REM VDIO_ENUMERATE
+  120 PRINT "Now "; COUNT%; " devices"
+
+The enumeration list holds up to 16 device names
+(USB_MAX_SUBDEVICES = 16).  Each name is an OS-specific
+device path:
+
+  Platform   Example Path         Device Type
+  ─────────  ───────────────────  ─────────────────
+  Linux      /dev/hidraw0         HID device
+  Linux      /dev/hidraw1         HID device
+  Linux      /dev/ttyUSB0         FTDI/CH340 serial
+  Linux      /dev/ttyACM0         CDC ACM serial
+  Windows    COM3                 Serial port
+  Windows    COM5                 Serial port
+
+The enumeration cursor auto-advances with each LINE INPUT.
+To reset the cursor and re-read:
+
+  100 IOCTL #1, 0, 0          : REM VDIO_RESET
+  110 REM Cursor is back at the beginning
+
+
+11.  PLATFORM-SPECIFIC DISCOVERY
+-----------------------------------
+
+11.1  Linux: /dev/hidraw* and /dev/ttyUSB*
+
+On Linux, the USB: enumeration scans /dev/ for files
+matching these patterns:
+
+  Pattern       Device Type
+  ────────────  ──────────────────────────────
+  hidrawN       HID devices (joystick, gamepad)
+  ttyUSBN       FTDI, CH340, CP2102 serial
+  ttyACMN       CDC ACM serial (Arduino, etc.)
+
+Permission requirements:
+
+  Device         Group Needed     udev Rule
+  ─────────────  ──────────────   ──────────────────────
+  /dev/hidrawN   input            SUBSYSTEM=="hidraw", ...
+  /dev/ttyUSBN   dialout          SUBSYSTEM=="tty", ...
+  /dev/ttyACMN   dialout          (same as ttyUSB)
+
+Add your user to the required group:
+
+  sudo usermod -a -G input,dialout $USER
+
+Then log out and back in.
+
+
+11.2  Windows: COM Port Probing
+
+On Windows, the USB: enumeration probes COM1 through
+COM16 by attempting to open each port.  Ports that open
+successfully are included in the enumeration list.
+
+For HID devices on Windows, a full implementation uses:
+
+  1. SetupDiGetClassDevs(&GUID_DEVINTERFACE_HID, ...)
+  2. SetupDiEnumDeviceInterfaces(...)
+  3. SetupDiGetDeviceInterfaceDetail(...)
+  4. CreateFile(deviceInterfacePath, ...)
+
+The current implementation provides COM port enumeration.
+Full HID enumeration requires linking hid.lib and
+setupapi.lib (see How_To_Compile.txt).
+
+
+11.3  FreeDOS: Stub Behavior
+
+On FreeDOS, USB is generally not available.  The USB
+module compiles with stub functions that return error
+codes.  Enumeration always returns 0 devices.
+
+For serial I/O on DOS, use the traditional COM: device
+instead of USBSER:
+
+  100 OPEN "COM1:9600,N,8,1" FOR INPUT AS #1
+
+
+======================================================================
+Part IV:  HID DEVICES (JOYSTICKS, GAMEPADS, KEYBOARDS)
+======================================================================
+
+
+12.  WHAT IS HID?
+-------------------
+
+HID (Human Interface Device) is a USB device class for
+input devices: keyboards, mice, joysticks, gamepads,
+flight sticks, steering wheels, and more.
+
+HID devices communicate by sending "reports" — small
+binary packets containing the current state of all
+inputs.  A typical gamepad report looks like this:
+
+  Byte   Content
+  ─────  ─────────────────────────────
+  0      Report ID (usually 0x01)
+  1      X axis  (0=left, 128=center, 255=right)
+  2      Y axis  (0=up,   128=center, 255=down)
+  3      Z axis  (twist / right stick X)
+  4      Rz axis (throttle / right stick Y)
+  5      Buttons 1-8  (bit flags)
+  6      Buttons 9-16 (bit flags)
+  7      Hat switch (D-pad direction)
+
+The report format varies by device.  You must know (or
+discover) the format for your specific device.
+
+
+13.  OPENING A HID DEVICE
+----------------------------
+
+Open the default HID device:
+
+  100 MODULE "USB"
+  110 OPEN "HID:" FOR INPUT AS #1
+  120 PRINT "HID device opened!"
+
+Open a specific HID device:
+
+  100 MODULE "USB"
+  110 OPEN "HID:/dev/hidraw0" FOR INPUT AS #1
+
+  200 REM -- Or on a different device --
+  210 OPEN "HID:/dev/hidraw1" FOR INPUT AS #2
+
+If no path is given, HID: opens /dev/hidraw0 (Linux) or
+the first discovered HID device (Windows).
+
+
+14.  READING HID REPORTS
+---------------------------
+
+Read a HID report as binary data:
+
+  Syntax:
+    GET #channel%, buffer$, bytes%
+
+  Example:
+
+  100 MODULE "USB"
+  110 OPEN "HID:" FOR INPUT AS #1
+  120 REM -- Read 8-byte HID report --
+  130 GET #1, J$, 8
+  140 REM J$ now contains 8 bytes of binary data
+  150 REM Parse the individual bytes:
+  160 FOR I% = 1 TO 8
+  170   PRINT "Byte "; I%; " = "; ASC(MID$(J$, I%, 1))
+  180 NEXT I%
+  190 CLOSE #1
+
+
+15.  PARSING REPORT DATA
+---------------------------
+
+15.1  Gamepad Report Format (Generic USB Gamepad)
+
+  Byte 0:  Report ID (ignore)
+  Byte 1:  Left stick X axis    (0-255, 128=center)
+  Byte 2:  Left stick Y axis    (0-255, 128=center)
+  Byte 3:  Right stick X axis   (0-255, 128=center)
+  Byte 4:  Right stick Y axis   (0-255, 128=center)
+  Byte 5:  Buttons 1-8 (bit flags)
+           Bit 0 = Button A
+           Bit 1 = Button B
+           Bit 2 = Button X
+           Bit 3 = Button Y
+           Bit 4 = Left bumper
+           Bit 5 = Right bumper
+           Bit 6 = Back/Select
+           Bit 7 = Start
+  Byte 6:  Buttons 9-16 (bit flags)
+           Bit 0 = Left stick press
+           Bit 1 = Right stick press
+           Bit 2 = Home/Guide
+  Byte 7:  Hat switch (D-pad)
+           0=up, 1=up-right, 2=right, 3=down-right
+           4=down, 5=down-left, 6=left, 7=up-left
+           8=center (no direction)
+
+Parsing example:
+
+  100 MODULE "USB"
+  110 OPEN "HID:" FOR INPUT AS #1
+  120 REM
+  130 DO
+  140   GET #1, RPT$, 8
+  150   IF LEN(RPT$) >= 8 THEN
+  160     LX% = ASC(MID$(RPT$, 2, 1))   : REM Left X
+  170     LY% = ASC(MID$(RPT$, 3, 1))   : REM Left Y
+  180     RX% = ASC(MID$(RPT$, 4, 1))   : REM Right X
+  190     RY% = ASC(MID$(RPT$, 5, 1))   : REM Right Y
+  200     BTN% = ASC(MID$(RPT$, 6, 1))  : REM Buttons
+  210     HAT% = ASC(MID$(RPT$, 8, 1))  : REM D-pad
+  220     REM
+  230     CLS
+  240     PRINT "Left Stick:  X="; LX%; " Y="; LY%
+  250     PRINT "Right Stick: X="; RX%; " Y="; RY%
+  260     PRINT "Buttons: ";
+  270     IF BTN% AND 1 THEN PRINT "A ";
+  280     IF BTN% AND 2 THEN PRINT "B ";
+  290     IF BTN% AND 4 THEN PRINT "X ";
+  300     IF BTN% AND 8 THEN PRINT "Y ";
+  310     PRINT
+  320     REM D-pad direction
+  330     DPAD$(0) = "Up"
+  340     DPAD$(1) = "Up-Right"
+  350     DPAD$(2) = "Right"
+  360     DPAD$(3) = "Down-Right"
+  370     DPAD$(4) = "Down"
+  380     DPAD$(5) = "Down-Left"
+  390     DPAD$(6) = "Left"
+  400     DPAD$(7) = "Up-Left"
+  410     DPAD$(8) = "Center"
+  420     IF HAT% <= 8 THEN
+  430       PRINT "D-Pad: "; DPAD$(HAT%)
+  440     END IF
+  450   END IF
+  460   SLEEP 16   : REM ~60 FPS
+  470 LOOP UNTIL INKEY$ <> ""
+  480 CLOSE #1
+
+
+15.2  Joystick Report Format
+
+Classic joysticks typically send a simpler report:
+
+  Byte 0:  Report ID
+  Byte 1:  X axis (0-255)
+  Byte 2:  Y axis (0-255)
+  Byte 3:  Buttons (bit flags)
+           Bit 0 = Trigger
+           Bit 1 = Button 2
+           Bit 2 = Button 3
+           Bit 3 = Button 4
+
+
+15.3  Keyboard Report Format (USB HID Keyboard)
+
+  Byte 0:  Modifier keys (bit flags)
+           Bit 0 = Left Ctrl
+           Bit 1 = Left Shift
+           Bit 2 = Left Alt
+           Bit 3 = Left GUI (Windows key)
+           Bit 4 = Right Ctrl
+           Bit 5 = Right Shift
+           Bit 6 = Right Alt
+           Bit 7 = Right GUI
+  Byte 1:  Reserved (always 0)
+  Bytes 2-7: Key codes (up to 6 simultaneous keys)
+           0x04 = A, 0x05 = B, ... 0x1D = Z
+           0x1E = 1, ... 0x27 = 0
+           0x28 = Enter, 0x29 = Escape
+           0x2A = Backspace, 0x2B = Tab
+           0x2C = Space
+
+
+16.  POLLING AND NON-BLOCKING READS
+---------------------------------------
+
+HID reports arrive when the device state changes.  If
+no buttons are pressed and no axes have moved, GET #
+may return no data (or the same data as last time).
+
+Non-blocking approach:
+
+  100 MODULE "USB"
+  110 OPEN "HID:" FOR INPUT AS #1
+  120 REM
+  130 REM -- Game loop with HID polling --
+  140 DO
+  150   REM Try to read (non-blocking on Linux)
+  160   ON ERROR GOTO 200
+  170   GET #1, RPT$, 8
+  180   IF LEN(RPT$) > 0 THEN GOSUB 500  : REM process
+  190   GOTO 210
+  200   REM No data available, continue game
+  210   ON ERROR GOTO 0
+  220   REM
+  230   REM -- Update game state --
+  240   GOSUB 600
+  250   REM -- Draw screen --
+  260   GOSUB 700
+  270   SLEEP 16
+  280 LOOP UNTIL QUIT%
+  290 CLOSE #1
+  300 END
+
+To check if data is available without blocking:
+
+  100 STATUS% = DEVICE STATUS("HID:")
+  110 IF STATUS% = 0 THEN
+  120   PRINT "HID device ready"
+  130 ELSE
+  140   PRINT "HID device not ready"
+  150 END IF
+
+
+17.  HID DEVICE INFORMATION
+------------------------------
+
+Query HID device metadata:
+
+  100 MODULE "USB"
+  110 OPEN "HID:" FOR INPUT AS #1
+  120 PRINT "Path:        "; DEVICE INFO$("HID:", "path")
+  130 PRINT "Report size: "; DEVICE INFO$("HID:", "report_size")
+  140 PRINT "Error:       "; DEVICE INFO$("HID:", "error")
+  150 CLOSE #1
+
+
+18.  COMPLETE GAMEPAD EXAMPLE
+--------------------------------
+
+A full-featured gamepad input display:
+
+  100 REM ======================================
+  110 REM  USB Gamepad Tester
+  120 REM ======================================
+  130 MODULE "USB"
+  140 ON ERROR GOTO 900
+  150 OPEN "HID:" FOR INPUT AS #1
+  160 PRINT "╔══════════════════════════════════╗"
+  170 PRINT "║    USB Gamepad Tester            ║"
+  180 PRINT "╚══════════════════════════════════╝"
+  190 PRINT "Press ESC to exit."
+  200 PRINT
+  210 REM -- Main loop --
+  220 DO
+  230   ON ERROR GOTO 350
+  240   GET #1, RPT$, 8
+  250   ON ERROR GOTO 900
+  260   IF LEN(RPT$) >= 6 THEN
+  270     LX% = ASC(MID$(RPT$, 2, 1))
+  280     LY% = ASC(MID$(RPT$, 3, 1))
+  290     BTN% = ASC(MID$(RPT$, 6, 1))
+  300     LOCATE 6, 1
+  310     PRINT "Stick X: "; LX%; "  "
+  320     PRINT "Stick Y: "; LY%; "  "
+  330     PRINT "Buttons: "; BIN$(BTN%); "        "
+  340   END IF
+  350   SLEEP 16
+  360 LOOP UNTIL INKEY$ = CHR$(27)
+  370 CLOSE #1
+  380 PRINT "Goodbye!"
+  390 END
+  900 PRINT "Error: "; ERROR$(ERR)
+  910 END
+
+
+======================================================================
+Part V:  USB-TO-SERIAL ADAPTERS
+======================================================================
+
+
+19.  WHAT IS USB-SERIAL?
+--------------------------
+
+A USB-to-serial adapter converts USB into an RS-232 or
+TTL serial port.  This is how most modern computers talk
+to:
+
+  - Arduino boards (ATmega, ESP32, etc.)
+  - Raspberry Pi Pico (via USB CDC)
+  - GPS modules
+  - Barcode scanners
+  - Industrial equipment
+  - Retro computer serial ports
+  - Amateur radio equipment (TNC, CAT control)
+  - 3D printers (G-code control)
+  - CNC machines
+
+The adapter appears as a virtual COM port (Windows) or
+/dev/ttyUSBN (Linux).  BASIC++ accesses it through the
+USBSER: virtual device.
+
+
+20.  SUPPORTED CHIPSETS
+-------------------------
+
+  Chipset        Manufacturer     Linux Driver    Common Use
+  ─────────────  ──────────────   ─────────────   ────────────────
+  FT232R         FTDI             ftdi_sio        Arduino, debug
+  FT2232H        FTDI             ftdi_sio        Dual-port debug
+  CH340/CH341    WCH              ch341           Arduino clones
+  CP2102/CP2104  Silicon Labs     cp210x          IoT, embedded
+  PL2303         Prolific         pl2303          Legacy cables
+  CDC ACM        (generic)        cdc_acm         Arduino Uno/Mega
+
+All chipsets are accessed identically through USBSER:.
+The OS driver handles chipset-specific differences.
+
+
+21.  OPENING A SERIAL PORT
+-----------------------------
+
+Open the default USB serial port:
+
+  100 MODULE "USB"
+  110 OPEN "USBSER:" FOR INPUT AS #1
+
+Open a specific port:
+
+  100 REM -- Linux --
+  110 OPEN "USBSER:/dev/ttyUSB0" FOR INPUT AS #1
+
+  200 REM -- Windows --
+  210 OPEN "USBSER:COM3" FOR INPUT AS #2
+
+  300 REM -- Read/write mode --
+  310 OPEN "USBSER:/dev/ttyUSB0" FOR OUTPUT AS #3
+
+Default serial parameters:
+  - Baud rate: 9600
+  - Data bits: 8
+  - Parity: None
+  - Stop bits: 1
+  - Flow control: None
+
+
+22.  SERIAL COMMUNICATION
+----------------------------
+
+22.1  Writing Data (PRINT #, PUT #)
+
+Send text to the serial device:
+
+  100 MODULE "USB"
+  110 OPEN "USBSER:COM3" FOR OUTPUT AS #1
+  120 PRINT #1, "Hello, Arduino!"
+  130 PRINT #1, "LED ON"
+  140 CLOSE #1
+
+Send binary data:
+
+  100 OPEN "USBSER:COM3" FOR OUTPUT AS #1
+  110 REM -- Send raw bytes --
+  120 PUT #1, CHR$(0) + CHR$(255) + CHR$(128)
+  130 CLOSE #1
+
+
+22.2  Reading Data (INPUT #, GET #)
+
+Read a line of text:
+
+  100 MODULE "USB"
+  110 OPEN "USBSER:/dev/ttyUSB0" FOR INPUT AS #1
+  120 LINE INPUT #1, RESPONSE$
+  130 PRINT "Received: "; RESPONSE$
+  140 CLOSE #1
+
+Read binary data:
+
+  100 OPEN "USBSER:/dev/ttyUSB0" FOR INPUT AS #1
+  110 GET #1, DATA$, 16
+  120 FOR I% = 1 TO LEN(DATA$)
+  130   PRINT HEX$(ASC(MID$(DATA$, I%, 1))); " ";
+  140 NEXT I%
+  150 PRINT
+  160 CLOSE #1
+
+
+22.3  Line-Oriented I/O
+
+The USBSER: device supports line-oriented I/O through
+its gets/puts functions.  Line INPUT reads until a
+newline character is received.  Carriage returns (CR)
+are automatically stripped.
+
+  100 MODULE "USB"
+  110 OPEN "USBSER:/dev/ttyUSB0" FOR INPUT AS #1
+  120 REM -- Send command, read response --
+  130 PRINT #1, "AT"
+  140 LINE INPUT #1, RESP$
+  150 IF RESP$ = "OK" THEN
+  160   PRINT "Modem responded!"
+  170 END IF
+  180 CLOSE #1
+
+
+23.  BAUD RATE AND SERIAL CONFIGURATION
+------------------------------------------
+
+The default baud rate is 9600.  To change it:
+
+  100 MODULE "USB"
+  110 OPEN "USBSER:COM3" FOR INPUT AS #1
+  120 REM -- Set baud rate to 115200 --
+  130 BAUD% = 115200
+  140 IOCTL #1, 2, BAUD%     : REM VDIO_SET_BAUD = 2
+  150 PRINT "Baud rate set to 115200"
+
+Common baud rates:
+
+  Rate      Use Case
+  ────────  ──────────────────────────────
+  1200      Legacy modems
+  2400      GPS modules (NMEA default)
+  4800      GPS modules (alternate)
+  9600      Arduino default, most serial
+  19200     Faster serial devices
+  38400     Industrial equipment
+  57600     Fast serial
+  115200    Arduino Serial.begin(115200)
+  230400    High-speed serial
+  460800    Very high speed
+  921600    Maximum common rate
+
+Example: Arduino at 115200 baud:
+
+  100 MODULE "USB"
+  110 OPEN "USBSER:/dev/ttyACM0" FOR INPUT AS #1
+  120 BAUD% = 115200
+  130 IOCTL #1, 2, BAUD%
+  140 REM -- Now communicating at 115200 baud --
+  150 PRINT #1, "SENSOR READ"
+  160 LINE INPUT #1, TEMP$
+  170 PRINT "Temperature: "; TEMP$
+  180 CLOSE #1
+
+
+24.  TIMEOUTS AND BUFFER MANAGEMENT
+---------------------------------------
+
+Set a read timeout:
+
+  100 MODULE "USB"
+  110 OPEN "USBSER:COM3" FOR INPUT AS #1
+  120 REM -- Set timeout to 2000 ms --
+  130 MS% = 2000
+  140 IOCTL #1, 6, MS%        : REM VDIO_SET_TIMEOUT = 6
+  150 REM
+  160 REM -- Read with timeout --
+  170 ON ERROR GOTO 300
+  180 LINE INPUT #1, RESP$
+  190 PRINT "Got: "; RESP$
+  200 GOTO 400
+  300 PRINT "Timed out waiting for data"
+  400 CLOSE #1
+
+Flush the serial buffers:
+
+  100 REM -- Clear input/output buffers --
+  110 IOCTL #1, 0, 0          : REM VDIO_RESET
+
+
+25.  COMPLETE ARDUINO COMMUNICATION EXAMPLE
+----------------------------------------------
+
+A full Arduino serial monitor:
+
+  100 REM ======================================
+  110 REM  Arduino Serial Monitor
+  120 REM ======================================
+  130 MODULE "USB"
+  140 ON ERROR GOTO 900
+  150 REM -- Find Arduino --
+  160 PRINT "Opening serial port..."
+  170 OPEN "USBSER:/dev/ttyACM0" FOR INPUT AS #1
+  180 BAUD% = 115200
+  190 IOCTL #1, 2, BAUD%
+  200 PRINT "Connected to Arduino at 115200 baud!"
+  210 PRINT "Type commands. Press ESC to exit."
+  220 PRINT "────────────────────────────────────"
+  230 REM
+  240 REM -- Main loop --
+  250 LINE$ = ""
+  260 DO
+  270   REM -- Check for incoming serial data --
+  280   ON ERROR GOTO 400
+  290   LINE INPUT #1, INCOMING$
+  300   ON ERROR GOTO 900
+  310   IF LEN(INCOMING$) > 0 THEN
+  320     PRINT "[Arduino] "; INCOMING$
+  330   END IF
+  340   GOTO 410
+  400   REM -- No data, continue --
+  410   ON ERROR GOTO 900
+  420   REM
+  430   REM -- Check for keyboard input --
+  440   K$ = INKEY$
+  450   IF LEN(K$) > 0 THEN
+  460     IF K$ = CHR$(27) THEN GOTO 800
+  470     IF K$ = CHR$(13) THEN
+  480       PRINT #1, LINE$
+  490       PRINT "[Sent] "; LINE$
+  500       LINE$ = ""
+  510     ELSE
+  520       LINE$ = LINE$ + K$
+  530       PRINT K$;
+  540     END IF
+  550   END IF
+  560   SLEEP 50
+  570 LOOP
+  800 REM -- Disconnect --
+  810 CLOSE #1
+  820 PRINT
+  830 PRINT "Disconnected."
+  840 END
+  900 PRINT "Error: "; ERROR$(ERR)
+  910 END
+
+
+======================================================================
+Part VI:  ADVANCED TOPICS
+======================================================================
+
+
+26.  IOCTL COMMANDS
+---------------------
+
+The USB devices support these IOCTL commands:
+
+  Code  Constant           Device    Description
+  ────  ─────────────────  ────────  ────────────────────────
+  0     VDIO_RESET         All       Reset device state
+  1     VDIO_GET_STATUS    HID       Get device status word
+  2     VDIO_SET_BAUD      USBSER    Set baud rate
+  6     VDIO_SET_TIMEOUT   USBSER    Set I/O timeout (ms)
+  7     VDIO_GET_ERROR     All       Get last error string
+  8     VDIO_ENUMERATE     USB       Scan for devices
+
+Syntax:
+
+  IOCTL #channel%, command%, argument%
+
+Examples:
+
+  100 REM -- Enumerate USB devices --
+  110 IOCTL #1, 8, COUNT%
+
+  200 REM -- Set baud rate to 9600 --
+  210 BAUD% = 9600
+  220 IOCTL #1, 2, BAUD%
+
+  300 REM -- Set timeout to 5 seconds --
+  310 MS% = 5000
+  320 IOCTL #1, 6, MS%
+
+  400 REM -- Reset device --
+  410 IOCTL #1, 0, 0
+
+
+27.  HOT-PLUG DETECTION
+--------------------------
+
+All three USB devices have the VDCAP_HOTPLUG flag,
+meaning they support devices that appear and disappear
+while the program is running.
+
+To detect hot-plug events, periodically re-enumerate:
+
+  100 MODULE "USB"
+  110 OPEN "USB:" FOR INPUT AS #1
+  120 LAST_COUNT% = 0
+  130 DO
+  140   IOCTL #1, 8, COUNT%    : REM VDIO_ENUMERATE
+  150   IF COUNT% <> LAST_COUNT% THEN
+  160     IF COUNT% > LAST_COUNT% THEN
+  170       PRINT "Device plugged in! ("; COUNT%; " total)"
+  180     ELSE
+  190       PRINT "Device removed! ("; COUNT%; " total)"
+  200     END IF
+  210     LAST_COUNT% = COUNT%
+  220     REM Reset cursor and re-read list
+  230     IOCTL #1, 0, 0       : REM VDIO_RESET
+  240     IOCTL #1, 8, COUNT%  : REM VDIO_ENUMERATE
+  250     FOR I% = 1 TO COUNT%
+  260       LINE INPUT #1, DEV$
+  270       PRINT "  "; DEV$
+  280     NEXT I%
+  290   END IF
+  300   SLEEP 2000  : REM check every 2 seconds
+  310 LOOP UNTIL INKEY$ <> ""
+  320 CLOSE #1
+
+
+28.  MULTIPLE SIMULTANEOUS DEVICES
+--------------------------------------
+
+You can open multiple USB devices on different channels:
+
+  100 MODULE "USB"
+  110 REM -- Open two gamepads --
+  120 OPEN "HID:/dev/hidraw0" FOR INPUT AS #1
+  130 OPEN "HID:/dev/hidraw1" FOR INPUT AS #2
+  140 REM
+  150 REM -- Open a serial port for logging --
+  160 OPEN "USBSER:/dev/ttyUSB0" FOR OUTPUT AS #3
+  170 BAUD% = 115200
+  180 IOCTL #3, 2, BAUD%
+  190 REM
+  200 REM -- Two-player game loop --
+  210 DO
+  220   GET #1, P1$, 8    : REM Player 1 gamepad
+  230   GET #2, P2$, 8    : REM Player 2 gamepad
+  240   REM Process both inputs...
+  250   PRINT #3, "P1="; ASC(MID$(P1$, 2, 1)); _
+                " P2="; ASC(MID$(P2$, 2, 1))
+  260   SLEEP 16
+  270 LOOP UNTIL INKEY$ <> ""
+  280 CLOSE #1 : CLOSE #2 : CLOSE #3
+
+Note: The current implementation uses static state for
+each device type, so only one instance of each type
+(USB:, HID:, USBSER:) can be open at a time.  Future
+versions may support multiple instances via indexed
+device names (e.g., "HID:0", "HID:1").
+
+
+29.  RAW BINARY I/O
+----------------------
+
+Both HID: and USBSER: support binary I/O via the
+dev_read and dev_write function pointers.  From BASIC,
+this is accessed through GET # and PUT #:
+
+  100 REM -- Read exactly 64 bytes of raw data --
+  110 GET #1, RAW$, 64
+  120 PRINT "Read "; LEN(RAW$); " bytes"
+
+  200 REM -- Write a binary command packet --
+  210 CMD$ = CHR$(0x02) + CHR$(0x01) + CHR$(0x00) + CHR$(0x03)
+  220 PUT #1, CMD$
+
+Binary data is not line-terminated and is transferred
+as-is without any CR/LF conversion.
+
+
+30.  BUILDING A USB DEVICE MONITOR
+--------------------------------------
+
+A comprehensive USB monitoring tool:
+
+  100 REM ======================================
+  110 REM  USB Device Monitor
+  120 REM ======================================
+  130 MODULE "USB"
+  140 ON ERROR GOTO 900
+  150 OPEN "USB:" FOR INPUT AS #1
+  160 PRINT "╔══════════════════════════════════╗"
+  170 PRINT "║    USB Device Monitor            ║"
+  180 PRINT "╚══════════════════════════════════╝"
+  190 PRINT
+  200 LAST% = -1
+  210 DO
+  220   IOCTL #1, 8, COUNT%
+  230   IF COUNT% <> LAST% THEN
+  240     CLS
+  250     PRINT "USB Device Monitor"
+  260     PRINT "────────────────────────────────────"
+  270     PRINT "Connected devices: "; COUNT%
+  280     PRINT
+  290     IF COUNT% > 0 THEN
+  300       IOCTL #1, 0, 0    : REM reset cursor
+  310       IOCTL #1, 8, COUNT%
+  320       FOR I% = 1 TO COUNT%
+  330         LINE INPUT #1, DEV$
+  340         PRINT "  ["; I%; "] "; DEV$;
+  350         REM Classify device type
+  360         IF INSTR(DEV$, "hidraw") > 0 THEN
+  370           PRINT "  (HID - gamepad/joystick)"
+  380         ELSEIF INSTR(DEV$, "ttyUSB") > 0 THEN
+  390           PRINT "  (Serial - FTDI/CH340)"
+  400         ELSEIF INSTR(DEV$, "ttyACM") > 0 THEN
+  410           PRINT "  (Serial - Arduino/CDC)"
+  420         ELSEIF INSTR(DEV$, "COM") > 0 THEN
+  430           PRINT "  (Serial - COM port)"
+  440         ELSE
+  450           PRINT "  (Unknown)"
+  460         END IF
+  470       NEXT I%
+  480     ELSE
+  490       PRINT "  (No USB devices detected)"
+  500     END IF
+  510     PRINT
+  520     PRINT "Monitoring... (press any key to exit)"
+  530     LAST% = COUNT%
+  540   END IF
+  550   SLEEP 1000
+  560 LOOP UNTIL INKEY$ <> ""
+  570 CLOSE #1
+  580 END
+  900 PRINT "Error: "; ERROR$(ERR)
+  910 END
+
+
+======================================================================
+Part VII:  ERROR REFERENCE
+======================================================================
+
+
+31.  USB ERROR CODES
+----------------------
+
+  Code  Constant             Description
+  ────  ───────────────────  ──────────────────────────────
+  200   ESECURITY            USB access denied (no CAP_USB)
+  250   EUSB_NOTFOUND        Device not found / not connected
+  251   EUSB_BUSY            Device already open
+  252   EUSB_IOERROR         I/O error during read/write
+  253   EUSB_PLATFORM        Not supported on this platform
+  254   EUSB_PERMISSION      OS permission denied
+  255   EUSB_TIMEOUT         Read/write timed out
+  256   EUSB_OVERFLOW        Report buffer overflow
+  257   EUSB_PROTOCOL        Protocol/format error
+
+To get a human-readable error message:
+
+  100 ON ERROR GOTO 900
+  110 OPEN "HID:" FOR INPUT AS #1
+  120 GOTO 999
+  900 PRINT "Error "; ERR; ": "; ERROR$(ERR)
+  999 END
+
+To get the last device-level error:
+
+  100 E$ = DEVICE INFO$("HID:", "error")
+  110 PRINT "Device error: "; E$
+
+
+32.  TROUBLESHOOTING CHECKLIST
+---------------------------------
+
+  Problem: "USB access denied" (ERR 200)
+  Fix:     Run with --capabilities=USB,IO or use
+           SEC_TRUSTED security level.
+
+  Problem: "Device not found" (ERR 250)
+  Fix:     1. Check that the device is plugged in
+           2. Run USB: enumeration to verify
+           3. Check the device path is correct
+           4. On Linux: check /dev/ permissions
+
+  Problem: "Permission denied" (ERR 254)
+  Fix:     Linux:
+             sudo usermod -a -G input,dialout $USER
+             (then log out and back in)
+           Windows:
+             Run as Administrator (rarely needed)
+
+  Problem: "Not supported on this platform" (ERR 253)
+  Fix:     1. Check platform support matrix (Section 4)
+           2. On FreeDOS: use COM: instead of USBSER:
+           3. On Windows: link hid.lib for HID support
+
+  Problem: No data from HID device
+  Fix:     1. Device may not be sending reports
+           2. Try pressing a button or moving a stick
+           3. Check report size (may not be 8 bytes)
+           4. Try a different /dev/hidrawN
+
+  Problem: Garbage data from serial device
+  Fix:     1. Check baud rate matches device setting
+           2. Check data bits (8), parity (N), stop (1)
+           3. Check wiring (TX->RX, RX->TX)
+           4. Try a lower baud rate
+
+
+======================================================================
+Part VIII:  COMPLETE EXAMPLES
+======================================================================
+
+
+33.  EXAMPLE: USB DEVICE SCANNER
+-----------------------------------
+
+  100 REM ======================================
+  110 REM  Scan and display all USB devices
+  120 REM ======================================
+  130 MODULE "USB"
+  140 OPEN "USB:" FOR INPUT AS #1
+  150 IOCTL #1, 8, COUNT%
+  160 PRINT "USB Device Scanner"
+  170 PRINT "══════════════════════════════════"
+  180 PRINT "Found "; COUNT%; " device(s)."
+  190 PRINT
+  200 IF COUNT% = 0 THEN
+  210   PRINT "No USB devices detected."
+  220   PRINT "Check connections and permissions."
+  230   GOTO 400
+  240 END IF
+  250 FOR I% = 1 TO COUNT%
+  260   LINE INPUT #1, DEV$
+  270   PRINT USING "  ##. \                         \"; I%; DEV$
+  280 NEXT I%
+  290 PRINT
+  300 PRINT "──────────────────────────────────"
+  310 PRINT "Tip: Use OPEN ""HID:path"" to open"
+  320 PRINT "     HID devices, or OPEN"
+  330 PRINT "     ""USBSER:path"" for serial."
+  400 CLOSE #1
+  410 END
+
+
+34.  EXAMPLE: GAMEPAD-CONTROLLED GAME
+-----------------------------------------
+
+  100 REM ======================================
+  110 REM  Gamepad Cursor Demo
+  120 REM ======================================
+  130 MODULE "USB"
+  140 ON ERROR GOTO 900
+  150 OPEN "HID:" FOR INPUT AS #1
+  160 CLS
+  170 PX% = 40 : PY% = 12  : REM cursor position
+  180 DO
+  190   ON ERROR GOTO 250
+  200   GET #1, RPT$, 8
+  210   ON ERROR GOTO 900
+  220   IF LEN(RPT$) >= 3 THEN
+  230     JX% = ASC(MID$(RPT$, 2, 1)) - 128
+  240     JY% = ASC(MID$(RPT$, 3, 1)) - 128
+  250     REM Dead zone (ignore small movements)
+  260     IF ABS(JX%) > 20 THEN
+  270       PX% = PX% + SGN(JX%)
+  280     END IF
+  290     IF ABS(JY%) > 20 THEN
+  300       PY% = PY% + SGN(JY%)
+  310     END IF
+  320     REM Clamp to screen
+  330     IF PX% < 1 THEN PX% = 1
+  340     IF PX% > 80 THEN PX% = 80
+  350     IF PY% < 1 THEN PY% = 1
+  360     IF PY% > 24 THEN PY% = 24
+  370   END IF
+  380   REM Draw cursor
+  390   CLS
+  400   LOCATE PY%, PX%
+  410   PRINT "*";
+  420   LOCATE 25, 1
+  430   PRINT "X:"; PX%; " Y:"; PY%; "  (ESC=quit)";
+  440   SLEEP 33   : REM ~30 FPS
+  450 LOOP UNTIL INKEY$ = CHR$(27)
+  460 CLOSE #1
+  470 CLS
+  480 PRINT "Done!"
+  490 END
+  900 PRINT "Error: "; ERROR$(ERR)
+  910 END
+
+
+35.  EXAMPLE: SERIAL DATA LOGGER
+-------------------------------------
+
+  100 REM ======================================
+  110 REM  Serial Data Logger
+  120 REM ======================================
+  130 REM Reads sensor data from a serial device
+  140 REM and logs it to a CSV file.
+  150 REM ======================================
+  160 MODULE "USB"
+  170 ON ERROR GOTO 900
+  180 REM -- Open serial port --
+  190 OPEN "USBSER:/dev/ttyUSB0" FOR INPUT AS #1
+  200 BAUD% = 9600
+  210 IOCTL #1, 2, BAUD%
+  220 REM -- Open log file --
+  230 OPEN "sensor_log.csv" FOR OUTPUT AS #2
+  240 PRINT #2, "Timestamp,Reading"
+  250 PRINT "Serial Data Logger"
+  260 PRINT "────────────────────────────────────"
+  270 PRINT "Logging to sensor_log.csv..."
+  280 PRINT "Press any key to stop."
+  290 PRINT
+  300 COUNT% = 0
+  310 DO
+  320   ON ERROR GOTO 400
+  330   LINE INPUT #1, READING$
+  340   ON ERROR GOTO 900
+  350   IF LEN(READING$) > 0 THEN
+  360     COUNT% = COUNT% + 1
+  370     PRINT #2, TIME$; ","; READING$
+  380     PRINT USING "  #### \\:##:##\\ \             \"; _
+                COUNT%; TIME$; READING$
+  390   END IF
+  400   SLEEP 100
+  410 LOOP UNTIL INKEY$ <> ""
+  420 CLOSE #1
+  430 CLOSE #2
+  440 PRINT
+  450 PRINT "Logged "; COUNT%; " readings."
+  460 END
+  900 PRINT "Error: "; ERROR$(ERR)
+  910 CLOSE #1 : CLOSE #2
+  920 END
+
+
+36.  EXAMPLE: ARDUINO BRIDGE
+-------------------------------
+
+  100 REM ======================================
+  110 REM  BASIC++ <-> Arduino Bridge
+  120 REM ======================================
+  130 REM
+  140 REM Sends commands to an Arduino and
+  150 REM reads sensor responses.
+  160 REM
+  170 REM Arduino Sketch should echo commands
+  180 REM and respond with sensor values.
+  190 REM ======================================
+  200 MODULE "USB"
+  210 ON ERROR GOTO 900
+  220 OPEN "USBSER:/dev/ttyACM0" FOR INPUT AS #1
+  230 BAUD% = 115200
+  240 IOCTL #1, 2, BAUD%
+  250 SLEEP 2000   : REM wait for Arduino reset
+  260 PRINT "╔══════════════════════════════════╗"
+  270 PRINT "║   Arduino Bridge v1.0            ║"
+  280 PRINT "╠══════════════════════════════════╣"
+  290 PRINT "║  Commands:                       ║"
+  300 PRINT "║    LED ON    - turn on LED       ║"
+  310 PRINT "║    LED OFF   - turn off LED      ║"
+  320 PRINT "║    TEMP      - read temperature  ║"
+  330 PRINT "║    LIGHT     - read light sensor ║"
+  340 PRINT "║    QUIT      - exit              ║"
+  350 PRINT "╚══════════════════════════════════╝"
+  360 PRINT
+  370 DO
+  380   INPUT "> ", CMD$
+  390   IF UCASE$(CMD$) = "QUIT" THEN GOTO 500
+  400   REM Send command to Arduino
+  410   PRINT #1, CMD$
+  420   REM Wait for response
+  430   SLEEP 100
+  440   ON ERROR GOTO 480
+  450   LINE INPUT #1, RESP$
+  460   PRINT "Arduino: "; RESP$
+  470   GOTO 490
+  480   PRINT "(No response)"
+  490   ON ERROR GOTO 900
+  500 LOOP UNTIL UCASE$(CMD$) = "QUIT"
+  510 CLOSE #1
+  520 PRINT "Disconnected from Arduino."
+  530 END
+  900 PRINT "Error: "; ERROR$(ERR)
+  910 END
+
+
+37.  KEYWORD QUICK REFERENCE
+-------------------------------
+
+All USB-related operations at a glance:
+
+  Statement/Function           Description
+  ───────────────────────────  ────────────────────────────
+  MODULE "USB"                 Activate USB module
+  DEVICES                      List all VDevs incl. USB
+  OPEN "USB:" AS #n            Open USB enumerator
+  OPEN "HID:" AS #n            Open HID input device
+  OPEN "HID:path" AS #n        Open specific HID device
+  OPEN "USBSER:" AS #n         Open default serial port
+  OPEN "USBSER:path" AS #n     Open specific serial port
+  GET #n, buf$, bytes%         Read binary data (HID/serial)
+  PUT #n, data$                Write binary data (serial)
+  PRINT #n, text$              Write text line (serial)
+  LINE INPUT #n, line$         Read text line (serial)
+  INPUT #n, var                Read formatted data (serial)
+  IOCTL #n, 0, 0               Reset device state
+  IOCTL #n, 1, status%         Get device status
+  IOCTL #n, 2, baud%           Set baud rate (serial)
+  IOCTL #n, 6, timeout_ms%     Set I/O timeout (serial)
+  IOCTL #n, 7, err%            Get last error
+  IOCTL #n, 8, count%          Enumerate USB devices
+  CLOSE #n                     Close USB device
+  DEVICE INFO$("dev", "key")   Query device metadata
+  DEVICE STATUS("dev")         Check device readiness
+
+
+======================================================================
+  END OF TUTORIAL: USB DEVICES
+======================================================================

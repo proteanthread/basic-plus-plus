@@ -1,0 +1,199 @@
+HOW TO COMPILE BASIC++
+======================
+Version 0.21.0
+
+BASIC++ is written in strict ANSI C89/C90.  It has ZERO external
+dependencies.  Any standards-conforming C compiler will build it.
+
+
+1. SOURCE FILES
+===============
+
+The project consists of 28 source files (28 .c + 28 .h):
+
+  Core:
+    main.c          Entry point, REPL loop
+    config.h        Build-time constants and limits
+    errors.c/.h     Error codes and reporting
+    memory.c/.h     Program store (line storage)
+
+  Language:
+    lexer.c/.h      Tokenizer (200+ keywords)
+    parser.c/.h     Statement/expression parser
+    exec.c/.h       Execution engine (RUN/CONT)
+    runtime.c/.h    Variable storage, stack, state
+    value.c/.h      BValue polymorphic type (int/float/string)
+    stringpool.c/.h String memory pool
+    dialect.c/.h    Multi-dialect configuration
+    detok.c/.h      Detokenizer (LIST formatting)
+
+  Subsystems:
+    fileio.c/.h     File I/O (sequential/random/binary)
+    vdev.c/.h       Virtual device layer
+    gfxbuf.c/.h     Graphics framebuffer
+    memmap.c/.h     Virtual memory maps
+    security.c/.h   Sandboxing and trust levels
+    module.c/.h     Module/plugin system
+    mod_stdlib.c/.h Standard library module
+
+  Infrastructure:
+    funcreg.c/.h    Function registry
+    builtins.c/.h   Builtin function implementations
+    ast.c/.h        Abstract syntax tree
+    codegen.c/.h    Code generator
+    compiler.c/.h   Compiler driver
+    bytecode.c/.h   Bytecode definitions
+    vm.c/.h         Virtual machine
+    platform.c/.h   Platform abstraction
+    selftest.c/.h   Built-in test suite
+    help.c/.h       HELP command content
+
+  Build:
+    Makefile        GNU Make build rules
+
+
+2. WINDOWS (MSVC)
+=================
+
+Requirements:
+  Microsoft Visual Studio 2019 or later (Community is fine)
+  Or: Build Tools for Visual Studio (cl.exe only)
+
+From a Developer Command Prompt:
+
+  Basic build:
+    cl /TC /O2 /Fe:basicpp.exe *.c
+
+  Optimized release build:
+    cl /TC /W4 /WX /O2 /Oi /Ot /GL /GS- /Gy /fp:fast ^
+       /D_CRT_SECURE_NO_WARNINGS /DNDEBUG ^
+       /Fe:basicpp.exe *.c ^
+       /link /LTCG /OPT:REF /OPT:ICF
+
+  Flags explained:
+    /TC           Compile as C (not C++)
+    /W4 /WX       Maximum warnings, warnings as errors
+    /O2           Maximum speed optimization
+    /Oi           Enable intrinsic functions
+    /Ot           Favor fast code over small code
+    /GL           Whole-program optimization (compile time)
+    /LTCG         Link-time code generation (link time)
+    /GS-          Disable stack buffer security checks
+    /Gy           Enable function-level linking
+    /fp:fast      Fast floating-point model
+    /OPT:REF      Eliminate unreferenced functions
+    /OPT:ICF      Fold identical code sections
+    /DNDEBUG      Disable assert() in release builds
+
+  Expected output size: ~346 KB
+
+
+3. LINUX (GCC)
+==============
+
+Requirements:
+  GCC 4.x or later (any version with C89 support)
+  GNU Make (optional)
+
+  Basic build:
+    gcc -ansi -pedantic -O2 -o basicpp *.c -lm
+
+  Optimized release build:
+    gcc -std=c89 -pedantic -Wall -Wextra -Werror \
+        -O3 -march=native -flto -DNDEBUG \
+        -o basicpp *.c -lm
+
+  With Make:
+    make
+
+  Flags explained:
+    -std=c89      Strict C89 compliance
+    -pedantic     Reject non-standard extensions
+    -O3           Maximum optimization
+    -march=native Optimize for the local CPU
+    -flto         Link-time optimization
+    -lm           Link math library (required on Linux)
+
+
+4. macOS (CLANG)
+================
+
+Requirements:
+  Xcode Command Line Tools (xcode-select --install)
+
+  Basic build:
+    clang -ansi -O2 -o basicpp *.c -lm
+
+  Optimized release build:
+    clang -std=c89 -pedantic -Wall -Wextra -Werror \
+          -O3 -flto -DNDEBUG \
+          -o basicpp *.c -lm
+
+
+5. BSD / OTHER UNIX
+===================
+
+  cc -ansi -O2 -o basicpp *.c -lm
+
+Any POSIX system with a C89 compiler should work.
+
+
+6. CROSS-COMPILING
+==================
+
+For embedded targets or older platforms:
+
+  # Example: ARM cross-compile
+  arm-none-eabi-gcc -std=c89 -Os -o basicpp *.c -lm
+
+  # Example: MIPS (OpenWrt router)
+  mipsel-openwrt-linux-gcc -std=c89 -Os -o basicpp *.c -lm
+
+BASIC++ has no OS-specific code in the core.  Platform-specific
+code is isolated in platform.c and conditionally compiled.
+
+
+7. USING THE MAKEFILE
+=====================
+
+The included Makefile supports:
+
+  make              Build with default settings
+  make release      Optimized release build
+  make clean        Remove build artifacts
+  make test         Build and run SELFTEST
+
+Edit the top of the Makefile to change CC, CFLAGS, etc.
+
+
+8. VERIFICATION
+===============
+
+After building, verify your binary:
+
+  > basicpp
+  BASIC++ 0.21.0
+  @COPYLEFT ALL WRONGS RESERVED
+  Ready.
+  > SELFTEST
+  25 assertions, ALL PASSED
+  ALL TESTS PASSED
+
+If SELFTEST passes, your build is correct.
+
+
+9. BUILD-TIME CONFIGURATION
+============================
+
+Edit config.h to adjust limits before compiling:
+
+  MAX_PROGRAM_LINES   1000    Maximum program lines
+  MAX_LINE_LENGTH     512     Maximum characters per line
+  MAX_VARIABLES       26      Numeric variables (A-Z)
+  MAX_STRING_VARS     26      String variables (A$-Z$)
+  MAX_STACK_DEPTH     64      GOSUB/FOR nesting depth
+  MAX_DIM_ARRAYS      256     Maximum DIM arrays
+  MAX_FILE_CHANNELS   8       Simultaneous open files
+  MAX_DATA_ITEMS      256     DATA statement items
+  MAX_MEM_SEGMENT     65536   Virtual memory size (64K)
+  MAX_RECORD_LEN      256     Random-access record size

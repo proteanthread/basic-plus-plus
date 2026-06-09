@@ -1,0 +1,122 @@
+1 REM =====================================================
+2 REM  TEST_EC55.BAS - ECMA-55 Minimal BASIC Dialect Test
+3 REM =====================================================
+4 REM  Dialect: EC55 (ECMA-55 Minimal BASIC, 1978)
+5 REM  Features: LET required, THEN required, no WHILE,
+6 REM            no DO/LOOP, no ON ERROR, no CLS, no TRON,
+7 REM            float, DIM, strings, DATA/READ,
+8 REM            max line 99999, extended vars
+9 REM =====================================================
+10 REM  Usage: DIALECT "EC55" : LOAD "tests/test_ec55.bas" : RUN
+11 REM =====================================================
+12 LET P=0
+13 LET F=0
+
+100 TEST "LET Required Arithmetic"
+110 LET A = 2 + 3
+120 ASSERT A = 5
+130 LET B = 10 - 7
+140 ASSERT B = 3
+150 LET C = 6 * 7
+160 ASSERT C = 42
+170 LET D = 100 / 10
+180 ASSERT D = 10
+190 ENDTEST
+
+200 TEST "Floating Point"
+210 LET X = 3.14159
+220 ASSERT X > 3.0
+230 ASSERT X < 4.0
+240 LET Y = SQR(2)
+250 ASSERT Y > 1.4
+260 ASSERT Y < 1.5
+270 LET Z = INT(3.7)
+280 ASSERT Z = 3
+290 ENDTEST
+
+300 TEST "Comparisons"
+310 ASSERT 5 > 3
+320 ASSERT 3 < 5
+330 ASSERT 5 >= 5
+340 ASSERT 5 <= 5
+350 ASSERT 5 = 5
+360 ASSERT 5 <> 3
+370 ENDTEST
+
+400 TEST "IF/THEN (Required)"
+410 LET X = 0
+420 IF 1 > 0 THEN LET X = 1
+430 ASSERT X = 1
+440 LET X = 0
+450 IF 0 > 1 THEN LET X = 1
+460 ASSERT X = 0
+470 ENDTEST
+
+500 TEST "FOR/NEXT"
+510 LET S = 0
+520 FOR I = 1 TO 5
+530 LET S = S + I
+540 NEXT I
+550 ASSERT S = 15
+560 LET S = 0
+570 FOR I = 1 TO 10 STEP 2
+580 LET S = S + 1
+590 NEXT I
+600 ASSERT S = 5
+610 ENDTEST
+
+700 TEST "GOSUB/RETURN"
+710 LET R = 0
+720 GOSUB 760
+730 ASSERT R = 42
+740 ENDTEST
+750 GOTO 800
+760 LET R = 42
+770 RETURN
+
+800 TEST "String Variables"
+810 LET A$ = "HELLO"
+820 ASSERT LEN(A$) = 5
+830 LET B$ = "WORLD"
+840 ASSERT LEN(B$) = 5
+850 ENDTEST
+
+900 TEST "DIM Arrays"
+910 DIM A(10)
+920 FOR I = 0 TO 10
+930 LET A(I) = I * 2
+940 NEXT I
+950 ASSERT A(0) = 0
+960 ASSERT A(5) = 10
+970 ASSERT A(10) = 20
+980 ENDTEST
+
+1000 TEST "DATA/READ/RESTORE"
+1010 READ A, B, C
+1020 ASSERT A = 1
+1030 ASSERT B = 2
+1040 ASSERT C = 3
+1050 RESTORE
+1060 READ X
+1070 ASSERT X = 1
+1080 ENDTEST
+1090 DATA 1, 2, 3
+
+1100 TEST "Math Functions"
+1110 ASSERT ABS(-7) = 7
+1120 ASSERT SGN(-5) = -1
+1130 ASSERT SGN(0) = 0
+1140 ASSERT SGN(5) = 1
+1150 ASSERT INT(3.7) = 3
+1160 ASSERT INT(-3.7) = -4
+1170 ENDTEST
+
+1200 TEST "RND (Float 0..1)"
+1210 LET R = RND(1)
+1220 ASSERT R >= 0
+1230 ASSERT R < 1
+1240 ENDTEST
+
+9000 PRINT ""
+9010 PRINT "=== ECMA-55 DIALECT TESTS COMPLETE ==="
+9020 END

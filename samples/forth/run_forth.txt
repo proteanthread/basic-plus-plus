@@ -1,0 +1,3 @@
+DIALECT "GWBS"
+LOAD "forth.bas"
+RUN
