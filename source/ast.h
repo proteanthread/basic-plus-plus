@@ -52,14 +52,16 @@ typedef enum AstExprType {
 
 /* Binary operator kinds */
 typedef enum AstBinOp {
-    BOP_ADD, BOP_SUB, BOP_MUL, BOP_DIV, BOP_MOD,
+    BOP_ADD, BOP_SUB, BOP_MUL, BOP_DIV, BOP_MOD, BOP_POW,
     BOP_EQ, BOP_NE, BOP_LT, BOP_GT, BOP_LE, BOP_GE,
+    BOP_AND, BOP_OR,
     BOP_CONCAT   /* string concatenation via + */
 } AstBinOp;
 
 /* Unary operator kinds */
 typedef enum AstUnOp {
-    UOP_NEG     /* unary minus */
+    UOP_NEG,    /* unary minus */
+    UOP_NOT     /* logical NOT */
 } AstUnOp;
 
 /* Function identifiers (maps to KeywordId for built-in functions) */
@@ -69,7 +71,9 @@ typedef enum AstFuncId {
     FUNC_SQR, FUNC_LOG, FUNC_EXP, FUNC_SGN, FUNC_INT,
     FUNC_LEN, FUNC_ASC, FUNC_VAL,
     FUNC_CHR, FUNC_STR,
-    FUNC_LEFT, FUNC_RIGHT, FUNC_MID
+    FUNC_LEFT, FUNC_RIGHT, FUNC_MID,
+    FUNC_TAB,               /* TAB(n) - PRINT column position */
+    FUNC_FN_USER             /* User-defined FN (DEF FN) */
 } AstFuncId;
 
 /* Forward declaration */
@@ -118,6 +122,7 @@ struct AstExpr {
             AstFuncId func;
             AstExpr *args[3];       /* up to 3 arguments */
             int arg_count;
+            char fn_letter;         /* For FUNC_FN_USER: A-Z */
         } func_call;                /* EXPR_FUNC_CALL */
     } v;
 };
@@ -149,7 +154,9 @@ typedef enum AstStmtType {
     STMT_WHILE,
     STMT_WEND,
     STMT_DO,
-    STMT_LOOP
+    STMT_LOOP,
+    STMT_ON_GOTO,           /* ON expr GOTO line1,line2,... */
+    STMT_DEF_FN             /* DEF FNA(X) = expr */
 } AstStmtType;
 
 /* Forward declaration */
@@ -208,9 +215,7 @@ struct AstStmt {
 
         /* STMT_IF */
         struct {
-            AstExpr *left;
-            AstExpr *right;
-            TokenType relop;
+            AstExpr *condition;      /* full boolean expression */
             AstStmt *then_stmt;  /* statement to execute if true */
         } if_stmt;
 
@@ -289,9 +294,26 @@ struct AstStmt {
         /* STMT_READ */
         struct {
             char var_names[26];
-            int var_types[26];   /* 0=numeric, 1=string */
+            int var_types[26];   /* 0=numeric, 1=string, 2=array(1D), 3=array(2D) */
             int var_count;
+            AstExpr *var_indices[26]; /* subscript 1 for array reads */
+            AstExpr *var_indices2[26]; /* subscript 2 for 2D array reads */
+            char dim_names[26][MAX_VAR_NAME_LEN + 1]; /* full dim name */
         } read;
+
+        /* STMT_ON_GOTO */
+        struct {
+            AstExpr *selector;   /* ON <selector> GOTO ... */
+            int targets[64];     /* target line numbers */
+            int target_count;
+        } on_goto;
+
+        /* STMT_DEF_FN */
+        struct {
+            char func_name;      /* function letter (A for FNA) */
+            char param_name;     /* parameter variable */
+            AstExpr *body;       /* expression body */
+        } def_fn;
 
     } v;
 };
