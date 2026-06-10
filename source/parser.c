@@ -12596,11 +12596,15 @@ static BValue parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  /*
  * LCASE$(s$) - lowercase.
  * UCASE$(s$) - uppercase.
+ * TCASE$(s$) - title case.
  * LTRIM$(s$) - trim left spaces.
  * RTRIM$(s$) - trim right spaces.
+ * TRIM$(s$) - trim left and right spaces.
  */
  if (kw == KW_LCASE || kw == KW_UCASE ||
- kw == KW_LTRIM || kw == KW_RTRIM) {
+ kw == KW_TCASE ||
+ kw == KW_LTRIM || kw == KW_RTRIM ||
+ kw == KW_TRIM) {
  char buf[256];
  char *ptr;
  const char *s;
@@ -12636,6 +12640,24 @@ static BValue parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  buf, slen);
  return bval_string(ptr, slen);
  }
+ if (kw == KW_TCASE) {
+ int after_space = 1;
+ for (i = 0; i < slen; i++) {
+ unsigned char c = (unsigned char)s[i];
+ if (c == ' ' || c == '\t') {
+ buf[i] = (char)c;
+ after_space = 1;
+ } else if (after_space) {
+ buf[i] = (char)toupper(c);
+ after_space = 0;
+ } else {
+ buf[i] = (char)tolower(c);
+ }
+ }
+ ptr = strpool_store(&rt->strpool,
+ buf, slen);
+ return bval_string(ptr, slen);
+ }
  if (kw == KW_LTRIM) {
  i = 0;
  while (i < slen && s[i] == ' ') i++;
@@ -12649,6 +12671,17 @@ static BValue parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  ptr = strpool_store(&rt->strpool,
  s, i);
  return bval_string(ptr, i);
+ }
+ if (kw == KW_TRIM) {
+ int left = 0;
+ int right = slen;
+ while (left < right && s[left] == ' ')
+ left++;
+ while (right > left && s[right-1] == ' ')
+ right--;
+ ptr = strpool_store(&rt->strpool,
+ s + left, right - left);
+ return bval_string(ptr, right - left);
  }
  }
 

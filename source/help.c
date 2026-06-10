@@ -55,16 +55,17 @@ static const HelpEntry help_db[] = {
  { "STOP", "Pause program (use CONT to resume)",
  "STOP" },
  { "REM", "Comment (ignored by interpreter)",
- "REM This is a comment" },
+ "REM This is a comment (or ' shorthand)" },
  { "DIM", "Declare an array with dimensions",
- "DIM A(10) or DIM M(3,3)" },
+ "DIM A(10) or DIM M(3,3) or DIM A$(25)" },
  { "DATA", "Embed data values in the program",
  "DATA 1,2,3,\"HELLO\"" },
  { "READ", "Read the next DATA value",
  "READ A or READ A$" },
  { "RESTORE", "Reset DATA pointer to beginning",
- "RESTORE" },
-
+ "RESTORE or RESTORE 200" },
+ { "ON", "Computed GOTO/GOSUB or error handler",
+ "ON X GOTO 100,200 or ON ERROR GOTO 500" },
  /* Program management */
  { "RUN", "Execute the stored program",
  "RUN" },
@@ -76,75 +77,233 @@ static const HelpEntry help_db[] = {
  "SAVE \"prog.bas\"" },
  { "LOAD", "Load program from a file",
  "LOAD \"prog.bas\"" },
+ { "MERGE", "Merge program lines from file",
+ "MERGE \"extra.bas\"" },
+ { "CHAIN", "Load and run another program",
+ "CHAIN \"next.bas\"" },
  { "COMPILE", "Transpile BASIC to C source",
  "COMPILE \"output.c\"" },
-
  /* Flow control */
- { "ON", "Computed GOTO/GOSUB or error handler",
- "ON X GOTO 100,200 or ON ERROR GOTO 500" },
  { "WHILE", "Begin a conditional loop",
- "WHILE A>0" },
+ "WHILE A>0 ... WEND" },
  { "WEND", "End of a WHILE loop",
  "WEND" },
  { "DO", "Begin a DO loop",
- "DO" },
+ "DO ... LOOP WHILE cond" },
  { "LOOP", "End of a DO loop (with condition)",
  "LOOP WHILE A>0 or LOOP UNTIL A=0" },
-
- /* String/display */
+ { "ELSE", "Alternate branch of IF statement",
+ "IF A>5 THEN PRINT \"BIG\" ELSE PRINT \"SMALL\"" },
+ { "ELSEIF", "Additional condition in block IF",
+ "ELSEIF X>10 THEN ..." },
+ { "ENDIF", "End a block IF structure",
+ "END IF" },
+ { "SELECT", "Begin a SELECT CASE block",
+ "SELECT CASE X" },
+ { "CASE", "Case clause within SELECT CASE",
+ "CASE 1,2,3 or CASE IS > 10 or CASE ELSE" },
+ { "EXIT", "Exit a FOR or DO loop early",
+ "EXIT FOR or EXIT DO" },
+ /* Error handling */
+ { "ERROR", "Raise a user error",
+ "ERROR 5" },
+ { "RESUME", "Return from an error handler",
+ "RESUME or RESUME NEXT or RESUME 100" },
+ /* Subroutines */
+ { "SUB", "Define a named subroutine",
+ "SUB MySub (x, y$) ... END SUB" },
+ { "FUNCTION", "Define a named function",
+ "FUNCTION MyFn (x) ... END FUNCTION" },
+ { "CALL", "Invoke a named subroutine",
+ "CALL MySub(10, \"test\")" },
+ { "DECLARE", "Forward-declare a SUB or FUNCTION",
+ "DECLARE SUB MySub(x, y$)" },
+ { "DEF", "Define a user function (one-line)",
+ "DEF FNA(X)=X*X+1" },
+ /* Math functions */
+ { "ABS", "Absolute value",
+ "PRINT ABS(-5)  ' prints 5" },
+ { "RND", "Random number (0 to 1)",
+ "PRINT RND(1) or PRINT INT(RND(1)*6)+1" },
+ { "SGN", "Sign of a number (-1, 0, or 1)",
+ "PRINT SGN(-5)  ' prints -1" },
+ { "SIN", "Sine (radians)",
+ "PRINT SIN(3.14159/2)" },
+ { "COS", "Cosine (radians)",
+ "PRINT COS(0)  ' prints 1" },
+ { "TAN", "Tangent (radians)",
+ "PRINT TAN(3.14159/4)" },
+ { "ATN", "Arctangent (returns radians)",
+ "PI = 4*ATN(1)" },
+ { "SQR", "Square root",
+ "PRINT SQR(144)  ' prints 12" },
+ { "LOG", "Natural logarithm (base e)",
+ "PRINT LOG(2.71828)" },
+ { "EXP", "Exponential (e^x)",
+ "PRINT EXP(1)  ' prints 2.71828" },
+ { "INT", "Truncate to integer (toward -infinity)",
+ "PRINT INT(3.7)  ' prints 3" },
+ { "FIX", "Truncate toward zero",
+ "PRINT FIX(-3.7)  ' prints -3" },
+ { "CINT", "Round to nearest integer",
+ "PRINT CINT(3.6)  ' prints 4" },
+ { "CSNG", "Convert to single precision",
+ "PRINT CSNG(X)" },
+ { "CDBL", "Convert to double precision",
+ "PRINT CDBL(X)" },
+ { "RANDOMIZE", "Seed the random number generator",
+ "RANDOMIZE or RANDOMIZE 42" },
+ { "MOD", "Modulo (remainder) operator",
+ "PRINT 10 MOD 3  ' prints 1" },
+ /* Logical / bitwise operators */
+ { "AND", "Logical/bitwise AND operator",
+ "IF A>0 AND B>0 THEN ..." },
+ { "OR", "Logical/bitwise OR operator",
+ "IF A=0 OR B=0 THEN ..." },
+ { "NOT", "Logical/bitwise NOT operator",
+ "IF NOT A THEN ..." },
+ { "XOR", "Bitwise exclusive OR",
+ "PRINT 5 XOR 3  ' prints 6" },
+ /* String functions */
+ { "LEN", "Length of a string",
+ "PRINT LEN(\"HELLO\")  ' prints 5" },
+ { "LEFT$", "Left N characters",
+ "PRINT LEFT$(\"HELLO\",3)  ' HEL" },
+ { "RIGHT$", "Right N characters",
+ "PRINT RIGHT$(\"HELLO\",3)  ' LLO" },
+ { "MID$", "Substring from position",
+ "PRINT MID$(\"HELLO\",2,3)  ' ELL" },
+ { "CHR$", "Character from ASCII code",
+ "PRINT CHR$(65)  ' A" },
+ { "ASC", "ASCII code of first character",
+ "PRINT ASC(\"A\")  ' 65" },
+ { "STR$", "Convert number to string",
+ "A$=STR$(42)" },
+ { "VAL", "Convert string to number",
+ "A=VAL(\"42\")" },
+ { "INSTR", "Find substring position",
+ "PRINT INSTR(\"HELLO\",\"LL\")  ' 3" },
+ { "SPACE$", "Generate N space characters",
+ "PRINT SPACE$(10)" },
+ { "STRING$", "Generate N copies of a character",
+ "PRINT STRING$(10,\"*\")" },
+ { "UCASE$", "Convert string to uppercase",
+ "PRINT UCASE$(\"hello\")  ' HELLO" },
+ { "LCASE$", "Convert string to lowercase",
+ "PRINT LCASE$(\"HELLO\")  ' hello" },
+ { "TCASE$", "Convert string to title case",
+ "PRINT TCASE$(\"hello world\")  ' Hello World" },
+ { "LTRIM$", "Remove leading spaces",
+ "PRINT LTRIM$(\"  hello\")" },
+ { "RTRIM$", "Remove trailing spaces",
+ "PRINT RTRIM$(\"hello  \")" },
+ { "TRIM$", "Remove leading and trailing spaces",
+ "PRINT TRIM$(\"  hello  \")  ' hello" },
+ { "HEX$", "Convert to hexadecimal string",
+ "PRINT HEX$(255)  ' FF" },
+ { "OCT$", "Convert to octal string",
+ "PRINT OCT$(255)  ' 377" },
+ /* Display / screen */
  { "CLS", "Clear the screen",
  "CLS" },
- { "CLR", "Clear all variables",
+ { "CLR", "Clear all variables (Atari/C64)",
  "CLR" },
+ { "CLEAR", "Clear stack and variables",
+ "CLEAR" },
  { "TAB", "Move cursor to column position",
  "PRINT TAB(20);\"HERE\"" },
  { "SPC", "Print N spaces",
  "PRINT SPC(10);\"TEXT\"" },
-
- /* Tracing */
+ { "LOCATE", "Move cursor to row,column",
+ "LOCATE 10,20" },
+ { "HOME", "Move cursor to top-left",
+ "HOME" },
+ { "COLOR", "Set text foreground/background",
+ "COLOR 14,1 (yellow on blue)" },
  { "TRON", "Enable line trace output",
  "TRON" },
  { "TROFF", "Disable line trace output",
  "TROFF" },
-
- /* Functions */
- { "DEF", "Define a user function",
- "DEF FNA(X)=X*X+1" },
-
  /* Matrix */
  { "MAT", "Matrix operations",
  "MAT PRINT A or MAT A=ZER" },
-
  /* File I/O */
  { "OPEN", "Open a file channel",
- "OPEN #1,\"data.txt\",\"R\"" },
+ "OPEN \"data.txt\" FOR INPUT AS #1" },
  { "CLOSE", "Close a file channel",
  "CLOSE #1" },
- { "FPRINT", "Print to a file channel",
- "FPRINT #1,A,B" },
- { "FINPUT", "Read from a file channel",
- "FINPUT #1,A$" },
-
+ { "EOF", "Check for end of file",
+ "IF EOF(1) THEN PRINT \"Done\"" },
+ { "LOF", "Get length of open file",
+ "PRINT LOF(1)" },
+ { "SEEK", "Set or get file position",
+ "SEEK #1, 100" },
+ { "FIELD", "Define record buffer fields",
+ "FIELD #1, 20 AS N$, 4 AS A$" },
+ { "LSET", "Left-justify in field buffer",
+ "LSET N$ = \"Smith\"" },
+ { "RSET", "Right-justify in field buffer",
+ "RSET N$ = \"Smith\"" },
+ { "GET", "Read a record from random file",
+ "GET #1, recnum" },
+ { "PUT", "Write a record to random file",
+ "PUT #1, recnum" },
+ { "WRITE", "Write comma-delimited data",
+ "WRITE #1, A, B$, C" },
+ { "LINE", "Read entire line (LINE INPUT)",
+ "LINE INPUT A$ or LINE INPUT #1, A$" },
+ { "USING", "Format output with template",
+ "PRINT USING \"###.##\"; 3.14" },
+ { "LPRINT", "Print to standard error",
+ "LPRINT \"Status: OK\"" },
+ { "INPUT$", "Read N chars from keyboard/file",
+ "A$ = INPUT$(5) or A$ = INPUT$(10, #1)" },
+ { "CVI", "Unpack 2-byte string to integer",
+ "N = CVI(A$)" },
+ { "CVS", "Unpack 4-byte string to single",
+ "F = CVS(A$)" },
+ { "CVD", "Unpack 8-byte string to double",
+ "D = CVD(A$)" },
+ { "MKI$", "Pack integer to 2-byte string",
+ "A$ = MKI$(N)" },
+ { "MKS$", "Pack single to 4-byte string",
+ "A$ = MKS$(F)" },
+ { "MKD$", "Pack double to 8-byte string",
+ "A$ = MKD$(D)" },
  /* Bytecode */
- { "BSAVE", "Save compiled bytecode (BASIC++ extension)",
+ { "BSAVE", "Save compiled bytecode",
  "BSAVE \"prog.bpp\"" },
- { "BLOAD", "Load compiled bytecode (BASIC++ extension)",
+ { "BLOAD", "Load compiled bytecode",
  "BLOAD \"prog.bpp\"" },
-
  /* Modules */
  { "MODULE", "Activate/list modules",
  "MODULE \"stdlib\" or MODULE" },
-
  /* Security */
  { "SECURITY", "Set security level",
  "SECURITY 0 (open) | 1 (standard) | 2 (restricted)" },
-
  /* System */
  { "SYSTEM", "Query platform info",
  "SYSTEM \"OS\" or SYSTEM \"ARCH\"" },
  { "DIALECT", "Set the BASIC dialect",
  "DIALECT \"PATB\" or DIALECT" },
-
+ { "OPTION", "Set interpreter options",
+ "OPTION BASE 0|1 or OPTION STRICT ON|OFF" },
+ { "SHELL", "Execute an OS command",
+ "SHELL \"dir\" or A$=SHELL$(\"date /t\")" },
+ { "ENVIRON", "Read environment variable",
+ "A$=ENVIRON$(\"PATH\")" },
+ { "CHDIR", "Change current directory",
+ "CHDIR \"C:\\GAMES\"" },
+ { "MKDIR", "Create a new directory",
+ "MKDIR \"newdir\"" },
+ { "RMDIR", "Remove a directory",
+ "RMDIR \"olddir\"" },
+ { "KILL", "Delete a file",
+ "KILL \"temp.dat\"" },
+ { "NAME", "Rename a file (GW-BASIC)",
+ "NAME \"old.bas\" AS \"new.bas\"" },
+ { "RENAME", "Rename a file",
+ "RENAME \"old.bas\",\"new.bas\"" },
  /* Debugger */
  { "BREAK", "Set/clear/list breakpoints",
  "BREAK 100 | BREAK -100 | BREAK" },
@@ -152,17 +311,15 @@ static const HelpEntry help_db[] = {
  "CONT" },
  { "VARS", "Display all non-zero variables",
  "VARS" },
-
  /* Testing */
  { "ASSERT", "Test an assertion (pass/fail)",
  "ASSERT 2+3=5 or ASSERT A>0" },
  { "TEST", "Start a named test block",
  "TEST \"Arithmetic\"" },
- { "ENDTEST", "End test block and report results",
+ { "ENDTEST", "End test block and report",
  "ENDTEST" },
  { "SELFTEST", "Run built-in validation suite",
  "SELFTEST" },
-
  /* Introspection */
  { "HELP", "Show this help (or HELP keyword)",
  "HELP or HELP PRINT or HELP ABS" },
@@ -170,105 +327,169 @@ static const HelpEntry help_db[] = {
  "INFO" },
  { "CATALOG", "List all registered functions",
  "CATALOG" },
-
- /* Final polish */
+ /* Editing */
  { "RENUM", "Renumber program lines",
  "RENUM or RENUM 100,5" },
  { "DELETE", "Delete lines by range",
  "DELETE 100 or DELETE 100-200" },
+ { "EDIT", "Edit a program line",
+ "EDIT 100" },
+ { "AUTO", "Auto-generate line numbers",
+ "AUTO or AUTO 100,5" },
  { "VER", "Display version information",
  "VER" },
-
- /* GW-BASIC compatibility */
+ { "ALIAS", "Remap a keyword to a new name",
+ "ALIAS PRINT = \"IMPRE\"" },
+ /* Memory and variables */
+ { "PEEK", "Read byte from virtual memory",
+ "PRINT PEEK(addr)" },
+ { "POKE", "Write byte to virtual memory",
+ "POKE addr, value" },
+ { "FRE", "Free memory available",
+ "PRINT FRE(0)" },
  { "SWAP", "Exchange two variables",
  "SWAP A,B" },
- { "RANDOMIZE","Seed the random number generator",
- "RANDOMIZE or RANDOMIZE 42" },
- { "ELSE", "Alternate branch of IF statement",
- "IF A>5 THEN PRINT \"BIG\" ELSE PRINT \"SMALL\"" },
+ { "CONST", "Define a named constant",
+ "CONST PI = 3.14159" },
+ { "ERASE", "Erase an array from memory",
+ "ERASE A" },
+ { "REDIM", "Resize a dynamic array",
+ "REDIM A(20)" },
+ { "COMMON", "Share vars with CHAINed program",
+ "COMMON A, B$" },
+ { "SLEEP", "Pause execution for N seconds",
+ "SLEEP 2" },
+ { "TIMER", "Seconds elapsed since midnight",
+ "PRINT TIMER" },
+ { "INKEY$", "Non-blocking keyboard read",
+ "K$=INKEY$" },
+ { "DATE$", "Current date string",
+ "PRINT DATE$" },
+ { "TIME$", "Current time string",
+ "PRINT TIME$" },
  { "FILES", "List files in current directory",
  "FILES or FILES \"*.BAS\"" },
+ { "DIR", "List filenames (no details)",
+ "DIR or DIR \"*.BAS\"" },
+ /* Graphics */
+ { "SCREEN", "Set screen mode",
+ "SCREEN mode [,color]" },
+ { "DRAW", "Draw using graphics macros",
+ "DRAW \"R10 D10 L10 U10\"" },
+ { "PSET", "Set a pixel at (x,y)",
+ "PSET (100,50), color" },
+ { "PRESET", "Reset a pixel at (x,y)",
+ "PRESET (100,50)" },
+ { "CIRCLE", "Draw a circle",
+ "CIRCLE (160,100), 50" },
+ { "PAINT", "Flood fill an area",
+ "PAINT (160,100), color" },
+ { "PALETTE", "Remap a palette color",
+ "PALETTE colornum, newcolor" },
+ { "POINT", "Read color at pixel (x,y)",
+ "C = POINT(100,50)" },
+ /* Sound */
  { "BEEP", "Emit an audible beep",
  "BEEP" },
- { "SOUND", "Play a tone at given frequency",
- "SOUND freq, duration\n"
- " freq = frequency in Hz (37-32767)\n"
- " duration = clock ticks (18.2/sec)\n"
- " SOUND 0,n = silence for n ticks\n"
- "Example:\n"
- " SOUND 440, 18 ' A4 for ~1 second\n"
- " SOUND 523, 9 ' C5 for ~0.5 sec\n"
- " SOUND 0, 18 ' silence 1 sec\n"
- "Windows: plays real tones via Beep()\n"
- "Other: best-effort terminal bell" },
- { "PLAY", "Play music using macro language",
- "PLAY string$\n"
- "Music commands in string:\n"
- " C D E F G A B - notes\n"
- " # or + - sharp (e.g. C#)\n"
- " - - flat (e.g. B-)\n"
- " O0-O6 - set octave (default 4)\n"
- " > < - octave up / down\n"
- " L1-L64 - note length (default 4)\n"
- " T32-T255 - tempo BPM (default 120)\n"
- " Pn - pause for length n\n"
- " Nn - note by number (0-84)\n"
- " . - dotted note (1.5x)\n"
- " MN/ML/MS - staccato (ignored)\n"
- "Example:\n"
- " PLAY \"T120 O4 L4 CDEFGAB\"\n"
- " PLAY \"T180 L8 CDE P8 CDE\"\n"
- " PLAY \"O3 C#4 D#4 F#4\"" },
- { "SCREEN", "Set screen mode",
- "SCREEN mode [,color]\n"
- " mode 0 = text 80x25 (default)\n"
- " mode 1 = 320x200 (4 color)\n"
- " mode 2 = 640x200 (2 color)\n"
- " mode 7-13 = EGA/VGA modes\n"
- "Text-mode interpreter: all modes\n"
- "use character canvas for DRAW.\n"
- "Example:\n"
- " SCREEN 1\n"
- " SCREEN 0 ' back to text" },
- { "DRAW", "Draw using graphics macro language",
- "DRAW string$\n"
- "Direction commands:\n"
- " U[n] D[n] L[n] R[n] - up/down/left/right\n"
- " E[n] F[n] G[n] H[n] - diagonals\n"
- " M x,y - move to position\n"
- " M +x,+y - relative move\n"
- "Prefixes:\n"
- " B - move without drawing\n"
- " N - return to start after drawing\n"
- "Settings:\n"
- " Cn - set color/pen (0-7)\n"
- " Sn - scale (4=normal)\n"
- " An - angle (0-3, 90-deg steps)\n"
- "Renders to 80x50 text canvas.\n"
- "Example:\n"
- " DRAW \"R10 D10 L10 U10\" ' square\n"
- " DRAW \"BM20,10 R5 F5 L10 E5\"" },
- { "WIDTH", "Set screen width (columns)",
- "WIDTH columns [,lines]\n"
- " WIDTH 80 - 80-column mode\n"
- " WIDTH 40 - 40-column mode\n"
- " WIDTH 80,25 - 80 cols, 25 lines\n"
- " WIDTH - display current\n"
- "Valid range: 1-255 columns, 1-60 lines" },
- { "MOD", "Modulo (remainder) operator",
- "expr1 MOD expr2\n"
- "Returns the integer remainder.\n"
- "Example:\n"
- " PRINT 10 MOD 3 ' prints 1\n"
- " PRINT 17 MOD 5 ' prints 2\n"
- " PRINT 10.5 MOD 3 ' prints 1\n"
- " A = B MOD C" },
- { "COLOR", "Set text foreground/background color",
- "COLOR 14,1 (yellow on blue) or COLOR (reset)" },
- { "DIR", "List filenames only (no details)",
- "DIR or DIR \"*.BAS\"" },
- { "AUTO", "Auto-generate line numbers",
- "AUTO or AUTO 100,5 (empty line or . to stop)" },
+ { "SOUND", "Play a tone at frequency",
+ "SOUND 440, 18" },
+ { "PLAY", "Play music macro language",
+ "PLAY \"T120 O4 L4 CDEFGAB\"" },
+ /* Terminal */
+ { "WIDTH", "Set screen width",
+ "WIDTH 80 or WIDTH 80,25" },
+ /* ECMA-116 */
+ { "SET", "Set file pointer (ECMA-116)",
+ "SET #1: POINTER 0" },
+ { "ASK", "Query file info (ECMA-116)",
+ "ASK #1: FILESIZE F" },
+ /* Misc */
+ { "BYE", "Exit the interpreter",
+ "BYE" },
+ { "MEMMAP", "Select memory map preset",
+ "MEMMAP 48 or MEMMAP 64" },
+ { "SIZE", "Show free memory (Tiny BASIC)",
+ "SIZE" },
+ { "ERRORLEVEL","Last shell exit code",
+ "PRINT ERRORLEVEL" },
+ /* Error variables */
+ { "ERL", "Line number of last error",
+ "PRINT ERL" },
+ { "ERR", "Error code of last error",
+ "PRINT ERR" },
+ /* Variable info */
+ { "VARPTR", "Pointer index of a variable",
+ "PRINT VARPTR(A)" },
+ { "POS", "Current cursor column",
+ "PRINT POS(0)" },
+ { "CSRLIN", "Current cursor row",
+ "PRINT CSRLIN" },
+ /* Type declarations */
+ { "DEFINT", "Declare integer variable range",
+ "DEFINT A-Z" },
+ { "DEFDBL", "Declare double variable range",
+ "DEFDBL A-Z" },
+ { "DEFSNG", "Declare single variable range",
+ "DEFSNG A-Z" },
+ { "DEFSTR", "Declare string variable range",
+ "DEFSTR A-Z" },
+ { "TYPE", "Define a user-defined type",
+ "TYPE recname ... END TYPE" },
+ { "SHARED", "Share variables with main program",
+ "SHARED A, B$" },
+ { "STATIC", "Preserve local variables across calls",
+ "STATIC count" },
+ /* File locking */
+ { "LOCK", "Lock file records",
+ "LOCK #1, record" },
+ { "UNLOCK", "Unlock file records",
+ "UNLOCK #1, record" },
+ { "RESET", "Close all open files",
+ "RESET" },
+ { "LOC", "Current file position",
+ "PRINT LOC(1)" },
+ { "IOCTL", "I/O control for device",
+ "IOCTL #1, cmd$" },
+ /* Logical operators */
+ { "EQV", "Logical equivalence operator",
+ "PRINT 5 EQV 3" },
+ { "IMP", "Logical implication operator",
+ "PRINT 5 IMP 3" },
+ /* Function keys */
+ { "KEY", "Assign function key string",
+ "KEY 1, \"RUN\" + CHR$(13)" },
+ { "LLIST", "List program to printer",
+ "LLIST or LLIST 100-200" },
+ /* Machine interface */
+ { "SYS", "Call machine language routine",
+ "SYS addr" },
+ { "EXEC", "Fire-and-forget OS command",
+ "EXEC \"notepad\"" },
+ /* ECMA-116 structured error handling */
+ { "WHEN", "Begin protected exception block",
+ "WHEN EXCEPTION IN ... USE ... END WHEN" },
+ { "CAUSE", "Raise an exception (ECMA-116)",
+ "CAUSE EXCEPTION 1000" },
+ /* Remaining GW-BASIC */
+ { "LPOS", "Printer head column position",
+ "PRINT LPOS(0)" },
+ { "VIEW", "Set graphics viewport",
+ "VIEW (x1,y1)-(x2,y2)" },
+ { "WAIT", "Wait for port status",
+ "WAIT port, AND_mask [,XOR_mask]" },
+ { "WINDOW", "Set logical coordinate system",
+ "WINDOW (0,0)-(639,199)" },
+ /* FujiNet module */
+ { "FUJINET", "FujiNet virtual device module",
+ "MODULE \"FUJINET\" to activate N:/FUJI:/CLOCK: devices" },
+ { "N:", "FujiNet network device",
+ "OPEN #1,\"N:TCP://host:port/\",\"RW\" then READ/WRITE" },
+ { "FUJI:", "FujiNet configuration device",
+ "WiFi config, host slots, AppKey storage" },
+ { "CLOCK:", "FujiNet NTP clock device",
+ "Read time via CLOCK: device (ISO/binary formats)" },
+ { "IOCTL", "Device control command",
+ "IOCTL #ch, cmd [, arg]" },
 
  { NULL, NULL, NULL }
 };
