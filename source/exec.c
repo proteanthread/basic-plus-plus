@@ -24,6 +24,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include "exec.h"
 #include "parser.h"
 #include "lexer.h"
@@ -31,6 +32,8 @@
 #include "errors.h"
 #include "vdev.h"
 #include "vm.h"
+#include "scope.h"
+#include "override.h"
 
 /*
  * exec_run - Main program execution loop.
@@ -134,8 +137,225 @@ static void exec_run_from(RuntimeState *rt, int start_index)
  error_set_suppress(suppress);
  }
 
- /* Parse and execute the line */
- parser_execute_line(&lex, rt, line_num);
+ /*
+  * SCOPE hook dispatch.
+  *
+  * Before executing the line, peek at the first keyword
+  * and check for SCOPE rules (disabled, BEFORE,
+  * OVERRIDE, AFTER hooks).
+  */
+ {
+ KeywordId first_kw = KW_COUNT;
+ int in_hook = 0;
+
+ /* Peek at first keyword without consuming */
+ if (lex.current.type == TOK_KEYWORD)
+ first_kw = lex.current.value.keyword;
+
+ /* Disabled check (always applies) */
+ if (first_kw < KW_COUNT &&
+ scope_is_disabled(first_kw)) {
+ printf("Keyword disabled by SCOPE"
+ " at line %d\n", line_num);
+ error_raise(ERR_WHAT, line_num);
+ goto scope_done;
+ }
+
+ /*
+  * Re-entrancy guard: if we're inside
+  * a hook subroutine (stack is above
+  * the saved hook entry point), don't
+  * fire hooks. When RETURN pops us
+  * back, stack_top drops and hooks
+  * fire again.
+  */
+ if (rt->scope_hook_depth >= 0 &&
+ rt->stack_top >
+ rt->scope_hook_depth) {
+ in_hook = 1;
+ }
+
+ /* Hooks only fire outside hook subs */
+ if (!in_hook) {
+
+ /* BEFORE hook */
+ if (first_kw < KW_COUNT &&
+ scope_get_before(first_kw) >= 0 &&
+ rt->scope_before_done !=
+ rt->current_index) {
+ StackFrame bf;
+ int hook_line =
+ scope_get_before(first_kw);
+
+ rt->scope_before_done =
+ rt->current_index;
+ /* Save stack depth at hook entry.
+  * scope_hook_depth stores the
+  * stack_top BEFORE the push. */
+ rt->scope_hook_depth =
+ rt->stack_top;
+ scope_set_last_kw(first_kw);
+
+ bf.type = FRAME_GOSUB;
+ bf.data.gosub.return_index =
+ rt->current_index;
+ if (runtime_push(rt, &bf) != 0)
+ goto scope_done;
+ vm_jump(rt, hook_line, line_num);
+ goto scope_done;
+ }
+
+ /* OVERRIDE hook */
+ if (first_kw < KW_COUNT &&
+ scope_get_override(first_kw) >= 0) {
+ StackFrame of;
+ int hook_line =
+ scope_get_override(first_kw);
+
+ rt->scope_hook_depth =
+ rt->stack_top;
+ scope_set_last_kw(first_kw);
+
+ of.type = FRAME_GOSUB;
+ of.data.gosub.return_index =
+ rt->current_index + 1;
+ if (runtime_push(rt, &of) != 0)
+ goto scope_done;
+ vm_jump(rt, hook_line, line_num);
+ goto scope_done;
+ }
+
+ } /* end !in_hook */
+
+ /* Record AFTER hook keyword for post-exec */
+ if (!in_hook &&
+ first_kw < KW_COUNT &&
+ scope_get_after(first_kw) >= 0) {
+ rt->scope_after_kw = (int)first_kw;
+ } else {
+ rt->scope_after_kw = -1;
+ }
+
+  /* Re-init lexer (we peeked but didn't consume) */
+  /* (lexer was already at the keyword, no re-init needed) */
+
+  /*
+   * OVERRIDE keyword interpretation.
+   * If the first keyword has an active
+   * override and we're not inside a hook,
+   * build a modified parse string from
+   * the override text + original args.
+   * The stored source line is NOT changed;
+   * only the parser's input is affected.
+   *
+   * SCOPE OVERRIDE (GOSUB) takes priority
+   * over OVERRIDE. If SCOPE handled the
+   * line (jumped away), we never reach
+   * here.
+   *
+   * Re-entrancy: uses the in_hook guard
+   * so the override text (which may start
+   * with the same keyword) doesn't
+   * trigger the override again.
+   */
+  if (!in_hook && first_kw < KW_COUNT &&
+   override_is_active(first_kw)) {
+   const char *otxt =
+    override_get(first_kw);
+   if (otxt != NULL) {
+   /* Build spliced source:
+    * override_text + " " + rest
+    * "rest" = everything after
+    * the keyword in the original
+    * source line. */
+   char splice[1024];
+   const char *src = lex.source;
+   int slen = 0;
+   int otlen = (int)strlen(otxt);
+   const char *rest;
+   int rlen;
+
+   /* Find where the keyword ends
+    * in the original source.  The
+    * lexer position is already
+    * past the keyword token. */
+   rest = src + lex.pos;
+   /* skip leading whitespace */
+   while (*rest == ' ' || *rest == '\t')
+    rest++;
+   rlen = (int)strlen(rest);
+
+   /* Build splice */
+   if (otlen + 1 + rlen < 1023) {
+    memcpy(splice, otxt,
+     (size_t)otlen);
+    slen = otlen;
+    if (rlen > 0) {
+    splice[slen++] = ' ';
+    memcpy(splice + slen, rest,
+     (size_t)rlen);
+    slen += rlen;
+    }
+    splice[slen] = '\0';
+
+    /* Parse the spliced line.
+     * Set in_hook to suppress
+     * re-entrancy via
+     * scope_hook_depth. */
+    {
+    Lexer olex;
+    int saved_depth =
+     rt->scope_hook_depth;
+    rt->scope_hook_depth =
+     rt->stack_top;
+    lexer_init(&olex, splice);
+    parser_execute_line(
+     &olex, rt, line_num);
+    rt->scope_hook_depth =
+     saved_depth;
+    }
+    goto override_done;
+   }
+   }
+  }
+
+  /* Parse and execute the line */
+  parser_execute_line(&lex, rt, line_num);
+override_done:
+  ; /* empty statement after label */
+  } /* end scope/override block */
+
+ /* Clear BEFORE-done guard now that
+  * the line has fully executed. */
+ if (rt->scope_before_done ==
+ rt->current_index) {
+ rt->scope_before_done = -1;
+ }
+
+ /* SCOPE AFTER hook */
+ if (rt->scope_after_kw >= 0 &&
+ !error_occurred() &&
+ rt->next_index < 0) {
+ int after_kw = rt->scope_after_kw;
+ int hook_line =
+ scope_get_after((KeywordId)after_kw);
+ rt->scope_after_kw = -1;
+
+ if (hook_line >= 0) {
+ StackFrame af;
+ scope_set_last_kw(
+ (KeywordId)after_kw);
+ rt->scope_hook_depth =
+ rt->stack_top;
+ af.type = FRAME_GOSUB;
+ af.data.gosub.return_index =
+ rt->current_index + 1;
+ if (runtime_push(rt, &af) == 0) {
+ vm_jump(rt, hook_line, line_num);
+ }
+ }
+ }
+scope_done:
 
  /* Restore error output */
  error_set_suppress(0);

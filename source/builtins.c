@@ -550,6 +550,68 @@ BValue builtin_oct(BValue *args, int argc, void *rt)
 }
 
 /*
+ * BIN$(n) - Convert number to binary string.
+ *
+ * Output is grouped in 8-bit bytes separated by spaces.
+ * Uses the minimum number of full bytes needed:
+ *   BIN$(0)     = "00000000"
+ *   BIN$(255)   = "11111111"
+ *   BIN$(256)   = "00000001 00000000"
+ *   BIN$(65535) = "11111111 11111111"
+ *
+ * Category: FCAT_STRING | Safety: FSAFE_STATE (string pool)
+ */
+BValue builtin_bin(BValue *args, int argc, void *rt)
+{
+ RuntimeState *state = (RuntimeState *)rt;
+ long val;
+ char raw[68];    /* up to 64 bits LSB-first */
+ char out[80];    /* formatted output with spaces */
+ int raw_bits, num_bytes, total_bits;
+ int i, o;
+ char *buf;
+ unsigned long uv;
+ (void)argc;
+
+ val = bval_to_int(&args[0]);
+ uv = (unsigned long)val;
+
+ /* Step 1: Generate raw binary digits (LSB first) */
+ if (uv == 0) {
+ raw_bits = 1;
+ raw[0] = '0';
+ } else {
+ raw_bits = 0;
+ while (uv > 0 && raw_bits < 64) {
+ raw[raw_bits++] = (char)('0' + (int)(uv & 1));
+ uv >>= 1;
+ }
+ }
+
+ /* Step 2: Pad to next full 8-bit byte boundary */
+ num_bytes = (raw_bits + 7) / 8;
+ total_bits = num_bytes * 8;
+ while (raw_bits < total_bits) {
+ raw[raw_bits++] = '0';  /* pad high bits with 0 */
+ }
+
+ /* Step 3: Build output MSB-first with space between bytes */
+ o = 0;
+ for (i = total_bits - 1; i >= 0; i--) {
+ out[o++] = raw[i];
+ if (i > 0 && (i % 8) == 0) {
+ out[o++] = ' ';
+ }
+ }
+ out[o] = '\0';
+
+ buf = strpool_alloc(&state->strpool, o);
+ if (buf == NULL) return bval_string(NULL, 0);
+ memcpy(buf, out, (size_t)o);
+ return bval_string(buf, o);
+}
+
+/*
  * FIX(x) - Truncate toward zero.
  * Unlike INT (floor), FIX truncates:
  * FIX(3.7) = 3, FIX(-3.7) = -3
@@ -855,7 +917,10 @@ void builtins_register(void)
  "Hex conversion: HEX$(255)=\"FF\"" },
  { "OCT$", KW_OCT_FUNC, FCAT_STRING, FRET_STRING,1, 1,
  FSAFE_STATE, 1, builtin_oct,
- "Octal conversion: OCT$(8)=\"10\"" }
+ "Octal conversion: OCT$(8)=\"10\"" },
+ { "BIN$", KW_BIN_FUNC, FCAT_STRING, FRET_STRING,1, 1,
+ FSAFE_STATE, 1, builtin_bin,
+ "Binary conversion: BIN$(10)=\"1010\"" }
  };
 
  /* --- Utility functions (FCAT_UTIL) --- */

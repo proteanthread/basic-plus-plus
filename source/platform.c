@@ -187,3 +187,120 @@ void platform_print_memory(void *rt_ptr)
  rt->strpool.used,
  rt->strpool.size);
 }
+
+/* ================================================================
+ * ENVIRONMENT VARIABLE LISTING
+ *
+ * Three functions to list env vars by scope:
+ *   platform_list_env_user   - User-scope only
+ *   platform_list_env_system - System-scope only
+ *   platform_list_env_all    - Entire process environment
+ *
+ * On Windows, user and system env vars live in separate registry
+ * hives. On POSIX, there's no distinction - the process inherits
+ * a merged environment from login/shell.
+ * ================================================================ */
+
+#ifdef _WIN32
+#include <windows.h>
+
+/*
+ * Helper: enumerate registry key values and print as NAME=VALUE.
+ * Returns the count of values printed.
+ */
+static int plat_list_registry_env(HKEY root, const char *subkey)
+{
+    HKEY hKey;
+    DWORD index = 0;
+    char name_buf[256];
+    char data_buf[4096];
+    DWORD name_len, data_len, type;
+    int count = 0;
+    LONG rc;
+
+    rc = RegOpenKeyExA(root, subkey, 0, KEY_READ, &hKey);
+    if (rc != ERROR_SUCCESS) {
+        printf("  (unable to read registry)\n");
+        return 0;
+    }
+
+    while (1) {
+        name_len = sizeof(name_buf);
+        data_len = sizeof(data_buf);
+        rc = RegEnumValueA(hKey, index, name_buf,
+            &name_len, NULL, &type,
+            (LPBYTE)data_buf, &data_len);
+        if (rc != ERROR_SUCCESS) break;
+
+        if (type == REG_SZ || type == REG_EXPAND_SZ) {
+            printf(" %s=%s\n", name_buf, data_buf);
+            count++;
+        }
+        index++;
+    }
+
+    RegCloseKey(hKey);
+    return count;
+}
+
+int platform_list_env_user(void)
+{
+    return plat_list_registry_env(HKEY_CURRENT_USER,
+        "Environment");
+}
+
+int platform_list_env_system(void)
+{
+    return plat_list_registry_env(HKEY_LOCAL_MACHINE,
+        "SYSTEM\\CurrentControlSet\\Control\\"
+        "Session Manager\\Environment");
+}
+
+#else /* POSIX */
+
+int platform_list_env_user(void)
+{
+    /* POSIX has no user/system distinction.
+     * List entire environ as "user" scope. */
+    extern char **environ;
+    char **envp = environ;
+    int count = 0;
+
+    if (envp != NULL) {
+        while (*envp != NULL) {
+            printf(" %s\n", *envp);
+            envp++;
+            count++;
+        }
+    }
+    return count;
+}
+
+int platform_list_env_system(void)
+{
+    printf("  (no user/system distinction on POSIX)\n");
+    return 0;
+}
+
+#endif /* _WIN32 / POSIX */
+
+int platform_list_env_all(void)
+{
+    int count = 0;
+#ifdef _WIN32
+    extern char **_environ;
+    char **envp = _environ;
+#else
+    extern char **environ;
+    char **envp = environ;
+#endif
+
+    if (envp != NULL) {
+        while (*envp != NULL) {
+            printf(" %s\n", *envp);
+            envp++;
+            count++;
+        }
+    }
+    return count;
+}

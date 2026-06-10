@@ -180,9 +180,9 @@ static int usb_ioctl(VDev *d, int cmd, void *arg)
  strncmp(ep->d_name, "ttyUSB", 6) == 0 ||
  strncmp(ep->d_name, "ttyACM", 6) == 0) {
  if (st->enum_count < USB_MAX_SUBDEVICES) {
- snprintf(
- st->enum_names[st->enum_count],
- 64, "/dev/%s", ep->d_name);
+  sprintf(
+  st->enum_names[st->enum_count],
+  "/dev/%s", ep->d_name);
  st->enum_count++;
  }
  }

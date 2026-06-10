@@ -169,6 +169,14 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  /* Function key macros */
  memset(rt->fkey_macros, 0, sizeof(rt->fkey_macros));
  rt->fkey_display = 0;
+
+ /* ALARM$ */
+ rt->alarm_str[0] = '\0';
+
+ /* SCOPE hook state */
+ rt->scope_before_done = -1;
+ rt->scope_after_kw = -1;
+ rt->scope_hook_depth = -1;
 }
 
 /*
@@ -237,6 +245,11 @@ void runtime_reset(RuntimeState *rt)
 
  /* Reset label table */
  rt->label_count = 0;
+
+ /* Reset SCOPE hook state */
+ rt->scope_before_done = -1;
+ rt->scope_after_kw = -1;
+ rt->scope_hook_depth = -1;
 }
 
 /* --- Stack Operations ---

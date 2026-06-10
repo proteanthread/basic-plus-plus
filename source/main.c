@@ -58,6 +58,9 @@
 #include "security.h"
 #include "platform.h"
 #include "gfxbuf.h"
+#include "scope.h"
+#include "keyword_props.h"
+#include "override.h"
 
 /* --- Input Classification ---
  */
@@ -183,6 +186,15 @@ int main(void)
 
  /* Initialize VM dispatch table */
  vm_init();
+
+ /* Initialize SCOPE system */
+ scope_init();
+
+ /* Initialize keyword property system */
+ keyword_props_init();
+
+ /* Initialize OVERRIDE system */
+ override_init();
 
  /* ----- Initialize graphics framebuffer ----- */
  gfxbuf_init();

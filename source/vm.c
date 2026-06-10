@@ -54,6 +54,9 @@ static const char *opcode_names[OP_COUNT] = {
  "RENUM", "DELETE",
  "VER",
  "BYE",
+ "VDEV", "VMEM", "VNET",
+ "VCON", "VTERM", "VMACH",
+ "DEVMAP",
  "ASSIGN",
  "UNKNOWN"
 };
@@ -132,7 +135,15 @@ static const KeywordOpcodeMap kw_opcode_map[] = {
  { KW_RENUM, OP_RENUM },
  { KW_DELETE, OP_DELETE },
  { KW_VER, OP_VER },
- { KW_BYE, OP_BYE }
+ { KW_BYE, OP_BYE },
+ /* Virtual subsystem introspection */
+ { KW_VDEV, OP_VDEV },
+ { KW_VMEM, OP_VMEM },
+ { KW_VNET, OP_VNET },
+ { KW_VCON, OP_VCON },
+ { KW_VTERM, OP_VTERM },
+ { KW_VMACH, OP_VMACH },
+ { KW_DEVMAP, OP_DEVMAP }
 };
 
 #define KW_OPCODE_MAP_SIZE \

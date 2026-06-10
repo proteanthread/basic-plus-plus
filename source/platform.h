@@ -100,4 +100,31 @@ void platform_print_info(void);
  */
 void platform_print_memory(void *rt);
 
+/*
+ * platform_list_env_user - List user-scope environment variables.
+ *
+ * On Windows: enumerates HKCU\Environment registry keys.
+ * On POSIX: lists all environment variables (no user/system
+ * distinction on Unix systems). Returns count printed.
+ */
+int platform_list_env_user(void);
+
+/*
+ * platform_list_env_system - List system-scope environment variables.
+ *
+ * On Windows: enumerates HKLM\...\Session Manager\Environment.
+ * On POSIX: reports "not available" (no distinction).
+ * Returns count printed.
+ */
+int platform_list_env_system(void);
+
+/*
+ * platform_list_env_all - List all process environment variables.
+ *
+ * Dumps the entire inherited environment block (merged user +
+ * system + process). This is what VARS ENV uses.
+ * Returns count printed.
+ */
+int platform_list_env_all(void);
+
 #endif /* BASICPP_PLATFORM_H */
