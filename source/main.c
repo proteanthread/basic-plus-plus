@@ -54,6 +54,7 @@
 #include "module.h"
 #include "mod_stdlib.h"
 #include "mod_usb.h"
+#include "mod_fujinet.h"
 #include "security.h"
 #include "platform.h"
 #include "gfxbuf.h"
@@ -171,6 +172,7 @@ int main(void)
  module_system_init();
  mod_stdlib_register();
  mod_usb_register(); /* USB devices (user activates) */
+ mod_fujinet_register(); /* FujiNet N:/FUJI:/CLOCK: devices */
  module_activate("STDLIB", NULL);
 
  /* Apply dialect-specific overrides */

@@ -352,6 +352,8 @@ typedef enum KeywordId {
  KW_REWRITE, /* REWRITE - replace record (ECMA-116) */
  KW_POINTER, /* POINTER - SET/ASK sub-keyword (ECMA-116) */
  KW_FILESIZE, /* FILESIZE - ASK sub-keyword (ECMA-116) */
+ KW_TCASE, /* TCASE$ - title case string (BASIC++) */
+ KW_TRIM, /* TRIM$ - trim left and right spaces (BASIC++) */
  KW_COUNT /* sentinel - must be last */
 } KeywordId;
 

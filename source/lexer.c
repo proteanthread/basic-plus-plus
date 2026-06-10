@@ -203,8 +203,10 @@ static const KeywordEntry keyword_table[] = {
  /* String utilities */
  { "LCASE", KW_LCASE, DFLAG_QBAS | DFLAG_E116 },
  { "UCASE", KW_UCASE, DFLAG_QBAS | DFLAG_E116 },
+ { "TCASE", KW_TCASE, DFLAG_ALL },
  { "LTRIM", KW_LTRIM, DFLAG_QBAS | DFLAG_E116 },
  { "RTRIM", KW_RTRIM, DFLAG_QBAS | DFLAG_E116 },
+ { "TRIM", KW_TRIM, DFLAG_ALL },
  { "CINT", KW_CINT, DFLAG_GWQB },
  { "TIMER", KW_TIMER, DFLAG_GWQB },
  { "SLEEP", KW_SLEEP, DFLAG_QBAS },
@@ -484,25 +486,27 @@ const char *lexer_keyword_name(KeywordId kw)
  */
 int lexer_keyword_needs_dollar(KeywordId kw)
 {
- return (kw == KW_LEFT || kw == KW_RIGHT ||
- kw == KW_MID || kw == KW_CHR ||
- kw == KW_STR_FUNC ||
- kw == KW_SPACE_FUNC ||
- kw == KW_STRING_FUNC ||
- kw == KW_HEX_FUNC ||
- kw == KW_OCT_FUNC ||
- kw == KW_LCASE || kw == KW_UCASE ||
- kw == KW_LTRIM || kw == KW_RTRIM ||
- kw == KW_DATE_FUNC ||
- kw == KW_TIME_FUNC ||
- kw == KW_INKEY ||
- kw == KW_ENVIRON ||
- kw == KW_MKD_FUNC ||
- kw == KW_MKI_FUNC ||
- kw == KW_MKS_FUNC ||
- kw == KW_INPUT_FUNC ||
- kw == KW_IOCTL_FUNC ||
- kw == KW_SHELL);
+    return (kw == KW_LEFT || kw == KW_RIGHT ||
+    kw == KW_MID || kw == KW_CHR ||
+    kw == KW_STR_FUNC ||
+    kw == KW_SPACE_FUNC ||
+    kw == KW_STRING_FUNC ||
+    kw == KW_HEX_FUNC ||
+    kw == KW_OCT_FUNC ||
+    kw == KW_LCASE || kw == KW_UCASE ||
+    kw == KW_TCASE ||
+    kw == KW_LTRIM || kw == KW_RTRIM ||
+    kw == KW_TRIM ||
+    kw == KW_DATE_FUNC ||
+    kw == KW_TIME_FUNC ||
+    kw == KW_INKEY ||
+    kw == KW_ENVIRON ||
+    kw == KW_MKD_FUNC ||
+    kw == KW_MKI_FUNC ||
+    kw == KW_MKS_FUNC ||
+    kw == KW_INPUT_FUNC ||
+    kw == KW_IOCTL_FUNC ||
+    kw == KW_SHELL);
 }
 
 /*
@@ -845,8 +849,10 @@ void lexer_next(Lexer *lex)
  kw == KW_OCT_FUNC ||
  kw == KW_LCASE ||
  kw == KW_UCASE ||
+ kw == KW_TCASE ||
  kw == KW_LTRIM ||
  kw == KW_RTRIM ||
+ kw == KW_TRIM ||
  kw == KW_DATE_FUNC ||
  kw == KW_TIME_FUNC ||
  kw == KW_INKEY ||
