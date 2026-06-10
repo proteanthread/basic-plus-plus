@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - detok.c
- * =====================================================================
+ * ---
  *
  * Detokenizer implementation.
  *
@@ -15,7 +15,7 @@
  * lexer, but the detokenizer has its own copy to remain
  * decoupled and standalone).
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -23,9 +23,7 @@
 #include "config.h"
 #include "detok.h"
 
-/* =====================================================================
- * Keyword Name Table
- * =====================================================================
+/* --- Keyword Name Table ---
  * Maps KeywordId values to their string representations.
  * Must be kept in sync with the KeywordId enum in lexer.h.
  */
@@ -273,9 +271,7 @@ static const char *keyword_names[] = {
  "BYE" /* KW_BYE */
 };
 
-/* =====================================================================
- * Token Type Names (for diagnostic output)
- * =====================================================================
+/* --- Token Type Names (for diagnostic output) ---
  */
 static const char *token_type_names[] = {
  "EOF", /* TOK_EOF */
@@ -454,9 +450,7 @@ void detok_dump_line(const char *source)
  printf(" [EOF]\n");
 }
 
-/* =====================================================================
- * detok_keyword_name - Return keyword name string for a KeywordId.
- * =====================================================================
+/* --- detok_keyword_name - Return keyword name string for a KeywordId. ---
  * Used by HELP to convert a bare keyword token back to a string
  * for topic lookup. Returns NULL if out of range.
  */

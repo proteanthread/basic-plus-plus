@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - lexer.h
- * =====================================================================
+ * ---
  *
  * Lexer (tokenizer) interface.
  *
@@ -32,15 +32,13 @@
  * lexer_next() in lexer.c. To add new keywords, add entries to
  * KeywordId and the keyword_table[] in lexer.c.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_LEXER_H
 #define BASICPP_LEXER_H
 
-/* =====================================================================
- * Token Types
- * =====================================================================
+/* --- Token Types ---
  * Each token has a type that identifies what kind of lexical element
  * it represents. The types are grouped by category:
  *
@@ -83,9 +81,7 @@ typedef enum TokenType {
  TOK_CR /* end of line / carriage return */
 } TokenType;
 
-/* =====================================================================
- * Keyword Identifiers
- * =====================================================================
+/* --- Keyword Identifiers ---
  * Each recognized keyword has a unique identifier. The lexer looks
  * up identifiers in the keyword table and assigns the matching
  * KeywordId. Unknown identifiers are treated as variables.
@@ -359,9 +355,7 @@ typedef enum KeywordId {
  KW_COUNT /* sentinel - must be last */
 } KeywordId;
 
-/* =====================================================================
- * Token - A single lexical element.
- * =====================================================================
+/* --- Token - A single lexical element. ---
  * Tokens are value types, small enough to be passed by value or
  * stored on the C stack. No dynamic allocation required.
  *
@@ -383,9 +377,7 @@ typedef struct Token {
  int str_length; /* TOK_STRING: length of string content */
 } Token;
 
-/* =====================================================================
- * Lexer - Tokenizer state.
- * =====================================================================
+/* --- Lexer - Tokenizer state. ---
  * Maintains the current position within a source line and the most
  * recently produced token. The lexer scans left-to-right, one
  * character at a time, producing tokens on demand.
@@ -403,9 +395,7 @@ typedef struct Lexer {
  Token current;
 } Lexer;
 
-/* =====================================================================
- * Lexer Functions
- * =====================================================================
+/* --- Lexer Functions ---
  */
 
 /*
@@ -475,9 +465,7 @@ void lexer_skip_to_end(Lexer *lex);
  */
 unsigned int lexer_get_keyword_flags(KeywordId kw);
 
-/* =====================================================================
- * Keyword Alias API
- * =====================================================================
+/* --- Keyword Alias API ---
  * Allows runtime remapping of keyword names. For example:
  * ALIAS PRINT = "IMPRE"
  * makes the identifier IMPRE behave exactly like PRINT.

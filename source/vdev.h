@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - vdev.h
- * =====================================================================
+ * ---
  *
  * Virtual Device System interface (VDev2).
  *
@@ -75,15 +75,13 @@
  * gpio_dev.user_data = (void *)17;
  * vdev_register(&gpio_dev);
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_VDEV_H
 #define BASICPP_VDEV_H
 
-/* =====================================================================
- * Device Identifiers
- * =====================================================================
+/* --- Device Identifiers ---
  * Built-in device IDs. Custom devices start at VDEV_USER.
  * Expanded from 16 to 64 slots for modern device counts.
  */
@@ -95,9 +93,7 @@ typedef enum VDevId {
  VDEV_MAX = 64 /* Maximum device slots (was 16) */
 } VDevId;
 
-/* =====================================================================
- * Device Classes
- * =====================================================================
+/* --- Device Classes ---
  * Every device belongs to a class that describes its general type.
  * Used for discovery (vdev_find_by_class), documentation, and
  * security scoping. A class is metadata - it does not constrain
@@ -137,9 +133,7 @@ typedef enum VDevClass {
  VDCLASS_CUSTOM = 99 /* user-defined class */
 } VDevClass;
 
-/* =====================================================================
- * Per-Device Capability Flags
- * =====================================================================
+/* --- Per-Device Capability Flags ---
  * Each registered device declares its capabilities via a bitfield.
  * These flags describe WHAT the device CAN DO, independent of
  * security permissions (which determine what it MAY do).
@@ -165,9 +159,7 @@ typedef enum VDevClass {
 #define VDCAP_STREAM (VDCAP_READ | VDCAP_WRITE | VDCAP_DUPLEX)
 #define VDCAP_FILELIKE (VDCAP_RW | VDCAP_BINARY | VDCAP_SEEK)
 
-/* =====================================================================
- * IOCTL2 Command Codes
- * =====================================================================
+/* --- IOCTL2 Command Codes ---
  * Standardized command codes for dev_ioctl(). Devices may define
  * their own commands starting at VDIO_USER.
  */
@@ -185,9 +177,7 @@ typedef enum VDevClass {
 /* Forward declaration */
 typedef struct VDev VDev;
 
-/* =====================================================================
- * Virtual Device Structure (VDev2)
- * =====================================================================
+/* --- Virtual Device Structure (VDev2) ---
  *
  * Each device is a table of function pointers plus metadata.
  * Operations that the device does not support should be set to NULL.
@@ -256,9 +246,7 @@ struct VDev {
  const char *(*dev_info)(VDev *d, const char *key);
 };
 
-/* =====================================================================
- * Device System Functions
- * =====================================================================
+/* --- Device System Functions ---
  */
 
 /*
@@ -286,9 +274,7 @@ VDev *vdev_get(int id);
  */
 int vdev_register(VDev *dev);
 
-/* =====================================================================
- * Device Discovery
- * =====================================================================
+/* --- Device Discovery ---
  * These functions allow BASIC programs and modules to find devices
  * by name or class without knowing their slot IDs.
  */
@@ -329,9 +315,7 @@ void vdev_list_all(void);
  */
 const char *vdev_class_name(VDevClass cls);
 
-/* =====================================================================
- * Convenience I/O Functions (Original)
- * =====================================================================
+/* --- Convenience I/O Functions (Original) ---
  * These wrap common patterns for cleaner calling code.
  * They handle NULL device pointers and NULL function pointers safely.
  */
@@ -344,9 +328,7 @@ int vdev_gets(VDev *d, char *buf, int max);
 int vdev_flush(VDev *d);
 int vdev_cls(VDev *d);
 
-/* =====================================================================
- * Binary I/O Convenience
- * =====================================================================
+/* --- Binary I/O Convenience ---
  * These wrap the new dev_read/dev_write/dev_seek function pointers.
  * NULL-safe: return -1 if the device or function pointer is NULL.
  */
@@ -370,9 +352,7 @@ int vdev_write(VDev *d, const void *buf, int len);
  */
 long vdev_seek(VDev *d, long offset, int whence);
 
-/* =====================================================================
- * Control & Status Convenience
- * =====================================================================
+/* --- Control & Status Convenience ---
  */
 
 /*
@@ -402,9 +382,7 @@ int vdev_poll(VDev *d);
  */
 const char *vdev_info(VDev *d, const char *key);
 
-/* =====================================================================
- * Platform Convenience Functions (Original)
- * =====================================================================
+/* --- Platform Convenience Functions (Original) ---
  */
 
 void vdev_beep(void);

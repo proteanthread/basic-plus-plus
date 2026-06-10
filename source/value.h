@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - value.h
- * =====================================================================
+ * ---
  *
  * Tagged value type for the BASIC++ interpreter.
  *
@@ -27,7 +27,7 @@
  * pointer. The string pool manages lifetime. This avoids
  * per-value malloc/free and keeps the memory model simple.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_VALUE_H
@@ -35,9 +35,7 @@
 
 #include "config.h"
 
-/* =====================================================================
- * Value Type Tag
- * =====================================================================
+/* --- Value Type Tag ---
  */
 typedef enum ValueType {
  VAL_INTEGER = 0, /* long integer (always available) */
@@ -45,9 +43,7 @@ typedef enum ValueType {
  VAL_STRING /* string (pointer into string pool) */
 } ValueType;
 
-/* =====================================================================
- * BValue - Tagged Union Value
- * =====================================================================
+/* --- BValue - Tagged Union Value ---
  * The fundamental value type for all expressions, variables,
  * and DATA items in the interpreter.
  *
@@ -72,9 +68,7 @@ typedef struct BValue {
  } v;
 } BValue;
 
-/* =====================================================================
- * Constructors - Create BValue from native types
- * =====================================================================
+/* --- Constructors - Create BValue from native types ---
  */
 
 /* Create an integer value */
@@ -86,18 +80,14 @@ BValue bval_float(double val);
 /* Create a string value (borrows pointer - does NOT copy) */
 BValue bval_string(char *data, int length);
 
-/* =====================================================================
- * Type Queries
- * =====================================================================
+/* --- Type Queries ---
  */
 int bval_is_int(const BValue *v);
 int bval_is_float(const BValue *v);
 int bval_is_string(const BValue *v);
 int bval_is_numeric(const BValue *v);
 
-/* =====================================================================
- * Type Coercion
- * =====================================================================
+/* --- Type Coercion ---
  * These convert a BValue to the requested type. Numeric types
  * promote freely (int -> float). String -> number uses strtol/strtod.
  * Number -> string is done via bval_to_string_buf (formats into buffer).
@@ -117,9 +107,7 @@ double bval_to_float(const BValue *v);
  */
 int bval_to_string_buf(const BValue *v, char *buf, int bufsize);
 
-/* =====================================================================
- * Arithmetic Operations
- * =====================================================================
+/* --- Arithmetic Operations ---
  * All arithmetic auto-promotes: if either operand is float,
  * the result is float. String operands in arithmetic raise errors.
  *
@@ -133,9 +121,7 @@ BValue bval_div(const BValue *a, const BValue *b, int line_num);
 BValue bval_neg(const BValue *v, int line_num);
 BValue bval_mod(const BValue *a, const BValue *b, int line_num);
 
-/* =====================================================================
- * Comparison
- * =====================================================================
+/* --- Comparison ---
  * Compares two BValues. Returns:
  * -1 if a < b
  * 0 if a == b
@@ -147,9 +133,7 @@ BValue bval_mod(const BValue *a, const BValue *b, int line_num);
  */
 int bval_compare(const BValue *a, const BValue *b, int line_num);
 
-/* =====================================================================
- * Float Math Functions
- * =====================================================================
+/* --- Float Math Functions ---
  * All take a numeric BValue, return VAL_FLOAT (or VAL_INTEGER for INT).
  * String arguments raise ERR_WHAT.
  */
@@ -164,9 +148,7 @@ BValue bval_atn(const BValue *v, int line_num); /* ATN = atan */
 BValue bval_log(const BValue *v, int line_num); /* natural log */
 BValue bval_exp(const BValue *v, int line_num); /* e^x */
 
-/* =====================================================================
- * String Functions
- * =====================================================================
+/* --- String Functions ---
  * These require a string pool pointer for allocating result strings.
  * The pool parameter is passed as void* to avoid circular includes.
  */

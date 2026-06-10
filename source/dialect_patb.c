@@ -1,19 +1,22 @@
 /*
- * dialect_patb.c -- Palo Alto Tiny BASIC
+ * dialect_patb.c -- Palo Alto Tiny BASIC (Li-Chen Wang, 1976)
  *
- * Li-Chen Wang, 1976. Published in Dr. Dobb's Journal Vol. 1 No. 1.
- * Ran on Altair 8800, IMSAI 8080, and other S-100 bus systems.
- * 2KB interpreter, integer-only, 26 variables (A-Z).
+ * The original hobbyist BASIC. Dr. Dobb's Journal, Vol. 1 No. 1.
+ * 2KB interpreter for 4KB systems. Integer-only, 26 vars, no strings.
  *
- * Notable differences from Microsoft BASIC:
- *   - Statement separator is ';' not ':'
- *   - Not-equal operator is '#' not '<>'
- *   - IF has no THEN keyword:  IF A>5 PRINT "BIG"
- *   - Single array via @(I) syntax
- *   - PRINT # sets field width
- *   - No strings, no DATA/READ, no floating point
+ * Unique syntax: ';' separates statements, '#' means not-equal,
+ * IF lacks THEN, arrays use @(). PRINT # sets field width.
  *
- * TODO: memory-mapped @() array (original shared with free memory)
+ * Modifying this dialect:
+ *   Change flags below and rebuild. If you need new keywords, add them
+ *   to lexer.h/lexer.c with DFLAG_PATB, then handle in parser.c.
+ *   Example: SIZE could be made to return actual pool usage by hooking
+ *   into mem_pool_usage() -- see memory.h.
+ *
+ * Not yet done:
+ *   - @() should share memory with the variable pool (original behavior
+ *     used the space between the program and the stack). Could be done
+ *     by pointing @() into RuntimeState.named_vars directly.
  */
 
 #include "dialect.h"

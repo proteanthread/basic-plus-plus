@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - value.c
- * =====================================================================
+ * ---
  *
  * Implementation of the tagged BValue type and all operations.
  *
@@ -12,7 +12,7 @@
  * - String + String -> concatenation (in bval_concat only)
  * - VAL("123") -> integer 123; VAL("3.14") -> float 3.14
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -23,9 +23,7 @@
 #include "errors.h"
 #include "stringpool.h"
 
-/* =====================================================================
- * Constructors
- * =====================================================================
+/* --- Constructors ---
  */
 
 BValue bval_int(long val)
@@ -53,9 +51,7 @@ BValue bval_string(char *data, int length)
  return r;
 }
 
-/* =====================================================================
- * Type Queries
- * =====================================================================
+/* --- Type Queries ---
  */
 
 int bval_is_int(const BValue *v) { return v->type == VAL_INTEGER; }
@@ -67,9 +63,7 @@ int bval_is_numeric(const BValue *v)
  return v->type == VAL_INTEGER || v->type == VAL_FLOAT;
 }
 
-/* =====================================================================
- * Type Coercion
- * =====================================================================
+/* --- Type Coercion ---
  */
 
 long bval_to_int(const BValue *v)
@@ -93,7 +87,7 @@ long bval_to_int(const BValue *v)
 /*
  * bval_to_subscript - Round to nearest integer for array subscripts.
  *
- * ECMA-55 §6.4: "each subscript is rounded to the nearest integer."
+ * ECMA-55 s6.4: "each subscript is rounded to the nearest integer."
  * GW-BASIC/QBasic: uses CINT() for subscripts (round to nearest).
  * This function rounds floats; integers pass through unchanged.
  * Rounding: floor(x + 0.5) for positive, ceil(x - 0.5) for negative.
@@ -143,9 +137,7 @@ int bval_to_string_buf(const BValue *v, char *buf, int bufsize)
  return 0;
 }
 
-/* =====================================================================
- * Arithmetic - Helper: check both operands are numeric
- * =====================================================================
+/* --- Arithmetic - Helper: check both operands are numeric ---
  */
 static int check_numeric(const BValue *a, const BValue *b, int line_num)
 {
@@ -243,9 +235,7 @@ BValue bval_mod(const BValue *a, const BValue *b, int line_num)
  return bval_int(ia % ib);
 }
 
-/* =====================================================================
- * Comparison
- * =====================================================================
+/* --- Comparison ---
  */
 
 int bval_compare(const BValue *a, const BValue *b, int line_num)
@@ -281,9 +271,7 @@ int bval_compare(const BValue *a, const BValue *b, int line_num)
  return 0;
 }
 
-/* =====================================================================
- * Float Math Functions
- * =====================================================================
+/* --- Float Math Functions ---
  */
 
 static double get_numeric_arg(const BValue *v, int line_num)
@@ -380,9 +368,7 @@ BValue bval_exp(const BValue *v, int line_num)
  return bval_float(exp(d));
 }
 
-/* =====================================================================
- * String Functions
- * =====================================================================
+/* --- String Functions ---
  */
 
 BValue bval_len(const BValue *v, int line_num)

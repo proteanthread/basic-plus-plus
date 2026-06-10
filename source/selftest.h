@@ -1,14 +1,14 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - selftest.h
- * =====================================================================
+ * ---
  *
  * Self-test framework.
  *
  * Provides a built-in validation suite that the interpreter can
  * run on itself - "the interpreter tests itself."
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_SELFTEST_H

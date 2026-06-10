@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - platform.c
- * =====================================================================
+ * ---
  *
  * Cross-platform backend implementation.
  *
@@ -17,7 +17,7 @@
  * 4. POSIX - __unix__, __APPLE__, __MACH__
  * 5. Unknown (fallback)
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -27,9 +27,7 @@
 #include "module.h"
 #include "security.h"
 
-/* =====================================================================
- * Compile-time Platform Detection
- * =====================================================================
+/* --- Compile-time Platform Detection ---
  */
 #if defined(__MSDOS__) || defined(__DOS__) || defined(MSDOS)
  #define DETECTED_PLATFORM PLAT_DOS
@@ -61,9 +59,7 @@
  #define DETECTED_SHORT "UNK"
 #endif
 
-/* =====================================================================
- * Compile-time Compiler Detection
- * =====================================================================
+/* --- Compile-time Compiler Detection ---
  */
 #if defined(__WATCOMC__)
  #define DETECTED_COMPILER "OpenWatcom"
@@ -97,16 +93,12 @@
  #define COMPILER_VER_MINOR 0
 #endif
 
-/* =====================================================================
- * Static Platform Info
- * =====================================================================
+/* --- Static Platform Info ---
  */
 static PlatformInfo plat_info;
 static char compiler_ver_str[16];
 
-/* =====================================================================
- * platform_init
- * =====================================================================
+/* --- platform_init ---
  */
 void platform_init(void)
 {
@@ -128,45 +120,35 @@ void platform_init(void)
  plat_info.long_size = (int)sizeof(long);
 }
 
-/* =====================================================================
- * platform_get_info
- * =====================================================================
+/* --- platform_get_info ---
  */
 const PlatformInfo *platform_get_info(void)
 {
  return &plat_info;
 }
 
-/* =====================================================================
- * platform_name
- * =====================================================================
+/* --- platform_name ---
  */
 const char *platform_name(void)
 {
  return plat_info.name;
 }
 
-/* =====================================================================
- * platform_short_name
- * =====================================================================
+/* --- platform_short_name ---
  */
 const char *platform_short_name(void)
 {
  return plat_info.short_name;
 }
 
-/* =====================================================================
- * platform_word_size
- * =====================================================================
+/* --- platform_word_size ---
  */
 int platform_word_size(void)
 {
  return plat_info.ptr_size * 8;
 }
 
-/* =====================================================================
- * platform_print_info
- * =====================================================================
+/* --- platform_print_info ---
  */
 void platform_print_info(void)
 {
@@ -185,9 +167,7 @@ void platform_print_info(void)
  printf("Modules: %d registered\n", module_count());
 }
 
-/* =====================================================================
- * platform_print_memory
- * =====================================================================
+/* --- platform_print_memory ---
  */
 void platform_print_memory(void *rt_ptr)
 {

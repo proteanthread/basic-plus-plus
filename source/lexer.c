@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - lexer.c
- * =====================================================================
+ * ---
  *
  * Lexer (tokenizer) implementation.
  *
@@ -30,7 +30,7 @@
  * Actually, the lexer cannot know the context, so it always
  * emits TOK_HASH and the parser handles disambiguation.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -42,9 +42,7 @@
 #include "errors.h"
 #include "dialect.h"
 
-/* =====================================================================
- * Keyword Table
- * =====================================================================
+/* --- Keyword Table ---
  * Static table mapping keyword strings to KeywordId values.
  * Each entry includes dialect_flags for OPTION STRICT support.
  */
@@ -322,9 +320,7 @@ static const KeywordEntry keyword_table[] = {
  { NULL, KW_COUNT, 0 } /* sentinel */
 };
 
-/* =====================================================================
- * Internal Helpers
- * =====================================================================
+/* --- Internal Helpers ---
  */
 
 /*
@@ -385,9 +381,7 @@ static char to_upper(char c)
  return c;
 }
 
-/* =====================================================================
- * Keyword Alias Table
- * =====================================================================
+/* --- Keyword Alias Table ---
  * Runtime-configurable name remapping. Each slot maps a
  * user-chosen identifier (e.g. "IMPRE") to a built-in
  * KeywordId (e.g. KW_PRINT). Aliases are checked FIRST in
@@ -594,9 +588,7 @@ static KeywordId match_keyword(const char *start, int len)
  return KW_COUNT; /* not a keyword */
 }
 
-/* =====================================================================
- * Lexer Public API
- * =====================================================================
+/* --- Lexer Public API ---
  */
 
 /*
@@ -758,7 +750,7 @@ void lexer_next(Lexer *lex)
  /*
  * Check for E/e exponent suffix (scientific
  * notation without decimal point: 1E10, 5E-3).
- * ECMA-55 §5.2 requires E-notation support.
+ * ECMA-55 s5.2 requires E-notation support.
  */
  if (!has_dot && lex->pos < lex->length) {
  char ec = lex->source[lex->pos];

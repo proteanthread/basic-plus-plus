@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - module.c
- * =====================================================================
+ * ---
  *
  * Module System implementation.
  *
@@ -12,7 +12,7 @@
  *
  * Name lookups are case-insensitive (BASIC convention).
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -21,9 +21,7 @@
 #include "module.h"
 #include "security.h"
 
-/* =====================================================================
- * Module Table
- * =====================================================================
+/* --- Module Table ---
  */
 typedef struct ModuleSlot {
  ModuleInfo info;
@@ -34,9 +32,7 @@ typedef struct ModuleSlot {
 static ModuleSlot module_table[MAX_MODULES];
 static int module_table_count = 0;
 
-/* =====================================================================
- * Case-insensitive string compare (portable C89)
- * =====================================================================
+/* --- Case-insensitive string compare (portable C89) ---
  */
 static int str_iequal(const char *a, const char *b)
 {
@@ -52,9 +48,7 @@ static int str_iequal(const char *a, const char *b)
  return (*a == '\0' && *b == '\0');
 }
 
-/* =====================================================================
- * module_system_init
- * =====================================================================
+/* --- module_system_init ---
  */
 void module_system_init(void)
 {
@@ -62,9 +56,7 @@ void module_system_init(void)
  module_table_count = 0;
 }
 
-/* =====================================================================
- * module_register
- * =====================================================================
+/* --- module_register ---
  */
 int module_register(const ModuleInfo *info)
 {
@@ -96,9 +88,7 @@ int module_register(const ModuleInfo *info)
  return 0;
 }
 
-/* =====================================================================
- * module_activate
- * =====================================================================
+/* --- module_activate ---
  */
 int module_activate(const char *name, void *rt)
 {
@@ -142,9 +132,7 @@ int module_activate(const char *name, void *rt)
  return -1;
 }
 
-/* =====================================================================
- * module_deactivate
- * =====================================================================
+/* --- module_deactivate ---
  */
 int module_deactivate(const char *name)
 {
@@ -170,9 +158,7 @@ int module_deactivate(const char *name)
  return -1;
 }
 
-/* =====================================================================
- * module_is_active
- * =====================================================================
+/* --- module_is_active ---
  */
 int module_is_active(const char *name)
 {
@@ -188,9 +174,7 @@ int module_is_active(const char *name)
  return 0;
 }
 
-/* =====================================================================
- * module_find
- * =====================================================================
+/* --- module_find ---
  */
 const ModuleInfo *module_find(const char *name)
 {
@@ -206,18 +190,14 @@ const ModuleInfo *module_find(const char *name)
  return NULL;
 }
 
-/* =====================================================================
- * module_count
- * =====================================================================
+/* --- module_count ---
  */
 int module_count(void)
 {
  return module_table_count;
 }
 
-/* =====================================================================
- * module_get
- * =====================================================================
+/* --- module_get ---
  */
 const ModuleInfo *module_get(int index)
 {
@@ -226,9 +206,7 @@ const ModuleInfo *module_get(int index)
  return &module_table[index].info;
 }
 
-/* =====================================================================
- * module_is_loaded
- * =====================================================================
+/* --- module_is_loaded ---
  */
 int module_is_loaded(int index)
 {
@@ -236,9 +214,7 @@ int module_is_loaded(int index)
  return module_table[index].active;
 }
 
-/* =====================================================================
- * module_class_name
- * =====================================================================
+/* --- module_class_name ---
  */
 const char *module_class_name(ModuleClass cls)
 {
@@ -251,9 +227,7 @@ const char *module_class_name(ModuleClass cls)
  }
 }
 
-/* =====================================================================
- * module_caps_string
- * =====================================================================
+/* --- module_caps_string ---
  * Formats capability flags as abbreviated letters:
  * M=Math S=String I=IO F=File Y=System G=Graphics A=Sound N=Net
  */

@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - memmap.c
- * =====================================================================
+ * ---
  *
  * Pluggable memory map system implementation.
  *
@@ -10,7 +10,7 @@
  * This allows PEEK to return correct hardware register values,
  * ROM signatures, and screen memory contents.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -18,9 +18,7 @@
 #include "memmap.h"
 #include "config.h"
 
-/* =====================================================================
- * Helper: fill a range of memory with a value
- * =====================================================================
+/* --- Helper: fill a range of memory with a value ---
  */
 static void mem_fill(unsigned char *mem, int start, int len,
  unsigned char val)
@@ -49,9 +47,7 @@ static void mem_set16(unsigned char *mem, int addr,
  }
 }
 
-/* =====================================================================
- * MS-DOS Memory Map
- * =====================================================================
+/* --- MS-DOS Memory Map ---
  * 0x0000-0x03FF: Interrupt Vector Table (256 dword entries)
  * 0x0400-0x04FF: BIOS Data Area (BDA)
  * 0x0413-0x0414: Conventional memory size (640K = 0x0280)
@@ -80,9 +76,7 @@ static void memmap_init_msdos(unsigned char *mem)
  mem_set(mem, 0x046C, 0x00);
 }
 
-/* =====================================================================
- * Commodore 64 Memory Map
- * =====================================================================
+/* --- Commodore 64 Memory Map ---
  * $0000: CPU data direction register
  * $0001: CPU port (bank switching): $37 = BASIC+KERNAL+I/O visible
  * $002B-$002C: Start of BASIC text ($0801)
@@ -157,9 +151,7 @@ static void memmap_init_c64(unsigned char *mem)
  mem_set(mem, 0x00BA, 0x08); /* Device 8 (disk) */
 }
 
-/* =====================================================================
- * Commodore 128 Memory Map
- * =====================================================================
+/* --- Commodore 128 Memory Map ---
  * Similar to C64 but with extended features.
  * Bank 0 is C64-compatible, we preset the key differences.
  */
@@ -178,9 +170,7 @@ static void memmap_init_c128(unsigned char *mem)
  mem_set16(mem, 0x0033, 0xFF00); /* More string space */
 }
 
-/* =====================================================================
- * VIC-20 Memory Map
- * =====================================================================
+/* --- VIC-20 Memory Map ---
  * $0000-$03FF: Zero page, stack, system
  * $1000-$1DFF: Screen memory (default)
  * $1E00-$1FFF: Color memory
@@ -223,9 +213,7 @@ static void memmap_init_vic20(unsigned char *mem)
  mem_set16(mem, 0xFFFC, 0xFD22);
 }
 
-/* =====================================================================
- * Commodore Plus/4 Memory Map
- * =====================================================================
+/* --- Commodore Plus/4 Memory Map ---
  * $0000-$0001: CPU port
  * $0400-$07FF: Screen memory (default location)
  * $FF00-$FF1F: TED registers
@@ -257,9 +245,7 @@ static void memmap_init_plus4(unsigned char *mem)
  mem_set16(mem, 0xFFFC, 0xE000);
 }
 
-/* =====================================================================
- * Commodore PET Memory Map
- * =====================================================================
+/* --- Commodore PET Memory Map ---
  * $0000-$0400: Zero page, stack, system area
  * $8000-$83E7: Screen memory (40x25 = 1000 bytes)
  * $B000-$DFFF: BASIC ROM (12K, BASIC 4.0)
@@ -286,9 +272,7 @@ static void memmap_init_pet(unsigned char *mem)
  mem_set16(mem, 0xFFFC, 0xFD16);
 }
 
-/* =====================================================================
- * Atari 8-bit Memory Map
- * =====================================================================
+/* --- Atari 8-bit Memory Map ---
  * $0000-$00FF: Zero page (OS shadow registers)
  * $0040-$00FF: BASIC zero page
  * $0200-$02FF: Handler table, IOCB area
@@ -346,9 +330,7 @@ static void memmap_init_atari8(unsigned char *mem)
  mem_set(mem, 0xFFF7, 0x02);
 }
 
-/* =====================================================================
- * Apple II Memory Map
- * =====================================================================
+/* --- Apple II Memory Map ---
  * $0000-$00FF: Zero page
  * $0100-$01FF: Stack
  * $0200-$02FF: Input buffer
@@ -392,9 +374,7 @@ static void memmap_init_apple2(unsigned char *mem)
  mem_set(mem, 0xFF69, 0x4C); /* JMP for monitor */
 }
 
-/* =====================================================================
- * TRS-80 Memory Map
- * =====================================================================
+/* --- TRS-80 Memory Map ---
  * $0000-$2FFF: ROM (12K Level II BASIC)
  * $3000-$37FF: Unused / ROM mirror
  * $3800-$38FF: Keyboard memory map
@@ -424,9 +404,7 @@ static void memmap_init_trs80(unsigned char *mem)
  mem_set(mem, 0x0062, 0x52); /* 'R' for Radio Shack */
 }
 
-/* =====================================================================
- * ZX Spectrum 48K Memory Map
- * =====================================================================
+/* --- ZX Spectrum 48K Memory Map ---
  * $0000-$3FFF: ROM (16K - Spectrum BASIC + system)
  * $4000-$57FF: Screen bitmap (6144 bytes)
  * $5800-$5AFF: Attribute memory (768 bytes, 32x24)
@@ -466,9 +444,7 @@ static void memmap_init_spectrum(unsigned char *mem)
  mem_set(mem, 0x0002, 0x11); /* LD DE,... */
 }
 
-/* =====================================================================
- * Name Table
- * =====================================================================
+/* --- Name Table ---
  */
 static const struct {
  const char *name;
@@ -489,9 +465,7 @@ static const struct {
  { NULL, NULL, MMAP_COUNT }
 };
 
-/* =====================================================================
- * Public API
- * =====================================================================
+/* --- Public API ---
  */
 
 void memmap_init(unsigned char *mem, MemMapType type)

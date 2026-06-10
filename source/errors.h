@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - errors.h
- * =====================================================================
+ * ---
  *
  * Error handling subsystem interface.
  *
@@ -30,15 +30,13 @@
  * error_message() in errors.c. The three-message model can
  * be extended while maintaining backward compatibility.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_ERRORS_H
 #define BASICPP_ERRORS_H
 
-/* =====================================================================
- * Error Codes
- * =====================================================================
+/* --- Error Codes ---
  * ERR_NONE: No error (default state).
  * ERR_WHAT: Syntax error - unexpected token, malformed statement.
  * ERR_HOW: Runtime error - GOTO to nonexistent line, division

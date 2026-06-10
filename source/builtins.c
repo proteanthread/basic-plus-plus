@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - builtins.c
- * =====================================================================
+ * ---
  *
  * Built-in function handler implementations and registration.
  *
@@ -47,7 +47,7 @@
  * Then register with funcreg_register(). See funcreg.h for
  * the full registration example.
  *
- * =====================================================================
+ * ---
  */
 
 #include <string.h>
@@ -69,9 +69,7 @@
 #include "dialect.h"
 #include "gfxbuf.h"
 
-/* =====================================================================
- * Math Function Handlers
- * =====================================================================
+/* --- Math Function Handlers ---
  * All math handlers delegate to the bval_xxx() functions in value.c
  * which handle type promotion (int->float) and error checking.
  */
@@ -204,9 +202,7 @@ BValue builtin_exp(BValue *args, int argc, void *rt)
  return bval_exp(&args[0], 0);
 }
 
-/* =====================================================================
- * String Function Handlers
- * =====================================================================
+/* --- String Function Handlers ---
  */
 
 /*
@@ -306,9 +302,7 @@ BValue builtin_mid(BValue *args, int argc, void *rt)
  &state->strpool);
 }
 
-/* =====================================================================
- * Utility Function Handlers
- * =====================================================================
+/* --- Utility Function Handlers ---
  */
 
 /*
@@ -761,9 +755,7 @@ BValue builtin_cvd(BValue *args, int argc, void *rt)
  return bval_float(d);
 }
 
-/* =====================================================================
- * builtins_register - Register all built-in functions.
- * =====================================================================
+/* --- builtins_register - Register all built-in functions. ---
  *
  * This is the MASTER REGISTRATION TABLE. Every built-in function
  * is listed here with its complete metadata. To add a new function:

@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - module.h
- * =====================================================================
+ * ---
  *
  * Module System interface.
  *
@@ -28,7 +28,7 @@
  * a bitfield. (Security) will gate activation
  * based on these capabilities.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_MODULE_H
@@ -36,9 +36,7 @@
 
 #include "config.h"
 
-/* =====================================================================
- * Module Classes
- * =====================================================================
+/* --- Module Classes ---
  */
 typedef enum ModuleClass {
  MOD_LIBRARY = 0, /* function library */
@@ -47,9 +45,7 @@ typedef enum ModuleClass {
  MOD_EXTENSION = 3 /* general extension */
 } ModuleClass;
 
-/* =====================================================================
- * Capability Flags (bitfield)
- * =====================================================================
+/* --- Capability Flags (bitfield) ---
  * Declares what system resources a module uses. These are
  * informational in and will be enforced in 
  */
@@ -71,9 +67,7 @@ typedef enum ModuleClass {
 #define CAP_BLUETOOTH 0x2000u /* Bluetooth / BLE */
 #define CAP_USB 0x4000u /* USB device access */
 
-/* =====================================================================
- * Module Descriptor
- * =====================================================================
+/* --- Module Descriptor ---
  * Static metadata for a registered module. All strings are
  * expected to be string literals (not heap-allocated).
  */
@@ -87,9 +81,7 @@ typedef struct ModuleInfo {
  void (*cleanup)(void);/* cleanup callback (may be NULL) */
 } ModuleInfo;
 
-/* =====================================================================
- * Module System API
- * =====================================================================
+/* --- Module System API ---
  */
 
 /*

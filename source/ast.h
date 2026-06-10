@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Compiler - ast.h
- * =====================================================================
+ * ---
  *
  * Abstract Syntax Tree (AST) for the BASIC++ compiler subsystem.
  *
@@ -22,7 +22,7 @@
  * compilation, then freed.
  * 4. The builder reuses the existing Lexer for tokenization.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_AST_H
@@ -31,9 +31,7 @@
 #include "lexer.h"
 #include "config.h"
 
-/* =====================================================================
- * Expression Node Types
- * =====================================================================
+/* --- Expression Node Types ---
  */
 typedef enum AstExprType {
  EXPR_INT_LIT, /* integer literal */
@@ -126,9 +124,7 @@ struct AstExpr {
  } v;
 };
 
-/* =====================================================================
- * Statement Node Types
- * =====================================================================
+/* --- Statement Node Types ---
  */
 typedef enum AstStmtType {
  STMT_PRINT,
@@ -317,18 +313,14 @@ struct AstStmt {
  } v;
 };
 
-/* =====================================================================
- * AstLine - One parsed program line.
- * =====================================================================
+/* --- AstLine - One parsed program line. ---
  */
 typedef struct AstLine {
  int line_number;
  AstStmt *stmts; /* linked list of statements */
 } AstLine;
 
-/* =====================================================================
- * AST Builder Functions
- * =====================================================================
+/* --- AST Builder Functions ---
  */
 
 /*
@@ -348,9 +340,7 @@ AstStmt *ast_build_line(Lexer *lex, int line_num);
  */
 AstExpr *ast_build_expr(Lexer *lex, int line_num);
 
-/* =====================================================================
- * AST Destructor Functions
- * =====================================================================
+/* --- AST Destructor Functions ---
  */
 
 /* Free an expression tree recursively */

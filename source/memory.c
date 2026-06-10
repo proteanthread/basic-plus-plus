@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - memory.c
- * =====================================================================
+ * ---
  *
  * Implementation of the memory management subsystem.
  *
@@ -22,7 +22,7 @@
  * - Insertion/deletion with memmove is O(n) but n <= 4096,
  * and program editing is infrequent compared to execution.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -31,9 +31,7 @@
 #include "memory.h"
 #include "errors.h"
 
-/* =====================================================================
- * Pool Management
- * =====================================================================
+/* --- Pool Management ---
  */
 
 /*
@@ -205,9 +203,7 @@ long mem_pool_available(MemoryPool *pool)
  return pool->size - pool->used;
 }
 
-/* =====================================================================
- * Program Store Operations
- * =====================================================================
+/* --- Program Store Operations ---
  */
 
 /*

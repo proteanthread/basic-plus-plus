@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Compiler - compiler.c
- * =====================================================================
+ * ---
  *
  * Compiler driver implementation.
  *
@@ -15,7 +15,7 @@
  * after code generation. The interpreter's runtime state is not
  * used; compilation is a pure source-to-source translation.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>

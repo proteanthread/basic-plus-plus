@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - stringpool.h
- * =====================================================================
+ * ---
  *
  * Simple bump-allocator string pool for BASIC string values.
  *
@@ -20,7 +20,7 @@
  * If a program exhausts the string pool, ERR_SORRY is raised.
  * The user can increase MAX_STRING_POOL in config.h.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_STRINGPOOL_H
@@ -28,9 +28,7 @@
 
 #include "config.h"
 
-/* =====================================================================
- * StringPool - Bump allocator for string values
- * =====================================================================
+/* --- StringPool - Bump allocator for string values ---
  */
 typedef struct StringPool {
  char *base; /* start of allocated block */

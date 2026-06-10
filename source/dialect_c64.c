@@ -1,17 +1,31 @@
 /*
- * dialect_c64.c -- Commodore BASIC v2 (C64/VIC-20/PET)
+ * dialect_c64.c -- Commodore BASIC v2 (Microsoft, 1977/1982)
  *
- * Microsoft BASIC v2.0, licensed 1977, never updated for C64.
- * Despite the SID and VIC-II hardware, BASIC v2 has NO commands
- * for sound, sprites, or bitmap graphics -- all via PEEK/POKE.
+ * Licensed by Commodore in 1977, shipped unchanged on the C64
+ * in 1982. Five years of hardware advances and they never
+ * updated the BASIC. Want sprites? POKE 53248. Want music?
+ * POKE 54272. That's just how it was.
  *
- * "READY." prompt (with period). 10-column zones. No ON ERROR,
- * no WHILE/WEND, no CLS (use PRINT CHR$(147)).
+ * "READY." with period. 10-column zones. 38911 BASIC BYTES FREE.
  *
- * TODO: VIC-II memory map ($D000-$D02E) via virtual PEEK/POKE
- * TODO: SID registers ($D400-$D418) for sound
- * TODO: RND(0) repeat-last-value behavior
- * TODO: TI/TI$ jiffy clock
+ * The interesting emulation targets:
+ *   VIC-II registers at $D000-$D02E control sprites, scrolling,
+ *   and raster interrupts. A virtual PEEK/POKE memory map through
+ *   memmap.c could intercept writes to these addresses and update
+ *   a sprite layer in gfxbuf.
+ *
+ *   SID chip at $D400-$D418 has three oscillators with ADSR
+ *   envelopes, ring modulation, and a multi-mode filter. Full
+ *   emulation is a big project. Simpler approach: intercept the
+ *   frequency and gate registers, feed them to a tone generator.
+ *
+ *   RND(0) should return the last random value without reseeding.
+ *   RND with negative arg seeds with that value. Check the sign
+ *   in builtins.c fn_rnd() and add a "last_rnd" field to
+ *   RuntimeState.
+ *
+ *   TI and TI$ -- jiffy clock (1/60s ticks since power on).
+ *   Map to platform_ticks_ms() and format as HH:MM:SS.
  */
 
 #include "dialect.h"

@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Compiler - ast.c
- * =====================================================================
+ * ---
  *
  * AST builder implementation.
  *
@@ -15,7 +15,7 @@
  * allocated. The caller (compiler.c) is responsible for calling
  * ast_free_line() after code generation completes.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -25,9 +25,7 @@
 #include "dialect.h"
 #include "errors.h"
 
-/* =====================================================================
- * Internal forward declarations
- * =====================================================================
+/* --- Internal forward declarations ---
  */
 static AstExpr *build_term(Lexer *lex, int line_num);
 static AstExpr *build_power(Lexer *lex, int line_num);
@@ -39,9 +37,7 @@ static AstExpr *build_and_expr(Lexer *lex, int line_num);
 static AstExpr *build_or_expr(Lexer *lex, int line_num);
 static AstStmt *build_statement(Lexer *lex, int line_num);
 
-/* =====================================================================
- * Expression node constructors
- * =====================================================================
+/* --- Expression node constructors ---
  */
 
 static AstExpr *expr_new(AstExprType type)
@@ -167,9 +163,7 @@ static AstExpr *expr_dim_access(const char *name, int nlen,
  return e;
 }
 
-/* =====================================================================
- * Statement node constructor
- * =====================================================================
+/* --- Statement node constructor ---
  */
 static AstStmt *stmt_new(AstStmtType type)
 {
@@ -181,9 +175,7 @@ static AstStmt *stmt_new(AstStmtType type)
  return s;
 }
 
-/* =====================================================================
- * Expression Builder - mirrors parse_expression_bval
- * =====================================================================
+/* --- Expression Builder - mirrors parse_expression_bval ---
  */
 
 /*
@@ -627,9 +619,7 @@ AstExpr *ast_build_expr(Lexer *lex, int line_num)
  return build_or_expr(lex, line_num);
 }
 
-/* =====================================================================
- * Statement Builders
- * =====================================================================
+/* --- Statement Builders ---
  */
 
 /*
@@ -1463,9 +1453,7 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
  return NULL;
 }
 
-/* =====================================================================
- * Public API
- * =====================================================================
+/* --- Public API ---
  */
 
 /*
@@ -1510,9 +1498,7 @@ AstStmt *ast_build_line(Lexer *lex, int line_num)
  return head;
 }
 
-/* =====================================================================
- * Destructor Functions
- * =====================================================================
+/* --- Destructor Functions ---
  */
 
 void ast_free_expr(AstExpr *expr)

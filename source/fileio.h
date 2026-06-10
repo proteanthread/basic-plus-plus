@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - fileio.h
- * =====================================================================
+ * ---
  *
  * File I/O subsystem interface.
  *
@@ -26,7 +26,7 @@
  * MERGE and CHAIN are stubbed - implement the actual logic in
  * fileio.c when needed. The interface is already defined.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_FILEIO_H
@@ -84,9 +84,7 @@ int fileio_merge(ProgramStore *store, const char *filename);
  */
 int fileio_chain(ProgramStore *store, const char *filename);
 
-/* =====================================================================
- * File Channel I/O
- * =====================================================================
+/* --- File Channel I/O ---
  *
  * SYNTAX (GW-BASIC / QBasic compatible):
  * OPEN "filename" FOR INPUT AS #1
@@ -236,9 +234,9 @@ int fileio_eof(int chan, int line_num);
  */
 FILE *fileio_get_fp(int chan);
 
-/* =====================================================================
+/* ---
  * Random-Access File Operations
- * ===================================================================*/
+ * ---*/
 
 /*
  * fileio_set_field - Set field mapping for a channel.
@@ -287,9 +285,9 @@ int fileio_set_field_value(int chan,
  const char *data, int data_len,
  int justify, int line_num);
 
-/* =====================================================================
+/* ---
  * Binary File Operations
- * ===================================================================*/
+ * ---*/
 
 /*
  * fileio_get_binary - Read bytes from a binary file.
@@ -312,9 +310,9 @@ int fileio_put_binary(int chan, long pos,
  const char *buf, int len,
  int line_num);
 
-/* =====================================================================
+/* ---
  * File Locking
- * ===================================================================*/
+ * ---*/
 
 /*
  * fileio_lock - Lock a byte range in a file.
@@ -338,9 +336,9 @@ int fileio_unlock(int chan, long start, long end,
  */
 int fileio_get_channel_mode(int chan);
 
-/* =====================================================================
+/* ---
  * Device-Backed Channels
- * ===================================================================*/
+ * ---*/
 
 /*
  * fileio_open_device - Open a channel backed by a VDev.
@@ -367,9 +365,9 @@ int fileio_open_device(int chan, int dev_id,
  */
 VDev *fileio_get_channel_vdev(int chan);
 
-/* =====================================================================
+/* ---
  * ECMA-116 Enhanced Files Module
- * ===================================================================*/
+ * ---*/
 
 /*
  * fileio_set_e116_metadata - Set ECMA-116 org/rec on a channel.

@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - fileio.c
- * =====================================================================
+ * ---
  *
  * File I/O implementation for SAVE and LOAD commands.
  *
@@ -22,7 +22,7 @@
  *
  * LOAD uses fgets() which handles all line-ending formats.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -212,9 +212,7 @@ int fileio_chain(ProgramStore *store, const char *filename)
  return fileio_load(store, filename);
 }
 
-/* =====================================================================
- * File Channel I/O Implementation
- * =====================================================================
+/* --- File Channel I/O Implementation ---
  *
  * Static file channel table. Channels are 1-based (user-facing),
  * stored 0-based internally. All operations validate channel
@@ -461,9 +459,7 @@ FILE *fileio_get_fp(int chan)
  return channels[idx].fp;
 }
 
-/* =====================================================================
- * Random-Access File Operations
- * =====================================================================
+/* --- Random-Access File Operations ---
  */
 
 int fileio_open_random(int chan, const char *filename,
@@ -734,9 +730,7 @@ int fileio_set_field_value(int chan,
  return 1; /* 1 = not a field, caller can fallback */
 }
 
-/* =====================================================================
- * Binary File Operations
- * =====================================================================
+/* --- Binary File Operations ---
  */
 
 int fileio_get_binary(int chan, long pos,
@@ -789,9 +783,7 @@ int fileio_put_binary(int chan, long pos,
  return 0;
 }
 
-/* =====================================================================
- * File Locking
- * =====================================================================
+/* --- File Locking ---
  * Uses OS-level file locking:
  * Windows: _locking() from <sys/locking.h>
  * POSIX: not supported (returns success)
@@ -859,9 +851,7 @@ int fileio_get_channel_mode(int chan)
  return channels[idx].mode;
 }
 
-/* =====================================================================
- * Device-Backed Channels
- * =====================================================================
+/* --- Device-Backed Channels ---
  * These functions allow OPEN to route a channel through a VDev
  * instead of a FILE*. PRINT # and INPUT # automatically dispatch
  * to the VDev's dev_puts/dev_gets function pointers.
@@ -920,9 +910,7 @@ VDev *fileio_get_channel_vdev(int chan)
  return channels[idx].vdev;
 }
 
-/* =====================================================================
- * ECMA-116 Enhanced Files Module
- * =====================================================================
+/* --- ECMA-116 Enhanced Files Module ---
  * These functions implement the ECMA-116 file pointer control,
  * record operations, and file management operations. They work
  * alongside the existing GW-BASIC file I/O without conflicts.

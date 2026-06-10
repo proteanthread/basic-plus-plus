@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - gfxbuf.h
- * =====================================================================
+ * ---
  *
  * Virtual Graphics Framebuffer for terminal-based pixel graphics.
  *
@@ -14,7 +14,7 @@
  * Each terminal character cell represents 2 vertical pixels,
  * giving effective resolution of 320x200 in an 80x100 grid.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_GFXBUF_H

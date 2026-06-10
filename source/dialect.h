@@ -1,53 +1,77 @@
 /*
- * =====================================================================
- * BASIC++ Interpreter - dialect.h
- * =====================================================================
+ * dialect.h -- dialect system interface
  *
- * Dialect system interface.
+ * Every BASIC dialect has its own syntax quirks: PATB uses ';'
+ * between statements while everyone else uses ':', some require
+ * LET, some don't, prompts differ, line number ranges differ.
+ * This header defines the configuration struct and API that lets
+ * the parser adapt to any dialect without per-dialect if/else.
  *
- * PURPOSE:
- * Centralizes all BASIC dialect-specific behavior. The parser and
- * executor are dialect-agnostic - they query this module to
- * determine syntax rules, available features, and compatibility
- * behavior.
+ * Adding a new machine-specific dialect:
+ *   1. Pick a 4-char code. Add DIALECT_xxx to DialectId below.
+ *   2. Add DFLAG_xxx (next available bit in the bitmask).
+ *   3. Create dialect_xxx.c with a DialectConfig struct and a
+ *      dialect_register_xxx() function.
+ *   4. Wire it into dialect_register_all() in dialect.c.
+ *   5. Add dialect_xxx.c to the Makefile.
+ *   6. Add machine-specific keywords to lexer.c with your DFLAG.
+ *   That's it. The parser picks up the new config automatically.
  *
- * WHY THIS EXISTS:
- * Different BASIC dialects have subtly different syntax rules:
- * - PATB uses ';' as statement separator; most others use ':'
- * - PATB's IF has no THEN keyword; most others require it
- * - Some dialects allow omitting LET; others require it
- * - Line number ranges vary
- * - Feature availability varies (FOR/NEXT, strings, etc.)
- * - Ready prompts differ ("READY", "Ok", "READY.", ">")
- * - PRINT zone widths differ (8, 14, 16)
- * - Error message styles vary (short vs verbose)
+ * Creating a custom (non-machine-specific) dialect:
+ *   You can define a dialect that doesn't map to any real hardware.
+ *   Just set the flags to whatever combination makes sense. For
+ *   example, a "BASIC++ Modern" dialect could enable WHILE/WEND,
+ *   DO/LOOP, ON ERROR, extended variable names, and every other
+ *   feature simultaneously. Set the prompt to whatever you want.
+ *   Custom dialects are useful for building domain-specific
+ *   languages on top of the BASIC++ parser.
  *
- * Rather than scattering if/else checks for each dialect
- * throughout the parser, all dialect logic lives here. The
- * parser calls dialect_has_feature() or reads DialectConfig
- * fields to determine behavior.
+ * Mixing dialects:
+ *   By default (OPTION STRICT OFF), all keywords from all dialects
+ *   are available simultaneously. A program can use WHILE (GWBS)
+ *   alongside TRAP (Atari) alongside CLR (C64). To restrict to
+ *   a single dialect, use OPTION STRICT ON -- then only keywords
+ *   tagged with the active dialect's DFLAG are accepted.
+ *   DIALECT switching at runtime is fully supported.
  *
- * SUPPORTED DIALECTS:
- * - Palo Alto Tiny BASIC (default)
- * - TRS-80 Level I BASIC
- * - TRS-80 Level II BASIC
- * - GW-BASIC
- * - ECMA-55 Minimal BASIC
- * - ECMA-116 Full BASIC
- * - QBasic (subset)
- * - Apple II Integer BASIC
- * - AppleSoft BASIC
- * - Atari/Microsoft BASIC II
- * - Commodore BASIC v2
- * - Tandy Color Computer BASIC
+ * Memory pools auto-adjust:
+ *   DialectConfig doesn't set memory sizes. Pool sizing is handled
+ *   in runtime.c (rt_init) and config.h. If you need a dialect with
+ *   different memory limits, override the limits after dialect_init()
+ *   by writing a dialect-specific apply function. The pools grow
+ *   dynamically when possible (string pool, array storage).
  *
- * HOW TO EXTEND:
- * 1. Add the new dialect to DialectId enum.
- * 2. Add a DialectConfig entry in dialect.c's dialect_configs[].
- * 3. Set all feature flags appropriately.
- * 4. No parser changes needed - the parser auto-adapts.
+ * Using BASIC++ to build other language interpreters:
+ *   The parser-lexer-runtime stack is generic enough that you can
+ *   redefine keywords to create a completely new language. Swap the
+ *   keyword table in lexer.c, write new parse handlers in parser.c,
+ *   and you have a different language running on the same VM. The
+ *   codegen backend (codegen.c) can transpile to C, so your new
+ *   language gets a free native compiler.
  *
- * =====================================================================
+ * Detokenizing older formats:
+ *   GW-BASIC and C64 saved programs in binary tokenized format
+ *   (first byte 0xFF for GW-BASIC, various for Commodore). A
+ *   detokenizer reads these binary files and converts to ASCII
+ *   text that BASIC++ can LOAD. The token-to-keyword mapping
+ *   lives in lexer.c's keyword table. See bytecode.h for the
+ *   serialization API -- bpp_load() is where you'd add format
+ *   detection and automatic detokenization.
+ *
+ * Self-modifying code:
+ *   BASIC++ stores programs as text lines indexed by line number.
+ *   A running program can modify itself: build a string containing
+ *   a BASIC line and feed it through exec_line(). The next time
+ *   that line number is reached, the new code runs. This is how
+ *   some 1980s copy protection worked.
+ *
+ * Transpiling to other targets:
+ *   codegen.c currently emits C89. To target Python or Pascal,
+ *   write a new AST walker (look at codegen_emit_stmt). The AST
+ *   nodes in ast.h are language-neutral -- IF/FOR/WHILE/GOSUB
+ *   map naturally to any imperative language. For Pascal, emit
+ *   BEGIN/END blocks instead of braces. For Python, track indent
+ *   level and emit colons.
  */
 
 #ifndef BASICPP_DIALECT_H
@@ -55,9 +79,7 @@
 
 #include "lexer.h" /* KeywordId */
 
-/* =====================================================================
- * Dialect Bitmask Flags
- * =====================================================================
+/* --- Dialect Bitmask Flags ---
  * Each keyword is tagged with a bitmask indicating which dialects
  * support it. In union mode (default) all keywords are accepted.
  * In strict mode (OPTION STRICT) only keywords whose bitmask
@@ -93,9 +115,7 @@
 #define DFLAG_GWQB (DFLAG_GWBS | DFLAG_QBAS)
 
 
-/* =====================================================================
- * Dialect Identifiers
- * =====================================================================
+/* --- Dialect Identifiers ---
  * Each supported BASIC dialect has a unique identifier.
  * DIALECT_TINY_BASIC is the default and the only fully
  * implemented dialect in 
@@ -116,9 +136,7 @@ typedef enum DialectId {
  DIALECT_COUNT /* sentinel - must be last */
 } DialectId;
 
-/* =====================================================================
- * Dialect Configuration
- * =====================================================================
+/* --- Dialect Configuration ---
  * Contains all dialect-specific flags and settings. The parser
  * and executor read these flags to adjust their behavior.
  *
@@ -174,9 +192,7 @@ typedef struct DialectConfig {
  unsigned int dialect_flag; /* bitmask flag for this dialect */
 } DialectConfig;
 
-/* =====================================================================
- * Dialect Functions
- * =====================================================================
+/* --- Dialect Functions ---
  */
 
 /*
@@ -292,9 +308,7 @@ int dialect_keyword_allowed(KeywordId kw);
  */
 unsigned int dialect_get_flag(void);
 
-/* =====================================================================
- * Dialect Registration (- Contributor Architecture)
- * =====================================================================
+/* --- Dialect Registration (- Contributor Architecture) ---
  * Each dialect lives in its own source file (dialect_gwbs.c, etc.)
  * and registers itself via dialect_register() at boot time.
  *

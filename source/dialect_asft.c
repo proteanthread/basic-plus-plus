@@ -1,16 +1,24 @@
 /*
- * dialect_asft.c -- AppleSoft BASIC (Apple II+/IIe/IIc)
+ * dialect_asft.c -- AppleSoft BASIC (Microsoft for Apple, 1978)
  *
- * Microsoft BASIC for Apple II, 1978. 12KB ROM replacing
- * Wozniak's Integer BASIC. Full floating point, ']' prompt.
- * ONERR GOTO for error handling (not ON ERROR GOTO).
- * No WHILE/WEND -- use FOR/NEXT or GOTO loops.
+ * 12KB ROM replacing Wozniak's Integer BASIC on the Apple II+.
+ * ']' prompt. ONERR GOTO (not ON ERROR GOTO -- keyword alias).
  *
- * TODO: HGR/HGR2 hi-res 280x192 graphics
- * TODO: HPLOT x,y TO x2,y2 (Bresenham line)
- * TODO: HCOLOR= (NTSC artifact colors 0-7)
- * TODO: lo-res GR/PLOT/HLIN/VLIN (shared with Integer BASIC)
- * TODO: ONERR keyword alias
+ * Hi-res graphics are the big missing feature here:
+ *   HGR -- init page 1 at $2000 (280x192, 6 colors via NTSC)
+ *   HGR2 -- init page 2 at $4000
+ *   HPLOT x,y -- set pixel
+ *   HPLOT TO x,y -- draw line from last position (Bresenham)
+ *   HCOLOR=n -- set color (0-7, NTSC artifact colors)
+ *
+ *   Implementation: gfxbuf_set_mode(280, 192, 6) for HGR.
+ *   NTSC artifact colors are weird -- they depend on whether
+ *   the pixel is on an even or odd column. Approximate with
+ *   a 6-entry palette: black, green, violet, white, orange, blue.
+ *   HPLOT TO needs a "last x, last y" in the runtime state.
+ *
+ * Lo-res shares commands with Integer BASIC (GR, PLOT, etc).
+ * Both dialects tag those keywords with DFLAG_AINT|DFLAG_ASFT.
  */
 
 #include "dialect.h"
@@ -20,7 +28,7 @@ static const DialectConfig asft_config = {
     "AppleSoft BASIC",
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     63999, 0, 1, 0, 0, 1, 0, 1, 1, 1,
-    "]",                    /* the famous bracket prompt */
+    "]",                    /* bracket prompt */
     16, 1, 0, 0,
     "ASFT", DFLAG_ASFT
 };

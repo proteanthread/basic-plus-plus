@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - security.c
- * =====================================================================
+ * ---
  *
  * Security system implementation.
  *
@@ -20,22 +20,18 @@
  * SYSTEM 1 0 0
  * MODULE 1 1 0
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
 #include "security.h"
 #include "module.h"
 
-/* =====================================================================
- * State
- * =====================================================================
+/* --- State ---
  */
 static SecLevel current_level = SEC_OPEN;
 
-/* =====================================================================
- * Permission Matrix
- * =====================================================================
+/* --- Permission Matrix ---
  * allowed[level][operation] - 1 = permitted, 0 = denied
  */
 static const int allowed[SEC_COUNT][SECOP_COUNT] = {
@@ -47,9 +43,7 @@ static const int allowed[SEC_COUNT][SECOP_COUNT] = {
  { 0, 0, 0, 0, 0, 0 }
 };
 
-/* =====================================================================
- * Operation names (for error messages)
- * =====================================================================
+/* --- Operation names (for error messages) ---
  */
 static const char *op_names[SECOP_COUNT] = {
  "file read",
@@ -60,9 +54,7 @@ static const char *op_names[SECOP_COUNT] = {
  "module activation"
 };
 
-/* =====================================================================
- * Level names
- * =====================================================================
+/* --- Level names ---
  */
 static const char *level_names[SEC_COUNT] = {
  "OPEN",
@@ -70,9 +62,7 @@ static const char *level_names[SEC_COUNT] = {
  "RESTRICTED"
 };
 
-/* =====================================================================
- * security_init
- * =====================================================================
+/* --- security_init ---
  */
 void security_init(SecLevel level)
 {
@@ -83,18 +73,14 @@ void security_init(SecLevel level)
  }
 }
 
-/* =====================================================================
- * security_get_level
- * =====================================================================
+/* --- security_get_level ---
  */
 SecLevel security_get_level(void)
 {
  return current_level;
 }
 
-/* =====================================================================
- * security_set_level
- * =====================================================================
+/* --- security_set_level ---
  */
 void security_set_level(SecLevel level)
 {
@@ -103,9 +89,7 @@ void security_set_level(SecLevel level)
  }
 }
 
-/* =====================================================================
- * security_level_name
- * =====================================================================
+/* --- security_level_name ---
  */
 const char *security_level_name(SecLevel level)
 {
@@ -115,9 +99,7 @@ const char *security_level_name(SecLevel level)
  return "UNKNOWN";
 }
 
-/* =====================================================================
- * security_check
- * =====================================================================
+/* --- security_check ---
  */
 int security_check(SecOperation op, int line_num)
 {
@@ -141,9 +123,7 @@ int security_check(SecOperation op, int line_num)
  return -1;
 }
 
-/* =====================================================================
- * security_module_allowed
- * =====================================================================
+/* --- security_module_allowed ---
  * Check if a module's capability set is compatible with the
  * current security level.
  *

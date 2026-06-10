@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - platform.h
- * =====================================================================
+ * ---
  *
  * Cross-platform abstraction layer.
  *
@@ -17,15 +17,13 @@
  * Linux - x86/x86_64/ARM + GCC/Clang
  * POSIX - macOS, BSD, other Unix + GCC/Clang
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_PLATFORM_H
 #define BASICPP_PLATFORM_H
 
-/* =====================================================================
- * Platform IDs
- * =====================================================================
+/* --- Platform IDs ---
  */
 typedef enum PlatformId {
  PLAT_DOS = 0,
@@ -36,9 +34,7 @@ typedef enum PlatformId {
  PLAT_COUNT = 5
 } PlatformId;
 
-/* =====================================================================
- * Platform Info Descriptor
- * =====================================================================
+/* --- Platform Info Descriptor ---
  */
 typedef struct PlatformInfo {
  PlatformId id;
@@ -51,9 +47,7 @@ typedef struct PlatformInfo {
  int long_size; /* sizeof(long) */
 } PlatformInfo;
 
-/* =====================================================================
- * Platform API
- * =====================================================================
+/* --- Platform API ---
  */
 
 /*

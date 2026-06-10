@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - vm.c
- * =====================================================================
+ * ---
  *
  * Virtual Machine formalization layer.
  *
@@ -16,7 +16,7 @@
  * remains constant during execution. Handler registration
  * is through the static table below.
  *
- * =====================================================================
+ * ---
  */
 
 #include <string.h>
@@ -24,9 +24,7 @@
 #include "runtime.h"
 #include "errors.h"
 
-/* =====================================================================
- * Opcode Name Table
- * =====================================================================
+/* --- Opcode Name Table ---
  * Human-readable names for trace output and debug logging.
  * Index matches VMOpcode enum values.
  */
@@ -60,9 +58,7 @@ static const char *opcode_names[OP_COUNT] = {
  "UNKNOWN"
 };
 
-/* =====================================================================
- * Keyword -> Opcode Mapping Table
- * =====================================================================
+/* --- Keyword -> Opcode Mapping Table ---
  * Maps each KeywordId to the corresponding VMOpcode. Entries with
  * OP_UNKNOWN indicate keywords that are not statement-level
  * (they are sub-keywords like AS, ERROR, THEN, STEP, TO).
@@ -142,17 +138,13 @@ static const KeywordOpcodeMap kw_opcode_map[] = {
 #define KW_OPCODE_MAP_SIZE \
  (int)(sizeof(kw_opcode_map) / sizeof(kw_opcode_map[0]))
 
-/* =====================================================================
- * Fast Lookup Table: KeywordId -> VMOpcode
- * =====================================================================
+/* --- Fast Lookup Table: KeywordId -> VMOpcode ---
  * Built by vm_init() for O(1) keyword->opcode resolution.
  */
 static VMOpcode kw_to_opcode[KW_COUNT];
 static int vm_initialized = 0;
 
-/* =====================================================================
- * vm_init - Build the dispatch lookup table.
- * =====================================================================
+/* --- vm_init - Build the dispatch lookup table. ---
  */
 void vm_init(void)
 {
@@ -172,9 +164,7 @@ void vm_init(void)
  vm_initialized = 1;
 }
 
-/* =====================================================================
- * vm_resolve_opcode - Map KeywordId -> VMOpcode.
- * =====================================================================
+/* --- vm_resolve_opcode - Map KeywordId -> VMOpcode. ---
  */
 VMOpcode vm_resolve_opcode(KeywordId kw)
 {
@@ -184,9 +174,7 @@ VMOpcode vm_resolve_opcode(KeywordId kw)
  return kw_to_opcode[kw];
 }
 
-/* =====================================================================
- * vm_get_handler - Get handler for an opcode.
- * =====================================================================
+/* --- vm_get_handler - Get handler for an opcode. ---
  * infrastructure: returns NULL. Handlers are currently
  * dispatched through parser.c's switch. Future phases will register
  * handlers here for full table-driven dispatch.
@@ -197,9 +185,7 @@ VMHandler vm_get_handler(VMOpcode op)
  return NULL; /* handlers live in parser.c switch for now */
 }
 
-/* =====================================================================
- * vm_opcode_name - Human-readable opcode name.
- * =====================================================================
+/* --- vm_opcode_name - Human-readable opcode name. ---
  */
 const char *vm_opcode_name(VMOpcode op)
 {
@@ -209,9 +195,7 @@ const char *vm_opcode_name(VMOpcode op)
  return opcode_names[op];
 }
 
-/* =====================================================================
- * vm_dispatch - Resolve keyword and return opcode.
- * =====================================================================
+/* --- vm_dispatch - Resolve keyword and return opcode. ---
  * resolves the opcode for logging/tracing. Actual handler
  * dispatch is still done by parser.c's switch statement.
  */
@@ -227,9 +211,7 @@ VMOpcode vm_dispatch(KeywordId kw, Lexer *lex, void *rt, int line_num)
  return op;
 }
 
-/* =====================================================================
- * State Machine
- * =====================================================================
+/* --- State Machine ---
  */
 
 void vm_set_state(void *rt_ptr, VMState state)
@@ -269,9 +251,7 @@ VMState vm_get_state(void *rt_ptr)
  return rt->vm_state;
 }
 
-/* =====================================================================
- * Expression Evaluation Stack
- * =====================================================================
+/* --- Expression Evaluation Stack ---
  */
 
 void vm_eval_init(VMEvalStack *stk)
@@ -312,9 +292,7 @@ int vm_eval_depth(VMEvalStack *stk)
  return stk->top + 1;
 }
 
-/* =====================================================================
- * Control Flow Primitives
- * =====================================================================
+/* --- Control Flow Primitives ---
  * These centralize the line-number->index resolution and stack
  * management that was previously scattered across parser.c.
  */

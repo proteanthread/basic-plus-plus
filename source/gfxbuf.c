@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - gfxbuf.c
- * =====================================================================
+ * ---
  *
  * Virtual Graphics Framebuffer implementation.
  *
@@ -21,7 +21,7 @@
  * CGA-COMPATIBLE PALETTE:
  * Colors 0-15 map to standard ANSI terminal colors.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>

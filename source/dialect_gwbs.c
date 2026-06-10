@@ -1,16 +1,21 @@
 /*
- * dialect_gwbs.c -- GW-BASIC (IBM PC)
+ * dialect_gwbs.c -- GW-BASIC / BASICA (Microsoft, 1983)
  *
- * Microsoft, 1983. Shipped with MS-DOS 1.0 through 5.0.
- * The standard BASIC for the IBM PC era. 104/104 David Ahl
- * BASIC Computer Games compile in this dialect mode.
+ * The default dialect for running David Ahl's games. 104/104
+ * BASIC Computer Games compile successfully in GWBS mode.
  *
- * "Ok" prompt (lowercase k). Max line 65529 (65530-65535 reserved).
- * 14-column print zones. WHILE/WEND, ON ERROR, SOUND, PLAY, DRAW.
+ * "Ok" prompt (lowercase k is correct). Max line 65529 because
+ * 65530-65535 were reserved internally by the original.
  *
- * TODO: CIRCLE with arc/aspect parameters
- * TODO: PAINT flood fill
- * TODO: WINDOW/VIEW viewport mapping
+ * Graphics gaps: CIRCLE needs arc and aspect ratio params
+ * (parser currently handles the simple case). PAINT needs a
+ * real flood-fill in gfxbuf.c -- stack-based scanline fill
+ * would work. WINDOW/VIEW are viewport transforms that would
+ * sit between user coords and gfxbuf coords.
+ *
+ * Sound: PLAY and SOUND work on Windows (PC speaker API).
+ * On Linux/Mac they're no-ops for now. A vdev audio backend
+ * could make these portable.
  */
 
 #include "dialect.h"

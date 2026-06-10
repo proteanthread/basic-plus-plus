@@ -1,17 +1,28 @@
 /*
- * dialect_ecma116.c -- ECMA-116 Full BASIC (1986)
+ * dialect_ecma116.c -- ECMA-116 Full BASIC (ISO 10279:1991)
  *
- * International standard (ISO 10279:1991). Extends ECMA-55 with
- * structured control flow, SUB/FUNCTION, exception handling
- * (WHEN/USE/END WHEN), MAT operations, enhanced file I/O.
+ * The gold standard. Structured control flow, SUB/FUNCTION,
+ * WHEN/USE exception handling, MAT matrix ops, enhanced files.
+ * BASIC++ targets full compliance here (minus OPTION ARITHMETIC
+ * DECIMAL -- we stick with IEEE 754 binary float).
  *
- * BASIC++ targets 100% ECMA-116 compliance (excluding OPTION
- * ARITHMETIC DECIMAL -- we use IEEE 754 binary floating point).
+ * What's left to implement:
+ *   Multi-line FUNCTION with LOCAL scope. Right now DEF FN only
+ *   does single-expression functions. To do real FUNCTION, you'd
+ *   need a local symbol table pushed onto a scope stack in
+ *   runtime.c. Look at how GOSUB saves/restores state and extend
+ *   that to include a variable frame.
  *
- * TODO: multi-line FUNCTION with LOCAL variables
- * TODO: EXTERNAL module declarations
- * TODO: CHAIN with COMMON
- * TODO: IMAGE statement for formatted I/O
+ *   EXTERNAL declarations (inter-module linking). Would work
+ *   through the module system -- see module.h.
+ *
+ *   IMAGE statement for formatted output. This is printf-style
+ *   formatting but with BASIC syntax: IMAGE ###.## etc. Parser
+ *   would build a format string and feed it to snprintf.
+ *
+ *   CHAIN with COMMON (passing variables between programs).
+ *   The runtime already has CHAIN; COMMON would need a list of
+ *   variable names that survive the CHAIN boundary.
  */
 
 #include "dialect.h"
