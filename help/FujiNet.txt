@@ -1,0 +1,943 @@
+BASIC++ TUTORIAL L: FUJINET INTEGRATION
+========================================
+
+FujiNet is an open-source WiFi multi-peripheral for vintage computers.
+It replaces disk drives, modems, printers, and RS-232 ports with a
+single ESP32-based device connected to the system bus (SIO on Atari,
+IEC on Commodore, SmartPort on Apple II, expansion bus on others).
+
+This tutorial covers accessing FujiNet services from BASIC++.
+It is NOT the same as the Virtual Networking tutorial (Virtual_Network)
+which covers BASIC++'s built-in TCP/UDP virtual devices. FujiNet is
+real hardware that sits between the computer and the internet.
+
+
+TABLE OF CONTENTS
+-----------------
+
+  1. What FujiNet Provides
+  2. The N: Device (Network)
+  3. Disk Drive Emulation (D1: through D8:)
+  4. Modem Emulation (R:)
+  5. Printer Emulation (P:)
+  6. Real-Time Clock (APETIME)
+  7. TNFS Servers
+  8. HTTP and HTTPS
+  9. JSON Parsing
+ 10. Telnet and BBS Access
+ 11. FTP and Other Protocols
+ 12. Platform Differences
+ 13. Implementing FujiNet Support in BASIC++
+ 14. Error Handling
+ 15. Security Considerations
+ 16. Example Programs
+ 17. FujiNet Firmware Architecture and Platform Porting
+ 18. Building BASIC++ as a FujiNet Platform
+ 19. References
+
+
+1. WHAT FUJINET PROVIDES
+========================
+
+FujiNet presents itself to the host computer as multiple standard
+peripherals simultaneously:
+
+  Device    What it replaces             Access method
+  ------    ----------------------       -------------
+  D1:-D8:   Floppy disk drives           LOAD, SAVE, OPEN, XIO
+  N1:-N8:   Network connections          OPEN, INPUT, PRINT, XIO
+  R1:       RS-232 / modem               OPEN, INPUT, PRINT, GET
+  P:        Printer                      LPRINT, OPEN #,8,0,"P:"
+  C:        Cassette                     CLOAD, CSAVE
+  CLOCK     Real-time clock              XIO or APETIME protocol
+
+The host computer does not need to know it's talking to an ESP32 --
+it uses the same I/O commands it would use with real hardware.
+FujiNet intercepts these commands on the bus and translates them
+to WiFi operations.
+
+
+2. THE N: DEVICE (NETWORK)
+==========================
+
+The N: device is the core of FujiNet's network capabilities. It
+exposes internet resources as standard file I/O devices. You open a
+URL just like you'd open a file on disk.
+
+Eight independent network channels are available (N1: through N8:),
+each capable of simultaneous connections to different protocols.
+
+Basic pattern:
+
+  10 OPEN #1,12,0,"N:HTTP://example.com/data.txt"
+  20 TRAP 90
+  30 INPUT #1,A$
+  40 PRINT A$
+  50 GOTO 30
+  90 CLOSE #1
+
+  Line 10: Open channel 1, mode 12 (read/write), aux 0.
+  Line 20: TRAP sends execution to line 90 on any I/O error.
+  Lines 30-50: Read lines until EOF (error 136).
+  Line 90: Clean up.
+
+Open modes:
+  4  = Read only
+  8  = Write only
+  12 = Read/Write (recommended for HTTP GET)
+  6  = Directory listing
+
+The "N:" prefix tells FujiNet this is a network operation.
+Everything after "N:" is a standard URL: protocol://host/path
+
+Supported URL protocols:
+  HTTP://   HTTPS://   FTP://
+  TCP://    UDP://
+  TNFS://   SSH://
+  TELNET://
+
+
+3. DISK DRIVE EMULATION (D1: THROUGH D8:)
+==========================================
+
+FujiNet emulates up to 8 Atari disk drives. It can mount .ATR
+(Atari disk image), .XEX (executable), .CAS (cassette), and other
+image files from local SD card, TNFS servers, or HTTP URLs.
+
+BASIC++ accesses these the normal way:
+
+  LOAD "D1:GAME.BAS"
+  SAVE "D2:BACKUP.BAS"
+  OPEN #1,4,0,"D1:DATA.DAT"
+
+Mounting images is done through the FujiNet CONFIG program (a
+special application loaded from the FujiNet itself), or through
+the web interface at http://fujinet.local/ in your browser.
+
+From BASIC, you can also mount images programmatically by writing
+to the FujiNet's FUJI: device:
+
+  REM Mount a TNFS disk image as D1:
+  OPEN #1,8,0,"FUJI:"
+  REM (uses specific SIO commands, see FujiNet firmware docs)
+  CLOSE #1
+
+Disk image formats supported:
+  .ATR   Atari disk image (90K, 130K, 180K, 360K, 720K, 1040K)
+  .XEX   Atari executable (virtual boot disk)
+  .ATX   Protected disk image (copy protection)
+  .CAS   Cassette image
+  .BAS   Tokenized BASIC (loaded as text via detokenizer)
+
+File I/O through mounted disks works exactly like physical drives.
+Programs written for real Atari 810/1050 drives work unchanged.
+
+
+4. MODEM EMULATION (R:)
+========================
+
+FujiNet's modem emulator turns the R: (RS-232) device into a
+WiFi modem that speaks Hayes AT commands. This lets vintage
+terminal programs and BBS software work over the internet.
+
+  10 OPEN #1,13,0,"R:"
+  20 PRINT #1,"ATDT irata.online:8005"
+  30 REM ... now connected via telnet
+  40 TRAP 90
+  50 GET #1,A
+  60 IF A>0 THEN PRINT CHR$(A);
+  70 GOTO 50
+  90 CLOSE #1
+
+The modem emulator supports:
+  ATDThost:port   Dial (connect via TCP/telnet)
+  ATH             Hang up
+  ATA             Answer incoming connection
+  ATE0/ATE1       Echo off/on
+  ATV0/ATV1       Numeric/verbal result codes
+  AT&F            Factory reset
+  +++             Escape to command mode (1-second pause required)
+
+Baud rates: 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600
+
+FujiNet translates between the vintage serial protocol and TCP.
+The host computer thinks it's talking to a Hayes-compatible modem.
+
+See also: the BASIC++ irata.online connection tutorial for using
+the modem emulator with the PLATO network at port 8005.
+
+
+5. PRINTER EMULATION (P:)
+==========================
+
+FujiNet captures print output and converts it to PDF, PNG, SVG,
+or raw text files. Output is accessible through the web interface
+at http://fujinet.local/printer
+
+  LPRINT "Hello, FujiNet printer!"
+  LPRINT "This becomes a PDF."
+
+  REM Or using OPEN:
+  OPEN #2,8,0,"P:"
+  PRINT #2,"Line one"
+  PRINT #2,"Line two"
+  CLOSE #2
+
+Supported printer emulations:
+  Atari 1020 (4-color plotter -- creates SVG)
+  Atari 1025 (80-column, Epson-compatible)
+  Atari 1027 (letter quality, proportional)
+  Atari 820 (40-column dot matrix)
+  Epson FX-80 (IBM PC compatible)
+  Plain text (no formatting)
+
+The printer emulation renders character-by-character with proper
+font metrics for each emulated printer. The 1020 plotter mode
+generates actual vector SVG graphics from PRINT and PLOT commands.
+
+
+6. REAL-TIME CLOCK (APETIME)
+=============================
+
+FujiNet provides NTP-synced real-time clock through the APETIME
+protocol. This gives 1980s computers accurate date and time
+without a battery-backed clock chip.
+
+  REM Read the clock into binary fields
+  DIM T$(6)
+  OPEN #1,4,0,"CLOCK:"
+  GET #1,T$
+  CLOSE #1
+  REM T$ contains: day, month, year, hour, minute, second
+
+The clock auto-syncs via NTP when FujiNet connects to WiFi.
+Timezone is configured through the web interface.
+
+In BASIC++, the built-in TIME$ and DATE$ functions can be
+configured to read from FujiNet's clock if the Atari dialect
+is active and FujiNet hardware is detected. Otherwise, TIME$
+reads from the host system clock.
+
+
+7. TNFS SERVERS
+===============
+
+TNFS (Trivial Network File System) is a lightweight file server
+protocol designed for vintage computers. It's like a simplified
+NFS that works over UDP, making it fast even on slow connections.
+
+Public TNFS servers host thousands of disk images, programs, and
+games that FujiNet can access directly.
+
+Accessing TNFS from BASIC:
+
+  REM List files on a TNFS server
+  OPEN #1,6,0,"N:TNFS://fujinet.online/"
+  TRAP 90
+  30 INPUT #1,A$
+  40 PRINT A$
+  50 GOTO 30
+  90 CLOSE #1
+
+  REM Load a file from TNFS
+  OPEN #1,4,0,"N:TNFS://fujinet.online/games/stars.bas"
+  TRAP 90
+  30 INPUT #1,A$
+  40 PRINT A$
+  50 GOTO 30
+  90 CLOSE #1
+
+Directory listing uses mode 6. File reading uses mode 4 or 12.
+
+Public TNFS servers:
+  fujinet.online        Official FujiNet server
+  atari-apps.irata.online   Applications and games
+  apps.irata.online     irata.online apps
+
+To run your own TNFS server, use the tnfsd daemon from:
+  https://github.com/FujiNetWIFI/tnfsd
+
+Configuration is simple -- point it at a directory of files
+and it serves them over UDP port 16384.
+
+
+8. HTTP AND HTTPS
+=================
+
+FujiNet handles HTTP and HTTPS natively, including TLS encryption.
+The ESP32 manages the SSL handshake, so the vintage computer only
+sees plain text data.
+
+  REM Fetch a web page
+  OPEN #1,12,0,"N:HTTPS://api.weather.gov/alerts/active/count"
+  TRAP 90
+  30 INPUT #1,A$
+  40 PRINT A$
+  50 GOTO 30
+  90 CLOSE #1
+
+HTTP methods:
+  OPEN with mode 12 = GET (read the URL)
+  OPEN with mode 8  = POST (write data, then read response)
+
+For POST requests:
+
+  OPEN #1,8,0,"N:HTTPS://httpbin.org/post"
+  PRINT #1,"key=value&other=data"
+  REM Switch to read mode for response
+  XIO 252,#1,12,0,"N:"
+  INPUT #1,R$
+  PRINT R$
+  CLOSE #1
+
+HTTP headers can be set via XIO commands before the request.
+Custom User-Agent, Content-Type, and Authorization headers are
+supported through FujiNet firmware.
+
+
+9. JSON PARSING
+===============
+
+FujiNet includes a built-in JSON parser on the ESP32. This means
+your 6502/Z80 BASIC program can parse REST API responses without
+needing to handle JSON in 2KB of RAM.
+
+The workflow is:
+
+  1. OPEN the URL
+  2. XIO 252 to set JSON mode
+  3. XIO "P" to parse the response
+  4. XIO "Q" with a path to query specific fields
+  5. INPUT to read the queried value
+
+Example -- reading a Mastodon post:
+
+  10 DIM A$(256)
+  20 OPEN #1,12,0,"N:HTTPS://oldbytes.space/api/v1/timelines/public?limit=1"
+  30 TRAP 91
+  40 XIO 252,#1,12,1,"N:"
+  50 XIO ASC("P"),#1,12,0,"N:"
+  60 XIO ASC("Q"),#1,12,0,"N:/0/account/display_name"
+  70 INPUT #1,A$
+  80 PRINT "User: ";A$
+  85 XIO ASC("Q"),#1,12,0,"N:/0/content/"
+  86 GET #1,A
+  87 IF A<>155 THEN PRINT CHR$(A);:GOTO 86
+  91 CLOSE #1
+
+Line-by-line:
+
+  Line 40: XIO 252 sets channel mode.
+           Aux1=12 (read/write), Aux2=1 (JSON mode).
+
+  Line 50: XIO with command "P" (Parse).
+           FujiNet downloads and parses the entire JSON response.
+
+  Line 60: XIO with command "Q" (Query).
+           The path "/0/account/display_name" means:
+             /0       = first element of the root array
+             /account = the "account" object within that element
+             /display_name = the "display_name" string field
+
+  Line 70: INPUT reads the queried value as a string.
+
+JSON paths use forward slashes. Array indices are zero-based.
+Nested objects chain with slashes: /results/0/geometry/location/lat
+
+If the queried field doesn't exist, INPUT returns an empty string.
+If the JSON is malformed, XIO "P" returns an error.
+
+
+10. TELNET AND BBS ACCESS
+==========================
+
+FujiNet can connect to telnet BBSes either through the modem
+emulator (R: device with ATDT) or directly through the N: device:
+
+  REM Direct telnet via N: device
+  10 OPEN #1,12,0,"N:TCP://bbs.example.com:23/"
+  20 TRAP 90
+  30 GET #1,A
+  40 IF A=0 THEN 30
+  50 PRINT CHR$(A);
+  60 REM Check for user input
+  70 K=PEEK(764)
+  80 IF K<>255 THEN PUT #1,K:POKE 764,255
+  90 GOTO 30
+  90 CLOSE #1
+
+For PLATO (irata.online), use TCP port 8005:
+
+  OPEN #1,12,0,"N:TCP://irata.online:8005/"
+
+The PLATO protocol is binary (not ASCII telnet), so you'll need
+to handle the PLATO terminal protocol. See the irata.online
+tutorials in the BASIC++ documentation for details.
+
+Raw TCP connections let you build:
+  - Chat clients
+  - Multiplayer games (protocol-to-protocol)
+  - IoT data collectors
+  - Inter-machine BASIC program transfer
+
+UDP is also supported:
+  OPEN #1,12,0,"N:UDP://192.168.1.100:5000/"
+
+UDP is useful for:
+  - Local network game packets
+  - Sensor data (send-and-forget)
+  - DNS lookups (port 53)
+  - NTP time queries (port 123)
+
+
+11. FTP AND OTHER PROTOCOLS
+============================
+
+  REM FTP directory listing
+  OPEN #1,6,0,"N:FTP://ftp.scene.org/pub/parties/"
+  TRAP 90
+  30 INPUT #1,A$
+  40 PRINT A$
+  50 GOTO 30
+  90 CLOSE #1
+
+  REM FTP file download
+  OPEN #1,4,0,"N:FTP://ftp.scene.org/pub/parties/readme.txt"
+  TRAP 90
+  30 INPUT #1,A$
+  40 PRINT A$
+  50 GOTO 30
+  90 CLOSE #1
+
+SSH support (where available) provides encrypted shell access:
+  OPEN #1,12,0,"N:SSH://user@host.com/"
+
+Protocol availability depends on FujiNet firmware version.
+Check https://fujinet.online for the latest supported protocols.
+
+
+12. PLATFORM DIFFERENCES
+=========================
+
+FujiNet originated on the Atari 8-bit family (SIO bus) but has
+expanded to multiple platforms. The BASIC syntax is nearly the
+same, but the bus interface differs:
+
+  Platform       Bus         N: Device    Disk Devices
+  --------       ---         ---------    ------------
+  Atari 400/800  SIO         N1:-N8:      D1:-D8:
+  Atari XL/XE    SIO         N1:-N8:      D1:-D8:
+  Apple II       SmartPort   N1:-N8:      S6D1/S6D2
+  Commodore 64   IEC         device 16    device 8/9
+  CoCo           Becker      N1:-N8:      D1:-D4:
+  Adam           AdamNet     N1:-N8:      D1:-D4:
+
+Atari BASIC syntax (XIO, mode numbers) applies directly.
+Other platforms adapt the commands to their I/O conventions.
+
+In BASIC++, the platform abstraction layer (vdev.h, fileio.h)
+normalizes these differences. The tutorial examples use Atari
+syntax because that's the most complete FujiNet implementation
+and the one with the most documentation. On other platforms,
+substitute the appropriate device names and OPEN syntax.
+
+Apple II:
+  PRINT CHR$(4);"OPEN N:HTTP://example.com/"
+  PRINT CHR$(4);"READ N:"
+  INPUT A$
+
+Commodore 64:
+  OPEN 1,16,12,"HTTP://example.com/"
+  INPUT#1,A$
+  CLOSE 1
+
+
+13. IMPLEMENTING FUJINET SUPPORT IN BASIC++
+=============================================
+
+BASIC++ can talk to FujiNet hardware through the VDev2 system
+(see vdev.h). A FujiNet backend would register as a VDCLASS_NETWORK
+device with the following structure:
+
+  VDev fujinet_dev;
+  memset(&fujinet_dev, 0, sizeof(fujinet_dev));
+  fujinet_dev.name = "N:";
+  fujinet_dev.dev_class = VDCLASS_NETWORK;
+  fujinet_dev.dev_caps = VDCAP_STREAM;
+  fujinet_dev.dev_open = fujinet_open;
+  fujinet_dev.dev_close = fujinet_close;
+  fujinet_dev.dev_read = fujinet_read;
+  fujinet_dev.dev_write = fujinet_write;
+  fujinet_dev.dev_ioctl = fujinet_ioctl;
+  fujinet_dev.dev_description = "FujiNet WiFi adapter";
+  vdev_register(&fujinet_dev);
+
+The implementation strategies depend on the deployment target:
+
+Strategy A: Running on real hardware with physical FujiNet
+  BASIC++ sends SIO/IEC/SmartPort commands to the FujiNet
+  hardware through the system bus. The VDev backend translates
+  BASIC++ OPEN/CLOSE/INPUT/PRINT to native bus operations.
+  This requires platform-specific code in platform.c.
+
+Strategy B: Running on modern hardware, emulating FujiNet protocol
+  BASIC++ talks to a FujiNet firmware emulator (fujinet-pc) over
+  a local socket or serial port. The VDev backend wraps a TCP
+  connection to the emulator. Programs think they're talking to
+  real FujiNet hardware.
+
+Strategy C: Running on modern hardware, native networking
+  BASIC++ implements the N: device semantics directly using the
+  host OS networking stack (WinSock on Windows, BSD sockets on
+  Linux/Mac). No FujiNet hardware needed. This gives FujiNet-
+  compatible programs a way to run on modern systems.
+
+  This is the recommended approach for BASIC++ development.
+  It lets you write programs using FujiNet conventions (N: device,
+  XIO JSON parsing, mode numbers) that work on both real vintage
+  hardware with FujiNet and on modern PCs with BASIC++.
+
+The XIO command numbers map to IOCTL codes:
+  XIO 252 -> VDIO_USER + 252 (set channel mode)
+  XIO "P" -> VDIO_USER + 80  (parse JSON)
+  XIO "Q" -> VDIO_USER + 81  (query JSON path)
+
+For the JSON parser, link against a lightweight C JSON library
+(cJSON, jsmn, or write a minimal one) and invoke it from the
+VDIO_USER+80 ioctl handler.
+
+The FujiNet CONFIG application (FUJI: device) uses a separate
+set of SIO commands for image mounting, WiFi configuration, and
+firmware updates. These map to IOCTL codes in the VDIO_USER+
+range. A full implementation would register a second VDev for
+the FUJI: device to handle configuration operations.
+
+See also: dialect_atari.c for Atari-specific dialect settings.
+See also: fileio.h for the fileio_open_device() bridge.
+See also: vdev.h for the full VDev2 API.
+See also: module.h for how external device modules are loaded.
+
+
+14. ERROR HANDLING
+==================
+
+Network operations can fail in many ways that disk I/O cannot.
+FujiNet maps network errors to Atari-style error codes:
+
+  Error   Meaning                     Common cause
+  -----   -------                     ------------
+  128     BREAK key abort             User pressed BREAK
+  130     Device not present          FujiNet not connected
+  136     EOF (end of file)           All data received
+  137     Record too long             Response > buffer size
+  138     Device timeout              Network timeout
+  139     Device NAK                  FujiNet rejected command
+  144     Serial bus error            Bad SIO connection
+  170     File not found              404 or bad URL
+  171     Permission denied           403 or auth required
+
+Always use TRAP (Atari) or ON ERROR GOTO (Microsoft) to handle
+network errors gracefully:
+
+  10 TRAP 100
+  20 OPEN #1,12,0,"N:HTTPS://maybe-down.example.com/"
+  30 INPUT #1,A$
+  40 PRINT A$
+  50 CLOSE #1
+  60 END
+  100 PRINT "Network error ";PEEK(195)
+  110 CLOSE #1
+
+In BASIC++, the error handler works across all dialects:
+
+  10 ON ERROR GOTO 100
+  20 OPEN #1,12,0,"N:HTTPS://maybe-down.example.com/"
+  30 INPUT #1,A$
+  40 PRINT A$
+  50 CLOSE #1
+  60 END
+  100 PRINT "Error: ";ERR;" at line ";ERL
+  110 CLOSE #1
+  120 RESUME NEXT
+
+Tips for robust network code:
+  - Always CLOSE channels, even on error (use TRAP/ON ERROR)
+  - Set timeouts via XIO before OPEN if possible
+  - Check for error 136 (EOF) to detect end of response
+  - Check for error 137 (record too long) and DIM larger buffers
+  - HTTPS is slower than HTTP due to TLS handshake on ESP32
+  - Retry failed connections (WiFi can be intermittent)
+
+
+15. SECURITY CONSIDERATIONS
+============================
+
+FujiNet handles TLS/SSL on the ESP32, which means HTTPS traffic
+is encrypted between the FujiNet and the server. However, the
+data between the vintage computer and the FujiNet itself travels
+over the system bus (SIO/IEC/SmartPort) in plaintext. This is
+not usually a concern since the bus is a few inches of cable,
+but be aware of it for sensitive applications.
+
+BASIC++ adds a security layer through the module system (see
+security.h). Network devices require CAP_NETWORK permission:
+
+  MODULE REQUIRE "network"
+  OPEN #1,12,0,"N:HTTPS://api.example.com/"
+
+If the security system is active, unauthorized programs cannot
+access network devices. See the Security tutorial for details.
+
+FujiNet firmware updates are managed through the web interface
+at http://fujinet.local/ -- keep firmware current for TLS
+certificate chain updates and security patches.
+
+
+16. EXAMPLE PROGRAMS
+=====================
+
+--- Weather Station ---
+
+  10 DIM W$(256),T$(32),H$(32)
+  20 OPEN #1,12,0,"N:HTTPS://wttr.in/?format=3"
+  30 TRAP 80
+  40 INPUT #1,W$
+  50 PRINT W$
+  60 GOTO 40
+  80 CLOSE #1
+
+--- Simple Chat Client (two FujiNets on same network) ---
+
+  REM Server (machine 1):
+  10 OPEN #1,12,0,"N:TCP://:5555/"
+  20 PRINT "Waiting for connection..."
+  30 TRAP 90
+  40 INPUT #1,A$
+  50 IF A$="" THEN 40
+  60 PRINT "Received: ";A$
+  70 INPUT "Reply: ";R$
+  80 PRINT #1,R$
+  85 GOTO 40
+  90 CLOSE #1
+
+  REM Client (machine 2):
+  10 OPEN #1,12,0,"N:TCP://192.168.1.50:5555/"
+  20 INPUT "Say: ";M$
+  30 PRINT #1,M$
+  40 TRAP 90
+  50 INPUT #1,R$
+  60 PRINT "Reply: ";R$
+  70 GOTO 20
+  90 CLOSE #1
+
+--- Mastodon Timeline Reader ---
+
+  10 DIM U$(80),C$(256)
+  20 OPEN #1,12,0,"N:HTTPS://oldbytes.space/api/v1/timelines/public?limit=5"
+  30 TRAP 91
+  40 XIO 252,#1,12,1,"N:"
+  50 XIO ASC("P"),#1,12,0,"N:"
+  55 FOR I=0 TO 4
+  60 U$="N:/":U$(LEN(U$)+1)=STR$(I):U$(LEN(U$)+1)="/account/display_name"
+  65 XIO ASC("Q"),#1,12,0,U$
+  70 INPUT #1,C$
+  75 PRINT I+1;". ";C$
+  80 NEXT I
+  91 CLOSE #1
+
+--- TNFS File Browser ---
+
+  10 DIM F$(80)
+  20 OPEN #1,6,0,"N:TNFS://fujinet.online/"
+  30 TRAP 80
+  40 INPUT #1,F$
+  50 PRINT F$
+  60 GOTO 40
+  80 CLOSE #1
+  90 INPUT "Load which file";F$
+  100 IF F$="" THEN END
+  110 REM Now load it
+  120 OPEN #1,4,0,"N:TNFS://fujinet.online/":REM + F$ path
+  130 TRAP 180
+  140 INPUT #1,A$
+  150 PRINT A$
+  160 GOTO 140
+  180 CLOSE #1
+
+--- IoT Sensor Logger (POST to webhook) ---
+
+  10 REM Read temperature from analog input
+  20 T = INT(RND(1)*100)  :REM simulated sensor
+  30 OPEN #1,8,0,"N:HTTPS://hooks.example.com/sensor"
+  40 PRINT #1,"{""temp"":";
+  50 PRINT #1,STR$(T);
+  60 PRINT #1,",""unit"":""F""}"
+  70 XIO 252,#1,12,0,"N:"
+  80 INPUT #1,R$
+  90 PRINT "Server: ";R$
+  100 CLOSE #1
+
+--- Multi-player Score Sharing (UDP) ---
+
+  10 REM Send score to all players on local network
+  20 OPEN #1,8,0,"N:UDP://255.255.255.255:9999/"
+  30 PRINT #1,"SCORE:";PLAYER$;":";SC
+  40 CLOSE #1
+
+  REM Receive scores on another machine:
+  10 OPEN #1,4,0,"N:UDP://:9999/"
+  20 TRAP 80
+  30 INPUT #1,S$
+  40 PRINT S$
+  50 GOTO 30
+  80 CLOSE #1
+
+
+17. FUJINET FIRMWARE ARCHITECTURE AND PLATFORM PORTING
+=======================================================
+
+Understanding FujiNet's internal architecture helps when writing
+BASIC++ programs that interact with it, and is essential if you
+want to port BASIC++ to run on a new FujiNet-supported platform.
+
+FujiNet firmware architecture (from the ESP32 side):
+
+  +-----------------------------------+
+  |  Application Layer                |
+  |  (N: device, disk emulation,      |
+  |   printer, modem, clock, CONFIG)  |
+  +-----------------------------------+
+  |  Protocol Layer                   |
+  |  (HTTP, TCP, UDP, FTP, TNFS,      |
+  |   SSH, Telnet, JSON parser,       |
+  |   TLS/SSL, NTP)                   |
+  +-----------------------------------+
+  |  Bus Abstraction Layer            |
+  |  (Atari SIO, Apple SmartPort,     |
+  |   Commodore IEC, CoCo Becker,    |
+  |   Adam AdamNet, RC2014, etc.)     |
+  +-----------------------------------+
+  |  ESP-IDF (Espressif IoT SDK)      |
+  |  (WiFi, TCP/IP stack, flash FS,   |
+  |   FreeRTOS, GPIO, SPI, I2C)       |
+  +-----------------------------------+
+  |  Hardware (ESP32 module)          |
+  +-----------------------------------+
+
+The key insight is that the Application Layer (N:, D:, P:, R:)
+is the same across all platforms. Only the Bus Abstraction Layer
+changes when FujiNet is connected to a different vintage computer.
+This is why programs written for the Atari N: device work the
+same way on Apple II or Commodore -- the commands are translated
+to the appropriate bus protocol by the abstraction layer.
+
+Bus protocols and their characteristics:
+
+  Protocol    Speed           Signals         Timing
+  --------    -----           -------         ------
+  Atari SIO   19.2 Kbaud      5 wires         Strict
+  Apple SP    ~200 KB/s       4 wires         Handshake
+  C64 IEC     ~1 KB/s         3 wires + ATN   Handshake
+  CoCo Becker ~250 KB/s       I/O ports       Polled
+  Adam Net    ~62.5 KB/s      1 wire          Strict
+  RC2014      Memory-mapped   Address/data    CPU clock
+
+The ESP32 handles all bus timing in the firmware. The vintage
+computer doesn't need any special drivers beyond the standard
+CIO/DOS handlers (Atari), ProDOS drivers (Apple), or KERNAL
+routines (Commodore).
+
+FujiNet Enhancement Proposals (FEPs):
+  Major protocol changes and new features are documented as
+  FEPs on the FujiNet wiki. If you want to add a new capability
+  to the N: device (e.g., WebSocket support, MQTT), propose it
+  as a FEP first. The FujiNet Discord server is the best place
+  to coordinate with the core development team.
+
+
+18. BUILDING BASIC++ AS A FUJINET PLATFORM
+===========================================
+
+BASIC++ itself can serve as a FujiNet "platform" -- meaning you
+can write a bus abstraction layer that lets BASIC++ talk directly
+to FujiNet hardware, or emulate FujiNet's behavior in software.
+
+Approach 1: BASIC++ on real vintage hardware
+
+  If BASIC++ is cross-compiled to run on an Atari, Apple II, or
+  C64 natively, it inherits that platform's FujiNet support
+  automatically. The codegen.c transpiler outputs C89 which can
+  be compiled with cc65 (6502) or z88dk (Z80). The resulting
+  binary uses the host OS's CIO/ProDOS/KERNAL for I/O, which
+  FujiNet intercepts transparently.
+
+  To build BASIC++ for Atari + FujiNet:
+    1. COMPILE command to generate C source
+    2. Cross-compile with cc65 targeting the Atari
+    3. Transfer the .XEX to FujiNet's SD card or TNFS
+    4. Boot it from FujiNet
+    5. N: device is now available via standard CIO
+
+Approach 2: BASIC++ on modern hardware with FujiNet emulation
+
+  The fujinet-pc project provides a FujiNet firmware emulator
+  that runs on Linux, Mac, or Windows. It creates a virtual
+  FujiNet that BASIC++ can connect to over a local socket.
+
+  Steps:
+    1. Run fujinet-pc (from github.com/FujiNetWIFI/fujinet-pc)
+    2. Configure it to listen on localhost:port
+    3. In BASIC++, register a VDev that connects to that port
+    4. OPEN/INPUT/PRINT/XIO commands are forwarded to fujinet-pc
+    5. fujinet-pc handles HTTP, JSON, TNFS, etc.
+
+  This is ideal for development and testing. You get real FujiNet
+  behavior (including the JSON parser, TNFS client, and modem
+  emulator) without needing physical hardware.
+
+Approach 3: Native N: device in BASIC++ (no FujiNet needed)
+
+  This is the most practical approach for most users. Implement
+  the N: device semantics directly in BASIC++ using the host OS
+  networking stack:
+
+    - N: OPEN with HTTP/HTTPS: use libcurl or WinHTTP
+    - N: OPEN with TCP/UDP: use BSD sockets / WinSock
+    - N: OPEN with TNFS: implement the TNFS UDP protocol
+    - XIO 252 / XIO "P" / XIO "Q": use cJSON or jsmn
+    - Mode numbers: map to socket flags
+
+  Implementation outline (new file: mod_fujinet.c):
+
+    #include "module.h"
+    #include "vdev.h"
+
+    static int fn_open(VDev *d, const char *url, const char *mode)
+    {
+        /* Parse URL, dispatch to HTTP/TCP/UDP/TNFS handler */
+        if (strncmp(url, "HTTP", 4) == 0)
+            return fn_http_open(d, url, mode);
+        if (strncmp(url, "TCP", 3) == 0)
+            return fn_tcp_open(d, url, mode);
+        /* ... */
+        return -1;
+    }
+
+    static int fn_ioctl(VDev *d, int cmd, void *arg)
+    {
+        switch (cmd - VDIO_USER) {
+        case 252: return fn_set_mode(d, arg);  /* JSON/raw */
+        case 80:  return fn_json_parse(d);     /* XIO "P" */
+        case 81:  return fn_json_query(d, arg); /* XIO "Q" */
+        }
+        return -1;
+    }
+
+    void mod_fujinet_register(void)
+    {
+        VDev dev;
+        memset(&dev, 0, sizeof(dev));
+        dev.name = "N:";
+        dev.dev_class = VDCLASS_NETWORK;
+        dev.dev_caps = VDCAP_STREAM;
+        dev.dev_open = fn_open;
+        dev.dev_close = fn_close;
+        dev.dev_read = fn_read;
+        dev.dev_write = fn_write;
+        dev.dev_ioctl = fn_ioctl;
+        dev.dev_description = "FujiNet-compatible network device";
+        vdev_register(&dev);
+    }
+
+  Wire it into main.c alongside mod_usb_register():
+
+    mod_fujinet_register();  /* N: device */
+
+  Then programs using FujiNet N: syntax work on any OS:
+
+    OPEN #1,12,0,"N:HTTPS://api.weather.gov/alerts/active/count"
+    TRAP 90
+    30 INPUT #1,A$
+    40 PRINT A$
+    50 GOTO 30
+    90 CLOSE #1
+
+  This approach makes BASIC++ a portable FujiNet development
+  environment. Write and test programs on your PC, then transfer
+  them to real hardware with real FujiNet and they work unchanged.
+
+Which approach to choose:
+
+  Use Case                          Approach
+  --------                          --------
+  Developing FujiNet programs       3 (native, then deploy)
+  Running on real vintage hardware  1 (cross-compile)
+  Testing with full FujiNet stack   2 (fujinet-pc)
+  Maximum portability               3 (no dependencies)
+  Classroom / education             3 (easiest setup)
+
+
+19. REFERENCES
+===============
+
+FujiNet Hardware and Firmware:
+  https://fujinet.online/
+  https://github.com/FujiNetWIFI/fujinet-firmware
+
+FujiNet Documentation:
+  https://fujinetwifi.github.io/fujinet-docs/
+  https://fujinetwifi.github.io/fujinet-docs/features/
+  https://fujinetwifi.github.io/fujinet-docs/features/network-device/
+  https://fujinetwifi.github.io/fujinet-docs/features/disk-drives/
+  https://fujinetwifi.github.io/fujinet-docs/features/modem/
+  https://fujinetwifi.github.io/fujinet-docs/features/printer/
+  https://fujinetwifi.github.io/fujinet-docs/features/clock/
+  https://fujinetwifi.github.io/fujinet-docs/features/tnfs/
+
+FujiNet Manuals and Guides:
+  https://github.com/FujiNetWIFI/fujinet-manuals
+  https://github.com/FujiNetWIFI/fujinet-manuals/tree/main/one-sheet-guides
+  https://github.com/FujiNetWIFI/fujinet-manuals/tree/main/fujinet_for_atari_users
+
+FujiNet Wiki:
+  https://fujinet.online/wiki/
+
+TNFS Server:
+  https://github.com/FujiNetWIFI/tnfsd
+
+N: Device Programmer's Cheat Sheet:
+  https://github.com/FujiNetWIFI/fujinet-platformio/wiki/N%3A-Game-Developer-Cheat-Sheet
+
+FujiNet Platform Porting:
+  https://fujinetwifi.github.io/fujinet-docs/contributing/new-platform/
+
+FujiNet PC Emulator:
+  https://github.com/FujiNetWIFI/fujinet-pc
+
+FujiNet Enhancement Proposals (FEPs):
+  https://github.com/FujiNetWIFI/fujinet-firmware/wiki
+
+FujiNet Discord (community and development):
+  https://discord.gg/7MfFTvD
+
+FujiNet Apps and Games:
+  https://fujinetwifi.github.io/fujinet-docs/apps/
+
+cc65 (6502 C compiler for cross-compilation):
+  https://cc65.github.io/
+
+Related BASIC++ Documentation:
+  dialect_atari.c    -- Atari dialect configuration and graphics
+  dialect_c64.c      -- Commodore BASIC v2 and VIC-II/SID notes
+  dialect_asft.c     -- AppleSoft BASIC and hi-res graphics
+  vdev.h             -- Virtual Device System (VDev2) architecture
+  fileio.h           -- File channel system and device-backed I/O
+  module.h           -- External module loading
+  mod_usb.h          -- USB device module (similar pattern)
+  security.h         -- Capability-based security for device access
+  codegen.h          -- BASIC-to-C transpiler (for cross-compilation)
+  bytecode.h         -- Binary format and detokenizer architecture
+  K_Creating_Dialects.txt -- How to create/modify dialect files
+
+
+END OF TUTORIAL L: FUJINET INTEGRATION
