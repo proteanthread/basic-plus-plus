@@ -5,7 +5,7 @@
 
 I don't care what you do with my code, just don't take my code and sell it and/or don't take my code, modify my code, and sell it. This code is not for sale.
 
-### I do encourage you to fork this into your own dialect.  All the tools are there.
+### I do encourage you to fork this into your own dialect.  Everything you need is right there in the source.
 
 ---
 
