@@ -394,6 +394,14 @@ typedef struct RuntimeState {
  char fkey_macros[FKEY_MAX_SLOTS + 1]
  [FKEY_MAX_LEN + 1];
  int fkey_display; /* KEY ON=1, OFF=0 */
+
+ /* ALARM$ time string */
+ char alarm_str[16]; /* "HH:MM:SS" or empty */
+
+ /* SCOPE hook state */
+ int scope_before_done; /* index of line whose BEFORE hook already fired, -1=none */
+ int scope_after_kw;    /* KeywordId of pending AFTER hook, -1=none */
+ int scope_hook_depth;  /* re-entrancy guard: >0 means inside a hook */
 } RuntimeState;
 
 /* --- Runtime Functions ---

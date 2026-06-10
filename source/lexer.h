@@ -354,6 +354,23 @@ typedef enum KeywordId {
  KW_FILESIZE, /* FILESIZE - ASK sub-keyword (ECMA-116) */
  KW_TCASE, /* TCASE$ - title case string (BASIC++) */
  KW_TRIM, /* TRIM$ - trim left and right spaces (BASIC++) */
+ /* Virtual subsystem introspection */
+ KW_VDEV, /* VDEV - list virtual devices */
+ KW_VMEM, /* VMEM - virtual memory info */
+ KW_VNET, /* VNET - virtual network status */
+ KW_VCON, /* VCON - virtual console info */
+ KW_VTERM, /* VTERM - virtual terminal info */
+ KW_VMACH, /* VMACH - virtual machine state */
+ KW_DEVMAP, /* DEVMAP - device slot mapping */
+ KW_BIN_FUNC, /* BIN$ - binary conversion */
+ KW_CLOCK_FUNC, /* CLOCK$ - full date/time timestamp */
+ KW_ALARM_FUNC, /* ALARM$ - alarm time string */
+ KW_DIALECT_FUNC,/* DIALECT$ - current dialect name (read-only) */
+ KW_MEMMAP_FUNC, /* MEMMAP$ - current memory map name (read-only) */
+ KW_ALIAS_FUNC, /* ALIAS$ - alias introspection function */
+ KW_SCOPE,       /* SCOPE - keyword access control & hooks */
+ KW_KEYWORD,     /* KEYWORD - modify built-in keyword behavior */
+ KW_OVERRIDE,    /* OVERRIDE - keyword interpretation override */
  KW_COUNT /* sentinel - must be last */
 } KeywordId;
 
@@ -467,29 +484,60 @@ void lexer_skip_to_end(Lexer *lex);
  */
 unsigned int lexer_get_keyword_flags(KeywordId kw);
 
+/* --- Alias Scope ---
+ * Controls when aliases are cleared.
+ */
+typedef enum {
+ ASCOPE_GLOBAL = 0, /* survives RUN and NEW */
+ ASCOPE_PROGRAM = 1, /* cleared on NEW */
+ ASCOPE_MODULE = 2, /* cleared on module deactivate */
+ ASCOPE_LANG = 3 /* cleared by ALIAS LANG CLEAR */
+} AliasScope;
+
 /* --- Keyword Alias API ---
  * Allows runtime remapping of keyword names. For example:
  * ALIAS PRINT = "IMPRE"
  * makes the identifier IMPRE behave exactly like PRINT.
  */
 
-#define MAX_ALIASES 64
+#define MAX_ALIASES 256
 #define MAX_ALIAS_NAME 32
+#define MAX_OP_ALIASES 16
+#define MAX_OP_ALIAS_NAME 8
 
 /*
- * lexer_add_alias - Register an alias for a keyword.
- *
- * 'name' is the new identifier (e.g. "IMPRE"), stored
- * upper-cased. 'target' is the keyword it maps to.
- * Returns 0 on success, -1 if table is full.
+ * lexer_add_alias - Register an alias with scope.
  */
 int lexer_add_alias(const char *name, int name_len,
  KeywordId target);
 
 /*
+ * lexer_add_alias_scoped - Register an alias with explicit scope.
+ */
+int lexer_add_alias_scoped(const char *name, int name_len,
+ KeywordId target, AliasScope scope,
+ const char *module_name);
+
+/*
+ * lexer_remove_alias - Remove a single alias by name.
+ * Returns 0 on success, -1 if not found.
+ */
+int lexer_remove_alias(const char *name, int name_len);
+
+/*
  * lexer_clear_aliases - Remove all aliases.
  */
 void lexer_clear_aliases(void);
+
+/*
+ * lexer_clear_scope - Remove aliases of a specific scope.
+ */
+void lexer_clear_scope(AliasScope scope);
+
+/*
+ * lexer_clear_module_aliases - Remove aliases for a module.
+ */
+void lexer_clear_module_aliases(const char *mod_name);
 
 /*
  * lexer_list_aliases - Print all active aliases to stdout.
@@ -502,9 +550,30 @@ void lexer_list_aliases(void);
 int lexer_alias_count(void);
 
 /*
+ * lexer_find_alias_by_name - Given an alias name, return
+ * the original keyword name. Returns NULL if not found.
+ */
+const char *lexer_find_alias_by_name(const char *name,
+ int name_len);
+
+/*
+ * lexer_find_alias_for_keyword - Given a keyword, return
+ * the alias name. Returns NULL if not found.
+ */
+const char *lexer_find_alias_for_keyword(KeywordId kw);
+
+/* --- Operator Alias API ---
+ * Maps alias strings to token types for operators.
+ */
+int lexer_add_op_alias(const char *name, int name_len,
+ int token_type);
+void lexer_clear_op_aliases(void);
+void lexer_list_op_aliases(void);
+int lexer_op_alias_count(void);
+
+/*
  * lexer_keyword_needs_dollar - Check if a keyword uses
  * a trailing $ (e.g. LEFT$, MID$, CHR$).
- * Returns 1 if yes, 0 if no.
  */
 int lexer_keyword_needs_dollar(KeywordId kw);
 
@@ -513,5 +582,9 @@ int lexer_keyword_needs_dollar(KeywordId kw);
  * for a keyword. Returns "" if not found.
  */
 const char *lexer_keyword_name(KeywordId kw);
+
+/* --- ALIAS file I/O --- */
+int lexer_alias_save(const char *filename);
+int lexer_alias_load(const char *filename);
 
 #endif /* BASICPP_LEXER_H */

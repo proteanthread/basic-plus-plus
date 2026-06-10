@@ -72,6 +72,10 @@
 #include "vm.h"
 #include "bytecode.h"
 #include "module.h"
+#include "alias_lang.h"
+#include "scope.h"
+#include "keyword_props.h"
+#include "override.h"
 #include "security.h"
 #include "platform.h"
 #include "selftest.h"
@@ -79,12 +83,26 @@
 #include "detok.h"
 #include "gfxbuf.h"
 #include "memmap.h"
+#include "mod_fujinet.h"
 
 /* --- Forward Declarations ---
  * Internal parsing functions. These are not exposed in the header
  * because they are implementation details of the parse-and-execute
  * architecture.
  */
+/* Case-insensitive string compare (for property values) */
+static int prop_eq_ci(const char *a, const char *b)
+{
+ while (*a && *b) {
+ char ca = *a, cb = *b;
+ if (ca >= 'a' && ca <= 'z') ca = (char)(ca - 32);
+ if (cb >= 'a' && cb <= 'z') cb = (char)(cb - 32);
+ if (ca != cb) return 0;
+ a++; b++;
+ }
+ return (*a == '\0' && *b == '\0');
+}
+
 static void parse_statement(Lexer *lex, RuntimeState *rt, int line_num);
 static long parse_term(Lexer *lex, RuntimeState *rt, int line_num);
 static long parse_factor(Lexer *lex, RuntimeState *rt, int line_num);
@@ -469,6 +487,17 @@ static void parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  while (!error_occurred()) {
  need_newline = 1;
 
+ /* KEYWORD PRINT PREFIX - prepend to output */
+ {
+ const char *pfx =
+ keyword_prop_get(KW_PRINT,
+ "PREFIX");
+ if (pfx && pfx[0] != '\0' &&
+ file_chan == 0) {
+ printf("%s", pfx);
+ }
+ }
+
  /* Check for # format specifier (only for stdout) */
  if (lex->current.type == TOK_HASH && file_chan == 0) {
  long width;
@@ -566,8 +595,20 @@ static void parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  /* Print to stdout (original behavior) */
  if (bval_is_string(&val)) {
  int si;
+ /* KEYWORD PRINT UPPERCASE/LOWERCASE */
+ int force_up =
+ keyword_prop_is_on(KW_PRINT,
+ "UPPERCASE");
+ int force_lo =
+ keyword_prop_is_on(KW_PRINT,
+ "LOWERCASE");
  for (si = 0; si < val.v.sval.length; si++) {
- putchar(val.v.sval.data[si]);
+ char ch = val.v.sval.data[si];
+ if (force_up && ch >= 'a' && ch <= 'z')
+ ch = (char)(ch - 32);
+ else if (force_lo && ch >= 'A' && ch <= 'Z')
+ ch = (char)(ch + 32);
+ putchar(ch);
  rt->print_col++;
  print_margin_check(rt);
  }
@@ -608,6 +649,11 @@ static void parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  /* ECMA-55: advance to next print zone */
  if (file_chan == 0) {
  int zone = dialect_get_config()->print_zone_width;
+ int prop_zone =
+ keyword_prop_get_int(KW_PRINT,
+ "ZONE", -1);
+ if (prop_zone > 0)
+ zone = prop_zone;
  if (zone < 1) zone = 14;
  while ((rt->print_col - 1) % zone != 0) {
  putchar(' ');
@@ -1041,7 +1087,10 @@ static void parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  }
  } else {
  if (!has_custom_prompt) {
- printf("? ");
+ const char *kp =
+ keyword_prop_get(KW_INPUT,
+ "PROMPT");
+ printf("%s", kp ? kp : "? ");
  }
  fflush(stdout);
  if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin)
@@ -1102,7 +1151,10 @@ static void parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  } else {
  /* Print prompt if no custom prompt */
  if (!has_custom_prompt) {
- printf("? ");
+ const char *kp =
+ keyword_prop_get(KW_INPUT,
+ "PROMPT");
+ printf("%s", kp ? kp : "? ");
  }
  fflush(stdout);
 
@@ -2063,6 +2115,7 @@ static void parse_new_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 
  program_clear(&rt->memory->program);
  runtime_reset(rt);
+ lexer_clear_scope(ASCOPE_PROGRAM);
 }
 
 /*
@@ -4975,57 +5028,142 @@ static void parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
 
  /* ===== Security ===== */
  case KW_SECURITY:
- if (lex->current.type == TOK_STRING) {
  /*
- * SECURITY "level" - Set security level.
- */
- char lname[MAX_LINE_LENGTH + 1];
- int si;
- if (lex->current.str_length >=
- MAX_LINE_LENGTH) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- memcpy(lname, lex->current.str_start,
- (size_t)lex->current.str_length);
- lname[lex->current.str_length] = '\0';
- lexer_next(lex);
- /* Match level name */
- for (si = 0; si < SEC_COUNT; si++) {
- if (str_case_equal(lname,
- security_level_name(
- (SecLevel)si))) {
- security_set_level(
- (SecLevel)si);
- printf("Security: %s\n",
- security_level_name(
- (SecLevel)si));
- return;
- }
- }
- printf("Unknown level '%s'. "
- "Use OPEN, STANDARD, "
- "or RESTRICTED.\n", lname);
- } else {
- /*
- * SECURITY (no args) - Show level.
- */
- SecLevel lv = security_get_level();
- printf("Security: %s",
- security_level_name(lv));
- switch (lv) {
- case SEC_OPEN:
- printf(" (no restrictions)");
- break;
- case SEC_STANDARD:
- printf(" (file I/O only)");
- break;
- case SEC_RESTRICTED:
- printf(" (math/string only)");
- break;
- default: break;
- }
- printf("\n");
+  * SECURITY "level"   - Set by name
+  * SECURITY n         - Set by number (0/1/2)
+  * SECURITY LEVEL n   - Set by number
+  * SECURITY           - Show current level
+  *
+  * One-way ratchet: level can only be raised,
+  * never lowered. Once RESTRICTED, it stays.
+  */
+ {
+  SecLevel cur = security_get_level();
+
+  /* SECURITY "name" */
+  if (lex->current.type == TOK_STRING) {
+  char lname[32];
+  int si, slen;
+  slen = lex->current.str_length;
+  if (slen > 31) slen = 31;
+  memcpy(lname, lex->current.str_start,
+   (size_t)slen);
+  lname[slen] = '\0';
+  lexer_next(lex);
+  for (si = 0; si < SEC_COUNT; si++) {
+   if (str_case_equal(lname,
+    security_level_name(
+    (SecLevel)si))) {
+   if ((SecLevel)si < cur) {
+    printf("Cannot lower security"
+    " from %s to %s.\n",
+    security_level_name(cur),
+    security_level_name(
+    (SecLevel)si));
+    return;
+   }
+   security_set_level(
+    (SecLevel)si);
+   printf("Security: %s\n",
+    security_level_name(
+    (SecLevel)si));
+   return;
+   }
+  }
+  printf("Unknown level '%s'. "
+   "Use OPEN, STANDARD, "
+   "or RESTRICTED.\n", lname);
+  return;
+  }
+
+  /* SECURITY n (numeric) */
+  if (lex->current.type == TOK_NUMBER) {
+  int nlev = (int)lex->current.value.num_value;
+  lexer_next(lex);
+  if (nlev < 0 || nlev >= SEC_COUNT) {
+   printf("Invalid level %d. "
+   "Use 0 (OPEN), 1 (STANDARD), "
+   "2 (RESTRICTED).\n", nlev);
+   return;
+  }
+  if ((SecLevel)nlev < cur) {
+   printf("Cannot lower security"
+   " from %s to %s.\n",
+   security_level_name(cur),
+   security_level_name(
+   (SecLevel)nlev));
+   return;
+  }
+  security_set_level((SecLevel)nlev);
+  printf("Security: %s\n",
+   security_level_name(
+   (SecLevel)nlev));
+  return;
+  }
+
+  /* SECURITY LEVEL n (named var form) */
+  if (lex->current.type ==
+   TOK_NAMED_VAR) {
+  const char *nv =
+   lex->current.str_start;
+  int nlen =
+   lex->current.str_length;
+  if (nlen == 5 &&
+   (nv[0]=='L'||nv[0]=='l') &&
+   (nv[1]=='E'||nv[1]=='e') &&
+   (nv[2]=='V'||nv[2]=='v') &&
+   (nv[3]=='E'||nv[3]=='e') &&
+   (nv[4]=='L'||nv[4]=='l')) {
+   int nlev;
+   lexer_next(lex);
+   if (lex->current.type !=
+    TOK_NUMBER) {
+   error_raise(ERR_WHAT,
+    line_num);
+   return;
+   }
+   nlev = (int)
+    lex->current.value.num_value;
+   lexer_next(lex);
+   if (nlev < 0 ||
+    nlev >= SEC_COUNT) {
+   printf("Invalid level %d.\n",
+    nlev);
+   return;
+   }
+   if ((SecLevel)nlev < cur) {
+   printf("Cannot lower security"
+    " from %s to %s.\n",
+    security_level_name(cur),
+    security_level_name(
+    (SecLevel)nlev));
+   return;
+   }
+   security_set_level(
+    (SecLevel)nlev);
+   printf("Security: %s\n",
+    security_level_name(
+    (SecLevel)nlev));
+   return;
+  }
+  }
+
+  /* SECURITY (no args) - show level */
+  printf("Security: %s",
+  security_level_name(cur));
+  switch (cur) {
+  case SEC_OPEN:
+  printf(" (no restrictions)");
+  break;
+  case SEC_STANDARD:
+  printf(" (file I/O only)");
+  break;
+  case SEC_RESTRICTED:
+  printf(" (math/string only)");
+  break;
+  default: break;
+  }
+  printf("\n");
  }
  return;
 
@@ -5140,54 +5278,343 @@ static void parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_VARS:
  {
  /*
- * VARS - Dump all non-zero variables.
- */
+  * VARS [ENV | SYSTEM | ALL]
+  *
+  * With no argument: show BASIC++ program variables
+  * (A-Z, A$-Z$, named vars, DIM arrays, CONST).
+  *
+  * VARS ENV: List OS environment variables (the
+  * process environment block). Read-only listing.
+  * This is NOT the same as ENVIRON$ which gets/sets
+  * individual env vars by name — VARS ENV dumps
+  * the entire environment table.
+  *
+  * VARS SYSTEM: List BASIC++ interpreter internal
+  * environment variables (dialect, version, security
+  * level, platform, build info, etc.) as key=value.
+  *
+  * VARS ALL: Show all three sections.
+  */
+ int show_prog = 0;
+ int show_env = 0;
+ int show_sys = 0;
+ int show_user = 0;
  int v;
- int printed = 0;
+ int printed;
 
- /* Numeric variables A-Z */
- for (v = 0; v < MAX_VARIABLES; v++) {
- if (rt->variables[v].type ==
- VAL_INTEGER &&
- rt->variables[v].v.ival != 0) {
- printf("%c=%ld ",
- 'A' + v,
- rt->variables[v].v.ival);
- printed = 1;
- } else if (rt->variables[v].type ==
- VAL_FLOAT &&
- rt->variables[v].v.fval
- != 0.0) {
- printf("%c=%g ",
- 'A' + v,
- rt->variables[v].v.fval);
- printed = 1;
- }
+ /* Parse optional sub-keyword.
+  *
+  * VARS is a meta-command — its argument (ENV, USER,
+  * SYSTEM, ALL) is not a BASIC expression. In dialects
+  * with single-letter variables (PATB), the lexer has
+  * already tokenized e.g. "USER" as variable 'U' with
+  * the remaining "SER" still in lex->source after the
+  * current token. We reconstruct the full word by
+  * combining the current token with what follows.
+  *
+  * In dialects with named variables (QBasic), the
+  * lexer gives us the full word as TOK_NAMED_VAR.
+  */
+ {
+     char word[16];
+     int wlen = 0;
+     const char *rest;
+
+     if (lex->current.type == TOK_NAMED_VAR) {
+         /* Multi-char var: copy name directly */
+         int n = lex->current.str_length;
+         if (n > 15) n = 15;
+         memcpy(word, lex->current.str_start,
+             (size_t)n);
+         wlen = n;
+         word[wlen] = '\0';
+         lexer_next(lex); /* consume it */
+     } else if (lex->current.type ==
+                TOK_KEYWORD) {
+         /* SYSTEM is a keyword */
+         if (lex->current.value.keyword ==
+             KW_SYSTEM) {
+             word[0] = 'S'; word[1] = 'Y';
+             word[2] = 'S'; word[3] = 'T';
+             word[4] = 'E'; word[5] = 'M';
+             wlen = 6;
+             word[wlen] = '\0';
+             lexer_next(lex);
+         }
+     } else if (lex->current.type ==
+                TOK_VARIABLE) {
+         /* Single-letter var: reconstruct word.
+          * The lexer consumed one letter; remaining
+          * alphabetic chars are still in source. */
+         word[0] = lex->current.value.var_name;
+         wlen = 1;
+         rest = lex->source + lex->pos;
+         while (wlen < 15 &&
+                ((rest[0] >= 'A' &&
+                  rest[0] <= 'Z') ||
+                 (rest[0] >= 'a' &&
+                  rest[0] <= 'z'))) {
+             word[wlen++] = *rest++;
+         }
+         word[wlen] = '\0';
+         /* Advance lexer past the extra chars */
+         lex->pos = (int)(rest - lex->source);
+         lexer_next(lex);
+     } else if (lex->current.type == TOK_CR ||
+                lex->current.type == TOK_EOF) {
+         /* No argument: show program vars */
+         wlen = 0;
+         word[0] = '\0';
+     }
+
+     /* Match the reconstructed word */
+     if (wlen == 3 &&
+         (word[0] == 'E' || word[0] == 'e') &&
+         (word[1] == 'N' || word[1] == 'n') &&
+         (word[2] == 'V' || word[2] == 'v')) {
+         show_env = 1;
+     } else if (wlen == 4 &&
+         (word[0] == 'U' || word[0] == 'u') &&
+         (word[1] == 'S' || word[1] == 's') &&
+         (word[2] == 'E' || word[2] == 'e') &&
+         (word[3] == 'R' || word[3] == 'r')) {
+         show_user = 1;
+     } else if (wlen == 6 &&
+         (word[0] == 'S' || word[0] == 's') &&
+         (word[1] == 'Y' || word[1] == 'y') &&
+         (word[2] == 'S' || word[2] == 's') &&
+         (word[3] == 'T' || word[3] == 't') &&
+         (word[4] == 'E' || word[4] == 'e') &&
+         (word[5] == 'M' || word[5] == 'm')) {
+         show_sys = 1;
+     } else if (wlen == 3 &&
+         (word[0] == 'A' || word[0] == 'a') &&
+         (word[1] == 'L' || word[1] == 'l') &&
+         (word[2] == 'L' || word[2] == 'l')) {
+         show_prog = 1;
+         show_env = 1;
+         show_sys = 1;
+         show_user = 1;
+     } else {
+         /* No match or no argument: program vars */
+         show_prog = 1;
+     }
  }
 
- /* String variables A$-Z$ */
- for (v = 0; v < MAX_STRING_VARS; v++) {
- if (rt->string_vars[v].type ==
- VAL_STRING &&
- rt->string_vars[v].v.sval.data !=
- NULL &&
- rt->string_vars[v].v.sval.length
- > 0) {
- printf("%c$=\"%.*s\" ",
- 'A' + v,
- rt->string_vars[v].v.sval
- .length,
- rt->string_vars[v].v.sval
- .data);
- printed = 1;
- }
+ /* ---- Section 1: BASIC++ Program Variables ---- */
+ if (show_prog) {
+     printed = 0;
+
+     printf("=== PROGRAM VARIABLES ===\n\n");
+
+     /* Numeric variables A-Z */
+     for (v = 0; v < MAX_VARIABLES; v++) {
+         if (rt->variables[v].type ==
+             VAL_INTEGER &&
+             rt->variables[v].v.ival != 0) {
+             printf(" %c = %ld\n",
+                 'A' + v,
+                 rt->variables[v].v.ival);
+             printed = 1;
+         } else if (rt->variables[v].type ==
+             VAL_FLOAT &&
+             rt->variables[v].v.fval
+             != 0.0) {
+             printf(" %c = %g\n",
+                 'A' + v,
+                 rt->variables[v].v.fval);
+             printed = 1;
+         }
+     }
+
+     /* String variables A$-Z$ */
+     for (v = 0; v < MAX_STRING_VARS; v++) {
+         if (rt->string_vars[v].type ==
+             VAL_STRING &&
+             rt->string_vars[v].v.sval.data !=
+             NULL &&
+             rt->string_vars[v].v.sval.length
+             > 0) {
+             printf(" %c$ = \"%.*s\"\n",
+                 'A' + v,
+                 rt->string_vars[v].v.sval
+                 .length,
+                 rt->string_vars[v].v.sval
+                 .data);
+             printed = 1;
+         }
+     }
+
+     /* Named variables */
+     for (v = 0; v < rt->named_count; v++) {
+         if (rt->named_vars[v].value.type ==
+             VAL_INTEGER &&
+             rt->named_vars[v].value.v.ival
+             != 0) {
+             printf(" %s = %ld\n",
+                 rt->named_vars[v].name,
+                 rt->named_vars[v]
+                 .value.v.ival);
+             printed = 1;
+         } else if (
+             rt->named_vars[v].value.type ==
+             VAL_FLOAT &&
+             rt->named_vars[v].value.v.fval
+             != 0.0) {
+             printf(" %s = %g\n",
+                 rt->named_vars[v].name,
+                 rt->named_vars[v]
+                 .value.v.fval);
+             printed = 1;
+         } else if (
+             rt->named_vars[v].value.type ==
+             VAL_STRING &&
+             rt->named_vars[v].value.v.sval
+             .data != NULL &&
+             rt->named_vars[v].value.v.sval
+             .length > 0) {
+             printf(" %s = \"%.*s\"\n",
+                 rt->named_vars[v].name,
+                 rt->named_vars[v].value
+                 .v.sval.length,
+                 rt->named_vars[v].value
+                 .v.sval.data);
+             printed = 1;
+         }
+     }
+
+     /* DIM arrays */
+     for (v = 0; v < rt->dim_count; v++) {
+         printf(" DIM %s(",
+             rt->dim_arrays[v].name);
+         if (rt->dim_arrays[v].dims == 1) {
+             printf("%d",
+                 rt->dim_arrays[v].size[0]);
+         } else {
+             printf("%d,%d",
+                 rt->dim_arrays[v].size[0],
+                 rt->dim_arrays[v].size[1]);
+         }
+         printf(") [%d elements]\n",
+             rt->dim_arrays[v].total);
+         printed = 1;
+     }
+
+     /* CONST table */
+     for (v = 0; v < rt->const_count; v++) {
+         printf(" CONST %s = ",
+             rt->constants[v].name);
+         if (rt->constants[v].value.type ==
+             VAL_STRING) {
+             printf("\"%.*s\"\n",
+                 rt->constants[v].value
+                 .v.sval.length,
+                 rt->constants[v].value
+                 .v.sval.data);
+         } else if (rt->constants[v].value.type
+             == VAL_FLOAT) {
+             printf("%g\n",
+                 rt->constants[v].value
+                 .v.fval);
+         } else {
+             printf("%ld\n",
+                 rt->constants[v].value
+                 .v.ival);
+         }
+         printed = 1;
+     }
+
+     if (!printed)
+         printf(" (all variables clear)\n");
+     printf("\n");
  }
 
- if (printed) {
- printf("\n");
- } else {
- printf("All variables clear.\n");
+ /* ---- Section 2: User Environment Variables ---- */
+ if (show_user) {
+     int ecount;
+     printf("=== USER ENVIRONMENT ===\n\n");
+     ecount = platform_list_env_user();
+     printf("\n %d variable(s).\n\n", ecount);
  }
+
+ /* ---- Section 3: OS Environment Variables ---- */
+ if (show_env) {
+     int ecount;
+     printf("=== OS ENVIRONMENT ===\n\n");
+     ecount = platform_list_env_all();
+     printf("\n %d variable(s).\n\n", ecount);
+ }
+
+ /* ---- Section 4: BASIC++ System Environment ---- */
+ if (show_sys) {
+     printf("=== BASIC++ ENVIRONMENT ===\n\n");
+     printf(" VERSION=%s\n", BASICPP_VERSION);
+     printf(" NAME=%s\n", BASICPP_NAME);
+     printf(" DIALECT=%s\n",
+         dialect_get_name());
+     printf(" PLATFORM=%s\n",
+         platform_name());
+     printf(" PLATFORM_SHORT=%s\n",
+         platform_short_name());
+     printf(" COMPILER=%s\n",
+         platform_get_info()->compiler);
+     printf(" COMPILER_VER=%s\n",
+         platform_get_info()->compiler_ver);
+     printf(" WORDSIZE=%d\n",
+         platform_word_size());
+     printf(" BUILD=%s %s\n",
+         __DATE__, __TIME__);
+     printf(" STANDARD=ANSI C89/C90\n");
+     printf(" SECURITY=%d\n",
+         (int)security_get_level());
+     printf(" OPTION_BASE=%d\n",
+         rt->option_base);
+     printf(" ANGLE=%s\n",
+         rt->angle_degrees ?
+             "DEGREES" : "RADIANS");
+     printf(" SCREEN_MODE=%d\n",
+         rt->screen_mode);
+     printf(" SCREEN_WIDTH=%d\n",
+         rt->screen_width > 0 ?
+             rt->screen_width : 80);
+     printf(" SCREEN_LINES=%d\n",
+         rt->screen_lines > 0 ?
+             rt->screen_lines : 25);
+     printf(" TRACE=%s\n",
+         rt->trace_on ? "ON" : "OFF");
+     printf(" MAX_VARIABLES=%d\n",
+         MAX_VARIABLES);
+     printf(" MAX_NAMED_VARS=%d\n",
+         MAX_NAMED_VARS);
+     printf(" MAX_STACK_DEPTH=%d\n",
+         MAX_STACK_DEPTH);
+     printf(" MAX_PROGRAM_LINES=%d\n",
+         MAX_PROGRAM_LINES);
+     printf(" MAX_LINE_LENGTH=%d\n",
+         MAX_LINE_LENGTH);
+     printf(" MAX_DIM_ARRAYS=%d\n",
+         MAX_DIM_ARRAYS);
+     printf(" MAX_ARRAY_ELEMENTS=%d\n",
+         MAX_ARRAY_ELEMENTS);
+     printf(" MAX_STRING_LENGTH=%d\n",
+         MAX_STRING_LENGTH);
+     printf(" MAX_STRING_POOL=%ld\n",
+         (long)MAX_STRING_POOL);
+     printf(" MAX_USER_FUNCS=%d\n",
+         MAX_USER_FUNCS);
+     printf(" MAX_MODULES=%d\n",
+         MAX_MODULES);
+     printf(" MAX_BREAKPOINTS=%d\n",
+         MAX_BREAKPOINTS);
+     printf(" MAX_MEM_SEGMENT=%d\n",
+         MAX_MEM_SEGMENT);
+     printf(" GFX_WIDTH=%d\n", GFX_WIDTH);
+     printf(" GFX_HEIGHT=%d\n", GFX_HEIGHT);
+     printf(" GFX_MAX_COLORS=%d\n",
+         GFX_MAX_COLORS);
+     printf("\n");
+ }
+
  return;
  }
 
@@ -5380,10 +5807,353 @@ static void parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
 
  case KW_CATALOG:
  /*
- * CATALOG - List registered functions.
- */
+  * CATALOG - List registered functions.
+  */
  help_catalog();
  return;
+
+ /* ===== Virtual Subsystem Introspection ===== */
+
+ case KW_VDEV:
+ /*
+  * VDEV - List all registered virtual devices.
+  *
+  * Shows slot ID, name, class, capability flags,
+  * version, and description for every device in the
+  * VDev table (CON:, ERR:, FILE:, N:, FUJI:, etc.).
+  */
+ vdev_list_all();
+ return;
+
+ case KW_VMEM:
+ {
+ /*
+  * VMEM - Virtual memory status.
+  *
+  * Displays memory map preset, pool sizes, variable
+  * storage, string pool, stack usage, and program
+  * storage utilization.
+  */
+ int lines;
+ int stack_used;
+
+ printf("=== VIRTUAL MEMORY ===\n\n");
+ printf(" Memory Map:\n");
+ memmap_list();
+ printf("\n");
+ printf(" Variable Slots: %d (A-Z",
+     MAX_VARIABLES);
+ if (MAX_VARIABLES == 286) printf(" + arrays");
+ printf(")\n");
+ printf(" Stack Depth: %d max\n",
+     MAX_STACK_DEPTH);
+ stack_used = rt->stack_top;
+ printf(" Stack Used: %d (%d%%)\n",
+     stack_used,
+     MAX_STACK_DEPTH > 0 ?
+     (stack_used * 100) / MAX_STACK_DEPTH : 0);
+ lines = (rt->program != NULL) ?
+     rt->program->count : 0;
+ printf(" Program Lines: %d / %d (%d%%)\n",
+     lines, MAX_PROGRAM_LINES,
+     MAX_PROGRAM_LINES > 0 ?
+     (lines * 100) / MAX_PROGRAM_LINES : 0);
+ printf(" Max Line Length: %d chars\n",
+     MAX_LINE_LENGTH);
+ printf(" Word Size: %d-bit\n",
+     platform_word_size());
+ printf(" sizeof(int): %d bytes\n",
+     (int)sizeof(int));
+ printf(" sizeof(long): %d bytes\n",
+     (int)sizeof(long));
+ printf(" sizeof(double): %d bytes\n",
+     (int)sizeof(double));
+ printf(" sizeof(void*): %d bytes\n",
+     (int)sizeof(void *));
+ return;
+ }
+
+ case KW_VNET:
+ {
+ /*
+  * VNET - Virtual network status.
+  *
+  * Shows FujiNet N: channel table: which channels
+  * are open, protocol, host, port, connection state,
+  * bytes waiting, and error status.
+  * If the FUJINET module is not active, says so.
+  */
+ int i;
+ int any_open = 0;
+
+ printf("=== VIRTUAL NETWORK ===\n\n");
+
+ if (!module_is_active("FUJINET")) {
+     printf(" FUJINET module is not active.\n");
+     printf(" Use MODULE \"FUJINET\" to enable.\n");
+     return;
+ }
+
+ printf(" Ch Proto   Host"
+        "              Port  Status\n");
+ printf(" -- -----   ----"
+        "              ----  ------\n");
+
+ for (i = 0; i < FN_MAX_CHANNELS; i++) {
+     /* Access via vdev_info on the N: device */
+     VDev *nd = vdev_get(
+         vdev_find_by_name("N:"));
+     if (nd == NULL) break;
+
+     /* Check channel via a probe - channel state
+      * is internal to mod_fujinet. We report what
+      * vdev_info exposes. For now show the device
+      * info as summary. */
+     (void)i;
+     break;
+ }
+
+ /* Channel summary from N: device info */
+ {
+     VDev *nd = vdev_get(
+         vdev_find_by_name("N:"));
+     if (nd) {
+         const char *proto;
+         const char *host;
+         const char *port;
+         const char *conn;
+         proto = vdev_info(nd, "proto");
+         host = vdev_info(nd, "host");
+         port = vdev_info(nd, "port");
+         conn = vdev_info(nd, "connected");
+         if (proto && proto[0]) {
+             printf("  0  %-7s %-18s %-5s %s\n",
+                 proto,
+                 host ? host : "(none)",
+                 port ? port : "-",
+                 (conn && conn[0] == '1') ?
+                     "CONNECTED" : "IDLE");
+             any_open = 1;
+         }
+     }
+ }
+
+ if (!any_open)
+     printf(" No active connections.\n");
+
+ /* Adapter summary */
+ {
+     VDev *fd = vdev_get(
+         vdev_find_by_name("FUJI:"));
+     if (fd) {
+         const char *ssid;
+         const char *ip;
+         const char *wifi;
+         const char *ver;
+         printf("\n Adapter:\n");
+         ssid = vdev_info(fd, "ssid");
+         ip = vdev_info(fd, "ip");
+         wifi = vdev_info(fd, "wifi");
+         ver = vdev_info(fd, "version");
+         if (ssid)
+             printf("  SSID: %s\n", ssid);
+         if (ip)
+             printf("  IP: %s\n", ip);
+         if (wifi)
+             printf("  WiFi: %s\n", wifi);
+         if (ver)
+             printf("  FW: %s\n", ver);
+     }
+ }
+ return;
+ }
+
+ case KW_VCON:
+ {
+ /*
+  * VCON - Virtual console information.
+  *
+  * Shows the console device (CON:) status: device
+  * class, capabilities, and the error output (ERR:).
+  */
+ VDev *con;
+ VDev *err_dev;
+
+ printf("=== VIRTUAL CONSOLE ===\n\n");
+
+ con = vdev_get(VDEV_CON);
+ if (con) {
+     printf(" Console Device: %s\n",
+         con->name);
+     printf(" Class: %s\n",
+         vdev_class_name(con->dev_class));
+     printf(" Capabilities: %04X\n",
+         con->dev_caps);
+     printf(" Description: %s\n",
+         con->dev_description ?
+         con->dev_description : "(none)");
+     printf(" Input: %s\n",
+         con->dev_getc ? "YES" : "NO");
+     printf(" Output: %s\n",
+         con->dev_putc ? "YES" : "NO");
+     printf(" Clear Screen: %s\n",
+         con->dev_cls ? "YES" : "NO");
+ }
+
+ err_dev = vdev_get(VDEV_ERR);
+ if (err_dev) {
+     printf("\n Error Device: %s\n",
+         err_dev->name);
+     printf(" Class: %s\n",
+         vdev_class_name(err_dev->dev_class));
+     printf(" Description: %s\n",
+         err_dev->dev_description ?
+         err_dev->dev_description : "(none)");
+ }
+ return;
+ }
+
+ case KW_VTERM:
+ {
+ /*
+  * VTERM - Virtual terminal information.
+  *
+  * Shows terminal type, screen dimensions (when
+  * available), character encoding, and dialect-
+  * specific terminal behavior.
+  */
+ printf("=== VIRTUAL TERMINAL ===\n\n");
+ printf(" Dialect: %s\n",
+     dialect_get_name());
+ printf(" Encoding: ASCII (7-bit)\n");
+ printf(" Columns: %d\n",
+     rt->screen_width > 0 ?
+         rt->screen_width : 80);
+ printf(" Rows: %d\n",
+     rt->screen_lines > 0 ?
+         rt->screen_lines : 25);
+ printf(" Cursor Col: %d\n",
+     rt->cursor_col);
+ printf(" Cursor Row: %d\n",
+     rt->cursor_row);
+ printf(" Screen Mode: %d\n",
+     rt->screen_mode);
+ printf(" Line Input: %d chars max\n",
+     MAX_LINE_LENGTH);
+ printf(" Tab Width: 8\n");
+ printf(" Bell: %s\n",
+     platform_short_name());
+ return;
+ }
+
+ case KW_VMACH:
+ {
+ /*
+  * VMACH - Virtual machine state.
+  *
+  * Shows VM execution state, dispatch table stats,
+  * stack frame info, opcode count, and module/
+  * security status.
+  */
+ VMState vstate;
+ const char *state_name;
+ int mcount;
+ int i;
+ int active_mods = 0;
+
+ printf("=== VIRTUAL MACHINE ===\n\n");
+
+ vstate = vm_get_state(rt);
+ switch (vstate) {
+ case VM_STOPPED: state_name = "STOPPED"; break;
+ case VM_RUNNING: state_name = "RUNNING"; break;
+ case VM_PAUSED: state_name = "PAUSED"; break;
+ case VM_ERROR: state_name = "ERROR"; break;
+ case VM_HALTED: state_name = "HALTED"; break;
+ default: state_name = "UNKNOWN"; break;
+ }
+ printf(" State: %s\n", state_name);
+ printf(" Opcodes: %d defined\n", OP_COUNT);
+ printf(" Keywords: %d registered\n",
+     KW_COUNT);
+ printf(" Stack Depth: %d / %d\n",
+     rt->stack_top, MAX_STACK_DEPTH);
+
+ /* Module summary */
+ mcount = module_count();
+ for (i = 0; i < mcount; i++) {
+     if (module_is_loaded(i)) active_mods++;
+ }
+ printf("\n Modules: %d registered, "
+     "%d active\n", mcount, active_mods);
+ for (i = 0; i < mcount; i++) {
+     const ModuleInfo *mi = module_get(i);
+     if (mi) {
+         printf("  %-12s %s  [%s]\n",
+             mi->name,
+             module_is_loaded(i) ?
+                 "ACTIVE " : "INACTIVE",
+             module_class_name(mi->mod_class));
+     }
+ }
+
+ printf("\n Security: %s\n",
+     security_get_level() == 0 ?
+         "UNRESTRICTED" : "RESTRICTED");
+ printf(" Dialect: %s\n",
+     dialect_get_name());
+ printf(" Trace: %s\n",
+     rt->trace_on ? "ON (TRON)" : "OFF (TROFF)");
+ return;
+ }
+
+ case KW_DEVMAP:
+ {
+ /*
+  * DEVMAP - Device slot mapping.
+  *
+  * Shows which VDev slot each BASIC file channel
+  * (#1-#8) is mapped to, including open/closed
+  * status and the device name in each slot. Also
+  * lists all occupied VDev slots.
+  */
+ int i;
+ int total = 0;
+
+ printf("=== DEVICE MAP ===\n\n");
+
+ printf(" BASIC File Channels:\n");
+ printf(" Channel Device "
+     "Status\n");
+ printf(" ------- ------ "
+     "------\n");
+ for (i = 1; i <= 8; i++) {
+     /* File channels are tracked by the FILE: VDev */
+     printf("  #%-6d FILE:  ---\n", i);
+ }
+
+ printf("\n VDev Slot Table:\n");
+ printf(" Slot Name       "
+     "Class      Caps  Description\n");
+ printf(" ---- ----       "
+     "-----      ----  -----------\n");
+ for (i = 0; i < VDEV_MAX; i++) {
+     VDev *d = vdev_get(i);
+     if (d == NULL) continue;
+     printf("  %2d  %-10s %-10s %04X  %s\n",
+         i,
+         d->name ? d->name : "(null)",
+         vdev_class_name(d->dev_class),
+         d->dev_caps,
+         d->dev_description ?
+             d->dev_description : "");
+     total++;
+ }
+ printf("\n %d device(s) registered, "
+     "%d slots available.\n",
+     total, VDEV_MAX - total);
+ return;
+ }
 
  /* ===== Final polish ===== */
  case KW_RENUM:
@@ -9472,16 +10242,21 @@ static void parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
 
  case KW_ALIAS:
  /*
- * ALIAS keyword = "newname"
- * ALIAS LIST
- * ALIAS CLEAR
- *
- * Remap a keyword to a user-defined name.
- * The alias then works everywhere the
- * original keyword does.
- */
+  * ALIAS keyword = "newname"
+  * ALIAS LIST / CLEAR / COUNT
+  * ALIAS REMOVE "name"
+  * ALIAS SAVE "file" / LOAD "file"
+  * ALIAS LANG "code" / LANG LIST / LANG CLEAR
+  * ALIAS OPER LIST
+  * ALIAS "op" = "name" (operator alias)
+  */
  {
  KeywordId target_kw;
+ AliasScope scope;
+
+ /* Choose scope based on running state */
+ scope = rt->running ? ASCOPE_PROGRAM
+ : ASCOPE_GLOBAL;
 
  /* ALIAS LIST */
  if (lexer_match_keyword(lex,
@@ -9491,13 +10266,15 @@ static void parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* ALIAS CLEAR (named var in GWBS) */
+ /* ALIAS CLEAR / REMOVE / COUNT / LANG / OPER */
  if (lex->current.type ==
  TOK_NAMED_VAR) {
  const char *nv =
  lex->current.str_start;
  int nlen =
  lex->current.str_length;
+
+ /* CLEAR */
  if (nlen == 5 &&
  (nv[0]=='C'||nv[0]=='c') &&
  (nv[1]=='L'||nv[1]=='l') &&
@@ -9506,16 +10283,266 @@ static void parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  (nv[4]=='R'||nv[4]=='r')) {
  lexer_next(lex);
  lexer_clear_aliases();
- printf("Aliases cleared.\n");
+ lexer_clear_op_aliases();
+ printf("All aliases cleared.\n");
+ return;
+ }
+ /* REMOVE */
+ if (nlen == 6 &&
+ (nv[0]=='R'||nv[0]=='r') &&
+ (nv[1]=='E'||nv[1]=='e') &&
+ (nv[2]=='M'||nv[2]=='m') &&
+ (nv[3]=='O'||nv[3]=='o') &&
+ (nv[4]=='V'||nv[4]=='v') &&
+ (nv[5]=='E'||nv[5]=='e')) {
+ lexer_next(lex);
+ if (lex->current.type != TOK_STRING) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ if (lexer_remove_alias(
+ lex->current.str_start,
+ lex->current.str_length) == 0) {
+ printf("Alias removed.\n");
+ } else {
+ printf("Alias not found.\n");
+ }
+ lexer_next(lex);
+ return;
+ }
+ /* COUNT */
+ if (nlen == 5 &&
+ (nv[0]=='C'||nv[0]=='c') &&
+ (nv[1]=='O'||nv[1]=='o') &&
+ (nv[2]=='U'||nv[2]=='u') &&
+ (nv[3]=='N'||nv[3]=='n') &&
+ (nv[4]=='T'||nv[4]=='t')) {
+ lexer_next(lex);
+ printf("Aliases: %d / %d slots"
+ " used.\n",
+ lexer_alias_count(),
+ MAX_ALIASES);
+ if (lexer_op_alias_count() > 0) {
+ printf("Operator aliases: %d"
+ " / %d\n",
+ lexer_op_alias_count(),
+ MAX_OP_ALIASES);
+ }
+ return;
+ }
+ /* LANG */
+ if (nlen == 4 &&
+ (nv[0]=='L'||nv[0]=='l') &&
+ (nv[1]=='A'||nv[1]=='a') &&
+ (nv[2]=='N'||nv[2]=='n') &&
+ (nv[3]=='G'||nv[3]=='g')) {
+ lexer_next(lex);
+ /* ALIAS LANG LIST */
+ if (lexer_match_keyword(lex,
+ KW_LIST)) {
+ lexer_next(lex);
+ alias_lang_list();
+ return;
+ }
+ /* ALIAS LANG CLEAR (named var) */
+ if (lex->current.type ==
+ TOK_NAMED_VAR &&
+ lex->current.str_length == 5) {
+ const char *cv =
+ lex->current.str_start;
+ if ((cv[0]=='C'||cv[0]=='c') &&
+ (cv[1]=='L'||cv[1]=='l') &&
+ (cv[2]=='E'||cv[2]=='e') &&
+ (cv[3]=='A'||cv[3]=='a') &&
+ (cv[4]=='R'||cv[4]=='r')) {
+ lexer_next(lex);
+ alias_lang_clear();
  return;
  }
  }
- /* ALIAS CLEAR (keyword in GWBS) */
+ if (lexer_match_keyword(lex,
+ KW_CLEAR)) {
+ lexer_next(lex);
+ alias_lang_clear();
+ return;
+ }
+ /* ALIAS LANG "code" */
+ if (lex->current.type == TOK_STRING) {
+ char code[8];
+ int clen =
+ lex->current.str_length;
+ if (clen > 7) clen = 7;
+ memcpy(code,
+ lex->current.str_start,
+ (size_t)clen);
+ code[clen] = '\0';
+ lexer_next(lex);
+ if (alias_lang_load(code) < 0) {
+ printf("Unknown language:"
+ " \"%s\"\n"
+ "Use ALIAS LANG LIST\n",
+ code);
+ }
+ return;
+ }
+ alias_lang_list();
+ return;
+ }
+ /* OPER */
+ if (nlen == 4 &&
+ (nv[0]=='O'||nv[0]=='o') &&
+ (nv[1]=='P'||nv[1]=='p') &&
+ (nv[2]=='E'||nv[2]=='e') &&
+ (nv[3]=='R'||nv[3]=='r')) {
+ lexer_next(lex);
+ if (lexer_match_keyword(lex,
+ KW_LIST)) {
+ lexer_next(lex);
+ lexer_list_op_aliases();
+ return;
+ }
+ if (lexer_match_keyword(lex,
+ KW_CLEAR)) {
+ lexer_next(lex);
+ lexer_clear_op_aliases();
+ printf("Operator aliases"
+ " cleared.\n");
+ return;
+ }
+ lexer_list_op_aliases();
+ return;
+ }
+ }
+
+ /* ALIAS CLEAR (keyword) */
  if (lexer_match_keyword(lex,
  KW_CLEAR)) {
  lexer_next(lex);
  lexer_clear_aliases();
- printf("Aliases cleared.\n");
+ lexer_clear_op_aliases();
+ printf("All aliases cleared.\n");
+ return;
+ }
+
+ /* ALIAS SAVE "file" */
+ if (lexer_match_keyword(lex,
+ KW_SAVE)) {
+ char fname[256];
+ int flen;
+ lexer_next(lex);
+ if (security_check(SECOP_FILE_WRITE,
+ line_num)) return;
+ if (lex->current.type != TOK_STRING) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ flen = lex->current.str_length;
+ if (flen > 255) flen = 255;
+ memcpy(fname,
+ lex->current.str_start,
+ (size_t)flen);
+ fname[flen] = '\0';
+ lexer_next(lex);
+ {
+ int saved = lexer_alias_save(fname);
+ if (saved < 0)
+ printf("Cannot write %s\n",
+ fname);
+ else
+ printf("%d aliases saved to"
+ " %s\n", saved, fname);
+ }
+ return;
+ }
+
+ /* ALIAS LOAD "file" */
+ if (lexer_match_keyword(lex,
+ KW_LOAD)) {
+ char fname[256];
+ int flen;
+ lexer_next(lex);
+ if (security_check(SECOP_FILE_READ,
+ line_num)) return;
+ if (lex->current.type != TOK_STRING) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ flen = lex->current.str_length;
+ if (flen > 255) flen = 255;
+ memcpy(fname,
+ lex->current.str_start,
+ (size_t)flen);
+ fname[flen] = '\0';
+ lexer_next(lex);
+ {
+ int loaded =
+ lexer_alias_load(fname);
+ if (loaded < 0)
+ printf("Cannot read %s\n",
+ fname);
+ else
+ printf("%d aliases loaded"
+ " from %s\n",
+ loaded, fname);
+ }
+ return;
+ }
+
+ /* ALIAS "op" = "name" (operator alias) */
+ if (lex->current.type == TOK_STRING) {
+ const char *opstr =
+ lex->current.str_start;
+ int oplen =
+ lex->current.str_length;
+ int tok_type = -1;
+
+ /* Identify operator */
+ if (oplen == 2) {
+ if (opstr[0]=='>' && opstr[1]=='=')
+ tok_type = TOK_GT_EQ;
+ else if (opstr[0]=='<' &&
+ opstr[1]=='=')
+ tok_type = TOK_LT_EQ;
+ else if (opstr[0]=='<' &&
+ opstr[1]=='>')
+ tok_type = TOK_NOT_EQ;
+ } else if (oplen == 1) {
+ if (opstr[0] == '=')
+ tok_type = TOK_EQUALS;
+ else if (opstr[0] == '+')
+ tok_type = TOK_PLUS;
+ else if (opstr[0] == '-')
+ tok_type = TOK_MINUS;
+ else if (opstr[0] == '*')
+ tok_type = TOK_STAR;
+ else if (opstr[0] == '/')
+ tok_type = TOK_SLASH;
+ }
+ if (tok_type >= 0) {
+ lexer_next(lex);
+ if (lex->current.type != TOK_EQUALS) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex);
+ if (lex->current.type != TOK_STRING) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ if (lexer_add_op_alias(
+ lex->current.str_start,
+ lex->current.str_length,
+ tok_type) != 0) {
+ printf("Operator alias table"
+ " full.\n");
+ } else {
+ printf("Operator alias set.\n");
+ }
+ lexer_next(lex);
+ return;
+ }
+ /* Not a recognized operator string */
+ error_raise(ERR_WHAT, line_num);
  return;
  }
 
@@ -9524,18 +10551,20 @@ static void parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  TOK_KEYWORD) {
  printf(
  "Usage:\n"
- " ALIAS keyword = "
- "\"newname\"\n"
- " ALIAS LIST\n"
- " ALIAS CLEAR\n");
+ " ALIAS keyword = \"newname\"\n"
+ " ALIAS LIST | CLEAR | COUNT\n"
+ " ALIAS REMOVE \"name\"\n"
+ " ALIAS SAVE \"file\"\n"
+ " ALIAS LOAD \"file\"\n"
+ " ALIAS LANG \"code\" | LIST |"
+ " CLEAR\n"
+ " ALIAS OPER LIST | CLEAR\n"
+ " ALIAS \">=\" = \"name\"\n");
  return;
  }
  target_kw =
  lex->current.value.keyword;
  lexer_next(lex);
-
- /* Skip optional $ for functions */
- /* (already consumed by lexer) */
 
  /* Expect = */
  if (lex->current.type !=
@@ -9561,14 +10590,22 @@ static void parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  const char *orig;
  int need_d;
 
- lexer_next(lex);
-
- if (lexer_add_alias(aname, alen,
- target_kw)
- != 0) {
- printf("Alias table full.\n");
- return;
- }
+ lexer_next(lex); {
+  int arc = lexer_add_alias_scoped(
+  aname, alen, target_kw,
+  scope, NULL);
+  if (arc != 0) {
+  if (arc == -2)
+  printf("Name conflicts with"
+  " a keyword.\n");
+  else if (arc == -3)
+  printf("Cannot alias"
+  " protected keyword.\n");
+  else
+  printf("Alias table full.\n");
+  return;
+  }
+  }
 
  orig = lexer_keyword_name(
  target_kw);
@@ -9585,8 +10622,629 @@ static void parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  putchar(toupper(
  aname[pi]));
  }
- printf("\"\n");
+ printf("\"");
+ if (scope != ASCOPE_GLOBAL)
+ printf(" [PROGRAM]");
+ printf("\n");
  }
+ }
+ return;
+
+ case KW_SCOPE:
+ /*
+  * SCOPE DISABLE keyword
+  * SCOPE ENABLE keyword
+  * SCOPE BEFORE keyword GOSUB line
+  * SCOPE AFTER keyword GOSUB line
+  * SCOPE OVERRIDE keyword GOSUB line
+  * SCOPE RESTORE keyword
+  * SCOPE LIST / RESET
+  * SCOPE "preset"
+  *
+  * Security: blocked at LEVEL 2+ except
+  * for LIST (read-only introspection).
+  */
+ {
+ /* SCOPE LIST */
+ if (lexer_match_keyword(lex, KW_LIST)) {
+ lexer_next(lex);
+ scope_list();
+ return;
+ }
+ /* Security check for all SCOPE
+  * sub-commands */
+ if (security_check(
+  SECOP_SYSTEM, line_num))
+  return;
+
+ /* SCOPE RESET (keyword form) */
+ if (lexer_match_keyword(lex,
+  KW_RESET)) {
+  lexer_next(lex);
+  scope_reset();
+  return;
+ }
+
+ /* SCOPE RESTORE keyword (keyword form) */
+ if (lexer_match_keyword(lex,
+ KW_RESTORE)) {
+ lexer_next(lex);
+ if (lex->current.type != TOK_KEYWORD) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ scope_restore(
+ lex->current.value.keyword);
+ printf("SCOPE: %s restored.\n",
+ lexer_keyword_name(
+ lex->current.value.keyword));
+ lexer_next(lex);
+ return;
+ }
+
+ /* SCOPE \"preset\" */
+ if (lex->current.type == TOK_STRING) {
+ char pname[32];
+ int plen = lex->current.str_length;
+ if (plen > 31) plen = 31;
+ memcpy(pname,
+ lex->current.str_start,
+ (size_t)plen);
+ pname[plen] = '\0';
+ lexer_next(lex);
+ if (scope_load_preset(pname) < 0) {
+ printf("Unknown preset: \"%s\"\n",
+ pname);
+ scope_list_presets();
+ }
+ return;
+ }
+
+ /* Sub-commands via named vars (GWBS) */
+ if (lex->current.type ==
+ TOK_NAMED_VAR) {
+ const char *nv =
+ lex->current.str_start;
+ int nlen = lex->current.str_length;
+
+ /* RESET */
+ if (nlen == 5 &&
+ (nv[0]=='R'||nv[0]=='r') &&
+ (nv[1]=='E'||nv[1]=='e') &&
+ (nv[2]=='S'||nv[2]=='s') &&
+ (nv[3]=='E'||nv[3]=='e') &&
+ (nv[4]=='T'||nv[4]=='t')) {
+ lexer_next(lex);
+ scope_reset();
+ return;
+ }
+
+ /* DISABLE */
+ if (nlen == 7 &&
+ (nv[0]=='D'||nv[0]=='d') &&
+ (nv[1]=='I'||nv[1]=='i') &&
+ (nv[2]=='S'||nv[2]=='s') &&
+ (nv[3]=='A'||nv[3]=='a') &&
+ (nv[4]=='B'||nv[4]=='b') &&
+ (nv[5]=='L'||nv[5]=='l') &&
+ (nv[6]=='E'||nv[6]=='e')) {
+ lexer_next(lex);
+ if (lex->current.type != TOK_KEYWORD) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ scope_disable(
+ lex->current.value.keyword);
+ printf("SCOPE: %s disabled.\n",
+ lexer_keyword_name(
+ lex->current.value.keyword));
+ lexer_next(lex);
+ return;
+ }
+
+ /* ENABLE */
+ if (nlen == 6 &&
+ (nv[0]=='E'||nv[0]=='e') &&
+ (nv[1]=='N'||nv[1]=='n') &&
+ (nv[2]=='A'||nv[2]=='a') &&
+ (nv[3]=='B'||nv[3]=='b') &&
+ (nv[4]=='L'||nv[4]=='l') &&
+ (nv[5]=='E'||nv[5]=='e')) {
+ lexer_next(lex);
+ if (lex->current.type != TOK_KEYWORD) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ scope_enable(
+ lex->current.value.keyword);
+ printf("SCOPE: %s enabled.\n",
+ lexer_keyword_name(
+ lex->current.value.keyword));
+ lexer_next(lex);
+ return;
+ }
+
+ /* BEFORE */
+ if (nlen == 6 &&
+ (nv[0]=='B'||nv[0]=='b') &&
+ (nv[1]=='E'||nv[1]=='e') &&
+ (nv[2]=='F'||nv[2]=='f') &&
+ (nv[3]=='O'||nv[3]=='o') &&
+ (nv[4]=='R'||nv[4]=='r') &&
+ (nv[5]=='E'||nv[5]=='e')) {
+ KeywordId tkw;
+ lexer_next(lex);
+ if (lex->current.type != TOK_KEYWORD) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ tkw = lex->current.value.keyword;
+ lexer_next(lex);
+ if (!lexer_match_keyword(lex,
+ KW_GOSUB)) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex);
+ {
+ long ln = parse_expression(lex,
+ rt, line_num);
+ if (error_occurred()) return;
+ scope_set_before(tkw, (int)ln);
+ printf("SCOPE: BEFORE %s"
+ " GOSUB %ld\n",
+ lexer_keyword_name(tkw), ln);
+ }
+ return;
+ }
+
+ /* AFTER */
+ if (nlen == 5 &&
+ (nv[0]=='A'||nv[0]=='a') &&
+ (nv[1]=='F'||nv[1]=='f') &&
+ (nv[2]=='T'||nv[2]=='t') &&
+ (nv[3]=='E'||nv[3]=='e') &&
+ (nv[4]=='R'||nv[4]=='r')) {
+ KeywordId tkw;
+ lexer_next(lex);
+ if (lex->current.type != TOK_KEYWORD) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ tkw = lex->current.value.keyword;
+ lexer_next(lex);
+ if (!lexer_match_keyword(lex,
+ KW_GOSUB)) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex);
+ {
+ long ln = parse_expression(lex,
+ rt, line_num);
+ if (error_occurred()) return;
+ scope_set_after(tkw, (int)ln);
+ printf("SCOPE: AFTER %s"
+ " GOSUB %ld\n",
+ lexer_keyword_name(tkw), ln);
+ }
+ return;
+ }
+
+ /* OVERRIDE */
+ if (nlen == 8 &&
+ (nv[0]=='O'||nv[0]=='o') &&
+ (nv[1]=='V'||nv[1]=='v') &&
+ (nv[2]=='E'||nv[2]=='e') &&
+ (nv[3]=='R'||nv[3]=='r') &&
+ (nv[4]=='R'||nv[4]=='r') &&
+ (nv[5]=='I'||nv[5]=='i') &&
+ (nv[6]=='D'||nv[6]=='d') &&
+ (nv[7]=='E'||nv[7]=='e')) {
+ KeywordId tkw;
+ lexer_next(lex);
+ if (lex->current.type != TOK_KEYWORD) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ tkw = lex->current.value.keyword;
+ lexer_next(lex);
+ if (!lexer_match_keyword(lex,
+ KW_GOSUB)) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex);
+ {
+ long ln = parse_expression(lex,
+ rt, line_num);
+ if (error_occurred()) return;
+ scope_set_override(tkw, (int)ln);
+ printf("SCOPE: OVERRIDE %s"
+ " GOSUB %ld\n",
+ lexer_keyword_name(tkw), ln);
+ }
+ return;
+ }
+
+ /* RESTORE */
+ if (nlen == 7 &&
+ (nv[0]=='R'||nv[0]=='r') &&
+ (nv[1]=='E'||nv[1]=='e') &&
+ (nv[2]=='S'||nv[2]=='s') &&
+ (nv[3]=='T'||nv[3]=='t') &&
+ (nv[4]=='O'||nv[4]=='o') &&
+ (nv[5]=='R'||nv[5]=='r') &&
+ (nv[6]=='E'||nv[6]=='e')) {
+ lexer_next(lex);
+ if (lex->current.type != TOK_KEYWORD) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ scope_restore(
+ lex->current.value.keyword);
+ printf("SCOPE: %s restored.\n",
+ lexer_keyword_name(
+ lex->current.value.keyword));
+ lexer_next(lex);
+ return;
+ }
+ }
+
+ /* Fallback usage */
+ printf(
+ "Usage:\n"
+ " SCOPE DISABLE keyword\n"
+ " SCOPE ENABLE keyword\n"
+ " SCOPE BEFORE keyword GOSUB line\n"
+ " SCOPE AFTER keyword GOSUB line\n"
+ " SCOPE OVERRIDE keyword GOSUB line\n"
+ " SCOPE RESTORE keyword\n"
+ " SCOPE LIST | RESET\n"
+ " SCOPE \"STRUCTURED\" | \"SAFE\" |"
+ " \"MINIMAL\" | \"EDUCATIONAL\"\n");
+ }
+ return;
+
+ case KW_KEYWORD:
+ /*
+  * KEYWORD kw PROP value - set property
+  * KEYWORD kw PROP OFF   - remove property
+  * KEYWORD kw             - show properties
+  * KEYWORD kw DESCRIBE    - show available props
+  * KEYWORD kw RESET       - clear all props
+  * KEYWORD LIST            - show all
+  * KEYWORD RESET           - clear everything
+  *
+  * Security: blocked at LEVEL 2+
+  */
+ {
+ if (security_check(SECOP_SYSTEM,
+  line_num)) return;
+ /* KEYWORD LIST */
+ if (lexer_match_keyword(lex, KW_LIST)) {
+ lexer_next(lex);
+ keyword_prop_list_all();
+ return;
+ }
+
+ /* KEYWORD RESET (keyword form) */
+ if (lexer_match_keyword(lex,
+ KW_RESET)) {
+ lexer_next(lex);
+ keyword_props_reset();
+ return;
+ }
+
+ /* Expect a keyword next */
+ if (lex->current.type != TOK_KEYWORD) {
+ /* Usage */
+ printf(
+ "Usage:\n"
+ " KEYWORD kw PROP value\n"
+ " KEYWORD kw DESCRIBE\n"
+ " KEYWORD kw RESET\n"
+ " KEYWORD LIST | RESET\n");
+ return;
+ }
+
+ {
+ KeywordId tkw =
+ lex->current.value.keyword;
+ const char *tkname =
+ lexer_keyword_name(tkw);
+ lexer_next(lex);
+
+ /* KEYWORD kw (no args) */
+ if (lex->current.type == TOK_EOF ||
+ lex->current.type == TOK_CR ||
+ lex->current.type ==
+ TOK_SEMICOLON ||
+ lex->current.type ==
+ TOK_COLON) {
+ keyword_prop_list(tkw);
+ return;
+ }
+
+ /* KEYWORD kw RESET (keyword form) */
+ if (lexer_match_keyword(lex,
+ KW_RESET)) {
+ lexer_next(lex);
+ keyword_prop_clear(tkw);
+ printf("%s: properties"
+ " cleared.\n", tkname);
+ return;
+ }
+
+ /* Named var sub-commands */
+ if (lex->current.type ==
+ TOK_NAMED_VAR) {
+ const char *nv =
+ lex->current.str_start;
+ int nlen =
+ lex->current.str_length;
+
+ /* DESCRIBE */
+ if (nlen == 8 &&
+ (nv[0]=='D'||nv[0]=='d') &&
+ (nv[1]=='E'||nv[1]=='e') &&
+ (nv[2]=='S'||nv[2]=='s') &&
+ (nv[3]=='C'||nv[3]=='c') &&
+ (nv[4]=='R'||nv[4]=='r') &&
+ (nv[5]=='I'||nv[5]=='i') &&
+ (nv[6]=='B'||nv[6]=='b') &&
+ (nv[7]=='E'||nv[7]=='e')) {
+ lexer_next(lex);
+ keyword_prop_describe(tkw);
+ return;
+ }
+
+ /* RESET (as named var) */
+ if (nlen == 5 &&
+ (nv[0]=='R'||nv[0]=='r') &&
+ (nv[1]=='E'||nv[1]=='e') &&
+ (nv[2]=='S'||nv[2]=='s') &&
+ (nv[3]=='E'||nv[3]=='e') &&
+ (nv[4]=='T'||nv[4]=='t')) {
+ lexer_next(lex);
+ keyword_prop_clear(tkw);
+ printf("%s: properties"
+ " cleared.\n", tkname);
+ return;
+ }
+
+ /*
+  * Property name is the named var.
+  * Value follows.
+  */
+ {
+ char pname[MAX_PROP_NAME];
+ char pval[MAX_PROP_VALUE];
+ int pi;
+
+ if (nlen > MAX_PROP_NAME - 1)
+ nlen = MAX_PROP_NAME - 1;
+ memcpy(pname, nv, (size_t)nlen);
+ pname[nlen] = '\0';
+ for (pi = 0; pi < nlen; pi++) {
+ if (pname[pi] >= 'a' &&
+ pname[pi] <= 'z')
+ pname[pi] =
+ (char)(pname[pi] - 32);
+ }
+ lexer_next(lex);
+
+ /* Value: string, number,
+  * keyword (ON/OFF), named var */
+ if (lex->current.type ==
+ TOK_STRING) {
+ int slen =
+ lex->current.str_length;
+ if (slen > MAX_PROP_VALUE - 1)
+ slen = MAX_PROP_VALUE - 1;
+ memcpy(pval,
+ lex->current.str_start,
+ (size_t)slen);
+ pval[slen] = '\0';
+ lexer_next(lex);
+ } else if (lex->current.type ==
+ TOK_NUMBER) {
+ sprintf(pval, "%ld",
+ lex->current.value.num_value);
+ lexer_next(lex);
+ } else if (lex->current.type ==
+ TOK_KEYWORD) {
+ /* ON / OFF keywords */
+ const char *kn =
+ lexer_keyword_name(
+ lex->current.value.keyword);
+ int ki;
+ int kl = (int)strlen(kn);
+ if (kl > MAX_PROP_VALUE - 1)
+ kl = MAX_PROP_VALUE - 1;
+ memcpy(pval, kn, (size_t)kl);
+ pval[kl] = '\0';
+ for (ki = 0; ki < kl; ki++) {
+ if (pval[ki] >= 'a' &&
+ pval[ki] <= 'z')
+ pval[ki] =
+ (char)(pval[ki] - 32);
+ }
+ lexer_next(lex);
+ } else if (lex->current.type ==
+ TOK_NAMED_VAR) {
+ /* ON, OFF, YES, NO etc */
+ int vl =
+ lex->current.str_length;
+ if (vl > MAX_PROP_VALUE - 1)
+ vl = MAX_PROP_VALUE - 1;
+ memcpy(pval,
+ lex->current.str_start,
+ (size_t)vl);
+ pval[vl] = '\0';
+ for (pi = 0; pi < vl; pi++) {
+ if (pval[pi] >= 'a' &&
+ pval[pi] <= 'z')
+ pval[pi] =
+ (char)(pval[pi] - 32);
+ }
+ lexer_next(lex);
+ } else {
+ error_raise(ERR_WHAT,
+ line_num);
+ return;
+ }
+
+ /* Check for OFF = remove */
+ if (prop_eq_ci(pval, "OFF")) {
+ keyword_prop_remove(tkw,
+ pname);
+ printf("%s.%s removed.\n",
+ tkname, pname);
+ } else {
+ keyword_prop_set(tkw,
+ pname, pval);
+ printf("%s.%s = %s\n",
+ tkname, pname, pval);
+ }
+ return;
+ }
+ }
+ }
+
+ error_raise(ERR_WHAT, line_num);
+ }
+ return;
+
+ case KW_OVERRIDE:
+ /*
+  * OVERRIDE keyword "text"  - change interpretation
+  * OVERRIDE keyword CLEAR   - restore default
+  * OVERRIDE LIST             - show active
+  * OVERRIDE RESET            - clear all
+  *
+  * Changes how the parser interprets a keyword
+  * without modifying the user's source code.
+  * Security: blocked at LEVEL 2+
+  */
+ {
+  if (security_check(SECOP_SYSTEM,
+   line_num)) return;
+
+  /* OVERRIDE LIST */
+  if (lexer_match_keyword(lex, KW_LIST)) {
+   lexer_next(lex);
+   override_list();
+   return;
+  }
+
+  /* OVERRIDE RESET (keyword form) */
+  if (lexer_match_keyword(lex,
+   KW_RESET)) {
+   lexer_next(lex);
+   override_reset();
+   return;
+  }
+
+  /* OVERRIDE RESET via named var */
+  if (lex->current.type ==
+   TOK_NAMED_VAR) {
+   const char *nv =
+    lex->current.str_start;
+   int nlen =
+    lex->current.str_length;
+   if (nlen == 5 &&
+    (nv[0]=='R'||nv[0]=='r') &&
+    (nv[1]=='E'||nv[1]=='e') &&
+    (nv[2]=='S'||nv[2]=='s') &&
+    (nv[3]=='E'||nv[3]=='e') &&
+    (nv[4]=='T'||nv[4]=='t')) {
+    lexer_next(lex);
+    override_reset();
+    return;
+   }
+  }
+
+  /* Expect a keyword to override */
+  if (lex->current.type !=
+   TOK_KEYWORD) {
+   printf(
+    "Usage:\n"
+    " OVERRIDE keyword \"text\"\n"
+    " OVERRIDE keyword CLEAR\n"
+    " OVERRIDE LIST\n"
+    " OVERRIDE RESET\n");
+   return;
+  }
+
+  {
+   KeywordId tkw =
+    lex->current.value.keyword;
+   const char *tkname =
+    lexer_keyword_name(tkw);
+   lexer_next(lex);
+
+   /* OVERRIDE keyword CLEAR
+    * (via CLEAR keyword) */
+   if (lexer_match_keyword(lex,
+    KW_CLEAR)) {
+    lexer_next(lex);
+    override_clear(tkw);
+    printf("OVERRIDE %s cleared.\n",
+     tkname);
+    return;
+   }
+
+   /* OVERRIDE keyword CLEAR
+    * (via named var) */
+   if (lex->current.type ==
+    TOK_NAMED_VAR) {
+    const char *cv =
+     lex->current.str_start;
+    int cl =
+     lex->current.str_length;
+    if (cl == 5 &&
+     (cv[0]=='C'||cv[0]=='c') &&
+     (cv[1]=='L'||cv[1]=='l') &&
+     (cv[2]=='E'||cv[2]=='e') &&
+     (cv[3]=='A'||cv[3]=='a') &&
+     (cv[4]=='R'||cv[4]=='r')) {
+     lexer_next(lex);
+     override_clear(tkw);
+     printf(
+      "OVERRIDE %s cleared.\n",
+      tkname);
+     return;
+    }
+   }
+
+   /* OVERRIDE keyword "text" */
+   if (lex->current.type ==
+    TOK_STRING &&
+    lex->current.str_start != NULL &&
+    lex->current.str_length > 0) {
+    char otxt[MAX_OVERRIDE_TEXT];
+    int olen =
+     lex->current.str_length;
+    if (olen >= MAX_OVERRIDE_TEXT)
+     olen = MAX_OVERRIDE_TEXT - 1;
+    memcpy(otxt,
+     lex->current.str_start,
+     (size_t)olen);
+    otxt[olen] = '\0';
+    lexer_next(lex);
+
+    if (override_set(tkw,
+     otxt) == 0) {
+     printf(
+      "OVERRIDE %s = \"%s\"\n",
+      tkname, otxt);
+    }
+    return;
+   }
+
+   error_raise(ERR_WHAT, line_num);
+  }
  }
  return;
 
@@ -11813,6 +13471,142 @@ static BValue parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  tm->tm_sec);
  ptr = strpool_store(&rt->strpool, buf, 8);
  return bval_string(ptr, 8);
+ }
+
+ /*
+  * CLOCK$ - returns full timestamp "YYYY-MM-DD HH:MM:SS".
+  * More detailed than DATE$ or TIME$ alone.
+  */
+ if (kw == KW_CLOCK_FUNC) {
+ char buf[24];
+ char *ptr;
+ time_t t;
+ struct tm *tm;
+ int len;
+ lexer_next(lex);
+ t = time(NULL);
+ tm = localtime(&t);
+ sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d",
+ tm->tm_year + 1900, tm->tm_mon + 1,
+ tm->tm_mday, tm->tm_hour,
+ tm->tm_min, tm->tm_sec);
+ len = 19;
+ ptr = strpool_store(&rt->strpool, buf, len);
+ return bval_string(ptr, len);
+ }
+
+ /*
+  * ALARM$ - get/set the alarm time string.
+  * As a function (expression context), returns the
+  * current alarm time setting. If no alarm is set,
+  * returns empty string.
+  *
+  * Alarm time is stored in rt->alarm_str[].
+  * Setting ALARM$ is done via ALARM$ = "HH:MM:SS"
+  * in the statement handler (not here).
+  */
+ if (kw == KW_ALARM_FUNC) {
+ char *ptr;
+ int len;
+ lexer_next(lex);
+ len = (int)strlen(rt->alarm_str);
+ if (len == 0)
+ return bval_string(NULL, 0);
+ ptr = strpool_store(&rt->strpool,
+ rt->alarm_str, len);
+ return bval_string(ptr, len);
+ }
+ /*
+  * DIALECT$ - returns the current dialect name.
+  * Read-only introspection; does not change dialect.
+  * Example: PRINT DIALECT$  -> "GW-BASIC"
+  *          IF DIALECT$ = "GWBS" THEN ...
+  */
+ if (kw == KW_DIALECT_FUNC) {
+ const char *dname;
+ char *ptr;
+ int len;
+ lexer_next(lex);
+ dname = dialect_get_short_name();
+ len = (int)strlen(dname);
+ ptr = strpool_store(&rt->strpool, dname, len);
+ return bval_string(ptr, len);
+ }
+
+ /*
+  * MEMMAP$ - returns the current memory map name.
+  * Read-only introspection; does not change memmap.
+  * Example: PRINT MEMMAP$  -> "Commodore 64"
+  */
+ if (kw == KW_MEMMAP_FUNC) {
+ const char *mname;
+ char *ptr;
+ int len;
+ lexer_next(lex);
+ mname = memmap_get_name(
+ (MemMapType)rt->memmap_type);
+ len = (int)strlen(mname);
+ ptr = strpool_store(&rt->strpool, mname, len);
+ return bval_string(ptr, len);
+ }
+ /*
+  * ALIAS$(name$) - bidirectional alias lookup.
+  * If name$ is an alias, returns the original keyword.
+  * If name$ is a keyword, returns its alias (if any).
+  * Returns empty string if neither found.
+  */
+ if (kw == KW_ALIAS_FUNC) {
+ BValue arg;
+ const char *result;
+ char *ptr;
+ int len;
+ lexer_next(lex);
+ if (!lexer_expect(lex, TOK_LPAREN))
+ return bval_string(NULL, 0);
+ arg = parse_expression_bval(lex, rt, line_num);
+ if (error_occurred()) return bval_string(NULL, 0);
+ if (!lexer_expect(lex, TOK_RPAREN))
+ return bval_string(NULL, 0);
+
+ if (!bval_is_string(&arg))
+ return bval_string(NULL, 0);
+
+ /* Try forward: alias name -> keyword */
+ result = lexer_find_alias_by_name(
+ arg.v.sval.data, arg.v.sval.length);
+ if (result == NULL) {
+ /* Try reverse: keyword name -> alias */
+ int ki;
+ KeywordId found_kw = KW_COUNT;
+ for (ki = 0; ki < (int)KW_COUNT; ki++) {
+ const char *kname =
+ lexer_keyword_name((KeywordId)ki);
+ if (kname[0] != '\0') {
+ int klen = (int)strlen(kname);
+ if (klen == arg.v.sval.length) {
+ int j, m = 1;
+ for (j = 0; j < klen; j++) {
+ char ca = arg.v.sval.data[j];
+ char cb = kname[j];
+ if (ca>='a' && ca<='z') ca=(char)(ca-32);
+ if (cb>='a' && cb<='z') cb=(char)(cb-32);
+ if (ca != cb) { m=0; break; }
+ }
+ if (m) { found_kw=(KeywordId)ki; break; }
+ }
+ }
+ }
+ if (found_kw != KW_COUNT) {
+ result = lexer_find_alias_for_keyword(found_kw);
+ }
+ }
+
+ if (result == NULL)
+ return bval_string(NULL, 0);
+
+ len = (int)strlen(result);
+ ptr = strpool_store(&rt->strpool, result, len);
+ return bval_string(ptr, len);
  }
 
  /*

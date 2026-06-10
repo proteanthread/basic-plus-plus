@@ -105,6 +105,10 @@ typedef enum VMOpcode {
  OP_RENUM, OP_DELETE, /* final polish */
  OP_VER,
  OP_BYE, /* exit interpreter */
+ /* Virtual subsystem introspection */
+ OP_VDEV, OP_VMEM, OP_VNET,
+ OP_VCON, OP_VTERM, OP_VMACH,
+ OP_DEVMAP,
  OP_ASSIGN, /* bare variable assignment */
  OP_UNKNOWN, /* unrecognized - fallback */
  OP_COUNT /* sentinel - must be last */

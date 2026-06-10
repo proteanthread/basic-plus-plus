@@ -285,6 +285,9 @@ static const KeywordEntry keyword_table[] = {
  { "MKI", KW_MKI_FUNC, DFLAG_GWQB },
  { "MKS", KW_MKS_FUNC, DFLAG_GWQB },
  { "ALIAS", KW_ALIAS, DFLAG_ALL },
+ { "SCOPE", KW_SCOPE, DFLAG_ALL },
+ { "KEYWORD", KW_KEYWORD, DFLAG_ALL },
+ { "OVERRIDE", KW_OVERRIDE, DFLAG_ALL },
  { "NAME", KW_NAME, DFLAG_GWQB },
  { "RENAME", KW_RENAME, DFLAG_ALL },
  { "OUT", KW_OUT, DFLAG_GWQB },
@@ -319,6 +322,17 @@ static const KeywordEntry keyword_table[] = {
  { "REWRITE", KW_REWRITE, DFLAG_E116 },
  { "POINTER", KW_POINTER, DFLAG_E116 },
  { "FILESIZE", KW_FILESIZE, DFLAG_E116 },
+ /* Virtual subsystem introspection */
+ { "VDEV", KW_VDEV, DFLAG_ALL },
+ { "VMEM", KW_VMEM, DFLAG_ALL },
+ { "VNET", KW_VNET, DFLAG_ALL },
+ { "VCON", KW_VCON, DFLAG_ALL },
+ { "VTERM", KW_VTERM, DFLAG_ALL },
+ { "VMACH", KW_VMACH, DFLAG_ALL },
+ { "DEVMAP", KW_DEVMAP, DFLAG_ALL },
+ { "BIN", KW_BIN_FUNC, DFLAG_ALL },
+ { "CLOCK", KW_CLOCK_FUNC, DFLAG_ALL },
+ { "ALARM", KW_ALARM_FUNC, DFLAG_ALL },
  { NULL, KW_COUNT, 0 } /* sentinel */
 };
 
@@ -384,29 +398,52 @@ static char to_upper(char c)
 }
 
 /* --- Keyword Alias Table ---
- * Runtime-configurable name remapping. Each slot maps a
- * user-chosen identifier (e.g. "IMPRE") to a built-in
- * KeywordId (e.g. KW_PRINT). Aliases are checked FIRST in
- * match_keyword(), so they shadow built-in names.
+ * Runtime-configurable name remapping with scoping.
+ * Each slot maps a user-chosen identifier (e.g. "IMPRE")
+ * to a built-in KeywordId (e.g. KW_PRINT).
+ * Aliases are checked FIRST in match_keyword().
  */
 typedef struct {
  char name[MAX_ALIAS_NAME]; /* upper-cased alias */
  int name_len;
  KeywordId target;
  int active; /* 1 = in use */
+ AliasScope scope;
+ char module_name[16]; /* for ASCOPE_MODULE */
 } AliasEntry;
 
 static AliasEntry alias_table[MAX_ALIASES];
 static int alias_count = 0;
 
+/* --- Operator Alias Table ---
+ * Maps alias strings to token types for operators.
+ */
+typedef struct {
+ char name[MAX_OP_ALIAS_NAME];
+ int name_len;
+ int token_type; /* TOK_GT_EQ, TOK_LT_EQ, etc. */
+ int active;
+} OpAliasEntry;
+
+static OpAliasEntry op_alias_table[MAX_OP_ALIASES];
+static int op_alias_count = 0;
+
 /*
- * lexer_add_alias - Register or update an alias.
- *
- * If the name already exists, its target is updated.
- * Returns 0 on success, -1 if the table is full.
+ * lexer_add_alias - Register with GLOBAL scope (backward compat).
  */
 int lexer_add_alias(const char *name, int name_len,
  KeywordId target)
+{
+ return lexer_add_alias_scoped(name, name_len, target,
+ ASCOPE_GLOBAL, NULL);
+}
+
+/*
+ * lexer_add_alias_scoped - Register or update an alias.
+ */
+int lexer_add_alias_scoped(const char *name, int name_len,
+ KeywordId target, AliasScope scope,
+ const char *module_name)
 {
  int i;
  char upper[MAX_ALIAS_NAME];
@@ -419,6 +456,28 @@ int lexer_add_alias(const char *name, int name_len,
  upper[i] = to_upper(name[i]);
  upper[name_len] = '\0';
 
+ /* Reject aliasing protected keywords */
+ if (target == KW_ALIAS || target == KW_SCOPE ||
+  target == KW_KEYWORD || target == KW_SECURITY ||
+  target == KW_OVERRIDE)
+ return -3; /* protected keyword */
+
+ /* Reject alias names that shadow existing keywords */
+ for (i = 0; keyword_table[i].name != NULL; i++) {
+ const char *kn = keyword_table[i].name;
+ int ki = 0, match = 1;
+ while (kn[ki] && upper[ki]) {
+  char ca = upper[ki];
+  char cb = kn[ki];
+  if (cb >= 'a' && cb <= 'z') cb = (char)(cb - 32);
+  if (ca != cb) { match = 0; break; }
+  ki++;
+ }
+ if (match && kn[ki] == '\0' &&
+  upper[ki] == '\0')
+  return -2; /* conflicts with keyword */
+ }
+
  /* Check if alias already exists - update it */
  for (i = 0; i < MAX_ALIASES; i++) {
  if (alias_table[i].active &&
@@ -426,6 +485,7 @@ int lexer_add_alias(const char *name, int name_len,
  memcmp(alias_table[i].name, upper,
  (size_t)name_len) == 0) {
  alias_table[i].target = target;
+ alias_table[i].scope = scope;
  return 0;
  }
  }
@@ -439,12 +499,49 @@ int lexer_add_alias(const char *name, int name_len,
  alias_table[i].name_len = name_len;
  alias_table[i].target = target;
  alias_table[i].active = 1;
+ alias_table[i].scope = scope;
+ alias_table[i].module_name[0] = '\0';
+ if (module_name != NULL && scope == ASCOPE_MODULE) {
+ int mlen = (int)strlen(module_name);
+ if (mlen > 15) mlen = 15;
+ memcpy(alias_table[i].module_name,
+ module_name, (size_t)mlen);
+ alias_table[i].module_name[mlen] = '\0';
+ }
  alias_count++;
  return 0;
  }
  }
 
  return -1; /* table full */
+}
+
+/*
+ * lexer_remove_alias - Remove a single alias by name.
+ */
+int lexer_remove_alias(const char *name, int name_len)
+{
+ int i;
+ char upper[MAX_ALIAS_NAME];
+
+ if (name_len <= 0 || name_len >= MAX_ALIAS_NAME)
+ return -1;
+
+ for (i = 0; i < name_len; i++)
+ upper[i] = to_upper(name[i]);
+ upper[name_len] = '\0';
+
+ for (i = 0; i < MAX_ALIASES; i++) {
+ if (alias_table[i].active &&
+ alias_table[i].name_len == name_len &&
+ memcmp(alias_table[i].name, upper,
+ (size_t)name_len) == 0) {
+ alias_table[i].active = 0;
+ alias_count--;
+ return 0;
+ }
+ }
+ return -1; /* not found */
 }
 
 /*
@@ -456,6 +553,50 @@ void lexer_clear_aliases(void)
  for (i = 0; i < MAX_ALIASES; i++)
  alias_table[i].active = 0;
  alias_count = 0;
+}
+
+/*
+ * lexer_clear_scope - Remove aliases of a specific scope.
+ */
+void lexer_clear_scope(AliasScope scope)
+{
+ int i;
+ for (i = 0; i < MAX_ALIASES; i++) {
+ if (alias_table[i].active &&
+ alias_table[i].scope == scope) {
+ alias_table[i].active = 0;
+ alias_count--;
+ }
+ }
+}
+
+/*
+ * lexer_clear_module_aliases - Remove aliases for a module.
+ */
+void lexer_clear_module_aliases(const char *mod_name)
+{
+ int i;
+ for (i = 0; i < MAX_ALIASES; i++) {
+ if (alias_table[i].active &&
+ alias_table[i].scope == ASCOPE_MODULE) {
+ /* Case-insensitive compare */
+ const char *a = mod_name;
+ const char *b = alias_table[i].module_name;
+ int match = 1;
+ while (*a && *b) {
+ char ca = *a, cb = *b;
+ if (ca >= 'a' && ca <= 'z') ca = (char)(ca-32);
+ if (cb >= 'a' && cb <= 'z') cb = (char)(cb-32);
+ if (ca != cb) { match = 0; break; }
+ a++; b++;
+ }
+ if (*a || *b) match = 0;
+ if (match) {
+ alias_table[i].active = 0;
+ alias_count--;
+ }
+ }
+ }
 }
 
 /*
@@ -481,8 +622,6 @@ const char *lexer_keyword_name(KeywordId kw)
 
 /*
  * lexer_keyword_needs_dollar - Check if keyword uses $.
- *
- * Returns 1 for keywords like LEFT$, MID$, CHR$, etc.
  */
 int lexer_keyword_needs_dollar(KeywordId kw)
 {
@@ -506,12 +645,81 @@ int lexer_keyword_needs_dollar(KeywordId kw)
     kw == KW_MKS_FUNC ||
     kw == KW_INPUT_FUNC ||
     kw == KW_IOCTL_FUNC ||
-    kw == KW_SHELL);
+    kw == KW_SHELL ||
+    kw == KW_BIN_FUNC ||
+    kw == KW_CLOCK_FUNC ||
+    kw == KW_ALARM_FUNC ||
+    kw == KW_DIALECT_FUNC ||
+    kw == KW_MEMMAP_FUNC ||
+    kw == KW_ALIAS_FUNC);
+}
+
+/*
+ * lexer_find_alias_by_name - Given an alias name,
+ * return the original keyword name. NULL if not found.
+ */
+const char *lexer_find_alias_by_name(const char *name,
+ int name_len)
+{
+ int i;
+ char upper[MAX_ALIAS_NAME];
+
+ if (name_len <= 0 || name_len >= MAX_ALIAS_NAME)
+ return NULL;
+
+ for (i = 0; i < name_len; i++)
+ upper[i] = to_upper(name[i]);
+ upper[name_len] = '\0';
+
+ for (i = 0; i < MAX_ALIASES; i++) {
+ if (alias_table[i].active &&
+ alias_table[i].name_len == name_len &&
+ memcmp(alias_table[i].name, upper,
+ (size_t)name_len) == 0) {
+ const char *orig = lexer_keyword_name(
+ alias_table[i].target);
+ int need_d = lexer_keyword_needs_dollar(
+ alias_table[i].target);
+ /* Return "PRINT" or "LEFT$" etc. */
+ if (need_d) {
+ /* Build name with $ in static buffer */
+ static char buf[MAX_ALIAS_NAME + 2];
+ int olen = (int)strlen(orig);
+ if (olen >= MAX_ALIAS_NAME) olen = MAX_ALIAS_NAME-2;
+ memcpy(buf, orig, (size_t)olen);
+ buf[olen] = '$';
+ buf[olen + 1] = '\0';
+ return buf;
+ }
+ return orig;
+ }
+ }
+ return NULL;
+}
+
+/*
+ * lexer_find_alias_for_keyword - Given a keyword ID,
+ * return the first alias name. NULL if not found.
+ */
+const char *lexer_find_alias_for_keyword(KeywordId kw)
+{
+ int i;
+ for (i = 0; i < MAX_ALIASES; i++) {
+ if (alias_table[i].active &&
+ alias_table[i].target == kw) {
+ return alias_table[i].name;
+ }
+ }
+ return NULL;
 }
 
 /*
  * lexer_list_aliases - Print all active aliases.
  */
+static const char *scope_names[] = {
+ "GLOBAL", "PROGRAM", "MODULE", "LANG"
+};
+
 void lexer_list_aliases(void)
 {
  int i, found = 0;
@@ -522,15 +730,223 @@ void lexer_list_aliases(void)
  alias_table[i].target);
  int need_d = lexer_keyword_needs_dollar(
  alias_table[i].target);
- printf(" ALIAS %s%s = \"%s\"\n",
+ printf(" ALIAS %s%s = \"%s\"",
  orig,
  need_d ? "$" : "",
  alias_table[i].name);
+ if (alias_table[i].scope != ASCOPE_GLOBAL) {
+ printf("  [%s",
+ scope_names[alias_table[i].scope]);
+ if (alias_table[i].scope == ASCOPE_MODULE &&
+ alias_table[i].module_name[0]) {
+ printf(": %s",
+ alias_table[i].module_name);
+ }
+ printf("]");
+ }
+ printf("\n");
  found = 1;
  }
  }
  if (!found)
  printf(" (no aliases defined)\n");
+ printf(" %d / %d slots used.\n",
+ alias_count, MAX_ALIASES);
+}
+
+/* --- Operator Alias Functions --- */
+
+int lexer_add_op_alias(const char *name, int name_len,
+ int token_type)
+{
+ int i;
+ char upper[MAX_OP_ALIAS_NAME];
+
+ if (name_len <= 0 || name_len >= MAX_OP_ALIAS_NAME)
+ return -1;
+
+ for (i = 0; i < name_len; i++)
+ upper[i] = to_upper(name[i]);
+ upper[name_len] = '\0';
+
+ /* Update existing */
+ for (i = 0; i < MAX_OP_ALIASES; i++) {
+ if (op_alias_table[i].active &&
+ op_alias_table[i].name_len == name_len &&
+ memcmp(op_alias_table[i].name, upper,
+ (size_t)name_len) == 0) {
+ op_alias_table[i].token_type = token_type;
+ return 0;
+ }
+ }
+
+ /* New slot */
+ for (i = 0; i < MAX_OP_ALIASES; i++) {
+ if (!op_alias_table[i].active) {
+ memcpy(op_alias_table[i].name, upper,
+ (size_t)name_len);
+ op_alias_table[i].name[name_len] = '\0';
+ op_alias_table[i].name_len = name_len;
+ op_alias_table[i].token_type = token_type;
+ op_alias_table[i].active = 1;
+ op_alias_count++;
+ return 0;
+ }
+ }
+ return -1;
+}
+
+void lexer_clear_op_aliases(void)
+{
+ int i;
+ for (i = 0; i < MAX_OP_ALIASES; i++)
+ op_alias_table[i].active = 0;
+ op_alias_count = 0;
+}
+
+void lexer_list_op_aliases(void)
+{
+ int i, found = 0;
+ for (i = 0; i < MAX_OP_ALIASES; i++) {
+ if (op_alias_table[i].active) {
+ const char *tname = "?";
+ switch (op_alias_table[i].token_type) {
+ case TOK_GT_EQ: tname = ">="; break;
+ case TOK_LT_EQ: tname = "<="; break;
+ case TOK_NOT_EQ: tname = "<>"; break;
+ case TOK_EQUALS: tname = "="; break;
+ case TOK_PLUS: tname = "+"; break;
+ case TOK_MINUS: tname = "-"; break;
+ case TOK_STAR: tname = "*"; break;
+ case TOK_SLASH: tname = "/"; break;
+ }
+ printf(" ALIAS \"%s\" = \"%s\"\n",
+ tname,
+ op_alias_table[i].name);
+ found = 1;
+ }
+ }
+ if (!found)
+ printf(" (no operator aliases)\n");
+}
+
+int lexer_op_alias_count(void)
+{
+ return op_alias_count;
+}
+
+/* --- ALIAS file I/O --- */
+
+int lexer_alias_save(const char *filename)
+{
+ FILE *fp;
+ int i, count = 0;
+
+ fp = fopen(filename, "w");
+ if (fp == NULL) return -1;
+
+ fprintf(fp, "# BASIC++ Alias File\n");
+ for (i = 0; i < MAX_ALIASES; i++) {
+ if (alias_table[i].active) {
+ const char *orig =
+ lexer_keyword_name(alias_table[i].target);
+ int need_d = lexer_keyword_needs_dollar(
+ alias_table[i].target);
+ fprintf(fp, "%s%s = %s\n",
+ orig,
+ need_d ? "$" : "",
+ alias_table[i].name);
+ count++;
+ }
+ }
+ fclose(fp);
+ return count;
+}
+
+int lexer_alias_load(const char *filename)
+{
+ FILE *fp;
+ char line[256];
+ int count = 0;
+
+ fp = fopen(filename, "r");
+ if (fp == NULL) return -1;
+
+ while (fgets(line, (int)sizeof(line), fp) != NULL) {
+ char kw_name[64], alias_name[64];
+ int ki, kw_len;
+ char *eq;
+ KeywordId found_kw = KW_COUNT;
+
+ /* Skip comments and blanks */
+ if (line[0] == '#' || line[0] == '\'' ||
+ line[0] == '\n' || line[0] == '\r')
+ continue;
+
+ /* Parse: KEYWORD = ALIASNAME */
+ eq = strchr(line, '=');
+ if (eq == NULL) continue;
+
+ /* Extract keyword (left of =) */
+ kw_len = 0;
+ {
+ char *p = line;
+ while (p < eq && (*p == ' ' || *p == '\t')) p++;
+ while (p < eq && kw_len < 63 &&
+ *p != ' ' && *p != '\t' && *p != '=') {
+ kw_name[kw_len++] = to_upper(*p);
+ p++;
+ }
+ }
+ kw_name[kw_len] = '\0';
+
+ /* Strip trailing $ from keyword name for lookup */
+ {
+ int lookup_len = kw_len;
+ if (lookup_len > 0 && kw_name[lookup_len-1] == '$')
+ lookup_len--;
+ for (ki = 0; keyword_table[ki].name != NULL; ki++) {
+ int tlen = (int)strlen(keyword_table[ki].name);
+ if (tlen == lookup_len) {
+ int j, m = 1;
+ for (j = 0; j < tlen; j++) {
+ if (to_upper(keyword_table[ki].name[j]) !=
+ kw_name[j]) {
+ m = 0; break;
+ }
+ }
+ if (m) {
+ found_kw = keyword_table[ki].id;
+ break;
+ }
+ }
+ }
+ }
+
+ if (found_kw == KW_COUNT) continue;
+
+ /* Extract alias name (right of =) */
+ {
+ int alen = 0;
+ char *p = eq + 1;
+ while (*p == ' ' || *p == '\t') p++;
+ while (alen < 63 && *p && *p != '\n' &&
+ *p != '\r' && *p != ' ' && *p != '\t') {
+ alias_name[alen++] = *p;
+ p++;
+ }
+ alias_name[alen] = '\0';
+
+ if (alen > 0 &&
+ lexer_add_alias(alias_name, alen,
+ found_kw) == 0) {
+ count++;
+ }
+ }
+ }
+
+ fclose(fp);
+ return count;
 }
 
 /*
@@ -860,7 +1276,10 @@ void lexer_next(Lexer *lex)
  kw == KW_MKD_FUNC ||
  kw == KW_MKI_FUNC ||
  kw == KW_MKS_FUNC ||
- kw == KW_SHELL) {
+ kw == KW_SHELL ||
+ kw == KW_BIN_FUNC ||
+ kw == KW_CLOCK_FUNC ||
+ kw == KW_ALARM_FUNC) {
  lex->pos++; /* consume '$' */
  }
  /* INPUT$ -> KW_INPUT_FUNC */
@@ -879,6 +1298,24 @@ void lexer_next(Lexer *lex)
  if (kw == KW_VARPTR) {
  lex->pos++;
  kw = KW_VARPTR_STR;
+ lex->current.value.keyword = kw;
+ }
+ /* DIALECT$ -> KW_DIALECT_FUNC */
+ if (kw == KW_DIALECT) {
+ lex->pos++;
+ kw = KW_DIALECT_FUNC;
+ lex->current.value.keyword = kw;
+ }
+ /* MEMMAP$ -> KW_MEMMAP_FUNC */
+ if (kw == KW_MEMMAP) {
+ lex->pos++;
+ kw = KW_MEMMAP_FUNC;
+ lex->current.value.keyword = kw;
+ }
+ /* ALIAS$ -> KW_ALIAS_FUNC */
+ if (kw == KW_ALIAS) {
+ lex->pos++;
+ kw = KW_ALIAS_FUNC;
  lex->current.value.keyword = kw;
  }
  }
