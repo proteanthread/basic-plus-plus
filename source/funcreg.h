@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - funcreg.h
- * =====================================================================
+ * ---
  *
  * Function Registry System interface.
  *
@@ -106,7 +106,7 @@
  * - Registry is a static array (no dynamic allocation)
  * - All metadata is constant-compatible
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_FUNCREG_H
@@ -115,9 +115,7 @@
 #include "value.h"
 #include "lexer.h"
 
-/* =====================================================================
- * Function Categories
- * =====================================================================
+/* --- Function Categories ---
  * Organizes functions into logical groups for introspection,
  * documentation, and capability checking.
  *
@@ -137,9 +135,7 @@ typedef enum FuncCategory {
  FCAT_USER = 5
 } FuncCategory;
 
-/* =====================================================================
- * Function Return Types
- * =====================================================================
+/* --- Function Return Types ---
  * Declares the expected return type for type-checking and
  * optimization. FRET_ANY means the return type depends on inputs.
  */
@@ -150,9 +146,7 @@ typedef enum FuncReturnType {
  FRET_ANY = 3 /* Return type varies with input */
 } FuncReturnType;
 
-/* =====================================================================
- * Function Safety Classification
- * =====================================================================
+/* --- Function Safety Classification ---
  * Used by the module system and security layer to determine what
  * capabilities a function requires.
  *
@@ -172,9 +166,7 @@ typedef enum FuncSafety {
  FSAFE_SYSTEM = 3
 } FuncSafety;
 
-/* =====================================================================
- * Function Handler Signature
- * =====================================================================
+/* --- Function Handler Signature ---
  * All registered functions use this uniform signature:
  *
  * args - array of pre-evaluated BValue arguments
@@ -192,9 +184,7 @@ typedef enum FuncSafety {
  */
 typedef BValue (*FuncHandler)(BValue *args, int argc, void *rt);
 
-/* =====================================================================
- * Function Entry
- * =====================================================================
+/* --- Function Entry ---
  * A single entry in the function registry. Contains all metadata
  * needed for dispatch, validation, introspection, and documentation.
  *
@@ -222,9 +212,7 @@ typedef struct FunctionEntry {
  const char *help_text; /* one-line description for HELP */
 } FunctionEntry;
 
-/* =====================================================================
- * Registry Limits
- * =====================================================================
+/* --- Registry Limits ---
  * Maximum number of registered functions. Built-in functions use
  * approximately 20 slots. The remaining slots are available for
  * module-registered and user-defined functions.
@@ -233,9 +221,7 @@ typedef struct FunctionEntry {
 #define MAX_FUNCTIONS 128
 #endif
 
-/* =====================================================================
- * Registry Functions
- * =====================================================================
+/* --- Registry Functions ---
  */
 
 /*

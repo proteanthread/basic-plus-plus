@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - funcreg.c
- * =====================================================================
+ * ---
  *
  * Function Registry System implementation.
  *
@@ -34,16 +34,14 @@
  * funcreg_register() with a filled FunctionEntry struct.
  * See funcreg.h for detailed examples.
  *
- * =====================================================================
+ * ---
  */
 
 #include <string.h>
 #include <ctype.h>
 #include "funcreg.h"
 
-/* =====================================================================
- * Registry Table
- * =====================================================================
+/* --- Registry Table ---
  * Static array of registered functions. The table is pre-allocated
  * at compile time to avoid dynamic memory allocation.
  *
@@ -52,7 +50,7 @@
 static FunctionEntry registry[MAX_FUNCTIONS];
 static int reg_count = 0;
 
-/* =====================================================================
+/* ---
  * funcreg_init - Initialize the function registry.
  *
  * Clears all entries. Called once during boot, before builtins
@@ -64,7 +62,7 @@ void funcreg_init(void)
  reg_count = 0;
 }
 
-/* =====================================================================
+/* ---
  * funcreg_register - Register a function.
  *
  * Copies the entry into the next available slot. Returns 0 on
@@ -107,7 +105,7 @@ int funcreg_register(const FunctionEntry *entry)
  return 0;
 }
 
-/* =====================================================================
+/* ---
  * funcreg_find_by_keyword - Look up by keyword ID.
  *
  * Primary lookup path for the parser. Returns NULL if not found.
@@ -123,7 +121,7 @@ const FunctionEntry *funcreg_find_by_keyword(KeywordId kw)
  return NULL;
 }
 
-/* =====================================================================
+/* ---
  * funcreg_find_by_name - Look up by name string.
  *
  * Case-insensitive comparison (BASIC convention: "abs" == "ABS").
@@ -156,7 +154,7 @@ const FunctionEntry *funcreg_find_by_name(const char *name)
  return NULL;
 }
 
-/* =====================================================================
+/* ---
  * funcreg_override - Replace handler for a registered function.
  *
  * Only functions marked overridable=1 can be overridden. Core
@@ -182,7 +180,7 @@ int funcreg_override(KeywordId kw, FuncHandler handler)
  return -1; /* Not found */
 }
 
-/* =====================================================================
+/* ---
  * funcreg_count - Return the number of registered functions.
  */
 int funcreg_count(void)
@@ -190,7 +188,7 @@ int funcreg_count(void)
  return reg_count;
 }
 
-/* =====================================================================
+/* ---
  * funcreg_get - Get a function entry by index.
  *
  * Returns NULL if index is out of range.

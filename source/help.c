@@ -1,14 +1,14 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - help.c
- * =====================================================================
+ * ---
  *
  * Help & introspection system.
  *
  * Makes BASIC++ self-describing: every command, function, and
  * system setting is documented within the interpreter itself.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -20,9 +20,7 @@
 #include "security.h"
 #include "module.h"
 
-/* =====================================================================
- * Command Help Database
- * =====================================================================
+/* --- Command Help Database ---
  * Each entry maps a keyword to a short description and usage example.
  * The table is searched linearly - fine for interactive use.
  */
@@ -285,9 +283,7 @@ static const char *sec_names[] = {
  "OPEN", "STANDARD", "RESTRICTED"
 };
 
-/* =====================================================================
- * help_show - Display command help
- * =====================================================================
+/* --- help_show - Display command help ---
  */
 void help_show(const char *topic)
 {
@@ -415,9 +411,7 @@ void help_show(const char *topic)
  }
 }
 
-/* =====================================================================
- * help_info - Display system information
- * =====================================================================
+/* --- help_info - Display system information ---
  */
 void help_info(RuntimeState *rt)
 {
@@ -445,9 +439,7 @@ void help_info(RuntimeState *rt)
  printf(" Standard: ANSI C89/C90\n");
 }
 
-/* =====================================================================
- * help_catalog - List all registered functions
- * =====================================================================
+/* --- help_catalog - List all registered functions ---
  */
 void help_catalog(void)
 {

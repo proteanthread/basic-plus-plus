@@ -1,14 +1,17 @@
 /*
- * dialect_trs2.c -- TRS-80 Level II BASIC
+ * dialect_trs2.c -- TRS-80 Level II BASIC (Microsoft, 1978)
  *
- * Microsoft, 1978. 12KB ROM upgrade for the TRS-80 Model I.
- * Full floating point, string arrays, DEF FN, WHILE/WEND.
- * Also used on Model III and Model 4.
+ * 12KB ROM upgrade. Full Microsoft BASIC with float, DEF FN,
+ * string arrays, WHILE/WEND, ON ERROR. Also Model III/4.
  *
- * TODO: SET/RESET/POINT block graphics
- * TODO: CLOAD/CSAVE cassette commands
- * TODO: type suffixes (! single, # double)
- * TODO: VARPTR()
+ * The big gap here is type suffixes: Level II distinguished A!
+ * (single precision) from A# (double). To support this properly
+ * the lexer would need to strip the suffix and tag the variable
+ * entry in the symbol table with a precision field. See lexer.c
+ * near token_read_identifier().
+ *
+ * SET/RESET/POINT should share the TRS1 implementation once
+ * that gets written. CLOAD/CSAVE can just alias LOAD/SAVE.
  */
 
 #include "dialect.h"

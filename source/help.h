@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - help.h
- * =====================================================================
+ * ---
  *
  * Help & introspection system.
  *
@@ -9,7 +9,7 @@
  * The interpreter can explain its own commands, functions, and
  * system state without external documentation.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_HELP_H

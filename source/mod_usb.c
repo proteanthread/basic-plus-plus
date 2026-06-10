@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - mod_usb.c
- * =====================================================================
+ * ---
  *
  * USB Device Module.
  *
@@ -32,7 +32,7 @@
  * All USB access is gated by the security system.
  * In SEC_RESTRICTED mode, the module cannot activate.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -42,9 +42,7 @@
 #include "module.h"
 #include "vdev.h"
 
-/* =====================================================================
- * Platform-Specific Includes
- * =====================================================================
+/* --- Platform-Specific Includes ---
  */
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -69,9 +67,7 @@
 /* #include <linux/hidraw.h> */ /* uncomment when building on Linux */
 #endif
 
-/* =====================================================================
- * USB Device State
- * =====================================================================
+/* --- USB Device State ---
  * Each USB VDev instance maintains its own state via user_data.
  */
 
@@ -101,9 +97,7 @@ static USBDeviceState usb_state;
 static USBDeviceState hid_state;
 static USBDeviceState usbser_state;
 
-/* =====================================================================
- * USB: General USB Device
- * =====================================================================
+/* --- USB: General USB Device ---
  * Provides device enumeration and general USB access.
  */
 
@@ -288,9 +282,7 @@ static const char *usb_info(VDev *d, const char *key)
  return NULL;
 }
 
-/* =====================================================================
- * HID: USB Human Interface Device
- * =====================================================================
+/* --- HID: USB Human Interface Device ---
  * Reads HID reports from joysticks, gamepads, keyboards, etc.
  */
 
@@ -485,9 +477,7 @@ static const char *hid_info(VDev *d, const char *key)
  return NULL;
 }
 
-/* =====================================================================
- * USBSER: USB-to-Serial Adapter
- * =====================================================================
+/* --- USBSER: USB-to-Serial Adapter ---
  * Provides access to USB serial devices (FTDI, CH340, CP2102, etc.)
  * as if they were traditional COM ports.
  */
@@ -744,9 +734,7 @@ static const char *usbser_info(VDev *d, const char *key)
  return NULL;
 }
 
-/* =====================================================================
- * Module Init / Cleanup
- * =====================================================================
+/* --- Module Init / Cleanup ---
  */
 
 static int usb_module_init(void *rt)

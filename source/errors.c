@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - errors.c
- * =====================================================================
+ * ---
  *
  * Implementation of the classic Tiny BASIC error handling model.
  *
@@ -17,15 +17,13 @@
  * 2. Only one statement executes at a time.
  * 3. Error recovery always means "return to prompt."
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
 #include "errors.h"
 
-/* =====================================================================
- * Module State
- * =====================================================================
+/* --- Module State ---
  * current_error: The currently active error code, or ERR_NONE if
  * no error is pending. This is set by error_raise() and cleared
  * by error_clear().

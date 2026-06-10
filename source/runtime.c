@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - runtime.c
- * =====================================================================
+ * ---
  *
  * Runtime state management implementation.
  *
@@ -24,7 +24,7 @@
  * No <time.h> dependency - the seed starts at 1 and advances
  * with each call.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -33,9 +33,7 @@
 #include "lexer.h"
 #include "errors.h"
 
-/* =====================================================================
- * Runtime Initialization
- * =====================================================================
+/* --- Runtime Initialization ---
  */
 
 /*
@@ -241,9 +239,7 @@ void runtime_reset(RuntimeState *rt)
  rt->label_count = 0;
 }
 
-/* =====================================================================
- * Stack Operations
- * =====================================================================
+/* --- Stack Operations ---
  */
 
 /*
@@ -297,9 +293,7 @@ int runtime_pop(RuntimeState *rt, FrameType expected, StackFrame *out)
  return 0;
 }
 
-/* =====================================================================
- * Variable Access
- * =====================================================================
+/* --- Variable Access ---
  */
 
 /*
@@ -341,9 +335,7 @@ void runtime_set_var_bval(RuntimeState *rt, char name, BValue value)
  rt->variables[index] = value;
 }
 
-/* =====================================================================
- * Array Access
- * =====================================================================
+/* --- Array Access ---
  */
 
 /*
@@ -376,9 +368,7 @@ void runtime_set_array(RuntimeState *rt, long index, long value)
  rt->array_base[index] = value;
 }
 
-/* =====================================================================
- * Random Number Generator
- * =====================================================================
+/* --- Random Number Generator ---
  * Uses a linear congruential generator (LCG) with parameters from
  * the Numerical Recipes family. These parameters are chosen for:
  *
@@ -423,9 +413,7 @@ long runtime_size(RuntimeState *rt)
  return rt->memory->variable.size;
 }
 
-/* =====================================================================
- * Forward Scan - Find Matching Loop End
- * =====================================================================
+/* --- Forward Scan - Find Matching Loop End ---
  * When a WHILE condition is false or a DO condition fails the
  * pre-check, we need to skip forward to the matching WEND or LOOP.
  * This requires scanning through program lines, tokenizing each
@@ -482,9 +470,7 @@ int runtime_find_matching(RuntimeState *rt, int start_index,
  return -1;
 }
 
-/* =====================================================================
- * Named Variable Access
- * =====================================================================
+/* --- Named Variable Access ---
  * Named variables use a linear-search table. At MAX_NAMED_VARS=256,
  * linear search is efficient enough. Variables are matched by a
  * case-insensitive comparison of up to MAX_VAR_NAME_LEN characters.
@@ -592,9 +578,7 @@ int runtime_set_named_var_bval(RuntimeState *rt, const char *name,
  return 0;
 }
 
-/* =====================================================================
- * String Variable Access
- * =====================================================================
+/* --- String Variable Access ---
  */
 
 BValue runtime_get_string_var(RuntimeState *rt, char name)
@@ -613,9 +597,7 @@ void runtime_set_string_var(RuntimeState *rt, char name, BValue value)
  rt->string_vars[index] = value;
 }
 
-/* =====================================================================
- * DIM Array Support
- * =====================================================================
+/* --- DIM Array Support ---
  */
 
 DimArray *runtime_find_dim(RuntimeState *rt, const char *name,
@@ -767,9 +749,7 @@ void runtime_set_dim(RuntimeState *rt, const char *name, int name_len,
  arr->elements[offset] = val;
 }
 
-/* =====================================================================
- * DATA Pool (, extended for BValue)
- * =====================================================================
+/* --- DATA Pool (, extended for BValue) ---
  */
 
 void runtime_collect_data(RuntimeState *rt)
@@ -865,9 +845,7 @@ void runtime_restore_data(RuntimeState *rt)
  rt->data_ptr = 0;
 }
 
-/* =====================================================================
- * User-Defined Functions (DEF FN)
- * =====================================================================
+/* --- User-Defined Functions (DEF FN) ---
  *
  * IMPLEMENTATION NOTES:
  *
@@ -972,9 +950,7 @@ UserFunction *runtime_find_fn(RuntimeState *rt, const char *name,
  return NULL;
 }
 
-/* =====================================================================
- * Breakpoint Management
- * =====================================================================
+/* --- Breakpoint Management ---
  */
 
 /*
@@ -1069,9 +1045,7 @@ void runtime_breakpoint_list(RuntimeState *rt)
  printf("\n");
 }
 
-/* =====================================================================
- * Label Collection and Lookup
- * =====================================================================
+/* --- Label Collection and Lookup ---
  * Scan all program lines for labels. A label is an identifier
  * followed by a colon at the start of a line (after optional
  * line number). Labels are stored in a table for GOTO/GOSUB
@@ -1200,9 +1174,7 @@ int runtime_find_label(RuntimeState *rt, const char *name,
  return -1;
 }
 
-/* =====================================================================
- * SUB/FUNCTION Lookup
- * =====================================================================
+/* --- SUB/FUNCTION Lookup ---
  */
 
 /*

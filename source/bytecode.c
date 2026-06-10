@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - bytecode.c
- * =====================================================================
+ * ---
  *
  * Bytecode format (.BPP) serializer/deserializer
  *
@@ -18,7 +18,7 @@
  * manual byte packing to avoid struct alignment issues across
  * compilers. All multi-byte values are little-endian.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -27,9 +27,7 @@
 #include "dialect.h"
 #include "config.h"
 
-/* =====================================================================
- * Little-endian helpers
- * =====================================================================
+/* --- Little-endian helpers ---
  * Manual byte packing avoids endianness and alignment issues.
  */
 static void write_le16(unsigned char *buf, unsigned int val)
@@ -44,9 +42,7 @@ static unsigned int read_le16(const unsigned char *buf)
  ((unsigned int)buf[1] << 8);
 }
 
-/* =====================================================================
- * bpp_save - Serialize program store to .bpp file.
- * =====================================================================
+/* --- bpp_save - Serialize program store to .bpp file. ---
  */
 int bpp_save(const ProgramStore *prog, const char *filename)
 {
@@ -127,9 +123,7 @@ int bpp_save(const ProgramStore *prog, const char *filename)
  return 0;
 }
 
-/* =====================================================================
- * bpp_load - Deserialize .bpp file into program store.
- * =====================================================================
+/* --- bpp_load - Deserialize .bpp file into program store. ---
  */
 int bpp_load(ProgramStore *prog, const char *filename)
 {

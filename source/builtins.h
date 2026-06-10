@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - builtins.h
- * =====================================================================
+ * ---
  *
  * Built-in function handler declarations.
  *
@@ -39,7 +39,7 @@
  * builtins_register().
  * 4. If needed, add a keyword to lexer.h/c and detok.c.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_BUILTINS_H
@@ -47,9 +47,7 @@
 
 #include "value.h"
 
-/* =====================================================================
- * Registration Function
- * =====================================================================
+/* --- Registration Function ---
  */
 
 /*
@@ -63,9 +61,7 @@
  */
 void builtins_register(void);
 
-/* =====================================================================
- * Math Function Handlers (FCAT_MATH)
- * =====================================================================
+/* --- Math Function Handlers (FCAT_MATH) ---
  * These are pure functions - no side effects, deterministic.
  * Safety: FSAFE_PURE
  */
@@ -80,9 +76,7 @@ BValue builtin_atn(BValue *args, int argc, void *rt);
 BValue builtin_log(BValue *args, int argc, void *rt);
 BValue builtin_exp(BValue *args, int argc, void *rt);
 
-/* =====================================================================
- * String Function Handlers (FCAT_STRING)
- * =====================================================================
+/* --- String Function Handlers (FCAT_STRING) ---
  * Pure functions except CHR$ and STR$ which allocate from the
  * string pool (accessed via rt).
  * Safety: FSAFE_PURE (LEN, ASC, VAL) or FSAFE_STATE (CHR$, STR$)
@@ -96,18 +90,14 @@ BValue builtin_left(BValue *args, int argc, void *rt);
 BValue builtin_right(BValue *args, int argc, void *rt);
 BValue builtin_mid(BValue *args, int argc, void *rt);
 
-/* =====================================================================
- * Utility Function Handlers (FCAT_UTIL)
- * =====================================================================
+/* --- Utility Function Handlers (FCAT_UTIL) ---
  * RND modifies the RNG seed (FSAFE_STATE).
  * SIZE is pure - reads available memory.
  */
 BValue builtin_rnd(BValue *args, int argc, void *rt);
 BValue builtin_size(BValue *args, int argc, void *rt);
 
-/* =====================================================================
- * I/O Function Handlers
- * =====================================================================
+/* --- I/O Function Handlers ---
  * EOF checks file channel end-of-file status.
  */
 BValue builtin_eof(BValue *args, int argc, void *rt);

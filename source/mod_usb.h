@@ -1,14 +1,14 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - mod_usb.h
- * =====================================================================
+ * ---
  *
  * USB Device Module header.
  *
  * Registers USB HID, serial, and storage device VDevs.
  * Activated via MODULE "USB" from BASIC.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_MOD_USB_H

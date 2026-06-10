@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Compiler - codegen.c
- * =====================================================================
+ * ---
  *
  * C89 code generator.
  *
@@ -20,7 +20,7 @@
  *
  * The output compiles with any C89 compiler and runs standalone.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -32,9 +32,7 @@
 #include "errors.h"
 #include "lexer.h"
 
-/* =====================================================================
- * Internal helpers
- * =====================================================================
+/* --- Internal helpers ---
  */
 
 /*
@@ -1009,9 +1007,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  }
 }
 
-/* =====================================================================
- * GOSUB/RETURN resolution
- * =====================================================================
+/* --- GOSUB/RETURN resolution ---
  * We need a two-pass approach:
  * Pass 1: Find all GOSUB sites and assign return IDs
  * Pass 2: Emit code with return dispatch in RETURN statements
@@ -1071,9 +1067,7 @@ static int find_gosub_sites(AstLine *lines, int line_count,
  return id;
 }
 
-/* =====================================================================
- * FOR/NEXT matching
- * =====================================================================
+/* --- FOR/NEXT matching ---
  */
 typedef struct ForSite {
  int for_line; /* line number of FOR statement */
@@ -1126,9 +1120,7 @@ static ForSite *find_for_for_next(ForSite *sites, int count,
  return best;
 }
 
-/* =====================================================================
- * Main emit function
- * =====================================================================
+/* --- Main emit function ---
  */
 
 /*

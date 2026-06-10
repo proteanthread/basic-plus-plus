@@ -1,43 +1,40 @@
 /*
- * =====================================================================
- * BASIC++ Interpreter - runtime.h
- * =====================================================================
+ * runtime.h -- interpreter execution state
  *
- * Runtime execution state and stack management interface.
+ * All mutable state during a program run lives in RuntimeState:
+ * variables, stack frames, DATA pool, user functions, arrays,
+ * string pool, virtual devices, debugger state, etc.
  *
- * PURPOSE:
- * Manages the interpreter's execution state during program runs.
- * This includes:
- * - Current execution position (which line, which statement)
- * - Variable storage (A-Z and @() array)
- * - GOSUB return stack (and future FOR/loop frames)
- * - Run/stop state
- * - PRINT format state
+ * The runtime is separated from the parser so execution can be
+ * paused, inspected, or reset without touching parse state.
+ * The stack is bounded (MAX_STACK_DEPTH) and type-checked --
+ * RETURN verifies it's popping a GOSUB, not a FOR.
  *
- * WHY THIS EXISTS:
- * The runtime state is separated from the parser and executor
- * so that:
- * 1. The interpreter state lives on the heap, not the C stack.
- * 2. Execution can be paused, inspected, or reset cleanly.
- * 3. The stack is bounded and checked (no C stack overflow).
- * 4. Future phases can add loop frames, debug state, etc.
- * without modifying the parser or executor.
+ * Memory pools:
+ *   Pool sizes come from config.h (MAX_VARIABLES, MAX_DIM_ARRAYS,
+ *   MAX_ARRAY_ELEMENTS, etc). The string pool (strpool) grows
+ *   dynamically. DIM array elements are allocated from a flat
+ *   pool (dim_elements[]). If a dialect needs more room, bump
+ *   the config.h limits and rebuild -- everything adjusts.
  *
- * STACK FRAME DESIGN:
- * All flow-control constructs (GOSUB, FOR, WHILE, DO) share
- * a unified StackFrame type. The FrameType field distinguishes
- * them. This allows RETURN to check that it's popping a GOSUB
- * frame (not a FOR frame), and NEXT to check for its matching
- * FOR frame.
+ *   For dialects that emulate hardware memory maps (C64, Atari),
+ *   mem_segment[] provides a 64KB virtual address space that
+ *   PEEK/POKE can read and write. See memmap.h for how different
+ *   machines overlay their I/O registers onto this space.
  *
- * HOW TO EXTEND:
- * To add a new loop type:
- * 1. Add a FrameType entry (e.g., FRAME_FOR, FRAME_WHILE).
- * 2. Add the loop-specific fields to the StackFrame union.
- * 3. Use runtime_push() and runtime_pop() for stack management.
- * 4. The stack bounds checking and type validation are automatic.
+ * Self-modifying code:
+ *   Since programs are stored as text lines in ProgramStore,
+ *   a running program can rewrite itself by manipulating the
+ *   program store directly. Build a line as a string, feed it
+ *   to the line editor (the same path that processes typed-in
+ *   numbered lines), and it replaces the existing line. The
+ *   next time execution reaches that line number, the new code
+ *   runs. Watch out for infinite self-modification loops.
  *
- * =====================================================================
+ * Extending the stack:
+ *   To add a new loop type, add a FrameType enum value and a
+ *   new union member in StackFrame. Use runtime_push/pop as
+ *   usual. The type tag ensures mismatched push/pop is caught.
  */
 
 #ifndef BASICPP_RUNTIME_H
@@ -49,9 +46,7 @@
 #include "stringpool.h"
 #include "vdev.h"
 
-/* =====================================================================
- * Stack Frame Types
- * =====================================================================
+/* --- Stack Frame Types ---
  * Each type of flow-control construct that uses the runtime stack
  * gets its own FrameType. The unified frame system ensures that
  * RETURN checks for GOSUB frames, NEXT checks for FOR frames,
@@ -66,9 +61,7 @@ typedef enum FrameType {
  FRAME_EXCEPTION /* WHEN EXCEPTION IN block */
 } FrameType;
 
-/* =====================================================================
- * Stack Frame
- * =====================================================================
+/* --- Stack Frame ---
  * A single entry on the runtime stack. The 'type' field identifies
  * what kind of frame this is. The 'data' union holds type-specific
  * data.
@@ -135,9 +128,7 @@ typedef struct StackFrame {
  } data;
 } StackFrame;
 
-/* =====================================================================
- * Named Variable Entry
- * =====================================================================
+/* --- Named Variable Entry ---
  * Stores a single named variable (multi-character identifier).
  * Used when the active dialect supports extended variable names.
  */
@@ -146,9 +137,7 @@ typedef struct NamedVariable {
  BValue value;
 } NamedVariable;
 
-/* =====================================================================
- * DIM Array Entry
- * =====================================================================
+/* --- DIM Array Entry ---
  * Stores a single DIMmed array. Supports 1D and 2D arrays.
  * Elements are stored in row-major order in a flat BValue array.
  */
@@ -160,9 +149,7 @@ typedef struct DimArray {
  int total; /* total number of elements */
 } DimArray;
 
-/* =====================================================================
- * User-Defined Type (TYPE...END TYPE)
- * =====================================================================
+/* --- User-Defined Type (TYPE...END TYPE) ---
  * Each field has a name and a type flag (numeric or string).
  * Typed variables store field values as BValue arrays.
  */
@@ -183,9 +170,7 @@ typedef struct TypedVar {
  BValue fields[MAX_TYPE_FIELDS]; /* field values */
 } TypedVar;
 
-/* =====================================================================
- * SUB/FUNCTION Definition (QBasic compatibility)
- * =====================================================================
+/* --- SUB/FUNCTION Definition (QBasic compatibility) ---
  * Stores a subprogram or function definition.
  * name - subprogram/function name
  * body_index - program store index of first line of body
@@ -211,9 +196,7 @@ typedef struct SubDef {
  int is_function; /* 0=SUB, 1=FUNCTION */
 } SubDef;
 
-/* =====================================================================
- * Runtime State
- * =====================================================================
+/* --- Runtime State ---
  * Complete interpreter execution state. All mutable state during
  * program execution is contained here.
  *
@@ -228,9 +211,7 @@ typedef struct SubDef {
  * variables - integer values for A-Z (index 0=A, 25=Z)
  * array_base - pointer to @() array in variable pool
  * array_size - number of available @() elements
-/* =====================================================================
- * User-Defined Function Entry
- * =====================================================================
+/* --- User-Defined Function Entry ---
  * Stores a DEF FN definition. Each entry holds:
  * name - function name (single letter A-Z, or extended)
  * name_len - length of function name
@@ -261,9 +242,7 @@ typedef struct UserFunction {
  int body_len;
 } UserFunction;
 
-/* =====================================================================
- * Runtime State (main interpreter state)
- * =====================================================================
+/* --- Runtime State (main interpreter state) ---
  * Contains all mutable interpreter state:
  * program - pointer to the program store
  * memory - pointer to the memory system
@@ -417,9 +396,7 @@ typedef struct RuntimeState {
  int fkey_display; /* KEY ON=1, OFF=0 */
 } RuntimeState;
 
-/* =====================================================================
- * Runtime Functions
- * =====================================================================
+/* --- Runtime Functions ---
  */
 
 /*
@@ -569,17 +546,13 @@ int runtime_set_named_var(RuntimeState *rt, const char *name, int len,
 int runtime_set_named_var_bval(RuntimeState *rt, const char *name,
  int len, BValue value);
 
-/* =====================================================================
- * String Variables
- * =====================================================================
+/* --- String Variables ---
  */
 
 BValue runtime_get_string_var(RuntimeState *rt, char name);
 void runtime_set_string_var(RuntimeState *rt, char name, BValue value);
 
-/* =====================================================================
- * DIM Arrays
- * =====================================================================
+/* --- DIM Arrays ---
  */
 
 /*
@@ -609,9 +582,7 @@ void runtime_set_dim(RuntimeState *rt, const char *name, int name_len,
 DimArray *runtime_find_dim(RuntimeState *rt, const char *name,
  int name_len);
 
-/* =====================================================================
- * DATA Pool (, extended in for BValue)
- * =====================================================================
+/* --- DATA Pool (, extended in for BValue) ---
  */
 
 void runtime_collect_data(RuntimeState *rt);
@@ -619,9 +590,7 @@ BValue runtime_read_data_bval(RuntimeState *rt, int line_num);
 long runtime_read_data(RuntimeState *rt, int line_num);
 void runtime_restore_data(RuntimeState *rt);
 
-/* =====================================================================
- * User-Defined Functions (DEF FN)
- * =====================================================================
+/* --- User-Defined Functions (DEF FN) ---
  *
  * DEF FN stores a named function with parameters and a body
  * expression. When invoked via FN, the parameters are bound
@@ -663,9 +632,7 @@ int runtime_def_fn(RuntimeState *rt, const char *name, int name_len,
 UserFunction *runtime_find_fn(RuntimeState *rt, const char *name,
  int name_len);
 
-/* =====================================================================
- * Label Collection and Lookup
- * =====================================================================
+/* --- Label Collection and Lookup ---
  */
 
 /*
@@ -688,9 +655,7 @@ void runtime_collect_labels(RuntimeState *rt);
  */
 int runtime_find_label(RuntimeState *rt, const char *name, int len);
 
-/* =====================================================================
- * SUB/FUNCTION Lookup
- * =====================================================================
+/* --- SUB/FUNCTION Lookup ---
  */
 
 /*

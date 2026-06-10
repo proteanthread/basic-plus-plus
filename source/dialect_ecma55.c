@@ -1,13 +1,17 @@
 /*
- * dialect_ecma55.c -- ECMA-55 Minimal BASIC (1978)
+ * dialect_ecma55.c -- ECMA-55 Minimal BASIC (ISO 6373:1984)
  *
- * International standard (ISO 6373:1984). Defines the portable
- * subset that all conforming implementations must support.
- * LET is mandatory. No WHILE/WEND, no CLS, no ON ERROR.
- * Max line 99999 (5 digits). 14-column print zones.
+ * International standard. The portable subset: if it runs under
+ * EC55 strict mode, it'll run on any conforming implementation.
+ * LET is mandatory, no WHILE, no CLS, no ON ERROR.
  *
- * TODO: OPTION BASE 0|1
- * TODO: strict numeric precision (6 significant digits minimum)
+ * Missing: OPTION BASE 0|1 (currently always 0-based). To add
+ * it, the DIM handler in parser.c would need to store the base
+ * in the array header and offset all index calculations. Also
+ * missing: strict numeric precision rules (at least 6 significant
+ * digits). We already use double, so this is mostly satisfied,
+ * but ECMA-55 has specific rounding behavior in PRINT that we
+ * don't enforce.
  */
 
 #include "dialect.h"
@@ -16,7 +20,7 @@ static const DialectConfig ecma55_config = {
     DIALECT_ECMA55,
     "ECMA-55 Minimal BASIC",
     ':', 1,
-    0,                      /* LET is mandatory */
+    0,                      /* LET mandatory */
     1, 1, 0, 0, 1, 1, 0,
     99999, 0, 1, 0, 0, 1, 0, 1, 1, 1,
     "READY", 14, 0, 0, 0,

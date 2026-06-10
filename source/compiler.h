@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Compiler - compiler.h
- * =====================================================================
+ * ---
  *
  * Compiler driver interface.
  *
@@ -10,7 +10,7 @@
  * lines, builds ASTs, and invokes the code generator to produce
  * a C89 source file.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_COMPILER_H

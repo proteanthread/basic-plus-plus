@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - security.h
- * =====================================================================
+ * ---
  *
  * Security system interface.
  *
@@ -19,15 +19,13 @@
  * Each sensitive operation has a SecOperation code. The permission
  * matrix maps (SecLevel x SecOperation) -> allowed/denied.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_SECURITY_H
 #define BASICPP_SECURITY_H
 
-/* =====================================================================
- * Security Levels
- * =====================================================================
+/* --- Security Levels ---
  */
 typedef enum SecLevel {
  SEC_OPEN = 0, /* no restrictions */
@@ -36,9 +34,7 @@ typedef enum SecLevel {
  SEC_COUNT = 3 /* sentinel */
 } SecLevel;
 
-/* =====================================================================
- * Securable Operations
- * =====================================================================
+/* --- Securable Operations ---
  */
 typedef enum SecOperation {
  SECOP_FILE_READ = 0, /* LOAD, BLOAD, MERGE, INPUT# */
@@ -50,9 +46,7 @@ typedef enum SecOperation {
  SECOP_COUNT = 6 /* sentinel */
 } SecOperation;
 
-/* =====================================================================
- * Security API
- * =====================================================================
+/* --- Security API ---
  */
 
 /*

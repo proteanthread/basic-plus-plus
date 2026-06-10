@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - vdev.c
- * =====================================================================
+ * ---
  *
  * Virtual Device System implementation (VDev2).
  *
@@ -21,7 +21,7 @@
  * - Class name lookup
  * - Built-in devices now have class/caps metadata
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -38,9 +38,7 @@
 #include <conio.h>
 #endif
 
-/* =====================================================================
- * Device Table
- * =====================================================================
+/* --- Device Table ---
  * Static table of all registered devices. Slots 0-2 are reserved
  * for built-in devices. Slots 3-63 are available for user devices.
  *
@@ -51,9 +49,7 @@
 static VDev device_table[VDEV_MAX];
 static int device_used = 0;
 
-/* =====================================================================
- * Console Device (CON:) - stdout + stdin
- * =====================================================================
+/* --- Console Device (CON:) - stdout + stdin ---
  */
 
 static int con_putc(VDev *d, int ch)
@@ -101,9 +97,7 @@ static int con_gets(VDev *d, char *buf, int max)
  return 0;
 }
 
-/* =====================================================================
- * Error Device (ERR:) - stderr
- * =====================================================================
+/* --- Error Device (ERR:) - stderr ---
  */
 
 static int err_putc(VDev *d, int ch)
@@ -125,9 +119,7 @@ static int err_flush(VDev *d)
  return 0;
 }
 
-/* =====================================================================
- * File Device (FILE:) - fopen/fclose/fprintf/fgets
- * =====================================================================
+/* --- File Device (FILE:) - fopen/fclose/fprintf/fgets ---
  */
 
 static int file_open(VDev *d, const char *path, const char *mode)
@@ -204,9 +196,7 @@ static long file_seek(VDev *d, long offset, int whence)
  return ftell((FILE *)d->user_data);
 }
 
-/* =====================================================================
- * Device System Functions
- * =====================================================================
+/* --- Device System Functions ---
  */
 
 void vdev_init(void)
@@ -299,9 +289,7 @@ int vdev_register(VDev *dev)
  return -1; /* table full */
 }
 
-/* =====================================================================
- * Device Discovery
- * =====================================================================
+/* --- Device Discovery ---
  */
 
 /*
@@ -415,9 +403,7 @@ void vdev_list_all(void)
  }
 }
 
-/* =====================================================================
- * Convenience I/O Functions (Original)
- * =====================================================================
+/* --- Convenience I/O Functions (Original) ---
  */
 
 int vdev_putc(VDev *d, int ch)
@@ -470,9 +456,7 @@ int vdev_cls(VDev *d)
  return d->dev_cls(d);
 }
 
-/* =====================================================================
- * Binary I/O Convenience
- * =====================================================================
+/* --- Binary I/O Convenience ---
  */
 
 int vdev_read(VDev *d, void *buf, int len)
@@ -493,9 +477,7 @@ long vdev_seek(VDev *d, long offset, int whence)
  return d->dev_seek(d, offset, whence);
 }
 
-/* =====================================================================
- * Control & Status Convenience
- * =====================================================================
+/* --- Control & Status Convenience ---
  */
 
 int vdev_ioctl(VDev *d, int cmd, void *arg)
@@ -533,9 +515,7 @@ const char *vdev_info(VDev *d, const char *key)
  return NULL;
 }
 
-/* =====================================================================
- * Platform Convenience Functions (Original - unchanged)
- * =====================================================================
+/* --- Platform Convenience Functions (Original - unchanged) ---
  */
 
 void vdev_beep(void)

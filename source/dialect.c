@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - dialect.c
- * =====================================================================
+ * ---
  *
  * Dialect system implementation - Registry Architecture.
  *
@@ -27,16 +27,14 @@
  * 4. Add dialect_xxxx.c to Makefile DIALECT_SOURCES.
  * 5. No parser changes needed - auto-adapts via config queries.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
 #include <string.h>
 #include "dialect.h"
 
-/* =====================================================================
- * Dialect Registry Table
- * =====================================================================
+/* --- Dialect Registry Table ---
  * Mutable table populated by dialect_register() calls at boot.
  * Slots are indexed by DialectId. Empty slots have name == NULL.
  *
@@ -49,9 +47,7 @@ static int dialect_table_count = 0;
 /* Active dialect pointer */
 static const DialectConfig *active_dialect = NULL;
 
-/* =====================================================================
- * Registration
- * =====================================================================
+/* --- Registration ---
  */
 
 /*
@@ -94,9 +90,7 @@ void dialect_register_all(void)
  dialect_register_coco();
 }
 
-/* =====================================================================
- * Public API
- * =====================================================================
+/* --- Public API ---
  */
 
 /*
@@ -263,9 +257,7 @@ void dialect_apply(void)
  * Future dialect_*.c files can register override callbacks. */
 }
 
-/* =====================================================================
- * Strict Mode
- * =====================================================================
+/* --- Strict Mode ---
  * When strict_mode is 1, only keywords that belong to the active
  * dialect's bitmask are allowed. In union mode (0, default),
  * all keywords from all dialects are accepted.

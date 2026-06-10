@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - exec.h
- * =====================================================================
+ * ---
  *
  * Executor interface - the runtime execution loop.
  *
@@ -26,7 +26,7 @@
  * 6. If so, jump to the new target; otherwise advance.
  * 7. If current_index exceeds program size, stop.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_EXEC_H

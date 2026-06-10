@@ -1,12 +1,15 @@
 /*
- * dialect_trs1.c -- TRS-80 Level I BASIC
+ * dialect_trs1.c -- TRS-80 Level I BASIC (1977)
  *
- * Steve Leininger, 1977. Based on Tiny BASIC.
- * 4KB ROM, Z80 @ 1.774 MHz, 64x16 text, 128x48 block graphics.
- * Integer-only, limited strings (A$ only reliable).
+ * Based on Tiny BASIC, upgraded by Steve Leininger for Radio Shack.
+ * Z80 at 1.774 MHz, 4KB ROM, 64x16 text. The "Trash-80."
  *
- * TODO: SET(x,y)/RESET(x,y)/POINT(x,y) block graphics
- * TODO: MEM function
+ * Still missing the block graphics (SET/RESET/POINT). The original
+ * used 2x3 sub-blocks inside each character cell for 128x48 pseudo
+ * pixels. Unicode half-blocks could fake this -- render through
+ * gfxbuf at that resolution and map to terminal characters.
+ *
+ * Also missing: MEM function (maps to SIZE internally).
  */
 
 #include "dialect.h"

@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - mod_stdlib.c
- * =====================================================================
+ * ---
  *
  * Standard Library Module.
  *
@@ -14,7 +14,7 @@
  * functions (ABS, SIN, LEN, LEFT$, etc.) remain available
  * without any user action.
  *
- * =====================================================================
+ * ---
  */
 
 #include "mod_stdlib.h"

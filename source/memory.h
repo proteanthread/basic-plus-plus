@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - memory.h
- * =====================================================================
+ * ---
  *
  * Memory management subsystem interface.
  *
@@ -30,7 +30,7 @@
  * pool operations (alloc, reset, bounds check) work generically
  * on any MemoryPool.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_MEMORY_H
@@ -38,9 +38,7 @@
 
 #include "config.h"
 
-/* =====================================================================
- * MemoryPool - A single flat memory arena.
- * =====================================================================
+/* --- MemoryPool - A single flat memory arena. ---
  * Each pool is a contiguous block of bytes allocated via malloc().
  * Allocation within the pool uses bump allocation: a 'used' watermark
  * advances with each allocation. The watermark can be reset to zero
@@ -57,9 +55,7 @@ typedef struct MemoryPool {
  long used;
 } MemoryPool;
 
-/* =====================================================================
- * ProgramLine - A single stored BASIC program line.
- * =====================================================================
+/* --- ProgramLine - A single stored BASIC program line. ---
  * Stores the line number and the exact source text as entered by
  * the user. No tokenization or transformation is applied to stored
  * lines - LIST and SAVE reproduce them verbatim.
@@ -74,9 +70,7 @@ typedef struct ProgramLine {
  char text[MAX_LINE_LENGTH + 1];
 } ProgramLine;
 
-/* =====================================================================
- * ProgramStore - Indexed collection of program lines.
- * =====================================================================
+/* --- ProgramStore - Indexed collection of program lines. ---
  * Lines are stored in a dynamically allocated array, kept sorted
  * by line_number at all times. This allows efficient binary search
  * for GOTO targets and sequential iteration for RUN.
@@ -92,9 +86,7 @@ typedef struct ProgramStore {
  int capacity;
 } ProgramStore;
 
-/* =====================================================================
- * MemorySystem - Top-level container for all memory pools.
- * =====================================================================
+/* --- MemorySystem - Top-level container for all memory pools. ---
  * Owns the variable pool and scratch pool. The program store is
  * a separate structure because it uses structured storage (array
  * of ProgramLine) rather than flat byte allocation.
@@ -105,9 +97,7 @@ typedef struct MemorySystem {
  ProgramStore program;
 } MemorySystem;
 
-/* =====================================================================
- * Pool Management Functions
- * =====================================================================
+/* --- Pool Management Functions ---
  */
 
 /*
@@ -158,9 +148,7 @@ void mem_pool_reset(MemoryPool *pool);
  */
 long mem_pool_available(MemoryPool *pool);
 
-/* =====================================================================
- * Program Store Functions
- * =====================================================================
+/* --- Program Store Functions ---
  */
 
 /*

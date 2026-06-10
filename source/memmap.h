@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - memmap.h
- * =====================================================================
+ * ---
  *
  * Pluggable memory map system for PEEK/POKE emulation.
  *
@@ -26,15 +26,13 @@
  * SPECTRUM - ZX Spectrum 48K
  * NONE - Bare 64K, all zeros
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_MEMMAP_H
 #define BASICPP_MEMMAP_H
 
-/* =====================================================================
- * Memory Map Type Enum
- * =====================================================================
+/* --- Memory Map Type Enum ---
  */
 typedef enum MemMapType {
  MMAP_NONE = 0, /* Bare 64K, no presets */

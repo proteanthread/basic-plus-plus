@@ -1,18 +1,30 @@
 /*
- * dialect_coco.c -- Color Computer BASIC (CoCo 1/2/3)
+ * dialect_coco.c -- Color Computer BASIC (Microsoft, 1980)
  *
- * Microsoft Extended Color BASIC, 1980. Motorola 6809 CPU.
- * 16KB ROM (Color BASIC + Extended Color BASIC).
- * "OK" prompt (uppercase). 16-column zones.
+ * Motorola 6809 -- the best 8-bit CPU nobody used enough.
+ * 16KB ROM (Color BASIC + Extended Color BASIC). "OK" prompt.
+ * Unlike the C64, the CoCo actually has graphics commands.
  *
- * Built-in graphics (PSET, LINE, CIRCLE, PAINT) and sound
- * (PLAY macro language, SOUND freq/duration). No WHILE/WEND.
+ * Missing:
+ *   CIRCLE -- the CoCo version has aspect ratio and arc params:
+ *   CIRCLE (x,y), radius [,color [,hw [,start, end]]]
+ *   The hw param adjusts for non-square pixels. start/end draw
+ *   partial arcs. Implement with parametric trig in gfxbuf.
  *
- * TODO: CIRCLE with aspect ratio and arc parameters
- * TODO: LINE ,BF filled box mode
- * TODO: PMODE graphics page modes
- * TODO: PCLS/PCOPY
- * TODO: CoCo 3 GIME extensions (HSCREEN, HCOLOR, HPRINT)
+ *   LINE (x1,y1)-(x2,y2), color, BF -- the BF suffix draws a
+ *   filled box instead of just a line. Detect B or BF after the
+ *   color argument in the parser.
+ *
+ *   PMODE n, start_page -- graphics resolution/color modes:
+ *     PMODE 0: 128x96, 2 colors per page (1.5KB)
+ *     PMODE 1: 128x96, 4 colors (3KB)
+ *     PMODE 2: 128x192, 2 colors (3KB)
+ *     PMODE 3: 128x192, 4 colors (6KB)
+ *     PMODE 4: 256x192, 2 colors (6KB)
+ *   Map to gfxbuf with corresponding resolution.
+ *
+ *   CoCo 3 had the GIME chip with 320x200 and 640x200 modes.
+ *   Could be a separate dialect (COCO3) that extends this one.
  */
 
 #include "dialect.h"

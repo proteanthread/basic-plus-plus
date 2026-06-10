@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - parser.c
- * =====================================================================
+ * ---
  *
  * Statement and expression parser with direct execution dispatch.
  *
@@ -46,7 +46,7 @@
  * - Relational operators return 1 (true) or 0 (false)
  * - Relational operators can appear in expressions
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>
@@ -80,9 +80,7 @@
 #include "gfxbuf.h"
 #include "memmap.h"
 
-/* =====================================================================
- * Forward Declarations
- * =====================================================================
+/* --- Forward Declarations ---
  * Internal parsing functions. These are not exposed in the header
  * because they are implementation details of the parse-and-execute
  * architecture.
@@ -129,9 +127,7 @@ static void set_param_by_name(RuntimeState *rt,
  }
 }
 
-/* =====================================================================
- * Statement Parsing
- * =====================================================================
+/* --- Statement Parsing ---
  */
 
 /*
@@ -1662,7 +1658,7 @@ static void parse_goto(Lexer *lex, RuntimeState *rt, int line_num)
  vm_jump(rt, (int)target, line_num);
 
  /*
- * ECMA-55 §10.4: GOTO must not transfer control
+ * ECMA-55 s10.4: GOTO must not transfer control
  * into the body of a FOR..NEXT loop. In strict
  * mode, check active FOR frames on the stack.
  * Warn if the target falls within a FOR body
@@ -2083,9 +2079,7 @@ static void parse_save_cmd(Lexer *lex, RuntimeState *rt, int line_num);
  */
 static void parse_load_cmd(Lexer *lex, RuntimeState *rt, int line_num);
 
-/* =====================================================================
- * Loop Statement Handlers
- * =====================================================================
+/* --- Loop Statement Handlers ---
  * All loops use the unified stack frame system. Each loop type
  * pushes a typed frame when entering the loop and pops it when
  * exiting. The type-checking in runtime_pop() prevents mismatched
@@ -2590,9 +2584,7 @@ static void parse_loop(Lexer *lex, RuntimeState *rt, int line_num)
  (void)line_num;
 }
 
-/* =====================================================================
- * Statement Handlers
- * =====================================================================
+/* --- Statement Handlers ---
  * DATA, READ, RESTORE, MERGE, CHAIN, DIALECT
  */
 
@@ -2837,9 +2829,7 @@ static void parse_dialect_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
 }
 
-/* =====================================================================
- * DEF FN - User-Defined Functions
- * =====================================================================
+/* --- DEF FN - User-Defined Functions ---
  *
  * SYNTAX:
  * DEF FNA(X) = X*X+1
@@ -3330,9 +3320,7 @@ static BValue eval_user_fn(Lexer *outer_lex, RuntimeState *rt,
  return result;
 }
 
-/* =====================================================================
- * MAT - Matrix Operations
- * =====================================================================
+/* --- MAT - Matrix Operations ---
  *
  * SYNTAX (Dartmouth BASIC compatible):
  * MAT PRINT A - print matrix formatted
@@ -3912,9 +3900,7 @@ static void parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/* =====================================================================
- * File I/O - OPEN / CLOSE
- * =====================================================================
+/* --- File I/O - OPEN / CLOSE ---
  *
  * SYNTAX:
  * OPEN "filename" FOR INPUT AS #n
@@ -4484,9 +4470,7 @@ static void parse_close(Lexer *lex, RuntimeState *rt, int line_num)
  } while (1);
 }
 
-/* =====================================================================
- * ECMA-116 Enhanced Files: SET / ASK / REWRITE / ERASE
- * =====================================================================
+/* --- ECMA-116 Enhanced Files: SET / ASK / REWRITE / ERASE ---
  */
 
 /*
@@ -4717,9 +4701,7 @@ static void parse_erase_file(Lexer *lex, RuntimeState *rt,
  fileio_erase_channel(chan, line_num);
 }
 
-/* =====================================================================
- * Statement Dispatcher
- * =====================================================================
+/* --- Statement Dispatcher ---
  */
 
 /*
@@ -10791,9 +10773,7 @@ static void parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/* =====================================================================
- * Expression Parsing
- * =====================================================================
+/* --- Expression Parsing ---
  *
  * Expression grammar (standard BASIC precedence):
  *
@@ -11141,9 +11121,7 @@ long parse_expression(Lexer *lex, RuntimeState *rt, int line_num)
  return left;
 }
 
-/* =====================================================================
- * Line Execution
- * =====================================================================
+/* --- Line Execution ---
  */
 
 /*
@@ -11196,9 +11174,7 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/* =====================================================================
- * SAVE/LOAD Command Implementations
- * =====================================================================
+/* --- SAVE/LOAD Command Implementations ---
  * These are here rather than in fileio.c because they need access
  * to the parser's token stream for the filename argument. The
  * actual file operations delegate to fileio.c functions.
@@ -11257,9 +11233,7 @@ static void parse_load_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  fileio_load(&rt->memory->program, filename);
 }
 
-/* =====================================================================
- * DIM Statement Handler
- * =====================================================================
+/* --- DIM Statement Handler ---
  * Syntax:
  * DIM name(size) - 1D array
  * DIM name(size1,size2) - 2D array
@@ -11343,9 +11317,7 @@ static void parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
  } while (1);
 }
 
-/* =====================================================================
- * BValue Expression System
- * =====================================================================
+/* --- BValue Expression System ---
  * These are the BValue-returning versions of parse_factor, parse_term,
  * and parse_expression. They handle integers, floats, strings, and
  * all functions.

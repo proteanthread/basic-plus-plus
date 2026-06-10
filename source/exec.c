@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - exec.c
- * =====================================================================
+ * ---
  *
  * Program execution loop implementation.
  *
@@ -20,7 +20,7 @@
  * output, and the control flow primitives (vm_jump, vm_call,
  * vm_return_sub) are available to the parser.
  *
- * =====================================================================
+ * ---
  */
 
 #include <stdio.h>

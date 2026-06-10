@@ -1,7 +1,7 @@
 /*
- * =====================================================================
+ * ---
  * BASIC++ Interpreter - vm.h
- * =====================================================================
+ * ---
  *
  * Virtual Machine formalization layer.
  *
@@ -37,7 +37,7 @@
  * This matches the existing parse_xxx() functions exactly,
  * so migration is zero-cost.
  *
- * =====================================================================
+ * ---
  */
 
 #ifndef BASICPP_VM_H
@@ -50,9 +50,7 @@
 /* Forward declaration - RuntimeState defined in runtime.h */
 struct RuntimeState_tag;
 
-/* =====================================================================
- * Execution State Machine
- * =====================================================================
+/* --- Execution State Machine ---
  * Formal VM execution states. Replaces the ad-hoc combination of
  * rt->running (int) and rt->stopped (int) with a single enum.
  *
@@ -73,9 +71,7 @@ typedef enum VMState {
  VM_HALTED /* END encountered (terminal) */
 } VMState;
 
-/* =====================================================================
- * Instruction Opcodes
- * =====================================================================
+/* --- Instruction Opcodes ---
  * Every statement keyword maps to exactly one opcode. The opcode
  * is used as an index into the dispatch table for O(1) handler
  * lookup.
@@ -114,9 +110,7 @@ typedef enum VMOpcode {
  OP_COUNT /* sentinel - must be last */
 } VMOpcode;
 
-/* =====================================================================
- * Statement Handler Signature
- * =====================================================================
+/* --- Statement Handler Signature ---
  * Every statement handler follows this uniform signature.
  * The handler receives:
  * lex - lexer positioned after the statement keyword
@@ -128,9 +122,7 @@ typedef enum VMOpcode {
  */
 typedef void (*VMHandler)(Lexer *lex, void *rt, int line_num);
 
-/* =====================================================================
- * Dispatch Table Entry
- * =====================================================================
+/* --- Dispatch Table Entry ---
  * Maps an opcode to its handler and metadata.
  */
 typedef struct VMDispatchEntry {
@@ -140,9 +132,7 @@ typedef struct VMDispatchEntry {
  const char *name; /* human-readable name (for trace/debug) */
 } VMDispatchEntry;
 
-/* =====================================================================
- * Expression Evaluation Stack
- * =====================================================================
+/* --- Expression Evaluation Stack ---
  * A bounded stack for expression evaluation. This provides the
  * infrastructure for stack-based expression evaluation (used by
  * future bytecode VM in ). The current recursive evaluator
@@ -156,9 +146,7 @@ typedef struct VMEvalStack {
  int top; /* index of top element, -1 = empty */
 } VMEvalStack;
 
-/* =====================================================================
- * VM Functions
- * =====================================================================
+/* --- VM Functions ---
  */
 
 /*
@@ -200,17 +188,13 @@ const char *vm_opcode_name(VMOpcode op);
  */
 VMOpcode vm_dispatch(KeywordId kw, Lexer *lex, void *rt, int line_num);
 
-/* =====================================================================
- * State Machine Functions
- * =====================================================================
+/* --- State Machine Functions ---
  */
 
 void vm_set_state(void *rt, VMState state);
 VMState vm_get_state(void *rt);
 
-/* =====================================================================
- * Expression Evaluation Stack Functions
- * =====================================================================
+/* --- Expression Evaluation Stack Functions ---
  */
 
 void vm_eval_init(VMEvalStack *stk);
@@ -219,9 +203,7 @@ BValue vm_eval_pop(VMEvalStack *stk);
 BValue vm_eval_peek(VMEvalStack *stk);
 int vm_eval_depth(VMEvalStack *stk);
 
-/* =====================================================================
- * Control Flow Primitives
- * =====================================================================
+/* --- Control Flow Primitives ---
  * These encapsulate the line-number->index resolution and stack
  * operations that were previously scattered across parser.c and
  * exec.c. All control flow goes through these functions.
