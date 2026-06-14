@@ -34,12 +34,20 @@ static SecLevel current_level = SEC_OPEN;
 
 /* --- Permission Matrix ---
  * allowed[level][operation] - 1 = permitted, 0 = denied
+ *
+ * Index mapping:
+ *  0=FILE_READ  1=FILE_WRITE 2=FILE_MGMT  3=FILE_BLOCK
+ *  4=FILE_STRM  5=COMPILE    6=CHAIN      7=SYSTEM
+ *  8=MODULE     9=USB       10=VDEV      11=VTERM
+ * 12=VCON      13=EVAL      14=NETWORK   15=MEM_READ
+ * 16=MEM_WRITE
  */
 static const int allowed[SEC_COUNT][SECOP_COUNT] = {
     /* SEC_OPEN: all operations permitted */
     { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-    /* SEC_STANDARD: file I/O + modules + basic network/vdev yes; system/eval/compile/chain no */
-    { 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1 },
+    /* SEC_STANDARD: file I/O + modules + eval + vdev yes;
+     * compile/chain/system/usb/network no */
+    { 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1 },
     /* SEC_RESTRICTED: nothing sensitive permitted */
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };

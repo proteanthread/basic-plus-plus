@@ -236,6 +236,13 @@ typedef struct FunctionEntry {
 void funcreg_init(void);
 
 /*
+ * funcreg_count - Return the number of registered functions.
+ *
+ * Used by boot diagnostics and INFO command.
+ */
+int funcreg_count(void);
+
+/*
  * funcreg_register - Register a function in the registry.
  *
  * Copies the FunctionEntry into the next available slot.

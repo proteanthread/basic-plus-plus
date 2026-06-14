@@ -1673,56 +1673,272 @@ void pi_parse_security(Lexer *lex, RuntimeState *rt, int line_num)
 
 /*
  * pi_parse_module - Handle MODULE command.
+ *
+ * Sub-commands:
+ *   MODULE                     - List all registered modules
+ *   MODULE "name"              - Activate a registered module
+ *   MODULE LOAD "path.dll"     - Load an external dynamic module
+ *   MODULE UNLOAD "name"       - Deactivate and unload a module
+ *   MODULE INFO "name"         - Show detailed info for a module
+ *
+ * SECURITY:
+ *   Loading and activating modules requires SECOP_MODULE permission.
+ *   Under RESTRICTED mode, no modules with I/O, file, system, graphics,
+ *   sound, network, or USB capabilities can be activated.
+ *   Under STANDARD mode, modules with SYSTEM capabilities are blocked.
+ *   Under OPEN mode, all modules are permitted.
+ *
+ *   Dynamic LOAD additionally requires SECOP_SYSTEM because it
+ *   executes arbitrary native code from a shared library.
+ *
+ * HOW TO LOAD EXTERNAL MODULES:
+ *   MODULE LOAD "my_extension.dll"    (Windows)
+ *   MODULE LOAD "./my_extension.so"   (Linux)
+ *
+ * HOW TO UNLOAD:
+ *   MODULE UNLOAD "MY_EXTENSION"
+ *   This calls the module's cleanup callback and marks it inactive.
+ *   On dynamic modules, the shared library handle is freed.
+ *
+ * HOW MODULES AFFECT SECURITY:
+ *   Each module declares a capability bitmask (CAP_IO, CAP_FILE, etc.).
+ *   The interpreter dynamically checks these against the current security
+ *   level. If the module requests capabilities that exceed the security
+ *   level, activation is denied and the module is either:
+ *   - Blocked entirely (RESTRICTED mode), or
+ *   - Downgraded: only safe capabilities are honored (STANDARD mode).
+ *   This is dynamic, not absolute — changing the security level at
+ *   runtime affects which modules can be activated.
  */
 void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
 {
+ /*
+  * Check for sub-commands via keywords first.
+  * LOAD is a keyword (KW_LOAD), so we check for it.
+  */
+ if (lexer_match_keyword(lex, KW_LOAD)) {
+  /*
+   * MODULE LOAD "path" - Load an external .dll/.so module.
+   *
+   * Requires both SECOP_MODULE and SECOP_SYSTEM because
+   * loading native code is a system-level operation.
+   */
+  char mpath[MAX_LINE_LENGTH + 1];
+  lexer_next(lex); /* consume LOAD */
+
+  if (security_check(SECOP_MODULE, line_num)) return;
+  if (security_check(SECOP_SYSTEM, line_num)) return;
+
+  if (lex->current.type != TOK_STRING) {
+   error_raise(ERR_WHAT, line_num);
+   return;
+  }
+  if (lex->current.str_length >= MAX_LINE_LENGTH) {
+   error_raise(ERR_WHAT, line_num);
+   return;
+  }
+  memcpy(mpath, lex->current.str_start,
+   (size_t)lex->current.str_length);
+  mpath[lex->current.str_length] = '\0';
+  lexer_next(lex);
+
+  if (module_load_dynamic(mpath) == 0) {
+   printf("Module loaded: %s\n", mpath);
+  }
+  return;
+ }
+
+ /* MODULE INFO "name" - via keyword (INFO is a registered keyword) */
+ if (lexer_match_keyword(lex, KW_INFO)) {
+  char mname[MAX_LINE_LENGTH + 1];
+  const ModuleInfo *m;
+  char caps[16];
+  lexer_next(lex); /* consume INFO */
+
+  if (lex->current.type != TOK_STRING) {
+   error_raise(ERR_WHAT, line_num);
+   return;
+  }
+  if (lex->current.str_length >= MAX_LINE_LENGTH) {
+   error_raise(ERR_WHAT, line_num);
+   return;
+  }
+  memcpy(mname, lex->current.str_start,
+   (size_t)lex->current.str_length);
+  mname[lex->current.str_length] = '\0';
+  lexer_next(lex);
+
+  m = module_find(mname);
+  if (!m) {
+   printf("Module '%s' not found.\n", mname);
+   return;
+  }
+  module_caps_string(m->capabilities,
+   caps, (int)sizeof(caps));
+  printf("Module:       %s\n", m->name);
+  printf("Version:      %s\n", m->version);
+  printf("Description:  %s\n", m->description);
+  printf("Class:        %s\n",
+   module_class_name(m->mod_class));
+  printf("Capabilities: %s (0x%04X)\n",
+   caps, m->capabilities);
+  printf("Status:       %s\n",
+   module_is_active(mname)
+   ? "ACTIVE" : "INACTIVE");
+  printf("Security:     %s at current level %s\n",
+   security_module_allowed(m->capabilities)
+   ? "ALLOWED" : "BLOCKED",
+   security_level_name(
+   security_get_level()));
+  return;
+ }
+
+ /* Check for sub-commands via named variables (UNLOAD) */
+ if (lex->current.type == TOK_NAMED_VAR) {
+  const char *nv = lex->current.str_start;
+  int nlen = lex->current.str_length;
+
+  /* MODULE UNLOAD "name" */
+  if (nlen == 6 &&
+   (nv[0]=='U'||nv[0]=='u') &&
+   (nv[1]=='N'||nv[1]=='n') &&
+   (nv[2]=='L'||nv[2]=='l') &&
+   (nv[3]=='O'||nv[3]=='o') &&
+   (nv[4]=='A'||nv[4]=='a') &&
+   (nv[5]=='D'||nv[5]=='d')) {
+   char mname[MAX_LINE_LENGTH + 1];
+   lexer_next(lex); /* consume UNLOAD */
+
+   if (lex->current.type != TOK_STRING) {
+    error_raise(ERR_WHAT, line_num);
+    return;
+   }
+   if (lex->current.str_length >= MAX_LINE_LENGTH) {
+    error_raise(ERR_WHAT, line_num);
+    return;
+   }
+   memcpy(mname, lex->current.str_start,
+    (size_t)lex->current.str_length);
+   mname[lex->current.str_length] = '\0';
+   lexer_next(lex);
+
+   if (module_deactivate(mname) == 0) {
+    printf("Module unloaded: %s\n", mname);
+   } else {
+    printf("Module '%s' not found or not active.\n",
+     mname);
+   }
+   return;
+  }
+
+  /* MODULE INFO "name" */
+  if (nlen == 4 &&
+   (nv[0]=='I'||nv[0]=='i') &&
+   (nv[1]=='N'||nv[1]=='n') &&
+   (nv[2]=='F'||nv[2]=='f') &&
+   (nv[3]=='O'||nv[3]=='o')) {
+   char mname[MAX_LINE_LENGTH + 1];
+   const ModuleInfo *m;
+   char caps[16];
+   lexer_next(lex); /* consume INFO */
+
+   if (lex->current.type != TOK_STRING) {
+    error_raise(ERR_WHAT, line_num);
+    return;
+   }
+   if (lex->current.str_length >= MAX_LINE_LENGTH) {
+    error_raise(ERR_WHAT, line_num);
+    return;
+   }
+   memcpy(mname, lex->current.str_start,
+    (size_t)lex->current.str_length);
+   mname[lex->current.str_length] = '\0';
+   lexer_next(lex);
+
+   m = module_find(mname);
+   if (!m) {
+    printf("Module '%s' not found.\n", mname);
+    return;
+   }
+   module_caps_string(m->capabilities,
+    caps, (int)sizeof(caps));
+   printf("Module:       %s\n", m->name);
+   printf("Version:      %s\n", m->version);
+   printf("Description:  %s\n", m->description);
+   printf("Class:        %s\n",
+    module_class_name(m->mod_class));
+   printf("Capabilities: %s (0x%04X)\n",
+    caps, m->capabilities);
+   printf("Status:       %s\n",
+    module_is_active(mname)
+    ? "ACTIVE" : "INACTIVE");
+   printf("Security:     %s at current level %s\n",
+    security_module_allowed(m->capabilities)
+    ? "ALLOWED" : "BLOCKED",
+    security_level_name(
+    security_get_level()));
+   return;
+  }
+ }
+
+ /* MODULE "name" - Activate a registered module */
  if (lex->current.type == TOK_STRING) {
+  char mname[MAX_LINE_LENGTH + 1];
+  if (security_check(SECOP_MODULE, line_num))
+   return;
+  if (lex->current.str_length >=
+   MAX_LINE_LENGTH) {
+   error_raise(ERR_WHAT, line_num);
+   return;
+  }
+  memcpy(mname, lex->current.str_start,
+   (size_t)lex->current.str_length);
+  mname[lex->current.str_length] = '\0';
+  lexer_next(lex);
+  module_activate(mname, rt);
+  return;
+ }
+
+ /* MODULE LIST (via keyword) */
+ if (lexer_match_keyword(lex, KW_LIST)) {
+  lexer_next(lex);
+  /* fall through to listing below */
+ }
+
  /*
- * MODULE "name" - Activate a module.
- */
- char mname[MAX_LINE_LENGTH + 1];
- if (security_check(SECOP_MODULE, line_num))
- return;
- if (lex->current.str_length >=
- MAX_LINE_LENGTH) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- memcpy(mname, lex->current.str_start,
- (size_t)lex->current.str_length);
- mname[lex->current.str_length] = '\0';
- lexer_next(lex);
- module_activate(mname, rt);
- } else {
- /*
- * MODULE (no args) - List modules.
- */
- int mi, mc;
- mc = module_count();
- if (mc == 0) {
- printf("No modules registered.\n");
- } else {
- printf("%-16s %-10s %-6s %s\n",
- "Module", "Class",
- "Caps", "Status");
- for (mi = 0; mi < mc; mi++) {
- const ModuleInfo *m;
- char caps[12];
- m = module_get(mi);
- if (!m) continue;
- module_caps_string(
- m->capabilities,
- caps, (int)sizeof(caps));
- printf("%-16s %-10s %-6s %s\n",
- m->name,
- module_class_name(
- m->mod_class),
- caps,
- module_is_loaded(mi)
- ? "ACTIVE"
- : "INACTIVE");
- }
- }
+  * MODULE (no args) or MODULE LIST - List all modules.
+  */
+ {
+  int mi, mc;
+  mc = module_count();
+  if (mc == 0) {
+   printf("No modules registered.\n");
+  } else {
+   printf("%-16s %-10s %-8s %-6s %s\n",
+    "Module", "Class", "Version",
+    "Caps", "Status");
+   printf("%-16s %-10s %-8s %-6s %s\n",
+    "------", "-----", "-------",
+    "----", "------");
+   for (mi = 0; mi < mc; mi++) {
+    const ModuleInfo *m;
+    char caps[12];
+    m = module_get(mi);
+    if (!m) continue;
+    module_caps_string(
+     m->capabilities,
+     caps, (int)sizeof(caps));
+    printf("%-16s %-10s %-8s %-6s %s\n",
+     m->name,
+     module_class_name(
+      m->mod_class),
+     m->version,
+     caps,
+     module_is_loaded(mi)
+      ? "ACTIVE"
+      : "INACTIVE");
+   }
+  }
  }
  return;
 
