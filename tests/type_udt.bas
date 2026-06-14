@@ -1,0 +1,25 @@
+1 REM === t23_type_udt.bas ===
+2 REM Tests: TYPE/END TYPE, typed variables
+3 DIALECT "QBAS"
+10 TEST "TYPE definition"
+20 TYPE Point
+30 X AS INTEGER
+40 Y AS INTEGER
+50 END TYPE
+60 REM Type defined without crash
+70 ENDTEST
+100 TEST "Typed variable"
+110 DIM P AS Point
+120 P.X = 10
+130 P.Y = 20
+140 ASSERT P.X = 10
+150 ASSERT P.Y = 20
+160 ENDTEST
+200 TEST "Type assignment"
+210 DIM Q AS Point
+220 Q.X = 100
+230 Q.Y = 200
+240 ASSERT Q.X = 100
+250 ASSERT Q.Y = 200
+260 ENDTEST
+999 END

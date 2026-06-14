@@ -1,0 +1,526 @@
+BUILDING BASIC++ — MAKEFILE TUTORIAL
+======================================
+Version 2.0.2
+
+This tutorial explains the BASIC++ build system: how it works,
+how to compile for different platforms, and how to customize it
+for your own needs.
+
+For a complete list of source files and their purposes, see
+source/SOURCE_TREE.txt.
+
+
+1. OVERVIEW
+============
+
+BASIC++ is written in strict ANSI C (C89/C90) with no external
+dependencies beyond the C standard library.  It compiles on:
+
+  Platform        Compiler       Target           Executable
+  --------------- -------------- ---------------  ----------
+  Linux / MinGW   gcc / clang    64-bit ELF/PE    baspp
+  Windows 11      MSVC (cl.exe)  64-bit PE        basicpp.exe
+  FreeDOS         OpenWatcom 16  16-bit DOS MZ    bpp.exe
+  FreeDOS         OpenWatcom 32  32-bit DOS/4GW   bpp.exe
+
+One Makefile supports all four targets.  The source code is
+identical across platforms — conditional compilation via
+#ifdef BPP_FREEDOS selects the FreeDOS slim build (2 dialects,
+reduced memory pools) vs the full modern build (16 dialects,
+generous RAM-based pools).  Platform differences are isolated
+in core/platform.c and virtual/vdev.c.
+
+
+2. QUICK START
+===============
+
+  2.1  Linux / MinGW (gcc)
+  -------------------------
+    cd source
+    make
+
+  Output: ../baspp
+
+  2.2  Windows 11 (MSVC)
+  -----------------------
+  Open a "Developer Command Prompt for VS" or run:
+
+    "C:\Program Files\Microsoft Visual Studio\<ver>\<ed>\VC\Auxiliary\Build\vcvarsall.bat" x64
+
+  Then:
+    cd source
+    nmake /f Makefile msvc
+
+  Output: ..\basicpp.exe
+
+  Alternatively, from PowerShell with vcvarsall already sourced:
+    cl /TC /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS /Fe:..\basicpp.exe *.c /link advapi32.lib
+
+  2.3  FreeDOS (OpenWatcom 16-bit)
+  ---------------------------------
+    cd source
+    make watcom
+
+  Output: ../bpp.exe (16-bit DOS, large memory model)
+
+  The FreeDOS build is a SLIM BUILD: it includes only GW-BASIC
+  and ECMA-116 dialects and no optional modules (USB, FujiNet,
+  UPnP).  The Makefile passes -dBPP_FREEDOS to activate reduced
+  memory pools that fit within 512K conventional memory.
+
+  See help/FreeDOS_Build.txt for a detailed FreeDOS tutorial.
+
+  2.4  FreeDOS (OpenWatcom 32-bit)
+  ---------------------------------
+    cd source
+    make watcom386
+
+  Output: ../bpp.exe (32-bit DOS, DOS/4GW protected mode)
+
+  Same slim dialect set as the 16-bit build (GWBS + E116 only).
+  Requires a DOS/4GW compatible extender (bundled with OpenWatcom).
+  Runs on FreeDOS in protected mode with access to extended memory.
+
+  2.5  Debug Build (gcc)
+  -----------------------
+    cd source
+    make debug
+
+  Same as the release build but with -g -O0 -DDEBUG flags.
+  Output: ../baspp (with debug symbols, no optimization)
+
+
+3. DIRECTORY STRUCTURE
+=======================
+
+  basic-plus-plus/
+    |
+    |-- basicpp.exe          <-- Output executable (Windows)
+    |-- baspp                <-- Output executable (Linux)
+    |-- bpp.exe              <-- Output executable (FreeDOS)
+    |-- basicpp.cfg          <-- Runtime configuration file
+    |
+    |-- source/              <-- All source code lives here
+    |   |-- Makefile         <-- This build system
+    |   |-- SOURCE_TREE.txt  <-- Complete file reference
+    |   |-- *.h              <-- Public headers (39 files)
+    |   |-- core/            <-- Core infrastructure (9 files)
+    |   |-- lexer/           <-- Tokenizer (3 files)
+    |   |-- parser/          <-- Statement dispatch (2 files)
+    |   |-- flow/            <-- Control flow (2 files)
+    |   |-- io/              <-- Input/Output (6 files)
+    |   |-- dialect/         <-- Dialect profiles (17 files)
+    |   |-- modules/         <-- Extension modules (5 files)
+    |   |-- ...              <-- (see SOURCE_TREE.txt for full list)
+    |
+    |-- help/                <-- Tutorial text files
+    |-- docs/                <-- Markdown documentation
+    |-- samples/             <-- Example BASIC programs
+
+
+4. HOW THE MAKEFILE WORKS
+==========================
+
+  4.1  Source Groups
+  -------------------
+
+  Source files are organized into named groups by domain:
+
+    CORE_SOURCES       core/main.c, core/memory.c, ...
+    LEXER_SOURCES      lexer/lexer.c, ...
+    PARSER_SOURCES     parser/parser.c, parser/parser_expr.c
+    FLOW_SOURCES       flow/parser_flow.c, flow/parser_loops.c
+    IO_SOURCES         io/parser_io.c, io/fileio.c, ...
+    DIALECT_SOURCES    dialect/dialect.c, dialect/dialect_gwbs.c, ...
+    MODULES_SOURCES    modules/module.c, modules/mod_stdlib.c, ...
+    ...
+
+  The complete list is formed by concatenation:
+
+    SOURCES = $(CORE_SOURCES) $(LEXER_SOURCES) $(PARSER_SOURCES) \
+              $(FLOW_SOURCES) $(IO_SOURCES) ... $(MISC_SOURCES)
+
+  4.2  Header Dependencies
+  -------------------------
+
+  All .h headers live in source/ root (not in subdirectories).
+  The -I. compiler flag lets subdirectory .c files find them.
+
+  The Makefile uses a conservative dependency model: every .o
+  depends on ALL headers.  This means any header change triggers
+  a full rebuild.  For a project this size (~80 .c files), full
+  rebuilds take under 10 seconds on modern hardware, so this
+  tradeoff is reasonable.
+
+    %.o: %.c $(HEADERS)
+        $(CC) $(CFLAGS) -c $< -o $@
+
+  4.3  Compiler Flags
+  --------------------
+
+  gcc (default):
+    -std=c90       ANSI C standard (maximum portability)
+    -pedantic      Reject all non-standard extensions
+    -Wall -Wextra  Enable all useful warnings
+    -O2            Optimization level 2
+    -I.            Include path (source/ root for headers)
+
+  MSVC:
+    /TC            Compile as C (not C++)
+    /W3            Warning level 3
+    /O2            Optimize for speed
+    /I.            Include path
+    /D_CRT_SECURE_NO_WARNINGS  Suppress MSVC-specific warnings
+    /link advapi32.lib         Windows registry/security API
+
+  OpenWatcom 16-bit:
+    -ml            Large memory model (far code + far data)
+    -0             8086 instruction set (broadest DOS compat)
+    -za            Strict ANSI C
+    -wx            Maximum warnings
+    -ox            Maximum optimization
+    -dBPP_FREEDOS  Enable FreeDOS slim build
+
+  OpenWatcom 32-bit:
+    -mf            Flat memory model (DPMI protected mode)
+    -za -wx -ox    Same as 16-bit
+    -dBPP_FREEDOS  Enable FreeDOS slim build
+
+  4.4  Output Location
+  ---------------------
+
+  All executables are placed in the project root (..), one
+  directory above source/.  This is controlled by:
+
+    OUTDIR = ..
+    TARGET = $(OUTDIR)/baspp
+
+
+5. CUSTOMIZING FOR YOUR SYSTEM
+================================
+
+  5.1  Changing the Compiler
+  ---------------------------
+
+  To use clang instead of gcc:
+
+    make CC=clang
+
+  Or edit the Makefile:
+
+    CC = clang
+
+  The code is strict C89 and compiles cleanly with any conforming
+  C compiler.  Tested compilers: gcc 12+, clang 15+, MSVC 19+,
+  OpenWatcom 2.0.
+
+  5.2  Changing Optimization
+  ---------------------------
+
+  For maximum speed:
+    CFLAGS = -std=c90 -pedantic -Wall -Wextra -O3 -I.
+
+  For smallest binary:
+    CFLAGS = -std=c90 -pedantic -Wall -Wextra -Os -I.
+
+  For debugging:
+    CFLAGS = -std=c90 -pedantic -Wall -Wextra -g -O0 -DDEBUG -I.
+
+  5.3  Changing the Output Name
+  ------------------------------
+
+  To rename the executable:
+
+    make TARGET=../mybasic
+
+  Or edit:
+
+    TARGET = $(OUTDIR)/mybasic
+
+  5.4  Changing the Output Directory
+  ------------------------------------
+
+  To place the executable elsewhere:
+
+    make OUTDIR=/usr/local/bin
+
+  Or edit:
+
+    OUTDIR = /usr/local/bin
+
+  5.5  Cross-Compiling for ARM / Raspberry Pi
+  ---------------------------------------------
+
+  Set the cross-compiler prefix:
+
+    make CC=arm-linux-gnueabihf-gcc
+
+  The code has no x86-specific dependencies.  It builds and
+  runs on any platform with a C89 compiler and standard library.
+
+  5.6  Adding Linker Flags
+  -------------------------
+
+  The LDFLAGS variable is empty by default.  To add libraries:
+
+    LDFLAGS = -lreadline -lncurses
+
+  Or for static linking:
+
+    LDFLAGS = -static
+
+
+6. SELECTING DIALECTS
+======================
+
+By default, ALL 16 dialects are compiled in.  To build a smaller
+interpreter with only specific dialects:
+
+  Step 1.  Edit DIALECT_SOURCES in the Makefile.
+
+  Full (default):
+
+    DIALECT_SOURCES = \
+        dialect/dialect.c \
+        dialect/dialect_patb.c dialect/dialect_trs1.c \
+        dialect/dialect_trs2.c dialect/dialect_gwbs.c \
+        dialect/dialect_ecma55.c dialect/dialect_ecma116.c \
+        dialect/dialect_qbasic.c dialect/dialect_aint.c \
+        dialect/dialect_asft.c dialect/dialect_atari.c \
+        dialect/dialect_c64.c dialect/dialect_coco.c \
+        dialect/dialect_mbasic.c dialect/dialect_sinclair.c \
+        dialect/dialect_superbasic.c dialect/dialect_sbasic.c
+
+  Minimal (ECMA-55 + Tiny BASIC only):
+
+    DIALECT_SOURCES = \
+        dialect/dialect.c \
+        dialect/dialect_patb.c dialect/dialect_ecma55.c
+
+  Step 2.  Edit dialect/dialect.c — dialect_register_all().
+
+  Comment out or remove the register calls for omitted dialects:
+
+    void dialect_register_all(void)
+    {
+        dialect_register_patb();
+        dialect_register_ecma55();
+        /* dialect_register_trs1();     -- removed */
+        /* dialect_register_trs2();     -- removed */
+        /* dialect_register_gwbs();     -- removed */
+        /* ... */
+    }
+
+  Step 3.  Rebuild.
+
+    make clean && make
+
+  The interpreter will only know about the dialects you included.
+  DIALECT command will list only the available dialects.
+
+  Available dialects and their files:
+
+    Flag  File                    Description
+    ----  ----------------------  ---------------------------------
+    PATB  dialect_patb.c          Palo Alto Tiny BASIC (1976)
+    TRS1  dialect_trs1.c          TRS-80 Level I (1977)
+    TRS2  dialect_trs2.c          TRS-80 Level II / Model III (1978)
+    GWBS  dialect_gwbs.c          GW-BASIC / BASICA (1983)
+    EC55  dialect_ecma55.c        ECMA-55 Minimal BASIC (1984)
+    E116  dialect_ecma116.c       ECMA-116 Full BASIC (1991)
+    QBAS  dialect_qbasic.c        QBasic (1991)
+    AINT  dialect_aint.c          Apple II Integer BASIC (1977)
+    ASFT  dialect_asft.c          Applesoft BASIC (1978)
+    ATAR  dialect_atari.c         Atari BASIC (1979)
+    C64   dialect_c64.c           Commodore BASIC v2 (1982)
+    COCO  dialect_coco.c          Color Computer BASIC (1980)
+    MBAS  dialect_mbasic.c        MBASIC / BASIC-80 / CP/M (1978)
+    SINC  dialect_sinclair.c      Sinclair ZX Spectrum (1982)
+    QLSB  dialect_superbasic.c    Sinclair QL SuperBASIC (1984)
+    SBAS  dialect_sbasic.c        Tymshare SUPER BASIC (1968)
+
+
+7. SELECTING MODULES
+=====================
+
+Optional modules can be omitted to reduce binary size:
+
+  Step 1.  Edit MODULES_SOURCES in the Makefile.
+
+  Full (default):
+
+    MODULES_SOURCES = \
+        modules/module.c modules/mod_stdlib.c \
+        modules/mod_usb.c modules/mod_fujinet.c \
+        modules/mod_upnp.c
+
+  Minimal (stdlib only):
+
+    MODULES_SOURCES = \
+        modules/module.c modules/mod_stdlib.c
+
+  Step 2.  Edit core/main.c.
+
+  Remove or comment out the registration calls for omitted modules:
+
+    /* mod_usb_register();     -- removed */
+    /* mod_fujinet_register(); -- removed */
+    /* mod_upnp_register();    -- removed */
+
+  Step 3.  Rebuild.
+
+  Available modules:
+
+    Module      File              Devices Registered
+    ----------  ----------------  -------------------------
+    STDLIB      mod_stdlib.c      (none — function library)
+    USB         mod_usb.c         USB:, HID:, USBSER:
+    FUJINET     mod_fujinet.c     N:, FUJI:, CLOCK:
+    UPNP        mod_upnp.c        UPNP:, SOAP:
+
+  STDLIB is always required.  The others are optional.
+
+
+8. MEMORY TUNING (config.h)
+=============================
+
+BASIC++ uses a two-tier memory configuration controlled by the
+BPP_FREEDOS preprocessor define:
+
+  Build Profile      Activated By           RAM Available
+  -----------------  ---------------------  -------------
+  FreeDOS (slim)     -dBPP_FREEDOS (auto)   512 KB
+  Modern (default)   gcc / MSVC builds      4 GB – 256 GB
+
+  FreeDOS defaults (total ~160 KB):
+
+    PROGRAM_MEMORY_SIZE    32768L      (32 KB)
+    VARIABLE_MEMORY_SIZE   16384L      (16 KB)
+    SCRATCH_MEMORY_SIZE    16384L      (16 KB)
+    MAX_STRING_POOL        32768L      (32 KB)
+    MAX_PROGRAM_LINES      1024
+    MAX_ARRAY_ELEMENTS     4096
+    MAX_STACK_DEPTH        64
+    MAX_NAMED_VARS         128
+
+  Modern defaults (total ~90 MB — well under 4 GB):
+
+    PROGRAM_MEMORY_SIZE    8388608L    (8 MB)
+    VARIABLE_MEMORY_SIZE   1048576L    (1 MB)
+    SCRATCH_MEMORY_SIZE    524288L     (512 KB)
+    MAX_STRING_POOL        16777216L   (16 MB)
+    MAX_PROGRAM_LINES      65536
+    MAX_ARRAY_ELEMENTS     4194304     (4M elements)
+    MAX_STACK_DEPTH        1024
+    MAX_NAMED_VARS         4096
+
+  To customize: edit the appropriate section in config.h and
+  rebuild.  See the comments in config.h for detailed examples
+  including slim 4 GB, beefy 64 GB workstation, and server
+  configurations.
+
+  To change the default dialect on ALL platforms, edit config.h:
+
+    #define BASICPP_DEFAULT_DIALECT DIALECT_GW_BASIC
+
+  Valid choices: DIALECT_GW_BASIC, DIALECT_ECMA116, DIALECT_QBASIC,
+  DIALECT_TINY_BASIC, DIALECT_ECMA55 (and any other DialectId).
+  On FreeDOS, only DIALECT_GW_BASIC and DIALECT_ECMA116 are
+  compiled in.
+
+  See help/FreeDOS_Build.txt for FreeDOS-specific customization.
+
+
+9. ADDING A NEW SOURCE FILE
+=============================
+
+  1. Create the .c file in the correct subdirectory.
+  2. Create a .h file in source/ root if it has a public API.
+  3. Add the .c file to the appropriate *_SOURCES group.
+  4. Add any new .h to the HEADERS list.
+  5. The file will automatically compile with all targets (gcc,
+     MSVC, watcom).
+
+  For the OpenWatcom targets (watcom/watcom386), you must also
+  add an explicit compile line because those targets list each
+  file individually:
+
+    $(WCC) $(WCFLAGS) -fo=newfile.obj subdir/newfile.c
+
+  And add the .obj name to WATCOM_OBJS:
+
+    WATCOM_OBJS = \
+        ... \
+        newfile.obj
+
+  Don't forget to also update:
+    - help/help.c           (if adding new BASIC keywords)
+    - source/SOURCE_TREE.txt (always)
+    - dialect/dialect.c     (if adding a new dialect)
+    - core/main.c           (if adding a new module)
+
+
+10. COMMON ISSUES
+==================
+
+  10.1  "ldisdbl" pragma warning (MSVC)
+  --------------------------------------
+  core\ldisdbl.c(2): warning C4068: unknown pragma 'aux'
+
+  This is expected and harmless.  The pragma is for OpenWatcom
+  only.  MSVC ignores it.
+
+  10.2  "_CRT_SECURE_NO_WARNINGS" (MSVC)
+  ----------------------------------------
+  MSVC flags fopen, sprintf, etc. as "unsafe" and suggests _s
+  suffixed replacements.  The /D_CRT_SECURE_NO_WARNINGS flag
+  suppresses these.  We use standard C functions for portability.
+
+  10.3  FreeDOS slim build
+  -------------------------
+  The FreeDOS build automatically excludes 14 dialects and 3
+  modules to fit within 512K.  If you need a specific dialect,
+  see help/FreeDOS_Build.txt for instructions on adding it back.
+  For the full interpreter on DOS, consider the 32-bit build
+  with increased pool sizes.
+
+  10.4  Missing advapi32.lib (MSVC)
+  ----------------------------------
+  The /link advapi32.lib flag is required on Windows for the
+  security subsystem (registry access).  If you see linker errors
+  about RegOpenKeyEx or similar, ensure advapi32.lib is linked.
+
+  10.5  make vs nmake (Windows)
+  ------------------------------
+  - GNU make: use "make" or "make msvc"
+  - Microsoft nmake: use "nmake /f Makefile msvc"
+  - The gcc/clang targets use GNU make syntax (pattern rules).
+  - The msvc target uses a simple command line and works with
+    either make or nmake.
+
+
+11. VERIFICATION
+=================
+
+After building, verify the interpreter works:
+
+  ./baspp -v                    (Linux)
+  basicpp.exe -v                (Windows)
+  bpp.exe -v                    (FreeDOS)
+
+  Expected output:  BASIC++ 2.0.2
+
+Run the built-in self-test:
+
+  ./baspp -q -c "SELFTEST"
+
+  Expected output:  ALL TESTS PASSED (79 assertions)
+
+
+See also:
+  SOURCE_TREE.txt              Complete file reference
+  FreeDOS_Build.txt            FreeDOS-specific build guide
+  Event_Trapping.txt           Event & interrupt trapping tutorial
+  Error_Handling.txt            ON ERROR GOTO, RESUME, error codes
+  Structured_BASIC.txt          WHEN EXCEPTION IN (ECMA-116)
+  Mixing_Dialects.txt           OPTION MIXED, dialect coexistence

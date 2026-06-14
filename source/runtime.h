@@ -58,7 +58,8 @@ typedef enum FrameType {
  FRAME_WHILE, /* WHILE/WEND loop */
  FRAME_DO, /* DO/LOOP loop */
  FRAME_SUB, /* SUB/FUNCTION call */
- FRAME_EXCEPTION /* WHEN EXCEPTION IN block */
+ FRAME_EXCEPTION, /* WHEN EXCEPTION IN block */
+ FRAME_REPEAT /* REPeat/END REPeat loop */
 } FrameType;
 
 /* --- Stack Frame ---
@@ -125,6 +126,10 @@ typedef struct StackFrame {
  int end_when_index; /* END WHEN line */
  int err_index; /* line where error occurred */
  } exception;
+ struct {
+ char name[MAX_VAR_NAME_LEN + 1]; /* loop identifier */
+ int body_index; /* index of line after REPeat */
+ } repeat_loop;
  } data;
 } StackFrame;
 
@@ -138,12 +143,12 @@ typedef struct NamedVariable {
 } NamedVariable;
 
 /* --- DIM Array Entry ---
- * Stores a single DIMmed array. Supports 1D and 2D arrays.
+ * Stores a single DIMmed array. Supports 1D, 2D, and 3D arrays.
  * Elements are stored in row-major order in a flat BValue array.
  */
 typedef struct DimArray {
  char name[MAX_VAR_NAME_LEN + 1]; /* array name */
- int dims; /* number of dimensions (1 or 2) */
+ int dims; /* number of dimensions (1, 2, or 3) */
  int size[MAX_ARRAY_DIMS]; /* size of each dimension */
  BValue *elements; /* pointer into element pool */
  int total; /* total number of elements */
@@ -211,6 +216,7 @@ typedef struct SubDef {
  * variables - integer values for A-Z (index 0=A, 25=Z)
  * array_base - pointer to @() array in variable pool
  * array_size - number of available @() elements
+ */
 /* --- User-Defined Function Entry ---
  * Stores a DEF FN definition. Each entry holds:
  * name - function name (single letter A-Z, or extended)
@@ -301,6 +307,7 @@ typedef struct RuntimeState {
  VDev *dev_err; /* error device (ERR:) */
  /* trace system (TRON/TROFF) */
  int trace_on; /* 1 = trace active */
+ int debug_on; /* 1 = verbose trace (DEBUG) */
  /* error handler (ON ERROR GOTO) */
  int on_error_line; /* target line, 0 = disabled */
  int on_timer_line; /* ON TIMER target, 0 = off */
@@ -325,6 +332,9 @@ typedef struct RuntimeState {
  int test_total;
  char test_name[64]; /* current TEST block name */
  int in_test; /* 1 = inside TEST/ENDTEST block */
+ int assert_pass_total; /* cumulative pass across blocks */
+ int assert_fail_total; /* cumulative fail across blocks */
+ int test_block_count; /* number of TEST blocks run */
  /* AUTO mode */
  int auto_line; /* next AUTO line number, 0=off */
  int auto_step; /* AUTO increment (default 10) */
@@ -332,6 +342,10 @@ typedef struct RuntimeState {
  int block_if_depth; /* nesting depth of active true blocks */
  /* OPTION ANGLE (ECMA-116) */
  int angle_degrees; /* 0=radians (default), 1=degrees */
+ /* OPTION TAB: 0=spaces (default), 1=real HT chars */
+ int tab_mode;
+ /* OPTION ZONE: -1=use dialect default, >0=override */
+ int zone_override;
 
  /* SCREEN / DRAW state */
  int screen_mode; /* 0=text (default) */
@@ -402,6 +416,109 @@ typedef struct RuntimeState {
  int scope_before_done; /* index of line whose BEFORE hook already fired, -1=none */
  int scope_after_kw;    /* KeywordId of pending AFTER hook, -1=none */
  int scope_hook_depth;  /* re-entrancy guard: >0 means inside a hook */
+
+ /* SCOPE event queue (Q10: hooks queue between statements) */
+#define SCOPE_EVQ_SIZE 16
+ struct {
+  int hook_type;  /* 0=before, 1=after, 2=override */
+  int hook_line;  /* GOSUB target line */
+  int return_idx; /* program index to return to */
+  int keyword_id; /* KeywordId that triggered */
+ } scope_evq[SCOPE_EVQ_SIZE];
+ int scope_evq_head;  /* next slot to read */
+ int scope_evq_tail;  /* next slot to write */
+ int scope_evq_count; /* items in queue */
+
+ /* WINDOW logical coordinate system */
+ int win_active;         /* 0=physical, 1=logical */
+ int win_screen_flag;    /* WINDOW SCREEN inverts Y */
+ double win_x1, win_y1;  /* logical min */
+ double win_x2, win_y2;  /* logical max */
+
+ /* VIEW PRINT text scroll region */
+ int view_print_top;    /* 1-based top row (default 1) */
+ int view_print_bottom; /* 1-based bottom row (default 25) */
+
+ /* Virtual console screen buffer (80x25 character cells)
+  * Written by PRINT, read by SCREEN(row, col) function.
+  * Provides real screen buffer for retro BASIC programs. */
+#define VCON_COLS 80
+#define VCON_ROWS 25
+ unsigned char vcon_chars[VCON_ROWS][VCON_COLS];
+ unsigned char vcon_colors[VCON_ROWS][VCON_COLS];
+
+  /* Event trap handlers (ON xxx GOSUB targets) */
+#define MAX_COM_PORTS 4
+#define MAX_STRIG_BUTTONS 4
+#define MAX_KEY_TRAPS 20
+ int on_com_line[MAX_COM_PORTS];
+ int on_key_line[MAX_KEY_TRAPS];
+ int on_pen_line;
+ int on_play_line;
+ int on_strig_line[MAX_STRIG_BUTTONS];
+
+ /* Event enable state: 0=OFF, 1=ON, 2=STOP */
+#define EVT_OFF  0
+#define EVT_ON   1
+#define EVT_STOP 2
+ int timer_event_state;    /* ON TIMER: ON/OFF/STOP */
+ double timer_interval;    /* seconds between fires */
+ double timer_last_fire;   /* timestamp of last fire */
+ int key_event_state[MAX_KEY_TRAPS]; /* per-key ON/OFF/STOP */
+ int com_event_state[MAX_COM_PORTS];
+ int pen_event_state;
+ int play_event_state;     /* ON PLAY: ON/OFF/STOP */
+ int strig_event_state[MAX_STRIG_BUTTONS];
+
+ /* Tier 2: Device I/O interrupt handlers */
+#define MAX_DEVICE_TRAPS 8
+ int on_device_line[MAX_DEVICE_TRAPS];  /* GOSUB targets */
+ int device_event_state[MAX_DEVICE_TRAPS]; /* ON/OFF/STOP */
+
+ /* Tier 3: OS / system interrupt handlers */
+ int on_break_line;        /* ON BREAK GOSUB target */
+ int break_event_state;    /* ON/OFF/STOP */
+ int signal_pending;       /* set by OS signal handler */
+
+ /* Tier 4: File I/O event handlers */
+ int on_fileio_line;       /* ON FILEIO GOSUB target */
+ int fileio_event_state;   /* ON/OFF/STOP */
+ int fileio_pending;       /* set when disk event occurs */
+
+ /* Event system infrastructure */
+ int event_in_handler;     /* re-entrancy guard */
+
+ /* Event queue for STOP-mode deferred events */
+#define EVENT_QUEUE_SIZE 16
+#define EVTYPE_TIMER   1
+#define EVTYPE_KEY     2
+#define EVTYPE_COM     3
+#define EVTYPE_PEN     4
+#define EVTYPE_PLAY    5
+#define EVTYPE_STRIG   6
+#define EVTYPE_DEVICE  7
+#define EVTYPE_BREAK   8
+#define EVTYPE_FILEIO  9
+ struct {
+  int event_type;       /* EVTYPE_xxx */
+  int event_id;         /* device index or key number */
+  int handler_line;     /* target GOSUB line */
+ } event_queue[EVENT_QUEUE_SIZE];
+ int evq_head;
+ int evq_tail;
+ int evq_count;
+
+ /* DEF USR addresses (USR0 through USR9) */
+#define MAX_USR_FUNCS 10
+ long usr_addresses[MAX_USR_FUNCS];
+
+ /* Default variable type per letter range (DEFINT/DEFDBL/etc) */
+#define DEFTYPE_NONE 0
+#define DEFTYPE_INT  1
+#define DEFTYPE_SNG  2
+#define DEFTYPE_DBL  3
+#define DEFTYPE_STR  4
+ unsigned char deftype_map[26]; /* A-Z */
 } RuntimeState;
 
 /* --- Runtime Functions ---
@@ -565,23 +682,24 @@ void runtime_set_string_var(RuntimeState *rt, char name, BValue value);
 
 /*
  * runtime_dim - Create a DIM array.
- * For 2D: pass both dim1 and dim2.
- * For 1D: pass dim2 = 0.
+ * For 3D: pass dim1, dim2, and dim3.
+ * For 2D: pass dim1 and dim2, dim3 = 0.
+ * For 1D: pass dim2 = 0, dim3 = 0.
  */
 int runtime_dim(RuntimeState *rt, const char *name, int name_len,
- int dim1, int dim2, int line_num);
+ int dim1, int dim2, int dim3, int line_num);
 
 /*
  * runtime_get_dim - Get element from DIMmed array.
  */
 BValue runtime_get_dim(RuntimeState *rt, const char *name, int name_len,
- int idx1, int idx2, int line_num);
+ int idx1, int idx2, int idx3, int line_num);
 
 /*
  * runtime_set_dim - Set element in DIMmed array.
  */
 void runtime_set_dim(RuntimeState *rt, const char *name, int name_len,
- int idx1, int idx2, BValue val, int line_num);
+ int idx1, int idx2, int idx3, BValue val, int line_num);
 
 /*
  * runtime_find_dim - Find a DIM array by name.

@@ -1,6 +1,6 @@
 IMPLEMENTING OLDER DIALECTS AND MEMORY MAPS
 ============================================
-Version 0.21.0
+Version 1.5.0
 
 BASIC++ can emulate classic computer systems by combining its
 dialect engine with the MEMMAP virtual memory system.  This

@@ -1,0 +1,16 @@
+1 REM === t48_sound.bas ===
+2 REM Tests: BEEP, SOUND, PLAY
+3 DIALECT "GWBS"
+10 TEST "BEEP"
+20 BEEP
+30 REM Should produce bell character
+40 ENDTEST
+100 TEST "SOUND"
+110 SOUND 440, 1
+120 REM Freq 440Hz, duration 1 tick
+130 ENDTEST
+200 TEST "PLAY"
+210 PLAY "CDEFGAB"
+220 REM Play a scale
+230 ENDTEST
+999 END

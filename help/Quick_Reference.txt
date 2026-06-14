@@ -1,6 +1,6 @@
 BASIC++ QUICK REFERENCE CARD
 ============================
-Version 0.21.0
+Version 2.0.0
 
 Alphabetical listing of every keyword, statement, function,
 and command in BASIC++.
@@ -25,7 +25,7 @@ COMMANDS (Direct Mode)
   NEW                          Clear program and variables
   RENUM [start [, step]]       Renumber lines
   RUN [line]                   Execute program
-  SAVE "filename"              Save program
+  SAVE ["filename"]             Save program (auto-names if bare)
   SELFTEST                     Run built-in tests
   SYSTEM                       Exit BASIC++
   TROFF                        Disable trace mode
@@ -54,7 +54,7 @@ STATEMENTS
   DEFINT letter[-letter]       Default integer
   DEFSNG letter[-letter]       Default single precision
   DEFSTR letter[-letter]       Default string
-  DIM var(size [, size])       Declare array
+  DIM var(s1 [, s2 [, s3]])   Declare array (1D/2D/3D)
   DO [WHILE|UNTIL cond]        Begin DO loop
   DRAW "commands"              Turtle graphics
   END                          Terminate program
@@ -63,7 +63,7 @@ STATEMENTS
   ERROR n                      Raise error
   EXEC "command"               Fire-and-forget command
   FIELD #n, w AS v$ [, ...]    Map record fields
-  FOR v = s TO e [STEP i]      Begin FOR loop
+  FOR v = s TO e [STEP i]      Begin FOR loop (BY = STEP alias)
   FUNCTION name(params)        Begin user function
   GET #n [, record]            Read record/bytes
   GOSUB line                   Call subroutine
@@ -75,6 +75,7 @@ STATEMENTS
   KEY n, "string"              Define function key
   KEY ON / OFF / LIST          Function key display
   KILL "filename"              Delete file
+  SCRATCH "filename"           Delete file (SBASIC alias)
   LET var = expr               Assignment (LET optional)
   LINE (x1,y1)-(x2,y2) [,c]   Draw line/box
   LINE INPUT [prompt;] var$    Read full line
@@ -124,8 +125,10 @@ STATEMENTS
   SOUND freq, duration         Generate tone
   STOP                         Break into direct mode
   SUB name(params)             Begin subroutine
-  SWAP var1, var2              Exchange values
+  SWAP var1, var2              Exchange values (scalars/arrays)
+  UNLESS cond THEN stmt        Negated IF (SBASIC)
   UNLOCK #n [, s TO e]         Unlock file region
+  UNSAVE                       Delete last saved file
   VIEW [[SCREEN] (x1,y1)-(x2,y2)]  Set viewport
   VIEW PRINT [top TO bottom]   Set text viewport
   WAIT port, AND [, XOR]       Wait for I/O condition
@@ -140,11 +143,17 @@ STATEMENTS
 NUMERIC FUNCTIONS
 =================
   ABS(x)                Absolute value
+  AVG(a, b, ...)        Average (mean)
+  ACOS(x)               Arccosine (SBASIC)
+  ASIN(x)               Arcsine (SBASIC)
+  COMPLEX(re, im)       Create complex number
   ASC(s$)               ASCII code of first char
   ATN(x)                Arctangent (radians)
   CDBL(x)               Convert to double
   CINT(x)               Round to integer
+  COMP(a, b)            Compare -1/0/+1 (SBASIC)
   COS(x)                Cosine
+  COSH(x)               Hyperbolic cosine (SBASIC)
   CSNG(x)               Convert to single
   CSRLIN                Current cursor row
   CVI(s$)               2-byte string to integer
@@ -157,6 +166,7 @@ NUMERIC FUNCTIONS
   EXP(x)                e^x
   FIX(x)                Truncate toward zero
   FRE(x)                Free memory
+  IMAG(z)               Imaginary part of complex
   INP(port)             Read I/O port
   INSTR(h$, n$)         Find substring
   INT(x)                Floor
@@ -165,16 +175,27 @@ NUMERIC FUNCTIONS
   LOC(n)                File position
   LOF(n)                File length
   LOG(x)                Natural log
+  LOG10(x)              Common log base 10 (SBASIC)
+  LOG2(x)               Binary log base 2 (SBASIC)
   LPOS(x)               Printer position
+  MAX(a, b, ...)        Maximum value
+  MED(a, b, ...)        Median value
+  MIN(a, b, ...)        Minimum value
+  PDIF(a, b)            Positive difference (SBASIC)
   PEEK(addr)            Read memory byte
+  PI                    Constant 3.14159... (SBASIC)
   POINT(x, y)           Pixel color
   POS(x)                Cursor column
+  REAL(z)               Real part of complex
   RND(x)                Random number (0-1)
+  ROUND(x [, n])        Round to N decimal places
   SCREEN(r, c)          Character at position
   SGN(x)                Sign (-1, 0, 1)
   SIN(x)                Sine
+  SINH(x)               Hyperbolic sine (SBASIC)
   SQR(x)                Square root
   TAN(x)                Tangent
+  TANH(x)               Hyperbolic tangent (SBASIC)
   TIMER                 Seconds since midnight
   UBOUND(a, dim)        Array upper bound
   USR(x)                User-defined machine fn

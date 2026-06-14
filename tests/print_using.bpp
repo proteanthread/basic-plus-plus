@@ -1,0 +1,48 @@
+1 REM ============================================================
+2 REM  t61_print_using.bpp
+3 REM  BASIC++ PRINT USING Test & Tutorial
+4 REM ============================================================
+5 REM
+6 REM  PRINT USING formats output according to a format string.
+7 REM  This is essential for creating formatted reports, aligning
+8 REM  columns, and controlling decimal precision.
+9 REM
+10 REM  FORMAT CHARACTERS:
+11 REM    # (hash)    - Digit position. Shows digit or space.
+12 REM    . (dot)     - Decimal point position
+13 REM    , (comma)   - Insert comma every 3 digits
+14 REM    ** (stars)  - Fill leading spaces with asterisks
+15 REM    $$ (dollar) - Floating dollar sign
+16 REM    + (plus)    - Show sign (+ or -)
+17 REM    - (minus)   - Trailing minus for negatives
+18 REM    ^ (caret)   - Scientific notation
+19 REM    ! (bang)    - First character of string
+20 REM    \ \ (slashes) - Fixed-width string field
+21 REM    & (amper)   - Entire string
+22 REM
+23 DIALECT "GWBS"
+24 REM
+100 REM === Numeric formatting ===
+101 REM PRINT USING "format"; value
+102 REM The format string controls how the value is displayed.
+110 TEST "PRINT USING numeric"
+120 PRINT USING "###.##"; 3.14
+130 REM Output: "  3.14" (right-justified in 6 chars)
+140 PRINT USING "###.##"; 99.9
+150 REM Output: " 99.90" (trailing zero added)
+160 PRINT USING "#####"; 42
+170 REM Output: "   42" (padded with spaces)
+180 ENDTEST
+200 REM === String formatting ===
+210 TEST "PRINT USING string"
+220 PRINT USING "!"; "HELLO"
+230 REM Output: "H" (first character only)
+240 PRINT USING "&"; "HELLO"
+250 REM Output: "HELLO" (entire string)
+260 ENDTEST
+300 REM === Multiple values ===
+310 TEST "PRINT USING multiple"
+320 PRINT USING "### ###"; 10; 20
+330 REM Output: " 10  20"
+340 ENDTEST
+9999 END

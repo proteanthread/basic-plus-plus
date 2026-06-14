@@ -1,0 +1,18 @@
+10 REM FILEIO.BAS - write then read a text file
+20 FILE$="TESTFILE.TXT"
+30 PRINT "Writing 5 lines to ";FILE$
+40 OPEN FILE$ FOR OUTPUT AS #1
+50 FOR I=1 TO 5
+60 PRINT #1,"Line ";I;" written on ";DATE$;" at ";TIME$
+70 NEXT I
+80 CLOSE #1
+90 PRINT "File written. Now reading back..."
+100 OPEN FILE$ FOR INPUT AS #2
+110 LINE=0
+120 WHILE NOT EOF(2)
+130 LINE=LINE+1
+140 INPUT #2,T$
+150 PRINT LINE;": ";T$
+160 WEND
+170 CLOSE #2
+180 PRINT "END OF FILE"

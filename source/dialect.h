@@ -85,7 +85,7 @@
  * In strict mode (OPTION STRICT) only keywords whose bitmask
  * includes the active dialect are allowed.
  *
- * 16-bit unsigned: one bit per dialect (12 used, 4 reserved).
+ * 16-bit unsigned: one bit per dialect (15 used, 1 reserved).
  */
 #define DFLAG_PATB (1u << 0) /* Palo Alto Tiny BASIC */
 #define DFLAG_TRS1 (1u << 1) /* TRS-80 Level I */
@@ -99,17 +99,22 @@
 #define DFLAG_ATRI (1u << 9) /* Atari/Microsoft BASIC II */
 #define DFLAG_C64B (1u << 10) /* Commodore BASIC v2 */
 #define DFLAG_COCO (1u << 11) /* Tandy CoCo BASIC */
+#define DFLAG_MBAS (1u << 12) /* Microsoft MBASIC (CP/M) */
+#define DFLAG_SINC (1u << 13) /* Sinclair BASIC (ZX Spectrum) */
+#define DFLAG_SUPA (1u << 14) /* SuperBASIC (Sinclair QL) */
+#define DFLAG_SBAS (1u << 15) /* SUPER BASIC (Tymshare) */
 #define DFLAG_ALL (0xFFFFu) /* all dialects / BASIC++ native */
 
 /* Convenience: Microsoft BASIC family (shared core) */
 #define DFLAG_MSBASIC (DFLAG_TRS2 | DFLAG_GWBS | DFLAG_QBAS | \
- DFLAG_ASFT | DFLAG_C64B | DFLAG_COCO)
+ DFLAG_ASFT | DFLAG_C64B | DFLAG_COCO | DFLAG_MBAS)
 
 /* Convenience: All Microsoft + both TRS-80 levels */
 #define DFLAG_MSALL (DFLAG_TRS1 | DFLAG_MSBASIC)
 
 /* Convenience: Structured BASIC (WHILE/WEND, SELECT, etc.) */
-#define DFLAG_STRUCT (DFLAG_GWBS | DFLAG_QBAS | DFLAG_E116)
+#define DFLAG_STRUCT (DFLAG_GWBS | DFLAG_QBAS | DFLAG_E116 | DFLAG_MBAS | \
+ DFLAG_SUPA)
 
 /* Convenience: GW-BASIC + QBasic (most compatible pair) */
 #define DFLAG_GWQB (DFLAG_GWBS | DFLAG_QBAS)
@@ -133,6 +138,10 @@ typedef enum DialectId {
  DIALECT_ATARI_MS, /* Atari/Microsoft BASIC II */
  DIALECT_COMMODORE, /* Commodore BASIC */
  DIALECT_COCO, /* Tandy Color Computer BASIC */
+ DIALECT_MBASIC, /* Microsoft MBASIC (CP/M) */
+ DIALECT_SINCLAIR, /* Sinclair BASIC (ZX Spectrum 48K) */
+ DIALECT_SUPERBASIC, /* SuperBASIC (Sinclair QL) */
+ DIALECT_SBASIC, /* SUPER BASIC (Tymshare SDS-940) */
  DIALECT_COUNT /* sentinel - must be last */
 } DialectId;
 
@@ -294,9 +303,13 @@ int dialect_is_strict(void);
 /*
  * dialect_keyword_allowed - Check if a keyword is allowed.
  *
- * In union mode: always returns 1.
+ * In union mode:  always returns 1.
  * In strict mode: returns 1 only if the keyword's dialect bitmask
- * includes the active dialect's flag.
+ *                 includes the active dialect's flag.
+ * In mixed mode:  returns 1 only if the keyword's dialect bitmask
+ *                 intersects the mixed-mode mask.
+ *
+ * Keywords tagged DFLAG_ALL are always allowed in all modes.
  *
  * The keyword's dialect flags are looked up from the lexer's
  * keyword table via lexer_get_keyword_flags().
@@ -307,6 +320,83 @@ int dialect_keyword_allowed(KeywordId kw);
  * dialect_get_flag - Return the active dialect's bitmask flag.
  */
 unsigned int dialect_get_flag(void);
+
+/* --- Dialect Mode Enumeration ---
+ * Three keyword filtering modes:
+ *
+ * DMODE_UNION  - All keywords from all dialects accepted (default).
+ *                This is the only mode available in immediate mode
+ *                besides strict.
+ *
+ * DMODE_STRICT - Only keywords from the single active dialect are
+ *                accepted. Available in both immediate and deferred
+ *                (program) mode.
+ *
+ * DMODE_MIXED  - Only keywords from a user-specified subset of
+ *                dialects are accepted. ONLY available in deferred
+ *                (program) mode. Auto-clears when the program ends
+ *                (RUN completes, STOP, END, or error), reverting
+ *                to the previous mode.
+ */
+typedef enum DialectMode {
+    DMODE_UNION = 0,
+    DMODE_STRICT = 1,
+    DMODE_MIXED = 2
+} DialectMode;
+
+/*
+ * dialect_get_mode - Return the current dialect filtering mode.
+ */
+DialectMode dialect_get_mode(void);
+
+/*
+ * dialect_set_mixed - Enable mixed mode with a bitmask.
+ *
+ * Sets the dialect filtering mode to DMODE_MIXED and stores the
+ * given bitmask. Only keywords whose dialect flags intersect this
+ * mask (or are DFLAG_ALL) are accepted.
+ *
+ * Mixed mode is program-only: it should be activated by OPTION MIXED
+ * within a running program. When the program ends, call
+ * dialect_clear_mixed() to revert.
+ *
+ * Parameters:
+ *   mask - OR'd combination of DFLAG_xxx values
+ *          e.g., (DFLAG_GWBS | DFLAG_QBAS)
+ */
+void dialect_set_mixed(unsigned int mask);
+
+/*
+ * dialect_clear_mixed - Clear mixed mode and revert.
+ *
+ * If currently in DMODE_MIXED, reverts to DMODE_UNION (or
+ * DMODE_STRICT if strict was active before mixed was set).
+ * Called automatically at program end.
+ */
+void dialect_clear_mixed(void);
+
+/*
+ * dialect_is_mixed - Query whether mixed mode is active.
+ */
+int dialect_is_mixed(void);
+
+/*
+ * dialect_get_mixed_mask - Return the current mixed mode bitmask.
+ *
+ * Returns 0 if not in mixed mode.
+ */
+unsigned int dialect_get_mixed_mask(void);
+
+/*
+ * dialect_build_mask - Build a bitmask from comma-separated codes.
+ *
+ * Parses a string like "GWBS,QBAS,C64B" and returns the OR'd
+ * bitmask of all matched dialects. Returns 0 if none matched.
+ *
+ * Parameters:
+ *   spec - comma-separated dialect short codes
+ */
+unsigned int dialect_build_mask(const char *spec);
 
 /* --- Dialect Registration (- Contributor Architecture) ---
  * Each dialect lives in its own source file (dialect_gwbs.c, etc.)
@@ -334,18 +424,40 @@ int dialect_register(const DialectConfig *config);
  */
 void dialect_register_all(void);
 
-/* Per-dialect registration functions (one per dialect_*.c file) */
+/* Per-dialect registration functions (one per dialect_*.c file)
+ *
+ * On FreeDOS builds (BPP_FREEDOS defined), only GW-BASIC and
+ * ECMA-116 are compiled in.  The remaining declarations are
+ * guarded to avoid unresolved symbol errors at link time.
+ *
+ * To add a dialect back to the FreeDOS build:
+ * 1. Remove the #ifndef guard around its declaration here.
+ * 2. Uncomment its register call in dialect_register_all()
+ *    in dialect.c.
+ * 3. Add its .c file back to the Makefile watcom target.
+ * 4. Verify the binary still fits within 512K.
+ */
+#ifndef BPP_FREEDOS
 void dialect_register_patb(void);
 void dialect_register_trs1(void);
 void dialect_register_trs2(void);
+#endif
 void dialect_register_gwbs(void);
+#ifndef BPP_FREEDOS
 void dialect_register_ecma55(void);
+#endif
 void dialect_register_ecma116(void);
+#ifndef BPP_FREEDOS
 void dialect_register_qbasic(void);
 void dialect_register_aint(void);
 void dialect_register_asft(void);
 void dialect_register_atari(void);
 void dialect_register_c64(void);
 void dialect_register_coco(void);
+void dialect_register_mbasic(void);
+void dialect_register_sinclair(void);
+void dialect_register_superbasic(void);
+void dialect_register_sbasic(void);
+#endif
 
 #endif /* BASICPP_DIALECT_H */

@@ -1,6 +1,6 @@
 ERROR HANDLING IN BASIC++
 =========================
-Version 0.21.0
+Version 1.5.0
 
 BASIC++ provides structured error handling compatible with
 GW-BASIC and QBasic error trapping.

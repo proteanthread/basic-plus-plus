@@ -1,0 +1,630 @@
+EVENT TRAPPING IN BASIC++
+==========================
+Version 2.0.2
+
+Event trapping lets a running program respond to external events
+(timers, key presses, device signals) without polling.  Handlers
+are registered with ON...GOSUB or ON...GOTO, and the interpreter
+checks for pending events between statements.
+
+BASIC++ provides a unified trapping system drawn from four
+dialect families and extending them with device, OS signal,
+and network event support:
+
+  Syntax Family           Origin          Example
+  ----------------------  -----------     -----------------------
+  TRAP n                  Atari BASIC     TRAP 1000
+  ON ERROR GOTO n         GW-BASIC        ON ERROR GOTO 500
+  ON TRAP GOTO / GOSUB    BASIC++ hybrid  ON TRAP(1) GOSUB 2000
+  WHEN EXCEPTION IN       ECMA-116        structured try/catch
+  ON BREAK GOSUB n        BASIC++         intercept Ctrl+C
+
+Because TRAP means different things in different dialects, BASIC++
+treats it as a hybrid command: in Atari mode it behaves like
+Atari BASIC's TRAP n; in other modes it serves as a general-
+purpose event router.
+
+For error trapping basics (ON ERROR GOTO, RESUME, ERR/ERL), see
+Error_Handling.txt.
+
+
+1. HOW EVENT TRAPPING WORKS
+============================
+
+Event trapping is cooperative, not preemptive.  The interpreter
+checks for pending events at each statement boundary:
+
+  1. A statement finishes executing.
+  2. The interpreter checks the event queue.
+  3. If an event is pending and its trap is ON, a GOSUB is
+     issued to the registered handler.
+  4. The handler runs and ends with RETURN.
+  5. Execution resumes where it left off.
+
+A tight loop like "10 GOTO 10" still checks events between
+iterations because GOTO returns to the statement dispatcher.
+
+
+2. THE THREE-STATE SWITCH
+===========================
+
+Each event source has three states:
+
+  ON    Events are detected and the handler fires immediately.
+  OFF   Events are ignored entirely.
+  STOP  Events are detected and queued, but the handler does not
+        fire.  When the state is switched back to ON, any queued
+        event fires immediately.
+
+STOP is useful inside a handler to prevent re-entrancy:
+
+  500 TIMER STOP            ' Don't re-enter while handling
+  510 PRINT "Tick at "; TIME$
+  520 TIMER ON              ' Re-enable (queued events fire now)
+  530 RETURN
+
+
+3. TIMER TRAPPING
+==================
+
+Fire a subroutine at a regular interval.
+
+  Syntax:
+    ON TIMER(seconds) GOSUB line
+    TIMER ON | OFF | STOP
+
+  Example:
+    10 ON TIMER(5) GOSUB 500
+    20 TIMER ON
+    30 FOR I = 1 TO 100
+    40   PRINT I
+    50   SLEEP 1
+    60 NEXT I
+    70 TIMER OFF
+    80 END
+    500 PRINT ">> Timer tick at "; TIME$
+    510 RETURN
+
+  The interval is in seconds.  ON TIMER(1) fires approximately
+  once per second.  The timer is checked between statements, so
+  the actual interval may be slightly longer.
+
+
+4. KEY TRAPPING
+================
+
+Fire a subroutine when a function key is pressed.
+
+  Syntax:
+    ON KEY(n) GOSUB line
+    KEY(n) ON | OFF | STOP
+
+  Key numbers:
+    1-12     F1 through F12
+    13-14    Cursor Up / Down (if supported)
+    15-20    User-defined key traps
+
+  Example:
+    10 ON KEY(1) GOSUB 500       ' F1 handler
+    20 KEY(1) ON
+    30 PRINT "Press F1..."
+    40 FOR I = 1 TO 10000 : NEXT I
+    50 KEY(1) OFF
+    60 END
+    500 PRINT "F1 was pressed!"
+    510 RETURN
+
+
+5. COM TRAPPING (Serial Port)
+==============================
+
+Fire a subroutine when data arrives on a serial port.
+
+  Syntax:
+    ON COM(n) GOSUB line
+    COM(n) ON | OFF | STOP
+
+  Port numbers: 1-4
+
+  Example:
+    10 ON COM(1) GOSUB 500
+    20 COM(1) ON
+    30 ' ... main loop ...
+    40 END
+    500 PRINT "Data on COM1"
+    510 RETURN
+
+  Note: BASIC++ virtualizes serial ports.  In the virtual
+  device layer, COM events can be triggered by the VDEV
+  subsystem or FujiNet network events.
+
+
+6. STRIG TRAPPING (Joystick Button)
+=====================================
+
+Fire a subroutine when a joystick button is pressed.
+
+  Syntax:
+    ON STRIG(n) GOSUB line
+    STRIG(n) ON | OFF | STOP
+
+  Button numbers:
+    0    Joystick A, button 1
+    2    Joystick A, button 2
+    4    Joystick B, button 1
+    6    Joystick B, button 2
+
+  Example:
+    10 ON STRIG(0) GOSUB 500
+    20 STRIG(0) ON
+    30 ' ... game loop ...
+    40 END
+    500 PRINT "Fire!"
+    510 RETURN
+
+
+7. PEN TRAPPING (Light Pen)
+=============================
+
+Fire a subroutine when the light pen is activated.
+
+  Syntax:
+    ON PEN GOSUB line
+    PEN ON | OFF | STOP
+
+  Example:
+    10 ON PEN GOSUB 500
+    20 PEN ON
+    30 ' ... wait for pen activation ...
+    40 END
+    500 PRINT "Pen at "; PEN(1); ","; PEN(2)
+    510 RETURN
+
+
+8. PLAY TRAPPING (Music Buffer)
+=================================
+
+Fire a subroutine when the music buffer needs filling.
+
+  Syntax:
+    ON PLAY(n) GOSUB line
+    PLAY ON | OFF | STOP
+
+  The argument n is the number of notes remaining in the
+  buffer that triggers the event.
+
+  Example:
+    10 ON PLAY(2) GOSUB 500
+    20 PLAY ON
+    30 PLAY "T120 L4 CDEFGAB"
+    40 END
+    500 PLAY "CDEFG"            ' Refill the buffer
+    510 RETURN
+
+
+9. ON BREAK -- OS SIGNAL HANDLER
+==================================
+
+Intercept Ctrl+C (SIGINT) and other OS termination signals.
+
+  Syntax:
+    ON BREAK GOSUB line
+    ON BREAK GOTO 0           (disable — restore default behavior)
+
+  Example:
+    10 ON BREAK GOSUB 500
+    20 PRINT "Press Ctrl+C to test..."
+    30 FOR I = 1 TO 100000
+    40   REM busy work
+    50 NEXT I
+    60 END
+    500 PRINT ">> Ctrl+C intercepted!"
+    510 PRINT "Cleaning up..."
+    520 RETURN
+
+  When no ON BREAK handler is registered, Ctrl+C stops the
+  program with a [BREAK] message (default behavior).
+
+  WARNING: If the handler does not eventually END or STOP,
+  the program becomes unkillable via the keyboard.  The STOP
+  statement and the debugger BREAK command always work.
+
+
+10. DEVICE I/O EVENTS (VDev Tier 2)
+=====================================
+
+Any registered virtual device (VDev) with the VDCAP_EVENT
+capability can fire events.  This covers USB hotplug, printer
+status changes, mouse input, and disk I/O completion.
+
+Device events are polled automatically by the event_poll()
+loop.  When a device's dev_poll() returns 1 (event pending)
+and its trap state is ON, the registered handler fires.
+
+  Conceptual syntax (planned):
+    ON DEVICE(n) GOSUB line     ' n = VDev slot number
+    DEVICE(n) ON | OFF | STOP
+
+  The device event infrastructure is in place.  Specific
+  device-level ON DEVICE syntax will be exposed in a future
+  version when individual VDev drivers implement dev_poll().
+
+
+11. UPnP / NETWORK EVENTS (Tier 5)
+====================================
+
+The UPnP module (MODULE "UPNP") registers UPNP: and SOAP:
+virtual devices with VDCAP_EVENT.  These are polled by the
+same Tier 2 device event loop.
+
+  Event types:
+    - SSDP discovery announcement (new device found)
+    - GENA event notification (device state change)
+    - Connection state changes
+
+  Usage:
+    100 MODULE "UPNP"
+    110 REM UPNP: and SOAP: devices are now registered
+    120 REM Events fire through the device I/O event system
+
+  The UPnP module is currently a pure API framework.  The
+  SSDP multicast and GENA subscription protocols have
+  documented extension points for future implementation.
+
+
+13. TRAP -- THE HYBRID COMMAND
+==============================
+
+TRAP is a hybrid command.  In Atari BASIC, TRAP sets an error
+handler (equivalent to ON ERROR GOTO).  In BASIC++, TRAP also
+serves as a general-purpose event router.
+
+  9.1. Atari BASIC Form
+  ---------------------
+
+    TRAP n           Set error handler to line n
+    TRAP 0           Disable error handler
+    TRAP             Show current trap status
+
+    Example (Atari style):
+      10 TRAP 100
+      20 PRINT 1/0
+      30 END
+      100 PRINT "Error caught"
+
+    This is equivalent to ON ERROR GOTO 100.
+
+    Equivalence table:
+      TRAP 100    is equivalent to    ON ERROR GOTO 100
+      TRAP 0      is equivalent to    ON ERROR GOTO 0
+
+    Hybrid note: When the active dialect is Atari BASIC
+    (-d ATAR), TRAP is identical to Atari's original
+    behavior.  In all other dialects, TRAP additionally
+    supports the extended three-argument form and the
+    ON TRAP event syntax described below.
+
+  9.2. Bare TRAP (Status Query)
+  ------------------------------
+
+    Typing TRAP with no arguments prints the current status:
+
+      TRAP
+      TRAP active -> line 100
+
+      TRAP 0
+      TRAP
+      TRAP inactive
+
+  9.3. Extended Three-Argument Form
+  ----------------------------------
+
+    TRAP event, source, handler
+
+    Route a specific event class from a specific source to a
+    handler line.
+
+    Arguments:
+      event     Event class number (see table in 9.5)
+      source    Sub-index (port, key, button; 0 = default)
+      handler   Target line number (0 = disable)
+
+    Example:
+      10 TRAP 0, 0, 500      ' Error trap -> line 500
+      20 TRAP 1, 0, 600      ' Timer trap -> line 600
+      30 TRAP 2, 1, 700      ' Key trap, F1 -> line 700
+
+  9.4. ON TRAP GOTO / GOSUB
+  --------------------------
+
+    ON TRAP GOTO line           Error trap (same as ON ERROR GOTO)
+    ON TRAP GOSUB line          Error trap as subroutine
+    ON TRAP(n) GOTO line        Event class n, GOTO style
+    ON TRAP(n) GOSUB line       Event class n, GOSUB style
+
+    Error trapping via ON TRAP:
+      10 ON TRAP GOTO 500
+      20 X = 1/0
+      30 END
+      500 PRINT "Trapped error"; ERR; "at line"; ERL
+      510 RESUME NEXT
+
+    Timer event with ON TRAP(1):
+      10 ON TRAP(1) GOSUB 500
+      20 FOR I = 1 TO 1000000
+      30   REM main loop
+      40 NEXT I
+      50 END
+      500 PRINT "Timer tick at"; TIME$
+      510 RETURN
+
+  9.5. Event Class Numbers
+  -------------------------
+
+    Class  Name      Description
+    -----  --------  ------------------------------------
+      0    ERROR     Runtime error (division by zero, etc.)
+      1    TIMER     Timer interval elapsed
+      2    KEY       Function key pressed
+      3    COM       Serial port data available
+      4    PEN       Light pen activated
+      5    STRIG     Joystick button pressed
+      6    PLAY      Music buffer needs filling
+      7    SIGNAL    OS signal (SIGINT, SIGTERM)
+      8    USER      User-defined event (CAUSE TRAP n)
+
+  9.6. Dialect Conflict Resolution
+  ---------------------------------
+
+    BASIC++ recognizes both Atari and extended forms:
+
+    Input                 Atari Mode           Other Dialects
+    --------------------  -------------------  -------------------
+    TRAP 100              Error trap -> 100    Same (compatible)
+    TRAP 0                Disable error trap   Same
+    TRAP                  Show trap status     Same
+    TRAP 1, 0, 200        (not valid)          Event 1, src 0, ->200
+    ON TRAP GOTO 100      (not standard)       Error trap -> 100
+    ON TRAP(1) GOSUB 500  (not standard)       Timer trap -> 500
+
+    "Not standard" means the syntax is accepted but would not
+    appear in authentic Atari BASIC programs.  It still works.
+
+
+14. STRUCTURED EXCEPTION HANDLING (ECMA-116)
+==============================================
+
+For complex error recovery, BASIC++ supports ECMA-116 structured
+exception blocks.  These provide block-scoped, nestable error
+handling that is more powerful than global ON ERROR GOTO.
+
+  WHEN EXCEPTION IN
+    ' ... protected code ...
+  USE
+    ' ... error handler ...
+  END WHEN
+
+  Example:
+    100 WHEN EXCEPTION IN
+    110   OPEN "MISSING.DAT" FOR INPUT AS #1
+    120   PRINT "File opened OK"
+    130   CLOSE #1
+    140 USE
+    150   PRINT "Cannot open file (ERR ="; ERR; ")"
+    160 END WHEN
+    170 PRINT "Program continues here"
+
+  Keywords:
+    WHEN EXCEPTION IN   Start a protected block
+    USE                 Start the exception handler
+    END WHEN            End the entire block
+    RETRY               Re-enter the protected block from handler
+    CONTINUE            Skip the failed statement and continue
+
+  Nesting: WHEN blocks can be nested.  Each block has its own
+  handler.
+
+    100 WHEN EXCEPTION IN
+    110   WHEN EXCEPTION IN
+    120     PRINT 1/0
+    130   USE
+    140     PRINT "Inner handler caught it"
+    150   END WHEN
+    160 USE
+    170   PRINT "Outer handler (should not fire)"
+    180 END WHEN
+
+
+15. ERROR CODES (ERR)
+======================
+
+When a trap fires due to an error, the ERR variable holds the
+error code.  The ERL variable holds the line where it occurred.
+
+  Common internal error codes:
+
+    Code  Meaning
+    ----  ----------------------------
+     1    WHAT  -- syntax / parse error
+     2    HOW   -- runtime / math error
+     3    SORRY -- out of memory / stack
+     4    File not found
+     5    Device I/O error
+     6    Permission denied
+     7    Out of data (READ past DATA)
+
+  See Error_Handling.txt for the full GW-BASIC error code table.
+
+
+16. DIALECT CONSIDERATIONS
+============================
+
+TRAP behaves differently depending on the active dialect:
+
+  Dialect        TRAP n         ON TRAP GOSUB    TRAP e,s,h
+  -----------    -----------    -------------    ----------
+  Atari BASIC    Error trap     Not standard*    Not standard*
+  GW-BASIC       Error trap     Supported        Supported
+  QBasic         Error trap     Supported        Supported
+  ECMA-55        Error trap     Supported        Supported
+  ECMA-116       Error trap     Supported        Supported
+  PATB (default) Error trap     Supported        Supported
+
+  * "Not standard" means the syntax is accepted but would not
+    appear in authentic programs for that dialect.  It still
+    works in union mode (the default).
+
+In strict mode (OPTION STRICT ON), TRAP only accepts the forms
+valid for the active dialect.  In union mode (default), all
+forms are accepted regardless of dialect.
+
+In mixed mode (OPTION MIXED ATAR,GWBS), both Atari's TRAP n
+and GW-BASIC's ON ERROR GOTO n coexist.  They write to the same
+internal handler slot (on_error_line), so they are
+interchangeable.
+
+
+17. COMPARISON OF TRAPPING STYLES
+===================================
+
+  Feature             ON ERROR GOTO  TRAP n       WHEN/USE     ON TRAP
+  ------------------  -------------  ----------   ----------   ----------
+  Dialect             GW-BASIC       Atari BASIC  ECMA-116     BASIC++
+  Scope               Global         Global       Block-local  Per-event
+  Resume options      RESUME/NEXT    (limited)    RETRY/CONT   RETURN
+  Multiple handlers   No             No           Nested       Yes (class)
+  Subroutine style    No (GOTO)      No           N/A          Yes (GOSUB)
+  Works in all modes  Yes            Yes          E116+        Yes
+
+When to use each:
+
+  - ON ERROR GOTO    Simple programs, single global handler.
+  - TRAP n           Atari BASIC compatibility.
+  - WHEN/USE         Complex recovery, nested/block-scoped.
+  - ON TRAP(n)       Event-driven programs, per-class handlers.
+
+
+18. WRITING EVENT HANDLERS
+============================
+
+Rules for event trap handlers:
+
+  A. Keep handlers short.
+     The main program is suspended while the handler runs.
+     Long handlers delay the main loop.
+
+  B. Use STOP to prevent re-entrancy.
+     At the top of a TIMER handler, issue TIMER STOP to
+     prevent the same handler from firing while it runs:
+
+       500 TIMER STOP
+       510 ' ... handle the event ...
+       520 TIMER ON
+       530 RETURN
+
+  C. End with RETURN (GOSUB) or resume (GOTO).
+     GOSUB-style handlers must end with RETURN.
+     GOTO-style handlers are one-way transfers.
+
+  D. Don't nest trap handlers.
+     Avoid triggering events inside event handlers.  Use
+     STOP/OFF to suppress secondary events.
+
+  E. Always clear traps when done.
+     Disable traps you no longer need:
+
+       TIMER OFF
+       KEY(1) OFF
+       ON TRAP GOTO 0
+       TRAP 0
+
+  F. Test your handlers.
+     Use ERROR n or CAUSE EXCEPTION n to deliberately trigger
+     errors and verify your handler works:
+
+       10 ON ERROR GOTO 100
+       20 ERROR 99            ' Simulate error code 99
+       30 END
+       100 PRINT "Handler caught ERR ="; ERR
+       110 RESUME NEXT
+
+
+19. COMPLETE EXAMPLE
+======================
+
+A program that uses timer, key, and error trapping together:
+
+  10 REM === Event Trapping Demo ===
+  20 ON TIMER(3) GOSUB 500
+  30 ON KEY(1) GOSUB 600
+  40 ON TRAP GOSUB 700
+  50 TIMER ON
+  60 KEY(1) ON
+  70 PRINT "Running... (press F1 to interrupt)"
+  80 FOR I = 1 TO 50
+  90   PRINT "Step"; I
+  100  IF I = 25 THEN X = 1/0  : REM trigger error trap
+  110  SLEEP 1
+  120 NEXT I
+  130 TIMER OFF
+  140 KEY(1) OFF
+  150 ON TRAP GOTO 0
+  160 PRINT "Done."
+  170 END
+  500 REM --- Timer Handler ---
+  510 TIMER STOP
+  520 PRINT ">> Timer: "; TIME$
+  530 TIMER ON
+  540 RETURN
+  600 REM --- F1 Key Handler ---
+  610 KEY(1) STOP
+  620 PRINT ">> F1 pressed at step"; I
+  630 KEY(1) ON
+  640 RETURN
+  700 REM --- Error Trap Handler ---
+  710 PRINT ">> Error"; ERR; "at line"; ERL
+  720 RETURN
+
+
+20. QUICK REFERENCE
+====================
+
+  ON TIMER(n) GOSUB line     Timer event every n seconds
+  ON KEY(n) GOSUB line       Function key n pressed
+  ON COM(n) GOSUB line       Data on serial port n
+  ON STRIG(n) GOSUB line     Joystick button n pressed
+  ON PEN GOSUB line          Light pen activated
+  ON PLAY(n) GOSUB line      Music buffer at n notes
+  ON TRAP GOSUB line         Error trap (subroutine)
+  ON TRAP GOTO line          Error trap (jump)
+  ON TRAP(n) GOSUB line      Event class n trap
+  ON TRAP(n) GOTO line       Event class n trap (jump)
+  TRAP n                     Set error trap (Atari style)
+  TRAP e, s, h               Extended event routing
+  TRAP                       Show trap status
+  TRAP 0                     Disable error trap
+  event ON                   Enable event checking
+  event OFF                  Disable event checking
+  event STOP                 Queue events, don't fire
+  ON ERROR GOTO n            Global error handler (GW-BASIC)
+  ON ERROR GOTO 0            Disable error handler
+  WHEN EXCEPTION IN          Start protected block (ECMA-116)
+  USE                        Start exception handler
+  END WHEN                   End exception block
+  RETRY                      Re-enter protected block
+  CONTINUE                   Skip failed statement
+  RESUME                     Retry the failed line
+  RESUME NEXT                Continue after failed line
+  RESUME n                   Jump to line n
+  ERROR n                    Simulate error code n
+  CAUSE EXCEPTION n          Raise user exception
+  ERR                        Last error code (read-only)
+  ERL                        Last error line (read-only)
+  ON BREAK GOSUB line        Intercept Ctrl+C / OS signal
+  ON BREAK GOTO 0            Restore default Ctrl+C behavior
+  MODULE "UPNP"              Activate UPnP device discovery
+
+See also:
+  Error_Handling.txt         ON ERROR GOTO, RESUME, error codes
+  Structured_BASIC.txt       WHEN EXCEPTION IN (ECMA-116)
+  Mixing_Dialects.txt        OPTION MIXED, dialect coexistence

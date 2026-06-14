@@ -1,6 +1,6 @@
 HOW TO COMPILE BASIC++
 ======================
-Version 0.21.0
+Version 1.5.0
 
 BASIC++ is written in strict ANSI C89/C90.  It has ZERO external
 dependencies.  Any standards-conforming C compiler will build it.

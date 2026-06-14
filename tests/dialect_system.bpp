@@ -1,0 +1,82 @@
+1 REM ============================================================
+2 REM  t70_dialect_system.bpp
+3 REM  BASIC++ Dialect System Test & Tutorial
+4 REM ============================================================
+5 REM
+6 REM  BASIC++ supports 15 dialects, each emulating a specific
+7 REM  platform's BASIC interpreter behavior.
+8 REM
+9 REM  DIALECT COMMAND:
+10 REM    DIALECT           - List all available dialects
+11 REM    DIALECT "code"    - Switch to a dialect by short code
+12 REM    DIALECT n         - Switch to a dialect by numeric ID
+13 REM    DIALECT$          - Returns current dialect name
+14 REM
+15 REM  AVAILABLE DIALECTS (code : name):
+16 REM    PATB  : Palo Alto Tiny BASIC   (integer-only)
+17 REM    GWBS  : GW-BASIC / BASICA      (MS-DOS standard)
+18 REM    E55   : ECMA-55 Minimal BASIC  (standards-compliant)
+19 REM    E116  : ECMA-116 Full BASIC    (structured, exceptions)
+20 REM    QBAS  : QBasic / QuickBASIC    (SUB/FUNCTION, SELECT)
+21 REM    C64   : Commodore 64 BASIC V2  (SYS, PEEK/POKE focus)
+22 REM    ATRI  : Atari BASIC            (GRAPHICS, SETCOLOR)
+23 REM    ASFT  : Applesoft BASIC        (Apple II/IIe)
+24 REM    TRS1  : TRS-80 Level I BASIC   (integer, limited)
+25 REM    TRS2  : TRS-80 Level II BASIC  (float, full features)
+26 REM    COCO  : Color Computer BASIC   (CoCo, Dragon)
+27 REM    MBAS  : Microsoft BASIC (CP/M) (early Microsoft)
+28 REM    SINC  : Sinclair BASIC         (ZX Spectrum)
+29 REM    SUPA  : SuperBASIC             (Sinclair QL)
+30 REM    AINT  : Apple Integer BASIC    (Wozniak's original)
+31 REM
+32 REM  Each dialect configures:
+33 REM    - Available keywords and functions
+34 REM    - Default MEMMAP (C64 dialect -> C64 memmap)
+35 REM    - RND behavior (PATB: 1-N, GWBS: 0-1)
+36 REM    - Integer vs. float arithmetic
+37 REM    - String function availability
+38 REM
+39 DIALECT "GWBS"
+40 REM
+100 REM === DIALECT listing ===
+110 TEST "DIALECT list"
+120 DIALECT
+130 REM Should print table of all 15 dialects
+140 ENDTEST
+200 REM === DIALECT switching ===
+201 REM You can switch dialects at runtime.
+202 REM This reconfigures the function registry and runtime.
+210 TEST "DIALECT switch"
+220 DIALECT "PATB"
+230 REM Now in Palo Alto Tiny BASIC mode
+240 ASSERT 2+3=5
+250 DIALECT "GWBS"
+260 REM Back to GW-BASIC mode
+270 ASSERT 3.14>3.0
+280 ENDTEST
+300 REM === DIALECT$ ===
+301 REM Returns the short name of the current dialect.
+310 TEST "DIALECT$ query"
+320 DIALECT "GWBS"
+330 LET D$=DIALECT$
+340 ASSERT LEN(D$)>0
+350 ENDTEST
+400 REM === Dialect affects features ===
+401 REM Different dialects enable different keywords.
+402 REM PATB is integer-only; GWBS adds floats;
+403 REM QBAS adds SELECT CASE and SUB/FUNCTION.
+410 TEST "Dialect feature matrix"
+420 DIALECT "QBAS"
+430 REM QBasic supports SELECT CASE
+440 LET X=2
+450 LET R=0
+460 SELECT CASE X
+470 CASE 1
+480 LET R=10
+490 CASE 2
+500 LET R=20
+510 END SELECT
+520 ASSERT R=20
+530 DIALECT "GWBS"
+540 ENDTEST
+9999 END

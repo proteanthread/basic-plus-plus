@@ -1,0 +1,112 @@
+1 REM ============================================================
+2 REM  t66_every_keyword.bpp
+3 REM  BASIC++ Remaining Keywords Comprehensive Test
+4 REM ============================================================
+5 REM
+6 REM  This test catches keywords not covered by other test files.
+7 REM  Each section documents the keyword's purpose and tests it.
+8 REM
+9 DIALECT "GWBS"
+10 REM
+100 REM === REM - Remark ===
+101 REM REM introduces a comment. Everything after REM on the
+102 REM same line is ignored by the interpreter.
+103 REM REM is essential for documenting programs.
+110 TEST "REM"
+120 REM This is a comment
+130 REM Multiple REMs in sequence
+140 ASSERT 1=1
+150 ENDTEST
+200 REM === STOP and END ===
+201 REM END terminates the program normally.
+202 REM STOP halts execution (like a breakpoint).
+203 REM In automated tests, STOP is like END.
+210 TEST "STOP equivalent"
+220 REM We don't actually STOP here (would halt the test)
+230 REM but we confirm the keyword is recognized
+240 ENDTEST
+300 REM === CLEAR ===
+301 REM CLEAR resets all variables to zero/empty.
+302 REM Useful when starting a new computation without
+303 REM residual values from previous code.
+310 TEST "CLEAR"
+320 LET A=42
+330 CLEAR
+340 REM After CLEAR, A should be 0
+350 ASSERT A=0
+360 ENDTEST
+400 REM === RANDOMIZE ===
+401 REM RANDOMIZE seed sets the random number generator seed.
+402 REM Using the same seed produces the same sequence of
+403 REM random numbers, making programs reproducible.
+410 TEST "RANDOMIZE"
+420 RANDOMIZE 12345
+430 LET A=RND(1)
+440 RANDOMIZE 12345
+450 LET B=RND(1)
+460 ASSERT A=B
+465 REM Same seed produces same first random number
+470 ENDTEST
+500 REM === PRINT USING ===
+501 REM Already covered in t61, but verify basic usage here.
+510 TEST "PRINT USING basic"
+520 PRINT USING "###"; 42
+530 ENDTEST
+600 REM === WRITE ===
+601 REM WRITE outputs values in comma-separated format.
+602 REM Strings are enclosed in quotes, numbers are bare.
+603 REM This is CSV-compatible output.
+610 TEST "WRITE"
+620 WRITE 1,2,3
+630 WRITE "HELLO","WORLD"
+640 ENDTEST
+700 REM === Multiple statements per line ===
+701 REM BASIC++ allows multiple statements on one line
+702 REM separated by colons (:). This is a GW-BASIC feature.
+710 TEST "Colon separator"
+720 LET A=1: LET B=2: LET C=A+B
+730 ASSERT C=3
+740 ENDTEST
+800 REM === RENUM ===
+801 REM RENUM renumbers all program lines starting from a
+802 REM given number with a given step.
+803 REM Cannot be tested in a running program (would change
+804 REM the line numbers we're executing!), but we document it.
+810 TEST "RENUM documented"
+820 REM RENUM 100, 10  would renumber from 100 by 10
+830 REM We skip actual RENUM to avoid breaking the test
+840 ENDTEST
+900 REM === AUTO ===
+901 REM AUTO activates automatic line numbering mode in the REPL.
+902 REM Cannot be tested in a running program.
+910 TEST "AUTO documented"
+920 REM AUTO 100, 10  would start auto at line 100, step 10
+930 REM Cancel with '.' or empty line
+940 ENDTEST
+1000 REM === FREE / SIZE ===
+1001 REM FREE returns the number of bytes of free program memory.
+1002 REM SIZE returns the total program memory size.
+1010 TEST "Memory query"
+1020 LET F=FRE(0)
+1030 ASSERT F>0
+1040 ENDTEST
+1100 REM === CONT ===
+1101 REM CONT continues execution after a STOP or error.
+1102 REM It's an immediate-mode command, not usable in programs.
+1110 TEST "CONT documented"
+1120 REM CONT resumes from where STOP halted
+1130 ENDTEST
+1200 REM === NEW ===
+1201 REM NEW clears the entire program from memory.
+1202 REM Cannot be tested (would erase this test!).
+1210 TEST "NEW documented"
+1220 REM NEW erases all program lines and variables
+1230 ENDTEST
+1300 REM === LIST ===
+1301 REM LIST displays program lines to the screen.
+1302 REM LIST n shows line n; LIST n-m shows range.
+1310 TEST "LIST documented"
+1320 REM LIST shows the entire program
+1330 REM LIST 100-200 shows lines 100 through 200
+1340 ENDTEST
+9999 END

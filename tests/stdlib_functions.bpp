@@ -1,0 +1,79 @@
+1 REM ============================================================
+2 REM  t67_stdlib_functions.bpp
+3 REM  BASIC++ STDLIB Module Functions Test & Tutorial
+4 REM ============================================================
+5 REM
+6 REM  The STDLIB module is automatically loaded at startup.
+7 REM  It calls builtins_register() to set up built-in functions
+8 REM  in the function registry system.
+9 REM
+10 REM  Core built-in functions available in all dialects:
+11 REM    ABS, SGN, INT, FIX, SQR, SIN, COS, TAN, ATN
+12 REM    LOG, EXP, RND, CINT, CSNG, CDBL
+13 REM    LEN, LEFT$, RIGHT$, MID$, ASC, CHR$, STR$, VAL
+14 REM    INSTR, SPACE$, STRING$, HEX$, OCT$, BIN$
+15 REM    LCASE$, UCASE$, LTRIM$, RTRIM$, TRIM$, TCASE$
+16 REM    FRE, PEEK, COMPLEX, REAL, IMAG
+17 REM
+18 REM  Extended functions (dialect-dependent):
+19 REM    ENVIRON$, DATE$, TIME$, CLOCK$, TIMER
+20 REM    CSRLIN, POS, DIALECT$, MEMMAP$
+21 REM
+22 DIALECT "GWBS"
+23 REM
+100 REM === ENVIRON$ ===
+101 REM ENVIRON$("NAME") returns the value of an operating
+102 REM system environment variable. Returns "" if not found.
+103 REM This bridges BASIC programs to the host OS.
+110 TEST "ENVIRON$"
+120 LET P$=ENVIRON$("PATH")
+130 REM PATH should exist on Windows, Linux, and FreeDOS
+140 ASSERT LEN(P$)>0
+150 ENDTEST
+200 REM === DATE$ and TIME$ ===
+201 REM DATE$ returns the current date as a string.
+202 REM Format varies by platform (e.g., "06-11-2026").
+203 REM TIME$ returns the current time (e.g., "10:30:45").
+204 REM CLOCK$ is an alias for TIME$ in HH:MM:SS format.
+205 REM TIMER returns seconds elapsed since midnight as a
+206 REM floating-point number. Useful for benchmarking.
+210 TEST "Date and Time"
+220 LET D$=DATE$
+230 ASSERT LEN(D$)>0
+240 LET T$=TIME$
+250 ASSERT LEN(T$)>0
+260 LET C$=CLOCK$
+270 ASSERT LEN(C$)>0
+280 LET S=TIMER
+290 ASSERT S>=0
+300 ENDTEST
+400 REM === DIALECT$ and MEMMAP$ ===
+401 REM DIALECT$ returns the short code of the current dialect
+402 REM (e.g., "GWBS", "PATB", "C64").
+403 REM MEMMAP$ returns the name of the current memory map
+404 REM (e.g., "MSDOS", "C64", "NONE").
+410 TEST "Introspection functions"
+420 LET D$=DIALECT$
+430 ASSERT LEN(D$)>0
+440 LET M$=MEMMAP$
+450 ASSERT LEN(M$)>0
+460 ENDTEST
+500 REM === FRE(0) ===
+501 REM FRE(0) returns the amount of free memory available
+502 REM for BASIC programs. This helps programs check if
+503 REM there's enough memory before DIMensioning large arrays.
+510 TEST "FRE function"
+520 LET F=FRE(0)
+530 ASSERT F>0
+540 REM Some free memory should always be available
+550 ENDTEST
+600 REM === COMPLEX, REAL, IMAG ===
+601 REM COMPLEX(r, i) creates a complex number with real part r
+602 REM and imaginary part i. REAL(z) extracts the real part.
+603 REM IMAG(z) extracts the imaginary part.
+610 TEST "Complex functions"
+620 LET Z=COMPLEX(3,4)
+630 ASSERT REAL(Z)=3
+640 ASSERT IMAG(Z)=4
+650 ENDTEST
+9999 END

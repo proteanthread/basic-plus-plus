@@ -1,0 +1,213 @@
+BASIC++ CHANGELOG
+=================
+
+2.0.0  (2026-06-11)
+--------------------
+  ADDED:
+  - 3D array support for numeric and string arrays:
+    DIM A(x,y,z), DIM A$(x,y,z), LET, expression evaluation
+  - SWAP extended to all variable types: scalars, named variables,
+    1D/2D/3D array elements, string array elements
+
+  CHANGED:
+  - Built-in functions decomposed into 7 modular category files:
+    builtins_math.c, builtins_string.c, builtins_fileio.c,
+    builtins_io.c, builtins_memory.c, builtins_system.c,
+    builtins_graphics.c (builtins.c now registration-only)
+  - Full code audit and cleanup for 2.0.0 release
+  - Quick Reference updated with all missing functions
+  - README updated with 3D arrays, extended math, modular architecture
+
+  DOCUMENTATION:
+  - New: Debugging_And_Testing.txt (ASSERT, BREAK, TEST/ENDTEST, etc.)
+  - New: Editing_Commands.txt (ALIAS, KEYWORD, OVERRIDE, SCOPE, etc.)
+  - New: System_And_Environment.txt (DIALECT, SHELL, ENVIRON, etc.)
+  - New: Program_Management.txt (LIST, LOAD, SAVE, COMPILE, etc.)
+  - Updated: Quick_Reference.txt (3D DIM, SWAP, MIN/MAX/AVG/MED/ROUND)
+  - Updated: README.txt (version, features, documentation index)
+  - Updated: Arrays_And_Matrices.txt (3D array coverage)
+
+1.5.0  (2026-06-11)
+--------------------
+  ADDED:
+  - SUPER BASIC (Tymshare) dialect: DIALECT "SBAS"
+    16th built-in dialect. Developed by Mark Alexander and Dan
+    Streng for the SDS 940 mainframe, circa 1968. One of the
+    most advanced BASIC dialects of the 1960s.
+  - Extended math functions from SUPER BASIC:
+    ASIN(x), ACOS(x), SINH(x), COSH(x), TANH(x),
+    LOG10(x), LOG2(x), COMP(a,b), PDIF(a,b), PI
+  - UNLESS statement (JOSS-style negated conditional):
+    UNLESS condition THEN statement
+    Supports both single-line and block forms.
+  - BY keyword as alternative to STEP in FOR loops:
+    FOR I = 1 TO 10 BY 2
+  - SCRATCH command (alias for KILL, file deletion)
+  - UNSAVE command (delete current program file)
+
+0.21.0  (2026-06-07)
+--------------------
+  ADDED:
+  - Shell scripting: SHELL$(), ERRORLEVEL, EXEC
+  - PRINT redirection: PRINT > "file", PRINT >> "file", PRINT | "cmd"
+  - SHELL redirection: SHELL "cmd" > "file", SHELL "cmd" | "cmd2"
+  - Shebang (#!) support for executable scripts
+  - Full random-access file I/O: OPEN FOR RANDOM, FIELD, GET#, PUT#
+  - Binary file I/O: OPEN FOR BINARY, byte-level GET/PUT
+  - LSET/RSET with field-width padding
+  - IOCTL$ returns channel mode (I/O/A/R/B)
+  - LOCK/UNLOCK with OS-level file locking (Windows)
+  - LEN= clause for OPEN FOR RANDOM
+
+0.20.0  (2026-06-07)
+--------------------
+  ADDED:
+  - MEMMAP system: virtual memory maps for MSDOS, C64, Atari 8-bit,
+    Apple II, ZX Spectrum, TI-99, BBC Micro, MSX, CPC
+  - INP/OUT integrated with MEMMAP virtual address space
+  - ALIAS command for keyword remapping
+  - BEEP ON / BEEP OFF error sound toggle
+  - Complete GW-BASIC/QBasic keyword audit (V-Z keywords verified)
+
+0.19.0  (2026-06-06)
+--------------------
+  ADDED:
+  - Complete GW-BASIC/QBasic keyword audit (R-U keywords)
+  - RANDOMIZE, READ/DATA/RESTORE, RENUM, RESUME
+  - SAVE/LOAD in ASCII format
+  - SCREEN statement and function
+  - SHELL statement
+  - SOUND/PLAY statements
+  - STOP/CONT debugging
+  - SWAP statement
+  - TAB/SPC print functions
+  - TIMER function, TIME$/DATE$ functions
+  - TRON/TROFF trace mode
+  - WAIT statement
+  - WHILE/WEND loops
+  - WIDTH/VIEW/WINDOW statements
+  - WRITE/WRITE# statements
+
+0.18.0  (2026-06-06)
+--------------------
+  ADDED:
+  - Multi-dialect engine: GWBS, QBAS, COCO, TB, DB, BPP
+  - DIALECT command for runtime switching
+  - Strict mode dialect enforcement
+  - PRINT AT (col, row) relative positioning
+  - PRINT @ pos absolute positioning (TRS-80 style)
+
+0.17.0  (2026-06-05)
+--------------------
+  ADDED:
+  - Security sandboxing with configurable levels (0-3)
+  - SANDBOX command
+  - Module system with IMPORT/EXPORT
+  - Standard library module (mod_stdlib)
+  - FUNCTION/SUB/END SUB user-defined procedures
+
+0.16.0  (2026-06-05)
+--------------------
+  ADDED:
+  - Virtual device system (VDev)
+  - Console, Error, and File devices
+  - Custom device registration
+  - BEEP and SOUND through VDev
+
+0.15.0  (2026-06-04)
+--------------------
+  ADDED:
+  - Graphics buffer system (gfxbuf)
+  - SCREEN modes 0-13
+  - LINE, CIRCLE, PSET, PRESET, PAINT, DRAW
+  - GET/PUT graphics array operations
+  - COLOR statement
+
+0.14.0  (2026-06-04)
+--------------------
+  ADDED:
+  - BValue polymorphic type system (int/float/string)
+  - Function registry (funcreg) for builtin dispatch
+  - 50+ registered builtin functions
+
+0.13.0  (2026-06-03)
+--------------------
+  ADDED:
+  - DIM arrays (1D and 2D, up to 256 per program)
+  - ERASE statement
+  - OPTION BASE 0/1
+  - Named variables (long names, not just A-Z)
+
+0.12.0  (2026-06-03)
+--------------------
+  ADDED:
+  - File channel I/O: OPEN/CLOSE/PRINT#/INPUT#/LINE INPUT#
+  - EOF(), LOF(), LOC() functions
+  - SEEK statement
+  - Up to 8 simultaneous file channels
+
+0.11.0  (2026-06-02)
+--------------------
+  ADDED:
+  - String variables (A$-Z$)
+  - String functions: LEFT$, RIGHT$, MID$, CHR$, ASC, LEN,
+    STR$, VAL, STRING$, SPACE$, INSTR, UCASE$, LCASE$
+  - INPUT statement with prompt
+  - LINE INPUT statement
+  - String concatenation with +
+  - String comparison operators
+
+0.10.0  (2026-06-02)
+--------------------
+  ADDED:
+  - DEF FN user-defined functions
+  - ON GOTO / ON GOSUB computed branches
+  - WHILE/WEND loops
+  - Multiple statements per line with : separator
+
+0.9.0  (2026-06-01)
+--------------------
+  ADDED:
+  - Floating-point arithmetic
+  - Math functions: SIN, COS, TAN, ATN, SQR, LOG, EXP, ABS, INT, SGN
+  - PRINT USING formatted output
+  - RND and RANDOMIZE
+
+0.8.0  (2026-06-01)
+--------------------
+  ADDED:
+  - FOR/NEXT loops with STEP
+  - GOSUB/RETURN
+  - DATA/READ/RESTORE
+  - REM and ' comments
+
+0.7.0  (2026-05-31)
+--------------------
+  ADDED:
+  - IF/THEN/ELSE with line numbers and inline statements
+  - Relational operators: =, <>, <, >, <=, >=
+  - Boolean operators: AND, OR, NOT, XOR
+  - GOTO statement
+
+0.6.0  (2026-05-31)
+--------------------
+  ADDED:
+  - Variables A-Z (integer)
+  - LET statement (optional keyword)
+  - INPUT statement
+  - PRINT with semicolons, commas, TAB zones
+
+0.5.0  (2026-05-30)
+--------------------
+  ADDED:
+  - Program store (numbered lines)
+  - LIST, RUN, NEW, SAVE, LOAD commands
+  - Line editor (enter, replace, delete lines)
+
+0.1.0  (2026-05-29)
+--------------------
+  Initial release.
+  - Direct-mode expression evaluator
+  - Integer arithmetic (+, -, *, /, MOD)
+  - PRINT statement
+  - Lexer and parser core

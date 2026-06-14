@@ -1,0 +1,1099 @@
+=====================================================================
+  BASIC++ Tutorial J: Virtual Consoles and Virtual Terminals
+=====================================================================
+  BASIC++ Interpreter / Compiler
+  Tutorial Series — Part J
+  Revision 1.0 — June 2026
+=====================================================================
+
+  TABLE OF CONTENTS
+
+  1.  What Are Virtual Consoles?
+  2.  The Three Standard Streams
+  3.  How VDev Provides Virtual Consoles
+  4.  VDEV_CON — The STDOUT Console
+  5.  VDEV_ERR — The STDERR Console
+  6.  Creating a LOG Console (STDLOG)
+  7.  The Tee Pattern — Writing to Multiple Consoles
+  8.  Ring Buffers — Scrollback and Capture
+  9.  Redirecting PRINT to Any Console
+ 10.  Device-Backed File Channels
+ 11.  Virtual Terminals vs. Virtual Consoles
+ 12.  ANSI Escape Sequences and Terminal Control
+ 13.  Security Considerations
+ 14.  Futureproofing: Compiled Output
+ 15.  Futureproofing: Multi-Console Applications
+ 16.  Complete Examples
+ 17.  Quick Reference
+
+
+=====================================================================
+  1.  WHAT ARE VIRTUAL CONSOLES?
+=====================================================================
+
+  A "Virtual Console" (VC) is an abstraction that separates
+  WHERE text goes from the PRINT statement that produces it.
+
+  In classical BASIC, PRINT always means "put text on the
+  screen."  In a modern system, "the screen" is a simplification.
+  Text might go to:
+
+    - A terminal emulator window (xterm, cmd.exe, PuTTY)
+    - A file (redirected with >)
+    - A network socket (telnet, SSH, the irata.online PLATO link)
+    - A log buffer in memory
+    - Multiple destinations at once (tee)
+    - Nowhere at all (suppressed)
+
+  BASIC++ solves this with the Virtual Device (VDev) system.
+  Every byte of output passes through a VDev — the interpreter
+  NEVER calls printf() directly.  This means you can swap,
+  redirect, tee, filter, or log all output without changing
+  a single line of BASIC code.
+
+  IMPORTANT — DO NOT CONFUSE WITH:
+  +-----------------------------------------------------------------+
+  |  Virtual Consoles   = I/O stream abstraction (this tutorial)    |
+  |  Virtual Machines   = Execution engine (vm.h)                   |
+  |  Virtual Devices    = The underlying mechanism (vdev.h)         |
+  +-----------------------------------------------------------------+
+
+  A Virtual Console IS a VDev of class VDCLASS_CONSOLE.
+  The terms "virtual console" and "virtual terminal" are used
+  interchangeably in this tutorial, matching historical UNIX
+  convention.
+
+
+=====================================================================
+  2.  THE THREE STANDARD STREAMS
+=====================================================================
+
+  UNIX established three standard I/O streams in the 1970s.
+  BASIC++ adopts the same model, extended for logging:
+
+  +----------+--------+-----+-----------------------------------+
+  | Stream   | VDev   | ID  | Purpose                           |
+  +----------+--------+-----+-----------------------------------+
+  | STDOUT   | CON:   |  0  | Normal program output (PRINT)     |
+  | STDERR   | ERR:   |  1  | Error messages (HOW?, WHAT?)      |
+  | STDLOG   | LOG:   |  3+ | All messages, timestamped (new)   |
+  +----------+--------+-----+-----------------------------------+
+
+  WHY THREE STREAMS?
+
+  In the 1970s and 1980s, BASIC programs mixed output and error
+  messages on the same screen.  This was fine for a single user
+  sitting at a terminal.  It fails in every other scenario:
+
+  (a)  Redirected output.  If you run:
+
+         basicpp myprog.bas > output.txt
+
+       You want output.txt to contain ONLY the program's data.
+       Error messages ("?SYNTAX ERROR IN 100") should appear on
+       the screen, not in the file.  STDERR solves this.
+
+  (b)  Logging.  In a server environment (like irata.online),
+       you want a persistent record of EVERYTHING — both normal
+       output AND errors, with timestamps.  STDLOG solves this.
+
+  (c)  Piping.  If you pipe BASIC output into another program:
+
+         basicpp datagen.bas | sort
+
+       STDERR messages bypass the pipe and appear on screen.
+       Program data flows through the pipe undisturbed.
+
+  HOW BASIC++ MAPS THE STREAMS:
+
+    PRINT "Hello"        → goes to VDEV_CON  (STDOUT)
+    (error messages)     → goes to VDEV_ERR  (STDERR)
+    (log messages)       → goes to LOG: VDev (STDLOG)
+
+  The key insight: BASIC programs don't need to know about
+  STDERR or STDLOG.  The interpreter routes errors to STDERR
+  automatically.  STDLOG can be set up to capture everything.
+
+
+=====================================================================
+  3.  HOW VDEV PROVIDES VIRTUAL CONSOLES
+=====================================================================
+
+  Every Virtual Console is a VDev with class VDCLASS_CONSOLE.
+  The VDev struct provides the function pointers:
+
+  +------------------+----------------------------------------------+
+  | Function Pointer | Purpose                                      |
+  +------------------+----------------------------------------------+
+  | dev_putc(d, ch)  | Write one character                          |
+  | dev_puts(d, s)   | Write a null-terminated string               |
+  | dev_flush(d)     | Flush output buffers                         |
+  | dev_cls(d)       | Clear screen / reset terminal                |
+  | dev_getc(d)      | Read one character (input)                   |
+  | dev_gets(d,b,n)  | Read a line of input                         |
+  | dev_open(d,p,m)  | Open/connect (for network terminals)         |
+  | dev_close(d)     | Close/disconnect                             |
+  +------------------+----------------------------------------------+
+
+  Phase 16 extensions add:
+
+  +------------------+----------------------------------------------+
+  | dev_read(d,b,n)  | Binary read (raw bytes)                      |
+  | dev_write(d,b,n) | Binary write (raw bytes)                     |
+  | dev_ioctl(d,c,a) | Terminal control commands (set baud, etc.)    |
+  | dev_status(d)    | Is the terminal connected? (0=yes, -1=no)    |
+  | dev_poll(d)      | Is input available? (1=yes, 0=no)            |
+  | dev_info(d,key)  | Query terminal metadata                      |
+  +------------------+----------------------------------------------+
+
+  A Virtual Console is simply a VDev where:
+    .dev_class = VDCLASS_CONSOLE
+    .dev_caps  = VDCAP_READ | VDCAP_WRITE  (or VDCAP_WRITE only)
+
+  NULL function pointers are safe — the vdev_*() wrapper
+  functions check for NULL and return -1 (not supported).
+
+
+=====================================================================
+  4.  VDEV_CON — THE STDOUT CONSOLE
+=====================================================================
+
+  VDEV_CON (slot 0) is the default output device.  Every PRINT
+  statement routes through it.  At boot, it maps to C stdio:
+
+    dev_putc  → putchar(ch)        (write to stdout)
+    dev_puts  → fputs(s, stdout)   (write string to stdout)
+    dev_flush → fflush(stdout)     (flush stdout)
+    dev_cls   → system("cls")      (Win/DOS) or ESC[2J (UNIX)
+    dev_getc  → getchar()          (read from stdin)
+    dev_gets  → fgets(buf, n, stdin)
+
+  You can REPLACE CON: at runtime to redirect all PRINT output.
+  This is how you build:
+
+    - A network terminal (replace putc/puts with socket writes)
+    - A GUI text widget (replace putc/puts with widget appends)
+    - A capture buffer (replace putc/puts with memory writes)
+    - A null device (replace putc/puts with no-ops)
+
+  IMPORTANT: CON: handles BOTH stdout (output) and stdin (input).
+  This matches the historical DOS CON: device.  If you need
+  separate input and output consoles, create two VDevs:
+  one with only dev_putc/dev_puts, one with only dev_getc/dev_gets.
+
+
+=====================================================================
+  5.  VDEV_ERR — THE STDERR CONSOLE
+=====================================================================
+
+  VDEV_ERR (slot 1) receives all error messages.  The interpreter
+  routes HOW?, WHAT?, and SORRY. messages through ERR: instead
+  of CON:.
+
+  At boot, ERR: maps to C stderr:
+
+    dev_putc  → fputc(ch, stderr)
+    dev_puts  → fputs(s, stderr)
+    dev_flush → fflush(stderr)
+    dev_cls   → NULL (not supported)
+    dev_getc  → NULL (not supported — ERR: is write-only)
+    dev_gets  → NULL (not supported)
+
+  ERR: has capability VDCAP_WRITE (no VDCAP_READ).
+  This means you cannot INPUT from ERR: — it is write-only.
+
+  WHY STDERR IS UNBUFFERED:
+
+  On most systems, stderr is line-buffered or unbuffered.
+  This means error messages appear IMMEDIATELY, even if
+  stdout is blocked (e.g., pipe buffer full).  BASIC++
+  preserves this behavior.
+
+  You should never suppress ERR: in production.  If you
+  need to log errors to a file, use a tee (Section 7) or
+  redirect ERR: to a file-backed VDev.
+
+
+=====================================================================
+  6.  CREATING A LOG CONSOLE (STDLOG)
+=====================================================================
+
+  BASIC++ does not create a LOG: device by default — you
+  register one yourself.  This is intentional: logging is
+  a policy decision, not a language feature.
+
+  A LOG: console captures ALL output — both STDOUT and STDERR
+  messages — with timestamps.  Here is the C implementation:
+
+  ---- C Implementation (for interpreter embedding) ----
+
+    #include <stdio.h>
+    #include <time.h>
+    #include "vdev.h"
+
+    static FILE *log_fp = NULL;
+
+    static void log_timestamp(void)
+    {
+        time_t t = time(NULL);
+        struct tm *tm = localtime(&t);
+        fprintf(log_fp, "[%04d-%02d-%02d %02d:%02d:%02d] ",
+                tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday,
+                tm->tm_hour, tm->tm_min, tm->tm_sec);
+    }
+
+    static int log_putc(VDev *d, int ch)
+    {
+        (void)d;
+        if (log_fp == NULL) return -1;
+        fputc(ch, log_fp);
+        if (ch == '\n') fflush(log_fp);
+        return 0;
+    }
+
+    static int log_puts(VDev *d, const char *s)
+    {
+        (void)d;
+        if (log_fp == NULL) return -1;
+        log_timestamp();
+        fputs(s, log_fp);
+        fflush(log_fp);
+        return 0;
+    }
+
+    static int log_open(VDev *d, const char *path,
+                        const char *mode)
+    {
+        (void)d;
+        if (log_fp != NULL) fclose(log_fp);
+        log_fp = fopen(path, mode);
+        return (log_fp != NULL) ? 0 : -1;
+    }
+
+    static int log_close(VDev *d)
+    {
+        (void)d;
+        if (log_fp != NULL) { fclose(log_fp); log_fp = NULL; }
+        return 0;
+    }
+
+    /* Registration */
+    void log_console_init(const char *logfile)
+    {
+        VDev log_dev;
+        memset(&log_dev, 0, sizeof(log_dev));
+
+        log_dev.name            = "LOG:";
+        log_dev.dev_class       = VDCLASS_CONSOLE;
+        log_dev.dev_caps        = VDCAP_WRITE;
+        log_dev.dev_putc        = log_putc;
+        log_dev.dev_puts        = log_puts;
+        log_dev.dev_open        = log_open;
+        log_dev.dev_close       = log_close;
+        log_dev.dev_description = "Log console (timestamped)";
+        log_dev.dev_version     = "1.0";
+
+        vdev_register(&log_dev);
+        log_open(NULL, logfile, "a");  /* append mode */
+    }
+
+  ---- Using from BASIC++ (once registered) ----
+
+    10 REM Open LOG: as file channel #9
+    20 OPEN #9, "LOG:", "W"
+    30 FPRINT #9, "Program started at "; TIME$
+    40 REM ... program runs ...
+    50 FPRINT #9, "Program completed"
+    60 CLOSE #9
+
+  ---- Automatic log capture (C-level tee) ----
+
+  To capture EVERYTHING (see Section 7 for the tee pattern):
+
+    log_console_init("session.log");
+    /* Now set up tee: every CON: write also goes to LOG: */
+
+
+=====================================================================
+  7.  THE TEE PATTERN — WRITING TO MULTIPLE CONSOLES
+=====================================================================
+
+  A "tee" sends every byte to TWO or more devices simultaneously.
+  Named after the UNIX tee(1) command, which splits a pipe.
+
+  Use cases:
+    - Log all STDOUT to a file while still displaying on screen
+    - Mirror STDERR to both screen and a remote log server
+    - Capture program output for test verification
+
+  ---- C Implementation ----
+
+    /* Tee device: wraps two VDevs, sends output to both */
+
+    typedef struct TeeData {
+        VDev *primary;     /* e.g., CON: (screen) */
+        VDev *secondary;   /* e.g., LOG: (file)   */
+    } TeeData;
+
+    static int tee_putc(VDev *d, int ch)
+    {
+        TeeData *td = (TeeData *)d->user_data;
+        vdev_putc(td->primary, ch);
+        vdev_putc(td->secondary, ch);
+        return 0;
+    }
+
+    static int tee_puts(VDev *d, const char *s)
+    {
+        TeeData *td = (TeeData *)d->user_data;
+        vdev_puts(td->primary, s);
+        vdev_puts(td->secondary, s);
+        return 0;
+    }
+
+    static int tee_getc(VDev *d)
+    {
+        /* Input comes from primary only */
+        TeeData *td = (TeeData *)d->user_data;
+        return vdev_getc(td->primary);
+    }
+
+    static int tee_gets(VDev *d, char *buf, int max)
+    {
+        TeeData *td = (TeeData *)d->user_data;
+        return vdev_gets(td->primary, buf, max);
+    }
+
+    static int tee_flush(VDev *d)
+    {
+        TeeData *td = (TeeData *)d->user_data;
+        vdev_flush(td->primary);
+        vdev_flush(td->secondary);
+        return 0;
+    }
+
+  ---- Registration ----
+
+    static TeeData my_tee;
+    my_tee.primary   = vdev_get(VDEV_CON);
+    my_tee.secondary = vdev_get(log_slot);
+
+    VDev tee_dev;
+    memset(&tee_dev, 0, sizeof(tee_dev));
+    tee_dev.name       = "TEE:";
+    tee_dev.dev_class  = VDCLASS_CONSOLE;
+    tee_dev.dev_caps   = VDCAP_RW;
+    tee_dev.dev_putc   = tee_putc;
+    tee_dev.dev_puts   = tee_puts;
+    tee_dev.dev_getc   = tee_getc;
+    tee_dev.dev_gets   = tee_gets;
+    tee_dev.dev_flush  = tee_flush;
+    tee_dev.user_data  = &my_tee;
+    tee_dev.dev_description = "Tee (screen + log)";
+
+    int tee_slot = vdev_register(&tee_dev);
+
+  ---- Replacing CON: with the Tee ----
+
+  To make ALL PRINT output go through the tee, you would
+  swap the CON: device table entry:
+
+    /* Save original CON: for tee.primary */
+    VDev saved_con = *vdev_get(VDEV_CON);
+    my_tee.primary = &saved_con;
+    /* Replace CON: with the tee */
+    memcpy(vdev_get(VDEV_CON), &tee_dev, sizeof(VDev));
+
+  WARNING: This is a C-level operation.  BASIC programs cannot
+  (and should not) replace built-in devices.  This is by design:
+  a BASIC program should not be able to redirect its own error
+  output to hide errors.
+
+  ---- BASIC-Level Tee (using file channels) ----
+
+  If you want a BASIC-level tee without C code:
+
+    10 OPEN #9, "session.log", "A"
+    20 REM Wrap each PRINT with a duplicate:
+    30 A$ = "Hello, World!"
+    40 PRINT A$
+    50 FPRINT #9, A$
+    60 CLOSE #9
+
+  This is manual but works within the security model.
+
+
+=====================================================================
+  8.  RING BUFFERS — SCROLLBACK AND CAPTURE
+=====================================================================
+
+  A ring buffer captures the last N lines of output in memory.
+  This is useful for:
+
+    - Scrollback in a terminal emulator
+    - Capturing output for ASSERT/TEST verification
+    - "Last 50 lines" display for remote debugging
+    - Crash logs (what happened just before the error?)
+
+  ---- C Implementation ----
+
+    #define RING_LINES   256
+    #define RING_LINE_LEN 256
+
+    typedef struct RingBuffer {
+        char lines[RING_LINES][RING_LINE_LEN];
+        int  head;       /* next write position */
+        int  count;      /* lines currently stored */
+        char current[RING_LINE_LEN]; /* partial line */
+        int  cur_pos;    /* position in current line */
+    } RingBuffer;
+
+    static RingBuffer ring;
+
+    static void ring_flush_line(void)
+    {
+        if (ring.cur_pos > 0) {
+            ring.current[ring.cur_pos] = '\0';
+            strncpy(ring.lines[ring.head],
+                    ring.current, RING_LINE_LEN - 1);
+            ring.lines[ring.head][RING_LINE_LEN - 1] = '\0';
+            ring.head = (ring.head + 1) % RING_LINES;
+            if (ring.count < RING_LINES) ring.count++;
+            ring.cur_pos = 0;
+        }
+    }
+
+    static int ring_putc(VDev *d, int ch)
+    {
+        (void)d;
+        if (ch == '\n') {
+            ring_flush_line();
+        } else if (ring.cur_pos < RING_LINE_LEN - 1) {
+            ring.current[ring.cur_pos++] = (char)ch;
+        }
+        return 0;
+    }
+
+  ---- Querying the Ring Buffer from BASIC ----
+
+  A module function could expose the ring buffer:
+
+    PRINT SCROLLBACK$(0)    ' most recent line
+    PRINT SCROLLBACK$(1)    ' one line ago
+    PRINT SCROLLBACK$(49)   ' 50 lines ago
+
+  Or dump all captured output:
+
+    FOR I = 0 TO SCROLLBACK.COUNT - 1
+        PRINT SCROLLBACK$(I)
+    NEXT I
+
+
+=====================================================================
+  9.  REDIRECTING PRINT TO ANY CONSOLE
+=====================================================================
+
+  BASIC++ provides two levels of output redirection:
+
+  LEVEL 1: File Channels (BASIC level)
+  ------------------------------------
+  The PRINT # syntax redirects output to a file channel:
+
+    10 OPEN #1, "output.txt", "W"
+    20 PRINT #1, "This goes to the file"
+    30 PRINT "This goes to the screen"
+    40 CLOSE #1
+
+  This is the standard, safe, BASIC-compatible method.
+
+  LEVEL 2: Device-Backed Channels (BASIC level, Phase 16)
+  -------------------------------------------------------
+  File channels can be backed by VDevs instead of files:
+
+    10 REM Open a channel backed by the ERR: device
+    20 OPEN #2, "ERR:", "W"
+    30 PRINT #2, "This goes to STDERR"
+    40 CLOSE #2
+
+  The OPEN command detects device names (ending with :)
+  and routes through fileio_open_device() instead of fopen().
+
+  LEVEL 3: VDev Replacement (C level only)
+  ----------------------------------------
+  The CON: device itself can be replaced at the C level.
+  This changes WHERE all un-channeled PRINT goes:
+
+    /* Route all output to a network socket */
+    VDev *con = vdev_get(VDEV_CON);
+    con->dev_putc = socket_putc;
+    con->dev_puts = socket_puts;
+    con->dev_getc = socket_getc;
+    con->dev_gets = socket_gets;
+
+  This is how irata.online works: CON: is replaced with
+  a PLATO protocol handler that sends bytes over the network
+  to the terminal client.
+
+
+=====================================================================
+  10.  DEVICE-BACKED FILE CHANNELS
+=====================================================================
+
+  Phase 16 added the ability to open file channels backed by
+  any VDev.  This unifies file I/O and device I/O under the
+  same PRINT #/INPUT # syntax.
+
+  ---- How It Works ----
+
+  When you open a channel with a device name:
+
+    OPEN #3, "COM1:", "RW"
+
+  The interpreter calls fileio_open_device() instead of
+  fileio_open().  The channel's .vdev field is set to the
+  VDev pointer, and .mode is set to FCHAN_DEVICE.
+
+  Subsequent PRINT # and INPUT # operations route through
+  the VDev's function pointers:
+
+    PRINT #3, "AT+CIPSTART"   →  vdev_puts(com1_dev, ...)
+    INPUT #3, R$              →  vdev_gets(com1_dev, ...)
+
+  ---- Built-in Device Names ----
+
+  +----------+-------------------------------------------+
+  | Name     | Description                               |
+  +----------+-------------------------------------------+
+  | CON:     | Console (stdout + stdin)                   |
+  | ERR:     | Error output (stderr)                      |
+  | LOG:     | Log console (if registered)                |
+  | NUL:     | Null device (discard output)               |
+  | COM1:    | Serial port 1 (if registered)              |
+  | LPT1:    | Printer port 1 (if registered)             |
+  | NET:     | Network socket (if registered)             |
+  +----------+-------------------------------------------+
+
+  Device names are case-insensitive and must end with a colon.
+
+  ---- Opening with Parameters ----
+
+  Some devices accept parameters via the path argument:
+
+    OPEN #3, "COM1:", "RW"          ' default settings
+    OPEN #4, "NET:192.168.1.1", "W" ' connect to host
+
+  The path string after the device name is passed to the
+  VDev's dev_open() function, which parses it device-specifically.
+
+
+=====================================================================
+  11.  VIRTUAL TERMINALS VS. VIRTUAL CONSOLES
+=====================================================================
+
+  These terms are often used interchangeably, but there is a
+  subtle distinction:
+
+  VIRTUAL CONSOLE
+    A pure I/O stream abstraction.  No knowledge of screen
+    geometry, cursor position, colors, or escape sequences.
+    Just bytes in and bytes out.  This is what VDEV_CON provides.
+
+  VIRTUAL TERMINAL (VT)
+    A virtual console PLUS terminal emulation.  Understands
+    cursor addressing, colors, scrolling regions, character
+    sets, and input modes.  A VT maintains internal state:
+
+    +-------------------------------------------+
+    | Virtual Terminal State                     |
+    +-------------------------------------------+
+    | Screen buffer (rows x cols)                |
+    | Cursor position (row, col)                 |
+    | Cursor visibility (on/off)                 |
+    | Current foreground/background color        |
+    | Character attributes (bold, underline)     |
+    | Scroll region (top, bottom)                |
+    | Input mode (cooked, raw, cbreak)           |
+    | Character set (ASCII, Latin-1, UTF-8)      |
+    | Tab stops (array of column positions)       |
+    | Saved cursor position (for ESC 7/8)        |
+    | Alternate screen buffer (for ESC[?1049h)   |
+    +-------------------------------------------+
+
+  In BASIC++, the VDev system provides Virtual Consoles.
+  A Virtual Terminal would be a VDev with additional state
+  and an escape sequence parser.
+
+  ---- When Do You Need a Full Virtual Terminal? ----
+
+    (a) When running BASIC++ as a remote service (irata.online).
+        The server needs to translate PRINT TAB(20) and CLS
+        into ANSI/PLATO sequences for the remote client.
+
+    (b) When embedding BASIC++ in a GUI application.  The GUI
+        text widget needs to interpret escape sequences to
+        render colors and cursor positioning.
+
+    (c) When logging output to a file.  You may want to STRIP
+        escape sequences so the log file contains plain text.
+
+    (d) When multiplexing multiple BASIC programs on one
+        physical terminal (like tmux/screen).  Each program
+        gets its own virtual terminal with independent state.
+
+  ---- Building a Virtual Terminal ----
+
+  A full VT implementation is beyond the scope of this
+  tutorial, but the architecture is:
+
+    1. Create a VDev with class VDCLASS_CONSOLE.
+    2. Store terminal state in user_data.
+    3. In dev_putc, parse the output for escape sequences:
+       - Plain characters: write to screen buffer
+       - ESC[H:  move cursor to home position
+       - ESC[2J: clear screen
+       - ESC[nA: move cursor up n lines
+       - etc.
+    4. In dev_getc, translate key presses into character codes.
+    5. Periodically flush the screen buffer to the actual
+       display (physical terminal, GUI widget, network socket).
+
+  The key insight: the BASIC program doesn't know or care
+  whether it's running on a Virtual Console (raw stream) or
+  a Virtual Terminal (with full emulation).  It just calls
+  PRINT, and the VDev handles the rest.
+
+
+=====================================================================
+  12.  ANSI ESCAPE SEQUENCES AND TERMINAL CONTROL
+=====================================================================
+
+  BASIC++ runs on systems ranging from DOS to modern Linux.
+  Terminal control varies:
+
+  +-------------+------------------------------------+
+  | Platform    | Terminal Control                    |
+  +-------------+------------------------------------+
+  | DOS/FreeDOS | INT 10h / ANSI.SYS / direct video  |
+  | Windows     | Console API / ANSI (Win10+)         |
+  | Linux/macOS | ANSI escape sequences               |
+  | PLATO       | PLATO protocol (irata.online)       |
+  +-------------+------------------------------------+
+
+  BASIC++ abstracts this through VDev:
+
+    CLS                  →  vdev_cls(con_dev)
+    PRINT TAB(n)         →  vdev_puts(con_dev, spaces)
+    COLOR fg, bg         →  vdev_ioctl(con_dev, VDIO_COLOR, ...)
+    LOCATE row, col      →  vdev_ioctl(con_dev, VDIO_LOCATE, ...)
+
+  Each platform's VDev implementation translates these into
+  the appropriate native calls.
+
+  ---- IOCTL2 Commands for Terminal Control (Phase 16) ----
+
+  Beyond the standard VDIO_* codes, console VDevs can define:
+
+    #define VDIO_SET_CURSOR   (VDIO_USER + 0)
+    #define VDIO_GET_CURSOR   (VDIO_USER + 1)
+    #define VDIO_SET_COLOR    (VDIO_USER + 2)
+    #define VDIO_GET_SIZE     (VDIO_USER + 3)
+    #define VDIO_SET_TITLE    (VDIO_USER + 4)
+    #define VDIO_SET_MODE     (VDIO_USER + 5)
+    #define VDIO_SCROLL       (VDIO_USER + 6)
+
+  Example — set cursor position from C:
+
+    typedef struct { int row; int col; } CursorPos;
+    CursorPos pos = { 10, 20 };
+    vdev_ioctl(vdev_get(VDEV_CON), VDIO_SET_CURSOR, &pos);
+
+  ---- Safe Escape Sequence Generation ----
+
+  If your BASIC program generates ANSI sequences directly
+  (PRINT CHR$(27);"[2J"), this bypasses the VDev abstraction
+  and will break on non-ANSI terminals.
+
+  BETTER: Use the BASIC++ CLS, LOCATE, and COLOR statements,
+  which route through VDev and work on all platforms.
+
+
+=====================================================================
+  13.  SECURITY CONSIDERATIONS
+=====================================================================
+
+  Virtual Consoles interact with the security system in
+  important ways:
+
+  ---- Output Redirection Attacks ----
+
+  A malicious BASIC program could try to:
+
+    (a) Redirect STDERR to NUL: to hide error messages
+    (b) Replace CON: with a network device to exfiltrate data
+    (c) Open LOG: and read back captured passwords from INPUT
+
+  BASIC++ prevents these by:
+
+    1. BASIC programs CANNOT modify VDev registrations.
+       Only C-level code can call vdev_register().
+
+    2. Device-backed channels respect security levels.
+       At SEC_RESTRICTED, OPEN with device names is denied.
+
+    3. ERR: cannot be redirected from BASIC.  Error messages
+       always reach the true stderr.
+
+    4. LOG: devices should be WRITE-ONLY (VDCAP_WRITE, no
+       VDCAP_READ) to prevent reading back sensitive input.
+
+  ---- Security Levels and Console Access ----
+
+  +----------------+------+------+------+------+------+
+  | Operation      | OPEN | STD  | REST | Device|Notes|
+  +----------------+------+------+------+------+------+
+  | PRINT (CON:)   |  ✓   |  ✓   |  ✓   |  —   |     |
+  | PRINT #n       |  ✓   |  ✓   |  ✗   | file | (1) |
+  | OPEN dev:      |  ✓   |  ✓   |  ✗   | dev  | (2) |
+  | OPEN file      |  ✓   |  ✓   |  ✗   | file | (1) |
+  | vdev_register  |  ✓   |  ✓   |  ✓   | C    | (3) |
+  +----------------+------+------+------+------+------+
+
+  Notes:
+    (1) File I/O blocked at SEC_RESTRICTED
+    (2) Device channels blocked at SEC_RESTRICTED
+    (3) C-level only — not accessible from BASIC
+
+  ---- Per-Device Security (dev_req_caps) ----
+
+  Each VDev can specify required module capabilities via
+  the dev_req_caps field.  This allows sensitive devices
+  (GPIO, network) to require explicit module activation
+  before BASIC programs can access them.
+
+  Example:
+
+    /* Network device requires CAP_NET */
+    net_dev.dev_req_caps = CAP_NET;
+
+    /* BASIC program must activate the network module first:
+       MODULE "network"
+       ... then OPEN #n, "NET:", "RW" will work */
+
+
+=====================================================================
+  14.  FUTUREPROOFING: COMPILED OUTPUT
+=====================================================================
+
+  When BASIC++ compiles to C (the COMPILE command), output
+  statements must map to something portable.  The generated
+  C code includes a built-in runtime with the same three-stream
+  model:
+
+  ---- Generated C Runtime ----
+
+    /* The compiled runtime includes: */
+    static void bpp_print(const char *s)
+    {
+        fputs(s, stdout);
+    }
+
+    static void bpp_error(const char *s)
+    {
+        fputs(s, stderr);
+    }
+
+    static void bpp_log(const char *fmt, ...)
+    {
+        /* Only if LOG: was configured at compile time */
+        #ifdef BPP_LOG_FILE
+        {
+            va_list ap;
+            FILE *lf = fopen(BPP_LOG_FILE, "a");
+            if (lf) {
+                time_t t = time(NULL);
+                fprintf(lf, "[%s] ", ctime(&t));
+                va_start(ap, fmt);
+                vfprintf(lf, fmt, ap);
+                va_end(ap);
+                fclose(lf);
+            }
+        }
+        #endif
+    }
+
+  ---- PRINT Mapping ----
+
+    BASIC                       C Output
+    -------------------------   ---------------------------
+    PRINT "Hello"               bpp_print("Hello\n");
+    PRINT #2, "Error"           bpp_error("Error\n");
+    FPRINT #9, "Log msg"        bpp_log("Log msg\n");
+
+  ---- Compile-Time Configuration ----
+
+  The compiler can emit #define directives at the top of the
+  generated C file based on OPTION statements:
+
+    OPTION LOG "session.log"
+    OPTION STDERR "errors.txt"
+
+  Becomes:
+
+    #define BPP_LOG_FILE "session.log"
+    #define BPP_ERR_FILE "errors.txt"
+
+  This way, compiled programs maintain the three-stream model
+  without requiring the full VDev runtime.
+
+  ---- Futureproof Pattern: Abstract I/O Layer ----
+
+  For maximum portability, compiled programs should use an
+  abstract I/O layer that can be swapped at link time:
+
+    /* bpp_io.h — platform-independent I/O interface */
+    void bpp_io_init(void);
+    void bpp_io_print(const char *s);
+    void bpp_io_error(const char *s);
+    void bpp_io_log(const char *s);
+    int  bpp_io_input(char *buf, int max);
+    void bpp_io_cls(void);
+    void bpp_io_flush(void);
+
+  Default implementation (bpp_io_stdio.c):
+    Uses printf/fprintf/fgets — works everywhere.
+
+  Network implementation (bpp_io_net.c):
+    Uses socket send/recv — for irata.online.
+
+  Embedded implementation (bpp_io_uart.c):
+    Uses UART read/write — for Raspberry Pi, Arduino.
+
+
+=====================================================================
+  15.  FUTUREPROOFING: MULTI-CONSOLE APPLICATIONS
+=====================================================================
+
+  Modern applications often need multiple output streams.
+  BASIC++ supports this through the VDev + File Channel model:
+
+  ---- Pattern: Status + Main + Error ----
+
+    10 REM Open a status console on channel #8
+    20 OPEN #8, "LOG:", "W"
+    30 FPRINT #8, "=== SESSION START ==="
+    40 REM
+    50 REM Main program output goes to PRINT (CON:)
+    60 PRINT "Welcome to SuperStarTrek"
+    70 PRINT
+    80 FPRINT #8, "User entered game loop"
+    90 REM
+   100 REM Errors go to STDERR automatically
+   110 REM (no BASIC code needed — interpreter handles it)
+
+  ---- Pattern: Multi-Player Server ----
+
+  For a multi-player server (like irata.online), each
+  connected player gets their own Virtual Console:
+
+    /* C-level: create a VDev for each connection */
+    for (i = 0; i < num_players; i++) {
+        VDev player_dev;
+        memset(&player_dev, 0, sizeof(player_dev));
+        sprintf(name_buf, "PLAYER%d:", i + 1);
+        player_dev.name      = strdup(name_buf);
+        player_dev.dev_class = VDCLASS_CONSOLE;
+        player_dev.dev_caps  = VDCAP_RW;
+        player_dev.dev_putc  = net_putc;
+        player_dev.dev_puts  = net_puts;
+        player_dev.dev_getc  = net_getc;
+        player_dev.dev_gets  = net_gets;
+        player_dev.user_data = &connections[i];
+        player_slots[i] = vdev_register(&player_dev);
+    }
+
+  Then in BASIC:
+
+    10 REM Write to player 1's terminal
+    20 OPEN #1, "PLAYER1:", "RW"
+    30 PRINT #1, "Your move, Captain."
+    40 INPUT #1, MOVE$
+
+  ---- Pattern: Split-Screen (Two Consoles, One Terminal) ----
+
+  A split-screen application uses two virtual consoles
+  that share the same physical terminal, but write to
+  different screen regions:
+
+    /* Top half: main output */
+    top_dev.dev_putc  = top_half_putc;  /* ESC[1;12r region */
+
+    /* Bottom half: status bar */
+    bot_dev.dev_putc  = bot_half_putc;  /* ESC[13;24r region */
+
+  Each VDev handles scroll regions and cursor save/restore
+  internally.  The BASIC program just does:
+
+    PRINT "Game output here"        ' goes to top half
+    PRINT #8, "Score: "; SCORE      ' goes to bottom half
+
+
+=====================================================================
+  16.  COMPLETE EXAMPLES
+=====================================================================
+
+  ---- Example 1: STDERR Diagnostic Output ----
+
+    10 REM Demonstrate STDOUT vs STDERR separation
+    20 REM Run with: basicpp prog.bas > output.txt
+    30 REM
+    40 PRINT "This line goes to STDOUT (the file)"
+    50 PRINT "Calculating..."
+    60 FOR I = 1 TO 10
+    70   IF I MOD 3 = 0 THEN PRINT "Divisible by 3: "; I
+    80 NEXT I
+    90 REM Errors (WHAT?, HOW?) will appear on screen (STDERR)
+   100 REM even though STDOUT is redirected to a file.
+   110 END
+
+  ---- Example 2: Session Logging ----
+
+    10 REM Log all activity to a file
+    20 OPEN #9, "session.log", "A"
+    30 FPRINT #9, "=== SESSION START ==="
+    40 FPRINT #9, "Date: "; DATE$
+    50 FPRINT #9, "Time: "; TIME$
+    60 PRINT "Hello! What is your name?"
+    70 INPUT N$
+    80 FPRINT #9, "User entered name: "; N$
+    90 PRINT "Welcome, "; N$; "!"
+   100 FPRINT #9, "=== SESSION END ==="
+   110 CLOSE #9
+   120 END
+
+  ---- Example 3: Device Discovery ----
+
+    10 REM List all console-class devices
+    20 REM (requires DEVICES command or C-level query)
+    30 REM
+    40 REM From the BASIC++ prompt:
+    50 REM   DEVICES
+    60 REM
+    70 REM Output:
+    80 REM   ID  Name         Class     Caps  Description
+    90 REM   --  ----         -----     ----  -----------
+   100 REM    0  CON:         Console   0003  Console (stdout + stdin)
+   110 REM    1  ERR:         Console   0002  Error output (stderr)
+   120 REM    2  FILE:        File      000F  File I/O (stdio)
+   130 REM    3  LOG:         Console   0002  Log console (timestamped)
+   140 REM    4  TEE:         Console   0003  Tee (screen + log)
+   150 END
+
+  ---- Example 4: Null Device (Suppress Output) ----
+
+    To suppress output from a chatty subroutine, redirect
+    its output to a null channel.  First, register a NUL:
+    device at the C level:
+
+      static int nul_putc(VDev *d, int ch) {
+          (void)d; (void)ch; return 0;
+      }
+      static int nul_puts(VDev *d, const char *s) {
+          (void)d; (void)s; return 0;
+      }
+
+      VDev nul_dev;
+      memset(&nul_dev, 0, sizeof(nul_dev));
+      nul_dev.name      = "NUL:";
+      nul_dev.dev_class = VDCLASS_CONSOLE;
+      nul_dev.dev_caps  = VDCAP_WRITE;
+      nul_dev.dev_putc  = nul_putc;
+      nul_dev.dev_puts  = nul_puts;
+      nul_dev.dev_description = "Null device (discard)";
+      vdev_register(&nul_dev);
+
+    Then from BASIC:
+
+      10 OPEN #7, "NUL:", "W"
+      20 PRINT #7, "This is discarded"
+      30 CLOSE #7
+
+
+=====================================================================
+  17.  QUICK REFERENCE
+=====================================================================
+
+  ---- VDev Console Registration (C) ----
+
+    VDev my_console;
+    memset(&my_console, 0, sizeof(my_console));
+    my_console.name       = "MYCON:";
+    my_console.dev_class  = VDCLASS_CONSOLE;
+    my_console.dev_caps   = VDCAP_READ | VDCAP_WRITE;
+    my_console.dev_putc   = my_putc;
+    my_console.dev_puts   = my_puts;
+    my_console.dev_getc   = my_getc;
+    my_console.dev_gets   = my_gets;
+    my_console.dev_flush  = my_flush;
+    my_console.dev_description = "My custom console";
+    int slot = vdev_register(&my_console);
+
+  ---- BASIC Console I/O ----
+
+    PRINT "text"                ' → STDOUT (CON:)
+    PRINT #n, "text"            ' → file channel n
+    OPEN #n, "DEV:", "mode"     ' → open device channel
+    INPUT #n, VAR$              ' → read from channel
+    CLOSE #n                    ' → close channel
+
+  ---- Standard Device Names ----
+
+    CON:    Console (stdout + stdin)
+    ERR:    Error output (stderr only)
+    FILE:   File I/O
+    LOG:    Log console (user-registered)
+    NUL:    Null device (discard output)
+
+  ---- Security Matrix ----
+
+    SEC_OPEN       : all I/O allowed
+    SEC_STANDARD   : file/device I/O allowed, no COMPILE/CHAIN
+    SEC_RESTRICTED : PRINT only (no file/device channels)
+
+  ---- VDev Class for Consoles ----
+
+    VDCLASS_CONSOLE = 1
+
+  ---- Capability Flags ----
+
+    VDCAP_READ   = 0x0001    (device supports input)
+    VDCAP_WRITE  = 0x0002    (device supports output)
+    VDCAP_RW     = 0x0003    (both)
+
+  ---- Key Functions ----
+
+    vdev_init()               Initialize device system
+    vdev_get(id)              Get device by slot ID
+    vdev_register(dev)        Register new device
+    vdev_find_by_name(name)   Find device by name
+    vdev_find_by_class(cls,n) Find device by class
+    vdev_putc(d, ch)          Write character
+    vdev_puts(d, str)         Write string
+    vdev_printf(d, fmt, ...)  Formatted write
+    vdev_getc(d)              Read character
+    vdev_gets(d, buf, n)      Read line
+    vdev_flush(d)             Flush output
+    vdev_ioctl(d, cmd, arg)   Device control
+    vdev_status(d)            Check device health
+    vdev_poll(d)              Check for input
+    vdev_info(d, key)         Query metadata
+
+
+=====================================================================
+  END OF TUTORIAL
+=====================================================================
+  Next: Tutorial  — Creating Dialects
+  Previous: Tutorial — File I/O
+  See also: Tutorial — Virtual Machines
+            vdev.h — Virtual Device header (source reference)
+            fileio.h — File I/O header (source reference)
+=====================================================================

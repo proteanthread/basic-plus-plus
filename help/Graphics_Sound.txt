@@ -1,6 +1,6 @@
 GRAPHICS AND SOUND IN BASIC++
 =============================
-Version 0.21.0
+Version 1.5.0
 
 BASIC++ includes a virtual graphics framebuffer and sound
 system compatible with GW-BASIC/QBasic graphics commands.

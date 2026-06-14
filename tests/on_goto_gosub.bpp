@@ -1,0 +1,58 @@
+1 REM ============================================================
+2 REM  t62_on_goto_gosub.bpp
+3 REM  BASIC++ ON...GOTO/GOSUB Test & Tutorial
+4 REM ============================================================
+5 REM
+6 REM  ON expr GOTO line1, line2, line3, ...
+7 REM    Computed GOTO. Evaluates expr and jumps to the Nth
+8 REM    line number in the list. If expr=1, goes to line1;
+9 REM    if expr=2, goes to line2; etc.
+10 REM    If expr is out of range, falls through to next line.
+11 REM
+12 REM  ON expr GOSUB line1, line2, line3, ...
+13 REM    Same as ON GOTO but calls a subroutine (returns to
+14 REM    the statement after ON GOSUB when RETURN is hit).
+15 REM
+16 REM  These are the BASIC equivalent of a switch/case or
+17 REM  dispatch table, commonly used for menus and state
+18 REM  machines in classic BASIC programs.
+19 REM
+20 DIALECT "GWBS"
+21 REM
+100 REM === ON...GOTO ===
+110 TEST "ON GOTO"
+120 LET X=2
+130 LET R=0
+140 ON X GOTO 160, 170, 180
+150 LET R=0: GOTO 190
+160 LET R=1: GOTO 190
+170 LET R=2: GOTO 190
+180 LET R=3: GOTO 190
+190 ASSERT R=2
+195 ENDTEST
+200 REM === ON...GOSUB ===
+210 TEST "ON GOSUB"
+220 LET X=3
+230 LET R=0
+240 ON X GOSUB 280, 290, 300
+250 ASSERT R=30
+260 ENDTEST
+270 GOTO 400
+280 LET R=10: RETURN
+290 LET R=20: RETURN
+300 LET R=30: RETURN
+400 REM === ON GOTO out of range ===
+401 REM When the index is out of range, execution falls through
+402 REM to the next line. No error occurs.
+410 TEST "ON GOTO fallthrough"
+420 LET X=5
+430 LET R=0
+440 ON X GOTO 460, 470
+450 LET R=99
+455 GOTO 480
+460 LET R=1: GOTO 480
+470 LET R=2: GOTO 480
+480 ASSERT R=99
+485 REM X=5 is out of range (only 2 targets), so fell through
+490 ENDTEST
+9999 END

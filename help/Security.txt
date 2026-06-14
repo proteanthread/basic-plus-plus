@@ -1,6 +1,6 @@
 SECURITY AND SANDBOXING IN BASIC++
 ==================================
-Version 0.21.0
+Version 1.5.0
 
 BASIC++ includes a security model that restricts what programs
 can do.  This is essential when running untrusted BASIC code.

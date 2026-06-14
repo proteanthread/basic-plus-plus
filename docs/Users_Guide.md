@@ -1,0 +1,258 @@
+# BASIC++ User's Guide
+
+**Version 1.5.0**
+
+## Table of Contents
+
+1. [Introduction](#1-introduction)
+2. [Starting BASIC++](#2-starting-basic)
+3. [Direct Mode vs. Program Mode](#3-direct-mode-vs-program-mode)
+4. [Entering Programs](#4-entering-programs)
+5. [Editing Programs](#5-editing-programs)
+6. [Running Programs](#6-running-programs)
+7. [Saving and Loading](#7-saving-and-loading)
+8. [The Command Reference](#8-the-command-reference)
+9. [Environment](#9-environment)
+10. [Tips and Tricks](#10-tips-and-tricks)
+
+---
+
+## 1. Introduction
+
+BASIC++ is an interactive BASIC interpreter. When you start it, you see a `Ready.` prompt and can type commands immediately. This is called **direct mode** — commands execute as soon as you press Enter.
+
+To write a program, you prefix each line with a number. These numbered lines are stored in memory and executed when you type `RUN`. This is called **program mode**.
+
+BASIC++ supports multiple BASIC dialects. By default it starts in its own extended dialect (BPP), but you can switch to GW-BASIC, QBasic, TRS-80 CoCo, Tiny BASIC, or Dartmouth BASIC at any time.
+
+---
+
+## 2. Starting BASIC++
+
+```bash
+basicpp                     # Start interactive REPL
+basicpp myfile.bas          # Load and run a file
+basicpp < commands.txt      # Pipe commands from a file
+```
+
+On startup you see:
+
+```
+BASIC++ 0.21.0
+@COPYLEFT ALL WRONGS RESERVED
+Jun  7 2026
+
+Ready.
+>
+```
+
+The `>` is your prompt. Type any command or program line here.
+
+---
+
+## 3. Direct Mode vs. Program Mode
+
+### Direct Mode
+
+Type a command without a line number. It runs immediately.
+
+```
+> PRINT 2 + 2
+     4
+> PRINT "Hello"
+Hello
+```
+
+### Program Mode
+
+Type a line with a number. It is stored, not executed.
+
+```
+> 10 PRINT "Hello"
+> 20 PRINT "World"
+> RUN
+Hello
+World
+```
+
+You can mix both freely. Variables set in direct mode are available to programs, and vice versa.
+
+---
+
+## 4. Entering Programs
+
+Lines are stored in ascending order by line number.
+
+```basic
+10 PRINT "First"
+20 PRINT "Second"
+30 PRINT "Third"
+```
+
+To insert a line between existing lines:
+
+```basic
+15 PRINT "Between first and second"
+```
+
+To replace a line, just type a new line with the same number:
+
+```basic
+20 PRINT "Replaced!"
+```
+
+To delete a line, type its number alone:
+
+```
+15
+```
+
+The `RENUM` command renumbers all lines:
+
+```
+RENUM               ' Renumber starting at 10, step 10
+RENUM 100           ' Renumber starting at 100
+RENUM 100, 10       ' Start at 100, step 10
+```
+
+---
+
+## 5. Editing Programs
+
+| Command | Description |
+|---------|-------------|
+| `LIST` | List entire program |
+| `LIST 10-50` | List lines 10 through 50 |
+| `LIST 30` | List only line 30 |
+| `DELETE 10-50` | Delete lines 10 through 50 |
+| `NEW` | Delete entire program and clear variables |
+| `EDIT n` | *(future)* Line editor for line n |
+
+---
+
+## 6. Running Programs
+
+| Command | Description |
+|---------|-------------|
+| `RUN` | Execute from the first line |
+| `RUN 100` | Execute starting at line 100 |
+| `CONT` | Continue after a STOP or Ctrl+C |
+| `STOP` | Pause execution (resume with CONT) |
+| `END` | Terminate program |
+
+During execution, press **Ctrl+C** to break into direct mode.
+
+---
+
+## 7. Saving and Loading
+
+| Command | Description |
+|---------|-------------|
+| `SAVE "myfile.bas"` | Save program as ASCII text |
+| `LOAD "myfile.bas"` | Clear memory and load program |
+| `MERGE "lib.bas"` | Merge file into current program |
+| `CHAIN "next.bas"` | Load and run, preserving variables |
+| `FILES` | List files in current directory |
+| `KILL "old.bas"` | Delete a file |
+| `NAME "a" AS "b"` | Rename a file |
+| `CHDIR "path"` | Change directory |
+| `MKDIR "dir"` | Create directory |
+| `RMDIR "dir"` | Remove directory |
+
+---
+
+## 8. The Command Reference
+
+### System Commands (direct mode only)
+
+| Command | Description |
+|---------|-------------|
+| `LIST` | List lines |
+| `RUN` | Execute program |
+| `NEW` | Clear program and variables |
+| `SAVE` | Save to file |
+| `LOAD` | Load from file |
+| `MERGE` | Merge file |
+| `RENUM` | Renumber lines |
+| `DELETE` | Delete lines |
+| `FILES` | Directory listing |
+| `SYSTEM` | Exit BASIC++ |
+| `SELFTEST` | Run built-in tests |
+| `HELP` | Show help on a keyword |
+| `DIALECT` | Switch BASIC dialect |
+| `ALIAS` | Define keyword alias |
+| `MEMMAP` | Select virtual memory map |
+
+### Immediate Commands (direct or program mode)
+
+| Command | Description |
+|---------|-------------|
+| `PRINT` | Output to screen |
+| `INPUT` | Read from keyboard |
+| `LET` | Assign variable (optional keyword) |
+| `IF/THEN` | Conditional execution |
+| `FOR/NEXT` | Counting loop |
+| `WHILE/WEND` | Conditional loop |
+| `GOTO` | Unconditional branch |
+| `GOSUB` | Call subroutine |
+| `RETURN` | Return from subroutine |
+| `DIM` | Declare array |
+| `DEF FN` | Define function |
+| `REM` / `'` | Comment |
+| `DATA` | Inline data |
+| `READ` | Read from DATA |
+| `RESTORE` | Reset DATA pointer |
+| `ON` | Computed GOTO/GOSUB |
+| `STOP` | Pause execution |
+| `END` | Terminate program |
+
+See [Quick_Reference](Quick_Reference.md) for the complete alphabetical list.
+
+---
+
+## 9. Environment
+
+| Property | Value |
+|----------|-------|
+| Screen defaults | 80 columns × 25 rows (adjustable with `WIDTH`) |
+| Integer precision | 32-bit signed (−2,147,483,648 to 2,147,483,647) |
+| Float precision | 64-bit double precision |
+| Max string length | 255 characters |
+| String pool | 32 KB |
+| Numeric variables | 26 (A–Z) |
+| String variables | 26 (A$–Z$) |
+| Named variables | Up to 40 chars (extended dialects) |
+| DIM arrays | Up to 256 per program |
+
+---
+
+## 10. Tips and Tricks
+
+**Multiple statements on one line:**
+```basic
+10 A=1 : B=2 : PRINT A+B
+```
+
+**Shorthand for REM:**
+```basic
+10 ' This is a comment
+```
+
+**Hex and octal literals:**
+```basic
+PRINT &HFF        ' 255
+PRINT &O77        ' 63
+PRINT &B1010      ' 10
+```
+
+**Quick exit:**
+```
+SYSTEM            ' or Ctrl+Z (Windows), Ctrl+D (Unix)
+```
+
+**Get help on any keyword:**
+```
+HELP PRINT
+HELP FOR
+HELP OPEN
+```

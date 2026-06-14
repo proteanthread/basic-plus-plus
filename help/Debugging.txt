@@ -1,6 +1,6 @@
 DEBUGGING AND TRACING IN BASIC++
 ================================
-Version 0.21.0
+Version 1.5.0
 
 BASIC++ provides several tools for debugging programs:
 trace mode, breakpoints, single-stepping, and variable

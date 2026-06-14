@@ -1,0 +1,219 @@
+# SuperBASIC (Sinclair QL) Dialect Reference
+
+**Version 1.5.0**
+**Dialect Code:** `SBLQ`
+
+---
+
+## History
+
+SuperBASIC was the built-in programming language of the Sinclair QL (Quantum Leap), released in January 1984. The QL used a Motorola 68008 CPU running at 7.5 MHz with 128K of RAM (expandable to 640K).
+
+SuperBASIC was developed by Jan Jones and was a radical departure from contemporary microcomputer BASICs. It introduced true structured programming constructs — procedures, functions, local variables, and named loops — making it one of the most advanced BASICs of the 1980s.
+
+The QL ran QDOS (later evolved into SMSQ/E), a preemptive multitasking operating system. Programs were stored on twin Microdrive tape loops — unreliable but innovative for 1984.
+
+### Key Innovations
+
+- Named procedures (`DEF PROCedure`) and functions (`DEF FuNction`)
+- Local variables (`LOCal`) with proper scoping
+- Structured loops: `FOR/END FOR`, `REPeat/END REPeat`
+- Block `IF/ELSE/END IF` (no line-number GOTO required)
+- `SELect ON` (computed multi-way branch)
+- Line numbers optional (could be omitted entirely)
+- Coercion between integers and floats
+- QDOS device driver integration
+
+---
+
+## Activation
+
+```basic
+DIALECT "SBLQ"
+```
+
+This changes:
+- Statement separator: `:` (colon)
+- `LET` is optional
+- `THEN` is required in IF statements
+- Maximum line number: 32767
+- Ready prompt: `Ready.`
+- Print zone width: 14
+- `CLS` available
+- `WHILE/WEND` and `DO/LOOP` available
+- Extended variable names
+
+To combine with the Sinclair QL memory map:
+
+```basic
+DIALECT "SBLQ"
+MEMMAP "QL"
+```
+
+---
+
+## Structured Programming Features
+
+### Block IF / END IF
+
+```basic
+IF condition THEN
+  ... statements ...
+ELSE
+  ... statements ...
+END IF
+```
+
+Unlike GW-BASIC, SuperBASIC supported multi-line IF blocks from the start. No line number targets needed.
+
+### FOR / END FOR
+
+```basic
+FOR I = 1 TO 10
+  PRINT I
+END FOR I
+```
+
+SuperBASIC used `END FOR` instead of `NEXT`. Both are accepted in BASIC++ when in SBLQ dialect.
+
+### REPeat / END REPeat
+
+```basic
+REPeat loop_name
+  ... statements ...
+  IF condition THEN EXIT loop_name
+END REPeat loop_name
+```
+
+Named infinite loops with explicit `EXIT`. The loop name makes it clear which loop you're exiting in nested cases.
+
+### SELect ON
+
+```basic
+SELect ON X
+  = 1: PRINT "One"
+  = 2: PRINT "Two"
+  = 3 TO 5: PRINT "Three to Five"
+  = REMAINDER: PRINT "Other"
+END SELect
+```
+
+Similar to `SELECT CASE` but with different syntax. `REMAINDER` handles the default case.
+
+### DEF PROCedure / DEF FuNction
+
+```basic
+DEF PROCedure greeting(name$)
+  LOCal i
+  FOR i = 1 TO 3
+    PRINT "Hello, "; name$
+  END FOR i
+END DEF
+
+DEF FuNction square(x)
+  RETurn x * x
+END DEF
+```
+
+Procedures and functions with local variables. `LOCal` declares variables scoped to the routine.
+
+---
+
+## QDOS and Memory Map
+
+The Sinclair QL used a Motorola 68008 with 24-bit addressing. The real address space extends to 1MB, but BASIC++ maps key regions into the 64K virtual window:
+
+| Address | Description |
+|---------|-------------|
+| `$0000–$BFFF` | System ROM (48K, partial) |
+| `$2000–$3FFF` | Screen RAM (partial, 32K on real QL) |
+| `$0100` | `SV.IDENT` (QL type identifier) |
+| `$0102` | `SV.VERSN` (QDOS version) |
+| `$0104` | Memory size in KB |
+| `$0110` | Display mode (0=mode 4, 8=mode 8) |
+| `$0140` | IPC keyboard controller status |
+
+### Display Modes
+
+| Mode | Resolution | Colors |
+|------|-----------|--------|
+| Mode 4 | 512×256 | 4 colors (black, red, green, white) |
+| Mode 8 | 256×256 | 8 colors (full palette) |
+
+---
+
+## Dialect Configuration
+
+| Property | Value |
+|----------|-------|
+| Dialect ID | `DIALECT_SUPER_BASIC_QL` |
+| Short code | `"SBLQ"` |
+| Dialect flag | `DFLAG_SBLQ` (bit 13) |
+| Separator | `:` (colon) |
+| LET required | No |
+| THEN required | Yes |
+| Max line number | 32767 |
+| Ready prompt | `"Ready."` |
+| Print zone width | 14 |
+| CLS available | Yes |
+| Floating point | Yes |
+| Strings | Yes |
+| Arrays | Yes (DIM) |
+| FOR/NEXT | Yes |
+| WHILE/WEND | Yes |
+| DO/LOOP | Yes |
+| DATA/READ | Yes |
+| DEF FN | Yes |
+| Extended variables | Yes |
+| ON ERROR | Yes |
+| TRON/TROFF | Yes |
+| MERGE/CHAIN | Yes |
+
+---
+
+## Example Programs
+
+### Fibonacci sequence (structured)
+
+```basic
+10 DIALECT "SBLQ"
+20 LET A = 0
+30 LET B = 1
+40 FOR I = 1 TO 20
+50   PRINT A;
+60   LET C = A + B
+70   LET A = B
+80   LET B = C
+90 NEXT I
+100 PRINT
+110 END
+```
+
+### Using SELECT CASE
+
+```basic
+10 DIALECT "SBLQ"
+20 INPUT "Enter a grade (A-F): "; G$
+30 SELECT CASE UCASE$(G$)
+40   CASE "A"
+50     PRINT "Excellent!"
+60   CASE "B"
+70     PRINT "Good work!"
+80   CASE "C"
+90     PRINT "Satisfactory."
+100  CASE ELSE
+110    PRINT "Needs improvement."
+120 END SELECT
+130 END
+```
+
+---
+
+## See Also
+
+- [Quick_Reference](Quick_Reference.md) — Complete keyword listing
+- [Specific_Machine_Dialects](Specific_Machine_Dialects.md) — All 16 dialects explained
+- [Memory_Maps](Memory_Maps.md) — MEMMAP "QL" details
+- [Structured_BASIC](Structured_BASIC.md) — Structured programming tutorial
+
+*@COPYLEFT ALL WRONGS RESERVED*

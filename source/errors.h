@@ -107,6 +107,14 @@ const char *error_message(ErrorCode code);
 void error_set_suppress(int suppress);
 
 /*
+ * error_get_suppress - Query error suppress state.
+ *
+ * Returns non-zero if error output is currently suppressed.
+ * Used to save/restore suppress state across pre-scan phases.
+ */
+int error_get_suppress(void);
+
+/*
  * error_set_beep - Control error beep.
  *
  * When on=1 (default), errors emit an audible beep (BEL).

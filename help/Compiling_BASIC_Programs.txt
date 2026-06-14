@@ -1,6 +1,6 @@
 COMPILING BASIC++ PROGRAMS
 ==========================
-Version 0.21.0
+Version 1.5.0
 
 BASIC++ includes a built-in transpiler that converts your BASIC
 program into a self-contained ANSI C89 source file.  This C file

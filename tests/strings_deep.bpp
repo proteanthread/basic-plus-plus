@@ -1,0 +1,152 @@
+1 REM ============================================================
+2 REM  t54_strings_deep.bpp
+3 REM  BASIC++ Comprehensive String Operations Test & Tutorial
+4 REM ============================================================
+5 REM
+6 REM  BASIC++ provides a rich set of string functions inherited
+7 REM  from GW-BASIC, ECMA-116, and QBasic, plus BASIC++ extensions
+8 REM  like TRIM$ and TCASE$.
+9 REM
+10 REM  String variables end with $ (e.g., A$, NAME$).
+11 REM  String constants are enclosed in double quotes.
+12 REM  The + operator concatenates strings.
+13 REM
+14 DIALECT "GWBS"
+15 REM
+100 REM === LEN(string$) ===
+101 REM Returns the number of characters in a string.
+102 REM An empty string "" has length 0.
+103 TEST "LEN function"
+110 ASSERT LEN("HELLO")=5
+115 REM Empty string
+120 ASSERT LEN("")=0
+125 REM Single character
+130 ASSERT LEN("X")=1
+135 REM String with spaces counts spaces
+140 LET A$="HI THERE"
+145 ASSERT LEN(A$)=8
+150 ENDTEST
+200 REM === LEFT$(string$, n) ===
+201 REM Returns the leftmost n characters.
+202 REM If n >= LEN, returns the entire string.
+203 REM If n = 0, returns empty string.
+205 TEST "LEFT$ function"
+210 ASSERT LEFT$("ABCDEF",3)="ABC"
+220 ASSERT LEFT$("ABCDEF",1)="A"
+230 ASSERT LEFT$("ABCDEF",0)=""
+240 ASSERT LEFT$("AB",10)="AB"
+250 ENDTEST
+300 REM === RIGHT$(string$, n) ===
+301 REM Returns the rightmost n characters.
+305 TEST "RIGHT$ function"
+310 ASSERT RIGHT$("ABCDEF",3)="DEF"
+320 ASSERT RIGHT$("ABCDEF",1)="F"
+330 ASSERT RIGHT$("ABCDEF",6)="ABCDEF"
+340 ENDTEST
+400 REM === MID$(string$, start, length) ===
+401 REM Returns 'length' characters starting at position 'start'.
+402 REM Position 1 is the first character.
+405 TEST "MID$ function"
+410 ASSERT MID$("ABCDEF",2,3)="BCD"
+420 ASSERT MID$("ABCDEF",1,1)="A"
+430 ASSERT MID$("ABCDEF",4,3)="DEF"
+440 ASSERT MID$("HELLO WORLD",7,5)="WORLD"
+450 ENDTEST
+500 REM === ASC(string$) and CHR$(code) ===
+501 REM ASC returns the ASCII code of the first character.
+502 REM CHR$ returns the character for a given ASCII code.
+503 REM These are inverse functions: CHR$(ASC("A")) = "A"
+505 TEST "ASC and CHR$"
+510 ASSERT ASC("A")=65
+520 ASSERT ASC("Z")=90
+530 ASSERT ASC("0")=48
+540 ASSERT ASC("a")=97
+550 ASSERT CHR$(65)="A"
+560 ASSERT CHR$(48)="0"
+570 ASSERT CHR$(32)=" "
+575 REM Round-trip test
+580 ASSERT CHR$(ASC("Q"))="Q"
+590 ENDTEST
+600 REM === STR$(number) and VAL(string$) ===
+601 REM STR$ converts a number to its string representation.
+602 REM VAL converts a string to a number.
+603 REM These are inverse functions for numeric<->string conversion.
+605 TEST "STR$ and VAL"
+610 ASSERT VAL("42")=42
+620 ASSERT VAL("0")=0
+630 ASSERT VAL("-5")=-5
+640 ASSERT VAL("3.14")>3.0
+650 LET A$=STR$(100)
+660 ASSERT VAL(A$)=100
+670 ENDTEST
+700 REM === INSTR(string$, search$) ===
+701 REM Returns the position of the first occurrence of search$
+702 REM within string$. Returns 0 if not found.
+703 REM Position is 1-based (first char = position 1).
+705 TEST "INSTR function"
+710 ASSERT INSTR("HELLO WORLD","WORLD")=7
+720 ASSERT INSTR("HELLO WORLD","HELLO")=1
+730 ASSERT INSTR("HELLO WORLD","XYZ")=0
+740 ASSERT INSTR("ABCABC","BC")=2
+750 ENDTEST
+800 REM === SPACE$(n) and STRING$(n, char$) ===
+801 REM SPACE$ returns a string of n spaces.
+802 REM STRING$ returns n copies of a character.
+805 TEST "SPACE$ and STRING$"
+810 ASSERT LEN(SPACE$(5))=5
+820 ASSERT LEN(SPACE$(0))=0
+830 ASSERT STRING$(3,"*")="***"
+840 ASSERT STRING$(5,"X")="XXXXX"
+850 ASSERT LEN(STRING$(10,"A"))=10
+860 ENDTEST
+900 REM === LCASE$, UCASE$, TCASE$ ===
+901 REM LCASE$ converts all characters to lowercase.
+902 REM UCASE$ converts all characters to uppercase.
+903 REM TCASE$ converts to title case (first letter of each word).
+905 TEST "Case conversion"
+910 ASSERT LCASE$("HELLO")="hello"
+920 ASSERT UCASE$("hello")="HELLO"
+930 ASSERT LCASE$("MiXeD CaSe")="mixed case"
+940 ASSERT UCASE$("mixed case")="MIXED CASE"
+950 ASSERT TCASE$("hello world")="Hello World"
+960 ENDTEST
+1000 REM === LTRIM$, RTRIM$, TRIM$ ===
+1001 REM LTRIM$ removes leading spaces from a string.
+1002 REM RTRIM$ removes trailing spaces.
+1003 REM TRIM$ removes both leading and trailing spaces.
+1004 REM These are essential for cleaning user input.
+1005 TEST "Trim functions"
+1010 ASSERT LTRIM$("  HELLO")="HELLO"
+1020 ASSERT RTRIM$("HELLO  ")="HELLO"
+1030 ASSERT TRIM$("  HELLO  ")="HELLO"
+1040 ASSERT TRIM$("NOSPACES")="NOSPACES"
+1050 ASSERT LEN(LTRIM$("   "))=0
+1060 ENDTEST
+1100 REM === String Concatenation with + ===
+1101 REM The + operator joins two strings together.
+1102 REM You can chain multiple + operations.
+1105 TEST "Concatenation"
+1110 ASSERT "HELLO"+" "+"WORLD"="HELLO WORLD"
+1120 LET A$="BASIC"
+1130 LET B$="++"
+1140 ASSERT A$+B$="BASIC++"
+1150 LET C$=A$+" "+B$
+1160 ASSERT C$="BASIC ++"
+1170 ENDTEST
+1200 REM === HEX$, OCT$, BIN$ ===
+1201 REM HEX$ converts a number to hexadecimal string.
+1202 REM OCT$ converts a number to octal string.
+1203 REM BIN$ converts a number to 8-bit binary string.
+1204 REM These are useful for displaying memory addresses,
+1205 REM bit patterns, and register values.
+1210 TEST "Numeric format functions"
+1220 ASSERT HEX$(255)="FF"
+1230 ASSERT HEX$(0)="0"
+1240 ASSERT HEX$(16)="10"
+1250 ASSERT OCT$(8)="10"
+1260 ASSERT OCT$(7)="7"
+1270 ASSERT BIN$(255)="11111111"
+1280 ASSERT BIN$(0)="00000000"
+1290 ASSERT BIN$(170)="10101010"
+1295 ENDTEST
+9999 END

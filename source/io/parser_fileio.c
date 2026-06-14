@@ -1,0 +1,821 @@
+/*
+ * ---
+ * BASIC++ Interpreter - parser_fileio.c
+ * ---
+ *
+ * File I/O statement handlers: OPEN, CLOSE, SET, ASK,
+ * REWRITE, ERASE (file channels).
+ *
+ * Handles ECMA-116 enhanced file operations, GW-BASIC/QBasic
+ * file modes, and cross-dialect file channel management.
+ *
+ * ---
+ */
+
+#include "parser_internal.h"
+
+void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
+{
+ char filename[MAX_LINE_LENGTH + 1];
+ int mode = 0;
+ int chan;
+
+ (void)rt;
+
+ /*
+ * Detect ECMA-116 form vs GW-BASIC form:
+ * ECMA-116: OPEN #n: NAME "file", ACCESS mode, ...
+ * GW-BASIC: OPEN "file" FOR mode AS #n
+ */
+ if (lex->current.type == TOK_HASH) {
+ /*
+ * ===== ECMA-116 OPEN form =====
+ * OPEN #expr: NAME "file"
+ * [, ACCESS INPUT|OUTPUT|OUTIN]
+ * [, ORGANIZATION SEQUENTIAL|RELATIVE|STREAM]
+ * [, RECTYPE DISPLAY|INTERNAL]
+ */
+ int e116_org = FORG_SEQUENTIAL;
+ int e116_rec = FREC_DISPLAY;
+ int rec_len = 128;
+
+ lexer_next(lex); /* consume # */
+ chan = (int)parse_expression(lex, rt, line_num);
+ if (error_occurred()) return;
+
+ /* Expect : after channel */
+ if (lex->current.type != TOK_COLON) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex); /* consume : */
+
+ /* Expect NAME keyword (as named var) */
+ if (lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword == KW_NAME) {
+ lexer_next(lex); /* consume NAME */
+ } else if (lex->current.type == TOK_NAMED_VAR &&
+ lex->current.str_length == 4) {
+ const char *s = lex->current.str_start;
+ if ((s[0]=='N'||s[0]=='n') &&
+ (s[1]=='A'||s[1]=='a') &&
+ (s[2]=='M'||s[2]=='m') &&
+ (s[3]=='E'||s[3]=='e')) {
+ lexer_next(lex);
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+
+ /* Parse filename string */
+ if (lex->current.type != TOK_STRING) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ if (lex->current.str_length >= MAX_LINE_LENGTH) {
+ error_raise(ERR_HOW, line_num);
+ return;
+ }
+ memcpy(filename, lex->current.str_start,
+ (size_t)lex->current.str_length);
+ filename[lex->current.str_length] = '\0';
+ lexer_next(lex);
+
+ /* Default mode: INPUT for sequential */
+ mode = FCHAN_INPUT;
+
+ /* Parse optional comma-separated attributes */
+ while (lex->current.type == TOK_COMMA) {
+ lexer_next(lex); /* consume , */
+
+ /*
+ * Check for ACCESS keyword
+ */
+ if (lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword == KW_ACCESS) {
+ lexer_next(lex); /* consume ACCESS */
+ /* Parse INPUT|OUTPUT|OUTIN */
+ if (lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword == KW_INPUT) {
+ mode = FCHAN_INPUT;
+ lexer_next(lex);
+ } else if (lex->current.type ==
+ TOK_NAMED_VAR) {
+ const char *s =
+ lex->current.str_start;
+ int sn = lex->current.str_length;
+ if (sn == 6 &&
+ (s[0]=='O'||s[0]=='o') &&
+ (s[1]=='U'||s[1]=='u') &&
+ (s[2]=='T'||s[2]=='t') &&
+ (s[3]=='P'||s[3]=='p') &&
+ (s[4]=='U'||s[4]=='u') &&
+ (s[5]=='T'||s[5]=='t')) {
+ mode = FCHAN_OUTPUT;
+ lexer_next(lex);
+ } else if (sn == 5 &&
+ (s[0]=='O'||s[0]=='o') &&
+ (s[1]=='U'||s[1]=='u') &&
+ (s[2]=='T'||s[2]=='t') &&
+ (s[3]=='I'||s[3]=='i') &&
+ (s[4]=='N'||s[4]=='n')) {
+ mode = FCHAN_RANDOM; /* OUTIN=r/w */
+ lexer_next(lex);
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ }
+ /*
+ * Check for ORGANIZATION (named var)
+ */
+ else if (lex->current.type == TOK_NAMED_VAR) {
+ const char *s =
+ lex->current.str_start;
+ int sn = lex->current.str_length;
+
+ /* ORGANIZATION */
+ if (sn == 12 &&
+ (s[0]=='O'||s[0]=='o') &&
+ (s[1]=='R'||s[1]=='r') &&
+ (s[2]=='G'||s[2]=='g') &&
+ (s[3]=='A'||s[3]=='a') &&
+ (s[4]=='N'||s[4]=='n') &&
+ (s[5]=='I'||s[5]=='i') &&
+ (s[6]=='Z'||s[6]=='z') &&
+ (s[7]=='A'||s[7]=='a') &&
+ (s[8]=='T'||s[8]=='t') &&
+ (s[9]=='I'||s[9]=='i') &&
+ (s[10]=='O'||s[10]=='o') &&
+ (s[11]=='N'||s[11]=='n')) {
+ lexer_next(lex); /* consume */
+ /* Parse org type */
+ if (lex->current.type ==
+ TOK_NAMED_VAR) {
+ const char *t =
+ lex->current.str_start;
+ int tn =
+ lex->current.str_length;
+ if (tn == 10 &&
+ (t[0]=='S'||t[0]=='s') &&
+ (t[1]=='E'||t[1]=='e') &&
+ (t[2]=='Q'||t[2]=='q') &&
+ (t[3]=='U'||t[3]=='u') &&
+ (t[4]=='E'||t[4]=='e') &&
+ (t[5]=='N'||t[5]=='n') &&
+ (t[6]=='T'||t[6]=='t') &&
+ (t[7]=='I'||t[7]=='i') &&
+ (t[8]=='A'||t[8]=='a') &&
+ (t[9]=='L'||t[9]=='l')) {
+ e116_org = FORG_SEQUENTIAL;
+ lexer_next(lex);
+ } else if (tn == 8 &&
+ (t[0]=='R'||t[0]=='r') &&
+ (t[1]=='E'||t[1]=='e') &&
+ (t[2]=='L'||t[2]=='l') &&
+ (t[3]=='A'||t[3]=='a') &&
+ (t[4]=='T'||t[4]=='t') &&
+ (t[5]=='I'||t[5]=='i') &&
+ (t[6]=='V'||t[6]=='v') &&
+ (t[7]=='E'||t[7]=='e')) {
+ e116_org = FORG_RELATIVE;
+ mode = FCHAN_RANDOM;
+ lexer_next(lex);
+ } else if (tn == 6 &&
+ (t[0]=='S'||t[0]=='s') &&
+ (t[1]=='T'||t[1]=='t') &&
+ (t[2]=='R'||t[2]=='r') &&
+ (t[3]=='E'||t[3]=='e') &&
+ (t[4]=='A'||t[4]=='a') &&
+ (t[5]=='M'||t[5]=='m')) {
+ e116_org = FORG_STREAM;
+ mode = FCHAN_BINARY;
+ lexer_next(lex);
+ } else {
+ error_raise(ERR_WHAT,
+ line_num);
+ return;
+ }
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ }
+ /* RECTYPE */
+ else if (sn == 7 &&
+ (s[0]=='R'||s[0]=='r') &&
+ (s[1]=='E'||s[1]=='e') &&
+ (s[2]=='C'||s[2]=='c') &&
+ (s[3]=='T'||s[3]=='t') &&
+ (s[4]=='Y'||s[4]=='y') &&
+ (s[5]=='P'||s[5]=='p') &&
+ (s[6]=='E'||s[6]=='e')) {
+ lexer_next(lex); /* consume */
+ /* Parse rec type */
+ if (lex->current.type ==
+ TOK_NAMED_VAR) {
+ const char *t =
+ lex->current.str_start;
+ int tn =
+ lex->current.str_length;
+ if (tn == 7 &&
+ (t[0]=='D'||t[0]=='d') &&
+ (t[1]=='I'||t[1]=='i') &&
+ (t[2]=='S'||t[2]=='s') &&
+ (t[3]=='P'||t[3]=='p') &&
+ (t[4]=='L'||t[4]=='l') &&
+ (t[5]=='A'||t[5]=='a') &&
+ (t[6]=='Y'||t[6]=='y')) {
+ e116_rec = FREC_DISPLAY;
+ lexer_next(lex);
+ } else if (tn == 8 &&
+ (t[0]=='I'||t[0]=='i') &&
+ (t[1]=='N'||t[1]=='n') &&
+ (t[2]=='T'||t[2]=='t') &&
+ (t[3]=='E'||t[3]=='e') &&
+ (t[4]=='R'||t[4]=='r') &&
+ (t[5]=='N'||t[5]=='n') &&
+ (t[6]=='A'||t[6]=='a') &&
+ (t[7]=='L'||t[7]=='l')) {
+ e116_rec = FREC_INTERNAL;
+ lexer_next(lex);
+ } else {
+ error_raise(ERR_WHAT,
+ line_num);
+ return;
+ }
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ }
+ else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ }
+ else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ }
+
+ /* Open the file using the parsed attributes */
+ if (e116_org == FORG_RELATIVE) {
+ fileio_open_random(chan, filename,
+ rec_len, line_num);
+ } else if (e116_org == FORG_STREAM) {
+ fileio_open_binary(chan, filename,
+ line_num);
+ } else {
+ fileio_open(chan, filename, mode,
+ line_num);
+ }
+ /* Store ECMA-116 metadata if open succeeded */
+ if (!error_occurred()) {
+ fileio_set_e116_metadata(chan,
+ e116_org, e116_rec);
+ }
+ return;
+ }
+
+ /* ===== GW-BASIC OPEN form ===== */
+ /* OPEN "filename" FOR mode AS #n */
+
+ /* Parse filename string */
+ if (lex->current.type != TOK_STRING) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ if (lex->current.str_length >= MAX_LINE_LENGTH) {
+ error_raise(ERR_HOW, line_num);
+ return;
+ }
+ memcpy(filename, lex->current.str_start,
+ (size_t)lex->current.str_length);
+ filename[lex->current.str_length] = '\0';
+ lexer_next(lex);
+
+ /*
+ * ===== Old-style GW-BASIC short OPEN form =====
+ * OPEN "R", channel, "filename" [, reclen]
+ * OPEN "I", channel, "filename"
+ * OPEN "O", channel, "filename"
+ * OPEN "A", channel, "filename"
+ *
+ * Detection: if the first string is exactly 1 char
+ * (R/I/O/A) and the next token is a comma, this is
+ * the old short-form syntax.
+ */
+ if (strlen(filename) == 1 &&
+ lex->current.type == TOK_COMMA) {
+ char mode_ch = filename[0];
+ int rec_len = 128;
+
+ if (mode_ch >= 'a' && mode_ch <= 'z')
+ mode_ch = (char)(mode_ch - 32);
+
+ /* Map mode character */
+ if (mode_ch == 'R') {
+ mode = FCHAN_RANDOM;
+ } else if (mode_ch == 'I') {
+ mode = FCHAN_INPUT;
+ } else if (mode_ch == 'O') {
+ mode = FCHAN_OUTPUT;
+ } else if (mode_ch == 'A') {
+ mode = FCHAN_APPEND;
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+
+ lexer_next(lex); /* consume comma after mode */
+
+ /* Parse channel number (no #) */
+ chan = (int)parse_expression(lex, rt, line_num);
+ if (error_occurred()) return;
+
+ /* Expect comma before filename */
+ if (lex->current.type != TOK_COMMA) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex); /* consume comma */
+
+ /* Parse filename string */
+ if (lex->current.type != TOK_STRING) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ if (lex->current.str_length >= MAX_LINE_LENGTH) {
+ error_raise(ERR_HOW, line_num);
+ return;
+ }
+ memcpy(filename, lex->current.str_start,
+ (size_t)lex->current.str_length);
+ filename[lex->current.str_length] = '\0';
+ lexer_next(lex);
+
+ /* Optional record length: , reclen */
+ if (lex->current.type == TOK_COMMA) {
+ lexer_next(lex); /* consume comma */
+ rec_len = (int)parse_expression(lex, rt,
+ line_num);
+ if (error_occurred()) return;
+ }
+
+ /* Open the file */
+ if (mode == FCHAN_RANDOM) {
+ fileio_open_random(chan, filename,
+ rec_len, line_num);
+ } else if (mode == FCHAN_BINARY) {
+ fileio_open_binary(chan, filename,
+ line_num);
+ } else {
+ fileio_open(chan, filename, mode,
+ line_num);
+ }
+ return;
+ }
+
+ /* Expect FOR keyword */
+ if (lex->current.type != TOK_KEYWORD ||
+ lex->current.value.keyword != KW_FOR) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex); /* consume FOR */
+
+ /* Parse mode: INPUT, OUTPUT, APPEND, RANDOM, BINARY */
+ if (lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword == KW_INPUT) {
+ mode = FCHAN_INPUT;
+ lexer_next(lex);
+ } else if (lex->current.type == TOK_NAMED_VAR ||
+ lex->current.type == TOK_VARIABLE) {
+ /*
+ * OUTPUT, APPEND, RANDOM, BINARY are not keywords
+ * - they appear as named variables. Match by text.
+ */
+ const char *src;
+ int len;
+ if (lex->current.type == TOK_NAMED_VAR) {
+ src = lex->current.str_start;
+ len = lex->current.str_length;
+ } else {
+ src = NULL;
+ len = 0;
+ }
+ if (len == 6 && (src[0] == 'O' || src[0] == 'o') &&
+ (src[1] == 'U' || src[1] == 'u') &&
+ (src[2] == 'T' || src[2] == 't') &&
+ (src[3] == 'P' || src[3] == 'p') &&
+ (src[4] == 'U' || src[4] == 'u') &&
+ (src[5] == 'T' || src[5] == 't')) {
+ mode = FCHAN_OUTPUT;
+ lexer_next(lex);
+ } else if (len == 6 && (src[0] == 'A' || src[0] == 'a') &&
+ (src[1] == 'P' || src[1] == 'p') &&
+ (src[2] == 'P' || src[2] == 'p') &&
+ (src[3] == 'E' || src[3] == 'e') &&
+ (src[4] == 'N' || src[4] == 'n') &&
+ (src[5] == 'D' || src[5] == 'd')) {
+ mode = FCHAN_APPEND;
+ lexer_next(lex);
+ } else if (len == 6 && (src[0] == 'R' || src[0] == 'r') &&
+ (src[1] == 'A' || src[1] == 'a') &&
+ (src[2] == 'N' || src[2] == 'n') &&
+ (src[3] == 'D' || src[3] == 'd') &&
+ (src[4] == 'O' || src[4] == 'o') &&
+ (src[5] == 'M' || src[5] == 'm')) {
+ mode = FCHAN_RANDOM;
+ lexer_next(lex);
+ } else if (len == 6 && (src[0] == 'B' || src[0] == 'b') &&
+ (src[1] == 'I' || src[1] == 'i') &&
+ (src[2] == 'N' || src[2] == 'n') &&
+ (src[3] == 'A' || src[3] == 'a') &&
+ (src[4] == 'R' || src[4] == 'r') &&
+ (src[5] == 'Y' || src[5] == 'y')) {
+ mode = FCHAN_BINARY;
+ lexer_next(lex);
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+
+ /*
+ * Optional ACCESS clause:
+ * ACCESS READ | WRITE | READ WRITE
+ * Accepted and silently consumed for compatibility.
+ */
+ if (lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword == KW_ACCESS) {
+ lexer_next(lex); /* consume ACCESS */
+ /* Skip READ/WRITE/READ WRITE */
+ while (lex->current.type == TOK_NAMED_VAR ||
+ lex->current.type == TOK_VARIABLE) {
+ lexer_next(lex);
+ }
+ }
+
+ /* Expect AS keyword */
+ if (lex->current.type != TOK_KEYWORD ||
+ lex->current.value.keyword != KW_AS) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex); /* consume AS */
+
+ /* Expect # */
+ if (lex->current.type != TOK_HASH) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex); /* consume # */
+
+ /* Parse channel number */
+ chan = (int)parse_expression(lex, rt, line_num);
+ if (error_occurred()) return;
+
+ /*
+ * Optional LEN = n (record length for RANDOM)
+ */
+ {
+ int rec_len = 128;
+ if (lex->current.type == TOK_NAMED_VAR &&
+ lex->current.str_length == 3) {
+ const char *s = lex->current.str_start;
+ if ((s[0]=='L'||s[0]=='l') &&
+ (s[1]=='E'||s[1]=='e') &&
+ (s[2]=='N'||s[2]=='n')) {
+ lexer_next(lex); /* consume LEN */
+ if (lex->current.type == TOK_EQUALS)
+ lexer_next(lex);
+ rec_len = (int)parse_expression(
+ lex, rt, line_num);
+ if (error_occurred()) return;
+ }
+ }
+
+ if (mode == FCHAN_RANDOM) {
+ fileio_open_random(chan, filename,
+ rec_len, line_num);
+ } else if (mode == FCHAN_BINARY) {
+ fileio_open_binary(chan, filename,
+ line_num);
+ } else {
+ fileio_open(chan, filename, mode,
+ line_num);
+ }
+ }
+}
+
+/*
+ * parse_close - Parse CLOSE statement.
+ * The CLOSE keyword has already been consumed.
+ */
+void pi_parse_close(Lexer *lex, RuntimeState *rt, int line_num)
+{
+ int chan;
+
+ /*
+ * CLOSE forms:
+ * CLOSE - close all files
+ * CLOSE #n - close file #n
+ * CLOSE n - close file n (old GW-BASIC style)
+ * CLOSE #n, #m - close multiple files
+ */
+
+ /* CLOSE with no args = close all open files */
+ if (lex->current.type == TOK_EOF ||
+ lex->current.type == TOK_CR ||
+ lex->current.type == TOK_COLON) {
+ int ci;
+ for (ci = 1; ci <= 8; ci++) {
+ if (fileio_get_fp(ci) != NULL) {
+ fileio_close(ci, line_num);
+ }
+ }
+ return;
+ }
+
+ do {
+ /* Optional # */
+ if (lex->current.type == TOK_HASH) {
+ lexer_next(lex); /* consume # */
+ }
+
+ chan = (int)parse_expression(lex, rt, line_num);
+ if (error_occurred()) return;
+
+ fileio_close(chan, line_num);
+ if (error_occurred()) return;
+
+ /* Check for comma -> more channels */
+ if (lex->current.type == TOK_COMMA) {
+ lexer_next(lex);
+ } else {
+ break;
+ }
+ } while (1);
+}
+
+/* --- ECMA-116 Enhanced Files: SET / ASK / REWRITE / ERASE ---
+ */
+
+/*
+ * parse_set_file - Parse SET # statement.
+ * SET #n: POINTER BEGIN | END | expr
+ * The SET keyword has already been consumed.
+ */
+void pi_parse_set_file(Lexer *lex, RuntimeState *rt,
+ int line_num)
+{
+ int chan;
+ long pos;
+
+ /* Expect # */
+ if (lex->current.type != TOK_HASH) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex);
+
+ chan = (int)parse_expression(lex, rt, line_num);
+ if (error_occurred()) return;
+
+ /* Expect : */
+ if (lex->current.type != TOK_COLON) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex);
+
+ /* Expect POINTER keyword */
+ if (lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword == KW_POINTER) {
+ lexer_next(lex); /* consume POINTER */
+
+ /* Parse BEGIN, END, or expression */
+ if (lex->current.type == TOK_NAMED_VAR) {
+ const char *s = lex->current.str_start;
+ int sn = lex->current.str_length;
+ if (sn == 5 &&
+ (s[0]=='B'||s[0]=='b') &&
+ (s[1]=='E'||s[1]=='e') &&
+ (s[2]=='G'||s[2]=='g') &&
+ (s[3]=='I'||s[3]=='i') &&
+ (s[4]=='N'||s[4]=='n')) {
+ pos = 0; /* BEGIN */
+ lexer_next(lex);
+ } else {
+ /* Could be END or an expression */
+ pos = (long)parse_expression(
+ lex, rt, line_num);
+ if (error_occurred()) return;
+ }
+ } else if (lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword == KW_END) {
+ pos = -1; /* END */
+ lexer_next(lex);
+ } else {
+ pos = (long)parse_expression(
+ lex, rt, line_num);
+ if (error_occurred()) return;
+ }
+
+ fileio_set_pointer(chan, pos, line_num);
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ }
+}
+
+/*
+ * parse_ask_file - Parse ASK # statement.
+ * ASK #n: POINTER var | FILESIZE var
+ * The ASK keyword has already been consumed.
+ */
+void pi_parse_ask_file(Lexer *lex, RuntimeState *rt,
+ int line_num)
+{
+ int chan;
+
+ /* Expect # */
+ if (lex->current.type != TOK_HASH) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex);
+
+ chan = (int)parse_expression(lex, rt, line_num);
+ if (error_occurred()) return;
+
+ /* Expect : */
+ if (lex->current.type != TOK_COLON) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex);
+
+ /* POINTER or FILESIZE */
+ if (lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword == KW_POINTER) {
+ long pos;
+ lexer_next(lex); /* consume POINTER */
+
+ pos = fileio_ask_pointer(chan, line_num);
+ if (error_occurred()) return;
+
+ /* Assign to variable */
+ if (lex->current.type == TOK_VARIABLE) {
+ int vi = lex->current.value.var_name - 'A';
+ rt->variables[vi] = bval_float((double)pos);
+ lexer_next(lex);
+ } else if (lex->current.type == TOK_NAMED_VAR &&
+ dialect_get_config()->has_extended_vars) {
+ runtime_set_named_var_bval(rt,
+ lex->current.str_start,
+ lex->current.str_length,
+ bval_float((double)pos));
+ lexer_next(lex);
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ }
+ } else if (lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword == KW_FILESIZE) {
+ long sz;
+ lexer_next(lex); /* consume FILESIZE */
+
+ sz = fileio_ask_filesize(chan, line_num);
+ if (error_occurred()) return;
+
+ /* Assign to variable */
+ if (lex->current.type == TOK_VARIABLE) {
+ int vi = lex->current.value.var_name - 'A';
+ rt->variables[vi] = bval_float((double)sz);
+ lexer_next(lex);
+ } else if (lex->current.type == TOK_NAMED_VAR &&
+ dialect_get_config()->has_extended_vars) {
+ runtime_set_named_var_bval(rt,
+ lex->current.str_start,
+ lex->current.str_length,
+ bval_float((double)sz));
+ lexer_next(lex);
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ }
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ }
+}
+
+/*
+ * parse_rewrite - Parse REWRITE # statement.
+ * REWRITE #n: expr [, expr ...]
+ * The REWRITE keyword has already been consumed.
+ */
+void pi_parse_rewrite(Lexer *lex, RuntimeState *rt,
+ int line_num)
+{
+ int chan;
+ char buf[MAX_RECORD_LEN];
+ int pos = 0;
+
+ /* Expect # */
+ if (lex->current.type != TOK_HASH) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex);
+
+ chan = (int)parse_expression(lex, rt, line_num);
+ if (error_occurred()) return;
+
+ /* Expect : */
+ if (lex->current.type != TOK_COLON) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ lexer_next(lex);
+
+ /* Build record from expressions */
+ memset(buf, ' ', MAX_RECORD_LEN);
+ while (lex->current.type != TOK_EOF &&
+ lex->current.type != TOK_CR &&
+ lex->current.type != TOK_COLON) {
+ BValue val = parse_expression_bval(
+ lex, rt, line_num);
+ if (error_occurred()) return;
+ if (bval_is_string(&val)) {
+ int sl = val.v.sval.length;
+ if (sl > 0 && pos + sl <= MAX_RECORD_LEN) {
+ memcpy(buf + pos, val.v.sval.data,
+ (size_t)sl);
+ pos += sl;
+ }
+ } else {
+ char nb[32];
+ int nl;
+ sprintf(nb, "%g", bval_to_float(&val));
+ nl = (int)strlen(nb);
+ if (pos + nl <= MAX_RECORD_LEN) {
+ memcpy(buf + pos, nb, (size_t)nl);
+ pos += nl;
+ }
+ }
+ if (lex->current.type == TOK_COMMA)
+ lexer_next(lex);
+ else
+ break;
+ }
+
+ fileio_rewrite_record(chan, buf, pos, line_num);
+}
+
+/*
+ * parse_erase_file - Parse ERASE # statement.
+ * ERASE #n
+ * This is separate from the existing ERASE (clear arrays).
+ * The ERASE keyword has already been consumed.
+ */
+void pi_parse_erase_file(Lexer *lex, RuntimeState *rt,
+ int line_num)
+{
+ int chan;
+
+ /* # means it's a file ERASE, not array ERASE */
+ lexer_next(lex); /* consume # */
+ chan = (int)parse_expression(lex, rt, line_num);
+ if (error_occurred()) return;
+
+ fileio_erase_channel(chan, line_num);
+}
+
+/* --- Statement Dispatcher ---
+ */
+
+/*
+ * parse_statement - Parse and execute a single BASIC statement.
+ *
+ * Identifies the statement type from the current token and
+ * dispatches to the appropriate handler. If the current token
+ * is a variable and LET is optional (in PATB), treats it as
+ * a bare assignment.
+ *
+ * This function handles one statement only. The caller
+ * (parser_execute_line) handles the ';' separator for
+ * multi-statement lines.
+ */
+

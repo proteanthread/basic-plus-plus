@@ -1,0 +1,880 @@
+BASIC++ SOURCE TREE MAP
+========================
+Version 2.0.2
+Last Updated: 2026-06-13
+
+This document describes every source file in the BASIC++ interpreter,
+its purpose, and which files are required for different build
+configurations.  Keep this file updated as the project progresses.
+
+See also:
+  Makefile               Build system with domain-organized source groups
+  help/help.c            Built-in HELP database (update with new keywords)
+  ../help/*.txt           Tutorial documents (Event_Trapping, etc.)
+  ../docs/*.md            Markdown reference documentation
+
+
+=====================================================================
+TABLE OF CONTENTS
+=====================================================================
+
+  1. File Tiers (CORE vs OPTIONAL)
+  2. Source Directory Layout
+  3. File-by-File Reference
+     3.1   core/           Core infrastructure
+     3.2   lexer/          Tokenizer
+     3.3   parser/         Statement dispatch & expression parser
+     3.4   flow/           Control flow (IF, FOR, WHILE, GOSUB)
+     3.5   io/             Input/Output & file channels
+     3.6   filemgmt/       File management & directories
+     3.7   graphics/       Graphics & drawing
+     3.8   display/        Display & console attributes
+     3.9   sound/          Sound & music
+     3.10  variables/      Variables, constants & types
+     3.11  arrays/         Arrays & matrix operations
+     3.12  strings/        String built-in functions
+     3.13  math/           Math built-in functions
+     3.14  functions/      Function registry & user-defined functions
+     3.15  struct/         Structured programming (SELECT, SUB)
+     3.16  errhand/        Error handling & exceptions
+     3.17  shell/          Shell & external execution
+     3.18  debug/          Debugging & self-test
+     3.19  help/           Help & introspection system
+     3.20  config/         Configuration & meta commands
+     3.21  progmgmt/       Program management & compiler
+     3.22  virtual/        Virtual devices, VM & introspection
+     3.23  memory/         Memory introspection & PEEK/POKE maps
+     3.24  system/         System & environment functions
+     3.25  dialect/        Dialect profiles
+     3.26  codegen/        Code generation & bytecode
+     3.27  modules/        External modules (FujiNet, USB, UPnP)
+     3.28  runtime/        Runtime state & execution loop
+     3.29  misc/           Miscellaneous utility commands
+     3.30  Header files    Public interface (source/ root)
+  4. Dialect Dependency Matrix
+  5. Custom Build Examples
+  6. Adding New Files
+
+
+=====================================================================
+1. FILE TIERS
+=====================================================================
+
+Every source file belongs to one of two tiers:
+
+  CORE     Required for any functional BASIC++ build.  Removing any
+           CORE file will cause link errors or a non-functional
+           interpreter.
+
+  OPTIONAL May be omitted to reduce binary size or to build a
+           purpose-specific interpreter.  Requires editing the
+           Makefile and possibly removing registration calls from
+           main.c or dialect.c.
+
+The tier is marked next to each file in the reference below.
+
+
+=====================================================================
+2. SOURCE DIRECTORY LAYOUT
+=====================================================================
+
+source/
+  |
+  |-- Makefile                     Build system (gcc, MSVC, OpenWatcom)
+  |-- SOURCE_TREE.txt              This file
+  |
+  |-- *.h                          Public header files (39 total)
+  |
+  |-- core/                        Core infrastructure (9 files)
+  |-- lexer/                       Tokenizer (3 files)
+  |-- parser/                      Statement dispatch (2 files)
+  |-- flow/                        Control flow (2 files)
+  |-- io/                          Input/Output (6 files)
+  |-- filemgmt/                    File management (1 file)
+  |-- graphics/                    Graphics & drawing (3 files)
+  |-- display/                     Display & console (1 file)
+  |-- sound/                       Sound & music (1 file)
+  |-- variables/                   Variables & assignment (2 files)
+  |-- arrays/                      Arrays & matrices (1 file)
+  |-- strings/                     String functions (1 file)
+  |-- math/                        Math functions (1 file)
+  |-- functions/                   Function registry (3 files)
+  |-- struct/                      Structured programming (1 file)
+  |-- errhand/                     Error handling (1 file)
+  |-- shell/                       Shell & external exec (1 file)
+  |-- debug/                       Debugging & selftest (2 files)
+  |-- help/                        Help system (2 files)
+  |-- config/                      Configuration commands (3 files)
+  |-- progmgmt/                    Program management (3 files)
+  |-- virtual/                     Virtual devices & VM (3 files)
+  |-- memory/                      Memory introspection (2 files)
+  |-- system/                      System functions (2 files)
+  |-- dialect/                     Dialect profiles (17 files)
+  |-- codegen/                     Code generation (4 files)
+  |-- modules/                     External modules (5 files)
+  |-- runtime/                     Runtime state & exec (2 files)
+  |-- misc/                        Miscellaneous commands (1 file)
+
+  Total: 83 .c files, 39 .h files
+
+
+=====================================================================
+3. FILE-BY-FILE REFERENCE
+=====================================================================
+
+
+--- 3.1  core/ — Core Infrastructure ---
+
+  CORE  core/main.c
+        Entry point, REPL loop, bootstrap.  Contains main(), input
+        classification (line storage vs. immediate execution), memory
+        subsystem init/shutdown, module registration calls, and
+        command-line argument parsing (-d, -q, -c, -f, etc.).
+
+  CORE  core/memory.c
+        Memory pool management: bump-allocated pools for variables,
+        arrays, and program storage.  No module calls malloc()
+        directly except through this subsystem.
+
+  CORE  core/errors.c
+        Classic Tiny BASIC error model (WHAT/HOW/SORRY).  Global
+        error flag, error message printing, GW-BASIC error code
+        table.  Non-fatal: errors abort the current statement only.
+
+  CORE  core/value.c
+        Tagged BValue type (integer/float/string) and operations.
+        Type coercion follows classic BASIC rules: INT+FLOAT->FLOAT,
+        string in arithmetic -> ERR_WHAT.
+
+  CORE  core/stringpool.c
+        Bump-allocator for BASIC string values.  Pool resets on RUN.
+        Strings are never individually freed.
+
+  CORE  core/platform.c
+        Cross-platform detection (DOS/Windows/Linux/macOS).  Static
+        PlatformInfo struct populated once at init.  Feeds the SYSTEM
+        command.
+
+  CORE  core/security.c
+        Capability-gated access control (SEC_OPEN / SEC_STANDARD /
+        SEC_RESTRICTED).  Permission matrix for file I/O, COMPILE,
+        CHAIN, SHELL, EXEC operations.
+
+  CORE  core/ldisdbl.c
+        Stub for missing _LDisDouble_ in OpenWatcom v2 beta.
+        Required only for OpenWatcom builds; harmless on others.
+
+  CORE  core/config_file.c
+        INI-style configuration file parser.  Reads basicpp.cfg
+        at boot.  Supports dialect, security, prompt, memory,
+        color, and module settings.
+
+
+--- 3.2  lexer/ — Tokenizer ---
+
+  CORE  lexer/lexer.c
+        Single-pass scanner: source text -> token stream.  Zero-copy
+        strings, no heap allocation.  Keyword lookup, dialect flag
+        filtering, alias resolution.  The heart of the front end.
+
+  CORE  lexer/keyword_props.c
+        Per-keyword property table.  Named key-value properties that
+        modify keyword behavior at runtime (e.g., KEYWORD PRINT
+        UPPERCASE ON, KEYWORD INPUT PROMPT "Enter:").
+
+  CORE  lexer/alias_lang.c
+        Natural language keyword alias packs.  Maps ~30 core keywords
+        to Spanish, Portuguese, French, German, Italian, Japanese
+        romaji equivalents.  Loaded via ALIAS LANG "code".
+
+
+--- 3.3  parser/ — Statement Dispatch & Expression Parser ---
+
+  CORE  parser/parser.c
+        Main keyword dispatch switch (pi_parse_statement) and
+        multi-statement line executor (parser_execute_line).  Routes
+        to handler functions in parser_*.c sub-modules.
+
+  CORE  parser/parser_expr.c
+        Recursive-descent expression parser.  Handles integer and
+        BValue expressions, operator precedence, function calls,
+        variable lookups, and array element access.
+
+
+--- 3.4  flow/ — Control Flow ---
+
+  CORE  flow/parser_flow.c
+        IF/THEN/ELSE (single-line and block), UNLESS, GOTO, GOSUB,
+        RETURN, END, STOP, REM.  Also handles ON...GOTO/GOSUB event
+        handler registration and ON BREAK.
+
+  CORE  flow/parser_loops.c
+        Loop constructs: FOR/NEXT, WHILE/WEND, DO/LOOP.  All loop
+        types across all dialects, including inline FOR.
+
+
+--- 3.5  io/ — Input/Output ---
+
+  CORE  io/parser_io.c
+        Console I/O: PRINT, INPUT, DATA, READ, RESTORE.  Formatted
+        output, user input parsing, DATA/READ/RESTORE mechanism.
+
+  CORE  io/parser_fileio.c
+        File I/O statements: OPEN, CLOSE, SET, ASK, REWRITE, ERASE.
+        ECMA-116 enhanced file operations and GW-BASIC/QBasic modes.
+
+  CORE  io/parser_blockio.c
+        Block/random I/O: FIELD, GET, PUT, LSET, RSET, SEEK, LOCK,
+        UNLOCK, IOCTL.
+
+  CORE  io/parser_streamio.c
+        Stream I/O & printer: LPRINT, LLIST, WRITE.
+
+  CORE  io/fileio.c
+        File I/O implementation for SAVE and LOAD.  ANSI C stdio
+        only (no POSIX or Windows APIs).  Plain text format.
+
+  CORE  io/builtins_fileio.c
+        File I/O function handlers: EOF, LOF, LOC, CVI, CVS, CVD,
+        MKI$, MKS$, MKD$ for the function registry.
+
+
+--- 3.6  filemgmt/ — File Management ---
+
+  CORE  filemgmt/parser_filemgmt.c
+        File management & directory commands: FILES, DIR, KILL,
+        SCRATCH, UNSAVE, COPY, MOVE, PWD, CHDIR, MKDIR, RMDIR,
+        NAME, RENAME, ERASE.
+
+
+--- 3.7  graphics/ — Graphics & Drawing ---
+
+  CORE  graphics/parser_graphics.c
+        Graphics commands: SCREEN, COLOR, DRAW, LINE, CIRCLE,
+        PAINT, PSET, PRESET, PALETTE, PCOPY, VIEW, WINDOW.
+
+  CORE  graphics/gfxbuf.c
+        Virtual framebuffer implementation.  Stores color indices
+        per pixel; renders via ANSI escape + Unicode half-blocks
+        (U+2580/U+2584).  320x200 effective resolution.
+
+  CORE  graphics/builtins_graphics.c
+        Graphics function handlers: POINT, SCREEN (function form)
+        for the function registry.
+
+
+--- 3.8  display/ — Display & Console ---
+
+  CORE  display/parser_display.c
+        Display & console attribute commands: CLS, HOME, LOCATE,
+        WIDTH, INK, PAPER, BORDER, BRIGHT, FLASH, INVERSE, OVER.
+
+
+--- 3.9  sound/ — Sound & Music ---
+
+  CORE  sound/parser_sound.c
+        Sound commands: BEEP, SOUND, PLAY (MML music strings).
+
+
+--- 3.10  variables/ — Variables & Types ---
+
+  CORE  variables/parser_assign.c
+        Assignment and declaration: LET, DIM.  Explicit and implicit
+        variable assignment, string assignment, array element
+        assignment, DIM array declarations.
+
+  CORE  variables/parser_vars.c
+        Variable & type commands: CONST, SWAP, REDIM, SHARED,
+        STATIC, COMMON, TYPE, DEFINT, DEFDBL, DEFSNG, DEFSTR, VARS.
+
+
+--- 3.11  arrays/ — Arrays & Matrices ---
+
+  CORE  arrays/parser_mat.c
+        ECMA-116 matrix operations: MAT READ, MAT PRINT, MAT
+        assignment, MAT ZER/CON/IDN, MAT TRN, MAT INV, and
+        matrix arithmetic (+, -, *).
+
+
+--- 3.12  strings/ — String Functions ---
+
+  CORE  strings/builtins_string.c
+        All FCAT_STRING function handlers: LEFT$, RIGHT$, MID$,
+        LEN, ASC, CHR$, STR$, VAL, INSTR, STRING$, SPACE$,
+        REPEAT$, UCASE$, LCASE$, LTRIM$, RTRIM$, BASE64$ etc.
+
+
+--- 3.13  math/ — Math Functions ---
+
+  CORE  math/builtins_math.c
+        All FCAT_MATH function handlers: ABS, SGN, INT, SQR, SIN,
+        COS, TAN, ATN, LOG, EXP, FIX, CINT, CDBL, CSNG, COMPLEX,
+        REAL, IMAG, MIN, MAX, PDIF, COMP, and more.
+
+
+--- 3.14  functions/ — Function Registry ---
+
+  CORE  functions/funcreg.c
+        Centralized function registry.  All built-in, dialect, and
+        module functions are dispatched through this table.  Replaces
+        hardcoded switch/if chains.
+
+  CORE  functions/parser_deffn.c
+        User-defined function handlers: DEF FN (single-line and
+        multi-line) and FN evaluation.
+
+  CORE  functions/builtins.c
+        Master registration table.  Populates funcreg with all
+        standard BASIC++ built-in functions at boot.
+
+
+--- 3.15  struct/ — Structured Programming ---
+
+  CORE  struct/parser_struct.c
+        SELECT/CASE, EXIT, SUB/FUNCTION, DECLARE, CALL, PROCEDURE,
+        DEFINE/ENDDEFINE, LOCAL.  Structured programming constructs
+        from QBasic, ECMA-116, and SuperBASIC.
+
+
+--- 3.16  errhand/ — Error Handling ---
+
+  CORE  errhand/parser_errhand.c
+        Error handling & exception commands: ERROR, CAUSE, RESUME,
+        WHEN, USE, RETRY, CONTINUE, TRAP.  Covers GW-BASIC
+        ON ERROR GOTO, Atari TRAP, and ECMA-116 WHEN/USE/END WHEN.
+
+
+--- 3.17  shell/ — Shell & External Execution ---
+
+  CORE  shell/parser_shell.c
+        SHELL, EXEC, SYS, SYSTEM, ENVIRON.  Host OS command
+        execution and environment variable access.
+
+
+--- 3.18  debug/ — Debugging & Testing ---
+
+  CORE  debug/parser_debug.c
+        Debug commands: TRON, TROFF, BREAK, CONT, ASSERT, TEST,
+        ENDTEST, SELFTEST, INFO, DEBUG, DUMP, BACKTRACE, TRACE.
+
+  CORE  debug/selftest.c
+        Built-in self-test suite.  Loads a hardcoded BASIC++ test
+        program, runs it, reports results.  79 assertions covering
+        arithmetic, comparisons, logic, variables, strings, flow
+        control, loops, GOSUB, math, DIM, DATA/READ, SWAP, DEF FN.
+
+
+--- 3.19  help/ — Help & Introspection ---
+
+  CORE  help/parser_help.c
+        HELP, CATALOG, VER command handlers.
+
+  CORE  help/help.c
+        Help database.  Self-describing documentation for every
+        command, function, and system setting.  Organized by
+        functional category (Control Flow, I/O, Math, etc.).
+        ** UPDATE THIS FILE when adding new keywords. **
+
+
+--- 3.20  config/ — Configuration & Meta ---
+
+  CORE  config/parser_config.c
+        Configuration commands: OPTION, ALIAS, SCOPE, KEYWORD,
+        OVERRIDE, SECURITY, MODULE.
+
+  CORE  config/override.c
+        Keyword interpretation override system.  Prepends text to
+        a keyword's arguments at parse time without modifying stored
+        source.  Protected keywords cannot be overridden.
+
+  CORE  config/scope.c
+        SCOPE keyword: disable/enable individual keywords, BEFORE/
+        AFTER/OVERRIDE hooks via GOSUB, named presets (STRUCTURED,
+        SAFE, MINIMAL).
+
+
+--- 3.21  progmgmt/ — Program Management ---
+
+  CORE  progmgmt/parser_progmgmt.c
+        Program editing commands: RENUM, DELETE, EDIT, AUTO,
+        COMPILE, BSAVE, BLOAD.
+
+  CORE  progmgmt/parser_cmds.c
+        System commands: LIST, RUN, NEW, SAVE, LOAD, MERGE, CHAIN,
+        DIALECT.  Operates on the stored program.
+
+  CORE  progmgmt/compiler.c
+        Compiler driver: tokenize -> AST build -> C89 code
+        generation pipeline.  Orchestrates ast.c and codegen.c.
+
+
+--- 3.22  virtual/ — Virtual Infrastructure ---
+
+  CORE  virtual/parser_virtual.c
+        Introspection commands: VDEV, VMEM, VNET, VCON, VTERM,
+        VMACH, DEVMAP.  Reports virtual device slots, memory,
+        network state, console info.
+
+  CORE  virtual/vdev.c
+        Virtual Device System (VDev2).  Implements built-in devices
+        (CON:, ERR:, FILE:) and device management.  The ONLY file
+        that makes direct C stdio calls for I/O.
+
+  CORE  virtual/vm.c
+        Virtual Machine formalization layer.  Dispatch table (keyword
+        -> VMOpcode), expression evaluation stack, control flow
+        primitives (jump, call, return, halt, stop).
+
+
+--- 3.23  memory/ — Memory Introspection ---
+
+  CORE  memory/memmap.c
+        Pluggable PEEK/POKE memory map system.  Pre-fills a 64K
+        virtual segment with platform-correct hardware register
+        values, ROM signatures, and screen memory for each
+        supported machine.
+
+  CORE  memory/builtins_memory.c
+        Memory function handlers: PEEK, FRE, SIZE for the function
+        registry.
+
+
+--- 3.24  system/ — System Functions ---
+
+  CORE  system/builtins_system.c
+        System function handlers: ENVIRON$, SYSTEM (function form),
+        DATE$, TIME$, TIMER for the function registry.
+
+  CORE  system/builtins_io.c
+        I/O function handlers: INKEY$, CSRLIN, POS, LPOS, SPC, TAB
+        for the function registry.
+
+
+--- 3.25  dialect/ — Dialect Profiles ---
+
+  The dialect system uses a registry architecture.  Each dialect lives
+  in its own source file and registers itself at boot time.
+
+  CORE  dialect/dialect.c
+        Dialect registry: dialect_register_all(), lookup, switching.
+        ** EDIT THIS FILE when adding/removing a dialect. **
+
+  The following dialect files are individually OPTIONAL.  To build a
+  custom interpreter with only specific dialects, include only the
+  ones you need (plus dialect/dialect.c which is always required).
+  You must also remove the register call from dialect_register_all()
+  in dialect.c for any dialect you omit.
+
+  OPT   dialect/dialect_patb.c      Palo Alto Tiny BASIC (1976)
+        CLI flag: -d PATB              Li-Chen Wang. Integer-only,
+        Dialect ID: DIALECT_TINY_BASIC  26 vars, no strings. 2KB.
+
+  OPT   dialect/dialect_trs1.c      TRS-80 Level I BASIC (1977)
+        CLI flag: -d TRS1              Steve Leininger / Radio Shack.
+        Dialect ID: DIALECT_TRS80_L1   Z80, 4KB ROM, 64x16 text.
+
+  OPT   dialect/dialect_trs2.c      TRS-80 Level II BASIC (1978)
+        CLI flag: -d TRS2              Microsoft. 12KB ROM.  Float,
+        Dialect ID: DIALECT_TRS80_L2   DEF FN, WHILE/WEND, ON ERROR.
+                                       Also covers Model III/4.
+
+  OPT   dialect/dialect_gwbs.c      GW-BASIC / BASICA (1983)
+        CLI flag: -d GWBS              Microsoft. "Ok" prompt.
+        Dialect ID: DIALECT_GW_BASIC   Default for David Ahl's games.
+
+  OPT   dialect/dialect_ecma55.c    ECMA-55 Minimal BASIC (1984)
+        CLI flag: -d EC55              ISO 6373. Portable standard
+        Dialect ID: DIALECT_ECMA55     subset. LET mandatory.
+
+  OPT   dialect/dialect_ecma116.c   ECMA-116 Full BASIC (1991)
+        CLI flag: -d E116              ISO 10279. Gold standard:
+        Dialect ID: DIALECT_ECMA116    SUB/FUNCTION, WHEN/USE, MAT.
+
+  OPT   dialect/dialect_qbasic.c    QBasic (1991)
+        CLI flag: -d QBAS              Microsoft. MS-DOS 5.0+.
+        Dialect ID: DIALECT_QBASIC     Line numbers optional, SUB,
+                                       SELECT CASE, DO/LOOP.
+
+  OPT   dialect/dialect_aint.c      Apple II Integer BASIC (1977)
+        CLI flag: -d AINT              Wozniak. 8KB ROM, integer-only.
+        Dialect ID: DIALECT_APPLE_INT  '>' prompt, LET mandatory.
+
+  OPT   dialect/dialect_asft.c      Applesoft BASIC (1978)
+        CLI flag: -d ASFT              Microsoft for Apple II+.
+        Dialect ID: DIALECT_APPLESOFT  12KB ROM, ']' prompt.
+
+  OPT   dialect/dialect_atari.c     Atari BASIC (1979)
+        CLI flag: -d ATAR              Shepardson. NOT Microsoft.
+        Dialect ID: DIALECT_ATARI_MS   Cartridge ROM, 10-col zones,
+                                       A$(5,10) substring syntax.
+
+  OPT   dialect/dialect_c64.c       Commodore BASIC v2 (1982)
+        CLI flag: -d C64               Microsoft (1977 vintage).
+        Dialect ID: DIALECT_COMMODORE  "READY." prompt, POKE-heavy.
+
+  OPT   dialect/dialect_coco.c      Color Computer BASIC (1980)
+        CLI flag: -d COCO              Microsoft. Motorola 6809.
+        Dialect ID: DIALECT_COCO       "OK" prompt, actual graphics
+                                       commands (unlike C64).
+
+  OPT   dialect/dialect_mbasic.c    MBASIC / BASIC-80 (1978-1981)
+        CLI flag: -d MBAS              Microsoft CP/M. Pure text/
+        Dialect ID: DIALECT_MBASIC     computation, no graphics.
+                                       "Ok" prompt, 14-col zones.
+
+  OPT   dialect/dialect_sinclair.c  Sinclair BASIC (ZX Spectrum, 1982)
+        CLI flag: -d SINC              Nine Tiles. LET required,
+        Dialect ID: DIALECT_SINCLAIR   GO TO / GO SUB spaced,
+                                       unique colour/sound commands.
+
+  OPT   dialect/dialect_superbasic.c  Sinclair QL SuperBASIC (1984)
+        CLI flag: -d QLSB              Jan Jones. Structured: named
+        Dialect ID: DIALECT_SUPERBASIC  procedures, local variables,
+                                        REPeat/END REPeat, SELect ON.
+
+  OPT   dialect/dialect_sbasic.c    Tymshare SUPER BASIC (1968)
+        CLI flag: -d SBAS              Mark Alexander & Dan Streng.
+        Dialect ID: DIALECT_SBASIC     SDS 940. Complex numbers,
+                                       JOSS-style IF/UNLESS postfix.
+
+
+--- 3.26  codegen/ — Code Generation & Bytecode ---
+
+  CORE  codegen/ast.c
+        AST builder.  Mirrors parser.c structure but builds AstExpr/
+        AstStmt nodes instead of executing.  Used by the compiler.
+
+  CORE  codegen/codegen.c
+        C89 code generator.  Walks the AST and emits a complete,
+        self-contained ANSI C89 program with runtime shim.
+
+  CORE  codegen/bytecode.c
+        Bytecode serializer/deserializer (.BPP format).  16-byte
+        header + line records.  Stores source text verbatim.
+
+  CORE  codegen/detok.c
+        Detokenizer.  Converts tokens back to human-readable text.
+        Standalone diagnostic module (no parser dependency).
+
+
+--- 3.27  modules/ — External Modules ---
+
+  The module system allows grouping related functions, devices, and
+  dialect extensions into named, versioned units.
+
+  CORE  modules/module.c
+        Module registry.  Static table with MAX_MODULES slots.
+        Name lookups are case-insensitive.
+        ** EDIT THIS FILE when adding a new module. **
+
+  CORE  modules/mod_stdlib.c
+        Standard library module.  Wraps builtins.c as a formal
+        module.  Auto-activated at boot so all built-in functions
+        are available without user action.
+
+  OPT   modules/mod_usb.c
+        USB device module.  Registers USB:, HID:, USBSER: virtual
+        devices.  Activated via MODULE "USB".
+
+  OPT   modules/mod_fujinet.c
+        FujiNet virtual device module.  Registers N: (network),
+        FUJI: (config), CLOCK: (NTP) devices.  Desktop uses
+        Winsock2 / BSD sockets.  Activated via MODULE "FUJINET".
+
+  OPT   modules/mod_upnp.c
+        UPnP/SSDP device discovery module.  Registers UPNP: and
+        SOAP: virtual devices with VDCAP_EVENT.  Pure API framework.
+        Activated via MODULE "UPNP".
+
+
+--- 3.28  runtime/ — Runtime State & Execution ---
+
+  CORE  runtime/runtime.c
+        Runtime state management.  Single RuntimeState struct holds
+        ALL mutable interpreter state: variables, stack, DATA pool,
+        user functions, arrays, string pool, devices, debugger.
+
+  CORE  runtime/exec.c
+        Program execution loop.  Iterates stored lines, tokenizes
+        on-the-fly, dispatches to parser.  Event polling between
+        statements.  Signal handler for Ctrl+C (ON BREAK).
+
+
+--- 3.29  misc/ — Miscellaneous Commands ---
+
+  CORE  misc/parser_misc.c
+        Utility commands: RANDOMIZE, PAUSE, DELAY, SLEEP, WAIT,
+        CLEAR, CLR, RESET, POKE, MEMMAP, MID$ (statement form),
+        KEY(n) ON/OFF/STOP, TIMER ON/OFF/STOP, PLAY ON/OFF/STOP,
+        REPEAT/ENDREPEAT, ENDFOR, OUT, COM, PEN, STRIG, ACCESS,
+        IMAGE.
+
+
+--- 3.30  Header Files (source/ root) ---
+
+  All .h headers reside in source/ root.  They constitute the
+  public interface.  Subdirectory .c files find them via -I.
+
+  CORE  config.h                Central compile-time configuration.
+                                Pool sizes, limits, feature flags,
+                                version string (BPP_VERSION).
+
+  CORE  memory.h                Memory pool interface.  Three pools:
+                                variables, arrays, program storage.
+
+  CORE  lexer.h                 Lexer interface.  Token types,
+                                KeywordId enum, dialect flags (DFLAG_*),
+                                keyword table, Lexer struct.
+
+  CORE  parser.h                Parser public interface.
+                                parser_execute_line(), expression
+                                evaluation entry points.
+
+  CORE  parser_internal.h       Internal header for parser_*.c modules.
+                                All includes, forward declarations,
+                                shared helpers.  NOT public API.
+
+  CORE  parser_internal_additions.h
+                                Auto-generated forward declarations
+                                for parser sub-module functions.
+
+  CORE  exec.h                  Executor interface.  exec_run(),
+                                exec_statement() entry points.
+
+  CORE  runtime.h               RuntimeState struct definition.
+                                All mutable state: variables, stack,
+                                DATA pool, arrays, string pool,
+                                event trapping state, debugger state.
+
+  CORE  dialect.h               Dialect system interface.  DialectId
+                                enum, DialectConfig struct, DFLAG_*
+                                bitmask, registration API.
+
+  CORE  fileio.h                File I/O subsystem interface.
+                                SAVE, LOAD, MERGE, CHAIN.  File
+                                channel management, record I/O.
+
+  CORE  errors.h                Error subsystem interface.
+                                WHAT/HOW/SORRY model, error codes.
+
+  CORE  value.h                 Tagged BValue type definition.
+                                Integer/float/string union.
+
+  CORE  stringpool.h            String pool interface.
+                                Bump-allocator for string values.
+
+  CORE  funcreg.h               Function registry interface.
+                                FuncInfo, FuncHandler, FCAT_* categories.
+
+  CORE  builtins.h              Built-in function handler declarations.
+                                Uniform FuncHandler signature.
+
+  CORE  platform.h              Cross-platform abstraction.
+                                PlatformInfo struct, OS/compiler detect.
+
+  CORE  security.h              Security system interface.
+                                SEC_OPEN/STANDARD/RESTRICTED levels.
+
+  CORE  selftest.h              Self-test framework interface.
+
+  CORE  help.h                  Help system interface.
+                                HelpEntry, help_db, categories.
+
+  CORE  vdev.h                  VDev2 interface.  VDevInfo, VDevOps,
+                                capability flags, slot management.
+
+  CORE  vm.h                    VM layer interface.  VMState, VMOpcode,
+                                dispatch table, eval stack.
+
+  CORE  module.h                Module system interface.  ModuleInfo,
+                                MOD_LIBRARY/DEVICE/DIALECT classes.
+
+  CORE  ast.h                   AST node definitions for the compiler.
+                                AstExpr, AstStmt, node types.
+
+  CORE  codegen.h               Code generator interface.
+                                codegen_emit() entry point.
+
+  CORE  compiler.h              Compiler driver interface.
+                                compiler_compile() pipeline.
+
+  CORE  bytecode.h              .BPP file format definition.
+                                Header structure, magic bytes.
+
+  CORE  detok.h                 Detokenizer interface.
+                                detok_line() for debug/display.
+
+  CORE  memmap.h                PEEK/POKE memory map interface.
+                                Platform presets, virtual memory.
+
+  CORE  gfxbuf.h                Virtual framebuffer interface.
+                                gfxbuf_set_mode(), gfxbuf_render().
+
+  CORE  keyword_props.h         Per-keyword property interface.
+                                keyword_prop_get/set/is_on.
+
+  CORE  alias_lang.h            Language pack API.
+                                alias_lang_load().
+
+  CORE  override.h              Keyword override interface.
+                                override_set/get/clear.
+
+  CORE  scope.h                 SCOPE keyword interface.
+                                Presets: STRUCTURED, SAFE, MINIMAL.
+
+  CORE  config_file.h           Config file loader interface.
+                                config_file_load().
+
+  CORE  mod_stdlib.h            STDLIB module header.
+  OPT   mod_usb.h               USB module header.
+  OPT   mod_fujinet.h           FujiNet module header.
+  OPT   mod_upnp.h              UPnP module header.
+
+
+=====================================================================
+4. DIALECT DEPENDENCY MATRIX
+=====================================================================
+
+The core interpreter (all files marked CORE above) provides the
+language engine.  Dialect files only configure behavior -- they
+do NOT contain executable code that other files depend on.
+
+To build with only specific dialects:
+
+  1. Include dialect/dialect.c (always required).
+  2. Include only the dialect_*.c files you want.
+  3. In dialect/dialect.c, edit dialect_register_all() to call
+     ONLY the register functions for included dialects.
+  4. Update the DIALECT_SOURCES variable in the Makefile.
+
+  Dialect File             CLI   Dialect ID            Family
+  -----------------------  ----  --------------------  ---------
+  dialect_patb.c           PATB  DIALECT_TINY_BASIC    Hobbyist
+  dialect_trs1.c           TRS1  DIALECT_TRS80_L1      Hobbyist
+  dialect_trs2.c           TRS2  DIALECT_TRS80_L2      Microsoft
+  dialect_gwbs.c           GWBS  DIALECT_GW_BASIC      Microsoft
+  dialect_ecma55.c         EC55  DIALECT_ECMA55        Standard
+  dialect_ecma116.c        E116  DIALECT_ECMA116       Standard
+  dialect_qbasic.c         QBAS  DIALECT_QBASIC        Microsoft
+  dialect_aint.c           AINT  DIALECT_APPLE_INT     Apple
+  dialect_asft.c           ASFT  DIALECT_APPLESOFT     Microsoft
+  dialect_atari.c          ATAR  DIALECT_ATARI_MS      Shepardson
+  dialect_c64.c            C64   DIALECT_COMMODORE     Microsoft
+  dialect_coco.c           COCO  DIALECT_COCO          Microsoft
+  dialect_mbasic.c         MBAS  DIALECT_MBASIC        Microsoft
+  dialect_sinclair.c       SINC  DIALECT_SINCLAIR      Sinclair
+  dialect_superbasic.c     QLSB  DIALECT_SUPERBASIC    Sinclair
+  dialect_sbasic.c         SBAS  DIALECT_SBASIC        Tymshare
+
+Optional modules are similarly independent:
+
+  Module File              MODULE command    Depends On
+  -----------------------  ---------------   ----------
+  mod_stdlib.c             (auto-activated)  builtins.c
+  mod_usb.c                MODULE "USB"      vdev.c
+  mod_fujinet.c            MODULE "FUJINET"  vdev.c
+  mod_upnp.c               MODULE "UPNP"     vdev.c
+
+
+=====================================================================
+5. CUSTOM BUILD EXAMPLES
+=====================================================================
+
+Example 1: ECMA-55 + Tiny BASIC only
+--------------------------------------
+
+Include only:
+  - All CORE files (63 .c files)
+  - dialect/dialect_patb.c
+  - dialect/dialect_ecma55.c
+
+Omit:
+  - All other dialect_*.c files
+  - modules/mod_usb.c, mod_fujinet.c, mod_upnp.c (optional)
+
+Edit dialect/dialect.c — dialect_register_all():
+
+    void dialect_register_all(void)
+    {
+        dialect_register_patb();
+        dialect_register_ecma55();
+        /* All other calls removed */
+    }
+
+Edit Makefile DIALECT_SOURCES:
+
+    DIALECT_SOURCES = \
+        dialect/dialect.c \
+        dialect/dialect_patb.c dialect/dialect_ecma55.c
+
+Edit Makefile MODULES_SOURCES (minimal):
+
+    MODULES_SOURCES = \
+        modules/module.c modules/mod_stdlib.c
+
+Edit main.c — remove registration calls for USB, FujiNet, UPnP.
+
+Result: Small binary with ISO standard + hobbyist BASIC.
+
+
+Example 2: ECMA-116 + TRS-80 Level II only
+----------------------------------------------
+
+Include only:
+  - All CORE files
+  - dialect/dialect_ecma116.c
+  - dialect/dialect_trs2.c
+
+Edit dialect_register_all():
+
+    void dialect_register_all(void)
+    {
+        dialect_register_ecma116();
+        dialect_register_trs2();
+    }
+
+Edit Makefile DIALECT_SOURCES:
+
+    DIALECT_SOURCES = \
+        dialect/dialect.c \
+        dialect/dialect_ecma116.c dialect/dialect_trs2.c
+
+Result: Full BASIC standard + Radio Shack compatibility.
+
+
+Example 3: Minimal (no optional modules, no optional dialects)
+-----------------------------------------------------------------
+
+DIALECT_SOURCES = dialect/dialect.c
+MODULES_SOURCES = modules/module.c modules/mod_stdlib.c
+
+dialect_register_all() body: empty (no dialects registered).
+The interpreter defaults to its built-in union mode.
+
+
+=====================================================================
+6. ADDING NEW FILES
+=====================================================================
+
+When adding a new source file to the project:
+
+  1. Create the .c file in the appropriate subdirectory.
+  2. If it has a public interface, create a .h in source/ root.
+  3. Add the .c to the correct *_SOURCES variable in Makefile.
+  4. Add any .h to the HEADERS variable in Makefile.
+  5. If it's a new dialect: add to dialect_register_all() in
+     dialect/dialect.c.
+  6. If it's a new module: add registration in main.c.
+  7. If it adds new keywords: update help/help.c with entries.
+  8. Update this file (SOURCE_TREE.txt) with the new entry.
+  9. Update tutorials (help/*.txt, docs/*.md) as appropriate.
+
+Checklist for new files:
+  [ ] .c file created in correct subdirectory
+  [ ] .h file created in source/ root (if needed)
+  [ ] Added to Makefile (all three targets: gcc, MSVC, watcom)
+  [ ] Registration call added (dialect.c or main.c)
+  [ ] help.c updated with new keywords
+  [ ] SOURCE_TREE.txt updated (this file)
+  [ ] Tutorials updated (if user-facing feature)
+  [ ] SELFTEST still passes

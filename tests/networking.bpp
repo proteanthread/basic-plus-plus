@@ -1,0 +1,103 @@
+1 REM ============================================================
+2 REM  t56_networking.bpp
+3 REM  BASIC++ Networking Test & Tutorial (FujiNet Module)
+4 REM ============================================================
+5 REM
+6 REM  BASIC++ provides networking through the FujiNet module,
+7 REM  inspired by the FujiNet hardware for Atari 8-bit computers.
+8 REM  The FujiNet module provides three virtual devices:
+9 REM
+10 REM  N:      - Network device for HTTP, TCP, UDP connections
+11 REM  FUJI:   - FujiNet control device (configuration)
+12 REM  CLOCK:  - Network time protocol (NTP) clock device
+13 REM
+14 REM  ACTIVATING THE MODULE:
+15 REM    MODULE ACTIVATE "FUJINET"
+16 REM  This registers the N:, FUJI:, and CLOCK: devices
+17 REM  in the virtual device system.
+18 REM
+19 REM  BASIC USAGE (conceptual - actual network requires hardware):
+20 REM    MODULE ACTIVATE "FUJINET"
+21 REM    OPEN "N:http://example.com/" FOR INPUT AS #1
+22 REM    WHILE NOT EOF(1)
+23 REM      INPUT #1, A$
+24 REM      PRINT A$
+25 REM    WEND
+26 REM    CLOSE #1
+27 REM
+28 REM  NOTE: These tests verify the module system works without
+29 REM  crashing. Actual network I/O requires a real network
+30 REM  connection and server, so we test the framework only.
+31 REM
+32 DIALECT "GWBS"
+33 REM
+100 REM === MODULE ACTIVATE "FUJINET" ===
+101 REM The module system allows activating/deactivating features.
+102 REM FUJINET registers the N:, FUJI:, and CLOCK: virtual devices.
+103 REM If the module is already registered, ACTIVATE is a no-op.
+110 TEST "FujiNet module activate"
+120 MODULE ACTIVATE "FUJINET"
+130 REM Module activated without error
+140 ENDTEST
+200 REM === DEVICES listing ===
+201 REM After activating FUJINET, the DEVICES command should
+202 REM show N:, FUJI:, and CLOCK: in the device list.
+203 REM DEVICES prints all registered virtual devices.
+210 TEST "Device listing"
+220 DEVICES
+230 REM Should list all registered devices including FujiNet
+240 ENDTEST
+300 REM === N: device info ===
+301 REM The N: device is the primary network device.
+302 REM It supports HTTP GET/POST, TCP, and UDP protocols.
+303 REM
+304 REM SUPPORTED PROTOCOLS (via URL scheme):
+305 REM   N:http://host/path   - HTTP GET
+306 REM   N:https://host/path  - HTTPS (if supported)
+307 REM   N:tcp://host:port    - Raw TCP connection
+308 REM   N:udp://host:port    - UDP datagram
+309 REM
+310 REM Security note: Network access requires appropriate
+311 REM security level (SEC_OPEN or SEC_TRUSTED).
+320 TEST "N: device exists"
+330 VDEV
+340 REM VDEV lists all virtual devices with their capabilities.
+350 REM N: should appear as a network stream device.
+360 ENDTEST
+400 REM === CLOCK: device concept ===
+401 REM The CLOCK: device provides NTP (Network Time Protocol)
+402 REM access. When opened, it connects to an NTP server
+403 REM and returns the current UTC time.
+404 REM
+405 REM Usage:
+406 REM   OPEN "CLOCK:" FOR INPUT AS #1
+407 REM   INPUT #1, T$
+408 REM   PRINT "UTC Time: "; T$
+409 REM   CLOSE #1
+420 TEST "CLOCK: device info"
+430 REM CLOCK: is registered by the FujiNet module
+440 REM We can't test actual NTP without network
+450 ENDTEST
+500 REM === FUJI: control device ===
+501 REM The FUJI: device provides FujiNet configuration.
+502 REM It can:
+503 REM   - List available WiFi networks (SCAN)
+504 REM   - Show connection status
+505 REM   - Configure host slots for disk/network access
+506 REM
+507 REM On real FujiNet hardware, this controls the ESP32
+508 REM SIO device. In BASIC++, it's a virtual equivalent.
+510 TEST "FUJI: device info"
+520 REM FUJI: is registered by the FujiNet module
+530 REM Configuration is hardware-dependent
+540 ENDTEST
+600 REM === MODULE DEACTIVATE ===
+601 REM You can deactivate a module to free its resources.
+602 REM The virtual devices it registered are unregistered.
+610 TEST "FujiNet module deactivate"
+620 MODULE DEACTIVATE "FUJINET"
+630 REM Module deactivated without error
+640 REM Re-activate for rest of program
+650 MODULE ACTIVATE "FUJINET"
+660 ENDTEST
+9999 END
