@@ -93,6 +93,13 @@ typedef struct ModuleInfo {
 void module_system_init(void);
 
 /*
+ * module_count - Return the number of registered modules.
+ *
+ * Used by boot diagnostics and INFO command.
+ */
+int module_count(void);
+
+/*
  * module_register - Register a module descriptor.
  *
  * Stores the module info in the table. The module starts

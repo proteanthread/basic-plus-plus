@@ -59,12 +59,6 @@
 #include "vm.h"
 #include "module.h"
 #include "error_registry.h"
-#include "mod_stdlib.h"
-#ifndef BPP_FREEDOS
-#include "mod_usb.h"
-#include "mod_fujinet.h"
-#include "mod_upnp.h"
-#endif
 #include "security.h"
 #include "platform.h"
 #include "gfxbuf.h"
@@ -72,6 +66,7 @@
 #include "keyword_props.h"
 #include "override.h"
 #include "config_file.h"
+#include "boot.h"
 
 /* --- Input Classification ---
  */
@@ -215,6 +210,8 @@ int main(int argc, char *argv[])
     const char *cli_dry_run_file = NULL;
     int cli_edit = 0;
     int cli_debug = 0;
+    int cli_boot_log = 0;
+    int cli_verbose = 0;
     const char *cli_command = NULL;
     const char *cli_config_file = NULL;
     const char *cli_program = NULL;
@@ -266,6 +263,14 @@ int main(int argc, char *argv[])
             }
             if (strcmp(argv[i], "--debug") == 0) {
                 cli_debug = 1;
+                continue;
+            }
+            if (strcmp(argv[i], "--boot-log") == 0) {
+                cli_boot_log = 1;
+                continue;
+            }
+            if (strcmp(argv[i], "--verbose") == 0) {
+                cli_verbose = 1;
                 continue;
             }
             if (strcmp(argv[i], "--edit") == 0) {
@@ -323,11 +328,23 @@ int main(int argc, char *argv[])
                     break;
                 }
             }
+            /* Extract --lib, --mod, --func for module loading */
+            if (strcmp(argv[i], "--lib") == 0) {
+                if (i + 1 < argc) cli_lib = argv[++i];
+                continue;
+            }
+            if (strcmp(argv[i], "--mod") == 0) {
+                if (i + 1 < argc) cli_mod = argv[++i];
+                continue;
+            }
+            if (strcmp(argv[i], "--func") == 0) {
+                if (i + 1 < argc) cli_func = argv[++i];
+                continue;
+            }
             /* Silently accept/ignore environment & hardware switches for now */
             if (strcmp(argv[i], "--com") == 0 || strcmp(argv[i], "--files") == 0 ||
                 strcmp(argv[i], "--mem") == 0 || strcmp(argv[i], "--records") == 0 ||
-                strcmp(argv[i], "--lib") == 0 || strcmp(argv[i], "--func") == 0 ||
-                strcmp(argv[i], "--mod") == 0 || strcmp(argv[i], "--break") == 0) {
+                strcmp(argv[i], "--break") == 0) {
                 if (i + 1 < argc) i++;
                 continue;
             }
@@ -414,13 +431,13 @@ int main(int argc, char *argv[])
  }
 #endif
 
- /* Dialect defaults clamp */
- {
-  SecLevel dialect_sec = (SecLevel)dialect_default_security(eff_dialect);
-  if (dialect_sec > eff_security) {
-   eff_security = dialect_sec;
-  }
- }
+ /*
+  * Dialect security recommendation (informational only).
+  * Dialects recommend a security level but do NOT override
+  * the user's effective setting. SEC_OPEN is the default.
+  * Users control security via -s flag, config file, or
+  * SECURITY command at runtime.
+  */
  
  /* Security */
  if (cfg.found && cfg.security[0] != '\0') {
@@ -481,69 +498,35 @@ int main(int argc, char *argv[])
   printf("\n");
  }
 
- /* ----- Initialize memory subsystem ----- */
- if (mem_init(&memory) != 0) {
-  printf("SORRY. Cannot allocate memory.\n");
-  return 1;
+ /* ----- Build BootConfig from resolved settings ----- */
+ {
+  BootConfig boot_cfg;
+  BootStatus boot_result;
+
+  memset(&boot_cfg, 0, sizeof(boot_cfg));
+  boot_cfg.dialect   = eff_dialect;
+  boot_cfg.security  = eff_security;
+  boot_cfg.strict    = eff_strict;
+  boot_cfg.quiet     = eff_quiet;
+  boot_cfg.run_file  = cli_run_file;
+  boot_cfg.command   = cli_command;
+  boot_cfg.cli_lib   = cli_lib;
+  boot_cfg.cli_mod   = cli_mod;
+  boot_cfg.cli_func  = cli_func;
+
+  /* Map diagnostic flags to boot verbosity */
+  boot_cfg.verbosity = BOOT_SILENT;
+  if (cli_boot_log) boot_cfg.verbosity = BOOT_LOG;
+  if (cli_debug)    boot_cfg.verbosity = BOOT_DEBUG;
+  if (cli_verbose)  boot_cfg.verbosity = BOOT_VERBOSE;
+
+  /* ----- Execute formal boot sequence ----- */
+  boot_result = boot_execute(&boot_cfg, &memory, &runtime);
+
+  if (boot_result == BOOT_CRITICAL) {
+   return 1;
+  }
  }
-
- /* ----- Initialize dialect system (from effective settings) ----- */
- dialect_init(eff_dialect);
-
- /* Initialize virtual device system */
- vdev_net_init();
- vdev_init();
-
- /* Initialize function registry */
- funcreg_init();
- error_registry_init();
-
- /* Initialize security system (from effective settings) */
- security_init(eff_security);
-
- /* Initialize module system */
- module_system_init();
- mod_stdlib_register();
-#ifndef BPP_FREEDOS
- mod_usb_register(); /* USB devices (user activates) */
- mod_fujinet_register(); /* FujiNet N:/FUJI:/CLOCK: devices */
- mod_upnp_register();    /* UPnP/SSDP network discovery */
-#endif
- module_activate("STDLIB", NULL);
-
- /* Load external modules from CLI */
- if (cli_lib != NULL) module_load_dynamic(cli_lib);
- if (cli_mod != NULL) module_load_dynamic(cli_mod);
- if (cli_func != NULL) module_load_dynamic(cli_func);
-
- /* Apply dialect-specific overrides */
- dialect_apply();
-
- /* Apply strict mode if configured */
- if (eff_strict) {
-  dialect_set_strict(1);
- }
-
- /* Initialize file channels */
- fileio_channels_init();
-
- /* Initialize VM dispatch table */
- vm_init();
-
- /* Initialize SCOPE system */
- scope_init();
-
- /* Initialize keyword property system */
- keyword_props_init();
-
- /* Initialize OVERRIDE system */
- override_init();
-
- /* ----- Initialize graphics framebuffer ----- */
- gfxbuf_init();
-
- /* ----- Initialize runtime state ----- */
- runtime_init(&runtime, &memory.program, &memory);
 
  /* ----- Handle -c (batch command) mode ----- */
  if (cli_command != NULL) {
@@ -702,19 +685,25 @@ int main(int argc, char *argv[])
  program_insert(&memory.program, line_num, input_buf);
  }
  } else {
- /*
- * Immediate mode - tokenize and execute.
- *
- * The input is a command or statement to execute
- * right now (e.g., "PRINT 2+3" or "RUN" or "LIST").
- */
- Lexer lex;
+  /*
+   * Immediate mode - tokenize and execute.
+   *
+   * The input is a command or statement to execute
+   * right now (e.g., "PRINT 2+3" or "RUN" or "LIST").
+   *
+   * NOTE: This is direct user input at the REPL, NOT
+   * dynamic string evaluation. SECOP_EVAL is only meant
+   * to gate programmatic eval (e.g., EXEC "code" from
+   * within a running BASIC program). The interactive
+   * REPL must always be available regardless of security
+   * level - individual commands enforce their own security
+   * checks (e.g., SAVE checks SECOP_FILE_WRITE, COMPILE
+   * checks SECOP_COMPILE, etc.).
+   */
+  Lexer lex;
 
- lexer_init(&lex, input_buf);
-
- if (security_check(SECOP_EVAL, 0) == 0) {
+  lexer_init(&lex, input_buf);
   parser_execute_line(&lex, &runtime, 0);
- }
  }
 
  /* After any error, print READY again */
@@ -723,9 +712,8 @@ int main(int argc, char *argv[])
  }
  }
 
- /* ----- Shutdown ----- */
- vdev_net_cleanup();
- mem_shutdown(&memory);
+ /* ----- Shutdown (reverse phase order) ----- */
+ boot_shutdown(&memory);
 
 #ifdef _WIN32
  /* Prevent console window from closing instantly when launched from Windows Explorer */
