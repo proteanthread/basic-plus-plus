@@ -40,6 +40,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "funcreg.h"
+#include "security.h"
 
 /* --- Registry Table ---
  * Static array of registered functions. The table is pre-allocated
@@ -171,7 +172,9 @@ int funcreg_override(KeywordId kw, FuncHandler handler)
  for (i = 0; i < reg_count; i++) {
  if (registry[i].keyword == kw && registry[i].name != NULL) {
  if (!registry[i].overridable) {
- return -1; /* Core function - cannot override */
+ if (security_get_level() != SEC_OPEN) {
+ return -1; /* Core function - cannot override unless SEC_OPEN */
+ }
  }
  registry[i].handler = handler;
  return 0;

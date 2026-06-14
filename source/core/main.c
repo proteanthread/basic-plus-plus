@@ -58,6 +58,7 @@
 #include "io/vdev_net.h"
 #include "vm.h"
 #include "module.h"
+#include "error_registry.h"
 #include "mod_stdlib.h"
 #ifndef BPP_FREEDOS
 #include "mod_usb.h"
@@ -189,7 +190,7 @@ static void print_usage(const char *prog)
     printf("  --ext            Enable extended features\n");
     printf("  <file, >file     Manual file redirection\n");
     printf("\nConfig file: %s (searched in current dir, then home)\n",
-           config_file_get_name());
+           config_file_get_name(prog));
     printf("Priority: config file < CLI switches < runtime commands\n");
 }
 
@@ -200,7 +201,7 @@ static void print_usage(const char *prog)
 int main(int argc, char *argv[])
 {
  MemorySystem memory;
- RuntimeState runtime;
+ static RuntimeState runtime;
  char input_buf[INPUT_BUFFER_SIZE];
 
     /* --- CLI argument storage --- */
@@ -366,6 +367,7 @@ int main(int argc, char *argv[])
  /* ----- Early init (needed before config lookups) ----- */
  platform_init();
  dialect_register_all();
+ keyword_registry_init();
 
  /* ----- Load config file (lowest priority) ----- */
  if (cli_config_file != NULL) {
@@ -375,7 +377,7 @@ int main(int argc, char *argv[])
    return 1;
   }
  } else {
-  config_file_load(&cfg);
+  config_file_load(&cfg, argv[0]);
  }
 
  /* ----- Apply settings: config file first, then CLI overrides ----- */
@@ -494,6 +496,7 @@ int main(int argc, char *argv[])
 
  /* Initialize function registry */
  funcreg_init();
+ error_registry_init();
 
  /* Initialize security system (from effective settings) */
  security_init(eff_security);
@@ -723,6 +726,15 @@ int main(int argc, char *argv[])
  /* ----- Shutdown ----- */
  vdev_net_cleanup();
  mem_shutdown(&memory);
+
+#ifdef _WIN32
+ /* Prevent console window from closing instantly when launched from Windows Explorer */
+ if (cli_run_file == NULL && cli_command == NULL && !cli_edit) {
+  printf("Interpreter exited.\nPress Enter to exit...");
+  fflush(stdout);
+  getchar();
+ }
+#endif
 
  return 0;
 }

@@ -1,0 +1,24 @@
+# Self-Hosting Specification Architecture (Milestone 7)
+
+BASIC++ 2.0 introduces the **Self-Hosting Specification Architecture**. This transforms BASIC++ from merely a programming language into a self-describing, self-documenting, self-validating, and self-extensible language ecosystem capable of defining its own future evolution.
+
+## 1. Dynamic Keyword Dictionary
+The interpreter no longer relies on a static C enum for keywords. The Lexer now maintains a dynamic keyword registry. This allows you to dynamically introduce new statements, functions, and commands at runtime without needing to recompile the interpreter from C source.
+
+## 2. Declarative Specifications (.BPPSPEC)
+Specifications are stored as first-class text objects.
+You can define new statements using a custom declarative syntax:
+
+```basic
+DEFINE SPECIFICATION "MAT"
+  CATEGORY "STATEMENT"
+  VERSION "1.0"
+  LIB "lib/math/mat_ops.lib"
+END SPECIFICATION
+```
+
+## 3. External .LIB Modules
+To remain cross-platform and immune to OS semantics (such as Windows `.dll` or Linux `.so`), the behavior of dynamically injected statements is governed by external `.LIB` files. These files are pure BASIC++ libraries or `.BPP` bytecode archives. When the virtual machine encounters your custom statement, it will dynamically execute the corresponding logic inside the `.LIB`.
+
+## 4. Introspection
+Because the registry is dynamic, scripts can introspect the interpreter's capabilities to verify dependencies, module compatibility, and available language features at runtime.

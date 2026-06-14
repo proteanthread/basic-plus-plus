@@ -56,7 +56,7 @@ typedef struct ConfigFile {
  * Returns 0 on success (file found), -1 if no config file exists.
  * The ConfigFile struct is always initialized to defaults.
  */
-int config_file_load(ConfigFile *cfg);
+int config_file_load(ConfigFile *cfg, const char *exe_path);
 
 /*
  * config_file_load_path - Load configuration from a specific file.
@@ -74,6 +74,6 @@ int config_file_load_path(ConfigFile *cfg, const char *path);
  * Returns "baspp.cfg" on Linux, "basicpp.cfg" on Windows,
  * "bpp.cfg" on FreeDOS.
  */
-const char *config_file_get_name(void);
+const char *config_file_get_name(const char *exe_path);
 
 #endif /* BASICPP_CONFIG_FILE_H */

@@ -19,6 +19,7 @@
 
 #include "mod_stdlib.h"
 #include "builtins.h"
+#include "stdlib_core.h"
 #include "module.h"
 #include <stddef.h>
 
@@ -32,7 +33,12 @@
 static int stdlib_init(void *rt)
 {
  (void)rt;
+ /* Register traditional built-ins */
  builtins_register();
+
+ /* Override with strict Core API restrictions */
+ stdlib_core_register();
+
  return 0;
 }
 
