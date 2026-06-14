@@ -1,0 +1,126 @@
+1 REM ============================================================
+2 REM  t58_virtual_terminal.bpp
+3 REM  BASIC++ Virtual Terminal & Console Test & Tutorial
+4 REM ============================================================
+5 REM
+6 REM  BASIC++ provides terminal I/O through ANSI escape sequences
+7 REM  (Windows 11, FreeDOS) and ncurses (Linux). The virtual
+8 REM  terminal layer abstracts these differences so programs
+9 REM  can control the screen portably.
+10 REM
+11 REM  KEY COMMANDS FOR TERMINAL CONTROL:
+12 REM    CLS          - Clear the entire screen
+13 REM    HOME         - Move cursor to row 1, column 1
+14 REM    LOCATE r,c   - Move cursor to row r, column c
+15 REM    COLOR n      - Set text foreground color (0-15)
+16 REM    WIDTH n      - Set screen width (40/80 columns)
+17 REM    CSRLIN       - Returns current cursor row
+18 REM    POS(0)       - Returns current cursor column
+19 REM
+20 REM  PRINT CONTROLS:
+21 REM    PRINT TAB(n)   - Move to column n before printing
+22 REM    PRINT SPC(n)   - Print n spaces
+23 REM    ; (semicolon)  - No newline, next item immediately follows
+24 REM    , (comma)      - Tab to next print zone (14 chars wide)
+25 REM
+26 DIALECT "GWBS"
+27 REM
+100 REM === CLS - Clear Screen ===
+101 REM CLS clears the entire screen and moves the cursor
+102 REM to the top-left corner (home position).
+103 REM On ANSI terminals: sends ESC[2J ESC[H
+110 TEST "CLS"
+120 CLS
+130 REM Screen cleared, no crash
+140 ENDTEST
+200 REM === HOME ===
+201 REM HOME moves the cursor to row 1, column 1 without
+202 REM clearing the screen. Equivalent to LOCATE 1,1.
+210 TEST "HOME"
+220 HOME
+230 REM Cursor at top-left
+240 ENDTEST
+300 REM === LOCATE row, col ===
+301 REM LOCATE positions the cursor at a specific row and column.
+302 REM Row 1 is the top line, Column 1 is the leftmost position.
+303 REM After LOCATE, the next PRINT appears at that position.
+310 TEST "LOCATE"
+320 LOCATE 5,10
+330 REM Cursor now at row 5, column 10
+340 LOCATE 1,1
+350 REM Cursor back to top-left
+360 ENDTEST
+400 REM === CSRLIN and POS(0) ===
+401 REM CSRLIN returns the current row of the cursor (1-based).
+402 REM POS(0) returns the current column of the cursor (1-based).
+403 REM These are useful for saving/restoring cursor position.
+410 TEST "CSRLIN and POS"
+420 LET R=CSRLIN
+430 LET C=POS(0)
+440 ASSERT R>=0
+450 ASSERT C>=0
+460 ENDTEST
+500 REM === COLOR ===
+501 REM COLOR sets the text foreground color.
+502 REM Standard colors (vary by dialect):
+503 REM   0=Black   1=Blue     2=Green   3=Cyan
+504 REM   4=Red     5=Magenta  6=Brown   7=White
+505 REM   8-15 = Bright versions of 0-7
+506 REM
+507 REM In GW-BASIC mode: COLOR foreground, background
+508 REM In Sinclair mode: INK, PAPER, BORDER
+510 TEST "COLOR"
+520 COLOR 7
+530 REM White text
+540 COLOR 0
+550 REM Black text (reset to default)
+560 ENDTEST
+600 REM === WIDTH ===
+601 REM WIDTH n sets the logical screen width.
+602 REM Common values: 40 (narrow), 80 (standard).
+603 REM This affects TAB positioning and word-wrapping.
+610 TEST "WIDTH"
+620 WIDTH 80
+630 REM Standard 80-column mode
+640 ENDTEST
+700 REM === TAB and SPC ===
+701 REM TAB(n) moves the cursor to column n before printing.
+702 REM SPC(n) outputs n space characters.
+703 REM These are used inside PRINT statements for formatting.
+710 TEST "TAB and SPC"
+720 PRINT TAB(10);"TABBED"
+730 PRINT SPC(5);"SPACED"
+740 REM TAB moved to column 10, SPC inserted 5 spaces
+750 ENDTEST
+800 REM === PRINT zones ===
+801 REM Comma in PRINT advances to the next "zone" (default 14 chars).
+802 REM Semicolon suppresses the newline, next item follows immediately.
+803 REM No separator at end of PRINT means newline is printed.
+810 TEST "PRINT formatting"
+820 PRINT "A";"B";"C"
+830 REM Prints: ABC (no spaces between items)
+840 PRINT "A","B","C"
+850 REM Prints: A             B             C (tabbed zones)
+860 PRINT
+870 REM Prints a blank line
+880 ENDTEST
+900 REM === Sinclair terminal attributes ===
+901 REM In Sinclair dialect, screen attributes use:
+902 REM   BORDER n   - Set border color (0-7)
+903 REM   PAPER n    - Set background color (0-7)
+904 REM   INK n      - Set foreground color (0-7)
+905 REM   BRIGHT n   - 0=normal, 1=bright
+906 REM   FLASH n    - 0=steady, 1=flashing
+907 REM   INVERSE n  - 0=normal, 1=inverse video
+908 REM   OVER n     - 0=normal, 1=overprint (XOR)
+910 DIALECT "SINC"
+920 TEST "Sinclair attrs"
+930 BORDER 1
+940 PAPER 7
+950 INK 0
+960 BRIGHT 1
+970 FLASH 0
+980 INVERSE 0
+990 OVER 0
+995 ENDTEST
+9999 END

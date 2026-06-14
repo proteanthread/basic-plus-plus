@@ -1,6 +1,6 @@
 USING ALIASES IN BASIC++
 ========================
-Version 0.21.0
+Version 1.5.0
 
 The ALIAS command lets you redefine keywords, creating custom
 names for built-in commands and functions.

@@ -5,16 +5,6 @@
  *
  * Built-in function handler declarations.
  *
- * PURPOSE:
- * Declares all built-in BASIC++ function handlers and the
- * registration function that populates the function registry.
- * These handlers were extracted from parser.c to enable:
- * 1. Registry-based dispatch (instead of inline switch/if)
- * 2. Dialect overrides (swap handlers at runtime)
- * 3. Module extensions (same handler signature)
- * 4. Clean separation of function logic from parsing logic
- *
- * HANDLER SIGNATURE:
  * All handlers use the uniform FuncHandler signature:
  *
  * BValue handler(BValue *args, int argc, void *rt)
@@ -23,20 +13,23 @@
  * Handlers that need runtime services (RND seed, string pool)
  * cast it to (RuntimeState*) internally.
  *
- * CATEGORIES:
- * Handlers are organized by category:
- * FCAT_MATH - ABS, SGN, INT, SQR, SIN, COS, TAN, ATN,
- * LOG, EXP
- * FCAT_STRING - LEN, ASC, VAL, CHR$, STR$, LEFT$, RIGHT$,
- * MID$
- * FCAT_UTIL - RND, SIZE
+ * Handler implementations are organized by category across
+ * separate source files for modularity:
+ *
+ *   builtins_math.c     - Arithmetic / Math
+ *   builtins_string.c   - String Functions
+ *   builtins_fileio.c   - File Input-Output
+ *   builtins_io.c       - Input / Output
+ *   builtins_memory.c   - Memory
+ *   builtins_system.c   - System / Environment
+ *   builtins_graphics.c - Graphics
+ *   builtins.c          - Registration table only
  *
  * HOW TO ADD A NEW BUILT-IN:
- * 1. Write a handler function in builtins.c with the FuncHandler
- * signature.
+ * 1. Write a handler in the appropriate category file.
  * 2. Declare it in this header.
  * 3. Add a FunctionEntry to the registration table in
- * builtins_register().
+ *    builtins_register() in builtins.c.
  * 4. If needed, add a keyword to lexer.h/c and detok.c.
  *
  * ---
@@ -49,21 +42,9 @@
 
 /* --- Registration Function ---
  */
-
-/*
- * builtins_register - Register all built-in functions.
- *
- * Populates the function registry with all standard BASIC++
- * built-in functions. Must be called after funcreg_init() and
- * before any program execution.
- *
- * Boot sequence position: ("Standard Library Init").
- */
 void builtins_register(void);
 
-/* --- Math Function Handlers (FCAT_MATH) ---
- * These are pure functions - no side effects, deterministic.
- * Safety: FSAFE_PURE
+/* --- Arithmetic / Math (builtins_math.c) ---
  */
 BValue builtin_abs(BValue *args, int argc, void *rt);
 BValue builtin_sgn(BValue *args, int argc, void *rt);
@@ -75,11 +56,28 @@ BValue builtin_tan(BValue *args, int argc, void *rt);
 BValue builtin_atn(BValue *args, int argc, void *rt);
 BValue builtin_log(BValue *args, int argc, void *rt);
 BValue builtin_exp(BValue *args, int argc, void *rt);
+BValue builtin_fix(BValue *args, int argc, void *rt);
+BValue builtin_complex(BValue *args, int argc, void *rt);
+BValue builtin_real(BValue *args, int argc, void *rt);
+BValue builtin_imag(BValue *args, int argc, void *rt);
+BValue builtin_min(BValue *args, int argc, void *rt);
+BValue builtin_max(BValue *args, int argc, void *rt);
+BValue builtin_avg(BValue *args, int argc, void *rt);
+BValue builtin_med(BValue *args, int argc, void *rt);
+BValue builtin_round(BValue *args, int argc, void *rt);
+BValue builtin_asin(BValue *args, int argc, void *rt);
+BValue builtin_acos(BValue *args, int argc, void *rt);
+BValue builtin_sinh(BValue *args, int argc, void *rt);
+BValue builtin_cosh(BValue *args, int argc, void *rt);
+BValue builtin_tanh(BValue *args, int argc, void *rt);
+BValue builtin_log10(BValue *args, int argc, void *rt);
+BValue builtin_log2(BValue *args, int argc, void *rt);
+BValue builtin_comp(BValue *args, int argc, void *rt);
+BValue builtin_pdif(BValue *args, int argc, void *rt);
+BValue builtin_pi(BValue *args, int argc, void *rt);
+BValue builtin_rnd(BValue *args, int argc, void *rt);
 
-/* --- String Function Handlers (FCAT_STRING) ---
- * Pure functions except CHR$ and STR$ which allocate from the
- * string pool (accessed via rt).
- * Safety: FSAFE_PURE (LEN, ASC, VAL) or FSAFE_STATE (CHR$, STR$)
+/* --- String Functions (builtins_string.c) ---
  */
 BValue builtin_len(BValue *args, int argc, void *rt);
 BValue builtin_asc(BValue *args, int argc, void *rt);
@@ -89,17 +87,36 @@ BValue builtin_str(BValue *args, int argc, void *rt);
 BValue builtin_left(BValue *args, int argc, void *rt);
 BValue builtin_right(BValue *args, int argc, void *rt);
 BValue builtin_mid(BValue *args, int argc, void *rt);
+BValue builtin_instr(BValue *args, int argc, void *rt);
+BValue builtin_space(BValue *args, int argc, void *rt);
+BValue builtin_string_func(BValue *args, int argc, void *rt);
+BValue builtin_hex(BValue *args, int argc, void *rt);
+BValue builtin_oct(BValue *args, int argc, void *rt);
+BValue builtin_bin(BValue *args, int argc, void *rt);
 
-/* --- Utility Function Handlers (FCAT_UTIL) ---
- * RND modifies the RNG seed (FSAFE_STATE).
- * SIZE is pure - reads available memory.
- */
-BValue builtin_rnd(BValue *args, int argc, void *rt);
-BValue builtin_size(BValue *args, int argc, void *rt);
-
-/* --- I/O Function Handlers ---
- * EOF checks file channel end-of-file status.
+/* --- File Input-Output (builtins_fileio.c) ---
  */
 BValue builtin_eof(BValue *args, int argc, void *rt);
+BValue builtin_lof(BValue *args, int argc, void *rt);
+BValue builtin_cvi(BValue *args, int argc, void *rt);
+BValue builtin_cvs(BValue *args, int argc, void *rt);
+BValue builtin_cvd(BValue *args, int argc, void *rt);
+
+/* --- Input / Output (builtins_io.c) ---
+ */
+BValue builtin_csrlin(BValue *args, int argc, void *rt);
+
+/* --- Memory (builtins_memory.c) ---
+ */
+BValue builtin_peek(BValue *args, int argc, void *rt);
+BValue builtin_size(BValue *args, int argc, void *rt);
+
+/* --- System / Environment (builtins_system.c) ---
+ */
+BValue builtin_environ(BValue *args, int argc, void *rt);
+
+/* --- Graphics (builtins_graphics.c) ---
+ */
+BValue builtin_point(BValue *args, int argc, void *rt);
 
 #endif /* BASICPP_BUILTINS_H */

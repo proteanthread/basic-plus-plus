@@ -1,6 +1,6 @@
 BASIC++ SCRIPTING FUNCTIONS
 ===========================
-Version 0.21.0
+Version 2.0.0
 
 BASIC++ includes shell-scripting capabilities that make it viable
 as a replacement for batch files and shell scripts.
@@ -173,3 +173,5 @@ SHELL, SHELL$, and EXEC execute real OS commands.  In sandboxed
 mode (SECURITY LEVEL 2+), these commands are blocked.
 
 See Q_Security.txt for details on the security model.
+See Shell_Scripting_Integration.txt for using BASIC++ inside
+bash scripts, batch files, and PowerShell scripts.

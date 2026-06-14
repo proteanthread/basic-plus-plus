@@ -1,6 +1,6 @@
 ADVANCED MATRIX FUNCTIONS IN BASIC++
 ====================================
-Version 0.21.0
+Version 1.5.0
 
 BASIC++ supports DIM arrays and classic Dartmouth BASIC MAT
 (matrix) operations for working with tables of data.

@@ -1,0 +1,111 @@
+1 REM ============================================================
+2 REM  t55_file_io_deep.bpp
+3 REM  BASIC++ Comprehensive File I/O Test & Tutorial
+4 REM ============================================================
+5 REM
+6 REM  BASIC++ supports file operations modeled after GW-BASIC
+7 REM  and QBasic. Files are accessed through numbered channels
+8 REM  (#1 through #15). You must OPEN a file before reading or
+9 REM  writing, and CLOSE it when done.
+10 REM
+11 REM  OPEN modes:
+12 REM    FOR OUTPUT  - Write (creates/overwrites file)
+13 REM    FOR INPUT   - Read (file must exist)
+14 REM    FOR APPEND  - Write to end of existing file
+15 REM
+16 DIALECT "GWBS"
+17 REM
+100 REM === OPEN FOR OUTPUT / PRINT # / CLOSE ===
+101 REM OPEN "filename" FOR OUTPUT AS #n
+102 REM   Opens a file for writing. If the file exists, it is
+103 REM   overwritten. If it doesn't exist, it is created.
+104 REM PRINT #n, expression
+105 REM   Writes data to the file channel, just like PRINT
+106 REM   writes to the screen but directed to a file.
+107 REM CLOSE #n
+108 REM   Closes the file and flushes any buffered data.
+109 TEST "File write"
+110 OPEN "test_io.tmp" FOR OUTPUT AS #1
+120 PRINT #1, "LINE ONE"
+130 PRINT #1, "LINE TWO"
+140 PRINT #1, "LINE THREE"
+150 PRINT #1, 42
+160 PRINT #1, 3.14
+170 CLOSE #1
+180 ENDTEST
+200 REM === OPEN FOR INPUT / INPUT # / EOF ===
+201 REM OPEN "filename" FOR INPUT AS #n
+202 REM   Opens an existing file for reading.
+203 REM INPUT #n, variable$
+204 REM   Reads the next line from the file into a string variable.
+205 REM EOF(n)
+206 REM   Returns -1 (true) if we've reached end of file,
+207 REM   0 (false) if more data remains. Always check EOF
+208 REM   before INPUT # to avoid errors.
+210 TEST "File read with EOF"
+220 OPEN "test_io.tmp" FOR INPUT AS #1
+230 LET C=0
+240 WHILE NOT EOF(1)
+250 INPUT #1, A$
+260 LET C=C+1
+270 WEND
+280 CLOSE #1
+290 ASSERT C=5
+295 REM We wrote 5 lines (3 strings + 2 numbers)
+300 ENDTEST
+400 REM === LOF(n) - Length Of File ===
+401 REM Returns the size of the file in bytes.
+402 REM Useful for checking if a file is empty or
+403 REM estimating how much data it contains.
+410 TEST "LOF function"
+420 OPEN "test_io.tmp" FOR INPUT AS #1
+430 LET L=LOF(1)
+440 CLOSE #1
+450 ASSERT L>0
+455 REM File should have some bytes
+460 ENDTEST
+500 REM === OPEN FOR APPEND ===
+501 REM Append mode opens an existing file and positions
+502 REM the write cursor at the end. New data is added
+503 REM after existing content, preserving original data.
+510 TEST "File append"
+520 OPEN "test_io.tmp" FOR APPEND AS #1
+530 PRINT #1, "APPENDED LINE"
+540 CLOSE #1
+550 REM Now read back and count - should be 6 lines
+560 OPEN "test_io.tmp" FOR INPUT AS #1
+570 LET C=0
+580 WHILE NOT EOF(1)
+590 INPUT #1, A$
+600 LET C=C+1
+610 WEND
+620 CLOSE #1
+630 ASSERT C=6
+640 ENDTEST
+700 REM === WRITE # ===
+701 REM WRITE # outputs data in a machine-readable format:
+702 REM - Strings are enclosed in quotes
+703 REM - Numbers are written as plain digits
+704 REM - Values are separated by commas
+705 REM This format is ideal for data exchange files.
+710 TEST "WRITE # output"
+720 OPEN "test_csv.tmp" FOR OUTPUT AS #2
+730 WRITE #2, "ALICE", 30, "ENGINEER"
+740 WRITE #2, "BOB", 25, "DESIGNER"
+750 CLOSE #2
+760 REM Verify file was created
+770 OPEN "test_csv.tmp" FOR INPUT AS #2
+780 LET L=LOF(2)
+790 CLOSE #2
+800 ASSERT L>0
+810 ENDTEST
+900 REM === KILL ===
+901 REM KILL "filename"
+902 REM Deletes a file from disk. The file must exist
+903 REM and not be currently open.
+910 TEST "KILL cleanup"
+920 KILL "test_io.tmp"
+930 KILL "test_csv.tmp"
+940 REM If we get here without error, files were deleted
+950 ENDTEST
+9999 END

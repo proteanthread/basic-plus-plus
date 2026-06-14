@@ -1,0 +1,135 @@
+1 REM ============================================================
+2 REM  t68_chain_merge.bpp
+3 REM  BASIC++ CHAIN and MERGE Test & Tutorial
+4 REM ============================================================
+5 REM
+6 REM  CHAIN "filename"
+7 REM    Loads a program from disk and immediately executes it.
+8 REM    The current program is REPLACED - this is a one-way
+9 REM    transfer. Variables are NOT preserved.
+10 REM
+11 REM    Use cases:
+12 REM    - Adventure game room transitions
+13 REM    - Multi-module applications
+14 REM    - Loading the next phase of a program
+15 REM
+16 REM  MERGE "filename"
+17 REM    Loads lines from a file into the current program
+18 REM    without clearing it. Lines with matching numbers
+19 REM    are replaced; new line numbers are inserted.
+20 REM    This lets you load subroutine libraries at runtime.
+21 REM
+22 REM  NOTE: CHAIN replaces the entire program and runs it,
+23 REM  so we cannot verify CHAIN with ASSERT after it runs
+24 REM  (the test program would be gone). Instead we verify
+25 REM  the supporting file I/O operations.
+26 REM
+27 DIALECT "GWBS"
+28 REM
+100 REM === File creation for CHAIN ===
+101 REM First, write a target program to disk that CHAIN
+102 REM could load. This proves the file system works.
+110 TEST "CHAIN target creation"
+120 OPEN "chain_test.tmp" FOR OUTPUT AS #1
+130 LET Q$=CHR$(34)
+140 PRINT #1, "10 REM Chained program"
+150 PRINT #1, "20 LET CHAINED=1"
+160 PRINT #1, "30 PRINT "+Q$+"CHAIN successful"+Q$
+170 PRINT #1, "40 END"
+180 CLOSE #1
+190 OPEN "chain_test.tmp" FOR INPUT AS #1
+200 LET L=LOF(1)
+210 CLOSE #1
+220 ASSERT L>0
+225 REM Target file ready for CHAIN
+230 ENDTEST
+300 REM === File creation for MERGE ===
+301 REM Write subroutine lines that MERGE would insert.
+302 REM High line numbers avoid conflicts with main program.
+310 TEST "MERGE library creation"
+320 OPEN "merge_lib.tmp" FOR OUTPUT AS #1
+330 LET Q$=CHR$(34)
+340 PRINT #1, "8000 REM === Merged Library ==="
+350 PRINT #1, "8010 LET MLIB=1"
+360 PRINT #1, "8020 PRINT "+Q$+"Library loaded"+Q$
+370 PRINT #1, "8030 RETURN"
+380 CLOSE #1
+390 OPEN "merge_lib.tmp" FOR INPUT AS #1
+400 LET L=LOF(1)
+410 CLOSE #1
+420 ASSERT L>0
+425 REM Library file ready for MERGE
+430 ENDTEST
+500 REM === CHAIN documentation ===
+501 REM
+502 REM CHAIN works like this:
+503 REM   1. Current program is cleared from memory
+504 REM   2. New program is loaded from the specified file
+505 REM   3. Execution begins at the first line of the new program
+506 REM
+507 REM Example:
+508 REM   10 PRINT "Loading next level..."
+509 REM   20 CHAIN "level2.bas"
+510 REM   (line 30 never executes - program was replaced)
+511 REM
+512 REM For adventure games, save game state to a file first:
+513 REM   10 OPEN "save.dat" FOR OUTPUT AS #1
+514 REM   20 PRINT #1, SCORE; HEALTH; ROOM
+515 REM   30 CLOSE #1
+516 REM   40 CHAIN "room"+STR$(NEXTROOM)+".bas"
+520 TEST "CHAIN concept"
+530 REM CHAIN replaces current program and runs the new one
+540 REM We don't call CHAIN here (it would end this test)
+550 ENDTEST
+600 REM === MERGE documentation ===
+601 REM
+602 REM MERGE inserts lines from a file into the current program:
+603 REM   1. Current program stays in memory
+604 REM   2. Lines from the file are inserted
+605 REM   3. If a line number already exists, it's replaced
+606 REM   4. Execution continues after the MERGE statement
+607 REM
+608 REM Example:
+609 REM   10 MERGE "mathlib.bas"
+610 REM   20 GOSUB 8000  ' Call function from merged library
+611 REM   30 END
+620 TEST "MERGE concept"
+630 REM MERGE adds external lines to the running program
+640 REM Useful for loading subroutine libraries
+650 ENDTEST
+700 REM === Self-programming via file ===
+701 REM A program can write a modified version of itself:
+702 REM   1. Generate new code with PRINT #
+703 REM   2. SAVE current program (or write new one)
+704 REM   3. CHAIN to the new program
+705 REM
+706 REM This is the basis of self-modifying BASIC programs.
+710 TEST "Self-programming file round-trip"
+720 OPEN "selfmod.tmp" FOR OUTPUT AS #1
+730 LET Q$=CHR$(34)
+740 REM Write a program that computes factorial
+750 PRINT #1, "10 REM Auto-generated factorial program"
+760 PRINT #1, "20 LET N=5"
+770 PRINT #1, "30 LET F=1"
+780 PRINT #1, "40 FOR I=1 TO N"
+790 PRINT #1, "50 LET F=F*I"
+800 PRINT #1, "60 NEXT I"
+810 PRINT #1, "70 PRINT "+Q$+"FACTORIAL("+Q$+";N;"+Q$+") = "+Q$+";F"
+820 PRINT #1, "80 END"
+830 CLOSE #1
+840 REM Verify the generated program
+850 OPEN "selfmod.tmp" FOR INPUT AS #1
+860 LET C=0
+870 WHILE NOT EOF(1)
+880 INPUT #1, A$
+890 LET C=C+1
+900 WEND
+910 CLOSE #1
+920 ASSERT C=8
+925 REM 8 lines generated correctly
+930 ENDTEST
+950 REM === Cleanup ===
+960 KILL "chain_test.tmp"
+970 KILL "merge_lib.tmp"
+980 KILL "selfmod.tmp"
+9999 END

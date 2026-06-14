@@ -1,0 +1,28 @@
+10 REM SPRITES.BAS - move @ sprite with arrow keys (simplified)
+20 CLS
+30 X=20:Y=10
+40 PRINT CHR$(27);"[2J";   ' try to clear if ANSI supported (harmless otherwise)
+50 GOSUB 200
+60 K$=INKEY$
+70 IF K$<>"" THEN GOSUB 300
+80 GOTO 60
+200 REM DRAW
+210 CLS
+220 FOR R=1 TO 24
+230 FOR C=1 TO 80
+240 IF R=Y AND C=X THEN PRINT "@"; ELSE PRINT " ";
+250 NEXT C
+260 PRINT
+270 NEXT R
+280 RETURN
+300 REM KEYS (arrow key sequences vary; handle simple WASD and numeric keypad)
+310 IF K$="w" OR K$="W" THEN Y=Y-1:GOTO 360
+320 IF K$="s" OR K$="S" THEN Y=Y+1:GOTO 360
+330 IF K$="a" OR K$="A" THEN X=X-1:GOTO 360
+340 IF K$="d" OR K$="D" THEN X=X+1:GOTO 360
+350 IF K$=CHR$(27) THEN END
+360 IF X<1 THEN X=1
+370 IF X>80 THEN X=80
+380 IF Y<1 THEN Y=1
+390 IF Y>24 THEN Y=24
+400 RETURN

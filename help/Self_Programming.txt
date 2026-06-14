@@ -1,6 +1,6 @@
 SELF-PROGRAMMING WITH BASIC++
 =============================
-Version 0.21.0
+Version 1.5.0
 
 BASIC++ programs can examine and modify themselves at runtime.
 This guide covers self-modifying code, meta-programming, and

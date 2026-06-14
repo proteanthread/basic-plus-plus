@@ -371,6 +371,68 @@ typedef enum KeywordId {
  KW_SCOPE,       /* SCOPE - keyword access control & hooks */
  KW_KEYWORD,     /* KEYWORD - modify built-in keyword behavior */
  KW_OVERRIDE,    /* OVERRIDE - keyword interpretation override */
+ /* Sinclair BASIC graphics attribute commands */
+ KW_BORDER,      /* BORDER - set border color (Sinclair) */
+ KW_PAPER,       /* PAPER - set background color (Sinclair) */
+ KW_INK,         /* INK - set foreground color (Sinclair) */
+ KW_BRIGHT,      /* BRIGHT - bold/bright mode (Sinclair) */
+ KW_FLASH,       /* FLASH - blink mode (Sinclair) */
+ KW_INVERSE,     /* INVERSE - reverse video (Sinclair) */
+ KW_OVER,        /* OVER - overprint mode (Sinclair) */
+ /* Delay commands */
+ KW_PAUSE,       /* PAUSE - timer-tick delay (interruptible) */
+ KW_DELAY,       /* DELAY - NOP busy-wait (milliseconds) */
+ /* SuperBASIC (Sinclair QL) block structures */
+ KW_REPEAT,      /* REPeat - named infinite loop */
+ KW_ENDREPEAT,   /* END REPeat - loop terminator */
+ KW_ENDFOR,      /* END FOR - alternate NEXT */
+ KW_REMAINDER,   /* REMAINDER - SELect ON default case */
+ KW_DEFINE,      /* DEFine - procedure/function definition */
+ KW_PROCEDURE,   /* PROCedure - procedure type specifier */
+ KW_LOCAL,       /* LOCal - local variable declaration */
+ KW_ENDDEFINE,   /* END DEFine - procedure/function end */
+ /* Complex number support */
+ KW_COMPLEX,     /* COMPLEX - complex number constructor */
+ KW_REAL_FUNC,   /* REAL - extract real part */
+ KW_IMAG_FUNC,   /* IMAG - extract imaginary part */
+ /* Aggregate / rounding math functions (BASIC++) */
+ KW_MIN_FUNC,    /* MIN - minimum of two values */
+ KW_MAX_FUNC,    /* MAX - maximum of two values */
+ KW_AVG_FUNC,    /* AVG - average of a list of values */
+ KW_MED_FUNC,    /* MED - median of a list of values */
+ KW_ROUND_FUNC,  /* ROUND - round to N decimal places */
+ /* SUPER BASIC (Tymshare) extended math */
+ KW_ASIN_FUNC,   /* ASIN - arcsine */
+ KW_ACOS_FUNC,   /* ACOS - arccosine */
+ KW_SINH_FUNC,   /* SINH - hyperbolic sine */
+ KW_COSH_FUNC,   /* COSH - hyperbolic cosine */
+ KW_TANH_FUNC,   /* TANH - hyperbolic tangent */
+ KW_LOG10_FUNC,  /* LOG10 - log base 10 */
+ KW_LOG2_FUNC,   /* LOG2 - log base 2 */
+ KW_COMP_FUNC,   /* COMP - compare (-1, 0, +1) */
+ KW_PDIF_FUNC,   /* PDIF - positive difference */
+ KW_PI_FUNC,     /* PI - constant 3.14159... */
+ /* SUPER BASIC statement modifiers / keywords */
+ KW_UNLESS,      /* UNLESS - negated postfix IF */
+ KW_BY,          /* BY - alternative to STEP in FOR */
+ KW_SCRATCH,     /* SCRATCH - delete file */
+ KW_UNSAVE,      /* UNSAVE - delete saved program */
+ /* File management (native, no SHELL) */
+ KW_COPY,        /* COPY - copy a file */
+ KW_MOVE,        /* MOVE - move/rename a file */
+ KW_PWD,         /* PWD - print working directory */
+ KW_CWD_FUNC,    /* CWD$ - current working directory string */
+ KW_EXIST_FUNC,  /* EXIST - check if file/dir exists */
+ KW_FILELEN_FUNC,/* FILELEN - file size in bytes */
+ /* Event trapping */
+ KW_TRAP,        /* TRAP - event trapping (Atari / BASIC++) */
+ /* SUPER BASIC formatted output */
+ KW_IMAGE,       /* IMAGE - format string definition */
+ /* Enhanced debugger commands */
+ KW_DEBUG,       /* DEBUG - verbose trace (full line text) */
+ KW_DUMP,        /* DUMP - variable inspector */
+ KW_BACKTRACE,   /* BACKTRACE - stack trace display */
+ KW_TRACE,       /* TRACE - single-step execution (like RUN) */
  KW_COUNT /* sentinel - must be last */
 } KeywordId;
 
@@ -500,7 +562,7 @@ typedef enum {
  * makes the identifier IMPRE behave exactly like PRINT.
  */
 
-#define MAX_ALIASES 256
+#define MAX_ALIASES 128
 #define MAX_ALIAS_NAME 32
 #define MAX_OP_ALIASES 16
 #define MAX_OP_ALIAS_NAME 8
@@ -586,5 +648,49 @@ const char *lexer_keyword_name(KeywordId kw);
 /* --- ALIAS file I/O --- */
 int lexer_alias_save(const char *filename);
 int lexer_alias_load(const char *filename);
+
+/* --- Keyword Case Mode ---
+ * Controls how keywords are displayed/stored in program text.
+ * Affects LIST output and stored program lines.
+ *
+ * KWCASE_MIXED  - preserve original case (as typed)
+ * KWCASE_UPPER  - convert keywords to UPPERCASE
+ * KWCASE_LOWER  - convert keywords to lowercase
+ * KWCASE_TITLE  - convert keywords to Title Case (Print, For)
+ *
+ * Set via: OPTION KEYWORD UPPER | LOWER | TITLE | MIXED
+ * Default: KWCASE_MIXED (as-is, no transformation)
+ */
+typedef enum KeywordCaseMode {
+ KWCASE_MIXED = 0,
+ KWCASE_UPPER = 1,
+ KWCASE_LOWER = 2,
+ KWCASE_TITLE = 3
+} KeywordCaseMode;
+
+/*
+ * lexer_set_keyword_case - Set the keyword display case mode.
+ */
+void lexer_set_keyword_case(KeywordCaseMode mode);
+
+/*
+ * lexer_get_keyword_case - Get the current keyword case mode.
+ */
+KeywordCaseMode lexer_get_keyword_case(void);
+
+/*
+ * lexer_normalize_line - Apply keyword case transformation.
+ *
+ * Scans the source line, identifies keywords, and transforms
+ * their case in-place according to the active keyword case mode.
+ * Variable names and string literals are NOT modified.
+ *
+ * Call this before storing a program line (program_insert).
+ * No-op if mode is KWCASE_MIXED.
+ *
+ * Parameters:
+ *   line - mutable source line buffer (modified in place).
+ */
+void lexer_normalize_line(char *line);
 
 #endif /* BASICPP_LEXER_H */

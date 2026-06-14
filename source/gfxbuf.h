@@ -60,4 +60,37 @@ int gfxbuf_active(void);
 /* Set graphics mode on/off */
 void gfxbuf_set_active(int on);
 
+/* --- Viewport Clipping (VIEW statement) --- */
+
+/* Set viewport clipping rectangle (pixels) */
+void gfxbuf_set_viewport(int x1, int y1, int x2, int y2);
+
+/* Reset viewport to full screen */
+void gfxbuf_reset_viewport(void);
+
+/* Get current viewport bounds */
+void gfxbuf_get_viewport(int *x1, int *y1,
+ int *x2, int *y2);
+
+/* Fill viewport with color and optional border */
+void gfxbuf_fill_viewport(int fill_color,
+ int border_color);
+
+/* --- Multi-Page Support (PCOPY statement) --- */
+
+#define GFX_MAX_PAGES 4
+
+/* Set active drawing page (0-3) */
+void gfxbuf_set_active_page(int page);
+
+/* Set visual display page (0-3) */
+void gfxbuf_set_visual_page(int page);
+
+/* Copy one page to another */
+void gfxbuf_pcopy(int src, int dst);
+
+/* Get current active/visual page numbers */
+int gfxbuf_get_active_page(void);
+int gfxbuf_get_visual_page(void);
+
 #endif /* BASICPP_GFXBUF_H */

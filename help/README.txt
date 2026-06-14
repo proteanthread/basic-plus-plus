@@ -1,18 +1,22 @@
 BASIC++ Interpreter
 ===================
-Version 0.21.0
+Version 2.0.0
 @COPYLEFT ALL WRONGS RESERVED
 
 BASIC++ is a multi-dialect BASIC interpreter written in portable
-ANSI C89/C90.  It can emulate GW-BASIC, QBasic, TRS-80 CoCo BASIC,
-Tiny BASIC, Dartmouth BASIC, and its own extended dialect -- all in
-a single 346 KB executable.
+ANSI C89/C90.  It supports 16 classic BASIC dialects -- GW-BASIC,
+QBasic, Commodore 64, Apple II, Atari, TRS-80, ZX Spectrum, Sinclair
+QL, CP/M MBASIC, Tymshare SUPER BASIC, ECMA standards, and more --
+all in a single executable.
 
 FEATURES
 --------
-  * Multi-dialect engine with runtime switching (DIALECT command)
+  * 16-dialect engine with runtime switching (DIALECT command)
   * Full GW-BASIC / QBasic file I/O (sequential, random-access, binary)
-  * Virtual memory maps (MSDOS, C64, Atari 8-bit, Apple II, ZX Spectrum)
+  * 12 virtual memory maps (MSDOS, C64, C128, VIC-20, Plus/4, PET,
+    Atari 8-bit, Apple II, TRS-80, ZX Spectrum, Sinclair QL, bare)
+  * 1D, 2D, and 3D arrays (numeric and string)
+  * Extended math: MIN, MAX, AVG, MED, ROUND, COMPLEX, REAL, IMAG
   * Shell scripting: SHELL$(), pipes, redirects, shebang support
   * Security sandboxing with configurable trust levels
   * Extensible module/plug-in system
@@ -20,6 +24,7 @@ FEATURES
   * Built-in self-test (SELFTEST command)
   * ALIAS system for keyword remapping
   * 512K variable memory, 64K virtual address space
+  * Modular built-in function architecture (7 category files)
   * No external dependencies -- pure ANSI C
 
 QUICK START
@@ -54,7 +59,13 @@ DOCUMENTATION
   File_IO.txt                   	Sequential, random-access, binary files
   Older_Dialects.txt            	Emulating classic systems and memory maps
   Creating_Dialects.txt         	Building custom dialect configurations
-  Specific_Machine_Dialects.txt		How to modify specific machine dialects to achieve 100% compatibility
+  Specific_Machine_Dialects.txt		All 16 dialects explained, how to achieve
+                                	100% compatibility
+  Sinclair_BASIC.txt            	ZX Spectrum dialect reference (SINC)
+  SuperBASIC_QL.txt             	Sinclair QL dialect reference (SBLQ)
+  MBASIC_CPM.txt                	CP/M MBASIC dialect reference (MBAS)
+  Super_BASIC.txt               	Tymshare SUPER BASIC reference (SBAS)
+  Options_Reference.txt         	All OPTION sub-commands documented
   Advanced_DEF.txt              	DEF FN, FUNCTION/SUB, closures
   External_Modules.txt          	Modules, plug-ins, system services
   Error_Handling.txt            	ON ERROR, RESUME, ERR, ERL
@@ -87,10 +98,21 @@ DOCUMENTATION
   Secure_Coding.txt               	Input validation, defensive file I/O, shell
                                     	safety, string pool awareness, error handling
                                     	patterns, security levels, deployment recipes
-  Arrays_And_Matrices.txt          	DIM, OPTION BASE, REDIM, ERASE, 1D/2D arrays,
-                                     	string arrays, MAT operations (arithmetic,
-                                     	TRN, INV), sorting, searching, game boards,
-                                     	stacks/queues, performance tips, pool budget
+  Arrays_And_Matrices.txt          DIM, OPTION BASE, REDIM, ERASE, 1D/2D/3D
+                                     arrays, string arrays, MAT operations
+                                     (arithmetic, TRN, INV), sorting, searching,
+                                     game boards, stacks/queues, performance tips
+  Debugging_And_Testing.txt        ASSERT, TEST/ENDTEST, BREAK, CONT, SELFTEST,
+                                     TRON/TROFF, VARS modes, debugging workflow
+  Editing_Commands.txt             ALIAS, ALIAS$, KEYWORD, OVERRIDE, SCOPE,
+                                     AUTO, DELETE, EDIT, RENUM, language packs
+  System_And_Environment.txt       DIALECT, SHELL, EXEC, ENVIRON, CHAIN, CHDIR,
+                                     FILES, KILL, SECURITY, SLEEP, TIME$/DATE$
+  Program_Management.txt           LIST, LOAD, SAVE, MERGE, RUN, NEW, COMPILE,
+                                     UNSAVE, BSAVE/BLOAD, program lifecycle
+  Shell_Scripting_Integration.txt  Using BASIC++ in bash scripts, batch files,
+                                     and PowerShell scripts; pipes, redirection,
+                                     environment variables, shebang, recipes
 
 EXAMPLE PROGRAMS
 ----------------

@@ -1,0 +1,69 @@
+1 REM ============================================================
+2 REM  t63_mat_operations.bpp
+3 REM  BASIC++ MAT (Matrix) Operations Test & Tutorial
+4 REM ============================================================
+5 REM
+6 REM  MAT operations come from ECMA-55/116 Minimal/Full BASIC.
+7 REM  They provide array-wide operations in a single statement.
+8 REM
+9 REM  SUPPORTED MAT OPERATIONS:
+10 REM    MAT READ A      - Fill array A from DATA
+11 REM    MAT PRINT A     - Print entire array
+12 REM    MAT A = ZER      - Fill A with zeros
+13 REM    MAT A = CON      - Fill A with ones
+14 REM    MAT A = IDN      - Set A to identity matrix
+15 REM    MAT A = B        - Copy B into A
+16 REM    MAT A = B + C    - Element-wise add
+17 REM    MAT A = B - C    - Element-wise subtract
+18 REM    MAT A = (k)*B    - Scalar multiply
+19 REM    MAT A = B * C    - Matrix multiply
+20 REM    MAT A = TRN(B)   - Transpose
+21 REM    MAT A = INV(B)   - Inverse
+22 REM
+23 DIALECT "E55"
+24 REM
+100 REM === MAT ZER - Zero fill ===
+101 REM MAT A = ZER fills all elements of array A with 0.
+110 TEST "MAT ZER"
+120 DIM A(5)
+130 MAT A = ZER
+140 ASSERT A(1)=0
+150 ASSERT A(3)=0
+160 ASSERT A(5)=0
+170 ENDTEST
+200 REM === MAT CON - Fill with ones ===
+201 REM MAT A = CON fills all elements of array A with 1.
+210 TEST "MAT CON"
+220 DIM B(5)
+230 MAT B = CON
+240 ASSERT B(1)=1
+250 ASSERT B(3)=1
+260 ASSERT B(5)=1
+270 ENDTEST
+300 REM === MAT READ from DATA ===
+301 REM MAT READ A reads values from DATA statements
+302 REM into array A, filling element by element.
+310 TEST "MAT READ"
+320 DIM C(3)
+330 MAT READ C
+340 ASSERT C(1)=10
+350 ASSERT C(2)=20
+360 ASSERT C(3)=30
+370 ENDTEST
+380 DATA 10, 20, 30
+400 REM === MAT array copy ===
+401 REM MAT A = B copies all elements of B into A.
+410 TEST "MAT copy"
+420 DIM D(3)
+430 MAT D = C
+440 ASSERT D(1)=10
+450 ASSERT D(2)=20
+460 ASSERT D(3)=30
+470 ENDTEST
+500 REM === MAT PRINT ===
+501 REM MAT PRINT A displays all elements of the array.
+510 TEST "MAT PRINT"
+520 MAT PRINT C
+530 REM Should print: 10 20 30
+540 ENDTEST
+9999 END

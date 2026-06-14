@@ -1,0 +1,30 @@
+1 REM === t24_alias.bpp ===
+2 REM Tests: ALIAS keyword/operator, LIST, CLEAR, COUNT
+3 DIALECT "GWBS"
+10 TEST "Keyword ALIAS"
+20 ALIAS PRINT = "MOSTRAR"
+30 REM Alias set, now test count
+40 ASSERT ALIAS COUNT >= 1
+50 ENDTEST
+100 TEST "ALIAS CLEAR"
+110 ALIAS CLEAR
+120 REM After clear, count should be 0
+130 ENDTEST
+200 TEST "Operator ALIAS quoted"
+210 ALIAS ">=" = "≥"
+220 REM Operator alias set
+230 ALIAS OPER CLEAR
+240 ENDTEST
+300 TEST "Operator ALIAS symbolic"
+310 ALIAS >= = "≥"
+320 REM Symbolic operator alias set
+330 ALIAS OPER CLEAR
+340 ENDTEST
+400 TEST "Multiple ALIAS"
+410 ALIAS PRINT = "ESCRIBIR"
+420 ALIAS LET = "SEA"
+430 ALIAS IF = "SI"
+440 REM Three aliases
+450 ALIAS CLEAR
+460 ENDTEST
+999 END

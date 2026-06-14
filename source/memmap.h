@@ -46,6 +46,7 @@ typedef enum MemMapType {
  MMAP_APPLE2, /* Apple II/IIe */
  MMAP_TRS80, /* TRS-80 Model I/III */
  MMAP_SPECTRUM, /* ZX Spectrum 48K */
+ MMAP_QL, /* Sinclair QL (QDOS/68008) */
  MMAP_COUNT /* sentinel */
 } MemMapType;
 

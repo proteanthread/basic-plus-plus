@@ -6,7 +6,7 @@
  * File I/O subsystem interface.
  *
  * PURPOSE:
- * Handles SAVE, LOAD, and (future) MERGE and CHAIN commands.
+ * Handles SAVE, LOAD, MERGE, and CHAIN commands.
  * All file operations use plain ASCII text format - no binary
  * file formats.
  *
@@ -23,8 +23,8 @@
  * with the LOAD command.
  *
  * HOW TO EXTEND:
- * MERGE and CHAIN are stubbed - implement the actual logic in
- * fileio.c when needed. The interface is already defined.
+ * Add new file operations in fileio.c and declare them here.
+ * The interface is plain C functions taking ProgramStore*.
  *
  * ---
  */
@@ -69,8 +69,6 @@ int fileio_load(ProgramStore *store, const char *filename);
  *
  * Like LOAD but does not clear the existing program. Lines from
  * the file overwrite existing lines with the same number.
- *
- * STUBBED - not implemented in 
  */
 int fileio_merge(ProgramStore *store, const char *filename);
 
@@ -79,8 +77,6 @@ int fileio_merge(ProgramStore *store, const char *filename);
  *
  * Loads a program and begins execution, optionally preserving
  * variable values.
- *
- * STUBBED - not implemented in 
  */
 int fileio_chain(ProgramStore *store, const char *filename);
 

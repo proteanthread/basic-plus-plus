@@ -1,6 +1,6 @@
 ADVANCED DEF FUNCTIONS IN BASIC++
 =================================
-Version 0.21.0
+Version 1.5.0
 
 BASIC++ supports user-defined functions at three levels of
 complexity: single-line DEF FN, multi-line FUNCTION blocks,

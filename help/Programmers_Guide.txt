@@ -1,6 +1,6 @@
 BASIC++ PROGRAMMER'S GUIDE
 ==========================
-Version 0.21.0
+Version 1.5.0
 
 TABLE OF CONTENTS
 -----------------

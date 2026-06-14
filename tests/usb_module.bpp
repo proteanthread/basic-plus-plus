@@ -1,0 +1,103 @@
+1 REM ============================================================
+2 REM  t59_usb_module.bpp
+3 REM  BASIC++ USB Module Test & Tutorial
+4 REM ============================================================
+5 REM
+6 REM  The USB module provides access to USB devices through
+7 REM  three virtual device interfaces:
+8 REM
+9 REM  USB:    - General USB device enumeration and access
+10 REM  HID:    - USB Human Interface Device (joystick, gamepad)
+11 REM  USBSER: - USB-to-serial adapter (FTDI, CH340, CP2102)
+12 REM
+13 REM  ACTIVATING THE MODULE:
+14 REM    MODULE ACTIVATE "USB"
+15 REM
+16 REM  USB DEVICE ENUMERATION:
+17 REM    After activating, use OPEN "USB:" to enumerate
+18 REM    connected USB devices. The device scans COM ports
+19 REM    (Windows) or /dev/hidraw*, /dev/ttyUSB* (Linux).
+20 REM
+21 REM  HID DEVICES (joysticks/gamepads):
+22 REM    OPEN "HID:" FOR INPUT AS #1
+23 REM    GET #1, J$, 8      ' Read 8-byte HID report
+24 REM    CLOSE #1
+25 REM    The HID report contains button states and axis values.
+26 REM
+27 REM  USB-SERIAL (Arduino, retro hardware):
+28 REM    OPEN "USBSER:COM3" FOR INPUT AS #1
+29 REM    INPUT #1, A$        ' Read line from serial device
+30 REM    PRINT #1, "HELLO"   ' Write to serial device
+31 REM    CLOSE #1
+32 REM
+33 REM  SECURITY:
+34 REM    USB access requires CAP_USB | CAP_IO capabilities.
+35 REM    In SEC_RESTRICTED mode, the module cannot activate.
+36 REM
+37 REM  NOTE: These tests verify the module framework. Actual
+38 REM  USB hardware access depends on connected devices.
+39 REM
+40 DIALECT "GWBS"
+41 REM
+100 REM === MODULE ACTIVATE "USB" ===
+101 REM Registers USB:, HID:, and USBSER: virtual devices.
+102 REM The module initializes device state structures and
+103 REM registers with the VDev system.
+110 TEST "USB module activate"
+120 MODULE ACTIVATE "USB"
+130 REM Module activated, three devices registered
+140 ENDTEST
+200 REM === VDEV shows USB devices ===
+201 REM After activation, VDEV should show USB:, HID:, USBSER:
+210 TEST "USB devices in VDEV"
+220 VDEV
+230 REM USB devices should appear in the list
+240 ENDTEST
+300 REM === USB: device info ===
+301 REM The USB: device supports:
+302 REM   dev_class: STORAGE
+303 REM   capabilities: READ, CONTROL, STATUS, HOTPLUG
+304 REM   Commands: ENUMERATE (scan for devices), RESET
+310 TEST "USB: device class"
+320 REM USB: provides device enumeration
+330 REM Use VDIO_ENUMERATE to scan for connected devices
+340 REM Use usb_gets() to read device names one by one
+350 ENDTEST
+400 REM === HID: device info ===
+401 REM The HID: device supports:
+402 REM   dev_class: HID (Human Interface Device)
+403 REM   capabilities: READ, BINARY, CONTROL, STATUS, HOTPLUG
+404 REM   Reports: 8-64 byte binary HID reports
+405 REM
+406 REM HID report format (typical gamepad):
+407 REM   Byte 0: Report ID
+408 REM   Byte 1: Buttons (bit mask)
+409 REM   Byte 2: X axis (-128 to 127)
+410 REM   Byte 3: Y axis (-128 to 127)
+411 REM   Bytes 4-7: Additional axes or buttons
+420 TEST "HID: device class"
+430 REM HID provides binary read of joystick/gamepad reports
+440 REM Requires physical HID device for actual data
+450 ENDTEST
+500 REM === USBSER: device info ===
+501 REM The USBSER: device supports:
+502 REM   dev_class: SERIAL
+503 REM   capabilities: STREAM, BINARY, CONTROL, STATUS, HOTPLUG
+504 REM   Default: 9600 baud, 8N1
+505 REM
+506 REM Baud rate can be changed via IOCTL:
+507 REM   VDIO_SET_BAUD  - Set baud rate (300-115200)
+508 REM   VDIO_SET_TIMEOUT - Set read timeout in ms
+509 REM   VDIO_RESET - Flush send/receive buffers
+510 TEST "USBSER: device class"
+520 REM USBSER provides serial port access to USB adapters
+530 REM Supports FTDI FT232, CH340, CP2102, and CDC ACM
+540 ENDTEST
+600 REM === MODULE DEACTIVATE and reactivate ===
+610 TEST "USB module cycle"
+620 MODULE DEACTIVATE "USB"
+630 REM USB devices unregistered
+640 MODULE ACTIVATE "USB"
+650 REM USB devices re-registered
+660 ENDTEST
+9999 END

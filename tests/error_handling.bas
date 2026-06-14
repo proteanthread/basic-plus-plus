@@ -1,0 +1,29 @@
+1 REM === t17_error_handling.bas ===
+2 REM Tests: ON ERROR GOTO, RESUME, ERR, ERL
+3 REM Note: errors are EXPECTED in this test
+3 DIALECT "GWBS"
+10 TEST "ON ERROR GOTO"
+20 LET E=0
+30 ON ERROR GOTO 70
+40 REM Cause a division by zero
+50 LET X=1/0
+60 GOTO 80
+70 LET E=1
+75 RESUME NEXT
+80 ASSERT E=1
+90 ENDTEST
+100 TEST "Error recovery"
+110 LET E=0
+120 ON ERROR GOTO 160
+130 REM Cause an error
+140 ERROR 5
+150 GOTO 180
+160 LET E=1
+170 RESUME NEXT
+180 ASSERT E=1
+190 ENDTEST
+200 TEST "ON ERROR 0 disable"
+210 ON ERROR GOTO 0
+220 REM Error handling disabled, no crash test needed
+230 ENDTEST
+999 END

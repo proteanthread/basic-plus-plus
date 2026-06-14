@@ -40,7 +40,8 @@
 typedef enum ValueType {
  VAL_INTEGER = 0, /* long integer (always available) */
  VAL_FLOAT, /* double precision floating point */
- VAL_STRING /* string (pointer into string pool) */
+ VAL_STRING, /* string (pointer into string pool) */
+ VAL_COMPLEX /* complex number (real + imaginary) */
 } ValueType;
 
 /* --- BValue - Tagged Union Value ---
@@ -48,11 +49,12 @@ typedef enum ValueType {
  * and DATA items in the interpreter.
  *
  * Fields:
- * type - discriminator tag (VAL_INTEGER, VAL_FLOAT, VAL_STRING)
+ * type - discriminator tag
  * v - union holding the actual value
  * .ival - integer value (for VAL_INTEGER)
  * .fval - floating-point value (for VAL_FLOAT)
  * .sval - string value (for VAL_STRING)
+ * .cval - complex value (for VAL_COMPLEX)
  * .data - pointer to string data (NOT null-terminated in pool)
  * .length - length of the string in bytes
  */
@@ -65,6 +67,10 @@ typedef struct BValue {
  char *data; /* pointer into string pool (borrowed) */
  int length; /* string length */
  } sval; /* VAL_STRING */
+ struct {
+ double real; /* real part */
+ double imag; /* imaginary part */
+ } cval; /* VAL_COMPLEX */
  } v;
 } BValue;
 
@@ -80,11 +86,15 @@ BValue bval_float(double val);
 /* Create a string value (borrows pointer - does NOT copy) */
 BValue bval_string(char *data, int length);
 
+/* Create a complex value */
+BValue bval_complex(double real, double imag);
+
 /* --- Type Queries ---
  */
 int bval_is_int(const BValue *v);
 int bval_is_float(const BValue *v);
 int bval_is_string(const BValue *v);
+int bval_is_complex(const BValue *v);
 int bval_is_numeric(const BValue *v);
 
 /* --- Type Coercion ---

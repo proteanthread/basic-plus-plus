@@ -1,0 +1,93 @@
+1 REM ============================================================
+2 REM  t71_min_max_avg_med_round.bpp
+3 REM  BASIC++ MIN, MAX, AVG, MED, ROUND Test & Tutorial
+4 REM ============================================================
+5 REM
+6 REM  BASIC++ extends classic BASIC with aggregate math functions
+7 REM  useful for statistics, data analysis, and general programming.
+8 REM
+9 REM  MIN(a, b, ...) - Returns the smallest value
+10 REM  MAX(a, b, ...) - Returns the largest value
+11 REM  AVG(a, b, ...) - Returns the arithmetic mean
+12 REM  MED(a, b, ...) - Returns the median (middle value)
+13 REM  ROUND(x, n)    - Rounds x to n decimal places
+14 REM
+15 REM  All accept 2-16 numeric arguments (AVG/MED accept 1-16).
+16 REM  ROUND accepts 1-2 arguments (defaults to 0 decimal places).
+17 REM
+18 DIALECT "GWBS"
+19 REM
+100 REM === MIN(a, b) - Minimum ===
+101 REM Returns the smallest of the provided values.
+102 REM Works with integers and floats.
+110 TEST "MIN two args"
+120 ASSERT MIN(5,3)=3
+130 ASSERT MIN(-1,1)=-1
+140 ASSERT MIN(0,0)=0
+150 ASSERT MIN(100,-100)=-100
+160 ENDTEST
+200 REM === MIN with multiple args ===
+201 REM MIN can take up to 16 arguments, returning the smallest.
+210 TEST "MIN multiple args"
+220 ASSERT MIN(5,3,1)=1
+230 ASSERT MIN(10,20,5,15)=5
+240 ASSERT MIN(99,88,77,66,55)=55
+250 ENDTEST
+300 REM === MAX(a, b) - Maximum ===
+301 REM Returns the largest of the provided values.
+310 TEST "MAX two args"
+320 ASSERT MAX(5,3)=5
+330 ASSERT MAX(-1,1)=1
+340 ASSERT MAX(0,0)=0
+350 ASSERT MAX(-100,100)=100
+360 ENDTEST
+400 REM === MAX with multiple args ===
+410 TEST "MAX multiple args"
+420 ASSERT MAX(5,3,1)=5
+430 ASSERT MAX(10,20,5,15)=20
+440 ASSERT MAX(11,22,33,44,55)=55
+450 ENDTEST
+500 REM === AVG(a, b, ...) - Average ===
+501 REM Returns the arithmetic mean: sum / count.
+502 REM AVG(10, 20, 30) = (10+20+30)/3 = 20
+510 TEST "AVG"
+520 ASSERT AVG(10,20,30)=20
+530 ASSERT AVG(0,100)=50
+540 ASSERT AVG(5,5,5,5)=5
+550 ASSERT AVG(1,2,3,4,5)=3
+560 ENDTEST
+600 REM === MED(a, b, ...) - Median ===
+601 REM Returns the middle value when sorted.
+602 REM Odd count: middle element
+603 REM   MED(3,1,2) sorts to [1,2,3], returns 2
+604 REM Even count: average of two middle elements
+605 REM   MED(1,2,3,4) sorts to [1,2,3,4], returns (2+3)/2=2.5
+610 TEST "MED odd count"
+620 ASSERT MED(3,1,2)=2
+630 ASSERT MED(5,1,3)=3
+640 ASSERT MED(10,30,20)=20
+650 ENDTEST
+700 TEST "MED even count"
+710 ASSERT MED(1,2,3,4)=2.5
+720 ASSERT MED(10,20)=15
+730 ENDTEST
+800 REM === ROUND(x, n) - Round ===
+801 REM Rounds x to n decimal places.
+802 REM ROUND(3.14159, 2) = 3.14
+803 REM ROUND(2.5, 0) = 3
+804 REM If n is omitted, rounds to integer (n=0).
+810 TEST "ROUND"
+820 ASSERT ROUND(3.14159, 2)=3.14
+830 ASSERT ROUND(2.5, 0)=3
+840 ASSERT ROUND(9.999, 1)=10.0
+850 ASSERT ROUND(100, 0)=100
+860 ENDTEST
+900 REM === Combined usage ===
+901 REM These functions combine naturally in expressions.
+910 TEST "Combined usage"
+920 LET A=MIN(10,20)
+930 LET B=MAX(10,20)
+940 ASSERT AVG(A,B)=15
+950 ASSERT ROUND(AVG(1,2,3,4), 0)=3
+960 ENDTEST
+9999 END
