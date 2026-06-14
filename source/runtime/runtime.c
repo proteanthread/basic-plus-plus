@@ -692,6 +692,25 @@ int runtime_set_named_var_bval(RuntimeState *rt, const char *name,
  int i;
  int copy_len;
 
+ /* Type suffix enforcement */
+ if (len > 0) {
+  char last = name[len - 1];
+  if (last == '%') {
+  value = bval_int(bval_to_int(&value));
+  } else if (last == '!') {
+  value = bval_float(bval_to_float(&value));
+  } else if (last == '#') {
+  value = bval_float(bval_to_float(&value));
+  } else if (last == '&') {
+  value = bval_int(bval_to_int(&value));
+  } else if (last == '$') {
+  if (!bval_is_string(&value)) {
+   error_raise(ERR_WHAT, 0);
+   return -1;
+  }
+  }
+ }
+
  /* Look for existing variable */
  for (i = 0; i < rt->named_count; i++) {
  if (str_eq_nocase(name, len, rt->named_vars[i].name)) {

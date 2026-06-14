@@ -518,7 +518,7 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_key(lex, rt, line_num);
   return;
  case KW_KILL:
-  if (security_check(SECOP_FILE_WRITE, line_num))
+  if (security_check(SECOP_FILE_MGMT, line_num))
    return;
   pi_parse_kill(lex, rt, line_num);
   return;
@@ -529,12 +529,12 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_unsave(lex, rt, line_num);
   return;
  case KW_COPY:
-  if (security_check(SECOP_FILE_WRITE, line_num))
+  if (security_check(SECOP_FILE_MGMT, line_num))
    return;
   pi_parse_copy(lex, rt, line_num);
   return;
  case KW_MOVE:
-  if (security_check(SECOP_FILE_WRITE, line_num))
+  if (security_check(SECOP_FILE_MGMT, line_num))
    return;
   pi_parse_move(lex, rt, line_num);
   return;
@@ -583,7 +583,7 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_reset(lex, rt, line_num);
   return;
  case KW_RMDIR:
-  if (security_check(SECOP_FILE_WRITE, line_num))
+  if (security_check(SECOP_FILE_MGMT, line_num))
    return;
   pi_parse_rmdir(lex, rt, line_num);
   return;
@@ -615,17 +615,17 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_timer(lex, rt, line_num);
   return;
  case KW_NAME:
-  if (security_check(SECOP_FILE_WRITE, line_num))
+  if (security_check(SECOP_FILE_MGMT, line_num))
    return;
   pi_parse_name(lex, rt, line_num);
   return;
  case KW_RENAME:
-  if (security_check(SECOP_FILE_WRITE, line_num))
+  if (security_check(SECOP_FILE_MGMT, line_num))
    return;
   pi_parse_rename(lex, rt, line_num);
   return;
  case KW_MKDIR:
-  if (security_check(SECOP_FILE_WRITE, line_num))
+  if (security_check(SECOP_FILE_MGMT, line_num))
    return;
   pi_parse_mkdir(lex, rt, line_num);
   return;

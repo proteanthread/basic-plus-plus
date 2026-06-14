@@ -1,0 +1,16 @@
+# Hybrid VM Execution
+
+BASIC++ 3.0.0 introduces a Hybrid VM Execution engine with a standard stack-based bytecode architecture. 
+
+## P-Code Compilation
+Using the `COMPILE` command with a `.bpp` extension target file will now trigger the internal Bytecode compiler. The interpreter generates bytecode (P-Code) for efficient and portable execution. 
+
+### Syntax
+`COMPILE "source_file.bas", "target_file.bpp"`
+
+When the `COMPILE` command detects `.bpp` as the target extension, it engages the `pcode_compiler` to translate the BASIC abstract syntax tree into standard bytecode instructions (`PCodeInstr`), which are compatible across different platforms and future dialects.
+
+## Architecture
+The VM instructions include typical stack-based operations (e.g., `PUSH_CONST`, `ADD`, `JUMP`, `HALT`). This foundational bytecode architecture paves the way for future advanced features, such as inline Foreign Language Blocks (`USE LANG` / `END USE`).
+
+By standardizing to a Virtual Machine, BASIC++ can seamlessly mix native interpreter execution with pre-compiled efficient bytecode.

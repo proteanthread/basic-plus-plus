@@ -174,4 +174,12 @@ const char *module_class_name(ModuleClass cls);
  */
 void module_caps_string(unsigned int caps, char *buf, int buf_len);
 
+/*
+ * module_load_dynamic - Load an external shared library.
+ *
+ * Loads a .dll (Windows) or .so (Linux) and executes its
+ * bpp_module_init() function to register itself.
+ */
+int module_load_dynamic(const char *path);
+
 #endif /* BASICPP_MODULE_H */

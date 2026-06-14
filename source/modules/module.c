@@ -21,6 +21,12 @@
 #include "module.h"
 #include "security.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#elif !defined(BPP_FREEDOS)
+#include <dlfcn.h>
+#endif
+
 /* --- Module Table ---
  */
 typedef struct ModuleSlot {
@@ -246,9 +252,53 @@ void module_caps_string(unsigned int caps, char *buf, int buf_len)
  if ((caps & CAP_SOUND) && pos < buf_len - 1) buf[pos++] = 'A';
  if ((caps & CAP_NETWORK) && pos < buf_len - 1) buf[pos++] = 'N';
 
- if (pos == 0 && buf_len > 1) {
- buf[pos++] = '-';
- }
+    if (pos == 0 && buf_len > 1) {
+        buf[pos++] = '-';
+    }
 
- buf[pos] = '\0';
+    buf[pos] = '\0';
+}
+
+/* --- module_load_dynamic ---
+ */
+int module_load_dynamic(const char *path)
+{
+#ifdef BPP_FREEDOS
+    printf("Dynamic modules not supported on FreeDOS.\n");
+    return -1;
+#else
+    typedef void (*InitFunc)(void);
+    InitFunc init;
+#ifdef _WIN32
+    HMODULE handle = LoadLibraryA(path);
+    if (!handle) {
+        printf("Failed to load library: %s\n", path);
+        return -1;
+    }
+    
+    init = (InitFunc)GetProcAddress(handle, "bpp_module_init");
+    if (!init) {
+        printf("No bpp_module_init found in %s\n", path);
+        FreeLibrary(handle);
+        return -1;
+    }
+    init();
+    return 0;
+#else
+    void *handle = dlopen(path, RTLD_LAZY);
+    if (!handle) {
+        printf("Failed to load library: %s\n", dlerror());
+        return -1;
+    }
+    
+    init = (InitFunc)dlsym(handle, "bpp_module_init");
+    if (!init) {
+        printf("No bpp_module_init found in %s\n", path);
+        dlclose(handle);
+        return -1;
+    }
+    init();
+    return 0;
+#endif
+#endif
 }

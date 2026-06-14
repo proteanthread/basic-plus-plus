@@ -34,6 +34,7 @@
 #include <string.h>
 #include "config.h"
 #include "dialect.h"
+#include "security.h"
 
 /* --- Dialect Registry Table ---
  * Mutable table populated by dialect_register() calls at boot.
@@ -308,13 +309,13 @@ static unsigned int mixed_mask = 0;
  */
 void dialect_set_strict(int on)
 {
- if (on) {
-  dialect_mode = DMODE_STRICT;
-  mixed_mask = 0;
- } else {
-  if (dialect_mode == DMODE_STRICT)
-   dialect_mode = DMODE_UNION;
- }
+    if (on) {
+        dialect_mode = DMODE_STRICT;
+        mixed_mask = 0;
+    } else {
+        if (dialect_mode == DMODE_STRICT)
+            dialect_mode = DMODE_UNION;
+    }
 }
 
 /*
@@ -322,7 +323,7 @@ void dialect_set_strict(int on)
  */
 int dialect_is_strict(void)
 {
- return (dialect_mode == DMODE_STRICT) ? 1 : 0;
+    return (dialect_mode == DMODE_STRICT) ? 1 : 0;
 }
 
 /*
@@ -460,5 +461,16 @@ int dialect_keyword_allowed(KeywordId kw)
 
  /* Fallback (should not reach here) */
  return 1;
+}
+
+/*
+ * dialect_default_security - Get the recommended default security level.
+ */
+int dialect_default_security(DialectId id)
+{
+    if (id == DIALECT_TINY_BASIC || id == DIALECT_TRS80_L1 || id == DIALECT_ECMA55) {
+        return SEC_RESTRICTED; /* 2 */
+    }
+    return SEC_STANDARD; /* 1 */
 }
 
