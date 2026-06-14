@@ -10,7 +10,12 @@
  * ---
  */
 
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#endif
+
 #include "parser_internal.h"
+#include "parser_internal_additions.h"
 #include "pcode.h"
 
 /*

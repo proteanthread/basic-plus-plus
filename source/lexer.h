@@ -82,15 +82,12 @@ typedef enum TokenType {
 } TokenType;
 
 /* --- Keyword Identifiers ---
- * Each recognized keyword has a unique identifier. The lexer looks
- * up identifiers in the keyword table and assigns the matching
- * KeywordId. Unknown identifiers are treated as variables.
- *
- * Keywords listed here include both implemented now) and
- * keywords reserved for future phases. Reserving them now prevents
- * them from being used as variable names in future expansions.
+ * Each recognized keyword has a unique identifier. The lexer uses
+ * a dynamic dictionary to map strings to these IDs.
+ * Core keywords have fixed IDs defined via an anonymous enum.
+ * Custom keywords are assigned IDs starting from KW_CUSTOM_START.
  */
-typedef enum KeywordId {
+enum {
  KW_PRINT = 0,
  KW_LET,
  KW_INPUT,
@@ -294,6 +291,7 @@ typedef enum KeywordId {
  KW_DEFUSR, /* DEF USR - user function address */
  KW_ERL, /* ERL - last error line number */
  KW_ERR_VAR, /* ERR - last error code */
+ KW_ERR_STR, /* ERR$ - last error string */
  KW_EDIT, /* EDIT - interactive line editor */
  KW_EXTERR, /* EXTERR - extended error (DOS) */
  KW_ERDEV, /* ERDEV - device error */
@@ -434,7 +432,16 @@ typedef enum KeywordId {
  KW_BACKTRACE,   /* BACKTRACE - stack trace display */
  KW_TRACE,       /* TRACE - single-step execution (like RUN) */
  KW_COUNT /* sentinel - must be last */
-} KeywordId;
+};
+
+/* The lexer now uses a dynamic KeywordId (integer) instead of a static enum. */
+typedef int KeywordId;
+#define KW_CUSTOM_START 1000
+#define KW_COUNT 9999 /* Sentinel for invalid keyword */
+
+/* --- Dynamic Keyword Registry API --- */
+void keyword_registry_init(void);
+KeywordId keyword_register_custom(const char *name, unsigned int dialect_flags);
 
 /* --- Token - A single lexical element. ---
  * Tokens are value types, small enough to be passed by value or

@@ -60,7 +60,7 @@ typedef struct KeywordEntry {
  * DFLAG_GWQB = GW-BASIC + QBasic
  * DFLAG_STRUCT = GWBS + QBAS + E116 (structured flow)
  */
-static const KeywordEntry keyword_table[] = {
+static const KeywordEntry core_keyword_init_table[] = {
  /* Universal BASIC keywords */
  { "PRINT", KW_PRINT, DFLAG_ALL },
  { "LET", KW_LET, DFLAG_ALL },
@@ -264,6 +264,7 @@ static const KeywordEntry keyword_table[] = {
  { "DEFSTR", KW_DEFSTR, DFLAG_GWQB },
  { "ERL", KW_ERL, DFLAG_GWQB | DFLAG_E116 },
  { "ERR", KW_ERR_VAR, DFLAG_GWQB | DFLAG_E116 },
+ { "ERR$", KW_ERR_STR, DFLAG_GWQB | DFLAG_E116 },
  { "EDIT", KW_EDIT, DFLAG_GWQB | DFLAG_TRS2 },
  { "EXTERR", KW_EXTERR, DFLAG_GWBS },
  { "ERDEV", KW_ERDEV, DFLAG_GWBS },
@@ -399,8 +400,35 @@ static const KeywordEntry keyword_table[] = {
  { "DUMP", KW_DUMP, DFLAG_ALL },
  { "BACKTRACE", KW_BACKTRACE, DFLAG_ALL },
  { "TRACE", KW_TRACE, DFLAG_ALL },
- { NULL, KW_COUNT, 0 } /* sentinel */
+ { NULL, 0, 0 } /* sentinel */
 };
+
+/* --- Dynamic Keyword Registry --- */
+#define MAX_DYNAMIC_KEYWORDS 512
+static KeywordEntry dynamic_keyword_table[MAX_DYNAMIC_KEYWORDS];
+static int dynamic_keyword_count = 0;
+static int next_custom_keyword_id = KW_CUSTOM_START;
+
+void keyword_registry_init(void) {
+    int i = 0;
+    if (dynamic_keyword_count > 0) return; /* Already initialized */
+    while (core_keyword_init_table[i].name != NULL) {
+        dynamic_keyword_table[i] = core_keyword_init_table[i];
+        i++;
+    }
+    dynamic_keyword_count = i;
+}
+
+KeywordId keyword_register_custom(const char *name, unsigned int dialect_flags) {
+    int id;
+    if (dynamic_keyword_count >= MAX_DYNAMIC_KEYWORDS) return KW_COUNT;
+    id = next_custom_keyword_id++;
+    dynamic_keyword_table[dynamic_keyword_count].name = strdup(name);
+    dynamic_keyword_table[dynamic_keyword_count].id = id;
+    dynamic_keyword_table[dynamic_keyword_count].dialect_flags = dialect_flags;
+    dynamic_keyword_count++;
+    return id;
+}
 
 /* --- Internal Helpers ---
  */
@@ -529,8 +557,8 @@ int lexer_add_alias_scoped(const char *name, int name_len,
  return -3; /* protected keyword */
 
  /* Reject alias names that shadow existing keywords */
- for (i = 0; keyword_table[i].name != NULL; i++) {
- const char *kn = keyword_table[i].name;
+ for (i = 0; i < dynamic_keyword_count; i++) {
+ const char *kn = dynamic_keyword_table[i].name;
  int ki = 0, match = 1;
  while (kn[ki] && upper[ki]) {
   char ca = upper[ki];
@@ -679,9 +707,9 @@ int lexer_alias_count(void)
 const char *lexer_keyword_name(KeywordId kw)
 {
  int i;
- for (i = 0; keyword_table[i].name != NULL; i++) {
- if (keyword_table[i].id == kw)
- return keyword_table[i].name;
+ for (i = 0; i < dynamic_keyword_count; i++) {
+ if (dynamic_keyword_table[i].id == kw)
+ return dynamic_keyword_table[i].name;
  }
  return "";
 }
@@ -967,28 +995,28 @@ int lexer_alias_load(const char *filename)
  }
  kw_name[kw_len] = '\0';
 
- /* Strip trailing $ from keyword name for lookup */
- {
- int lookup_len = kw_len;
- if (lookup_len > 0 && kw_name[lookup_len-1] == '$')
- lookup_len--;
- for (ki = 0; keyword_table[ki].name != NULL; ki++) {
- int tlen = (int)strlen(keyword_table[ki].name);
- if (tlen == lookup_len) {
- int j, m = 1;
- for (j = 0; j < tlen; j++) {
- if (to_upper(keyword_table[ki].name[j]) !=
- kw_name[j]) {
- m = 0; break;
- }
- }
- if (m) {
- found_kw = keyword_table[ki].id;
- break;
- }
- }
- }
- }
+  /* Strip trailing $ from keyword name for lookup */
+  {
+  int lookup_len = kw_len;
+  if (lookup_len > 0 && kw_name[lookup_len-1] == '$')
+  lookup_len--;
+  for (ki = 0; ki < dynamic_keyword_count; ki++) {
+  int tlen = (int)strlen(dynamic_keyword_table[ki].name);
+  if (tlen == lookup_len) {
+  int j, m = 1;
+  for (j = 0; j < tlen; j++) {
+  if (to_upper(dynamic_keyword_table[ki].name[j]) !=
+  kw_name[j]) {
+  m = 0; break;
+  }
+  }
+  if (m) {
+  found_kw = dynamic_keyword_table[ki].id;
+  break;
+  }
+  }
+  }
+  }
 
  if (found_kw == KW_COUNT) continue;
 
@@ -1049,8 +1077,8 @@ static KeywordId match_keyword(const char *start, int len)
  }
 
  /* Then check built-in keyword table */
- for (i = 0; keyword_table[i].name != NULL; i++) {
- const char *kw = keyword_table[i].name;
+ for (i = 0; i < dynamic_keyword_count; i++) {
+ const char *kw = dynamic_keyword_table[i].name;
  int kw_len = (int)strlen(kw);
  int j;
  int matched;
@@ -1068,7 +1096,7 @@ static KeywordId match_keyword(const char *start, int len)
  }
 
  if (matched) {
- return keyword_table[i].id;
+ return dynamic_keyword_table[i].id;
  }
  }
 
@@ -1672,9 +1700,9 @@ void lexer_skip_to_end(Lexer *lex)
 unsigned int lexer_get_keyword_flags(KeywordId kw)
 {
  int i;
- for (i = 0; keyword_table[i].name != NULL; i++) {
- if (keyword_table[i].id == kw) {
- return keyword_table[i].dialect_flags;
+ for (i = 0; i < dynamic_keyword_count; i++) {
+ if (dynamic_keyword_table[i].id == kw) {
+ return dynamic_keyword_table[i].dialect_flags;
  }
  }
  return DFLAG_ALL; /* unknown = always allowed */

@@ -289,9 +289,6 @@ int fileio_open(int chan, const char *filename,
  channels[idx].current_rec = 0;
  return 0;
  }
- error_raise(ERR_HOW, line_num);
- return -1;
- }
 
  switch (mode) {
  case FCHAN_INPUT: fmode = "r"; break;

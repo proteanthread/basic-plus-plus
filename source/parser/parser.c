@@ -730,8 +730,14 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_trace(lex, rt, line_num);
   return;
  default:
- error_raise(ERR_WHAT, line_num);
- return;
+  /* Check if it's a dynamically registered specification statement */
+  if (lex->current.value.keyword >= KW_CUSTOM_START) {
+   extern void pi_parse_custom_statement(Lexer *lex, RuntimeState *rt, int line_num, int kw_id);
+   pi_parse_custom_statement(lex, rt, line_num, lex->current.value.keyword);
+   return;
+  }
+  error_raise(ERR_WHAT, line_num);
+  return;
  }
  }
 

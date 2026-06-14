@@ -25,8 +25,11 @@
 #include <string.h>
 #include <ctype.h>
 #include "config_file.h"
-#include "keyword_props.h"
+#include "platform.h"
+#include "memory.h"
+#include "security.h"
 #include "lexer.h"
+#include "keyword_props.h"
 #include "override.h"
 
 /* Maximum line length in config file */
@@ -35,15 +38,35 @@
 /*
  * config_file_get_name - Return the platform-specific filename.
  */
-const char *config_file_get_name(void)
+/*
+ * config_file_get_name - Return the dynamic filename based on exe.
+ */
+const char *config_file_get_name(const char *exe_path)
 {
-#if defined(__WATCOMC__) || defined(MSDOS) || defined(__DOS__)
-    return "bpp.cfg";
-#elif defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
-    return "basicpp.cfg";
-#else
-    return "baspp.cfg";
-#endif
+    static char cfg_name[256];
+    const char *base = exe_path;
+    const char *p;
+    int len;
+
+    if (!exe_path || !*exe_path) return "basicpp.cfg";
+
+    /* Find basename */
+    for (p = exe_path; *p; p++) {
+        if (*p == '/' || *p == '\\') {
+            base = p + 1;
+        }
+    }
+
+    /* Copy up to the dot or end */
+    len = 0;
+    while (base[len] && base[len] != '.' && len < 250) {
+        cfg_name[len] = base[len];
+        len++;
+    }
+    cfg_name[len] = '\0';
+    strcat(cfg_name, ".cfg");
+
+    return cfg_name;
 }
 
 /*
@@ -76,6 +99,21 @@ static int ci_equal(const char *a, const char *b)
         a++; b++;
     }
     return (*a == '\0' && *b == '\0');
+}
+
+static int config_get_keyword_id(const char *name) {
+    int i;
+    for (i = 0; i < (int)KW_COUNT; i++) {
+        const char *kw_name = lexer_keyword_name((KeywordId)i);
+        if (kw_name && kw_name[0] != '\0') {
+#ifdef _WIN32
+            if (_stricmp(kw_name, name) == 0) return i;
+#else
+            if (strcasecmp(kw_name, name) == 0) return i;
+#endif
+        }
+    }
+    return -1;
 }
 
 /*
@@ -138,7 +176,7 @@ static void parse_line(ConfigFile *cfg, const char *key,
                     strncpy(prop_buf, dot + 1, 63);
                     prop_buf[63] = '\0';
                     
-                    pid = lexer_get_keyword_id(kw_buf);
+                    pid = config_get_keyword_id(kw_buf);
                     if (pid >= 0) {
                         keyword_prop_set((KeywordId)pid, prop_buf, value);
                     }
@@ -296,10 +334,11 @@ static void config_file_create_default(const char *filename)
 /*
  * config_file_load - Load configuration from the INI file.
  */
-int config_file_load(ConfigFile *cfg)
+int config_file_load(ConfigFile *cfg, const char *exe_path)
 {
     FILE *f = NULL;
     char line[CFG_MAX_LINE];
+    char home_path[512];
     const char *filename;
     const char *home;
 
@@ -312,7 +351,7 @@ int config_file_load(ConfigFile *cfg)
     cfg->found = 0;
     cfg->filepath[0] = '\0';
 
-    filename = config_file_get_name();
+    filename = config_file_get_name(exe_path);
 
     /* 1. Try current directory */
     f = try_open("", filename, cfg->filepath, 256);
