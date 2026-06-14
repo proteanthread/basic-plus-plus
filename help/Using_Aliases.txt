@@ -1,132 +1,146 @@
-USING ALIASES IN BASIC++
-========================
-Version 1.5.0
+# Using Aliases in BASIC++
 
-The ALIAS command lets you redefine keywords, creating custom
-names for built-in commands and functions.
+**Version 1.5.0**
 
+The `ALIAS` command lets you redefine keywords, creating custom names for built-in commands and functions.
 
-1. SYNTAX
-=========
+---
 
-  ALIAS "newname" = KEYWORD
+## 1. Syntax
 
-  Examples:
-    ALIAS "IMPRIMER" = PRINT       French PRINT
-    ALIAS "IMPRIME" = PRINT        Portuguese PRINT
-    ALIAS "EINGABE" = INPUT        German INPUT
-    ALIAS "ESCRIBE" = PRINT        Spanish PRINT
-    ALIAS "WENN" = IF              German IF
-    ALIAS "DANN" = THEN            German THEN
-    ALIAS "P" = PRINT              Shorthand
-    ALIAS "?" = PRINT              Shorthand (if not built-in)
+```basic
+ALIAS "newname" = KEYWORD
+```
 
+**Examples:**
 
-2. HOW IT WORKS
-===============
+```basic
+ALIAS "IMPRIMER" = PRINT       ' French PRINT
+ALIAS "IMPRIME" = PRINT        ' Portuguese PRINT
+ALIAS "EINGABE" = INPUT        ' German INPUT
+ALIAS "ESCRIBE" = PRINT        ' Spanish PRINT
+ALIAS "WENN" = IF              ' German IF
+ALIAS "DANN" = THEN            ' German THEN
+ALIAS "P" = PRINT              ' Shorthand
+ALIAS "?" = PRINT              ' Shorthand (if not built-in)
+```
 
-Aliases are processed by the LEXER, not the parser.  When the
-lexer encounters an identifier, it checks the alias table BEFORE
-the keyword table.  If the identifier matches an alias, the
-alias's target keyword is substituted.
+---
 
-This means aliases work everywhere: statements, expressions,
-function calls, and conditions.
+## 2. How It Works
 
-  ALIAS "SCHREIB" = PRINT
-  ALIAS "WENN" = IF
-  ALIAS "DANN" = THEN
+Aliases are processed by the **lexer**, not the parser. When the lexer encounters an identifier, it checks the alias table **before** the keyword table. If the identifier matches an alias, the alias's target keyword is substituted.
 
-  10 SCHREIB "Hallo Welt!"
-  20 WENN 1 = 1 DANN SCHREIB "Ja!"
+This means aliases work everywhere: statements, expressions, function calls, and conditions.
+
+```basic
+ALIAS "SCHREIB" = PRINT
+ALIAS "WENN" = IF
+ALIAS "DANN" = THEN
+
+10 SCHREIB "Hallo Welt!"
+20 WENN 1 = 1 DANN SCHREIB "Ja!"
+```
 
 This runs exactly as if you had written:
 
-  10 PRINT "Hallo Welt!"
-  20 IF 1 = 1 THEN PRINT "Ja!"
+```basic
+10 PRINT "Hallo Welt!"
+20 IF 1 = 1 THEN PRINT "Ja!"
+```
 
+---
 
-3. MANAGING ALIASES
-===================
+## 3. Managing Aliases
 
-List all active aliases:
-  ALIAS LIST
+| Command | Description |
+|---------|-------------|
+| `ALIAS LIST` | List all active aliases |
+| `ALIAS CLEAR "newname"` | Remove a specific alias |
+| `ALIAS CLEAR ALL` | Remove all aliases |
 
-Remove an alias:
-  ALIAS CLEAR "newname"
+Aliases persist across `RUN` and `NEW`. They are session-wide.
 
-Remove all aliases:
-  ALIAS CLEAR ALL
+---
 
-Aliases persist across RUN and NEW.  They are session-wide.
+## 4. Alias for String Functions
 
+Aliases work with `$` functions too:
 
-4. ALIAS FOR STRING FUNCTIONS
-=============================
+```basic
+ALIAS "GAUCHE" = LEFT$         ' French LEFT$
+ALIAS "DROITE" = RIGHT$        ' French RIGHT$
+ALIAS "MILIEU" = MID$          ' French MID$
+ALIAS "LONGUEUR" = LEN         ' French LEN
 
-Aliases work with $ functions too:
+10 A$ = "Bonjour le monde"
+20 PRINT GAUCHE$(A$, 7)         ' prints "Bonjour"
+```
 
-  ALIAS "GAUCHE" = LEFT$         French LEFT$
-  ALIAS "DROITE" = RIGHT$        French RIGHT$
-  ALIAS "MILIEU" = MID$          French MID$
-  ALIAS "LONGUEUR" = LEN         French LEN
+> **Note:** The `$` is automatically handled when the alias target is a `$`-function keyword.
 
-  10 A$ = "Bonjour le monde"
-  20 PRINT GAUCHE$(A$, 7)         ' prints "Bonjour"
+---
 
-Note: The $ is automatically handled when the alias target
-is a $-function keyword.
+## 5. Use Cases
 
+### A. Localization
 
-5. USE CASES
-============
+Create a fully localized BASIC environment:
 
-A. Localization:
-   Create a fully localized BASIC environment:
+```basic
+ALIAS "AFFICHER" = PRINT
+ALIAS "SAISIR" = INPUT
+ALIAS "ALLER" = GOTO
+ALIAS "SI" = IF
+ALIAS "ALORS" = THEN
+ALIAS "SINON" = ELSE
+ALIAS "FIN" = END
+ALIAS "POUR" = FOR
+ALIAS "A" = TO
+ALIAS "SUIVANT" = NEXT
 
-     ALIAS "AFFICHER" = PRINT
-     ALIAS "SAISIR" = INPUT
-     ALIAS "ALLER" = GOTO
-     ALIAS "SI" = IF
-     ALIAS "ALORS" = THEN
-     ALIAS "SINON" = ELSE
-     ALIAS "FIN" = END
-     ALIAS "POUR" = FOR
-     ALIAS "A" = TO
-     ALIAS "SUIVANT" = NEXT
+10 POUR I = 1 A 10
+20   AFFICHER I
+30 SUIVANT I
+```
 
-     10 POUR I = 1 A 10
-     20   AFFICHER I
-     30 SUIVANT I
+### B. Shorthand
 
-B. Shorthand:
-   Create abbreviations for common commands:
+Create abbreviations for common commands:
 
-     ALIAS "P" = PRINT
-     ALIAS "I" = INPUT
-     ALIAS "G" = GOTO
+```basic
+ALIAS "P" = PRINT
+ALIAS "I" = INPUT
+ALIAS "G" = GOTO
+```
 
-C. Compatibility:
-   Map commands from other BASIC dialects:
+### C. Compatibility
 
-     ALIAS "LOCATE" = PRINT AT     ' Map LOCATE to PRINT AT
-     ALIAS "CLS" = CLS             ' (already exists)
+Map commands from other BASIC dialects:
 
-D. Teaching:
-   Create English-like keywords for beginners:
+```basic
+ALIAS "LOCATE" = PRINT AT     ' Map LOCATE to PRINT AT
+ALIAS "CLS" = CLS             ' (already exists)
+```
 
-     ALIAS "DISPLAY" = PRINT
-     ALIAS "ASK" = INPUT
-     ALIAS "REPEAT" = FOR
-     ALIAS "UNTIL" = NEXT
+### D. Teaching
 
+Create English-like keywords for beginners:
 
-6. LIMITATIONS
-==============
+```basic
+ALIAS "DISPLAY" = PRINT
+ALIAS "ASK" = INPUT
+ALIAS "REPEAT" = FOR
+ALIAS "UNTIL" = NEXT
+```
 
-  - Maximum 32 aliases
-  - Alias names are case-insensitive
-  - Alias names cannot conflict with existing keywords
-  - Aliases cannot chain (alias of an alias)
-  - Aliases are not saved with the program
-  - Alias names: max 31 characters
+---
+
+## 6. Limitations
+
+- Maximum **32 aliases**
+- Alias names are **case-insensitive**
+- Alias names cannot conflict with existing keywords
+- Aliases **cannot chain** (alias of an alias)
+- Aliases are **not saved** with the program
+- Alias names: max **31 characters**

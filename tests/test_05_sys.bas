@@ -1,0 +1,9 @@
+10 REM Part 5: System and Memory
+20 PRINT "Testing System & Memory Access..."
+30 ENVIRON "BPP_TEST=SUCCESS"
+40 POKE 1024, 65
+50 V = PEEK(1024)
+60 IF V <> 65 THEN PRINT "POKE/PEEK ERROR"
+70 PRINT "MEMORY BOUNDS TEST INITIATED"
+80 PRINT "System/Memory tests completed."
+90 END

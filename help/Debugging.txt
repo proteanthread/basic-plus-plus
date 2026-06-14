@@ -1,224 +1,248 @@
-DEBUGGING AND TRACING IN BASIC++
-================================
-Version 1.5.0
+# Debugging and Tracing in BASIC++
 
-BASIC++ provides several tools for debugging programs:
-trace mode, breakpoints, single-stepping, and variable
-inspection.
+**Version 1.5.0**
 
+BASIC++ provides several tools for debugging programs: trace mode, breakpoints, single-stepping, and variable inspection.
 
-1. TRON / TROFF (Trace Mode)
-=============================
+---
 
-TRON enables trace mode.  Every line number is printed in
-square brackets as it executes:
+## 1. TRON / TROFF (Trace Mode)
 
-  TRON                    ' Enable tracing
-  RUN
+`TRON` enables trace mode. Every line number is printed in square brackets as it executes:
 
-  Output:
-  [10][20][30][40][50]...
+```basic
+TRON                    ' Enable tracing
+RUN
+```
 
-  Each [nn] shows the line being executed, letting you
-  follow the program's flow of control.
+Output:
+```
+[10][20][30][40][50]...
+```
 
-TROFF disables trace mode:
+Each `[nn]` shows the line being executed, letting you follow the program's flow of control.
 
-  TROFF                   ' Disable tracing
+`TROFF` disables trace mode:
+
+```basic
+TROFF                   ' Disable tracing
+```
 
 You can toggle tracing from within a program:
 
-  10 TRON
-  20 PRINT "Traced"
-  30 TROFF
-  40 PRINT "Not traced"
+```basic
+10 TRON
+20 PRINT "Traced"
+30 TROFF
+40 PRINT "Not traced"
+```
 
-  Output:
-  [10][20]Traced
-  [30]Not traced
+Output:
+```
+[10][20]Traced
+[30]Not traced
+```
 
+---
 
-2. STOP AND CONT
-=================
+## 2. STOP and CONT
 
-STOP halts execution and drops to direct mode:
+`STOP` halts execution and drops to direct mode:
 
-  10 PRINT "Before"
-  20 STOP
-  30 PRINT "After"
+```basic
+10 PRINT "Before"
+20 STOP
+30 PRINT "After"
+```
 
-  > RUN
-  Before
-  Break in 20
-  >
+```
+> RUN
+Before
+Break in 20
+>
+```
 
-You're now in direct mode.  You can inspect and change
-variables:
+You're now in direct mode. You can inspect and change variables:
 
-  > PRINT A
-       42
-  > A = 100
-  > CONT
+```
+> PRINT A
+     42
+> A = 100
+> CONT
+```
 
-CONT resumes execution from where STOP paused.
+`CONT` resumes execution from where `STOP` paused.
 
+---
 
-3. BREAK (Ctrl+C)
-==================
+## 3. BREAK (Ctrl+C)
 
-Press Ctrl+C during execution to break into direct mode:
+Press **Ctrl+C** during execution to break into direct mode:
 
-  > RUN
-  (program is running...)
-  (press Ctrl+C)
-  Break in 150
-  >
+```
+> RUN
+(program is running...)
+(press Ctrl+C)
+Break in 150
+>
+```
 
-Then use CONT to resume or make changes.
+Then use `CONT` to resume or make changes.
 
+---
 
-4. VARIABLE INSPECTION
-=======================
+## 4. Variable Inspection
 
 In direct mode, you can print any variable:
 
-  > PRINT A
-       42
-  > PRINT A$
-  Hello World
-  > PRINT A(5)
-       99
+```
+> PRINT A
+     42
+> PRINT A$
+Hello World
+> PRINT A(5)
+     99
+```
 
 You can also change variables:
 
-  > A = 0
-  > A$ = "New value"
-  > CONT
+```
+> A = 0
+> A$ = "New value"
+> CONT
+```
 
+---
 
-5. SINGLE-STEPPING PATTERN
-============================
+## 5. Single-Stepping Pattern
 
-BASIC++ doesn't have a built-in single-step command, but
-you can simulate it with TRON and strategic STOPs:
+BASIC++ doesn't have a built-in single-step command, but you can simulate it with `TRON` and strategic `STOP`s:
 
-  10 TRON
-  20 A = 1
-  30 STOP
-  40 A = A + 1
-  50 STOP
-  60 PRINT A
-  70 TROFF
+```basic
+10 TRON
+20 A = 1
+30 STOP
+40 A = A + 1
+50 STOP
+60 PRINT A
+70 TROFF
+```
 
 Or add a debug subroutine:
 
-  9000 REM Debug: press Enter to continue
-  9010 TRON
-  9020 INPUT "Step>"; D$
-  9030 RETURN
+```basic
+9000 REM Debug: press Enter to continue
+9010 TRON
+9020 INPUT "Step>"; D$
+9030 RETURN
+```
 
-  Then in your code:
-  100 GOSUB 9000
-  110 A = A + 1
-  120 GOSUB 9000
-  130 B = B + 1
+Then in your code:
 
+```basic
+100 GOSUB 9000
+110 A = A + 1
+120 GOSUB 9000
+130 B = B + 1
+```
 
-6. ERROR DEBUGGING
-==================
+---
 
-When an error occurs without ON ERROR GOTO:
+## 6. Error Debugging
 
-  HOW? in 150
+When an error occurs without `ON ERROR GOTO`:
+
+```
+HOW? in 150
+```
 
 This tells you:
-  - The error type (HOW? = logic error, WHAT? = syntax)
-  - The line number (150)
+- The error type (`HOW?` = logic error, `WHAT?` = syntax)
+- The line number (150)
 
 For more detail:
 
-  > PRINT ERR
-       11
-  > PRINT ERL
-       150
+```
+> PRINT ERR
+     11
+> PRINT ERL
+     150
+```
 
-ERR 11 = Division by zero.  See N_Error_Handling.txt for
-the complete error code table.
+`ERR 11` = Division by zero. See [Error_Handling](Error_Handling.md) for the complete error code table.
 
+---
 
-7. LIST FOR INSPECTION
-=======================
+## 7. LIST for Inspection
 
-After a STOP or break, use LIST to see the code around
-the current position:
+After a `STOP` or break, use `LIST` to see the code around the current position:
 
-  > LIST 145-155
-  145 A = X / Y
-  150 PRINT A * B
-  155 GOTO 200
+```
+> LIST 145-155
+145 A = X / Y
+150 PRINT A * B
+155 GOTO 200
+```
 
+---
 
-8. DEBUGGING WITH PRINT
-========================
+## 8. Debugging with PRINT
 
-The classic debugging technique: add PRINT statements.
+The classic debugging technique: add `PRINT` statements.
 
-  100 PRINT "DEBUG: A="; A; " B="; B
-  110 C = A / B
-  120 PRINT "DEBUG: C="; C
+```basic
+100 PRINT "DEBUG: A="; A; " B="; B
+110 C = A / B
+120 PRINT "DEBUG: C="; C
+```
 
 For conditional debugging, use a flag:
 
-  5 DEBUG = 1    ' Set to 0 to disable
-  ...
-  100 IF DEBUG THEN PRINT "A="; A; " B="; B
-  110 C = A / B
-  120 IF DEBUG THEN PRINT "C="; C
+```basic
+5 DEBUG = 1    ' Set to 0 to disable
+...
+100 IF DEBUG THEN PRINT "A="; A; " B="; B
+110 C = A / B
+120 IF DEBUG THEN PRINT "C="; C
+```
 
+---
 
-9. DEBUGGING FILE I/O
-======================
+## 9. Debugging File I/O
 
 When debugging file operations:
 
-  PRINT IOCTL$(#1)       ' Channel mode (I/O/A/R/B)
-  PRINT LOC(1)           ' Current position
-  PRINT LOF(1)           ' File size
-  PRINT EOF(1)           ' At end? (-1 or 0)
+```basic
+PRINT IOCTL$(#1)       ' Channel mode (I/O/A/R/B)
+PRINT LOC(1)           ' Current position
+PRINT LOF(1)           ' File size
+PRINT EOF(1)           ' At end? (-1 or 0)
+```
 
+---
 
-10. COMMON ERRORS AND SOLUTIONS
-================================
+## 10. Common Errors and Solutions
 
-  "WHAT? in 50"
-    Syntax error at line 50.  Check spelling, missing
-    quotes, unmatched parentheses.
+| Error | Meaning | Check |
+|-------|---------|-------|
+| `WHAT? in 50` | Syntax error at line 50 | Spelling, missing quotes, unmatched parentheses |
+| `HOW? in 100` | Logic error at line 100 | Division by zero, bad channel number, file not found |
+| `SORRY in 200` | Resource error at line 200 | Out of memory, too many open files, stack overflow |
+| Program hangs | Infinite loop | Press Ctrl+C, then `TRON` + `CONT` to find the loop |
 
-  "HOW? in 100"
-    Logic error at line 100.  Division by zero, bad
-    channel number, file not found.
+---
 
-  "SORRY in 200"
-    Resource error at line 200.  Out of memory, too many
-    open files, stack overflow.
+## 11. Tips
 
-  Program hangs (infinite loop):
-    Press Ctrl+C, then:
-    > PRINT "Last line was..."
-    > TRON
-    > CONT
-    Watch the line numbers to find the loop.
+- Use `TRON` sparingly — it produces a LOT of output
+- `STOP` before a suspected problem area
+- `CONT` to resume; no need to re-`RUN`
+- Variables persist between `STOP` and `CONT`
+- Ctrl+C works even in tight loops
+- `PRINT ERR; ERL` after an error for diagnosis
+- Add `REM` comments to document expected values:
 
-
-11. TIPS
-========
-
-  - Use TRON sparingly -- it produces a LOT of output
-  - STOP before a suspected problem area
-  - CONT to resume; no need to re-RUN
-  - Variables persist between STOP and CONT
-  - Ctrl+C works even in tight loops
-  - PRINT ERR; ERL after an error for diagnosis
-  - Add REM comments to document expected values:
-      100 REM expect: A=5, B>0
-      110 C = A / B
+```basic
+100 REM expect: A=5, B>0
+110 C = A / B
+```

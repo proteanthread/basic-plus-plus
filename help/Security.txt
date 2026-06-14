@@ -1,188 +1,174 @@
-SECURITY AND SANDBOXING IN BASIC++
-==================================
-Version 1.5.0
+# Security and Sandboxing in BASIC++
 
-BASIC++ includes a security model that restricts what programs
-can do.  This is essential when running untrusted BASIC code.
+**Version 1.5.0**
 
+BASIC++ includes a security model that restricts what programs can do. This is essential when running untrusted BASIC code.
 
-1. SECURITY LEVELS
-===================
+---
 
-  Level 0: UNRESTRICTED (default)
-    Everything is allowed.  Full system access.
+## 1. Security Levels
 
-  Level 1: CAUTIOUS
-    Dangerous memory operations blocked.
-    PEEK, POKE restricted to virtual memory only.
-    DEF USR restricted.
+| Level | Name | Description |
+|-------|------|-------------|
+| **0** | Unrestricted | Everything is allowed. Full system access. *(default)* |
+| **1** | Cautious | Dangerous memory operations blocked. `PEEK`/`POKE` restricted to virtual memory only. `DEF USR` restricted. |
+| **2** | Sandboxed | All I/O restricted. `SHELL`, `SHELL$`, `EXEC` blocked. File operations limited to current directory. No `KILL`, `MKDIR`, `RMDIR`, `CHDIR`. |
+| **3** | Locked Down | Only pure computation allowed. No file I/O, no shell, no `PEEK`/`POKE`. Only `PRINT` to console. No `ENVIRON$`. Maximum isolation. |
 
-  Level 2: SANDBOXED
-    All I/O restricted.
-    SHELL, SHELL$, EXEC blocked.
-    File operations limited to current directory.
-    No KILL, MKDIR, RMDIR, CHDIR.
+---
 
-  Level 3: LOCKED DOWN
-    Only pure computation allowed.
-    No file I/O, no shell, no PEEK/POKE.
-    Only PRINT to console.
-    No ENVIRON$.
-    Maximum isolation.
+## 2. Setting Security Level
 
+```basic
+SECURITY LEVEL 0         ' Unrestricted
+SECURITY LEVEL 1         ' Cautious
+SECURITY LEVEL 2         ' Sandboxed
+SECURITY LEVEL 3         ' Locked down
 
-2. SETTING SECURITY LEVEL
-===========================
-
-  SECURITY LEVEL 0         Unrestricted
-  SECURITY LEVEL 1         Cautious
-  SECURITY LEVEL 2         Sandboxed
-  SECURITY LEVEL 3         Locked down
-
-  SANDBOX                  Shortcut for SECURITY LEVEL 2
+SANDBOX                  ' Shortcut for SECURITY LEVEL 2
+```
 
 Security can be set in direct mode or in a program:
 
-  10 SECURITY LEVEL 2
-  20 ' Rest of program runs sandboxed
+```basic
+10 SECURITY LEVEL 2
+20 ' Rest of program runs sandboxed
+```
 
-IMPORTANT: Security level can only be INCREASED, never
-decreased, within a program.  Once you sandbox, you cannot
-un-sandbox.  Only a NEW or direct-mode command at level 0
-can lower the level.
+> **Important:** Security level can only be **increased**, never decreased, within a program. Once you sandbox, you cannot un-sandbox. Only a `NEW` or direct-mode command at level 0 can lower the level.
 
+---
 
-3. FUNCTION SAFETY CATEGORIES
-===============================
+## 3. Function Safety Categories
 
 Every built-in function has a safety classification:
 
-  FSAFE_PURE:
-    No side effects.  Always allowed.
-    Examples: ABS, LEN, LEFT$, MID$, SIN, COS, VAL, STR$
+| Category | Description | Blocked At | Examples |
+|----------|-------------|------------|----------|
+| `FSAFE_PURE` | No side effects. Always allowed. | Never | `ABS`, `LEN`, `LEFT$`, `MID$`, `SIN`, `COS`, `VAL`, `STR$` |
+| `FSAFE_STATE` | Reads or modifies interpreter state. | Level 3 | `RND`, `FRE`, `TIMER`, `POS`, `CSRLIN` |
+| `FSAFE_IO` | Performs I/O operations. | Level 2+ | `SHELL$`, `ENVIRON$`, `OPEN`, `CLOSE` |
+| `FSAFE_UNSAFE` | Direct system access. | Level 1+ | `PEEK`, `POKE`, `INP`, `OUT`, `DEF USR` |
 
-  FSAFE_STATE:
-    Reads or modifies interpreter state.
-    Blocked at level 3.
-    Examples: RND, FRE, TIMER, POS, CSRLIN
+---
 
-  FSAFE_IO:
-    Performs I/O operations.
-    Blocked at level 2+.
-    Examples: SHELL$, ENVIRON$, OPEN, CLOSE
+## 4. What's Blocked at Each Level
 
-  FSAFE_UNSAFE:
-    Direct system access.
-    Blocked at level 1+.
-    Examples: PEEK, POKE, INP, OUT, DEF USR
+| Feature | L0 | L1 | L2 | L3 |
+|---------|:--:|:--:|:--:|:--:|
+| `PRINT` (console) | ✅ | ✅ | ✅ | ✅ |
+| `INPUT` (keyboard) | ✅ | ✅ | ✅ | ✅ |
+| Math functions | ✅ | ✅ | ✅ | ✅ |
+| String functions | ✅ | ✅ | ✅ | ✅ |
+| Arrays / `DIM` | ✅ | ✅ | ✅ | ✅ |
+| `FOR`/`NEXT`/`WHILE`/`WEND` | ✅ | ✅ | ✅ | ✅ |
+| `GOSUB`/`RETURN` | ✅ | ✅ | ✅ | ✅ |
+| `RND` / `RANDOMIZE` | ✅ | ✅ | ✅ | ❌ |
+| `TIMER` / `DATE$` / `TIME$` | ✅ | ✅ | ✅ | ❌ |
+| `PEEK` / `POKE` | ✅ | ❌ | ❌ | ❌ |
+| `INP` / `OUT` | ✅ | ❌ | ❌ | ❌ |
+| `DEF USR` / `USR` | ✅ | ❌ | ❌ | ❌ |
+| `OPEN` / `CLOSE` | ✅ | ✅ | Limited | ❌ |
+| `PRINT #n` / `INPUT #n` | ✅ | ✅ | Limited | ❌ |
+| `KILL` / `NAME` | ✅ | ✅ | ❌ | ❌ |
+| `MKDIR` / `RMDIR` / `CHDIR` | ✅ | ✅ | ❌ | ❌ |
+| `SHELL` / `SHELL$` | ✅ | ✅ | ❌ | ❌ |
+| `EXEC` | ✅ | ✅ | ❌ | ❌ |
+| `ENVIRON$` | ✅ | ✅ | ❌ | ❌ |
+| `SAVE` / `LOAD` / `MERGE` | ✅ | ✅ | Limited | ❌ |
+| `CHAIN` | ✅ | ✅ | ❌ | ❌ |
 
+---
 
-4. WHAT'S BLOCKED AT EACH LEVEL
-================================
-
-  Feature               L0   L1   L2   L3
-  -------               --   --   --   --
-  PRINT (console)       OK   OK   OK   OK
-  INPUT (keyboard)      OK   OK   OK   OK
-  Math functions         OK   OK   OK   OK
-  String functions       OK   OK   OK   OK
-  Arrays / DIM           OK   OK   OK   OK
-  FOR/NEXT/WHILE/WEND   OK   OK   OK   OK
-  GOSUB/RETURN           OK   OK   OK   OK
-  RND / RANDOMIZE        OK   OK   OK   Blocked
-  TIMER / DATE$ / TIME$  OK   OK   OK   Blocked
-  PEEK / POKE            OK   Blocked  Blocked  Blocked
-  INP / OUT              OK   Blocked  Blocked  Blocked
-  DEF USR / USR          OK   Blocked  Blocked  Blocked
-  OPEN / CLOSE           OK   OK   Limited  Blocked
-  PRINT #n / INPUT #n    OK   OK   Limited  Blocked
-  KILL / NAME            OK   OK   Blocked  Blocked
-  MKDIR / RMDIR / CHDIR  OK   OK   Blocked  Blocked
-  SHELL / SHELL$         OK   OK   Blocked  Blocked
-  EXEC                   OK   OK   Blocked  Blocked
-  ENVIRON$               OK   OK   Blocked  Blocked
-  SAVE / LOAD / MERGE    OK   OK   Limited  Blocked
-  CHAIN                  OK   OK   Blocked  Blocked
-
-
-5. LIMITED FILE ACCESS (Level 2)
-================================
+## 5. Limited File Access (Level 2)
 
 At level 2, file operations are restricted to:
-  - Current directory only (no path traversal)
-  - Cannot delete files (KILL blocked)
-  - Cannot create directories (MKDIR blocked)
-  - Cannot change directory (CHDIR blocked)
-  - Read and write allowed in current dir
-  - SAVE/LOAD/MERGE only in current dir
+- **Current directory only** (no path traversal)
+- Cannot delete files (`KILL` blocked)
+- Cannot create directories (`MKDIR` blocked)
+- Cannot change directory (`CHDIR` blocked)
+- Read and write allowed in current dir
+- `SAVE`/`LOAD`/`MERGE` only in current dir
 
+---
 
-6. USE CASES
-============
+## 6. Use Cases
 
-A. Running student homework:
-  10 SECURITY LEVEL 2
-  20 ' Students can compute but can't damage the system
-  30 CHAIN "student_program.bas"
+### A. Running student homework
 
-B. Online BASIC playground:
-  SECURITY LEVEL 3
-  ' Only pure computation -- safe for web execution
+```basic
+10 SECURITY LEVEL 2
+20 ' Students can compute but can't damage the system
+30 CHAIN "student_program.bas"
+```
 
-C. Batch processing with limited I/O:
-  10 SECURITY LEVEL 1
-  20 ' Can do file I/O but can't POKE arbitrary memory
-  30 OPEN "data.txt" FOR INPUT AS #1
-  40 ' ...process data...
-  50 CLOSE #1
+### B. Online BASIC playground
 
-D. Plugin testing:
-  10 SECURITY LEVEL 2
-  20 ' Test untrusted module code safely
-  30 IMPORT untrusted_module
+```basic
+SECURITY LEVEL 3
+' Only pure computation -- safe for web execution
+```
 
+### C. Batch processing with limited I/O
 
-7. SECURITY ERRORS
-===================
+```basic
+10 SECURITY LEVEL 1
+20 ' Can do file I/O but can't POKE arbitrary memory
+30 OPEN "data.txt" FOR INPUT AS #1
+40 ' ...process data...
+50 CLOSE #1
+```
+
+### D. Plugin testing
+
+```basic
+10 SECURITY LEVEL 2
+20 ' Test untrusted module code safely
+30 IMPORT untrusted_module
+```
+
+---
+
+## 7. Security Errors
 
 When a blocked operation is attempted:
 
-  "Permission denied in 50"
+```
+"Permission denied in 50"
+```
 
-This is error code 70.  The error can be caught with
-ON ERROR GOTO:
+This is error code **70**. The error can be caught with `ON ERROR GOTO`:
 
-  10 ON ERROR GOTO 100
-  20 SECURITY LEVEL 2
-  30 SHELL "dir"              ' Blocked!
-  40 END
-  100 IF ERR = 70 THEN PRINT "Not allowed!" : RESUME NEXT
+```basic
+10 ON ERROR GOTO 100
+20 SECURITY LEVEL 2
+30 SHELL "dir"              ' Blocked!
+40 END
+100 IF ERR = 70 THEN PRINT "Not allowed!" : RESUME NEXT
+```
 
+---
 
-8. IMPLEMENTATION NOTES
-========================
+## 8. Implementation Notes
 
-The security system is implemented in security.c/.h.
-It checks the current security level before executing
-any sensitive operation.
+The security system is implemented in `security.c`/`.h`. It checks the current security level before executing any sensitive operation.
 
-For C module authors: Set the appropriate FSAFE_* level
-on your registered functions.  The security system will
-automatically enforce the restrictions.
+For C module authors: Set the appropriate `FSAFE_*` level on your registered functions. The security system will automatically enforce the restrictions.
 
-  FSAFE_PURE     Always OK
-  FSAFE_STATE    Blocked at level 3
-  FSAFE_IO       Blocked at level 2+
-  FSAFE_UNSAFE   Blocked at level 1+
+| Constant | Blocked At |
+|----------|------------|
+| `FSAFE_PURE` | Never |
+| `FSAFE_STATE` | Level 3 |
+| `FSAFE_IO` | Level 2+ |
+| `FSAFE_UNSAFE` | Level 1+ |
 
+---
 
-9. BEST PRACTICES
-==================
+## 9. Best Practices
 
-  - Set security level EARLY in your program
-  - Use the lowest level that meets your needs
-  - Remember: level can go UP but not DOWN
-  - Test at each security level to verify behavior
-  - Use ON ERROR GOTO to handle permission errors gracefully
-  - For maximum safety, combine SECURITY LEVEL 3 with
-    a restricted dialect (e.g., Tiny BASIC)
+- Set security level **early** in your program
+- Use the **lowest level** that meets your needs
+- Remember: level can go **up** but not **down**
+- Test at each security level to verify behavior
+- Use `ON ERROR GOTO` to handle permission errors gracefully
+- For maximum safety, combine `SECURITY LEVEL 3` with a restricted dialect (e.g., Tiny BASIC)

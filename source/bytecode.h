@@ -80,6 +80,10 @@ typedef struct BppHeader {
 /* --- Bytecode API ---
  */
 
+typedef int (*DetokenizerFn)(const unsigned char *data, int len, char *out_text, int max_out);
+extern DetokenizerFn g_custom_detokenizer;
+void bytecode_set_detokenizer(DetokenizerFn fn);
+
 /*
  * bpp_save - Serialize the program store to a .bpp file.
  *

@@ -1,227 +1,258 @@
-BASIC++ USER'S GUIDE
-====================
-Version 1.5.0
+# BASIC++ User's Guide
 
-TABLE OF CONTENTS
------------------
-  1. Introduction
-  2. Starting BASIC++
-  3. Direct Mode vs. Program Mode
-  4. Entering Programs
-  5. Editing Programs
-  6. Running Programs
-  7. Saving and Loading
-  8. The Command Reference
-  9. Environment
-  10. Tips and Tricks
+**Version 1.5.0**
 
+## Table of Contents
 
-1. INTRODUCTION
-===============
+1. [Introduction](#1-introduction)
+2. [Starting BASIC++](#2-starting-basic)
+3. [Direct Mode vs. Program Mode](#3-direct-mode-vs-program-mode)
+4. [Entering Programs](#4-entering-programs)
+5. [Editing Programs](#5-editing-programs)
+6. [Running Programs](#6-running-programs)
+7. [Saving and Loading](#7-saving-and-loading)
+8. [The Command Reference](#8-the-command-reference)
+9. [Environment](#9-environment)
+10. [Tips and Tricks](#10-tips-and-tricks)
 
-BASIC++ is an interactive BASIC interpreter.  When you start it,
-you see a "Ready." prompt and can type commands immediately.  This
-is called DIRECT MODE -- commands execute as soon as you press Enter.
+---
 
-To write a program, you prefix each line with a number.  These
-numbered lines are stored in memory and executed when you type RUN.
-This is called PROGRAM MODE.
+## 1. Introduction
 
-BASIC++ supports multiple BASIC dialects.  By default it starts in
-its own extended dialect (BPP), but you can switch to GW-BASIC,
-QBasic, TRS-80 CoCo, Tiny BASIC, or Dartmouth BASIC at any time.
+BASIC++ is an interactive BASIC interpreter. When you start it, you see a `Ready.` prompt and can type commands immediately. This is called **direct mode** — commands execute as soon as you press Enter.
 
+To write a program, you prefix each line with a number. These numbered lines are stored in memory and executed when you type `RUN`. This is called **program mode**.
 
-2. STARTING BASIC++
-===================
+BASIC++ supports multiple BASIC dialects. By default it starts in its own extended dialect (BPP), but you can switch to GW-BASIC, QBasic, TRS-80 CoCo, Tiny BASIC, or Dartmouth BASIC at any time.
 
-  basicpp                     Start interactive REPL
-  basicpp myfile.bas          Load and run a file
-  basicpp < commands.txt      Pipe commands from a file
+---
+
+## 2. Starting BASIC++
+
+```bash
+basicpp                     # Start interactive REPL
+basicpp myfile.bas          # Load and run a file
+basicpp < commands.txt      # Pipe commands from a file
+```
 
 On startup you see:
 
-  BASIC++ 0.21.0
-  @COPYLEFT ALL WRONGS RESERVED
-  Jun  7 2026
+```
+BASIC++ 0.21.0
+@COPYLEFT ALL WRONGS RESERVED
+Jun  7 2026
 
-  Ready.
-  >
+Ready.
+>
+```
 
-The ">" is your prompt.  Type any command or program line here.
+The `>` is your prompt. Type any command or program line here.
 
+---
 
-3. DIRECT MODE VS. PROGRAM MODE
-================================
+## 3. Direct Mode vs. Program Mode
 
-DIRECT MODE:
-  Type a command without a line number.  It runs immediately.
+### Direct Mode
 
-  > PRINT 2 + 2
-       4
-  > PRINT "Hello"
-  Hello
+Type a command without a line number. It runs immediately.
 
-PROGRAM MODE:
-  Type a line with a number.  It is stored, not executed.
+```
+> PRINT 2 + 2
+     4
+> PRINT "Hello"
+Hello
+```
 
-  > 10 PRINT "Hello"
-  > 20 PRINT "World"
-  > RUN
-  Hello
-  World
+### Program Mode
 
-You can mix both freely.  Variables set in direct mode are
-available to programs, and vice versa.
+Type a line with a number. It is stored, not executed.
 
+```
+> 10 PRINT "Hello"
+> 20 PRINT "World"
+> RUN
+Hello
+World
+```
 
-4. ENTERING PROGRAMS
-====================
+You can mix both freely. Variables set in direct mode are available to programs, and vice versa.
+
+---
+
+## 4. Entering Programs
 
 Lines are stored in ascending order by line number.
 
-  10 PRINT "First"
-  20 PRINT "Second"
-  30 PRINT "Third"
+```basic
+10 PRINT "First"
+20 PRINT "Second"
+30 PRINT "Third"
+```
 
 To insert a line between existing lines:
 
-  15 PRINT "Between first and second"
+```basic
+15 PRINT "Between first and second"
+```
 
 To replace a line, just type a new line with the same number:
 
-  20 PRINT "Replaced!"
+```basic
+20 PRINT "Replaced!"
+```
 
 To delete a line, type its number alone:
 
-  15
+```
+15
+```
 
-The RENUM command renumbers all lines:
+The `RENUM` command renumbers all lines:
 
-  RENUM               Renumber starting at 10, step 10
-  RENUM 100           Renumber starting at 100
-  RENUM 100, 10       Start at 100, step 10
+```
+RENUM               ' Renumber starting at 10, step 10
+RENUM 100           ' Renumber starting at 100
+RENUM 100, 10       ' Start at 100, step 10
+```
 
+---
 
-5. EDITING PROGRAMS
-===================
+## 5. Editing Programs
 
-  LIST                List entire program
-  LIST 10-50          List lines 10 through 50
-  LIST 30             List only line 30
-  DELETE 10-50        Delete lines 10 through 50
-  NEW                 Delete entire program and clear variables
-  EDIT n              (future) Line editor for line n
+| Command | Description |
+|---------|-------------|
+| `LIST` | List entire program |
+| `LIST 10-50` | List lines 10 through 50 |
+| `LIST 30` | List only line 30 |
+| `DELETE 10-50` | Delete lines 10 through 50 |
+| `NEW` | Delete entire program and clear variables |
+| `EDIT n` | *(future)* Line editor for line n |
 
+---
 
-6. RUNNING PROGRAMS
-===================
+## 6. Running Programs
 
-  RUN                 Execute from the first line
-  RUN 100             Execute starting at line 100
-  CONT                Continue after a STOP or Ctrl+C
-  STOP                Pause execution (resume with CONT)
-  END                 Terminate program
+| Command | Description |
+|---------|-------------|
+| `RUN` | Execute from the first line |
+| `RUN 100` | Execute starting at line 100 |
+| `CONT` | Continue after a STOP or Ctrl+C |
+| `STOP` | Pause execution (resume with CONT) |
+| `END` | Terminate program |
 
-During execution, press Ctrl+C to break into direct mode.
+During execution, press **Ctrl+C** to break into direct mode.
 
+---
 
-7. SAVING AND LOADING
-=====================
+## 7. Saving and Loading
 
-  SAVE "myfile.bas"   Save program as ASCII text
-  LOAD "myfile.bas"   Clear memory and load program
-  MERGE "lib.bas"     Merge file into current program
-  CHAIN "next.bas"    Load and run, preserving variables
-  FILES               List files in current directory
-  KILL "old.bas"      Delete a file
-  NAME "a" AS "b"     Rename a file
-  CHDIR "path"        Change directory
-  MKDIR "dir"         Create directory
-  RMDIR "dir"         Remove directory
+| Command | Description |
+|---------|-------------|
+| `SAVE "myfile.bas"` | Save program as ASCII text |
+| `LOAD "myfile.bas"` | Clear memory and load program |
+| `MERGE "lib.bas"` | Merge file into current program |
+| `CHAIN "next.bas"` | Load and run, preserving variables |
+| `FILES` | List files in current directory |
+| `KILL "old.bas"` | Delete a file |
+| `NAME "a" AS "b"` | Rename a file |
+| `CHDIR "path"` | Change directory |
+| `MKDIR "dir"` | Create directory |
+| `RMDIR "dir"` | Remove directory |
 
+---
 
-8. THE COMMAND REFERENCE
-========================
+## 8. The Command Reference
 
-System Commands (direct mode only):
-  LIST      LIST lines
-  RUN       Execute program
-  NEW       Clear program and variables
-  SAVE      Save to file
-  LOAD      Load from file
-  MERGE     Merge file
-  RENUM     Renumber lines
-  DELETE    Delete lines
-  FILES     Directory listing
-  SYSTEM    Exit BASIC++
-  SELFTEST  Run built-in tests
-  HELP      Show help on a keyword
-  DIALECT   Switch BASIC dialect
-  ALIAS     Define keyword alias
-  MEMMAP    Select virtual memory map
+### System Commands (direct mode only)
 
-Immediate Commands (direct or program mode):
-  PRINT     Output to screen
-  INPUT     Read from keyboard
-  LET       Assign variable (optional keyword)
-  IF/THEN   Conditional execution
-  FOR/NEXT  Counting loop
-  WHILE/WEND  Conditional loop
-  GOTO      Unconditional branch
-  GOSUB     Call subroutine
-  RETURN    Return from subroutine
-  DIM       Declare array
-  DEF FN    Define function
-  REM / '   Comment
-  DATA      Inline data
-  READ      Read from DATA
-  RESTORE   Reset DATA pointer
-  ON        Computed GOTO/GOSUB
-  STOP      Pause execution
-  END       Terminate program
+| Command | Description |
+|---------|-------------|
+| `LIST` | List lines |
+| `RUN` | Execute program |
+| `NEW` | Clear program and variables |
+| `SAVE` | Save to file |
+| `LOAD` | Load from file |
+| `MERGE` | Merge file |
+| `RENUM` | Renumber lines |
+| `DELETE` | Delete lines |
+| `FILES` | Directory listing |
+| `SYSTEM` | Exit BASIC++ |
+| `SELFTEST` | Run built-in tests |
+| `HELP` | Show help on a keyword |
+| `DIALECT` | Switch BASIC dialect |
+| `ALIAS` | Define keyword alias |
+| `MEMMAP` | Select virtual memory map |
 
-See S_Quick_Reference.txt for the complete alphabetical list.
+### Immediate Commands (direct or program mode)
 
+| Command | Description |
+|---------|-------------|
+| `PRINT` | Output to screen |
+| `INPUT` | Read from keyboard |
+| `LET` | Assign variable (optional keyword) |
+| `IF/THEN` | Conditional execution |
+| `FOR/NEXT` | Counting loop |
+| `WHILE/WEND` | Conditional loop |
+| `GOTO` | Unconditional branch |
+| `GOSUB` | Call subroutine |
+| `RETURN` | Return from subroutine |
+| `DIM` | Declare array |
+| `DEF FN` | Define function |
+| `REM` / `'` | Comment |
+| `DATA` | Inline data |
+| `READ` | Read from DATA |
+| `RESTORE` | Reset DATA pointer |
+| `ON` | Computed GOTO/GOSUB |
+| `STOP` | Pause execution |
+| `END` | Terminate program |
 
-9. ENVIRONMENT
-==============
+See [Quick_Reference](Quick_Reference.md) for the complete alphabetical list.
 
-Screen Defaults:
-  80 columns x 25 rows (adjustable with WIDTH)
+---
 
-Numeric Precision:
-  Integers: 32-bit signed (-2147483648 to 2147483647)
-  Floats:   64-bit double precision
+## 9. Environment
 
-String Limits:
-  Maximum string length: 255 characters
-  String pool: 32 KB
+| Property | Value |
+|----------|-------|
+| Screen defaults | 80 columns × 25 rows (adjustable with `WIDTH`) |
+| Integer precision | 32-bit signed (−2,147,483,648 to 2,147,483,647) |
+| Float precision | 64-bit double precision |
+| Max string length | 255 characters |
+| String pool | 32 KB |
+| Numeric variables | 26 (A–Z) |
+| String variables | 26 (A$–Z$) |
+| Named variables | Up to 40 chars (extended dialects) |
+| DIM arrays | Up to 256 per program |
 
-Variables:
-  26 numeric (A-Z), 26 string (A$-Z$)
-  Named variables in extended dialects (up to 40 chars)
-  DIM arrays up to 256 per program
+---
 
+## 10. Tips and Tricks
 
-10. TIPS AND TRICKS
-===================
+**Multiple statements on one line:**
+```basic
+10 A=1 : B=2 : PRINT A+B
+```
 
-Multiple statements on one line:
-  10 A=1 : B=2 : PRINT A+B
+**Shorthand for REM:**
+```basic
+10 ' This is a comment
+```
 
-Shorthand for REM:
-  10 ' This is a comment
+**Hex and octal literals:**
+```basic
+PRINT &HFF        ' 255
+PRINT &O77        ' 63
+PRINT &B1010      ' 10
+```
 
-Hex and octal literals:
-  PRINT &HFF        255
-  PRINT &O77        63
-  PRINT &B1010      10
+**Quick exit:**
+```
+SYSTEM            ' or Ctrl+Z (Windows), Ctrl+D (Unix)
+```
 
-Quick exit:
-  SYSTEM            or Ctrl+Z (Windows), Ctrl+D (Unix)
-
-Get help on any keyword:
-  HELP PRINT
-  HELP FOR
-  HELP OPEN
+**Get help on any keyword:**
+```
+HELP PRINT
+HELP FOR
+HELP OPEN
+```

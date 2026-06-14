@@ -291,12 +291,26 @@ void dialect_apply(void);
  * When OFF (default), all keywords from all dialects are accepted.
  *
  * Activated via: OPTION STRICT (enable)
- * OPTION STRICT OFF (disable)
+ * dialect_set_strict - Set the strict mode flag.
+ *
+ * 1 = strict mode (only active dialect keywords), 0 = union mode.
  */
-void dialect_set_strict(int on);
+void dialect_set_strict(int strict);
 
 /*
  * dialect_is_strict - Query whether strict mode is active.
+ */
+int dialect_is_strict(void);
+
+/*
+ * dialect_default_security - Get the recommended default security level.
+ *
+ * Minimalist dialects run securely under RESTRICTED, while heavy
+ * systems request STANDARD or OPEN.
+ */
+int dialect_default_security(DialectId id);
+
+/*
  */
 int dialect_is_strict(void);
 

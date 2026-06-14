@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include "security.h"
 #include "module.h"
+#include "platform.h"
 
 /* --- State ---
  */
@@ -35,31 +36,42 @@ static SecLevel current_level = SEC_OPEN;
  * allowed[level][operation] - 1 = permitted, 0 = denied
  */
 static const int allowed[SEC_COUNT][SECOP_COUNT] = {
- /* SEC_OPEN: all operations permitted */
- { 1, 1, 1, 1, 1, 1 },
- /* SEC_STANDARD: file I/O + modules yes, compile/chain/system no */
- { 1, 1, 0, 0, 0, 1 },
- /* SEC_RESTRICTED: nothing sensitive permitted */
- { 0, 0, 0, 0, 0, 0 }
+    /* SEC_OPEN: all operations permitted */
+    { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+    /* SEC_STANDARD: file I/O + modules + basic network/vdev yes; system/eval/compile/chain no */
+    { 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1 },
+    /* SEC_RESTRICTED: nothing sensitive permitted */
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
 
 /* --- Operation names (for error messages) ---
  */
 static const char *op_names[SECOP_COUNT] = {
- "file read",
- "file write",
- "compile",
- "chain",
- "system",
- "module activation"
+    "file read",
+    "file write",
+    "file management",
+    "block I/O",
+    "stream I/O",
+    "compile",
+    "chain",
+    "system",
+    "module activation",
+    "usb access",
+    "virtual device access",
+    "terminal intercept",
+    "console hijack",
+    "dynamic string evaluation",
+    "network sockets",
+    "memory read (PEEK)",
+    "memory write (POKE)"
 };
 
 /* --- Level names ---
  */
 static const char *level_names[SEC_COUNT] = {
- "OPEN",
- "STANDARD",
- "RESTRICTED"
+    "OPEN",
+    "STANDARD",
+    "RESTRICTED"
 };
 
 /* --- security_init ---
@@ -133,25 +145,58 @@ int security_check(SecOperation op, int line_num)
  */
 int security_module_allowed(unsigned int capabilities)
 {
- if (current_level == SEC_OPEN) return 1;
+    if (current_level == SEC_OPEN) return 1;
 
- if (current_level == SEC_RESTRICTED) {
- /* Only pure math/string modules allowed */
- if (capabilities & (CAP_IO | CAP_FILE | CAP_SYSTEM |
- CAP_GRAPHICS | CAP_SOUND |
- CAP_NETWORK)) {
- return 0;
- }
- return 1;
- }
+    if (current_level == SEC_RESTRICTED) {
+        /* Only pure math/string modules allowed */
+        if (capabilities & (CAP_IO | CAP_FILE | CAP_SYSTEM |
+                            CAP_GRAPHICS | CAP_SOUND |
+                            CAP_NETWORK | CAP_USB)) {
+            return 0;
+        }
+        return 1;
+    }
 
- if (current_level == SEC_STANDARD) {
- /* No system-level modules */
- if (capabilities & CAP_SYSTEM) {
- return 0;
- }
- return 1;
- }
+    if (current_level == SEC_STANDARD) {
+        /* No system-level modules */
+        if (capabilities & CAP_SYSTEM) {
+            return 0;
+        }
+        return 1;
+    }
 
- return 1;
+    return 1;
+}
+
+/* --- security_check_mem ---
+ * Validates hardware memory bounds.
+ */
+int security_check_mem(unsigned long address, int size)
+{
+    const PlatformInfo *plat;
+    
+    if (current_level == SEC_OPEN) return 0;
+
+    plat = platform_get_info();
+    if (plat->id == PLAT_DOS) {
+        /* FreeDOS: Allow hardware memory access under STANDARD */
+        if (current_level == SEC_STANDARD) return 0;
+    } else {
+        /* Windows / Linux: Native pointer access is extremely dangerous.
+         * Unless running in SEC_OPEN, we restrict memory mapping tightly.
+         * For now, we will deny all non-sandboxed memory requests unless SEC_OPEN.
+         * (If BASIC++ has a simulated 64K memory array mapped at 0x0000, 
+         * we would check bounds against that block here.)
+         */
+        
+        /* If it's a simulated pointer range (e.g., 0x0000 to 0xFFFF)
+           we can allow it. But real pointer numbers are blocked. */
+        if (address < 0x10000) {
+            return 0; /* Simulated 64K RAM block */
+        }
+    }
+
+    printf("SORRY? Security: memory access at 0x%lX not permitted at level %s\n",
+           address, level_names[current_level]);
+    return -1;
 }

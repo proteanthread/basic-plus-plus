@@ -11,6 +11,7 @@
  */
 
 #include "parser_internal.h"
+#include "pcode.h"
 
 /*
  * pi_parse_renum - Handle RENUM command.
@@ -347,6 +348,7 @@ void pi_parse_compile(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  {
  char fname[MAX_LINE_LENGTH + 1];
+ char target[MAX_LINE_LENGTH + 1] = "";
  if (lex->current.type != TOK_STRING) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -359,11 +361,35 @@ void pi_parse_compile(Lexer *lex, RuntimeState *rt, int line_num)
  (size_t)lex->current.str_length);
  fname[lex->current.str_length] = '\0';
  lexer_next(lex);
- compiler_compile(rt->program, fname);
- return;
+
+  if (lex->current.type == TOK_COMMA) {
+      lexer_next(lex);
+      if (lex->current.type != TOK_STRING || lex->current.str_length >= MAX_LINE_LENGTH) {
+          error_raise(ERR_WHAT, line_num);
+          return;
+      }
+      memcpy(target, lex->current.str_start, (size_t)lex->current.str_length);
+      target[lex->current.str_length] = '\0';
+      lexer_next(lex);
+  }
+
+  {
+      int len = (int)strlen(fname);
+      if (len >= 4 && (strcasecmp(&fname[len - 4], ".bpp") == 0)) {
+          PCodeProgram pcode;
+          if (pcode_compile(rt->program, &pcode) == 0) {
+              printf("Compiled %d PCode instructions.\n", pcode.count);
+              pcode_free(&pcode);
+          } else {
+              printf("Failed to compile PCode.\n");
+          }
+      } else {
+          compiler_compile(rt->program, fname, target);
+      }
+  }
+  return;
  }
- /* ===== Bytecode commands ===== */
-}
+}/* ===== Bytecode commands ===== */
 
 /*
  * pi_parse_bsave - Handle BSAVE command.

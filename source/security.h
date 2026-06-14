@@ -37,13 +37,24 @@ typedef enum SecLevel {
 /* --- Securable Operations ---
  */
 typedef enum SecOperation {
- SECOP_FILE_READ = 0, /* LOAD, BLOAD, MERGE, INPUT# */
- SECOP_FILE_WRITE = 1, /* SAVE, BSAVE, OPEN, PRINT# */
- SECOP_COMPILE = 2, /* COMPILE command */
- SECOP_CHAIN = 3, /* CHAIN command */
- SECOP_SYSTEM = 4, /* system-level operations */
- SECOP_MODULE = 5, /* module activation */
- SECOP_COUNT = 6 /* sentinel */
+    SECOP_FILE_READ = 0,    /* LOAD, BLOAD, MERGE, INPUT# */
+    SECOP_FILE_WRITE = 1,   /* SAVE, BSAVE, OPEN, PRINT# */
+    SECOP_FILE_MGMT = 2,    /* MKDIR, RMDIR, CHDIR, KILL, NAME */
+    SECOP_FILE_BLOCK = 3,   /* GET, PUT records */
+    SECOP_FILE_STREAM = 4,  /* Sequential stream I/O */
+    SECOP_COMPILE = 5,      /* COMPILE command */
+    SECOP_CHAIN = 6,        /* CHAIN command */
+    SECOP_SYSTEM = 7,       /* system-level operations */
+    SECOP_MODULE = 8,       /* module activation */
+    SECOP_USB = 9,          /* USB hardware module access */
+    SECOP_VDEV = 10,        /* Virtual device manipulation */
+    SECOP_VTERM = 11,       /* Terminal interceptors */
+    SECOP_VCON = 12,        /* Console output hijack */
+    SECOP_EVAL = 13,        /* Dynamic string execution (exec_line) */
+    SECOP_NETWORK = 14,     /* TCP/UDP Raw Sockets */
+    SECOP_MEM_READ = 15,    /* PEEK memory read */
+    SECOP_MEM_WRITE = 16,   /* POKE memory write */
+    SECOP_COUNT = 17        /* sentinel */
 } SecOperation;
 
 /* --- Security API ---
@@ -95,5 +106,16 @@ int security_check(SecOperation op, int line_num);
  * Returns 1 if allowed, 0 if denied.
  */
 int security_module_allowed(unsigned int capabilities);
+
+/*
+ * security_check_mem - Validate memory access bounds.
+ *
+ * Checks if the specified address and size fall within the
+ * simulated BASIC memory sandbox. Denies native pointer access
+ * under RESTRICTED or STANDARD modes on modern OS architectures.
+ *
+ * Returns 0 if allowed, -1 if denied.
+ */
+int security_check_mem(unsigned long address, int size);
 
 #endif /* BASICPP_SECURITY_H */

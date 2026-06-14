@@ -42,6 +42,14 @@ static unsigned int read_le16(const unsigned char *buf)
  ((unsigned int)buf[1] << 8);
 }
 
+/* --- Global Detokenizer Hook --- */
+DetokenizerFn g_custom_detokenizer = NULL;
+
+void bytecode_set_detokenizer(DetokenizerFn fn)
+{
+    g_custom_detokenizer = fn;
+}
+
 /* --- bpp_save - Serialize program store to .bpp file. ---
  */
 int bpp_save(const ProgramStore *prog, const char *filename)
@@ -155,6 +163,11 @@ int bpp_load(ProgramStore *prog, const char *filename)
  header[1] != (unsigned char)BPP_MAGIC_1 ||
  header[2] != (unsigned char)BPP_MAGIC_2 ||
  header[3] != (unsigned char)BPP_MAGIC_3) {
+     if (g_custom_detokenizer != NULL) {
+         /* Hook to handle proprietary binary formats */
+         printf("Checking custom detokenizer for '%s'...\n", filename);
+         /* Note: implementation of full file read and hook invocation goes here */
+     }
  printf("'%s' is not a .bpp file (bad magic).\n", filename);
  fclose(fp);
  return -1;

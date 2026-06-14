@@ -37,6 +37,7 @@
 #include "errors.h"
 #include "config.h"
 #include "vdev.h"
+#include "vdev_net.h"
 
 /*
  * fileio_save - Write the program to a text file.
@@ -269,7 +270,25 @@ int fileio_open(int chan, const char *filename,
  }
 
  /* Channel already open? */
- if (channels[idx].fp != NULL) {
+ if (channels[idx].fp != NULL || channels[idx].vdev != NULL) {
+ error_raise(ERR_HOW, line_num);
+ return -1;
+ }
+
+ /* Network routing */
+ if (strncmp(filename, "TCP:", 4) == 0 || strncmp(filename, "UDP:", 4) == 0) {
+ VDev *netdev = vdev_net_open(filename);
+ if (!netdev) {
+  error_raise(ERR_HOW, line_num);
+  return -1;
+ }
+ channels[idx].vdev = netdev;
+ channels[idx].mode = FCHAN_DEVICE;
+ channels[idx].record_len = 1;
+ channels[idx].field_count = 0;
+ channels[idx].current_rec = 0;
+ return 0;
+ }
  error_raise(ERR_HOW, line_num);
  return -1;
  }

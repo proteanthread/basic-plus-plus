@@ -29,6 +29,6 @@
  * Prints diagnostic messages to stdout on success, error messages
  * on failure.
  */
-int compiler_compile(ProgramStore *program, const char *filename);
+int compiler_compile(ProgramStore *program, const char *filename, const char *target);
 
 #endif /* BASICPP_COMPILER_H */

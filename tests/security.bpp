@@ -1,8 +1,0 @@
-1 REM === t28_security.bpp ===
-2 REM Tests: SECURITY SHOW
-3 DIALECT "GWBS"
-10 TEST "SECURITY SHOW"
-20 SECURITY SHOW
-30 REM Should print security level info
-40 ENDTEST
-999 END

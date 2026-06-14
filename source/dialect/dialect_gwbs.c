@@ -24,7 +24,7 @@ static const DialectConfig gwbs_config = {
     DIALECT_GW_BASIC,
     "GW-BASIC",
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
-    65529, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+    65529, 0, 1, 1, 0, 1, 1, 1, 1, 1,
     "Ok", 14, 1, 1, 1,
     "GWBS", DFLAG_GWBS
 };

@@ -32,7 +32,7 @@
  *
  * Reads all stored program lines, builds ASTs, generates C code.
  */
-int compiler_compile(ProgramStore *program, const char *filename)
+int compiler_compile(ProgramStore *program, const char *filename, const char *target)
 {
  FILE *out;
  AstLine *ast_lines;

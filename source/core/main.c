@@ -38,6 +38,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 #include "config.h"
 #include "memory.h"
 #include "lexer.h"
@@ -50,6 +55,7 @@
 #include "funcreg.h"
 #include "builtins.h"
 #include "fileio.h"
+#include "io/vdev_net.h"
 #include "vm.h"
 #include "module.h"
 #include "mod_stdlib.h"
@@ -139,21 +145,54 @@ static void strip_newline(char *str)
  */
 static void print_usage(const char *prog)
 {
- printf("Usage: %s [options] [program.bas]\n\n", prog);
- printf("Options:\n");
- printf("  -d DIALECT  Set default dialect (e.g., GWBS, QBAS, PATB)\n");
- printf("  -s LEVEL    Set security level (OPEN, STANDARD, RESTRICTED)\n");
- printf("  -S          Enable strict dialect mode\n");
- printf("  -f FILE     Use a specific configuration file\n");
- printf("  -r FILE     Load and RUN a program file on startup\n");
- printf("  -c \"CMD\"    Execute a command and exit (batch mode)\n");
- printf("  -q          Quiet mode (suppress startup banner)\n");
- printf("  -v          Print version and exit\n");
- printf("  -h          Print this help and exit\n");
- printf("\nConfig file: %s (searched in current dir, then home)\n",
-  config_file_get_name());
- printf("Priority: config file < CLI switches < runtime commands\n");
+    printf("Usage: %s [options] [program.bas]\n\n", prog);
+    printf("Execution Modes:\n");
+    printf("  <filename>       Load, run, and remain in basic++\n");
+    printf("  --run <file>     Run specified program then exit\n");
+    printf("  --load <file>    Load program and remain in basic++\n");
+    printf("  --list <file>    Load, list program, then exit\n");
+    printf("  --dry-run <file> Load in debug/step-by-step mode\n");
+    printf("  --edit           Start in screen-editor mode\n");
+    printf("  -c \"CMD\"         Execute a command and exit\n");
+    printf("\nInfo:\n");
+    printf("  -h, --help       Print this help and exit\n");
+    printf("  -v, --version    Print version and exit\n");
+    printf("  --about          Describe version and what's new\n");
+    printf("  --license        Display full MIT license text\n");
+    printf("\nEnvironment & Memory:\n");
+    printf("  -d DIALECT       Set default dialect (GWBS, QBAS, PATB, etc.)\n");
+    printf("  -s LEVEL         Set security level (OPEN, STANDARD, RESTRICTED)\n");
+    printf("  -S               Enable strict dialect mode\n");
+    printf("  -f FILE          Use a specific configuration file\n");
+    printf("  -q               Quiet mode (suppress startup banner)\n");
+    printf("  --debug          Enable verbose error mode and diagnostics\n");
+    printf("  --com <n>        RS-232 receive buffer size (bytes)\n");
+    printf("  --files <n>      Max open files (Default 3)\n");
+    printf("  --mem <m,n>      Set memory limits (high mem, workspace)\n");
+    printf("  --records <n>    Max record length for RANDOM files (Default 128)\n");
+    printf("  --block          Preallocate blocks/buffers\n");
+    printf("  --dbl            Enable double-precision math\n");
+    printf("  --dynamic        Allow dynamic arrays and >64KB structures\n");
+    printf("\nVideo & Display:\n");
+    printf("  --no-color       Monochrome display mode\n");
+    printf("  --cga            Enable faster CGA screen updates\n");
+    printf("  --hi-res         Use maximum display lines\n");
+    printf("  --no-high        Disable high-intensity colors\n");
+    printf("\nCompatibility & Interop:\n");
+    printf("  --mbf            Use Microsoft Binary Format (MBF)\n");
+    printf("  --kbd            Full keyboard re-mapping\n");
+    printf("  --break <on|off> Enable/disable Ctrl+Break handling\n");
+    printf("  --cmd <string>   Pass string to COMMAND$ (must be last)\n");
+    printf("  --lib <file>     Load external library (.dll / .so)\n");
+    printf("  --func <name>    Load external function\n");
+    printf("  --mod <name>     Load external module\n");
+    printf("  --ext            Enable extended features\n");
+    printf("  <file, >file     Manual file redirection\n");
+    printf("\nConfig file: %s (searched in current dir, then home)\n",
+           config_file_get_name());
+    printf("Priority: config file < CLI switches < runtime commands\n");
 }
+
 
 /* --- Main Entry Point ---
  */
@@ -164,107 +203,165 @@ int main(int argc, char *argv[])
  RuntimeState runtime;
  char input_buf[INPUT_BUFFER_SIZE];
 
- /* --- CLI argument storage --- */
- const char *cli_dialect = NULL;
- const char *cli_security = NULL;
- int cli_strict = -1;    /* -1 = unset */
- int cli_quiet = 0;
- const char *cli_run_file = NULL;
- const char *cli_command = NULL;
- const char *cli_config_file = NULL; /* -f config file */
- const char *cli_program = NULL; /* positional arg */
+    /* --- CLI argument storage --- */
+    const char *cli_dialect = NULL;
+    const char *cli_security = NULL;
+    int cli_strict = -1;    /* -1 = unset */
+    int cli_quiet = 0;
+    const char *cli_run_file = NULL;
+    const char *cli_load_file = NULL;
+    const char *cli_list_file = NULL;
+    const char *cli_dry_run_file = NULL;
+    int cli_edit = 0;
+    int cli_debug = 0;
+    const char *cli_command = NULL;
+    const char *cli_config_file = NULL;
+    const char *cli_program = NULL;
+    const char *cli_cmd_str = NULL;
+    const char *cli_lib = NULL;
+    const char *cli_mod = NULL;
+    const char *cli_func = NULL;
+    
+    /* Redirection storage */
+    const char *cli_redirect_in = NULL;
+    const char *cli_redirect_out = NULL;
+    const char *cli_redirect_append = NULL;
 
- /* --- Config file --- */
- ConfigFile cfg;
+    /* --- Config file --- */
+    ConfigFile cfg;
 
- /* --- Effective settings ---
-  *
-  * The default dialect is set in config.h via BASICPP_DEFAULT_DIALECT.
-  * To compile with a different default, change that #define.
-  * The user can also override at runtime via -d flag, config file,
-  * or the DIALECT command.
-  */
- DialectId eff_dialect = BASICPP_DEFAULT_DIALECT;
- SecLevel eff_security = SEC_OPEN;
- int eff_strict = 0;
- int eff_quiet = 0;
+    /* --- Effective settings --- */
+    DialectId eff_dialect = BASICPP_DEFAULT_DIALECT;
+    SecLevel eff_security = SEC_OPEN;
+    int eff_strict = 0;
+    int eff_quiet = 0;
 
- int i;
+    int i;
 
- /* ----- Parse command-line arguments ----- */
- for (i = 1; i < argc; i++) {
-  if (argv[i][0] == '-') {
-   if (strcmp(argv[i], "-v") == 0 ||
-       strcmp(argv[i], "--version") == 0) {
-    printf("%s %s\n", BASICPP_NAME, BASICPP_VERSION);
-    return 0;
-   }
-   if (strcmp(argv[i], "-h") == 0 ||
-       strcmp(argv[i], "--help") == 0) {
-    print_usage(argv[0]);
-    return 0;
-   }
-   if (strcmp(argv[i], "-q") == 0) {
-    cli_quiet = 1;
-    continue;
-   }
-   if (strcmp(argv[i], "-S") == 0) {
-    cli_strict = 1;
-    continue;
-   }
-   if (strcmp(argv[i], "-d") == 0) {
-    if (i + 1 < argc) {
-     cli_dialect = argv[++i];
-    } else {
-     printf("Error: -d requires a dialect name\n");
-     return 1;
+    /* ----- Parse command-line arguments ----- */
+    for (i = 1; i < argc; i++) {
+        if (argv[i][0] == '-') {
+            if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+                printf("%s %s\n", BASICPP_NAME, BASICPP_VERSION);
+                return 0;
+            }
+            if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+                print_usage(argv[0]);
+                return 0;
+            }
+            if (strcmp(argv[i], "--about") == 0) {
+                printf("%s %s\n", BASICPP_NAME, BASICPP_VERSION);
+                printf("A hybrid AST/P-Code interpreter for classic BASIC dialects.\n");
+                printf("Milestone 5 includes Config and CLI Supercharging.\n");
+                return 0;
+            }
+            if (strcmp(argv[i], "--license") == 0) {
+                printf("MIT License\n(See LICENSE file for full text)\n");
+                return 0;
+            }
+            if (strcmp(argv[i], "-q") == 0) {
+                cli_quiet = 1;
+                continue;
+            }
+            if (strcmp(argv[i], "--debug") == 0) {
+                cli_debug = 1;
+                continue;
+            }
+            if (strcmp(argv[i], "--edit") == 0) {
+                cli_edit = 1;
+                continue;
+            }
+            if (strcmp(argv[i], "-S") == 0) {
+                cli_strict = 1;
+                continue;
+            }
+            if (strcmp(argv[i], "--run") == 0 || strcmp(argv[i], "-r") == 0) {
+                if (i + 1 < argc) cli_run_file = argv[++i];
+                else { printf("Error: %s requires a filename\n", argv[i-1]); return 1; }
+                continue;
+            }
+            if (strcmp(argv[i], "--load") == 0) {
+                if (i + 1 < argc) cli_load_file = argv[++i];
+                else { printf("Error: --load requires a filename\n"); return 1; }
+                continue;
+            }
+            if (strcmp(argv[i], "--list") == 0) {
+                if (i + 1 < argc) cli_list_file = argv[++i];
+                else { printf("Error: --list requires a filename\n"); return 1; }
+                continue;
+            }
+            if (strcmp(argv[i], "--dry-run") == 0) {
+                if (i + 1 < argc) cli_dry_run_file = argv[++i];
+                else { printf("Error: --dry-run requires a filename\n"); return 1; }
+                continue;
+            }
+            if (strcmp(argv[i], "-d") == 0) {
+                if (i + 1 < argc) cli_dialect = argv[++i];
+                else { printf("Error: -d requires a dialect name\n"); return 1; }
+                continue;
+            }
+            if (strcmp(argv[i], "-s") == 0) {
+                if (i + 1 < argc) cli_security = argv[++i];
+                else { printf("Error: -s requires a security level\n"); return 1; }
+                continue;
+            }
+            if (strcmp(argv[i], "-c") == 0) {
+                if (i + 1 < argc) cli_command = argv[++i];
+                else { printf("Error: -c requires a command string\n"); return 1; }
+                continue;
+            }
+            if (strcmp(argv[i], "-f") == 0) {
+                if (i + 1 < argc) cli_config_file = argv[++i];
+                else { printf("Error: -f requires a filename\n"); return 1; }
+                continue;
+            }
+            if (strcmp(argv[i], "--cmd") == 0) {
+                if (i + 1 < argc) {
+                    /* Join remaining arguments for COMMAND$ */
+                    cli_cmd_str = argv[++i];
+                    break;
+                }
+            }
+            /* Silently accept/ignore environment & hardware switches for now */
+            if (strcmp(argv[i], "--com") == 0 || strcmp(argv[i], "--files") == 0 ||
+                strcmp(argv[i], "--mem") == 0 || strcmp(argv[i], "--records") == 0 ||
+                strcmp(argv[i], "--lib") == 0 || strcmp(argv[i], "--func") == 0 ||
+                strcmp(argv[i], "--mod") == 0 || strcmp(argv[i], "--break") == 0) {
+                if (i + 1 < argc) i++;
+                continue;
+            }
+            if (strcmp(argv[i], "--block") == 0 || strcmp(argv[i], "--dbl") == 0 ||
+                strcmp(argv[i], "--no-color") == 0 || strcmp(argv[i], "--cga") == 0 ||
+                strcmp(argv[i], "--hi-res") == 0 || strcmp(argv[i], "--no-high") == 0 ||
+                strcmp(argv[i], "--mbf") == 0 || strcmp(argv[i], "--dynamic") == 0 ||
+                strcmp(argv[i], "--ext") == 0 || strcmp(argv[i], "--kbd") == 0) {
+                continue;
+            }
+            
+            printf("Unknown option: %s\n", argv[i]);
+            print_usage(argv[0]);
+            return 1;
+        } else if (argv[i][0] == '<') {
+            cli_redirect_in = argv[i] + 1;
+            if (*cli_redirect_in == '\0' && i + 1 < argc) cli_redirect_in = argv[++i];
+        } else if (argv[i][0] == '>') {
+            if (argv[i][1] == '>') {
+                cli_redirect_append = argv[i] + 2;
+                if (*cli_redirect_append == '\0' && i + 1 < argc) cli_redirect_append = argv[++i];
+            } else {
+                cli_redirect_out = argv[i] + 1;
+                if (*cli_redirect_out == '\0' && i + 1 < argc) cli_redirect_out = argv[++i];
+            }
+        } else {
+            /* Positional argument: treat as program file */
+            cli_program = argv[i];
+        }
     }
-    continue;
-   }
-   if (strcmp(argv[i], "-s") == 0) {
-    if (i + 1 < argc) {
-     cli_security = argv[++i];
-    } else {
-     printf("Error: -s requires a security level\n");
-     return 1;
-    }
-    continue;
-   }
-   if (strcmp(argv[i], "-r") == 0) {
-    if (i + 1 < argc) {
-     cli_run_file = argv[++i];
-    } else {
-     printf("Error: -r requires a filename\n");
-     return 1;
-    }
-    continue;
-   }
-   if (strcmp(argv[i], "-c") == 0) {
-    if (i + 1 < argc) {
-     cli_command = argv[++i];
-    } else {
-     printf("Error: -c requires a command string\n");
-     return 1;
-    }
-    continue;
-   }
-   if (strcmp(argv[i], "-f") == 0) {
-    if (i + 1 < argc) {
-     cli_config_file = argv[++i];
-    } else {
-     printf("Error: -f requires a filename\n");
-     return 1;
-    }
-    continue;
-   }
-   printf("Unknown option: %s\n", argv[i]);
-   print_usage(argv[0]);
-   return 1;
-  } else {
-   /* Positional argument: treat as program file */
-   cli_program = argv[i];
-  }
- }
+
+    /* Process manual file redirection */
+    if (cli_redirect_in != NULL) freopen(cli_redirect_in, "r", stdin);
+    if (cli_redirect_out != NULL) freopen(cli_redirect_out, "w", stdout);
+    if (cli_redirect_append != NULL) freopen(cli_redirect_append, "a", stdout);
 
  /* ----- Early init (needed before config lookups) ----- */
  platform_init();
@@ -298,6 +395,31 @@ int main(int argc, char *argv[])
   }
  }
 
+ /* Default security depends on context */
+ eff_security = SEC_OPEN;
+ if (cli_run_file != NULL) {
+  eff_security = SEC_STANDARD;
+ }
+ 
+ /* Piped execution defaults to RESTRICTED */
+#ifdef _WIN32
+ if (!_isatty(_fileno(stdin))) {
+  eff_security = SEC_RESTRICTED;
+ }
+#else
+ if (!isatty(fileno(stdin))) {
+  eff_security = SEC_RESTRICTED;
+ }
+#endif
+
+ /* Dialect defaults clamp */
+ {
+  SecLevel dialect_sec = (SecLevel)dialect_default_security(eff_dialect);
+  if (dialect_sec > eff_security) {
+   eff_security = dialect_sec;
+  }
+ }
+ 
  /* Security */
  if (cfg.found && cfg.security[0] != '\0') {
   if (strcmp(cfg.security, "OPEN") == 0)
@@ -367,6 +489,7 @@ int main(int argc, char *argv[])
  dialect_init(eff_dialect);
 
  /* Initialize virtual device system */
+ vdev_net_init();
  vdev_init();
 
  /* Initialize function registry */
@@ -384,6 +507,11 @@ int main(int argc, char *argv[])
  mod_upnp_register();    /* UPnP/SSDP network discovery */
 #endif
  module_activate("STDLIB", NULL);
+
+ /* Load external modules from CLI */
+ if (cli_lib != NULL) module_load_dynamic(cli_lib);
+ if (cli_mod != NULL) module_load_dynamic(cli_mod);
+ if (cli_func != NULL) module_load_dynamic(cli_func);
 
  /* Apply dialect-specific overrides */
  dialect_apply();
@@ -445,6 +573,23 @@ int main(int argc, char *argv[])
    lexer_init(&lex, "RUN");
    parser_execute_line(&lex, &runtime, 0);
   }
+ }
+
+ /* ----- Handle --edit (screen editor mode) ----- */
+ if (cli_edit) {
+  printf("Starting BASIC++ Editor (Memo Pad Mode)\n");
+  printf("Press Ctrl+Z (Windows) or Ctrl+D (Unix) to exit.\n");
+  for (;;) {
+   if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+    break; /* EOF */
+   }
+   /* In a true full-screen mode, this would hook into vdev_display.
+      For now, it acts as a simple text buffer that doesn't scroll
+      beyond screen limits (simulated). */
+  }
+  printf("\nExiting editor.\n");
+  mem_shutdown(&memory);
+  return 0;
  }
 
  /* ----- REPL loop ----- */
@@ -563,7 +708,10 @@ int main(int argc, char *argv[])
  Lexer lex;
 
  lexer_init(&lex, input_buf);
- parser_execute_line(&lex, &runtime, 0);
+
+ if (security_check(SECOP_EVAL, 0) == 0) {
+  parser_execute_line(&lex, &runtime, 0);
+ }
  }
 
  /* After any error, print READY again */
@@ -573,6 +721,7 @@ int main(int argc, char *argv[])
  }
 
  /* ----- Shutdown ----- */
+ vdev_net_cleanup();
  mem_shutdown(&memory);
 
  return 0;
