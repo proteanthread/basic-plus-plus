@@ -219,10 +219,35 @@ void pi_parse_dir(Lexer *lex, RuntimeState *rt, int line_num)
 void pi_parse_kill(Lexer *lex, RuntimeState *rt, int line_num)
 {
  /*
- * KILL - Reserved for future use.
- * File deletion is handled by SCRATCH.
+ * KILL "filename" - Delete a file (GW-BASIC).
+ * Auto-appends .BAS if no extension given.
  */
+ {
+ char fname[260];
+ int flen;
+
+ if (lex->current.type != TOK_STRING
+ || lex->current.str_start == NULL
+ || lex->current.str_length < 1) {
  error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ flen = lex->current.str_length;
+ if (flen > 255) flen = 255;
+ memcpy(fname,
+ lex->current.str_start,
+ (size_t)flen);
+ fname[flen] = '\0';
+ lexer_next(lex);
+
+ /* Auto-append .BAS if no extension */
+ pi_ensure_bas_ext(fname, flen, 259);
+
+ if (remove(fname) != 0) {
+ printf("File not found: %s\n",
+ fname);
+ }
+ }
  return;
 }
 
@@ -267,11 +292,23 @@ void pi_parse_scratch(Lexer *lex, RuntimeState *rt, int line_num)
 void pi_parse_unsave(Lexer *lex, RuntimeState *rt, int line_num)
 {
  /*
- * UNSAVE -- SUPER BASIC command.
- * Deletes the currently-loaded program's save file.
- * In our implementation, prints a status message.
+ * UNSAVE - Delete the last-saved file.
+ * If no file has been saved this session,
+ * prints an error message.
  */
- printf("UNSAVE: No saved program file.\n");
+ (void)lex; (void)line_num;
+ if (rt->last_save_file[0] == '\0') {
+ printf("UNSAVE: No saved file to delete.\n");
+ return;
+ }
+ if (remove(rt->last_save_file) != 0) {
+ printf("File not found: %s\n",
+ rt->last_save_file);
+ } else {
+ printf("Deleted: %s\n",
+ rt->last_save_file);
+ }
+ rt->last_save_file[0] = '\0';
  return;
 }
 

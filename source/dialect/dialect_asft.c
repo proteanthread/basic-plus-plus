@@ -30,7 +30,7 @@ static const DialectConfig asft_config = {
     63999, 0, 1, 0, 0, 1, 0, 1, 1, 1,
     "]",                    /* bracket prompt */
     16, 1, 0, 0,
-    "ASFT", DFLAG_ASFT
+    "ASFT", DFLAG_ASFT, 0
 };
 
 void dialect_register_asft(void)

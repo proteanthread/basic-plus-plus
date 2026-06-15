@@ -50,7 +50,8 @@ static const DialectConfig superbasic_config = {
     1,                      /* has_cls */
     1,                      /* has_tron_troff */
     "SUPB",                 /* short_name */
-    DFLAG_SUPA              /* dialect_flag */
+    DFLAG_SUPA,             /* dialect_flag */
+    0                    /* apply_fn */
 };
 
 void dialect_register_superbasic(void)

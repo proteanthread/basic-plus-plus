@@ -199,7 +199,24 @@ typedef struct DialectConfig {
  int has_tron_troff; /* TRON/TROFF support */
  const char *short_name; /* 4-char dialect code for DIALECT$ */
  unsigned int dialect_flag; /* bitmask flag for this dialect */
+ /* Dialect-specific apply callback. Called after dialect_init()
+  * to configure runtime behavior unique to this dialect.
+  * NULL = no special configuration needed. */
+ void (*apply_fn)(void);
 } DialectConfig;
+
+/*
+ * dialect_check_feature - Gate a feature in strict mode.
+ *
+ * In strict mode, checks if the given flag is enabled for
+ * the active dialect. Returns 1 if allowed, 0 if blocked
+ * (and prints a SORRY message). In union mode, always returns 1.
+ *
+ * Usage:
+ *   if (!dialect_check_feature("floating point", dc->has_float, ln))
+ *       return;
+ */
+int dialect_check_feature(const char *name, int flag, int line_num);
 
 /* --- Dialect Functions ---
  */

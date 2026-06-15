@@ -35,7 +35,7 @@ static const DialectConfig coco_config = {
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     63999, 0, 1, 0, 0, 1, 0, 1, 1, 1,
     "OK", 16, 1, 1, 1,
-    "COCO", DFLAG_COCO
+    "COCO", DFLAG_COCO, 0
 };
 
 void dialect_register_coco(void)

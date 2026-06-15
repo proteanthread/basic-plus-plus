@@ -352,7 +352,16 @@ static const char *keyword_names[] = {
  "DEBUG",      /* KW_DEBUG */
  "DUMP",       /* KW_DUMP */
  "BACKTRACE",  /* KW_BACKTRACE */
- "TRACE"       /* KW_TRACE */
+ "TRACE",       /* KW_TRACE */
+ /* Complex number functions */
+ "CONJ",        /* KW_CONJ_FUNC */
+ "CABS",         /* KW_CABS_FUNC */
+ /* Static analysis */
+ "CHECK",         /* KW_CHECK */
+ "VERIFY",        /* KW_VERIFY */
+ /* File query functions */
+ "EXISTS",        /* KW_EXISTS */
+ "FILEMOD$"       /* KW_FILEMOD */
 };
 
 /* --- Token Type Names (for diagnostic output) ---

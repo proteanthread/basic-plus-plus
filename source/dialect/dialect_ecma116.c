@@ -33,7 +33,7 @@ static const DialectConfig ecma116_config = {
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     99999, 0, 1, 1, 1, 1, 1, 1, 1, 1,
     "READY", 14, 1, 0, 0,
-    "E116", DFLAG_E116
+    "E116", DFLAG_E116, 0
 };
 
 void dialect_register_ecma116(void)

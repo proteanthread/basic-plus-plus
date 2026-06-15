@@ -34,7 +34,7 @@ static const DialectConfig patb_config = {
     0, 1, 1, 0,
     1, 0, 0, 0,
     "READY", 8, 0, 0, 0,
-    "PATB", DFLAG_PATB
+    "PATB", DFLAG_PATB, 0
 };
 
 void dialect_register_patb(void)

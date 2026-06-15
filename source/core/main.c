@@ -637,7 +637,11 @@ int main(int argc, char *argv[])
  }
 
  /* Print prompt */
- printf("%s", BASICPP_PROMPT);
+ if (rpn_is_active(&runtime.rpn)) {
+  printf("RPN> ");
+ } else {
+  printf("%s", BASICPP_PROMPT);
+ }
  fflush(stdout);
 
  /* Read input line */
@@ -653,6 +657,12 @@ int main(int argc, char *argv[])
  /* Skip empty lines */
  if (input_buf[0] == '\0') {
  continue;
+ }
+
+ /* --- RPN mode: intercept all input --- */
+ if (rpn_is_active(&runtime.rpn)) {
+  rpn_eval_line(&runtime.rpn, input_buf);
+  continue;
  }
 
  /* Clear any previous error state */

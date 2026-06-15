@@ -142,32 +142,50 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  pi_parse_load_cmd(lex, rt, line_num);
  return;
  case KW_FOR:
- pi_parse_for(lex, rt, line_num);
- return;
+  if (!dialect_check_feature("FOR/NEXT",
+   dialect_get_config()->has_for_next, line_num))
+   return;
+  pi_parse_for(lex, rt, line_num);
+  return;
  case KW_NEXT:
  pi_parse_next(lex, rt, line_num);
  return;
  case KW_WHILE:
- pi_parse_while(lex, rt, line_num);
- return;
+  if (!dialect_check_feature("WHILE/WEND",
+   dialect_get_config()->has_while_wend, line_num))
+   return;
+  pi_parse_while(lex, rt, line_num);
+  return;
  case KW_WEND:
  pi_parse_wend(lex, rt, line_num);
  return;
  case KW_DO:
- pi_parse_do(lex, rt, line_num);
- return;
+  if (!dialect_check_feature("DO/LOOP",
+   dialect_get_config()->has_do_loop, line_num))
+   return;
+  pi_parse_do(lex, rt, line_num);
+  return;
  case KW_LOOP:
  pi_parse_loop(lex, rt, line_num);
  return;
  case KW_DATA:
- pi_parse_data(lex, rt, line_num);
- return;
- case KW_READ:
- pi_parse_read(lex, rt, line_num);
- return;
- case KW_RESTORE:
- pi_parse_restore(lex, rt, line_num);
- return;
+  if (!dialect_check_feature("DATA/READ",
+   dialect_get_config()->has_data_read, line_num))
+   return;
+  pi_parse_data(lex, rt, line_num);
+  return;
+  case KW_READ:
+  if (!dialect_check_feature("DATA/READ",
+   dialect_get_config()->has_data_read, line_num))
+   return;
+  pi_parse_read(lex, rt, line_num);
+  return;
+  case KW_RESTORE:
+  if (!dialect_check_feature("DATA/READ",
+   dialect_get_config()->has_data_read, line_num))
+   return;
+  pi_parse_restore(lex, rt, line_num);
+  return;
  case KW_MERGE:
  if (security_check(SECOP_FILE_READ, line_num))
  return;
@@ -215,8 +233,11 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  pi_parse_rewrite(lex, rt, line_num);
  return;
  case KW_DIM:
- pi_parse_dim(lex, rt, line_num);
- return;
+  if (!dialect_check_feature("DIM arrays",
+   dialect_get_config()->has_dim_arrays, line_num))
+   return;
+  pi_parse_dim(lex, rt, line_num);
+  return;
  case KW_COMPILE:
   if (security_check(SECOP_COMPILE, line_num))
    return;
@@ -261,6 +282,12 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  case KW_SELFTEST:
   pi_parse_selftest(lex, rt, line_num);
+  return;
+ case KW_CHECK:
+  pi_parse_check(lex, rt, line_num);
+  return;
+ case KW_VERIFY:
+  pi_parse_verify(lex, rt, line_num);
   return;
  case KW_HELP:
   pi_parse_help(lex, rt, line_num);
@@ -315,8 +342,11 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
 
  /* ===== Core commands ===== */
  case KW_CLS:
-  pi_parse_cls(lex, rt, line_num);
-  return;
+   if (!dialect_check_feature("CLS",
+    dialect_get_config()->has_cls, line_num))
+    return;
+   pi_parse_cls(lex, rt, line_num);
+   return;
  case KW_HOME:
   pi_parse_home(lex, rt, line_num);
   return;
@@ -327,11 +357,17 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_clr(lex, rt, line_num);
   return;
  case KW_TRON:
-  pi_parse_tron(lex, rt, line_num);
-  return;
- case KW_TROFF:
-  pi_parse_troff(lex, rt, line_num);
-  return;
+   if (!dialect_check_feature("TRON/TROFF",
+    dialect_get_config()->has_tron_troff, line_num))
+    return;
+   pi_parse_tron(lex, rt, line_num);
+   return;
+  case KW_TROFF:
+   if (!dialect_check_feature("TRON/TROFF",
+    dialect_get_config()->has_tron_troff, line_num))
+    return;
+   pi_parse_troff(lex, rt, line_num);
+   return;
  case KW_ON:
   pi_parse_on(lex, rt, line_num);
   return;

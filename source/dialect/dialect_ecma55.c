@@ -24,7 +24,7 @@ static const DialectConfig ecma55_config = {
     1, 1, 0, 0, 1, 1, 0,
     99999, 0, 1, 0, 0, 1, 0, 1, 1, 1,
     "READY", 14, 0, 0, 0,
-    "EC55", DFLAG_EC55
+    "EC55", DFLAG_EC55, 0
 };
 
 void dialect_register_ecma55(void)

@@ -276,15 +276,16 @@ int dialect_find_by_name(const char *name)
  * dialect_apply - Apply dialect-specific overrides.
  *
  * Called after dialect_init() to reconfigure the runtime for the
- * new dialect. Future: each dialect_*.c can provide its own
- * apply function for dialect-specific behavior (e.g., Commodore
- * RND(0), Atari CLR semantics).
+ * new dialect. Dispatches to the dialect's apply_fn callback if one
+ * is registered.
  */
 void dialect_apply(void)
 {
- /* Placeholder for dialect-specific overrides.
- * Future dialect_*.c files can register override callbacks. */
+ if (active_dialect && active_dialect->apply_fn) {
+  active_dialect->apply_fn();
+ }
 }
+
 
 /* --- Dialect Filtering Mode ---
  * Three modes control which keywords are accepted:
@@ -300,6 +301,24 @@ void dialect_apply(void)
 static DialectMode dialect_mode = DMODE_UNION;
 static DialectMode previous_mode = DMODE_UNION;
 static unsigned int mixed_mask = 0;
+
+/*
+ * dialect_check_feature - Gate a feature in strict mode.
+ *
+ * In strict mode, if the given flag is 0 (feature not available
+ * in this dialect), prints a SORRY message and returns 0.
+ * In union mode or if the flag is nonzero, returns 1 (allowed).
+ */
+int dialect_check_feature(const char *name, int flag, int line_num)
+{
+ if (dialect_mode == DMODE_STRICT && !flag) {
+  printf("SORRY? %s not available in %s\n",
+   name, active_dialect ? active_dialect->name : "unknown");
+  (void)line_num;
+  return 0;
+ }
+ return 1;
+}
 
 /*
  * dialect_set_strict - Enable or disable strict mode.

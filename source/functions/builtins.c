@@ -94,6 +94,12 @@ void builtins_register(void)
   { "IMAG", KW_IMAG_FUNC, FCAT_MATH, FRET_FLOAT,1, 1,
   FSAFE_PURE, 0, builtin_imag,
   "Imaginary part: IMAG(COMPLEX(3,4))=4" },
+  { "CONJ", KW_CONJ_FUNC, FCAT_MATH, FRET_ANY, 1, 1,
+  FSAFE_PURE, 0, builtin_conj,
+  "Complex conjugate: CONJ(COMPLEX(3,4))=(3-4i)" },
+  { "CABS", KW_CABS_FUNC, FCAT_MATH, FRET_FLOAT,1, 1,
+  FSAFE_PURE, 0, builtin_cabs,
+  "Complex magnitude: CABS(COMPLEX(3,4))=5" },
   { "MIN", KW_MIN_FUNC, FCAT_MATH, FRET_FLOAT,2, 16,
   FSAFE_PURE, 0, builtin_min,
   "Minimum value: MIN(5,3)=3" },
@@ -207,7 +213,16 @@ void builtins_register(void)
  "Unpack 4-byte string to single: CVS(A$)" },
  { "CVD", KW_CVD, FCAT_UTIL, FRET_FLOAT, 1, 1,
  FSAFE_PURE, 0, builtin_cvd,
- "Unpack 8-byte string to double: CVD(A$)" }
+ "Unpack 8-byte string to double: CVD(A$)" },
+ { "EXISTS", KW_EXISTS, FCAT_UTIL, FRET_INT, 1, 1,
+ FSAFE_STATE, 0, builtin_exists,
+ "File exists: EXISTS(\"file.BAS\") returns 1 or 0" },
+ { "FILESIZE", KW_FILESIZE, FCAT_UTIL, FRET_INT, 1, 1,
+ FSAFE_STATE, 0, builtin_filesize,
+ "File size: FILESIZE(\"file.BAS\") in bytes" },
+ { "FILEMOD$", KW_FILEMOD, FCAT_UTIL, FRET_STRING,
+ 1, 1, FSAFE_STATE, 0, builtin_filemod,
+ "Modified date: FILEMOD$(\"file\")=\"2026-01-15 10:30:00\"" }
  };
 
  /* --- Input / Output (builtins_io.c) --- */

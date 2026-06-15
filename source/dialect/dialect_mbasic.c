@@ -42,7 +42,7 @@ static const DialectConfig mbasic_config = {
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     65529, 0, 1, 1, 0, 1, 1, 1, 1, 1,
     "Ok", 14, 1, 0, 1,
-    "MBAS", DFLAG_MBAS
+    "MBAS", DFLAG_MBAS, 0
 };
 
 void dialect_register_mbasic(void)

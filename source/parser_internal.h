@@ -74,6 +74,7 @@
 #include "security.h"
 #include "platform.h"
 #include "selftest.h"
+#include "check.h"
 #include "help.h"
 #include "detok.h"
 #include "gfxbuf.h"
@@ -419,6 +420,10 @@ void pi_parse_test(Lexer *lex, RuntimeState *rt,
 void pi_parse_endtest(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_selftest(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_check(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_verify(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_info(Lexer *lex, RuntimeState *rt,
     int line_num);

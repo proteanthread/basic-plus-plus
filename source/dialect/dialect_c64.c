@@ -36,7 +36,7 @@ static const DialectConfig c64_config = {
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     63999, 0, 1, 0, 0, 1, 0, 1, 1, 1,
     "READY.", 10, 0, 0, 0,
-    "C64B", DFLAG_C64B
+    "C64B", DFLAG_C64B, 0
 };
 
 void dialect_register_c64(void)
