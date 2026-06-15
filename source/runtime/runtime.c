@@ -169,6 +169,9 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  rt->fn_return_value = bval_int(0);
  rt->in_sub_index = -1;
 
+ /* Dynamic scope stack (Milestone 9) */
+ scope_stack_init(&rt->scope_stack);
+
  /* Label table */
  rt->label_count = 0;
 
@@ -314,10 +317,29 @@ void runtime_reset(RuntimeState *rt)
  /* Reset CONST table */
  rt->const_count = 0;
 
- /* Reset SUB/FUNCTION table */
+ /* Reset SUB/FUNCTION table — free static storage */
+ {
+  int si;
+  for (si = 0; si < rt->sub_count; si++) {
+   SubDef *sd = &rt->subs[si];
+   if (sd->has_static_data) {
+    free(sd->static_vars);
+    free(sd->static_strvars);
+    free(sd->static_named);
+    sd->static_vars = NULL;
+    sd->static_strvars = NULL;
+    sd->static_named = NULL;
+    sd->has_static_data = 0;
+   }
+  }
+ }
  rt->sub_count = 0;
  rt->fn_return_value = bval_int(0);
  rt->in_sub_index = -1;
+
+ /* Reset dynamic scope stack (Milestone 9) */
+ scope_stack_free(&rt->scope_stack);
+ scope_stack_init(&rt->scope_stack);
 
  /* Reset label table */
  rt->label_count = 0;

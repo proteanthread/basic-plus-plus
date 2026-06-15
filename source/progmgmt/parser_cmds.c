@@ -277,6 +277,33 @@ void pi_parse_merge_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  pi_ensure_bas_ext(filename, flen, MAX_LINE_LENGTH);
 
  fileio_merge(&rt->memory->program, filename);
+
+ /*
+ * MERGE may shift line positions in the program store.
+ * Invalidate SubDef body_index entries so that SUB/FUNCTION
+ * definitions are re-scanned on next encounter. Free static
+ * storage since SUB bodies may have changed.
+ *
+ * This matches GW-BASIC/QBasic behavior: MERGE during
+ * execution is rare but valid; SUB definitions are
+ * re-registered when encountered at the new line positions.
+ */
+ {
+  int si;
+  for (si = 0; si < rt->sub_count; si++) {
+   SubDef *sd = &rt->subs[si];
+   if (sd->has_static_data) {
+    free(sd->static_vars);
+    free(sd->static_strvars);
+    free(sd->static_named);
+    sd->static_vars = NULL;
+    sd->static_strvars = NULL;
+    sd->static_named = NULL;
+    sd->has_static_data = 0;
+   }
+  }
+  rt->sub_count = 0;
+ }
 }
 
 /*
@@ -307,9 +334,57 @@ void pi_parse_chain_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  /* Auto-append .BAS if no extension */
  pi_ensure_bas_ext(filename, flen, MAX_LINE_LENGTH);
 
+ /*
+ * CHAIN semantics (GW-BASIC/QBasic compatible):
+ * - Variables are preserved (COMMON variables
+ *   survive across CHAIN in real BASIC; we keep
+ *   ALL variables since they share the same
+ *   RuntimeState).
+ * - Program code is replaced.
+ * - Execution state must be fully reset:
+ *   scope stack, SUB/FUNCTION table, call stack,
+ *   execution pointers, DATA position.
+ *
+ * Milestone 9 cleanup: free SubDef static storage,
+ * unwind scope stack, reset fn_return_value. Without
+ * this, stale scope frames and orphaned heap
+ * allocations would leak/corrupt execution.
+ */
+
+ /* Unwind scope stack (Milestone 9) */
+ scope_stack_free(&rt->scope_stack);
+ scope_stack_init(&rt->scope_stack);
+
+ /* Free SubDef static storage and clear SUB table */
+ {
+  int si;
+  for (si = 0; si < rt->sub_count; si++) {
+   SubDef *sd = &rt->subs[si];
+   if (sd->has_static_data) {
+    free(sd->static_vars);
+    free(sd->static_strvars);
+    free(sd->static_named);
+    sd->static_vars = NULL;
+    sd->static_strvars = NULL;
+    sd->static_named = NULL;
+    sd->has_static_data = 0;
+   }
+  }
+ }
+ rt->sub_count = 0;
+ rt->fn_return_value = bval_int(0);
+ rt->in_sub_index = -1;
+
+ /* Reset execution state (but NOT variables) */
+ rt->stack_top = 0;       /* clear FOR/WHILE/GOSUB stack */
+ rt->current_index = 0;
+ rt->next_index = -1;
+ rt->data_ptr = 0;        /* reset DATA pointer */
+ rt->label_count = 0;     /* labels need re-scan */
+
  if (fileio_chain(&rt->memory->program, filename) == 0) {
- /* Trigger execution of the loaded program */
- exec_run(rt);
+  /* Trigger execution preserving variables */
+  exec_chain_run(rt);
  }
 }
 

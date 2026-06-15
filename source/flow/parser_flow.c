@@ -721,25 +721,14 @@ void pi_parse_end(Lexer *lex, RuntimeState *rt, int line_num)
  */
  if (lexer_match_keyword(lex, KW_SUB)) {
  StackFrame frame;
- int i;
  lexer_next(lex); /* consume SUB */
 
  if (runtime_pop(rt, FRAME_SUB, &frame) != 0) {
  return; /* error already raised */
  }
 
- /* Restore saved variables */
- for (i = 0; i < MAX_VARIABLES; i++) {
- rt->variables[i] = frame.data.sub_call
- .saved_vars[i];
- }
- for (i = 0; i < MAX_STRING_VARS; i++) {
- rt->string_vars[i] = frame.data.sub_call
- .saved_strvars[i];
- }
-
- rt->in_sub_index = -1;
- rt->next_index = frame.data.sub_call.return_index;
+ /* Pop scope stack (restores all vars including named) */
+ scope_stack_pop(&rt->scope_stack, rt);
  return;
  }
 
@@ -748,25 +737,14 @@ void pi_parse_end(Lexer *lex, RuntimeState *rt, int line_num)
  */
  if (lexer_match_keyword(lex, KW_FUNCTION)) {
  StackFrame frame;
- int i;
  lexer_next(lex); /* consume FUNCTION */
 
  if (runtime_pop(rt, FRAME_SUB, &frame) != 0) {
  return;
  }
 
- /* Restore saved variables */
- for (i = 0; i < MAX_VARIABLES; i++) {
- rt->variables[i] = frame.data.sub_call
- .saved_vars[i];
- }
- for (i = 0; i < MAX_STRING_VARS; i++) {
- rt->string_vars[i] = frame.data.sub_call
- .saved_strvars[i];
- }
-
- rt->in_sub_index = -1;
- rt->next_index = frame.data.sub_call.return_index;
+ /* Pop scope stack (restores all vars including named) */
+ scope_stack_pop(&rt->scope_stack, rt);
  return;
  }
 
@@ -776,25 +754,14 @@ void pi_parse_end(Lexer *lex, RuntimeState *rt, int line_num)
  */
  if (lexer_match_keyword(lex, KW_DEF)) {
  StackFrame frame;
- int i;
  lexer_next(lex); /* consume DEF */
 
  if (runtime_pop(rt, FRAME_SUB, &frame) != 0) {
  return;
  }
 
- /* Restore saved variables */
- for (i = 0; i < MAX_VARIABLES; i++) {
- rt->variables[i] = frame.data.sub_call
- .saved_vars[i];
- }
- for (i = 0; i < MAX_STRING_VARS; i++) {
- rt->string_vars[i] = frame.data.sub_call
- .saved_strvars[i];
- }
-
- rt->in_sub_index = -1;
- rt->next_index = frame.data.sub_call.return_index;
+ /* Pop scope stack (restores all vars including named) */
+ scope_stack_pop(&rt->scope_stack, rt);
  return;
  }
 
@@ -813,6 +780,16 @@ void pi_parse_end(Lexer *lex, RuntimeState *rt, int line_num)
  if (lexer_match_keyword(lex, KW_FOR)) {
  lexer_next(lex); /* consume FOR */
  pi_parse_endfor(lex, rt, line_num);
+ return;
+ }
+
+ /*
+ * END ATOMIC - commit the atomic block.
+ * Finalizes all journaled writes.
+ */
+ if (lexer_match_keyword(lex, KW_ATOMIC)) {
+ lexer_next(lex); /* consume ATOMIC */
+ pi_parse_end_atomic(line_num);
  return;
  }
 

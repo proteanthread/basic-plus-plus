@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include "errors.h"
+#include "txn.h"
 
 /* --- Module State ---
  * current_error: The currently active error code, or ERR_NONE if
@@ -77,6 +78,9 @@ void error_raise(ErrorCode code, int line_num)
  }
 
  current_error = code;
+
+ /* Auto-rollback ATOMIC blocks on error */
+ txn_on_error(line_num);
 
  /* If ON ERROR GOTO is active, suppress the message */
  if (suppress_output) {

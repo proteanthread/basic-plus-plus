@@ -1,0 +1,29 @@
+core\value.c(18): Error! E1055: Unable to open 'stdio.h'
+core\value.c(19): Error! E1055: Unable to open 'stdlib.h'
+core\value.c(20): Error! E1055: Unable to open 'string.h'
+core\value.c(21): Error! E1055: Unable to open 'math.h'
+config.h(47): Error! E1055: Unable to open 'stddef.h'
+core\value.c(90): Warning! W131: No prototype found for function 'memcpy'
+core\value.c(90): Error! E1011: Symbol 'size_t' has not been declared
+core\value.c(90): Error! E1009: Expecting ')' but found 'len'
+core\value.c(90): Note! I2002: 'memcpy' defined in: core\value.c(90)
+core\value.c(90): Error! E1009: Expecting ';' but found ')'
+core\value.c(90): Error! E1063: Missing operand
+core\value.c(90): Warning! W111: Meaningless use of an expression
+core\value.c(90): Error! E1009: Expecting ';' but found ')'
+core\value.c(90): Error! E1063: Missing operand
+core\value.c(90): Warning! W111: Meaningless use of an expression
+core\value.c(90): Error! E1009: Expecting ';' but found ')'
+core\value.c(90): Error! E1063: Missing operand
+core\value.c(90): Warning! W111: Meaningless use of an expression
+core\value.c(90): Error! E1009: Expecting ';' but found ')'
+core\value.c(90): Error! E1063: Missing operand
+core\value.c(90): Warning! W111: Meaningless use of an expression
+core\value.c(90): Error! E1009: Expecting ';' but found ')'
+core\value.c(90): Error! E1063: Missing operand
+core\value.c(90): Warning! W111: Meaningless use of an expression
+core\value.c(90): Error! E1009: Expecting ';' but found ')'
+core\value.c(90): Error! E1063: Missing operand
+core\value.c(90): Warning! W111: Meaningless use of an expression
+core\value.c(90): Error! E1009: Expecting ';' but found ')'
+core\value.c(90): Error! E1147: Too many errors: compilation aborted

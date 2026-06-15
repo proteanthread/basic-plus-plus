@@ -99,7 +99,22 @@ void builtins_register(void)
   "Complex conjugate: CONJ(COMPLEX(3,4))=(3-4i)" },
   { "CABS", KW_CABS_FUNC, FCAT_MATH, FRET_FLOAT,1, 1,
   FSAFE_PURE, 0, builtin_cabs,
-  "Complex magnitude: CABS(COMPLEX(3,4))=5" },
+  "Complex magnitude: CABS((3+4i))=5" },
+  { "CSQR", KW_CSQR_FUNC, FCAT_MATH, FRET_ANY, 1, 1,
+  FSAFE_PURE, 0, builtin_csqr,
+  "Complex square root: CSQR((-1+0i))" },
+  { "CEXP", KW_CEXP_FUNC, FCAT_MATH, FRET_ANY, 1, 1,
+  FSAFE_PURE, 0, builtin_cexp,
+  "Complex exponential: CEXP((0+3.14i))" },
+  { "CLOG", KW_CLOG_FUNC, FCAT_MATH, FRET_ANY, 1, 1,
+  FSAFE_PURE, 0, builtin_clog,
+  "Complex natural log: CLOG((-1+0i))" },
+  { "CARG", KW_CARG_FUNC, FCAT_MATH, FRET_FLOAT,1, 1,
+  FSAFE_PURE, 0, builtin_carg,
+  "Complex argument (phase): CARG((0+1i))" },
+  { "CPOW", KW_CPOW_FUNC, FCAT_MATH, FRET_ANY, 2, 2,
+  FSAFE_PURE, 0, builtin_cpow,
+  "Complex power: CPOW((3+4i), 2)" },
   { "MIN", KW_MIN_FUNC, FCAT_MATH, FRET_FLOAT,2, 16,
   FSAFE_PURE, 0, builtin_min,
   "Minimum value: MIN(5,3)=3" },
@@ -256,6 +271,66 @@ void builtins_register(void)
  "Pixel color: POINT(x, y)" }
  };
 
+ /* --- Stream I/O (builtins_sio.c) --- */
+ static const FunctionEntry sio_funcs[] = {
+ { "SIOREAD$", KW_SIOREAD, FCAT_IO, FRET_STRING, 2, 2,
+ FSAFE_IO, 0, builtin_sioread,
+ "Read bytes: SIOREAD$(chan, n)" },
+ { "SIOREADLN$", KW_SIOREADLN, FCAT_IO, FRET_STRING, 1, 1,
+ FSAFE_IO, 0, builtin_sioreadln,
+ "Read line: SIOREADLN$(chan)" },
+ { "SIOWRITE", KW_SIOWRITE, FCAT_IO, FRET_INT, 2, 2,
+ FSAFE_IO, 0, builtin_siowrite,
+ "Write data: SIOWRITE(chan, data$)" },
+ { "SIOSEEK", KW_SIOSEEK, FCAT_IO, FRET_INT, 2, 2,
+ FSAFE_IO, 0, builtin_sioseek,
+ "Seek: SIOSEEK(chan, pos)" },
+ { "SIOFLUSH", KW_SIOFLUSH, FCAT_IO, FRET_INT, 1, 1,
+ FSAFE_IO, 0, builtin_sioflush,
+ "Flush: SIOFLUSH(chan)" },
+ { "SIOSTATUS", KW_SIOSTATUS, FCAT_IO, FRET_INT, 1, 1,
+ FSAFE_IO, 0, builtin_siostatus,
+ "Status: SIOSTATUS(chan) bitmask" },
+ { "SIOAVAIL", KW_SIOAVAIL, FCAT_IO, FRET_INT, 1, 1,
+ FSAFE_IO, 0, builtin_sioavail,
+ "Available: SIOAVAIL(chan) bytes" }
+ };
+
+ /* --- Block I/O (builtins_bio.c) --- */
+ static const FunctionEntry bio_funcs[] = {
+ { "BIOREAD$", KW_BIOREAD, FCAT_IO, FRET_STRING, 3, 3,
+ FSAFE_IO, 0, builtin_bioread,
+ "Read block: BIOREAD$(chan, pos, len)" },
+ { "BIOWRITE", KW_BIOWRITE, FCAT_IO, FRET_INT, 3, 3,
+ FSAFE_IO, 0, builtin_biowrite,
+ "Write block: BIOWRITE(chan, pos, data$)" },
+ { "BIOSTATUS", KW_BIOSTATUS, FCAT_IO, FRET_INT, 1, 1,
+ FSAFE_IO, 0, builtin_biostatus,
+ "Block status: BIOSTATUS(chan) bitmask" },
+ { "BIOSIZE", KW_BIOSIZE, FCAT_IO, FRET_INT, 1, 1,
+ FSAFE_IO, 0, builtin_biosize,
+ "File/dev size: BIOSIZE(chan)" },
+ { "BIOCHECKSUM", KW_BIOCHECKSUM, FCAT_UTIL, FRET_INT, 1, 1,
+ FSAFE_PURE, 0, builtin_biochecksum,
+ "CRC-16: BIOCHECKSUM(data$)" },
+ { "BIOCOMPARE", KW_BIOCOMPARE, FCAT_IO, FRET_INT, 3, 3,
+ FSAFE_IO, 0, builtin_biocompare,
+ "Compare: BIOCOMPARE(chan, pos, data$)" },
+ { "BIOFILL", KW_BIOFILL, FCAT_IO, FRET_INT, 4, 4,
+ FSAFE_IO, 0, builtin_biofill,
+ "Fill block: BIOFILL(chan, pos, len, val)" },
+ { "BIOCOPY", KW_BIOCOPY, FCAT_IO, FRET_INT, 4, 4,
+ FSAFE_IO, 0, builtin_biocopy,
+ "Copy block: BIOCOPY(chan, src, dst, len)" }
+ };
+
+ /* Transaction query functions */
+ static const FunctionEntry txn_funcs[] = {
+ { "TXNSTATUS", KW_TXNSTATUS, FCAT_IO, FRET_INT, 0, 0,
+ FSAFE_PURE, 0, builtin_txnstatus,
+ "Transaction state: TXNSTATUS()" }
+ };
+
  int i;
  int math_count   = (int)(sizeof(math_funcs)   / sizeof(math_funcs[0]));
  int str_count    = (int)(sizeof(str_funcs)    / sizeof(str_funcs[0]));
@@ -264,6 +339,9 @@ void builtins_register(void)
  int mem_count    = (int)(sizeof(mem_funcs)    / sizeof(mem_funcs[0]));
  int sys_count    = (int)(sizeof(sys_funcs)    / sizeof(sys_funcs[0]));
  int gfx_count    = (int)(sizeof(gfx_funcs)    / sizeof(gfx_funcs[0]));
+ int sio_count    = (int)(sizeof(sio_funcs)    / sizeof(sio_funcs[0]));
+ int bio_count    = (int)(sizeof(bio_funcs)    / sizeof(bio_funcs[0]));
+ int txn_count    = (int)(sizeof(txn_funcs)    / sizeof(txn_funcs[0]));
 
  /* Register all categories */
  for (i = 0; i < math_count; i++)
@@ -280,4 +358,11 @@ void builtins_register(void)
  funcreg_register(&sys_funcs[i]);
  for (i = 0; i < gfx_count; i++)
  funcreg_register(&gfx_funcs[i]);
+ for (i = 0; i < sio_count; i++)
+ funcreg_register(&sio_funcs[i]);
+ for (i = 0; i < bio_count; i++)
+ funcreg_register(&bio_funcs[i]);
+ for (i = 0; i < txn_count; i++)
+ funcreg_register(&txn_funcs[i]);
 }
+

@@ -35,6 +35,7 @@
 #include "config.h"
 #include "dialect.h"
 #include "security.h"
+#include "device_alias.h"
 
 /* --- Dialect Registry Table ---
  * Mutable table populated by dialect_register() calls at boot.
@@ -210,6 +211,11 @@ void dialect_list_all(void)
  dialect_table[i].short_name,
  (&dialect_table[i] == active_dialect) ? " *" : "");
  }
+ /* Show B++ as a virtual dialect (all features) */
+ printf("  -: %-30s [%s]%s\n",
+ "BASIC++ (all features)",
+ "B++",
+ (dialect_is_strict() == 0) ? " *" : "");
 }
 
 /*
@@ -228,6 +234,50 @@ int dialect_find_by_name(const char *name)
 
  name_len = (int)strlen(name);
  if (name_len == 0) return -1;
+
+ /*
+  * "BPP", "B++", and "BASIC++" are not real machine dialects
+  * — they select the default all-features-enabled mode.
+  * Maps to the compile-time default dialect (typically GWBS)
+  * and disables strict mode.
+  */
+ {
+  int is_bpp = 0;
+  /* Check "BPP" (case-insensitive) */
+  if (name_len == 3) {
+   char a = name[0], b = name[1], c = name[2];
+   if (a >= 'a' && a <= 'z') a = (char)(a - 32);
+   if (b >= 'a' && b <= 'z') b = (char)(b - 32);
+   if (c >= 'a' && c <= 'z') c = (char)(c - 32);
+   if (a == 'B' && b == 'P' && c == 'P') is_bpp = 1;
+  }
+  /* Check "B++" */
+  if (name_len == 3 &&
+      name[0] == 'B' && name[1] == '+' && name[2] == '+')
+   is_bpp = 1;
+  if (name_len == 3 &&
+      name[0] == 'b' && name[1] == '+' && name[2] == '+')
+   is_bpp = 1;
+  /* Check "BASIC++" (case-insensitive prefix) */
+  if (name_len >= 5 && name_len <= 7) {
+   char u[8];
+   int k;
+   for (k = 0; k < name_len && k < 7; k++) {
+    u[k] = name[k];
+    if (u[k] >= 'a' && u[k] <= 'z')
+     u[k] = (char)(u[k] - 32);
+   }
+   u[k] = '\0';
+   if (strcmp(u, "BASIC") == 0 ||
+       strcmp(u, "BASIC+") == 0 ||
+       strcmp(u, "BASIC++") == 0)
+    is_bpp = 1;
+  }
+  if (is_bpp) {
+   dialect_set_strict(0);
+   return BASICPP_DEFAULT_DIALECT;
+  }
+ }
 
  for (i = 0; i < DIALECT_COUNT; i++) {
  const char *dn;
@@ -277,12 +327,31 @@ int dialect_find_by_name(const char *name)
  *
  * Called after dialect_init() to reconfigure the runtime for the
  * new dialect. Dispatches to the dialect's apply_fn callback if one
- * is registered.
+ * is registered. Also loads device aliases for the dialect.
+ *
+ * DEVICE ALIAS LOADING:
+ * Dialects with platform-specific device names (Atari E:, C64 DEV0:,
+ * CoCo CAS:, etc.) auto-load their aliases here. The aliases map
+ * legacy device names to modern VDev names (CON:, ERR:, FILE:).
+ *
+ * Aliases are opt-in per dialect:
+ * - Strong device identity (Atari, C64, CoCo, Sinclair, SuperBASIC,
+ *   SUPER BASIC): auto-load
+ * - Modern/generic (GW-BASIC, QBasic, ECMA-116): auto-load
+ *   (device names like SCRN: and KYBD: are useful)
+ * - Minimal (PATB, TRS-80 L1, ECMA-55): no aliases
+ *
+ * Users can override at any time via DEVICE ALIAS commands.
  */
 void dialect_apply(void)
 {
  if (active_dialect && active_dialect->apply_fn) {
   active_dialect->apply_fn();
+ }
+
+ /* Load device aliases for the active dialect */
+ if (active_dialect) {
+  device_alias_load_dialect(active_dialect->id);
  }
 }
 

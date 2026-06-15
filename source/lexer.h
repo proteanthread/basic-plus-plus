@@ -78,6 +78,8 @@ typedef enum TokenType {
  TOK_BACKSLASH, /* \ (integer division) */
  TOK_PIPE, /* | (pipe operator) */
  TOK_APPEND, /* >> (append redirect) */
+ TOK_IMAGINARY, /* imaginary literal (e.g., 2i, 3.14i) */
+ TOK_COMPLEX_VAR, /* complex variable (Z~) */
  TOK_CR /* end of line / carriage return */
 } TokenType;
 
@@ -442,6 +444,35 @@ enum {
  KW_FILEMOD,      /* FILEMOD$ - file modified date */
  /* Formatted I/O */
  KW_DISPLAY,      /* DISPLAY - file-to-screen output (BBC BASIC) */
+ /* Complex math functions */
+ KW_CSQR_FUNC,   /* CSQR - complex square root */
+ KW_CEXP_FUNC,   /* CEXP - complex exponential */
+ KW_CLOG_FUNC,   /* CLOG - complex natural log */
+ KW_CARG_FUNC,   /* CARG - complex argument (phase) */
+ KW_CPOW_FUNC,   /* CPOW - complex power */
+ /* Stream I/O primitives (BASIC++ Milestone 11) */
+ KW_SIOREAD,      /* SIOREAD$ - read bytes from channel */
+ KW_SIOREADLN,    /* SIOREADLN$ - read line from channel */
+ KW_SIOWRITE,     /* SIOWRITE - write to channel */
+ KW_SIOSEEK,      /* SIOSEEK - seek on channel */
+ KW_SIOFLUSH,     /* SIOFLUSH - flush channel */
+ KW_SIOSTATUS,    /* SIOSTATUS - channel status */
+ KW_SIOAVAIL,     /* SIOAVAIL - bytes available */
+ /* Block I/O primitives (BASIC++ Milestone 11) */
+ KW_BIOREAD,      /* BIOREAD$ - read block at position */
+ KW_BIOWRITE,     /* BIOWRITE - write block at position */
+ KW_BIOSTATUS,    /* BIOSTATUS - block op status */
+ KW_BIOSIZE,      /* BIOSIZE - device/file size */
+ KW_BIOCHECKSUM,  /* BIOCHECKSUM - CRC-16 of data */
+ KW_BIOCOMPARE,   /* BIOCOMPARE - compare two blocks */
+ KW_BIOFILL,      /* BIOFILL - fill block with byte */
+ KW_BIOCOPY,      /* BIOCOPY - copy block within file */
+ /* Transaction / ATOMIC primitives (BASIC++ Milestone 11) */
+ KW_ATOMIC,       /* ATOMIC - begin atomic block */
+ KW_TXN,          /* TXN - transaction control */
+ KW_COMMIT,       /* COMMIT - commit transaction */
+ KW_ROLLBACK,     /* ROLLBACK - rollback transaction */
+ KW_TXNSTATUS,    /* TXNSTATUS - transaction status query */
  KW_COUNT /* sentinel - must be last */
 };
 

@@ -1,6 +1,6 @@
 EXTERNAL MODULES, FUNCTIONS, AND PLUG-INS
 ==========================================
-Version 1.5.0
+Version 2.0.0
 
 BASIC++ has a module system that enables external code to extend
 the interpreter with new functions, statements, devices, and
@@ -87,6 +87,17 @@ TABLE OF CONTENTS
   42. Module Checklist
   43. Troubleshooting
   44. Related Manuals
+
+  Part VIII: Practical How-To Walkthrough
+  45. Quick-Start: Your First Module in 5 Minutes
+  46. CLI Flags: --lib, --mod, --func
+  47. MODULE Command: LOAD, UNLOAD, INFO, LIST
+  48. Capability Declarations and What They Mean
+  49. Security Levels and Module Interaction
+  50. bpp_module_init: The Dynamic Entry Point
+  51. End-to-End Walkthrough: Temperature Converter Module
+  52. Built-In Modules vs. External Modules
+  53. Module Lifecycle Diagram
 
 
 =====================================================================
@@ -2130,6 +2141,735 @@ How to choose capability flags for your module:
   Q_Security.txt                Security system reference
   R_Virtual_Devices.txt         VDev device drivers
   W_Virtual_Filesystem.txt      File access architecture
+
+
+=====================================================================
+
+              PART VIII: PRACTICAL HOW-TO WALKTHROUGH
+
+=====================================================================
+
+This section is the hands-on companion to Parts I–VII above.
+It walks you through creating, loading, unloading, and securing
+external modules using the actual command-line flags and REPL
+commands.
+
+
+=====================================================================
+45. QUICK-START: YOUR FIRST MODULE IN 5 MINUTES
+=====================================================================
+
+Goal: Build a shared library (DLL/SO) that adds CUBE(x) and
+HYPOT(a,b) to the BASIC++ interpreter at runtime.
+
+STEP 1: Write the module source (mod_mymath.c)
+
+  /*
+   * mod_mymath.c - External math extension module
+   *
+   * Entry point: bpp_module_init()
+   * This function name is MANDATORY for dynamic loading.
+   * The loader searches for "bpp_module_init" by name.
+   */
+  #include <math.h>
+  #include "value.h"
+  #include "funcreg.h"
+  #include "module.h"
+
+  /* --- Handlers --- */
+
+  static BValue fn_cube(BValue *args, int argc, void *rt)
+  {
+      double x;
+      (void)argc; (void)rt;
+      x = bval_to_float(&args[0]);
+      return bval_float(x * x * x);
+  }
+
+  static BValue fn_hypot(BValue *args, int argc, void *rt)
+  {
+      double a, b;
+      (void)argc; (void)rt;
+      a = bval_to_float(&args[0]);
+      b = bval_to_float(&args[1]);
+      return bval_float(sqrt(a*a + b*b));
+  }
+
+  /* --- Registration table --- */
+
+  static const FunctionEntry mymath_funcs[] = {
+      { "CUBE",  KW_COUNT, FCAT_MATH, FRET_FLOAT,
+        1, 1, FSAFE_PURE, 0, fn_cube,
+        "Return x cubed" },
+      { "HYPOT", KW_COUNT, FCAT_MATH, FRET_FLOAT,
+        2, 2, FSAFE_PURE, 0, fn_hypot,
+        "Hypotenuse of a, b" },
+  };
+
+  /* --- Module init callback --- */
+
+  static int mymath_init(void *rt)
+  {
+      int i;
+      (void)rt;
+      for (i = 0; i < 2; i++)
+          funcreg_register(&mymath_funcs[i]);
+      return 0;
+  }
+
+  /* --- Module descriptor --- */
+
+  static const ModuleInfo mymath_info = {
+      "MYMATH",                      /* name */
+      "1.0",                         /* version */
+      "Custom math extensions",      /* description */
+      MOD_LIBRARY,                   /* class */
+      CAP_MATH,                      /* capabilities */
+      mymath_init,                   /* init */
+      NULL                           /* cleanup (none needed) */
+  };
+
+  /* --- MANDATORY entry point for dynamic loading --- */
+  /*
+   * When BASIC++ calls module_load_dynamic("mod_mymath.dll"),
+   * it looks for a function named exactly "bpp_module_init".
+   * This function must:
+   *   1. Call module_register() with the ModuleInfo descriptor
+   *   2. Optionally call module_activate() for auto-activation
+   *
+   * If this function is missing, loading fails with:
+   *   "No bpp_module_init found in mod_mymath.dll"
+   */
+  #ifdef _WIN32
+  __declspec(dllexport)
+  #endif
+  void bpp_module_init(void)
+  {
+      module_register(&mymath_info);
+  }
+
+
+STEP 2: Compile the shared library
+
+  Windows (MSVC):
+    cl /LD /O2 mod_mymath.c /Fe:mod_mymath.dll /I source
+
+  Windows (MinGW):
+    gcc -shared -O2 -o mod_mymath.dll mod_mymath.c -I source
+
+  Linux (GCC):
+    gcc -shared -fPIC -O2 -o mod_mymath.so mod_mymath.c \
+        -I source -lm
+
+  macOS (Clang):
+    clang -shared -fPIC -O2 -o mod_mymath.dylib mod_mymath.c \
+        -I source -lm
+
+
+STEP 3: Load and use it
+
+  Option A: CLI flag at startup
+    basicpp --lib mod_mymath.dll
+
+  Option B: REPL command at runtime
+    MODULE LOAD "mod_mymath.dll"
+    MODULE "MYMATH"
+
+  Option C: From within a BASIC program
+    10 MODULE LOAD "mod_mymath.dll"
+    20 MODULE "MYMATH"
+    30 PRINT CUBE(3)           ' 27
+    40 PRINT HYPOT(3, 4)       ' 5
+
+  That's it.  Two new functions are now available.
+
+
+=====================================================================
+46. CLI FLAGS: --lib, --mod, --func
+=====================================================================
+
+BASIC++ accepts three CLI flags for loading external modules
+at startup (during Boot Phase 5):
+
+  --lib <path>     Load a general-purpose function library
+  --mod <path>     Load a module (dialect, device, or extension)
+  --func <path>    Load a single-function extension
+
+All three do the same thing internally: they call
+module_load_dynamic(path), which loads the shared library
+and invokes bpp_module_init().
+
+The distinction is semantic (for the user's benefit):
+
+  --lib    "I'm adding math/string/utility functions"
+  --mod    "I'm adding a dialect, device driver, or system extension"
+  --func   "I'm adding a single specialized function"
+
+EXAMPLES:
+
+  # Load a math library at startup
+  basicpp --lib mod_mymath.dll
+
+  # Load a serial port driver and set security
+  basicpp --mod mod_serial.dll -s STANDARD
+
+  # Load a single custom function
+  basicpp --func mod_crc32.dll
+
+  # Combine multiple flags
+  basicpp --lib mod_mymath.dll --mod mod_serial.dll -d BPP
+
+  # Load and immediately run a program that uses the module
+  basicpp --lib mod_mymath.dll -r myprogram.bas
+
+BOOT SEQUENCE:
+
+  When --lib/--mod/--func is specified, the load happens during
+  Phase 5 (Module System) of the boot sequence:
+
+    Phase 0: Host Entry
+    Phase 1: Core Memory
+    Phase 2: VM Core
+    Phase 3: Virtual Devices
+    Phase 4: Standard Library
+    Phase 5: Module System          <-- --lib/--mod/--func loaded here
+    Phase 6: Dialect & Config
+    Phase 7: Ready State
+
+  To see the loading happen, use --boot-log:
+
+    basicpp --boot-log --lib mod_mymath.dll
+
+  Output:
+    [BOOT] Phase 5: Module System
+    [BOOT]   Security level: OPEN
+    [BOOT]   Registered: STDLIB
+    [BOOT]   Loading CLI library: mod_mymath.dll
+    [BOOT]   Modules: 2 registered, 0 failed
+
+FAILURE HANDLING:
+
+  If the shared library cannot be loaded:
+    - Boot continues (module failures are non-critical)
+    - Boot status is set to DEGRADED
+    - A warning is printed:
+        WARNING: Failed to load: mod_mymath.dll
+    - The functions from that module are NOT available
+    - All other modules and built-ins work normally
+
+
+=====================================================================
+47. MODULE COMMAND: LOAD, UNLOAD, INFO, LIST
+=====================================================================
+
+The MODULE command manages modules at runtime from the REPL
+or within a running BASIC program.
+
+47.1  MODULE (no args) — List all modules
+
+    Ready.
+    > MODULE
+
+    Module           Class      Version  Caps   Status
+    ------           -----      -------  ----   ------
+    STDLIB           Library    1.0      MS     ACTIVE
+    USB              Extension  1.0      IY     INACTIVE
+    FUJINET          Extension  1.0      IN     INACTIVE
+    UPNP             Extension  1.0      IN     INACTIVE
+
+  Capability letters: M=Math S=String I=IO F=File Y=System
+                      G=Graphics A=Sound N=Network
+
+47.2  MODULE "name" — Activate a registered module
+
+    > MODULE "USB"
+    >
+    ' USB functions are now available
+
+  If the module is already active, this is a no-op (idempotent).
+
+47.3  MODULE LOAD "path" — Load an external shared library
+
+    > MODULE LOAD "mod_mymath.dll"
+    Module loaded: mod_mymath.dll
+
+    > MODULE
+    Module           Class      Version  Caps   Status
+    ...
+    MYMATH           Library    1.0      M      INACTIVE
+
+  Note: LOAD registers the module but does NOT activate it.
+  You must then activate it:
+
+    > MODULE "MYMATH"
+
+  This two-step process is intentional — it lets you inspect
+  a module before activating it (see MODULE INFO below).
+
+  SECURITY: MODULE LOAD requires BOTH:
+    - SECOP_MODULE (module activation permission)
+    - SECOP_SYSTEM (system-level access — because loading
+      native code is inherently dangerous)
+
+  Under SEC_STANDARD: MODULE LOAD is BLOCKED (SECOP_SYSTEM denied)
+  Under SEC_RESTRICTED: MODULE LOAD is BLOCKED (both denied)
+  Only SEC_OPEN allows MODULE LOAD.
+
+47.4  MODULE UNLOAD "name" — Deactivate a module
+
+    > MODULE UNLOAD "MYMATH"
+    Module unloaded: MYMATH
+
+  This calls the module's cleanup() callback and marks it
+  inactive.  Functions registered by the module remain in the
+  function registry but the module's resources are released.
+
+47.5  MODULE INFO "name" — Show detailed module information
+
+    > MODULE INFO "STDLIB"
+    Module:       STDLIB
+    Version:      1.0
+    Description:  Standard function library
+    Class:        Library
+    Capabilities: MS (0x0003)
+    Status:       ACTIVE
+    Security:     ALLOWED at current level OPEN
+
+  The "Security" line tells you whether the module CAN be
+  activated at the current security level.  This is useful
+  before activating an unknown module:
+
+    > SECURITY "STANDARD"
+    Security: STANDARD
+
+    > MODULE INFO "USB"
+    Module:       USB
+    Version:      1.0
+    Description:  USB device module
+    Class:        Extension
+    Capabilities: IY (0x0014)
+    Status:       INACTIVE
+    Security:     BLOCKED at current level STANDARD
+
+  The USB module has CAP_SYSTEM (Y), which is blocked at
+  STANDARD level.  Attempting to activate it will fail:
+
+    > MODULE "USB"
+    Module 'USB' blocked by security level STANDARD.
+
+
+=====================================================================
+48. CAPABILITY DECLARATIONS AND WHAT THEY MEAN
+=====================================================================
+
+Every module declares a capability bitmask.  This is the
+module author's promise about what system resources the
+module will access.
+
+HOW TO CHOOSE CAPABILITIES:
+
+  Your module...                        Use capability...
+  ------------------------------------------------
+  Only does math (sin, cos, etc.)       CAP_MATH     (0x01)
+  Manipulates strings                   CAP_STRING   (0x02)
+  Does any I/O (print, input)          CAP_IO       (0x04)
+  Reads or writes files                 CAP_FILE     (0x08)
+  Calls OS APIs (exec, registry)       CAP_SYSTEM   (0x10)
+  Uses graphics (framebuffer, plot)    CAP_GRAPHICS (0x20)
+  Uses audio (beep, sound)             CAP_SOUND    (0x40)
+  Uses network sockets (TCP/UDP)       CAP_NETWORK  (0x80)
+
+  Combine flags with bitwise OR:
+
+    /* Math + String library */
+    .capabilities = CAP_MATH | CAP_STRING     /* = 0x03 */
+
+    /* File utility with I/O */
+    .capabilities = CAP_IO | CAP_FILE          /* = 0x0C */
+
+    /* Serial port driver (I/O + system access) */
+    .capabilities = CAP_IO | CAP_SYSTEM        /* = 0x14 */
+
+    /* Full network module */
+    .capabilities = CAP_IO | CAP_NETWORK       /* = 0x84 */
+
+PRINCIPLE OF LEAST PRIVILEGE:
+
+  Always declare the MINIMUM capabilities your module needs.
+
+  BAD:
+    .capabilities = CAP_IO | CAP_FILE | CAP_SYSTEM | CAP_NETWORK
+    /* Requests everything — users won't trust this module */
+
+  GOOD:
+    .capabilities = CAP_MATH
+    /* Only math — works at ALL security levels */
+
+  A module with CAP_MATH alone works at OPEN, STANDARD, and
+  RESTRICTED.  A module with CAP_SYSTEM works only at OPEN.
+
+
+=====================================================================
+49. SECURITY LEVELS AND MODULE INTERACTION
+=====================================================================
+
+49.1  The Security × Capability Matrix
+
+  SECURITY     ALLOWED MODULE                  BLOCKED MODULE
+  LEVEL        CAPABILITIES                    CAPABILITIES
+  --------     -------------------------       ----------------
+  OPEN         All capabilities                (none blocked)
+
+  STANDARD     CAP_MATH, CAP_STRING,           CAP_SYSTEM
+               CAP_IO, CAP_FILE,
+               CAP_GRAPHICS, CAP_SOUND,
+               CAP_NETWORK
+
+  RESTRICTED   CAP_MATH, CAP_STRING            CAP_IO, CAP_FILE,
+               (pure compute only)             CAP_SYSTEM,
+                                               CAP_GRAPHICS,
+                                               CAP_SOUND,
+                                               CAP_NETWORK
+
+49.2  The Security Ratchet
+
+  Security can be RAISED but never LOWERED during a session:
+
+    > SECURITY "OPEN"         ' Start open
+    > SECURITY "STANDARD"     ' Raise to STANDARD - OK
+    > SECURITY "OPEN"         ' Try to lower back
+    Cannot lower security from STANDARD to OPEN.
+
+  This prevents a malicious module from lowering security
+  after the user has set it.
+
+49.3  Dynamic MODULE LOAD and Security
+
+  MODULE LOAD (loading native code) requires SECOP_SYSTEM:
+
+    Level        MODULE LOAD     MODULE "name"
+    ----------   -----------     -------------
+    OPEN         ALLOWED         ALLOWED (all caps)
+    STANDARD     BLOCKED         ALLOWED (if caps OK)
+    RESTRICTED   BLOCKED         BLOCKED (most caps)
+
+  This means:
+    - At OPEN: Load anything, activate anything
+    - At STANDARD: Cannot load new .dll/.so files, but CAN
+      activate built-in modules that don't need SYSTEM caps
+    - At RESTRICTED: Cannot load or activate anything with
+      I/O capabilities; only pure math/string modules work
+
+49.4  Recommended Security Patterns
+
+  UNTRUSTED PROGRAM EXECUTION:
+    basicpp -s STANDARD -r untrusted.bas
+    ' Program can use built-in modules (non-SYSTEM)
+    ' Program CANNOT load .dll/.so files
+    ' Program CANNOT call SHELL, POKE, etc.
+
+  SANDBOXED COMPUTATION:
+    basicpp -s RESTRICTED -r compute.bas
+    ' Program can only do math and string operations
+    ' No file access, no I/O, no modules with I/O
+
+  MODULE DEVELOPMENT / TESTING:
+    basicpp -s OPEN --lib mod_mymod.dll
+    ' Full access for development and testing
+
+
+=====================================================================
+50. bpp_module_init: THE DYNAMIC ENTRY POINT
+=====================================================================
+
+Every dynamically-loaded module MUST export a function named
+exactly bpp_module_init with no arguments and void return:
+
+  void bpp_module_init(void);
+
+This is the ONLY function the loader looks for.  On Windows,
+it uses GetProcAddress(handle, "bpp_module_init").  On Linux,
+it uses dlsym(handle, "bpp_module_init").
+
+WHAT IT MUST DO:
+
+  At minimum: call module_register() with your ModuleInfo.
+
+    void bpp_module_init(void)
+    {
+        module_register(&my_module_info);
+    }
+
+  The module is then available for activation via MODULE "NAME".
+
+OPTIONAL AUTO-ACTIVATION:
+
+  If you want the module to activate immediately on load
+  (without the user having to type MODULE "NAME"):
+
+    void bpp_module_init(void)
+    {
+        module_register(&my_module_info);
+        /* Auto-activate: functions available immediately */
+        module_activate("MYMOD", NULL);
+    }
+
+  NOTE: Passing NULL for the RuntimeState means the init
+  callback cannot access the string pool.  If your init
+  callback needs RuntimeState, use the two-step process
+  (register at load, activate later when rt is available).
+
+WINDOWS DLL EXPORT:
+
+  On Windows, you MUST mark bpp_module_init as exported:
+
+    #ifdef _WIN32
+    __declspec(dllexport)
+    #endif
+    void bpp_module_init(void)
+    {
+        ...
+    }
+
+  Without __declspec(dllexport), GetProcAddress() will not
+  find it and loading will fail with:
+    "No bpp_module_init found in mod_mymod.dll"
+
+  On Linux/macOS, symbols are exported by default (no special
+  annotation needed unless -fvisibility=hidden is used).
+
+
+=====================================================================
+51. END-TO-END WALKTHROUGH: TEMPERATURE CONVERTER MODULE
+=====================================================================
+
+Let's build a complete, practical module from scratch.
+
+GOAL: Add three functions to BASIC++:
+  CTOF(celsius)         — Celsius to Fahrenheit
+  FTOC(fahrenheit)      — Fahrenheit to Celsius
+  KTOC(kelvin)          — Kelvin to Celsius
+
+STEP 1: Create mod_temperature.c
+
+  #include "value.h"
+  #include "funcreg.h"
+  #include "module.h"
+
+  static BValue fn_ctof(BValue *a, int c, void *r)
+  {
+      (void)c; (void)r;
+      return bval_float(bval_to_float(&a[0]) * 9.0 / 5.0 + 32.0);
+  }
+
+  static BValue fn_ftoc(BValue *a, int c, void *r)
+  {
+      (void)c; (void)r;
+      return bval_float((bval_to_float(&a[0]) - 32.0) * 5.0 / 9.0);
+  }
+
+  static BValue fn_ktoc(BValue *a, int c, void *r)
+  {
+      (void)c; (void)r;
+      return bval_float(bval_to_float(&a[0]) - 273.15);
+  }
+
+  static const FunctionEntry temp_funcs[] = {
+      { "CTOF", KW_COUNT, FCAT_MATH, FRET_FLOAT,
+        1, 1, FSAFE_PURE, 0, fn_ctof,
+        "Celsius to Fahrenheit" },
+      { "FTOC", KW_COUNT, FCAT_MATH, FRET_FLOAT,
+        1, 1, FSAFE_PURE, 0, fn_ftoc,
+        "Fahrenheit to Celsius" },
+      { "KTOC", KW_COUNT, FCAT_MATH, FRET_FLOAT,
+        1, 1, FSAFE_PURE, 0, fn_ktoc,
+        "Kelvin to Celsius" },
+  };
+
+  static int temp_init(void *rt)
+  {
+      int i;
+      (void)rt;
+      for (i = 0; i < 3; i++)
+          funcreg_register(&temp_funcs[i]);
+      return 0;
+  }
+
+  static const ModuleInfo temp_info = {
+      "TEMPERATURE", "1.0",
+      "Temperature conversion functions",
+      MOD_LIBRARY,
+      CAP_MATH,        /* PURE math - works at ALL security levels */
+      temp_init, NULL
+  };
+
+  #ifdef _WIN32
+  __declspec(dllexport)
+  #endif
+  void bpp_module_init(void)
+  {
+      module_register(&temp_info);
+  }
+
+STEP 2: Build
+
+  Windows:
+    cl /LD /O2 mod_temperature.c /Fe:mod_temperature.dll /I source
+
+  Linux:
+    gcc -shared -fPIC -O2 -o mod_temperature.so \
+        mod_temperature.c -I source -lm
+
+STEP 3: Test at each security level
+
+  --- OPEN mode (default) ---
+
+    > basicpp --lib mod_temperature.dll
+    Ready.
+    > MODULE "TEMPERATURE"
+    > PRINT CTOF(100)
+     212
+    > PRINT FTOC(72)
+     22.222222222222
+    > PRINT KTOC(0)
+    -273.15
+
+  --- STANDARD mode ---
+
+    > basicpp -s STANDARD
+    Ready.
+    > MODULE LOAD "mod_temperature.dll"
+    SORRY? Security: system not permitted at level STANDARD
+
+    The MODULE LOAD is blocked!  But if we pre-load via CLI:
+
+    > basicpp -s STANDARD --lib mod_temperature.dll
+    Ready.
+    > MODULE "TEMPERATURE"
+    > PRINT CTOF(100)
+     212
+
+    Pre-loading at startup works because the CLI flags are
+    processed during boot, before the security level takes effect
+    on user commands.
+
+  --- RESTRICTED mode ---
+
+    > basicpp -s RESTRICTED --lib mod_temperature.dll
+    Ready.
+    > MODULE "TEMPERATURE"
+    > PRINT CTOF(100)
+     212
+
+    It STILL works!  Because TEMPERATURE only declares CAP_MATH,
+    which is allowed even at RESTRICTED.  This is the power of
+    declaring minimal capabilities.
+
+    Now compare with a module that declares CAP_SYSTEM:
+
+    > MODULE INFO "USB"
+    Module:       USB
+    ...
+    Security:     BLOCKED at current level RESTRICTED
+
+STEP 4: Use it in a program
+
+  10 REM Temperature Converter
+  20 MODULE "TEMPERATURE"
+  30 INPUT "Enter temperature in Fahrenheit: "; F
+  40 PRINT F; " F = "; FTOC(F); " C"
+  50 PRINT F; " F = "; FTOC(F) + 273.15; " K"
+  60 END
+
+STEP 5: Clean up
+
+    > MODULE UNLOAD "TEMPERATURE"
+    Module unloaded: TEMPERATURE
+    > PRINT CTOF(100)
+    ?WHAT
+
+  After unloading, the functions are no longer available.
+
+
+=====================================================================
+52. BUILT-IN MODULES vs. EXTERNAL MODULES
+=====================================================================
+
+BASIC++ ships with several built-in modules that are compiled
+into the interpreter binary:
+
+  Module      Capabilities  Description
+  -------     ------------  -----------
+  STDLIB      MS            Standard math/string functions
+  USB         IY            USB device access
+  FUJINET     IN            FujiNet network protocol
+  UPNP        IN            UPnP device discovery
+
+Built-in modules are registered during Boot Phase 5 and are
+always available (subject to security).  STDLIB is auto-activated.
+
+External modules (.dll/.so) are loaded at runtime and extend
+the interpreter without recompilation.
+
+To convert a built-in module to an external module:
+  1. Add bpp_module_init() as the entry point
+  2. Add __declspec(dllexport) on Windows
+  3. Compile as a shared library instead of linking into main
+
+To convert an external module to a built-in module:
+  1. Add mod_xxx_register() function (calls module_register)
+  2. Add #include "mod_xxx.h" and mod_xxx_register() to boot.c
+  3. Add the source file to the Makefile
+
+
+=====================================================================
+53. MODULE LIFECYCLE DIAGRAM
+=====================================================================
+
+  DEVELOPMENT:
+    Write handlers -> Create FunctionEntry table
+    -> Create ModuleInfo descriptor
+    -> Implement bpp_module_init()
+    -> Compile to .dll/.so
+
+  REGISTRATION (module known but inactive):
+    CLI: basicpp --lib mod_foo.dll
+    REPL: MODULE LOAD "mod_foo.dll"
+    Boot: mod_foo_register() in boot.c
+      |
+      v
+    module_register(&info) -> added to module_table[]
+      |
+      v
+    MODULE command shows it as INACTIVE
+
+  ACTIVATION (module functions available):
+    REPL: MODULE "FOO"
+    Code: module_activate("FOO", rt)
+      |
+      v
+    security_module_allowed(caps) checked
+      |
+      +-- BLOCKED -> "Module 'FOO' blocked by security level X"
+      |
+      +-- ALLOWED -> info.init(rt) called
+                       |
+                       v
+                     funcreg_register() for each function
+                       |
+                       v
+                     MODULE command shows it as ACTIVE
+                     Functions are now callable from BASIC
+
+  DEACTIVATION:
+    REPL: MODULE UNLOAD "FOO"
+    Code: module_deactivate("FOO")
+      |
+      v
+    info.cleanup() called (frees resources)
+      |
+      v
+    MODULE command shows it as INACTIVE
 
 
 =====================================================================

@@ -436,22 +436,63 @@ void pi_parse_shared(Lexer *lex, RuntimeState *rt, int line_num)
  /*
  * SHARED var1 [AS type], var2, ...
  *
- * QBasic: makes procedure-local variables
- * refer to the module-level copy instead.
+ * QBasic: makes procedure-local variables refer to
+ * the module-level copy instead. Changes propagate
+ * back to the caller on scope exit.
  *
- * BASIC++ architecture: all variables are
- * effectively global. SUB entry saves A-Z
- * via FRAME_SUB; SHARED would skip the save
- * for listed variables. Since our named
- * variables (multi-char) are already global
- * and never saved/restored, SHARED is a
- * semantic match for most real-world usage.
- *
- * Hybrid mode: parse the variable list
- * correctly (so syntax errors are caught)
- * but do not alter variable behavior.
+ * Register each variable with scope_stack_add_shared
+ * so scope_stack_pop skips restoring them.
  */
- (void)scope_parse_varlist(lex);
+ while (lex->current.type != TOK_EOF &&
+  lex->current.type != TOK_CR &&
+  lex->current.type != TOK_COLON) {
+  if (lex->current.type == TOK_NAMED_VAR) {
+   const char *vn = lex->current.str_start;
+   int vn_len = lex->current.str_length;
+   scope_stack_add_shared(
+    &rt->scope_stack, vn, vn_len);
+   lexer_next(lex);
+  } else if (lex->current.type ==
+   TOK_VARIABLE) {
+   /* Single-letter: build 1-char name */
+   char buf[2];
+   buf[0] = lex->current.value.var_name;
+   buf[1] = '\0';
+   scope_stack_add_shared(
+    &rt->scope_stack, buf, 1);
+   lexer_next(lex);
+  } else if (lex->current.type ==
+   TOK_STRING_VAR) {
+   /* String var: build "X$" name */
+   char buf[3];
+   buf[0] = lex->current.value.var_name;
+   buf[1] = '$'; buf[2] = '\0';
+   scope_stack_add_shared(
+    &rt->scope_stack, buf, 2);
+   lexer_next(lex);
+  } else {
+   break;
+  }
+  /* Skip optional () for arrays */
+  if (lex->current.type == TOK_LPAREN) {
+   lexer_next(lex);
+   if (lex->current.type == TOK_RPAREN)
+    lexer_next(lex);
+  }
+  /* Skip optional AS type */
+  if (lex->current.type == TOK_KEYWORD &&
+   lex->current.value.keyword == KW_AS) {
+   lexer_next(lex);
+   if (lex->current.type == TOK_KEYWORD ||
+    lex->current.type == TOK_NAMED_VAR)
+    lexer_next(lex);
+  }
+  if (lex->current.type == TOK_COMMA)
+   lexer_next(lex);
+  else
+   break;
+ }
+ (void)line_num;
  return;
 }
 
@@ -463,22 +504,61 @@ void pi_parse_static(Lexer *lex, RuntimeState *rt, int line_num)
  /*
  * STATIC var1 [AS type], var2, ...
  *
- * QBasic: preserves variable values between
- * calls to the same SUB/FUNCTION. Without
- * STATIC, local variables are re-initialized
- * to zero/empty on each entry.
+ * QBasic: preserves variable values between calls
+ * to the same SUB/FUNCTION. Without STATIC, local
+ * variables are re-initialized on each entry.
  *
- * BASIC++ architecture: our FRAME_SUB
- * save/restore mechanism means single-letter
- * variables ARE re-initialized on SUB entry
- * (restored to caller's values on RETURN).
- * Named variables persist across calls
- * automatically. This gives STATIC-like
- * behavior for named vars by default.
- *
- * Hybrid mode: parse and validate the list.
+ * Register each variable with scope_stack_add_static
+ * so it's saved back to SubDef on scope exit and
+ * restored on the next entry.
  */
- (void)scope_parse_varlist(lex);
+ while (lex->current.type != TOK_EOF &&
+  lex->current.type != TOK_CR &&
+  lex->current.type != TOK_COLON) {
+  if (lex->current.type == TOK_NAMED_VAR) {
+   const char *vn = lex->current.str_start;
+   int vn_len = lex->current.str_length;
+   scope_stack_add_static(
+    &rt->scope_stack, rt,
+    vn, vn_len, 0, 0);
+   lexer_next(lex);
+  } else if (lex->current.type ==
+   TOK_VARIABLE) {
+   char vl = lex->current.value.var_name;
+   scope_stack_add_static(
+    &rt->scope_stack, rt,
+    NULL, 0, vl, 0);
+   lexer_next(lex);
+  } else if (lex->current.type ==
+   TOK_STRING_VAR) {
+   char vl = lex->current.value.var_name;
+   scope_stack_add_static(
+    &rt->scope_stack, rt,
+    NULL, 0, vl, 1);
+   lexer_next(lex);
+  } else {
+   break;
+  }
+  /* Skip optional () for arrays */
+  if (lex->current.type == TOK_LPAREN) {
+   lexer_next(lex);
+   if (lex->current.type == TOK_RPAREN)
+    lexer_next(lex);
+  }
+  /* Skip optional AS type */
+  if (lex->current.type == TOK_KEYWORD &&
+   lex->current.value.keyword == KW_AS) {
+   lexer_next(lex);
+   if (lex->current.type == TOK_KEYWORD ||
+    lex->current.type == TOK_NAMED_VAR)
+    lexer_next(lex);
+  }
+  if (lex->current.type == TOK_COMMA)
+   lexer_next(lex);
+  else
+   break;
+ }
+ (void)line_num;
  return;
 }
 

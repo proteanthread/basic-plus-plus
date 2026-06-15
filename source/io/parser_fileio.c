@@ -23,17 +23,20 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  (void)rt;
 
  /*
- * Detect ECMA-116 form vs GW-BASIC form:
+ * Detect ECMA-116 form vs GW-BASIC form vs Atari form:
  * ECMA-116: OPEN #n: NAME "file", ACCESS mode, ...
  * GW-BASIC: OPEN "file" FOR mode AS #n
+ * Atari:    OPEN #n, aux1, aux2, "device:"
  */
  if (lex->current.type == TOK_HASH) {
  /*
- * ===== ECMA-116 OPEN form =====
- * OPEN #expr: NAME "file"
- * [, ACCESS INPUT|OUTPUT|OUTIN]
- * [, ORGANIZATION SEQUENTIAL|RELATIVE|STREAM]
- * [, RECTYPE DISPLAY|INTERNAL]
+ * ===== ECMA-116 or Atari/Commodore OPEN form =====
+ *
+ * ECMA-116: OPEN #expr: NAME "file" [, ACCESS ...]
+ * Atari:    OPEN #expr, aux1, aux2, "device:"
+ *
+ * Disambiguation: after parsing #expr, if the next
+ * token is ':' -> ECMA-116 form; if ',' -> Atari form.
  */
  int e116_org = FORG_SEQUENTIAL;
  int e116_rec = FREC_DISPLAY;
@@ -43,7 +46,101 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  chan = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
- /* Expect : after channel */
+ /*
+ * ===== Atari/Commodore OPEN form =====
+ * OPEN #chan, aux1, aux2, "device:"
+ *
+ * aux1 is the mode byte:
+ *   4 = input, 6 = directory, 8 = output, 12 = read+write
+ * aux2 is device-specific (baud rate, density, etc.)
+ *   usually 0 for standard operations.
+ *
+ * The "device:" string is resolved through the device
+ * alias system (e.g., Atari "E:" -> CON:) or opened
+ * as a file if no alias matches.
+ */
+ if (lex->current.type == TOK_COMMA) {
+  int aux1, aux2;
+  char devname[MAX_LINE_LENGTH + 1];
+
+  lexer_next(lex); /* consume , after chan */
+  aux1 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+
+  /* Expect comma before aux2 */
+  if (lex->current.type != TOK_COMMA) {
+   error_raise(ERR_WHAT, line_num);
+   return;
+  }
+  lexer_next(lex); /* consume , */
+  aux2 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+
+  /* Expect comma before device/filename string */
+  if (lex->current.type != TOK_COMMA) {
+   error_raise(ERR_WHAT, line_num);
+   return;
+  }
+  lexer_next(lex); /* consume , */
+
+  /* Parse device/filename string */
+  if (lex->current.type != TOK_STRING) {
+   error_raise(ERR_WHAT, line_num);
+   return;
+  }
+  if (lex->current.str_length >= MAX_LINE_LENGTH) {
+   error_raise(ERR_HOW, line_num);
+   return;
+  }
+  memcpy(devname, lex->current.str_start,
+         (size_t)lex->current.str_length);
+  devname[lex->current.str_length] = '\0';
+  lexer_next(lex);
+
+  /*
+   * Map Atari aux1 mode to internal FCHAN mode.
+   *   4 = FCHAN_INPUT    (read only)
+   *   6 = FCHAN_INPUT    (directory listing)
+   *   8 = FCHAN_OUTPUT   (write only)
+   *   9 = FCHAN_APPEND   (append)
+   *  12 = FCHAN_RANDOM   (read+write)
+   * Default: FCHAN_INPUT
+   */
+  switch (aux1) {
+  case 4: case 6:
+   mode = FCHAN_INPUT;
+   break;
+  case 8:
+   mode = FCHAN_OUTPUT;
+   break;
+  case 9:
+   mode = FCHAN_APPEND;
+   break;
+  case 12:
+   mode = FCHAN_RANDOM;
+   break;
+  default:
+   mode = FCHAN_INPUT;
+   break;
+  }
+
+  /* Store aux2 for future device-specific use */
+  (void)aux2;
+
+  /*
+   * Route through the standard open path which
+   * handles device aliases, direct VDev names,
+   * and regular files.
+   */
+  if (mode == FCHAN_RANDOM) {
+   fileio_open_random(chan, devname, 128, line_num);
+  } else {
+   fileio_open(chan, devname, mode, line_num);
+  }
+  return;
+ }
+
+ /* Expect : after channel (ECMA-116 form) */
  if (lex->current.type != TOK_COLON) {
  error_raise(ERR_WHAT, line_num);
  return;

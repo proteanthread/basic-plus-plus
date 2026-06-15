@@ -396,13 +396,28 @@ BValue bval_int_func(const BValue *v, int line_num)
 
 BValue bval_sqr(const BValue *v, int line_num)
 {
- double d = get_numeric_arg(v, line_num);
- if (error_occurred()) return bval_float(0.0);
- if (d < 0.0) {
- error_raise(ERR_HOW, line_num);
+ if (!bval_is_numeric(v)) {
+ error_raise(ERR_WHAT, line_num);
  return bval_float(0.0);
  }
+ /* Complex input: sqrt(a+bi) = sqrt(r)*(cos(t/2)+i*sin(t/2)) */
+ if (v->type == VAL_COMPLEX) {
+  double a = v->v.cval.real;
+  double b = v->v.cval.imag;
+  double r = sqrt(a * a + b * b);
+  double sr = sqrt(r);
+  double t = atan2(b, a);
+  return bval_complex(sr * cos(t / 2.0),
+   sr * sin(t / 2.0));
+ }
+ {
+ double d = bval_to_float(v);
+ if (d < 0.0) {
+  /* Negative real -> pure imaginary: (0+sqrt(|d|)*i) */
+  return bval_complex(0.0, sqrt(-d));
+ }
  return bval_float(sqrt(d));
+ }
 }
 
 BValue bval_sin(const BValue *v, int line_num)

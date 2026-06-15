@@ -282,9 +282,11 @@ const char *dialect_get_ready_prompt(void);
 int dialect_get_zone_width(void);
 
 /*
- * dialect_get_short_name - Return 4-char dialect code.
+ * dialect_get_short_name - Return 4-8 character dialect code.
  *
  * Used by DIALECT$ introspection. E.g., "PATB", "TRS1", "GWBS".
+ * "BPP" (or "B++") is the sole 3-char exception: selects
+ * the all-features-enabled mode (no strict filtering).
  */
 const char *dialect_get_short_name(void);
 

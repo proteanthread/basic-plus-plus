@@ -73,12 +73,14 @@
 #include "override.h"
 #include "security.h"
 #include "platform.h"
+#include "scope_stack.h"
 #include "selftest.h"
 #include "check.h"
 #include "help.h"
 #include "detok.h"
 #include "gfxbuf.h"
 #include "memmap.h"
+#include "device_alias.h"
 #include "mod_fujinet.h"
 
 /* -----------------------------------------------------------
@@ -607,6 +609,17 @@ void pi_parse_else(Lexer *lex, RuntimeState *rt,
 void pi_parse_elseif(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_endif(Lexer *lex, RuntimeState *rt,
+    int line_num);
+
+/* parser_txn.c - Transaction / ATOMIC control */
+void pi_parse_atomic(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_end_atomic(int line_num);
+void pi_parse_txn(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_commit(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_rollback(Lexer *lex, RuntimeState *rt,
     int line_num);
 
 #endif /* BASICPP_PARSER_INTERNAL_H */

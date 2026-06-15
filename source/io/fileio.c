@@ -38,6 +38,7 @@
 #include "config.h"
 #include "vdev.h"
 #include "vdev_net.h"
+#include "device_alias.h"
 
 /*
  * fileio_save - Write the program to a text file.
@@ -277,17 +278,87 @@ int fileio_open(int chan, const char *filename,
 
  /* Network routing */
  if (strncmp(filename, "TCP:", 4) == 0 || strncmp(filename, "UDP:", 4) == 0) {
- VDev *netdev = vdev_net_open(filename);
- if (!netdev) {
-  error_raise(ERR_HOW, line_num);
-  return -1;
+  VDev *netdev = vdev_net_open(filename);
+  if (!netdev) {
+   error_raise(ERR_HOW, line_num);
+   return -1;
+  }
+  channels[idx].vdev = netdev;
+  channels[idx].mode = FCHAN_DEVICE;
+  channels[idx].record_len = 1;
+  channels[idx].field_count = 0;
+  channels[idx].current_rec = 0;
+  return 0;
  }
- channels[idx].vdev = netdev;
- channels[idx].mode = FCHAN_DEVICE;
- channels[idx].record_len = 1;
- channels[idx].field_count = 0;
- channels[idx].current_rec = 0;
- return 0;
+
+ /* Device alias routing:
+  * Check if the filename matches a registered device alias
+  * (e.g., Atari "E:" -> "CON:", GW-BASIC "SCRN:" -> "CON:").
+  * If so, resolve the alias and route through VDev. */
+ {
+  const DeviceAlias *da;
+  da = device_alias_resolve(filename);
+  if (da != NULL) {
+   /* Check direction compatibility */
+   if (mode == FCHAN_INPUT &&
+       !(da->direction & DEVALIAS_INPUT)) {
+    error_raise(ERR_HOW, line_num);
+    return -1;
+   }
+   if ((mode == FCHAN_OUTPUT || mode == FCHAN_APPEND) &&
+       !(da->direction & DEVALIAS_OUTPUT)) {
+    error_raise(ERR_HOW, line_num);
+    return -1;
+   }
+   /* Look up the target VDev by name */
+   {
+    int dev_id;
+    const char *dev_mode;
+    dev_id = vdev_find_by_name(da->target);
+    if (dev_id < 0) {
+     /* Target VDev not registered.
+      * This means the device (e.g., SER:) hasn't been
+      * loaded as a module yet. */
+     printf("Device '%s' (alias for '%s') "
+            "not available.\n",
+            da->alias, da->target);
+     error_raise(ERR_HOW, line_num);
+     return -1;
+    }
+    switch (mode) {
+    case FCHAN_INPUT:  dev_mode = "r";  break;
+    case FCHAN_OUTPUT: dev_mode = "w";  break;
+    case FCHAN_APPEND: dev_mode = "a";  break;
+    default:           dev_mode = "rw"; break;
+    }
+    return fileio_open_device(chan, dev_id,
+                              dev_mode, filename,
+                              line_num);
+   }
+  }
+ }
+
+ /* Also check if the filename itself ends with ':'
+  * and matches a registered VDev directly (e.g., "CON:",
+  * "ERR:", "GPIO17:"). This allows programs to open
+  * VDevs by name without needing an alias. */
+ {
+  int flen = (int)strlen(filename);
+  if (flen > 1 && filename[flen - 1] == ':') {
+   int dev_id = vdev_find_by_name(filename);
+   if (dev_id >= 0) {
+    const char *dev_mode;
+    switch (mode) {
+    case FCHAN_INPUT:  dev_mode = "r";  break;
+    case FCHAN_OUTPUT: dev_mode = "w";  break;
+    case FCHAN_APPEND: dev_mode = "a";  break;
+    default:           dev_mode = "rw"; break;
+    }
+    return fileio_open_device(chan, dev_id,
+                              dev_mode, filename,
+                              line_num);
+   }
+  }
  }
 
  switch (mode) {
