@@ -27,8 +27,9 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  * ...
  * END SELECT
  *
- * Evaluate expr, scan through CASE clauses
- * to find match, execute that block, skip rest.
+ * Supports both numeric and string selectors.
+ * String comparisons are lexicographic via
+ * bval_compare.
  */
  if (lexer_match_keyword(lex, KW_CASE)) {
   lexer_next(lex); /* consume CASE */
@@ -40,6 +41,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  }
  {
  BValue sel_val;
+ int is_str;
  long sel_num;
  int found = 0;
  int pline, idx, depth;
@@ -48,7 +50,8 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  sel_val = parse_expression_bval(
  lex, rt, line_num);
  if (error_occurred()) return;
- sel_num = bval_to_int(&sel_val);
+ is_str = bval_is_string(&sel_val);
+ sel_num = is_str ? 0 : bval_to_int(&sel_val);
 
  /* Scan forward for matching CASE */
  idx = rt->current_index + 1;
@@ -121,76 +124,124 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  TOK_KEYWORD &&
  cl.current.value.keyword
  == KW_IS) {
- long cv;
- TokenType rop;
  int match = 0;
  lexer_next(&cl);
- rop = cl.current.type;
+ {
+ TokenType rop = cl.current.type;
  lexer_next(&cl);
- cv = parse_expression(
+ if (is_str) {
+ /* String CASE IS comparison */
+ BValue cv = parse_expression_bval(
  &cl, rt, pline);
- if (error_occurred())
- return;
+ int cmp;
+ if (error_occurred()) return;
+ cmp = bval_compare(
+ &sel_val, &cv, pline);
+ if (error_occurred()) return;
  switch (rop) {
  case TOK_LT:
- match=(sel_num<cv);
- break;
+ match = (cmp < 0); break;
  case TOK_GT:
- match=(sel_num>cv);
- break;
+ match = (cmp > 0); break;
  case TOK_LT_EQ:
- match=(sel_num<=cv);
- break;
+ match = (cmp <= 0); break;
  case TOK_GT_EQ:
- match=(sel_num>=cv);
- break;
+ match = (cmp >= 0); break;
  case TOK_EQUALS:
- match=(sel_num==cv);
- break;
+ match = (cmp == 0); break;
  case TOK_NOT_EQ:
- match=(sel_num!=cv);
- break;
- default:
- break;
+ match = (cmp != 0); break;
+ default: break;
+ }
+ } else {
+ /* Numeric CASE IS comparison */
+ long cv = parse_expression(
+ &cl, rt, pline);
+ if (error_occurred()) return;
+ switch (rop) {
+ case TOK_LT:
+ match=(sel_num<cv); break;
+ case TOK_GT:
+ match=(sel_num>cv); break;
+ case TOK_LT_EQ:
+ match=(sel_num<=cv); break;
+ case TOK_GT_EQ:
+ match=(sel_num>=cv); break;
+ case TOK_EQUALS:
+ match=(sel_num==cv); break;
+ case TOK_NOT_EQ:
+ match=(sel_num!=cv); break;
+ default: break;
+ }
+ }
  }
  if (match) {
  found = 1;
- rt->next_index =
- idx + 1;
+ rt->next_index = idx + 1;
  }
  idx++;
  continue;
  }
- /* CASE val [TO val]
- [, val...] */
+ /* CASE val [TO val] [, val...] */
  for (;;) {
- long v1;
- v1 = parse_expression(
+ if (is_str) {
+ /* String CASE matching */
+ BValue v1 = parse_expression_bval(
  &cl, rt, pline);
- if (error_occurred())
- return;
- /* Check TO range */
+ if (error_occurred()) return;
+ if (cl.current.type ==
+ TOK_KEYWORD &&
+ cl.current.value
+ .keyword == KW_TO) {
+ /* String range: CASE "A" TO "Z" */
+ BValue v2;
+ int cmp1, cmp2;
+ lexer_next(&cl);
+ v2 = parse_expression_bval(
+ &cl, rt, pline);
+ if (error_occurred()) return;
+ cmp1 = bval_compare(
+ &sel_val, &v1, pline);
+ cmp2 = bval_compare(
+ &sel_val, &v2, pline);
+ if (error_occurred()) return;
+ if (cmp1 >= 0 && cmp2 <= 0) {
+ found = 1;
+ rt->next_index = idx + 1;
+ }
+ } else {
+ /* Exact string match */
+ int cmp = bval_compare(
+ &sel_val, &v1, pline);
+ if (error_occurred()) return;
+ if (cmp == 0) {
+ found = 1;
+ rt->next_index = idx + 1;
+ }
+ }
+ } else {
+ /* Numeric CASE matching */
+ long v1 = parse_expression(
+ &cl, rt, pline);
+ if (error_occurred()) return;
  if (cl.current.type ==
  TOK_KEYWORD &&
  cl.current.value
  .keyword == KW_TO) {
  long v2;
  lexer_next(&cl);
- v2 =
- parse_expression(
+ v2 = parse_expression(
  &cl, rt, pline);
- if (error_occurred())
- return;
+ if (error_occurred()) return;
  if (sel_num >= v1 &&
  sel_num <= v2) {
  found = 1;
- rt->next_index =
- idx + 1;
+ rt->next_index = idx + 1;
  }
- } else if (sel_num==v1) {
+ } else if (sel_num == v1) {
  found = 1;
- rt->next_index =
- idx + 1;
+ rt->next_index = idx + 1;
+ }
  }
  if (found) break;
  if (cl.current.type !=
@@ -340,24 +391,14 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  /* EXIT SUB: pop frame, restore vars */
  {
  StackFrame frame;
- int i;
  if (runtime_pop(rt, FRAME_SUB,
  &frame) != 0)
  {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- for (i = 0; i < MAX_VARIABLES; i++)
- rt->variables[i] =
- frame.data.sub_call
- .saved_vars[i];
- for (i = 0; i < MAX_STRING_VARS; i++)
- rt->string_vars[i] =
- frame.data.sub_call
- .saved_strvars[i];
- rt->in_sub_index = -1;
- rt->next_index =
- frame.data.sub_call.return_index;
+ /* Pop scope stack (restores named+single-letter vars) */
+ scope_stack_pop(&rt->scope_stack, rt);
  }
  } else if (lexer_match_keyword(lex,
  KW_FUNCTION)) {
@@ -365,24 +406,14 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  /* EXIT FUNCTION: same as EXIT SUB */
  {
  StackFrame frame;
- int i;
  if (runtime_pop(rt, FRAME_SUB,
  &frame) != 0)
  {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- for (i = 0; i < MAX_VARIABLES; i++)
- rt->variables[i] =
- frame.data.sub_call
- .saved_vars[i];
- for (i = 0; i < MAX_STRING_VARS; i++)
- rt->string_vars[i] =
- frame.data.sub_call
- .saved_strvars[i];
- rt->in_sub_index = -1;
- rt->next_index =
- frame.data.sub_call.return_index;
+ /* Pop scope stack (restores named+single-letter vars) */
+ scope_stack_pop(&rt->scope_stack, rt);
  }
  } else if (lex->current.type ==
  TOK_NAMED_VAR &&
@@ -1233,6 +1264,18 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  if (runtime_push(rt, &frame) != 0)
  return;
 
+ /* Push scope stack (includes named vars) */
+ {
+ int smode = SCOPE_FULL;
+ /* QBasic dialect uses fresh scope */
+ if (dialect_get_config()->id ==
+  DIALECT_QBASIC)
+  smode = SCOPE_FRESH;
+ scope_stack_push(&rt->scope_stack, rt,
+  smode, (int)(sd - rt->subs),
+  rt->current_index + 1);
+ }
+
  /* Parse and bind arguments */
  if (lex->current.type == TOK_LPAREN) {
  lexer_next(lex); /* consume ( */
@@ -1329,12 +1372,8 @@ void pi_parse_enddefine(Lexer *lex, RuntimeState *rt, int line_num)
   error_raise(ERR_HOW, line_num);
   return;
  }
- for (i = 0; i < MAX_VARIABLES; i++)
-  rt->variables[i] = frame.data.sub_call.saved_vars[i];
- for (i = 0; i < MAX_STRING_VARS; i++)
-  rt->string_vars[i] = frame.data.sub_call.saved_strvars[i];
- rt->in_sub_index = -1;
- rt->next_index = frame.data.sub_call.return_index;
+ /* Pop scope stack (restores all vars including named) */
+ scope_stack_pop(&rt->scope_stack, rt);
 }
 
 /*
@@ -1345,54 +1384,37 @@ void pi_parse_local(Lexer *lex, RuntimeState *rt, int line_num)
  /*
   * LOCal var [, var ...]
   *
-  * Push current values of the listed variables
-  * onto a save stack, then zero them. On
-  * END DEFine / RETurn, the saved values are
-  * restored (handled by scope.c if available,
-  * or by the GOSUB return mechanism).
-  *
-  * For now, LOCal is accepted but acts as a
-  * simple variable initializer (sets to 0).
-  * Full scope save/restore requires scope.c.
+  * Save current values of listed variables via
+  * scope_stack_add_local, then zero them. On
+  * scope pop (END SUB / RETurn), the saved values
+  * are automatically restored.
   */
  while (lex->current.type != TOK_EOF &&
   lex->current.type != TOK_CR &&
   lex->current.type != TOK_COLON) {
-  if (lex->current.type == TOK_NAMED_VAR ||
-   lex->current.type == TOK_VARIABLE) {
-   /* Parse and zero the variable */
-   char *vn;
-   int vn_len;
-   if (lex->current.type ==
-    TOK_NAMED_VAR) {
-    vn = (char *)
-     lex->current.str_start;
-    vn_len =
-     lex->current.str_length;
-   } else {
-    /* single-letter var */
-    vn = NULL;
-    vn_len = 0;
-   }
-   if (vn == NULL) {
-    /* Single letter: A-Z */
-    int vi =
-     lex->current.value.var_name
-     - 'A';
-    rt->variables[vi] =
-     bval_float(0.0);
-   } else {
-    /* Named variable: set to 0 */
-    runtime_set_named_var_bval(rt, vn,
-     vn_len, bval_float(0.0));
-   }
+  if (lex->current.type == TOK_NAMED_VAR) {
+   /* Named variable */
+   const char *vn = lex->current.str_start;
+   int vn_len = lex->current.str_length;
+   scope_stack_add_local(
+    &rt->scope_stack, rt,
+    vn, vn_len, 0, 0);
    lexer_next(lex);
-   if (lex->current.type == TOK_COMMA)
-    lexer_next(lex);
+  } else if (lex->current.type ==
+   TOK_VARIABLE) {
+   /* Single-letter variable A-Z */
+   char vl = lex->current.value.var_name;
+   scope_stack_add_local(
+    &rt->scope_stack, rt,
+    NULL, 0, vl, 0);
+   lexer_next(lex);
   } else {
    lexer_next(lex); /* skip junk */
   }
+  if (lex->current.type == TOK_COMMA)
+   lexer_next(lex);
  }
+ (void)line_num;
  return;
 }
 

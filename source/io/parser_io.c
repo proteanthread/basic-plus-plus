@@ -424,6 +424,9 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  memcpy(sbuf, val.v.sval.data, (size_t)slen);
  sbuf[slen] = '\0';
  fileio_print(file_chan, sbuf, line_num);
+ } else if (bval_is_complex(&val)) {
+ bval_to_string_buf(&val, buf, 64);
+ fileio_print(file_chan, buf, line_num);
  } else if (bval_is_float(&val)) {
  sprintf(buf, "%.14G", val.v.fval);
  fileio_print(file_chan, buf, line_num);
@@ -452,6 +455,14 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  rt->print_col++;
  pi_print_margin_check(rt);
  }
+ } else if (bval_is_complex(&val)) {
+ /* Complex: print as (real+imag·i) */
+ int nc;
+ char cbuf[64];
+ bval_to_string_buf(&val, cbuf, 64);
+ nc = printf("%s", cbuf);
+ rt->print_col += nc;
+ pi_print_margin_check(rt);
  } else if (bval_is_float(&val)) {
  int nc;
  /* ECMA-55: leading space for positive */

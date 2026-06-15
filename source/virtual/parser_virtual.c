@@ -341,52 +341,141 @@ void pi_parse_vmach(Lexer *lex, RuntimeState *rt, int line_num)
 void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
 {
  {
- /*
-  * DEVMAP - Device slot mapping.
-  *
-  * Shows which VDev slot each BASIC file channel
-  * (#1-#8) is mapped to, including open/closed
-  * status and the device name in each slot. Also
-  * lists all occupied VDev slots.
-  */
- int i;
- int total = 0;
+  /*
+   * DEVMAP - Device slot mapping.
+   *
+   * Shows which VDev slot each BASIC file channel
+   * (#1-#8) is mapped to, including open/closed
+   * status and the device name in each slot. Also
+   * lists all occupied VDev slots and active device
+   * aliases.
+   *
+   * Subcommands:
+   *   DEVMAP         - show full device map + aliases
+   *   DEVMAP ALIAS   - show only device aliases
+   *   DEVMAP ALIAS "E:" "CON:" - create manual alias
+   *   DEVMAP ALIAS RESET - clear all aliases
+   *   DEVMAP ALIAS DIALECT - reload dialect defaults
+   */
 
- printf("=== DEVICE MAP ===\n\n");
+  /* Check for ALIAS subcommand */
+  if (lex->current.type == TOK_KEYWORD &&
+      lex->current.value.keyword == KW_ALIAS) {
+   lexer_next(lex);
 
- printf(" BASIC File Channels:\n");
- printf(" Channel Device "
-     "Status\n");
- printf(" ------- ------ "
-     "------\n");
- for (i = 1; i <= 8; i++) {
-     /* File channels are tracked by the FILE: VDev */
-     printf("  #%-6d FILE:  ---\n", i);
+   /* DEVMAP ALIAS RESET */
+   if (lex->current.type == TOK_KEYWORD &&
+       lex->current.value.keyword == KW_RESET) {
+    lexer_next(lex);
+    device_alias_clear_all();
+    printf("Device aliases cleared.\n");
+    return;
+   }
+
+   /* DEVMAP ALIAS DIALECT - reload from current dialect */
+   if (lex->current.type == TOK_KEYWORD &&
+       lex->current.value.keyword == KW_DIALECT) {
+    int n;
+    lexer_next(lex);
+    n = device_alias_load_dialect(
+        dialect_get_config()->id);
+    printf("Loaded %d aliases for %s.\n",
+           n, dialect_get_name());
+    return;
+   }
+
+   /* DEVMAP ALIAS "src" "tgt" - manual alias creation */
+   if (lex->current.type == TOK_STRING) {
+    char alias_name[16];
+    char target_name[16];
+    int al, tl;
+
+    al = lex->current.str_length;
+    if (al > 15) al = 15;
+    memcpy(alias_name, lex->current.str_start,
+           (size_t)al);
+    alias_name[al] = '\0';
+    lexer_next(lex);
+
+    if (lex->current.type != TOK_STRING) {
+     error_raise(ERR_WHAT, line_num);
+     return;
+    }
+    tl = lex->current.str_length;
+    if (tl > 15) tl = 15;
+    memcpy(target_name,
+           lex->current.str_start, (size_t)tl);
+    target_name[tl] = '\0';
+    lexer_next(lex);
+
+    if (device_alias_register(alias_name,
+        target_name, DEVALIAS_BOTH, -1) == 0) {
+     printf("Alias %s -> %s created.\n",
+            alias_name, target_name);
+    } else {
+     printf("Alias table full.\n");
+     error_raise(ERR_HOW, line_num);
+    }
+    return;
+   }
+
+   /* DEVMAP ALIAS (no args) - list aliases only */
+   printf("=== DEVICE ALIASES ===\n\n");
+   device_alias_list();
+   return;
+  }
+
+  /* Full DEVMAP display */
+  {
+  int i;
+  int total = 0;
+
+  printf("=== DEVICE MAP ===\n\n");
+
+  printf(" BASIC File Channels:\n");
+  printf(" Channel Device "
+      "Status\n");
+  printf(" ------- ------ "
+      "------\n");
+  for (i = 1; i <= 8; i++) {
+      /* File channels are tracked by the FILE: VDev */
+      printf("  #%-6d FILE:  ---\n", i);
+  }
+
+  printf("\n VDev Slot Table:\n");
+  printf(" Slot Name       "
+      "Class      Caps  Description\n");
+  printf(" ---- ----       "
+      "-----      ----  -----------\n");
+  for (i = 0; i < VDEV_MAX; i++) {
+      VDev *d = vdev_get(i);
+      if (d == NULL) continue;
+      printf("  %2d  %-10s %-10s %04X  %s\n",
+          i,
+          d->name ? d->name : "(null)",
+          vdev_class_name(d->dev_class),
+          d->dev_caps,
+          d->dev_description ?
+              d->dev_description : "");
+      total++;
+  }
+  printf("\n %d device(s) registered, "
+      "%d slots available.\n",
+      total, VDEV_MAX - total);
+
+  /* Show active aliases if any */
+  {
+  int ac = device_alias_count();
+  if (ac > 0) {
+   printf("\n Device Aliases (%d active):\n", ac);
+   device_alias_list();
+  } else {
+   printf("\n No device aliases active.\n");
+  }
+  }
+  return;
+  }
+
+  /* ===== Final polish ===== */
  }
-
- printf("\n VDev Slot Table:\n");
- printf(" Slot Name       "
-     "Class      Caps  Description\n");
- printf(" ---- ----       "
-     "-----      ----  -----------\n");
- for (i = 0; i < VDEV_MAX; i++) {
-     VDev *d = vdev_get(i);
-     if (d == NULL) continue;
-     printf("  %2d  %-10s %-10s %04X  %s\n",
-         i,
-         d->name ? d->name : "(null)",
-         vdev_class_name(d->dev_class),
-         d->dev_caps,
-         d->dev_description ?
-             d->dev_description : "");
-     total++;
- }
- printf("\n %d device(s) registered, "
-     "%d slots available.\n",
-     total, VDEV_MAX - total);
- return;
- }
-
- /* ===== Final polish ===== */
 }
-

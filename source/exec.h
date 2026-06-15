@@ -48,6 +48,19 @@
 void exec_run(RuntimeState *rt);
 
 /*
+ * exec_chain_run - Execute after CHAIN (preserves variables).
+ *
+ * Like exec_run but does NOT reset variables (A-Z, A$-Z$,
+ * named vars). This implements GW-BASIC/QBasic CHAIN
+ * semantics where variables survive across CHAIN.
+ *
+ * The caller (pi_parse_chain_cmd) is responsible for
+ * resetting the scope stack, SUB table, and call stack
+ * before calling this.
+ */
+void exec_chain_run(RuntimeState *rt);
+
+/*
  * exec_cont - Continue execution from paused state.
  *
  * Resumes from the saved resume_index without resetting

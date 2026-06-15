@@ -322,8 +322,20 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_VMACH:
   pi_parse_vmach(lex, rt, line_num);
   return;
- case KW_DEVMAP:
+  case KW_DEVMAP:
   pi_parse_devmap(lex, rt, line_num);
+  return;
+ case KW_ATOMIC:
+  pi_parse_atomic(lex, rt, line_num);
+  return;
+ case KW_TXN:
+  pi_parse_txn(lex, rt, line_num);
+  return;
+ case KW_COMMIT:
+  pi_parse_commit(lex, rt, line_num);
+  return;
+ case KW_ROLLBACK:
+  pi_parse_rollback(lex, rt, line_num);
   return;
  case KW_RENUM:
   pi_parse_renum(lex, rt, line_num);
@@ -875,6 +887,19 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  }
  if (runtime_push(rt, &frame) != 0)
  return;
+
+ /* Push scope stack */
+ {
+ int smode = SCOPE_FULL;
+ if (dialect_get_config()->id ==
+  DIALECT_QBASIC)
+  smode = SCOPE_FRESH;
+ scope_stack_push(
+  &rt->scope_stack, rt,
+  smode,
+  (int)(sd - rt->subs),
+  rt->current_index + 1);
+ }
 
  /* Parse args (with or without parens) */
  if (lex->current.type == TOK_LPAREN) {

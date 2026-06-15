@@ -379,6 +379,13 @@ BValue pi_eval_user_fn(Lexer *outer_lex, RuntimeState *rt,
  if (runtime_push(rt, &frame) != 0)
  return bval_int(0);
 
+ /* Push scope stack */
+ scope_stack_push(
+  &rt->scope_stack, rt,
+  SCOPE_FULL,
+  (int)(sd - rt->subs),
+  rt->current_index);
+
  /* Bind params */
  for (i = 0; i < argc && i < sd->param_count;
  i++) {

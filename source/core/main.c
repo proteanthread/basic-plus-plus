@@ -156,7 +156,7 @@ static void print_usage(const char *prog)
     printf("  --about          Describe version and what's new\n");
     printf("  --license        Display full MIT license text\n");
     printf("\nEnvironment & Memory:\n");
-    printf("  -d DIALECT       Set default dialect (GWBS, QBAS, PATB, etc.)\n");
+    printf("  -d DIALECT       Set default dialect (GWBS, QBAS, PATB, BPP, etc.)\n");
     printf("  -s LEVEL         Set security level (OPEN, STANDARD, RESTRICTED)\n");
     printf("  -S               Enable strict dialect mode\n");
     printf("  -f FILE          Use a specific configuration file\n");

@@ -61,6 +61,8 @@
 #include "mod_upnp.h"
 #endif
 #include "dialect.h"
+#include "device_alias.h"
+#include "txn.h"
 #include "runtime.h"
 #include "builtins.h"
 
@@ -212,6 +214,14 @@ static BootStatus boot_phase3_devices(void)
  /* File I/O channels */
  fileio_channels_init();
  boot_log(BOOT_DEBUG, "  File channels initialized");
+
+ /* Device alias table (for cross-dialect device mapping) */
+ device_alias_init();
+ boot_log(BOOT_DEBUG, "  Device alias table initialized");
+
+ /* Transaction journal (ATOMIC/TXN support) */
+ txn_init();
+ boot_log(BOOT_DEBUG, "  Transaction journal initialized");
 
  /* Graphics framebuffer (non-critical) */
  gfxbuf_init();

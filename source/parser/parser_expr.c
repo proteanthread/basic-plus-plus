@@ -403,6 +403,12 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  return val;
 
+ case TOK_IMAGINARY:
+ /* Pure imaginary literal: 2i -> (0+2i) */
+ val = bval_complex(0.0, lex->current.value.fval);
+ lexer_next(lex);
+ return val;
+
  case TOK_STRING:
  {
  /* String literal - store in pool */
@@ -558,6 +564,19 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (runtime_push(rt, &frame) != 0)
  return bval_int(0);
 
+ /* Push scope stack */
+ {
+ int smode = SCOPE_FULL;
+ if (dialect_get_config()->id ==
+  DIALECT_QBASIC)
+  smode = SCOPE_FRESH;
+ scope_stack_push(
+  &rt->scope_stack, rt,
+  smode,
+  (int)(sd - rt->subs),
+  rt->current_index);
+ }
+
  /* Parse args */
  lexer_next(lex); /* consume ( */
  for (i = 0; i < sd->param_count;
@@ -580,8 +599,14 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
 
  /*
  * Execute FUNCTION body inline.
- * Save/restore execution position.
+ * Save/restore execution position and
+ * fn_return_value (for recursion).
  */
+ {
+ BValue saved_fn_rv =
+  rt->fn_return_value;
+ int saved_sub_idx =
+  rt->in_sub_index;
  rt->fn_return_value = bval_int(0);
  rt->in_sub_index =
  (int)(sd - rt->subs);
@@ -628,7 +653,13 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
 
  rt->current_index = save_idx;
  rt->next_index = save_next;
- return rt->fn_return_value;
+ {
+ BValue rv = rt->fn_return_value;
+ rt->fn_return_value = saved_fn_rv;
+ rt->in_sub_index = saved_sub_idx;
+ return rv;
+ }
+ }
  }
 
  /*
@@ -785,6 +816,50 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  val = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return bval_int(0);
+
+ /* Check for complex literal: (real +/- coeff·i) */
+ if ((lex->current.type == TOK_PLUS ||
+      lex->current.type == TOK_MINUS) &&
+     bval_is_numeric(&val) &&
+     !bval_is_complex(&val)) {
+  int neg = (lex->current.type == TOK_MINUS);
+  /* Peek ahead — only convert if next is imaginary */
+  lexer_next(lex); /* consume +/- */
+  if (lex->current.type == TOK_IMAGINARY) {
+   double real_part = bval_to_float(&val);
+   double imag_part = lex->current.value.fval;
+   if (neg) imag_part = -imag_part;
+   lexer_next(lex); /* consume imaginary */
+   if (!lexer_expect(lex, TOK_RPAREN))
+    return bval_int(0);
+   return bval_complex(real_part, imag_part);
+  }
+  /* Not imaginary — put back the +/- as part of
+   * a normal expression. We can't un-consume the
+   * +/-, so evaluate what follows and combine. */
+  {
+   BValue rhs = pi_parse_term_bval(lex, rt,
+    line_num);
+   if (error_occurred()) return bval_int(0);
+   if (neg)
+    val = bval_sub(&val, &rhs, line_num);
+   else
+    val = bval_add(&val, &rhs, line_num);
+   /* Continue with remaining +/- terms */
+   while (lex->current.type == TOK_PLUS ||
+          lex->current.type == TOK_MINUS) {
+    int s = (lex->current.type == TOK_MINUS);
+    lexer_next(lex);
+    rhs = pi_parse_term_bval(lex, rt, line_num);
+    if (error_occurred()) return bval_int(0);
+    if (s)
+     val = bval_sub(&val, &rhs, line_num);
+    else
+     val = bval_add(&val, &rhs, line_num);
+   }
+  }
+ }
+
  if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
  return val;
 

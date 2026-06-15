@@ -678,6 +678,66 @@ void exec_run(RuntimeState *rt)
 }
 
 /*
+ * exec_chain_run - Execute after CHAIN (preserves variables).
+ *
+ * Like exec_run but does NOT call runtime_reset, so variables
+ * (A-Z, A$-Z$, named vars, @() array) survive. The caller
+ * (pi_parse_chain_cmd) has already reset the scope stack,
+ * SUB table, call stack, and execution pointers.
+ *
+ * We still need to:
+ * - Collect DATA values from the new program
+ * - Collect labels
+ * - Pre-scan SUB/FUNCTION definitions
+ * - Install signal handler
+ * - Run from index 0
+ */
+void exec_chain_run(RuntimeState *rt)
+{
+ /* Collect DATA values from the new program */
+ runtime_collect_data(rt);
+
+ /* Collect line labels */
+ runtime_collect_labels(rt);
+
+ /* Install OS signal handler */
+ g_signal_rt = rt;
+ g_signal_pending = 0;
+ signal(SIGINT, signal_handler);
+
+ /* Pre-scan for SUB/FUNCTION definitions */
+ {
+ int idx;
+ ProgramStore *pgm = rt->program;
+ for (idx = 0; idx < pgm->count; idx++) {
+ Lexer cl;
+ const char *text = pgm->lines[idx].text;
+ int ln = pgm->lines[idx].line_number;
+ lexer_init(&cl, text);
+ if (cl.current.type == TOK_NUMBER)
+ lexer_next(&cl);
+ if (cl.current.type == TOK_KEYWORD &&
+ (cl.current.value.keyword == KW_SUB ||
+ cl.current.value.keyword == KW_FUNCTION)) {
+ rt->current_index = idx;
+ rt->next_index = -1;
+ parser_execute_line(&cl, rt, ln);
+ if (error_occurred()) {
+ vm_set_state(rt, VM_ERROR);
+ return;
+ }
+ if (rt->next_index > idx)
+ idx = rt->next_index - 1;
+ }
+ }
+ rt->current_index = 0;
+ rt->next_index = -1;
+ }
+
+ exec_run_from(rt, 0);
+}
+
+/*
  * exec_cont - Continue execution from paused state.
  *
  * Resumes from the saved resume_index without resetting state.

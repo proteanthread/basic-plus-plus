@@ -363,7 +363,36 @@ static const char *keyword_names[] = {
  "EXISTS",        /* KW_EXISTS */
  "FILEMOD$",      /* KW_FILEMOD */
  /* Formatted I/O */
- "DISPLAY"        /* KW_DISPLAY */
+ "DISPLAY",       /* KW_DISPLAY */
+ /* Complex math functions */
+ "CSQR",          /* KW_CSQR_FUNC */
+ "CEXP",          /* KW_CEXP_FUNC */
+ "CLOG",          /* KW_CLOG_FUNC */
+ "CARG",          /* KW_CARG_FUNC */
+ "CPOW",           /* KW_CPOW_FUNC */
+ /* Stream I/O primitives (Milestone 11) */
+ "SIOREAD$",       /* KW_SIOREAD */
+ "SIOREADLN$",     /* KW_SIOREADLN */
+ "SIOWRITE",       /* KW_SIOWRITE */
+ "SIOSEEK",        /* KW_SIOSEEK */
+ "SIOFLUSH",       /* KW_SIOFLUSH */
+ "SIOSTATUS",      /* KW_SIOSTATUS */
+ "SIOAVAIL",       /* KW_SIOAVAIL */
+ /* Block I/O primitives (Milestone 11) */
+ "BIOREAD$",       /* KW_BIOREAD */
+ "BIOWRITE",       /* KW_BIOWRITE */
+ "BIOSTATUS",      /* KW_BIOSTATUS */
+ "BIOSIZE",        /* KW_BIOSIZE */
+ "BIOCHECKSUM",    /* KW_BIOCHECKSUM */
+ "BIOCOMPARE",     /* KW_BIOCOMPARE */
+ "BIOFILL",        /* KW_BIOFILL */
+ "BIOCOPY",        /* KW_BIOCOPY */
+ /* Transaction / ATOMIC */
+ "ATOMIC",         /* KW_ATOMIC */
+ "TXN",            /* KW_TXN */
+ "COMMIT",         /* KW_COMMIT */
+ "ROLLBACK",       /* KW_ROLLBACK */
+ "TXNSTATUS"       /* KW_TXNSTATUS */
 };
 
 /* --- Token Type Names (for diagnostic output) ---
@@ -394,6 +423,12 @@ static const char *token_type_names[] = {
  "COLON", /* TOK_COLON */
  "HASH", /* TOK_HASH */
  "AT", /* TOK_AT */
+ "CARET", /* TOK_CARET */
+ "BACKSLASH", /* TOK_BACKSLASH */
+ "PIPE", /* TOK_PIPE */
+ "APPEND", /* TOK_APPEND */
+ "IMAGINARY", /* TOK_IMAGINARY */
+ "COMPLEX_VAR", /* TOK_COMPLEX_VAR */
  "CR" /* TOK_CR */
 };
 

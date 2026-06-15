@@ -372,6 +372,12 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "FILEMOD", KW_FILEMOD, DFLAG_ALL },
  /* Formatted I/O */
  { "DISPLAY", KW_DISPLAY, DFLAG_ALL },
+ /* Complex math functions */
+ { "CSQR", KW_CSQR_FUNC, DFLAG_ALL },
+ { "CEXP", KW_CEXP_FUNC, DFLAG_ALL },
+ { "CLOG", KW_CLOG_FUNC, DFLAG_ALL },
+ { "CARG", KW_CARG_FUNC, DFLAG_ALL },
+ { "CPOW", KW_CPOW_FUNC, DFLAG_ALL },
  /* Aggregate / rounding math functions (BASIC++) */
  { "MIN", KW_MIN_FUNC, DFLAG_ALL },
  { "MAX", KW_MAX_FUNC, DFLAG_ALL },
@@ -410,6 +416,29 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "DUMP", KW_DUMP, DFLAG_ALL },
  { "BACKTRACE", KW_BACKTRACE, DFLAG_ALL },
  { "TRACE", KW_TRACE, DFLAG_ALL },
+ /* Stream I/O primitives (BASIC++ Milestone 11) */
+ { "SIOREAD", KW_SIOREAD, DFLAG_ALL },
+ { "SIOREADLN", KW_SIOREADLN, DFLAG_ALL },
+ { "SIOWRITE", KW_SIOWRITE, DFLAG_ALL },
+ { "SIOSEEK", KW_SIOSEEK, DFLAG_ALL },
+ { "SIOFLUSH", KW_SIOFLUSH, DFLAG_ALL },
+ { "SIOSTATUS", KW_SIOSTATUS, DFLAG_ALL },
+ { "SIOAVAIL", KW_SIOAVAIL, DFLAG_ALL },
+ /* Block I/O primitives (BASIC++ Milestone 11) */
+ { "BIOREAD", KW_BIOREAD, DFLAG_ALL },
+ { "BIOWRITE", KW_BIOWRITE, DFLAG_ALL },
+ { "BIOSTATUS", KW_BIOSTATUS, DFLAG_ALL },
+ { "BIOSIZE", KW_BIOSIZE, DFLAG_ALL },
+ { "BIOCHECKSUM", KW_BIOCHECKSUM, DFLAG_ALL },
+ { "BIOCOMPARE", KW_BIOCOMPARE, DFLAG_ALL },
+ { "BIOFILL", KW_BIOFILL, DFLAG_ALL },
+ { "BIOCOPY", KW_BIOCOPY, DFLAG_ALL },
+ /* Transaction / ATOMIC keywords */
+ { "ATOMIC", KW_ATOMIC, DFLAG_ALL },
+ { "TXN", KW_TXN, DFLAG_ALL },
+ { "COMMIT", KW_COMMIT, DFLAG_ALL },
+ { "ROLLBACK", KW_ROLLBACK, DFLAG_ALL },
+ { "TXNSTATUS", KW_TXNSTATUS, DFLAG_ALL },
  { NULL, 0, 0 } /* sentinel */
 };
 
@@ -756,7 +785,10 @@ int lexer_keyword_needs_dollar(KeywordId kw)
     kw == KW_DIALECT_FUNC ||
     kw == KW_MEMMAP_FUNC ||
     kw == KW_ALIAS_FUNC ||
-    kw == KW_CWD_FUNC);
+    kw == KW_CWD_FUNC ||
+    kw == KW_SIOREAD ||
+    kw == KW_SIOREADLN ||
+    kw == KW_BIOREAD);
 }
 
 /*
@@ -1300,6 +1332,23 @@ void lexer_next(Lexer *lex)
  lex->current.str_start = NULL;
  lex->current.str_length = 0;
  }
+
+ /* Check for imaginary suffix (i/I) */
+ if (lex->pos < lex->length &&
+ (lex->source[lex->pos] == 'i' ||
+ lex->source[lex->pos] == 'I') &&
+ /* Must NOT be followed by alnum (not a var) */
+ (lex->pos + 1 >= lex->length ||
+ !isalpha((unsigned char)
+ lex->source[lex->pos + 1]))) {
+ lex->pos++; /* consume 'i' */
+ /* Convert to imaginary token */
+ if (lex->current.type == TOK_NUMBER) {
+ lex->current.value.fval =
+ (double)lex->current.value.num_value;
+ }
+ lex->current.type = TOK_IMAGINARY;
+ }
  return;
  }
 
@@ -1411,7 +1460,10 @@ void lexer_next(Lexer *lex)
  kw == KW_BIN_FUNC ||
  kw == KW_CLOCK_FUNC ||
  kw == KW_ALARM_FUNC ||
- kw == KW_CWD_FUNC) {
+ kw == KW_CWD_FUNC ||
+ kw == KW_SIOREAD ||
+ kw == KW_SIOREADLN ||
+ kw == KW_BIOREAD) {
  lex->pos++; /* consume '$' */
  }
  /* INPUT$ -> KW_INPUT_FUNC */
@@ -1468,7 +1520,7 @@ void lexer_next(Lexer *lex)
  			/* Check for trailing type suffix (e.g. X1$, A%, B!) */
 			if (lex->pos < lex->length) {
 				char t = lex->source[lex->pos];
-				if (t == '$' || t == '%' || t == '!' || t == '#' || t == '&') {
+				if (t == '$' || t == '%' || t == '!' || t == '#' || t == '&' || t == '~') {
 					lex->pos++; /* consume suffix */
 					len++;
 				}
@@ -1480,7 +1532,7 @@ void lexer_next(Lexer *lex)
  		} else if (lex->pos < lex->length &&
 			(lex->source[lex->pos] == '$' || lex->source[lex->pos] == '%' ||
 			 lex->source[lex->pos] == '!' || lex->source[lex->pos] == '#' ||
-			 lex->source[lex->pos] == '&')) {
+			 lex->source[lex->pos] == '&' || lex->source[lex->pos] == '~')) {
 			/* String or typed variable: A$ through Z$ or A% etc. */
 			/* We treat typed single-char vars as TOK_NAMED_VAR for parser consistency */
 			lex->pos++; /* consume suffix */
@@ -1524,7 +1576,7 @@ void lexer_next(Lexer *lex)
 			 */
 			if (lex->pos < lex->length) {
 				char t = lex->source[lex->pos];
-				if (t == '$' || t == '%' || t == '!' || t == '#' || t == '&') {
+				if (t == '$' || t == '%' || t == '!' || t == '#' || t == '&' || t == '~') {
 					lex->pos++; /* consume suffix */
 					len++;
 				}

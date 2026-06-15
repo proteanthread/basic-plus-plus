@@ -46,6 +46,7 @@
 #include "stringpool.h"
 #include "vdev.h"
 #include "rpn.h"
+#include "scope_stack.h"
 
 /* --- Stack Frame Types ---
  * Each type of flow-control construct that uses the runtime stack
@@ -200,6 +201,16 @@ typedef struct SubDef {
  int param_is_string[MAX_SUB_PARAMS];
  int param_count;
  int is_function; /* 0=SUB, 1=FUNCTION */
+ int is_static;   /* 1=all locals are static (SUB ... STATIC) */
+ /* Static variable storage: persists between calls.
+  * Only used when individual STATIC declarations or
+  * the SUB ... STATIC modifier is used. Dynamically
+  * allocated on first use. */
+ BValue *static_vars;      /* saved A-Z for this sub */
+ BValue *static_strvars;   /* saved A$-Z$ for this sub */
+ void   *static_named;     /* saved named vars (NamedVariable*) */
+ int     static_named_count;
+ int     has_static_data;  /* 1 if static storage initialized */
 } SubDef;
 
 /* --- Runtime State ---
@@ -376,6 +387,9 @@ typedef struct RuntimeState {
  int sub_count;
  BValue fn_return_value; /* FUNCTION return value */
  int in_sub_index; /* index of currently executing SUB, -1 = none */
+
+ /* Dynamic scope stack (Milestone 9) */
+ ScopeStack scope_stack;
 
  /* Line label table */
 #define MAX_LABELS 128

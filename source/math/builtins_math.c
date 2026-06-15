@@ -240,6 +240,136 @@ BValue builtin_cabs(BValue *args, int argc, void *rt)
 }
 
 /*
+ * CSQR(z) - Complex square root.
+ * sqrt(a+bi) = sqrt(r)*(cos(t/2) + i*sin(t/2))
+ * where r = |z|, t = arg(z).
+ * Category: FCAT_MATH | Safety: FSAFE_PURE
+ */
+BValue builtin_csqr(BValue *args, int argc, void *rt)
+{
+ double a, b, r, sr, t;
+ (void)argc; (void)rt;
+ if (bval_is_complex(&args[0])) {
+  a = args[0].v.cval.real;
+  b = args[0].v.cval.imag;
+ } else {
+  a = bval_to_float(&args[0]);
+  b = 0.0;
+ }
+ r = sqrt(a * a + b * b);
+ sr = sqrt(r);
+ t = atan2(b, a);
+ return bval_complex(sr * cos(t / 2.0), sr * sin(t / 2.0));
+}
+
+/*
+ * CEXP(z) - Complex exponential.
+ * e^(a+bi) = e^a * (cos(b) + i*sin(b))
+ * Category: FCAT_MATH | Safety: FSAFE_PURE
+ */
+BValue builtin_cexp(BValue *args, int argc, void *rt)
+{
+ double a, b, ea;
+ (void)argc; (void)rt;
+ if (bval_is_complex(&args[0])) {
+  a = args[0].v.cval.real;
+  b = args[0].v.cval.imag;
+ } else {
+  a = bval_to_float(&args[0]);
+  b = 0.0;
+ }
+ ea = exp(a);
+ return bval_complex(ea * cos(b), ea * sin(b));
+}
+
+/*
+ * CLOG(z) - Complex natural logarithm.
+ * ln(a+bi) = ln(|z|) + i*arg(z)
+ * Category: FCAT_MATH | Safety: FSAFE_PURE
+ */
+BValue builtin_clog(BValue *args, int argc, void *rt)
+{
+ double a, b, r;
+ (void)argc; (void)rt;
+ if (bval_is_complex(&args[0])) {
+  a = args[0].v.cval.real;
+  b = args[0].v.cval.imag;
+ } else {
+  a = bval_to_float(&args[0]);
+  b = 0.0;
+ }
+ r = sqrt(a * a + b * b);
+ if (r == 0.0) return bval_complex(0.0, 0.0);
+ return bval_complex(log(r), atan2(b, a));
+}
+
+/*
+ * CARG(z) - Complex argument (phase angle in radians).
+ * arg(a+bi) = atan2(b, a)
+ * Category: FCAT_MATH | Safety: FSAFE_PURE
+ */
+BValue builtin_carg(BValue *args, int argc, void *rt)
+{
+ double a, b;
+ (void)argc; (void)rt;
+ if (bval_is_complex(&args[0])) {
+  a = args[0].v.cval.real;
+  b = args[0].v.cval.imag;
+ } else {
+  a = bval_to_float(&args[0]);
+  b = 0.0;
+ }
+ return bval_float(atan2(b, a));
+}
+
+/*
+ * CPOW(z, w) - Complex power: z^w = e^(w * ln(z)).
+ * Category: FCAT_MATH | Safety: FSAFE_PURE
+ */
+BValue builtin_cpow(BValue *args, int argc, void *rt)
+{
+ double za, zb, wa, wb;
+ double lr, lt; /* ln(z) components */
+ double ra, rb; /* w * ln(z) */
+ double er;     /* e^ra */
+ (void)argc; (void)rt;
+
+ /* Extract z */
+ if (bval_is_complex(&args[0])) {
+  za = args[0].v.cval.real;
+  zb = args[0].v.cval.imag;
+ } else {
+  za = bval_to_float(&args[0]);
+  zb = 0.0;
+ }
+
+ /* Extract w */
+ if (bval_is_complex(&args[1])) {
+  wa = args[1].v.cval.real;
+  wb = args[1].v.cval.imag;
+ } else {
+  wa = bval_to_float(&args[1]);
+  wb = 0.0;
+ }
+
+ /* ln(z) = ln(|z|) + i*arg(z) */
+ {
+ double r = sqrt(za * za + zb * zb);
+ if (r == 0.0) return bval_complex(0.0, 0.0);
+ lr = log(r);
+ lt = atan2(zb, za);
+ }
+
+ /* w * ln(z) = (wa+wbi)(lr+lti) */
+ ra = wa * lr - wb * lt;
+ rb = wa * lt + wb * lr;
+
+ /* e^(ra+rbi) */
+ er = exp(ra);
+ return bval_complex(er * cos(rb), er * sin(rb));
+}
+
+/*
  * MIN(a, b, ...) - Minimum value.
  * Returns the smallest of two or more numeric arguments.
  * Category: FCAT_MATH | Safety: FSAFE_PURE

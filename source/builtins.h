@@ -62,6 +62,11 @@ BValue builtin_real(BValue *args, int argc, void *rt);
 BValue builtin_imag(BValue *args, int argc, void *rt);
 BValue builtin_conj(BValue *args, int argc, void *rt);
 BValue builtin_cabs(BValue *args, int argc, void *rt);
+BValue builtin_csqr(BValue *args, int argc, void *rt);
+BValue builtin_cexp(BValue *args, int argc, void *rt);
+BValue builtin_clog(BValue *args, int argc, void *rt);
+BValue builtin_carg(BValue *args, int argc, void *rt);
+BValue builtin_cpow(BValue *args, int argc, void *rt);
 BValue builtin_min(BValue *args, int argc, void *rt);
 BValue builtin_max(BValue *args, int argc, void *rt);
 BValue builtin_avg(BValue *args, int argc, void *rt);
@@ -123,5 +128,29 @@ BValue builtin_environ(BValue *args, int argc, void *rt);
 /* --- Graphics (builtins_graphics.c) ---
  */
 BValue builtin_point(BValue *args, int argc, void *rt);
+
+/* --- Stream I/O (builtins_sio.c) ---
+ */
+BValue builtin_sioread(BValue *args, int argc, void *rt);
+BValue builtin_sioreadln(BValue *args, int argc, void *rt);
+BValue builtin_siowrite(BValue *args, int argc, void *rt);
+BValue builtin_sioseek(BValue *args, int argc, void *rt);
+BValue builtin_sioflush(BValue *args, int argc, void *rt);
+BValue builtin_siostatus(BValue *args, int argc, void *rt);
+BValue builtin_sioavail(BValue *args, int argc, void *rt);
+
+/* --- Block I/O (builtins_bio.c) ---
+ */
+BValue builtin_bioread(BValue *args, int argc, void *rt);
+BValue builtin_biowrite(BValue *args, int argc, void *rt);
+BValue builtin_biostatus(BValue *args, int argc, void *rt);
+BValue builtin_biosize(BValue *args, int argc, void *rt);
+BValue builtin_biochecksum(BValue *args, int argc, void *rt);
+BValue builtin_biocompare(BValue *args, int argc, void *rt);
+BValue builtin_biofill(BValue *args, int argc, void *rt);
+BValue builtin_biocopy(BValue *args, int argc, void *rt);
+
+/* Transaction builtins (io/builtins_txn.c) */
+BValue builtin_txnstatus(BValue *args, int argc, void *rt);
 
 #endif /* BASICPP_BUILTINS_H */
