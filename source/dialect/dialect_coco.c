@@ -29,13 +29,39 @@
 
 #include "dialect.h"
 
+/*
+ * coco_apply - Apply Color Computer BASIC configuration.
+ *
+ * CoCo BASIC is a Microsoft BASIC with graphics and sound:
+ *   - PSET, LINE, CIRCLE, PAINT, DRAW for graphics
+ *   - PLAY, SOUND for music/sound
+ *   - SCREEN, COLOR for mode/palette selection
+ *   - INKEY$ for keyboard input
+ *   - KEY for function key programming
+ *   - ON ERROR GOTO (has_on_error = 1)
+ *   - CLS (has_cls = 1), TRON/TROFF (has_tron_troff = 1)
+ *   - No WHILE/WEND, no DO/LOOP
+ *   - No MERGE/CHAIN
+ *   - 16-column print zones
+ *   - "OK" prompt (uppercase)
+ */
+static void coco_apply(void)
+{
+ /* CoCo graphics commands (PSET, PAINT, SCREEN, etc.) are
+  * tagged with DFLAG_COCO in the keyword table. Extended
+  * Color BASIC adds CIRCLE, LINE, PAINT. CoCo's POINT
+  * returns a pixel color (shared with TRS-80 Level I/II
+  * block graphics). SET/RESET are block graphics commands
+  * shared with TRS-80 (DFLAG_TRS1|DFLAG_TRS2|DFLAG_COCO). */
+}
+
 static const DialectConfig coco_config = {
     DIALECT_COCO,
     "Color Computer BASIC",
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     63999, 0, 1, 0, 0, 1, 0, 1, 1, 1,
     "OK", 16, 1, 1, 1,
-    "COCO", DFLAG_COCO, 0
+    "COCO", DFLAG_COCO, coco_apply
 };
 
 void dialect_register_coco(void)

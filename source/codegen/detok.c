@@ -361,7 +361,9 @@ static const char *keyword_names[] = {
  "VERIFY",        /* KW_VERIFY */
  /* File query functions */
  "EXISTS",        /* KW_EXISTS */
- "FILEMOD$"       /* KW_FILEMOD */
+ "FILEMOD$",      /* KW_FILEMOD */
+ /* Formatted I/O */
+ "DISPLAY"        /* KW_DISPLAY */
 };
 
 /* --- Token Type Names (for diagnostic output) ---

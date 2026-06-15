@@ -392,6 +392,13 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return val;
 
  case TOK_FLOAT_LIT:
+ if (!dialect_check_feature("floating point",
+ dialect_get_config()->has_float, line_num)) {
+ /* Integer-only: truncate to int */
+ val = bval_int((long)lex->current.value.fval);
+ lexer_next(lex);
+ return val;
+ }
  val = bval_float(lex->current.value.fval);
  lexer_next(lex);
  return val;
@@ -447,10 +454,13 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return runtime_get_var_bval(rt, vname);
  }
 
- case TOK_STRING_VAR:
- {
- char vname = lex->current.value.var_name;
- lexer_next(lex);
+ 	case TOK_STRING_VAR:
+	{
+	char vname = lex->current.value.var_name;
+	if (!dialect_check_feature("string variables",
+	dialect_get_config()->has_string_vars, line_num))
+	return bval_int(0);
+	lexer_next(lex);
  /*
  * Check for DIM string array access: A$(index)
  * The DIM name for single-char string arrays is
@@ -506,11 +516,14 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return runtime_get_string_var(rt, vname);
  }
 
- case TOK_NAMED_VAR:
- {
- const char *nm = lex->current.str_start;
- int nlen = lex->current.str_length;
- lexer_next(lex);
+ 	case TOK_NAMED_VAR:
+	{
+	const char *nm = lex->current.str_start;
+	int nlen = lex->current.str_length;
+	if (!dialect_check_feature("named variables",
+	dialect_get_config()->has_extended_vars, line_num))
+	return bval_int(0);
+	lexer_next(lex);
 
  /*
  * Check for FUNCTION call.

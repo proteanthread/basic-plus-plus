@@ -312,9 +312,9 @@ static unsigned int mixed_mask = 0;
 int dialect_check_feature(const char *name, int flag, int line_num)
 {
  if (dialect_mode == DMODE_STRICT && !flag) {
-  printf("SORRY? %s not available in %s\n",
-   name, active_dialect ? active_dialect->name : "unknown");
   (void)line_num;
+  printf("SORRY? %s is not available in this dialect.\n",
+   name);
   return 0;
  }
  return 1;
@@ -470,7 +470,14 @@ int dialect_keyword_allowed(KeywordId kw)
 
  if (dialect_mode == DMODE_STRICT) {
   /* Strict: check against single active dialect */
-  return (kw_flags & active_dialect->dialect_flag) ? 1 : 0;
+  if (kw_flags & active_dialect->dialect_flag)
+   return 1;
+  {
+   const char *kname = lexer_keyword_name(kw);
+   printf("SORRY? %s is not available in this dialect.\n",
+    kname ? kname : "keyword");
+  }
+  return 0;
  }
 
  if (dialect_mode == DMODE_MIXED) {

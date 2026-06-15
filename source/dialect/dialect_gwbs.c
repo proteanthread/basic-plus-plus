@@ -20,13 +20,33 @@
 
 #include "dialect.h"
 
+/*
+ * gwbs_apply - Apply GW-BASIC configuration.
+ *
+ * GW-BASIC is the most feature-complete Microsoft BASIC dialect.
+ * It supports everything: floats, strings, named vars, WHILE/WEND,
+ * ON ERROR, MERGE/CHAIN, DEFtype, DIM arrays, all math and string
+ * functions, file I/O, graphics, sound, and event trapping.
+ *
+ * GW-BASIC is the reference dialect that most users expect.
+ * The "Ok" prompt uses lowercase 'k' (historically accurate).
+ */
+static void gwbs_apply(void)
+{
+ /* GW-BASIC is the most complete dialect. All features are
+  * enabled via config flags. The 14-column print zone width
+  * and "Ok" prompt are set in the config struct.
+  * DEFINT/DEFSNG/DEFDBL/DEFSTR type declarations are
+  * available (tagged DFLAG_MSBASIC in the keyword table). */
+}
+
 static const DialectConfig gwbs_config = {
     DIALECT_GW_BASIC,
     "GW-BASIC",
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     65529, 0, 1, 1, 0, 1, 1, 1, 1, 1,
     "Ok", 14, 1, 1, 1,
-    "GWBS", DFLAG_GWBS, 0
+    "GWBS", DFLAG_GWBS, gwbs_apply
 };
 
 void dialect_register_gwbs(void)

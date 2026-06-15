@@ -391,6 +391,23 @@ void pi_parse_llist(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_write(Lexer *lex, RuntimeState *rt,
     int line_num);
+void pi_parse_display(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_type_cmd(Lexer *lex, RuntimeState *rt,
+    int line_num);
+
+/* format_using.c - Formatted output engine */
+void format_using_process(FILE *fp, const char *fmt, int flen,
+    Lexer *lex, RuntimeState *rt, int line_num);
+int format_using_numeric(FILE *fp, const char *fmt, int flen,
+    int *pos, double value);
+int format_using_string_field(FILE *fp, const char *fmt, int flen,
+    int *pos, const char *str, int slen);
+
+/* format_input.c - Formatted input validation engine */
+int input_read_protected(char *buf, int maxlen, const char *prompt);
+int format_input_using(char *buf, int maxlen, const char *fmt,
+    int flen, const char *prompt);
 
 /* parser_shell.c - Shell & external execution */
 void pi_parse_shell(Lexer *lex, RuntimeState *rt,

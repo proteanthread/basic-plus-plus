@@ -46,6 +46,33 @@
 
 #include "dialect.h"
 
+/*
+ * sinclair_apply - Apply Sinclair BASIC configuration.
+ *
+ * Sinclair BASIC has a unique personality:
+ *   - LET mandatory (has_let_optional = 0)
+ *   - LN aliases LOG (handled in keyword table: LN -> KW_LOG_FUNC)
+ *   - No WHILE/WEND, no DO/LOOP, no ON ERROR
+ *   - MERGE supported (for loading code from tape)
+ *   - CLS available (has_cls = 1)
+ *   - No TRON/TROFF
+ *   - BORDER/INK/PAPER/BRIGHT/FLASH/INVERSE/OVER are display attrs
+ *   - PLOT maps to PSET, DRAW draws relative lines
+ *   - BEEP for sound (2 params: duration, pitch)
+ *   - PAUSE halts for n frames (1/50th sec)
+ *   - IN/OUT for Z80 port I/O
+ *   - "0 OK" prompt, 16-column zones, max line 9999
+ */
+static void sinclair_apply(void)
+{
+ /* Sinclair's unique keywords (BORDER, INK, PAPER, BRIGHT,
+  * FLASH, INVERSE, OVER) are all tagged DFLAG_SINC in the
+  * keyword table. LN is aliased to LOG in the lexer (both
+  * map to KW_LOG_FUNC). PLOT maps to KW_PSET, and IN maps
+  * to KW_INP. The MERGE command is supported for loading
+  * program fragments (tagged DFLAG_SINC). */
+}
+
 static const DialectConfig sinclair_config = {
     DIALECT_SINCLAIR,
     "Sinclair BASIC (ZX Spectrum)",
@@ -53,7 +80,7 @@ static const DialectConfig sinclair_config = {
     9999, 0, 1, 0, 0, 1, 1,
     1, 1, 1,
     "0 OK", 16, 0, 1, 0,
-    "SINC", DFLAG_SINC, 0
+    "SINC", DFLAG_SINC, sinclair_apply
 };
 
 void dialect_register_sinclair(void)

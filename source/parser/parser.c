@@ -186,16 +186,22 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
    return;
   pi_parse_restore(lex, rt, line_num);
   return;
- case KW_MERGE:
- if (security_check(SECOP_FILE_READ, line_num))
- return;
- pi_parse_merge_cmd(lex, rt, line_num);
- return;
- case KW_CHAIN:
- if (security_check(SECOP_CHAIN, line_num))
- return;
- pi_parse_chain_cmd(lex, rt, line_num);
- return;
+ 	case KW_MERGE:
+	if (!dialect_check_feature("MERGE/CHAIN",
+	dialect_get_config()->has_merge_chain, line_num))
+	return;
+	if (security_check(SECOP_FILE_READ, line_num))
+	return;
+	pi_parse_merge_cmd(lex, rt, line_num);
+	return;
+ 	case KW_CHAIN:
+	if (!dialect_check_feature("MERGE/CHAIN",
+	dialect_get_config()->has_merge_chain, line_num))
+	return;
+	if (security_check(SECOP_CHAIN, line_num))
+	return;
+	pi_parse_chain_cmd(lex, rt, line_num);
+	return;
  case KW_DIALECT:
  pi_parse_dialect_cmd(lex, rt, line_num);
  return;
@@ -503,6 +509,9 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_LPRINT:
   pi_parse_lprint(lex, rt, line_num);
   return;
+ case KW_DISPLAY:
+  pi_parse_display(lex, rt, line_num);
+  return;
  case KW_DECLARE:
   pi_parse_declare(lex, rt, line_num);
   return;
@@ -747,6 +756,17 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_preset(lex, rt, line_num);
   return;
  case KW_TYPE:
+  /* TYPE USING or TYPE "file" = formatted file output */
+  if (lex->current.type == TOK_KEYWORD &&
+      lex->current.value.keyword == KW_USING) {
+   pi_parse_type_cmd(lex, rt, line_num);
+   return;
+  }
+  if (lex->current.type == TOK_STRING) {
+   pi_parse_type_cmd(lex, rt, line_num);
+   return;
+  }
+  /* Otherwise: user-defined TYPE */
   pi_parse_type(lex, rt, line_num);
   return;
  case KW_ACCESS:
@@ -781,11 +801,19 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  * If the current token is a variable and LET is optional,
  * treat as a bare assignment (e.g., "A=5").
  */
- if (lex->current.type == TOK_VARIABLE &&
- dialect_get_config()->has_let_optional) {
- pi_parse_let(lex, rt, line_num, 0);
- return;
- }
+ 	if (lex->current.type == TOK_VARIABLE &&
+	dialect_get_config()->has_let_optional) {
+	pi_parse_let(lex, rt, line_num, 0);
+	return;
+	}
+
+	/* Variable without LET in LET-required dialect */
+	if (lex->current.type == TOK_VARIABLE &&
+	!dialect_get_config()->has_let_optional &&
+	dialect_is_strict()) {
+	printf("SORRY? LET is required in this dialect.\n");
+	return;
+	}
 
  /*
  * Named variable bare assignment (e.g., "SCORE=100")

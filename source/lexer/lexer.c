@@ -120,8 +120,8 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "UNTIL", KW_UNTIL, DFLAG_QBAS | DFLAG_E116 },
  { "LOOP", KW_LOOP, DFLAG_QBAS | DFLAG_E116 },
  /* MERGE/CHAIN */
- { "MERGE", KW_MERGE, DFLAG_GWQB | DFLAG_SINC },
- { "CHAIN", KW_CHAIN, DFLAG_GWQB },
+ { "MERGE", KW_MERGE, DFLAG_GWQB | DFLAG_MBAS | DFLAG_SINC },
+ { "CHAIN", KW_CHAIN, DFLAG_GWQB | DFLAG_MBAS },
  /* CLS/CLEAR/CLR */
  { "CLS", KW_CLS, DFLAG_MSALL | DFLAG_E116 | DFLAG_SINC | DFLAG_SUPA },
  { "CLEAR", KW_CLEAR, DFLAG_GWQB | DFLAG_TRS2 | DFLAG_COCO },
@@ -258,10 +258,10 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "CVI", KW_CVI, DFLAG_GWQB },
  { "CVS", KW_CVS, DFLAG_GWQB },
  { "CVD", KW_CVD, DFLAG_GWQB },
- { "DEFINT", KW_DEFINT, DFLAG_GWQB },
- { "DEFDBL", KW_DEFDBL, DFLAG_GWQB },
- { "DEFSNG", KW_DEFSNG, DFLAG_GWQB },
- { "DEFSTR", KW_DEFSTR, DFLAG_GWQB },
+ { "DEFINT", KW_DEFINT, DFLAG_MSBASIC },
+ { "DEFDBL", KW_DEFDBL, DFLAG_MSBASIC },
+ { "DEFSNG", KW_DEFSNG, DFLAG_MSBASIC },
+ { "DEFSTR", KW_DEFSTR, DFLAG_MSBASIC },
  { "ERL", KW_ERL, DFLAG_GWQB | DFLAG_E116 },
  { "ERR", KW_ERR_VAR, DFLAG_GWQB | DFLAG_E116 },
  { "ERR$", KW_ERR_STR, DFLAG_GWQB | DFLAG_E116 },
@@ -322,7 +322,6 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "ASK", KW_ASK, DFLAG_E116 },
  { "REWRITE", KW_REWRITE, DFLAG_E116 },
  { "POINTER", KW_POINTER, DFLAG_E116 },
- { "FILESIZE", KW_FILESIZE, DFLAG_E116 },
  /* Virtual subsystem introspection */
  { "VDEV", KW_VDEV, DFLAG_ALL },
  { "VMEM", KW_VMEM, DFLAG_ALL },
@@ -371,6 +370,8 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "EXISTS", KW_EXISTS, DFLAG_ALL },
  { "FILESIZE", KW_FILESIZE, DFLAG_ALL },
  { "FILEMOD", KW_FILEMOD, DFLAG_ALL },
+ /* Formatted I/O */
+ { "DISPLAY", KW_DISPLAY, DFLAG_ALL },
  /* Aggregate / rounding math functions (BASIC++) */
  { "MIN", KW_MIN_FUNC, DFLAG_ALL },
  { "MAX", KW_MAX_FUNC, DFLAG_ALL },
@@ -389,8 +390,8 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "PDIF", KW_PDIF_FUNC, DFLAG_ALL },
  { "PI", KW_PI_FUNC, DFLAG_ALL },
  /* SUPER BASIC statement modifiers / keywords */
- { "UNLESS", KW_UNLESS, DFLAG_ALL },
- { "BY", KW_BY, DFLAG_ALL },
+ { "UNLESS", KW_UNLESS, DFLAG_SBAS | DFLAG_SUPA },
+ { "BY", KW_BY, DFLAG_SBAS | DFLAG_SUPA },
  { "SCRATCH", KW_SCRATCH, DFLAG_ALL },
  { "UNSAVE", KW_UNSAVE, DFLAG_ALL },
  /* File management (native, no SHELL) */

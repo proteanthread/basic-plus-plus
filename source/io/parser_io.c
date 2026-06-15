@@ -228,8 +228,8 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  */
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_USING) {
- const char *fmt;
- int flen, fi;
+ 	const char *fmt;
+	int flen;
  lexer_next(lex); /* consume USING */
 
  /* Parse format: string literal or IMAGE line ref */
@@ -282,179 +282,27 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Expect semicolon after format */
- if (lex->current.type == TOK_SEMICOLON)
- lexer_next(lex);
+	/* Expect semicolon or comma after format */
+	if (lex->current.type == TOK_SEMICOLON)
+	lexer_next(lex);
+	else if (lex->current.type == TOK_COMMA)
+	lexer_next(lex);
 
- /* Process format string, consume values */
- fi = 0;
- while (fi < flen) {
- /* Parse optional numeric prefix (e.g. 3D, 2X) */
- int rep = 0;
- while (fi < flen && fmt[fi] >= '0' &&
- fmt[fi] <= '9') {
- rep = rep * 10 + (fmt[fi] - '0');
- fi++;
- }
-
- if (fi < flen &&
- (fmt[fi] == '#' || fmt[fi] == 'D' ||
- fmt[fi] == 'd')) {
- /*
-  * Numeric field: # or D are digit placeholders.
-  * Count digits before and after decimal point.
-  * IMAGE format: 3D.2D = ###.##
-  */
- int whole = 0, frac = 0, has_dot = 0;
- int fw;
- BValue v;
- char nbuf[64];
-
- if (rep > 0) {
- whole = rep;
- fi++; /* skip D */
- } else {
- while (fi < flen &&
- (fmt[fi] == '#' || fmt[fi] == 'D' ||
- fmt[fi] == 'd')) {
- whole++; fi++;
- }
- }
- if (fi < flen && fmt[fi] == '.') {
- has_dot = 1; fi++;
- /* Count fractional digits */
- rep = 0;
- while (fi < flen && fmt[fi] >= '0' &&
- fmt[fi] <= '9') {
- rep = rep * 10 + (fmt[fi] - '0');
- fi++;
- }
- if (fi < flen &&
- (fmt[fi] == '#' || fmt[fi] == 'D' ||
- fmt[fi] == 'd')) {
- if (rep > 0) {
- frac = rep;
- fi++; /* skip D */
- } else {
- while (fi < flen &&
- (fmt[fi] == '#' ||
- fmt[fi] == 'D' ||
- fmt[fi] == 'd')) {
- frac++; fi++;
- }
- }
- }
- }
-
- /* Parse next value */
- v = parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred()) return;
-
- fw = whole + (has_dot ? 1 + frac : 0);
- if (has_dot) {
- sprintf(nbuf, "%*.*f",
- fw, frac, bval_to_float(&v));
- } else {
- sprintf(nbuf, "%*ld",
- fw, bval_to_int(&v));
- }
- printf("%s", nbuf);
-
- /* Consume separator */
- if (lex->current.type == TOK_SEMICOLON)
- lexer_next(lex);
- else if (lex->current.type == TOK_COMMA)
- lexer_next(lex);
-
- } else if (fi < flen &&
- (fmt[fi] == 'X' || fmt[fi] == 'x')) {
- /*
-  * Space field: X emits spaces.
-  * 2X = two spaces. Bare X = one space.
-  */
- int spaces = (rep > 0) ? rep : 1;
- fi++; /* skip X */
- while (spaces-- > 0) printf(" ");
-
- } else if (fi < flen &&
- (fmt[fi] == 'A' || fmt[fi] == 'a')) {
- /*
-  * String field: A emits string characters.
-  * 5A = 5-character string field.
-  * Bare A = 1 character.
-  */
- int width = (rep > 0) ? rep : 1;
- BValue v;
- fi++; /* skip A */
-
- v = parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred()) return;
-
- if (bval_is_string(&v) &&
- v.v.sval.data != NULL) {
- int slen = v.v.sval.length;
- int pad = 0;
- if (slen > width) slen = width;
- printf("%.*s", slen, v.v.sval.data);
- pad = width - slen;
- while (pad-- > 0) printf(" ");
- }
-
- if (lex->current.type == TOK_SEMICOLON)
- lexer_next(lex);
- else if (lex->current.type == TOK_COMMA)
- lexer_next(lex);
-
- } else if (fi < flen && fmt[fi] == '\\') {
- /* String field: \ \ = width chars */
- int width = 2;
- BValue v;
- fi++; /* skip first \ */
- while (fi < flen && fmt[fi] != '\\') {
- width++; fi++;
- }
- if (fi < flen) fi++; /* skip closing \ */
-
- v = parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred()) return;
-
- if (bval_is_string(&v) &&
- v.v.sval.data != NULL) {
- int slen = v.v.sval.length;
- int pad = 0;
- if (slen > width) slen = width;
- printf("%.*s", slen, v.v.sval.data);
- pad = width - slen;
- while (pad-- > 0) printf(" ");
- }
-
- if (lex->current.type == TOK_SEMICOLON)
- lexer_next(lex);
- else if (lex->current.type == TOK_COMMA)
- lexer_next(lex);
- } else if (fi < flen && fmt[fi] == ',') {
- /* Comma in IMAGE format = comma separator */
- fi++;
- if (lex->current.type == TOK_SEMICOLON)
- lexer_next(lex);
- else if (lex->current.type == TOK_COMMA)
- lexer_next(lex);
- } else if (fi < flen) {
- /* Literal character in format string */
- if (rep > 0) {
- /* Numeric prefix on non-format char: error */
- printf("%c", fmt[fi]);
- }
- printf("%c", fmt[fi]);
- fi++;
- }
- }
- printf("\n");
- return;
- }
+	/*
+	 * Delegate to the format engine.
+	 * The engine reads values from the lexer as needed,
+	 * outputs formatted text to the target stream.
+	 */
+	{
+	FILE *target = (file_chan > 0)
+	? fileio_get_fp(file_chan) : stdout;
+	if (target == NULL) target = stdout;
+	format_using_process(target, fmt, flen,
+	lex, rt, line_num);
+	}
+	printf("\n");
+	return;
+	}
 
  /* Handle empty PRINT (just prints a newline) */
  if (lex->current.type == TOK_EOF ||
@@ -577,7 +425,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  sbuf[slen] = '\0';
  fileio_print(file_chan, sbuf, line_num);
  } else if (bval_is_float(&val)) {
- sprintf(buf, "%G", val.v.fval);
+ sprintf(buf, "%.14G", val.v.fval);
  fileio_print(file_chan, buf, line_num);
  } else {
  sprintf(buf, "%ld", val.v.ival);
@@ -611,7 +459,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  putchar(' ');
  rt->print_col++;
  }
- nc = printf("%G", val.v.fval);
+ nc = printf("%.14G", val.v.fval);
  rt->print_col += nc;
  /* ECMA-55: trailing space */
  putchar(' ');
@@ -719,6 +567,64 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
  lexer_next(lex); /* consume comma */
+ }
+
+ /*
+ * INPUT USING "format"; var-list
+ * Validated input: reads input, checks against format,
+ * re-prompts if invalid (Microsoft-style protection).
+ */
+ if (file_chan == 0 && lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword == KW_USING) {
+ const char *ufmt;
+ int uflen;
+ char ubuf[INPUT_BUFFER_SIZE];
+ int ulen;
+ lexer_next(lex); /* consume USING */
+
+ if (lex->current.type != TOK_STRING) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ ufmt = lex->current.str_start;
+ uflen = lex->current.str_length;
+ lexer_next(lex);
+
+ /* Consume semicolon or comma after format */
+ if (lex->current.type == TOK_SEMICOLON ||
+ lex->current.type == TOK_COMMA)
+ lexer_next(lex);
+
+ /* Read and validate */
+ ulen = format_input_using(ubuf, INPUT_BUFFER_SIZE,
+ ufmt, uflen, "? ");
+ if (ulen < 0) {
+ error_raise(ERR_HOW, line_num);
+ return;
+ }
+
+ /* Store in the target variable */
+ if (lex->current.type == TOK_STRING_VAR) {
+ char svar = lex->current.value.var_name;
+ char *ptr;
+ lexer_next(lex);
+ ptr = strpool_store(&rt->strpool, ubuf, ulen);
+ if (ptr == NULL) {
+ error_raise(ERR_SORRY, line_num);
+ return;
+ }
+ runtime_set_string_var(rt, svar,
+ bval_string(ptr, ulen));
+ } else if (lex->current.type == TOK_VARIABLE) {
+ char vn = lex->current.value.var_name;
+ char *endp;
+ long val = strtol(ubuf, &endp, 10);
+ lexer_next(lex);
+ runtime_set_var(rt, vn, val);
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ }
+ return;
  }
 
  /* Check for custom prompt string (only for stdin) */

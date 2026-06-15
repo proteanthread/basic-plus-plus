@@ -21,6 +21,32 @@
 
 #include "dialect.h"
 
+/*
+ * superbasic_apply - Apply SuperBASIC configuration.
+ *
+ * SuperBASIC is a structured BASIC with named procedures:
+ *   - DEFine PROCedure / DEFine FuNction with LOCal scope
+ *   - REPeat / END REPeat (block loop, not WHILE/WEND)
+ *   - SELect ON with REMAINDER default case
+ *   - Multi-line IF/ELSE/END IF
+ *   - EXIT for breaking out of loops
+ *   - WHEN ERRor for error handling (has_on_error = 1)
+ *   - CLS and TRON/TROFF available
+ *   - No WHILE/WEND (uses REPeat instead)
+ *   - No DO/LOOP
+ *   - No MERGE/CHAIN
+ *   - Keywords: REPEAT, ENDREPEAT, ENDFOR, REMAINDER,
+ *     DEFINE, PROCEDURE, LOCAL, ENDDEFINE
+ */
+static void superbasic_apply(void)
+{
+ /* SuperBASIC's structured keywords (REPEAT, DEFINE,
+  * PROCEDURE, LOCAL, etc.) are all tagged DFLAG_SUPA
+  * in the keyword table. The ELSEIF and ENDIF keywords
+  * are shared with QBasic (DFLAG_QBAS|DFLAG_SUPA).
+  * EXIT is shared with QBasic and ECMA-116. */
+}
+
 static const DialectConfig superbasic_config = {
     DIALECT_SUPERBASIC,     /* id */
     "SuperBASIC",           /* name */
@@ -51,7 +77,7 @@ static const DialectConfig superbasic_config = {
     1,                      /* has_tron_troff */
     "SUPB",                 /* short_name */
     DFLAG_SUPA,             /* dialect_flag */
-    0                    /* apply_fn */
+    superbasic_apply        /* apply_fn */
 };
 
 void dialect_register_superbasic(void)
