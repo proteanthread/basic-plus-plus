@@ -30,6 +30,28 @@
 
 #include "dialect.h"
 
+/*
+ * atari_apply - Apply Atari BASIC configuration.
+ *
+ * Atari BASIC is not Microsoft-derived, so it has different
+ * conventions:
+ *   - 10-column print zones (narrower than Microsoft's 14)
+ *   - TRAP instead of ON ERROR GOTO (maps to on_error_line)
+ *   - CLR instead of CLEAR (clear variables)
+ *   - No WHILE/WEND, no DO/LOOP
+ *   - No MERGE/CHAIN
+ *   - TRON/TROFF supported (DFLAG includes ATRI via has_tron_troff)
+ *   - Substring syntax A$(5,10) differs from MID$
+ */
+static void atari_apply(void)
+{
+ /* Atari's TRAP keyword is already aliased to KW_TRAP in the
+  * keyword table and handled in pi_parse_on(). CLR maps to
+  * KW_CLR and is tagged with DFLAG_ATRI. The GRAPHICS
+  * mode command would need a new keyword (KW_GRAPHICS)
+  * when platform graphics are implemented. */
+}
+
 static const DialectConfig atari_config = {
     DIALECT_ATARI_MS,
     "Atari BASIC",
@@ -38,7 +60,7 @@ static const DialectConfig atari_config = {
     "READY",
     10,                     /* narrower zones */
     1, 0, 1,
-    "ATRI", DFLAG_ATRI, 0
+    "ATRI", DFLAG_ATRI, atari_apply
 };
 
 void dialect_register_atari(void)

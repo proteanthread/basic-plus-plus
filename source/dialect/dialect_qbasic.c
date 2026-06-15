@@ -23,13 +23,34 @@
 
 #include "dialect.h"
 
+/*
+ * qbasic_apply - Apply QBasic configuration.
+ *
+ * QBasic is the most structured Microsoft BASIC:
+ *   - SUB/FUNCTION with local scope
+ *   - SELECT CASE/END SELECT
+ *   - DO/LOOP/UNTIL/WHILE (all forms)
+ *   - CONST declarations
+ *   - REDIM for dynamic arrays
+ *   - Line numbers optional
+ *   - Full type system (DEFINT/DEFSNG/DEFDBL/DEFSTR)
+ *   - SHARED/STATIC variable declarations
+ */
+static void qbasic_apply(void)
+{
+ /* QBasic's structured features (SUB, FUNCTION, SELECT,
+  * DO/LOOP) are all handled by the parser and tagged with
+  * DFLAG_QBAS in the keyword table. The TYPE/END TYPE
+  * user-defined type system uses parser_struct.c. */
+}
+
 static const DialectConfig qbasic_config = {
     DIALECT_QBASIC,
     "QBasic (subset)",
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     65529, 0, 1, 1, 1, 1, 1, 1, 1, 1,
     "Ok", 14, 1, 1, 1,
-    "QBAS", DFLAG_QBAS, 0
+    "QBAS", DFLAG_QBAS, qbasic_apply
 };
 
 void dialect_register_qbasic(void)

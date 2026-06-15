@@ -27,13 +27,37 @@
 
 #include "dialect.h"
 
+/*
+ * ecma116_apply - Apply ECMA-116 Full BASIC configuration.
+ *
+ * ECMA-116 is the most complete standards-based dialect:
+ *   - Full structured control flow (WHILE, DO, SELECT CASE)
+ *   - SUB/FUNCTION with local scope
+ *   - WHEN EXCEPTION/USE error handling
+ *   - MAT matrix operations
+ *   - Enhanced file I/O module
+ *   - SET/ASK system configuration
+ *   - Has MERGE/CHAIN (has_merge_chain = 1)
+ *   - Has ON ERROR (has_on_error = 1)
+ *   - No CLS (terminal-independent standard)
+ *   - No TRON/TROFF (not in the standard)
+ */
+static void ecma116_apply(void)
+{
+ /* ECMA-116 is feature-complete. The WHEN/USE exception
+  * handling is implemented in parser_errhand.c and tagged
+  * with DFLAG_E116 in the keyword table. CAUSE/RETRY/
+  * CONTINUE are the exception control keywords.
+  * SET/ASK are the system configuration commands. */
+}
+
 static const DialectConfig ecma116_config = {
     DIALECT_ECMA116,
     "ECMA-116 Full BASIC",
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     99999, 0, 1, 1, 1, 1, 1, 1, 1, 1,
     "READY", 14, 1, 0, 0,
-    "E116", DFLAG_E116, 0
+    "E116", DFLAG_E116, ecma116_apply
 };
 
 void dialect_register_ecma116(void)

@@ -674,12 +674,9 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  * rt->deftype_map[letter_index] to the given
  * type code. Supports comma-separated ranges.
  *
- * Hybrid mode: the deftype_map is populated for
- * introspection (VARS SYSTEM) but BASIC++ does
- * not enforce type constraints at runtime. This
- * preserves backward compatibility with programs
- * that use DEFtype declarations alongside dynamic
- * typing.
+ * Hybrid mode: the deftype_map is populated and
+ * enforced at runtime - assigning a float to an
+ * integer-declared variable silently truncates.
  */
 static void deftype_parse_range(Lexer *lex,
  RuntimeState *rt, int line_num,
@@ -752,8 +749,8 @@ void pi_parse_defint(Lexer *lex, RuntimeState *rt, int line_num)
  /*
  * DEFINT letter-range [, letter-range ...]
  * Declare variables starting with the given
- * letters as INTEGER type. Hybrid mode:
- * populates deftype_map but does not enforce.
+ * letters as INTEGER type. Enforced at runtime:
+ * populates deftype_map for coercion on assignment.
  */
  deftype_parse_range(lex, rt, line_num,
   DEFTYPE_INT);
@@ -768,8 +765,8 @@ void pi_parse_defdbl(Lexer *lex, RuntimeState *rt, int line_num)
  /*
  * DEFDBL letter-range [, letter-range ...]
  * Declare variables starting with the given
- * letters as DOUBLE type. Hybrid mode:
- * populates deftype_map but does not enforce.
+ * letters as DOUBLE type. Enforced at runtime:
+ * populates deftype_map for coercion on assignment.
  */
  deftype_parse_range(lex, rt, line_num,
   DEFTYPE_DBL);
@@ -784,8 +781,8 @@ void pi_parse_defsng(Lexer *lex, RuntimeState *rt, int line_num)
  /*
  * DEFSNG letter-range [, letter-range ...]
  * Declare variables starting with the given
- * letters as SINGLE type. Hybrid mode:
- * populates deftype_map but does not enforce.
+ * letters as SINGLE type. Enforced at runtime:
+ * populates deftype_map for coercion on assignment.
  */
  deftype_parse_range(lex, rt, line_num,
   DEFTYPE_SNG);
@@ -800,8 +797,8 @@ void pi_parse_defstr(Lexer *lex, RuntimeState *rt, int line_num)
  /*
  * DEFSTR letter-range [, letter-range ...]
  * Declare variables starting with the given
- * letters as STRING type. Hybrid mode:
- * populates deftype_map but does not enforce.
+ * letters as STRING type. Enforced at runtime:
+ * populates deftype_map for coercion on assignment.
  */
  deftype_parse_range(lex, rt, line_num,
   DEFTYPE_STR);

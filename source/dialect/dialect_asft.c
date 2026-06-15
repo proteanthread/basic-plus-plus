@@ -23,6 +23,27 @@
 
 #include "dialect.h"
 
+/*
+ * asft_apply - Apply AppleSoft BASIC configuration.
+ *
+ * AppleSoft is a full Microsoft BASIC with floats and strings.
+ * Unlike GW-BASIC, it does NOT have WHILE/WEND or DO/LOOP.
+ * It DOES have ON ERROR (as ONERR GOTO, aliased).
+ * No MERGE/CHAIN. 16-column print zones.
+ *
+ * Lo-res graphics (GR, COLOR, PLOT, HLIN, VLIN) are shared
+ * with Integer BASIC via DFLAG_AINT|DFLAG_ASFT. Hi-res
+ * commands (HGR, HPLOT, HCOLOR) are DFLAG_ASFT only.
+ */
+static void asft_apply(void)
+{
+ /* AppleSoft's unique bracket prompt ']' and its ONERR GOTO
+  * syntax (vs ON ERROR GOTO) are handled via the config
+  * struct and keyword aliasing in the lexer. FRE(0) returns
+  * free memory -- handled by the FRE keyword tagged with
+  * DFLAG_ASFT in the keyword table. */
+}
+
 static const DialectConfig asft_config = {
     DIALECT_APPLESOFT,
     "AppleSoft BASIC",
@@ -30,7 +51,7 @@ static const DialectConfig asft_config = {
     63999, 0, 1, 0, 0, 1, 0, 1, 1, 1,
     "]",                    /* bracket prompt */
     16, 1, 0, 0,
-    "ASFT", DFLAG_ASFT, 0
+    "ASFT", DFLAG_ASFT, asft_apply
 };
 
 void dialect_register_asft(void)

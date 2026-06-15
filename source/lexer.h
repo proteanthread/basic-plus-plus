@@ -440,6 +440,8 @@ enum {
  /* File query functions */
  KW_EXISTS,       /* EXISTS - file existence check */
  KW_FILEMOD,      /* FILEMOD$ - file modified date */
+ /* Formatted I/O */
+ KW_DISPLAY,      /* DISPLAY - file-to-screen output (BBC BASIC) */
  KW_COUNT /* sentinel - must be last */
 };
 

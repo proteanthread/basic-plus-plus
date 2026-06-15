@@ -462,9 +462,20 @@ long runtime_get_var(RuntimeState *rt, char name)
 BValue runtime_get_var_bval(RuntimeState *rt, char name)
 {
  int index;
+ unsigned char dtype;
+ BValue v;
  if (name < 'A' || name > 'Z') return bval_int(0);
  index = name - 'A';
- return rt->variables[index];
+ v = rt->variables[index];
+ /* Coerce on read per deftype_map */
+ dtype = rt->deftype_map[index];
+ if (dtype == DEFTYPE_INT) {
+  v = bval_int(bval_to_int(&v));
+ } else if (dtype == DEFTYPE_SNG ||
+  dtype == DEFTYPE_DBL) {
+  v = bval_float(bval_to_float(&v));
+ }
+ return v;
 }
 
 void runtime_set_var(RuntimeState *rt, char name, long value)
@@ -478,8 +489,22 @@ void runtime_set_var(RuntimeState *rt, char name, long value)
 void runtime_set_var_bval(RuntimeState *rt, char name, BValue value)
 {
  int index;
+ unsigned char dtype;
  if (name < 'A' || name > 'Z') return;
  index = name - 'A';
+ /* Enforce deftype_map coercion */
+ dtype = rt->deftype_map[index];
+ if (dtype == DEFTYPE_INT) {
+  value = bval_int(bval_to_int(&value));
+ } else if (dtype == DEFTYPE_SNG ||
+  dtype == DEFTYPE_DBL) {
+  value = bval_float(bval_to_float(&value));
+ } else if (dtype == DEFTYPE_STR) {
+  if (!bval_is_string(&value)) {
+   error_raise(ERR_WHAT, 0);
+   return;
+  }
+ }
  rt->variables[index] = value;
 }
 

@@ -27,6 +27,38 @@
 
 #include "dialect.h"
 
+/*
+ * sbasic_apply - Apply SUPER BASIC configuration.
+ *
+ * SUPER BASIC is a 1960s mainframe BASIC with advanced features:
+ *   - Complex number arithmetic (COMPLEX keyword)
+ *   - Extended math functions (ASIN, ACOS, SINH, COSH, TANH, etc.)
+ *   - JOSS-style UNLESS keyword (postfix conditional)
+ *   - FOR...BY...TO syntax (step before limit, BY keyword)
+ *   - IMAGE statement for formatted output
+ *   - MAT matrix operations
+ *   - SWAP, RANDOMIZE, USING
+ *   - ELSE keyword available
+ *   - LET mandatory (Dartmouth style)
+ *   - No WHILE/WEND (predates structured BASIC)
+ *   - No DO/LOOP
+ *   - No MERGE/CHAIN
+ *   - No ON ERROR (predates error trapping)
+ *   - No CLS (mainframe terminal)
+ *   - TRON/TROFF trace available
+ *   - 15-column print zones
+ */
+static void sbasic_apply(void)
+{
+ /* SUPER BASIC's unique features (COMPLEX arithmetic,
+  * UNLESS/BY modifiers, FOR...BY...TO ordering) are
+  * implemented in the parser and tagged with DFLAG_SBAS
+  * in the keyword table. The extended math functions
+  * (ASIN, ACOS, SINH, COSH, TANH, LOG10, LOG2) are
+  * tagged DFLAG_ALL since they are BASIC++ native features
+  * inspired by SUPER BASIC but available in all dialects. */
+}
+
 static const DialectConfig sbasic_config = {
     DIALECT_SBASIC,         /* id */
     "SUPER BASIC",          /* name */
@@ -57,7 +89,7 @@ static const DialectConfig sbasic_config = {
     1,                      /* has_tron_troff */
     "SBAS",                 /* short_name */
     DFLAG_SBAS,             /* dialect_flag */
-    0                    /* apply_fn */
+    sbasic_apply            /* apply_fn */
 };
 
 void dialect_register_sbasic(void)

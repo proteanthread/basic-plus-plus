@@ -30,13 +30,38 @@
 
 #include "dialect.h"
 
+/*
+ * c64_apply - Apply Commodore BASIC v2 configuration.
+ *
+ * Commodore BASIC v2 is a bare-bones Microsoft BASIC:
+ *   - No WHILE/WEND, no DO/LOOP
+ *   - No ON ERROR GOTO (has_on_error = 0)
+ *   - No MERGE/CHAIN
+ *   - No CLS (use PRINT CHR$(147) to clear screen)
+ *   - No TRON/TROFF
+ *   - CLR clears variables (tagged DFLAG_C64B)
+ *   - "READY." prompt with period
+ *   - 10-column print zones
+ *   - PEEK/POKE for hardware access
+ *   - FRE(0) for free memory
+ *   - GET/PUT for file I/O
+ */
+static void c64_apply(void)
+{
+ /* Commodore BASIC v2 has no structured programming features
+  * beyond GOSUB/RETURN and FOR/NEXT. All hardware access is
+  * through PEEK/POKE. The CLR keyword clears all variables
+  * and is tagged with DFLAG_C64B. SYS addr calls machine
+  * language subroutines. */
+}
+
 static const DialectConfig c64_config = {
     DIALECT_COMMODORE,
     "Commodore BASIC v2",
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     63999, 0, 1, 0, 0, 1, 0, 1, 1, 1,
     "READY.", 10, 0, 0, 0,
-    "C64B", DFLAG_C64B, 0
+    "C64B", DFLAG_C64B, c64_apply
 };
 
 void dialect_register_c64(void)

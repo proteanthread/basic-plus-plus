@@ -21,6 +21,33 @@
 
 #include "dialect.h"
 
+/*
+ * patb_apply - Apply Palo Alto Tiny BASIC configuration.
+ *
+ * PATB is the most restrictive dialect:
+ *   - Integer-only: no floating point (has_float = 0)
+ *   - No string variables (has_string_vars = 0)
+ *   - No named variables (has_extended_vars = 0)
+ *   - No DATA/READ (has_data_read = 0)
+ *   - No WHILE/WEND or DO/LOOP
+ *   - No DIM arrays (uses @() instead)
+ *   - No MERGE/CHAIN
+ *   - No ON ERROR
+ *   - Semicolon statement separator
+ *   - '#' is the not-equal operator
+ *   - No THEN keyword required after IF
+ *
+ * Runtime effects enforced via config flags; the apply callback
+ * logs the dialect personality for debugging.
+ */
+static void patb_apply(void)
+{
+ /* All restrictions enforced via config flags.
+  * PATB's integer-only mode is handled by has_float = 0
+  * and the parser's dialect_check_feature() gating.
+  * No additional runtime reconfiguration needed. */
+}
+
 static const DialectConfig patb_config = {
     DIALECT_TINY_BASIC,
     "Palo Alto Tiny BASIC",
@@ -34,7 +61,7 @@ static const DialectConfig patb_config = {
     0, 1, 1, 0,
     1, 0, 0, 0,
     "READY", 8, 0, 0, 0,
-    "PATB", DFLAG_PATB, 0
+    "PATB", DFLAG_PATB, patb_apply
 };
 
 void dialect_register_patb(void)

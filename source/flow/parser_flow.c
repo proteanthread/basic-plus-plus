@@ -888,12 +888,16 @@ void pi_parse_on(Lexer *lex, RuntimeState *rt, int line_num)
  * as ON ERROR GOTO. Otherwise, parse as
  * ON expr GOTO/GOSUB line-list.
  */
- if (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword ==
- KW_ERROR) {
- /* ON ERROR GOTO n */
- long target;
- lexer_next(lex); /* consume ERROR */
+ 	if (lex->current.type == TOK_KEYWORD &&
+	lex->current.value.keyword ==
+	KW_ERROR) {
+	/* ON ERROR GOTO n */
+	long target;
+	if (!dialect_check_feature("ON ERROR",
+	dialect_get_config()->has_on_error,
+	line_num))
+	return;
+	lexer_next(lex); /* consume ERROR */
  if (lex->current.type != TOK_KEYWORD
  || lex->current.value.keyword !=
  KW_GOTO) {
