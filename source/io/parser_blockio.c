@@ -457,30 +457,114 @@ void pi_parse_unlock(Lexer *lex, RuntimeState *rt, int line_num)
 
 /*
  * pi_parse_ioctl - Handle IOCTL command.
+ *
+ * IOCTL #ch, cmd$             - send command to device
+ * IOCTL #ch, cmd$, arg$       - send command with argument
+ *
+ * Routes the command to the channel's VDev ioctl handler.
+ * For FujiNet N: device, maps string commands to FNIO_*:
+ *   "JSON_PARSE"    -> FNIO_JSON_PARSE
+ *   "JSON_QUERY"    -> FNIO_JSON_QUERY
+ *   "HTTP_POST"     -> FNIO_HTTP_POST
+ *   "HTTP_PUT"      -> FNIO_HTTP_PUT
+ *   "HTTP_DELETE"   -> FNIO_HTTP_DELETE
+ *   "TRANSLATION"   -> FNIO_SET_TRANSLATION
+ *   "HEADER"        -> FNIO_HTTP_SET_HEADER
+ *   "SEARCH"        -> VDIO_ENUMERATE (for UPNP:)
+ *   "RESET"         -> VDIO_RESET
  */
 void pi_parse_ioctl(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * IOCTL #n, string$
- * Send I/O control string to device.
-		 * Returns status of the channel.
-		 */
-		{
-		int chan;
-		if (lex->current.type == TOK_HASH)
-			lexer_next(lex);
-		chan = (int)parse_expression(
-			lex, rt, line_num);
-		if (error_occurred()) return;
-		if (lex->current.type == TOK_COMMA)
-			lexer_next(lex);
-		/* Consume the control string */
-		(void)parse_expression_bval(
-			lex, rt, line_num);
-		(void)chan;
-		/* Control string accepted;
-		 * no device-level action. */
-		}
+ int chan;
+ BValue cmd_val;
+ BValue arg_val;
+ int has_arg = 0;
+ const char *cmd;
+ VDev *dev;
+
+ if (lex->current.type == TOK_HASH)
+  lexer_next(lex);
+ chan = (int)parse_expression(lex, rt, line_num);
+ if (error_occurred()) return;
+ if (lex->current.type == TOK_COMMA)
+  lexer_next(lex);
+
+ /* Parse command string */
+ cmd_val = parse_expression_bval(lex, rt, line_num);
+ if (error_occurred()) return;
+
+ /* Optional argument */
+ if (lex->current.type == TOK_COMMA) {
+  lexer_next(lex);
+  arg_val = parse_expression_bval(lex, rt, line_num);
+  if (error_occurred()) return;
+  has_arg = 1;
+ }
+
+ if (!bval_is_string(&cmd_val)) {
+  error_raise(ERR_WHAT, line_num);
+  return;
+ }
+ cmd = cmd_val.v.sval.data;
+
+ /* Get channel VDev */
+ dev = fileio_get_channel_vdev(chan);
+ if (dev == NULL) {
+  /* No VDev on this channel - accept silently
+   * (GW-BASIC compatibility: IOCTL is a no-op
+   * for standard file channels). */
+  return;
+ }
+
+ if (dev->dev_ioctl == NULL) {
+  /* Device doesn't support ioctl */
+  return;
+ }
+
+ /* Map command string to ioctl code and dispatch */
+ {
+ int ioctl_cmd = VDIO_USER;
+ void *ioctl_arg = NULL;
+ char arg_buf[512];
+
+ /* Prepare arg buffer */
+ if (has_arg && bval_is_string(&arg_val)) {
+  int alen = arg_val.v.sval.length;
+  if (alen > 511) alen = 511;
+  memcpy(arg_buf, arg_val.v.sval.data,
+   (size_t)alen);
+  arg_buf[alen] = '\0';
+  ioctl_arg = arg_buf;
+ } else if (has_arg) {
+  int nval = bval_to_int(&arg_val);
+  ioctl_arg = (void *)(long)nval;
+ }
+
+ /* Map string commands */
+ if (pi_str_case_equal(cmd, "SEARCH") ||
+     pi_str_case_equal(cmd, "ENUMERATE"))
+  ioctl_cmd = VDIO_ENUMERATE;
+ else if (pi_str_case_equal(cmd, "RESET"))
+  ioctl_cmd = VDIO_RESET;
+ else if (pi_str_case_equal(cmd, "JSON_PARSE"))
+  ioctl_cmd = 256;  /* FNIO_JSON_PARSE */
+ else if (pi_str_case_equal(cmd, "JSON_QUERY"))
+  ioctl_cmd = 257;  /* FNIO_JSON_QUERY */
+ else if (pi_str_case_equal(cmd, "CHANNEL_MODE"))
+  ioctl_cmd = 258;  /* FNIO_SET_CHANNEL_MODE */
+ else if (pi_str_case_equal(cmd, "TRANSLATION"))
+  ioctl_cmd = 259;  /* FNIO_SET_TRANSLATION */
+ else if (pi_str_case_equal(cmd, "HEADER") ||
+          pi_str_case_equal(cmd, "HTTP_HEADER"))
+  ioctl_cmd = 263;  /* FNIO_HTTP_SET_HEADER */
+ else if (pi_str_case_equal(cmd, "HTTP_POST"))
+  ioctl_cmd = 265;  /* FNIO_HTTP_POST */
+ else if (pi_str_case_equal(cmd, "HTTP_PUT"))
+  ioctl_cmd = 266;  /* FNIO_HTTP_PUT */
+ else if (pi_str_case_equal(cmd, "HTTP_DELETE"))
+  ioctl_cmd = 267;  /* FNIO_HTTP_DELETE */
+
+ dev->dev_ioctl(dev, ioctl_cmd, ioctl_arg);
+ }
  return;
 }
-

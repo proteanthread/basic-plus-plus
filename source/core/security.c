@@ -45,9 +45,10 @@ static SecLevel current_level = SEC_OPEN;
 static const int allowed[SEC_COUNT][SECOP_COUNT] = {
     /* SEC_OPEN: all operations permitted */
     { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-    /* SEC_STANDARD: file I/O + modules + eval + vdev yes;
-     * compile/chain/system/usb/network no */
-    { 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1 },
+    /* SEC_STANDARD: file I/O + modules + eval + vdev + network yes;
+     * compile/chain/system/usb no.
+     * Network is port-gated via security_check_port(). */
+    { 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1 },
     /* SEC_RESTRICTED: nothing sensitive permitted */
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
@@ -206,5 +207,71 @@ int security_check_mem(unsigned long address, int size)
 
     printf("SORRY? Security: memory access at 0x%lX not permitted at level %s\n",
            address, level_names[current_level]);
+    return -1;
+}
+
+/* --- security_check_port ---
+ * Port-based network access control.
+ *
+ * Well-known service ports allowed at STANDARD:
+ *   FTP(21), SSH(22), Telnet(23), SMTP(25), DNS(53),
+ *   HTTP(80), POP3(110), NNTP(119), IMAP(143), SNMP(161/162),
+ *   HTTPS(443), SMTPS(465), SMTP-SUB(587), IMAPS(993),
+ *   POP3S(995), IRC(6667/6697), HTTP-ALT(8080/8443),
+ *   TNFS(16384).
+ *   Ephemeral ports 1024-49151 also allowed (client-side).
+ */
+int security_check_port(int port, int line_num)
+{
+    /* SEC_OPEN: all ports */
+    if (current_level == SEC_OPEN) return 0;
+
+    /* SEC_RESTRICTED: no network at all */
+    if (current_level == SEC_RESTRICTED) {
+        printf("SORRY? Security: network access "
+               "not permitted at level %s",
+               level_names[current_level]);
+        if (line_num > 0)
+            printf(" in line %d", line_num);
+        printf("\n");
+        return -1;
+    }
+
+    /* SEC_STANDARD: well-known + ephemeral ports */
+    if (port >= 1024 && port <= 49151) return 0;
+
+    switch (port) {
+    case 21:    /* FTP */
+    case 22:    /* SSH */
+    case 23:    /* Telnet */
+    case 25:    /* SMTP */
+    case 53:    /* DNS */
+    case 80:    /* HTTP */
+    case 110:   /* POP3 */
+    case 119:   /* NNTP */
+    case 143:   /* IMAP */
+    case 161:   /* SNMP */
+    case 162:   /* SNMP Trap */
+    case 443:   /* HTTPS */
+    case 465:   /* SMTPS */
+    case 587:   /* SMTP Submission */
+    case 993:   /* IMAPS */
+    case 995:   /* POP3S */
+    case 6667:  /* IRC */
+    case 6697:  /* IRC over TLS */
+    case 8080:  /* HTTP alternate */
+    case 8443:  /* HTTPS alternate */
+    case 16384: /* TNFS */
+        return 0;
+    default:
+        break;
+    }
+
+    printf("SORRY? Security: port %d "
+           "not permitted at level %s",
+           port, level_names[current_level]);
+    if (line_num > 0)
+        printf(" in line %d", line_num);
+    printf("\n");
     return -1;
 }

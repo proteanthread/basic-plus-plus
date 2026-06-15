@@ -439,6 +439,15 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "COMMIT", KW_COMMIT, DFLAG_ALL },
  { "ROLLBACK", KW_ROLLBACK, DFLAG_ALL },
  { "TXNSTATUS", KW_TXNSTATUS, DFLAG_ALL },
+ /* Network builtins */
+ { "NSTATUS", KW_NSTATUS, DFLAG_ALL },
+ { "NHTTPSTATUS", KW_NHTTPSTATUS, DFLAG_ALL },
+ { "NEOF", KW_NEOF, DFLAG_ALL },
+ { "NBYTESWAITING", KW_NBYTESWAITING, DFLAG_ALL },
+ { "NCONNECTED", KW_NCONNECTED, DFLAG_ALL },
+ { "NERROR", KW_NERROR, DFLAG_ALL },
+ { "NJSONQUERY", KW_NJSONQUERY, DFLAG_ALL },
+ { "NINFO", KW_NINFO, DFLAG_ALL },
  { NULL, 0, 0 } /* sentinel */
 };
 
@@ -788,7 +797,9 @@ int lexer_keyword_needs_dollar(KeywordId kw)
     kw == KW_CWD_FUNC ||
     kw == KW_SIOREAD ||
     kw == KW_SIOREADLN ||
-    kw == KW_BIOREAD);
+    kw == KW_BIOREAD ||
+    kw == KW_NJSONQUERY ||
+    kw == KW_NINFO);
 }
 
 /*
@@ -1463,7 +1474,9 @@ void lexer_next(Lexer *lex)
  kw == KW_CWD_FUNC ||
  kw == KW_SIOREAD ||
  kw == KW_SIOREADLN ||
- kw == KW_BIOREAD) {
+ kw == KW_BIOREAD ||
+ kw == KW_NJSONQUERY ||
+ kw == KW_NINFO) {
  lex->pos++; /* consume '$' */
  }
  /* INPUT$ -> KW_INPUT_FUNC */

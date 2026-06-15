@@ -1,0 +1,380 @@
+core\main.c(37): Error! E1055: Unable to open 'stdio.h'
+core\main.c(38): Error! E1055: Unable to open 'stdlib.h'
+core\main.c(39): Error! E1055: Unable to open 'string.h'
+core\main.c(40): Error! E1055: Unable to open 'ctype.h'
+core\main.c(42): Error! E1055: Unable to open 'io.h'
+config.h(47): Error! E1055: Unable to open 'stddef.h'
+fileio.h(35): Error! E1055: Unable to open 'stdio.h'
+fileio.h(147): Error! E1022: Missing or misspelled data type near 'FILE'
+fileio.h(231): Error! E1022: Missing or misspelled data type near 'FILE'
+fileio.h(231): Warning! W304: Return type 'int' assumed for function 'fileio_get_fp'
+core\main.c(95): Warning! W131: No prototype found for function 'isdigit'
+core\main.c(134): Warning! W131: No prototype found for function 'strlen'
+core\main.c(144): Warning! W131: No prototype found for function 'printf'
+core\main.c(203): Error! E1011: Symbol 'NULL' has not been declared
+core\main.c(203): Warning! W102: Type mismatch (warning)
+core\main.c(203): Note! I2003: source conversion type is 'int'
+core\main.c(203): Note! I2004: target conversion type is 'char const *'
+core\main.c(204): Warning! W102: Type mismatch (warning)
+core\main.c(204): Note! I2003: source conversion type is 'int'
+core\main.c(204): Note! I2004: target conversion type is 'char const *'
+core\main.c(207): Warning! W102: Type mismatch (warning)
+core\main.c(207): Note! I2003: source conversion type is 'int'
+core\main.c(207): Note! I2004: target conversion type is 'char const *'
+core\main.c(208): Warning! W102: Type mismatch (warning)
+core\main.c(208): Note! I2003: source conversion type is 'int'
+core\main.c(208): Note! I2004: target conversion type is 'char const *'
+core\main.c(209): Warning! W102: Type mismatch (warning)
+core\main.c(209): Note! I2003: source conversion type is 'int'
+core\main.c(209): Note! I2004: target conversion type is 'char const *'
+core\main.c(210): Warning! W102: Type mismatch (warning)
+core\main.c(210): Note! I2003: source conversion type is 'int'
+core\main.c(210): Note! I2004: target conversion type is 'char const *'
+core\main.c(215): Warning! W102: Type mismatch (warning)
+core\main.c(215): Note! I2003: source conversion type is 'int'
+core\main.c(215): Note! I2004: target conversion type is 'char const *'
+core\main.c(216): Warning! W102: Type mismatch (warning)
+core\main.c(216): Note! I2003: source conversion type is 'int'
+core\main.c(216): Note! I2004: target conversion type is 'char const *'
+core\main.c(217): Warning! W102: Type mismatch (warning)
+core\main.c(217): Note! I2003: source conversion type is 'int'
+core\main.c(217): Note! I2004: target conversion type is 'char const *'
+core\main.c(218): Warning! W102: Type mismatch (warning)
+core\main.c(218): Note! I2003: source conversion type is 'int'
+core\main.c(218): Note! I2004: target conversion type is 'char const *'
+core\main.c(219): Warning! W102: Type mismatch (warning)
+core\main.c(219): Note! I2003: source conversion type is 'int'
+core\main.c(219): Note! I2004: target conversion type is 'char const *'
+core\main.c(220): Warning! W102: Type mismatch (warning)
+core\main.c(220): Note! I2003: source conversion type is 'int'
+core\main.c(220): Note! I2004: target conversion type is 'char const *'
+core\main.c(221): Warning! W102: Type mismatch (warning)
+core\main.c(221): Note! I2003: source conversion type is 'int'
+core\main.c(221): Note! I2004: target conversion type is 'char const *'
+core\main.c(224): Warning! W102: Type mismatch (warning)
+core\main.c(224): Note! I2003: source conversion type is 'int'
+core\main.c(224): Note! I2004: target conversion type is 'char const *'
+core\main.c(225): Warning! W102: Type mismatch (warning)
+core\main.c(225): Note! I2003: source conversion type is 'int'
+core\main.c(225): Note! I2004: target conversion type is 'char const *'
+core\main.c(226): Warning! W102: Type mismatch (warning)
+core\main.c(226): Note! I2003: source conversion type is 'int'
+core\main.c(226): Note! I2004: target conversion type is 'char const *'
+core\main.c(242): Warning! W131: No prototype found for function 'strcmp'
+core\main.c(380): Warning! W126: Constant must be zero for pointer compare
+core\main.c(380): Warning! W131: No prototype found for function 'freopen'
+core\main.c(380): Error! E1011: Symbol 'stdin' has not been declared
+core\main.c(381): Warning! W126: Constant must be zero for pointer compare
+core\main.c(381): Error! E1011: Symbol 'stdout' has not been declared
+core\main.c(382): Warning! W126: Constant must be zero for pointer compare
+core\main.c(390): Warning! W126: Constant must be zero for pointer compare
+core\main.c(407): Warning! W126: Constant must be zero for pointer compare
+core\main.c(419): Warning! W126: Constant must be zero for pointer compare
+core\main.c(425): Warning! W131: No prototype found for function '_isatty'
+core\main.c(425): Warning! W131: No prototype found for function '_fileno'
+core\main.c(451): Warning! W126: Constant must be zero for pointer compare
+core\main.c(486): Warning! W126: Constant must be zero for pointer compare
+core\main.c(486): Warning! W126: Constant must be zero for pointer compare
+core\main.c(506): Warning! W131: No prototype found for function 'memset'
+core\main.c(532): Warning! W126: Constant must be zero for pointer compare
+core\main.c(538): Warning! W131: No prototype found for function 'fflush'
+core\main.c(544): Warning! W126: Constant must be zero for pointer compare
+core\main.c(549): Warning! W131: No prototype found for function 'sprintf'
+core\main.c(569): Warning! W131: No prototype found for function 'fgets'
+core\main.c(730): Warning! W126: Constant must be zero for pointer compare
+core\main.c(730): Warning! W126: Constant must be zero for pointer compare
+core\main.c(733): Warning! W131: No prototype found for function 'getchar'
+core\main.c(95): Warning! W308: The function 'isdigit' without prototyped parameters called
+core\main.c(95): Note! I2002: 'isdigit' defined in: core\main.c(95)
+core\main.c(101): Warning! W308: The function 'isdigit' without prototyped parameters called
+core\main.c(101): Note! I2002: 'isdigit' defined in: core\main.c(95)
+core\main.c(134): Warning! W308: The function 'strlen' without prototyped parameters called
+core\main.c(134): Note! I2002: 'strlen' defined in: core\main.c(134)
+core\main.c(144): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(144): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(145): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(145): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(146): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(146): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(147): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(147): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(148): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(148): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(149): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(149): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(150): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(150): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(151): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(151): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(152): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(152): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(153): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(153): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(154): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(154): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(155): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(155): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(156): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(156): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(157): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(157): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(158): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(158): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(159): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(159): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(160): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(160): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(161): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(161): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(162): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(162): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(163): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(163): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(164): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(164): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(165): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(165): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(166): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(166): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(167): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(167): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(168): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(168): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(169): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(169): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(170): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(170): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(171): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(171): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(172): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(172): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(173): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(173): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(174): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(174): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(175): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(175): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(176): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(176): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(177): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(177): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(178): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(178): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(179): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(179): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(180): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(180): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(181): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(181): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(182): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(182): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(183): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(183): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(184): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(184): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(185): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(185): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(186): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(186): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(187): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(187): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(189): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(189): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(242): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(242): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(242): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(242): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(243): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(243): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(246): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(246): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(246): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(246): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(250): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(250): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(251): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(251): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(252): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(252): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(253): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(253): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(256): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(256): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(257): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(257): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(260): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(260): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(264): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(264): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(268): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(268): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(272): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(272): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(276): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(276): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(280): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(280): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(284): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(284): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(284): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(284): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(286): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(286): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(289): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(289): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(291): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(291): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(294): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(294): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(296): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(296): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(299): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(299): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(301): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(301): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(304): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(304): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(306): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(306): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(309): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(309): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(311): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(311): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(314): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(314): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(316): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(316): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(319): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(319): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(321): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(321): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(324): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(324): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(332): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(332): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(336): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(336): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(340): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(340): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(345): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(345): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(345): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(345): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(345): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(345): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(345): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(345): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(345): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(345): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(351): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(351): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(351): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(351): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(351): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(351): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(351): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(351): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(351): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(351): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(351): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(351): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(351): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(351): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(351): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(351): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(351): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(351): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(351): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(351): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(359): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(359): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(380): Warning! W308: The function 'freopen' without prototyped parameters called
+core\main.c(380): Note! I2002: 'freopen' defined in: core\main.c(380)
+core\main.c(381): Warning! W308: The function 'freopen' without prototyped parameters called
+core\main.c(381): Note! I2002: 'freopen' defined in: core\main.c(380)
+core\main.c(382): Warning! W308: The function 'freopen' without prototyped parameters called
+core\main.c(382): Note! I2002: 'freopen' defined in: core\main.c(380)
+core\main.c(392): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(392): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(412): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(412): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(425): Warning! W308: The function '_fileno' without prototyped parameters called
+core\main.c(425): Note! I2002: '_fileno' defined in: core\main.c(425)
+core\main.c(425): Warning! W308: The function '_isatty' without prototyped parameters called
+core\main.c(425): Note! I2002: '_isatty' defined in: core\main.c(425)
+core\main.c(444): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(444): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(446): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(446): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(448): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(448): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(454): Warning! W308: The function 'strlen' without prototyped parameters called
+core\main.c(454): Note! I2002: 'strlen' defined in: core\main.c(134)
+core\main.c(462): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(462): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(464): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(464): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(466): Warning! W308: The function 'strcmp' without prototyped parameters called
+core\main.c(466): Note! I2002: 'strcmp' defined in: core\main.c(242)
+core\main.c(469): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(469): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(491): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(491): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(492): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(492): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(493): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(493): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(494): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(494): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(496): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(496): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(498): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(498): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(506): Warning! W308: The function 'memset' without prototyped parameters called
+core\main.c(506): Note! I2002: 'memset' defined in: core\main.c(506)
+core\main.c(538): Warning! W308: The function 'fflush' without prototyped parameters called
+core\main.c(538): Note! I2002: 'fflush' defined in: core\main.c(538)
+core\main.c(549): Warning! W308: The function 'sprintf' without prototyped parameters called
+core\main.c(549): Note! I2002: 'sprintf' defined in: core\main.c(549)
+core\main.c(566): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(566): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(567): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(567): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(569): Warning! W308: The function 'fgets' without prototyped parameters called
+core\main.c(569): Note! I2002: 'fgets' defined in: core\main.c(569)
+core\main.c(576): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(576): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(582): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(582): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(597): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(597): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(598): Warning! W308: The function 'fflush' without prototyped parameters called
+core\main.c(598): Note! I2002: 'fflush' defined in: core\main.c(538)
+core\main.c(600): Warning! W308: The function 'fgets' without prototyped parameters called
+core\main.c(600): Note! I2002: 'fgets' defined in: core\main.c(569)
+core\main.c(603): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(603): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(614): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(614): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(621): Warning! W308: The function 'sprintf' without prototyped parameters called
+core\main.c(621): Note! I2002: 'sprintf' defined in: core\main.c(549)
+core\main.c(633): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(633): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(634): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(634): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(641): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(641): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(643): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(643): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(645): Warning! W308: The function 'fflush' without prototyped parameters called
+core\main.c(645): Note! I2002: 'fflush' defined in: core\main.c(538)
+core\main.c(648): Warning! W308: The function 'fgets' without prototyped parameters called
+core\main.c(648): Note! I2002: 'fgets' defined in: core\main.c(569)
+core\main.c(650): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(650): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(721): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(721): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(731): Warning! W308: The function 'printf' without prototyped parameters called
+core\main.c(731): Note! I2002: 'printf' defined in: core\main.c(144)
+core\main.c(732): Warning! W308: The function 'fflush' without prototyped parameters called
+core\main.c(732): Note! I2002: 'fflush' defined in: core\main.c(538)

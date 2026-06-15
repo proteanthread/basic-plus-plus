@@ -118,4 +118,19 @@ int security_module_allowed(unsigned int capabilities);
  */
 int security_check_mem(unsigned long address, int size);
 
+/*
+ * security_check_port - Check if a network port is permitted.
+ *
+ * Port policy by security level:
+ *   SEC_OPEN:       All ports (0-65535)
+ *   SEC_STANDARD:   Well-known service ports only
+ *                   (21,22,23,25,53,80,110,119,143,161,443,
+ *                    465,587,993,995,6667,6697,8080,8443,
+ *                    16384, plus ephemeral 1024-49151)
+ *   SEC_RESTRICTED: No ports (all network access blocked)
+ *
+ * Returns 0 if allowed, -1 if denied.
+ */
+int security_check_port(int port, int line_num);
+
 #endif /* BASICPP_SECURITY_H */

@@ -392,7 +392,16 @@ static const char *keyword_names[] = {
  "TXN",            /* KW_TXN */
  "COMMIT",         /* KW_COMMIT */
  "ROLLBACK",       /* KW_ROLLBACK */
- "TXNSTATUS"       /* KW_TXNSTATUS */
+ "TXNSTATUS",       /* KW_TXNSTATUS */
+ /* Network builtins */
+ "NSTATUS",         /* KW_NSTATUS */
+ "NHTTPSTATUS",     /* KW_NHTTPSTATUS */
+ "NEOF",            /* KW_NEOF */
+ "NBYTESWAITING",   /* KW_NBYTESWAITING */
+ "NCONNECTED",      /* KW_NCONNECTED */
+ "NERROR",          /* KW_NERROR */
+ "NJSONQUERY$",     /* KW_NJSONQUERY */
+ "NINFO$"           /* KW_NINFO */
 };
 
 /* --- Token Type Names (for diagnostic output) ---

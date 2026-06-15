@@ -331,6 +331,34 @@ void builtins_register(void)
  "Transaction state: TXNSTATUS()" }
  };
 
+ /* Network query functions */
+ static const FunctionEntry net_funcs[] = {
+ { "NSTATUS", KW_NSTATUS, FCAT_IO, FRET_INT, 1, 1,
+ FSAFE_IO, 0, builtin_nstatus,
+ "Network channel status: NSTATUS(ch)" },
+ { "NHTTPSTATUS", KW_NHTTPSTATUS, FCAT_IO, FRET_INT, 1, 1,
+ FSAFE_IO, 0, builtin_nhttpstatus,
+ "HTTP response code: NHTTPSTATUS(ch)" },
+ { "NEOF", KW_NEOF, FCAT_IO, FRET_INT, 1, 1,
+ FSAFE_IO, 0, builtin_neof,
+ "Network EOF flag: NEOF(ch)" },
+ { "NBYTESWAITING", KW_NBYTESWAITING, FCAT_IO, FRET_INT, 1, 1,
+ FSAFE_IO, 0, builtin_nbyteswaiting,
+ "Bytes waiting: NBYTESWAITING(ch)" },
+ { "NCONNECTED", KW_NCONNECTED, FCAT_IO, FRET_INT, 1, 1,
+ FSAFE_IO, 0, builtin_nconnected,
+ "Connection state: NCONNECTED(ch)" },
+ { "NERROR", KW_NERROR, FCAT_IO, FRET_INT, 1, 1,
+ FSAFE_IO, 0, builtin_nerror,
+ "Last error code: NERROR(ch)" },
+ { "NJSONQUERY$", KW_NJSONQUERY, FCAT_IO, FRET_STRING, 2, 2,
+ FSAFE_IO, 0, builtin_njsonquery,
+ "JSON query: NJSONQUERY$(ch, path$)" },
+ { "NINFO$", KW_NINFO, FCAT_IO, FRET_STRING, 1, 1,
+ FSAFE_PURE, 0, builtin_ninfo,
+ "Adapter info: NINFO$(key$)" }
+ };
+
  int i;
  int math_count   = (int)(sizeof(math_funcs)   / sizeof(math_funcs[0]));
  int str_count    = (int)(sizeof(str_funcs)    / sizeof(str_funcs[0]));
@@ -342,6 +370,7 @@ void builtins_register(void)
  int sio_count    = (int)(sizeof(sio_funcs)    / sizeof(sio_funcs[0]));
  int bio_count    = (int)(sizeof(bio_funcs)    / sizeof(bio_funcs[0]));
  int txn_count    = (int)(sizeof(txn_funcs)    / sizeof(txn_funcs[0]));
+ int net_count    = (int)(sizeof(net_funcs)    / sizeof(net_funcs[0]));
 
  /* Register all categories */
  for (i = 0; i < math_count; i++)
@@ -364,5 +393,7 @@ void builtins_register(void)
  funcreg_register(&bio_funcs[i]);
  for (i = 0; i < txn_count; i++)
  funcreg_register(&txn_funcs[i]);
+ for (i = 0; i < net_count; i++)
+ funcreg_register(&net_funcs[i]);
 }
 

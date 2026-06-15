@@ -39,6 +39,7 @@
 #include "vdev.h"
 #include "vdev_net.h"
 #include "device_alias.h"
+#include "module.h"
 
 /*
  * fileio_save - Write the program to a text file.
@@ -276,7 +277,7 @@ int fileio_open(int chan, const char *filename,
  return -1;
  }
 
- /* Network routing */
+ /* Network routing: legacy TCP:/UDP: format */
  if (strncmp(filename, "TCP:", 4) == 0 || strncmp(filename, "UDP:", 4) == 0) {
   VDev *netdev = vdev_net_open(filename);
   if (!netdev) {
@@ -289,6 +290,70 @@ int fileio_open(int chan, const char *filename,
   channels[idx].field_count = 0;
   channels[idx].current_rec = 0;
   return 0;
+ }
+
+ /* NET: — Core virtual network (always available).
+  *
+  * No module activation required. Routes through the
+  * core vdev_net layer for basic TCP/UDP/protocol socket
+  * access. Supports all registered protocols:
+  *   NET:TCP://host:port
+  *   NET:HTTP://example.com:80/path
+  *   NET:SSH://host:22
+  *   etc.
+  */
+ if ((filename[0] == 'N' || filename[0] == 'n') &&
+     (filename[1] == 'E' || filename[1] == 'e') &&
+     (filename[2] == 'T' || filename[2] == 't') &&
+      filename[3] == ':') {
+  VDev *netdev = vdev_net_open(filename);
+  if (!netdev) {
+   error_raise(ERR_HOW, line_num);
+   return -1;
+  }
+  channels[idx].vdev = netdev;
+  channels[idx].mode = FCHAN_DEVICE;
+  channels[idx].record_len = 1;
+  channels[idx].field_count = 0;
+  channels[idx].current_rec = 0;
+  return 0;
+ }
+
+ /* N: — FujiNet network device (requires MODULE "FUJINET").
+  *
+  * Routes through the FujiNet VDev for advanced features:
+  * JSON parsing, TNFS mounts, HTTP header management,
+  * AppKey, Telnet IAC negotiation, etc.
+  *
+  * Without MODULE "FUJINET", OPEN "N:..." raises an error.
+  * Use OPEN "NET:..." for core networking without FujiNet.
+  */
+ if ((filename[0] == 'N' || filename[0] == 'n') &&
+      filename[1] == ':') {
+  if (!module_is_active("FUJINET")) {
+   printf("Module FUJINET is not active.\n"
+          "Use MODULE \"FUJINET\" first, or "
+          "use NET: for core networking.\n");
+   error_raise(ERR_HOW, line_num);
+   return -1;
+  }
+  {
+   int dev_id = vdev_find_by_name("N:");
+   if (dev_id >= 0) {
+    const char *dev_mode;
+    switch (mode) {
+    case FCHAN_INPUT:  dev_mode = "r";  break;
+    case FCHAN_OUTPUT: dev_mode = "w";  break;
+    case FCHAN_APPEND: dev_mode = "a";  break;
+    default:           dev_mode = "rw"; break;
+    }
+    return fileio_open_device(chan, dev_id,
+                              dev_mode, filename,
+                              line_num);
+   }
+   error_raise(ERR_HOW, line_num);
+   return -1;
+  }
  }
 
  /* Device alias routing:
