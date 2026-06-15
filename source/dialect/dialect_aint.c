@@ -34,7 +34,7 @@ static const DialectConfig aint_config = {
     0,                      /* no DATA/READ */
     0, 0, 0, 0, 0, 1, 0,
     ">", 16, 0, 0, 0,
-    "AINT", DFLAG_AINT
+    "AINT", DFLAG_AINT, 0
 };
 
 void dialect_register_aint(void)

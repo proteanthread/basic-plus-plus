@@ -382,6 +382,38 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
 	return;
 	}
  /*
+  * OPTION RPN [ON | OFF]
+  * Enable or disable Forth-style RPN calculator mode.
+  * When active, the REPL evaluates input as RPN
+  * expressions instead of BASIC statements.
+  */
+ if (lex->current.type == TOK_NAMED_VAR &&
+  lex->current.str_length == 3 &&
+  lex->current.str_start != NULL) {
+  const char *r = lex->current.str_start;
+  if ((r[0]=='R'||r[0]=='r') &&
+   (r[1]=='P'||r[1]=='p') &&
+   (r[2]=='N'||r[2]=='n')) {
+   lexer_next(lex); /* consume RPN */
+   /* Check for OFF */
+   if (lex->current.type == TOK_NAMED_VAR &&
+    lex->current.str_length == 3 &&
+    lex->current.str_start != NULL &&
+    (lex->current.str_start[0]=='O'||
+     lex->current.str_start[0]=='o') &&
+    (lex->current.str_start[1]=='F'||
+     lex->current.str_start[1]=='f') &&
+    (lex->current.str_start[2]=='F'||
+     lex->current.str_start[2]=='f')) {
+    rpn_set_active(&rt->rpn, 0);
+    lexer_next(lex);
+   } else {
+    rpn_set_active(&rt->rpn, 1);
+   }
+   return;
+  }
+ }
+ /*
  * OPTION ARITHMETIC NATIVE | DECIMAL
  * ECMA-116 arithmetic mode. NATIVE uses
  * hardware floating point (our default).

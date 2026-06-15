@@ -45,6 +45,7 @@
 #include "value.h"
 #include "stringpool.h"
 #include "vdev.h"
+#include "rpn.h"
 
 /* --- Stack Frame Types ---
  * Each type of flow-control construct that uses the runtime stack
@@ -519,6 +520,12 @@ typedef struct RuntimeState {
 #define DEFTYPE_DBL  3
 #define DEFTYPE_STR  4
  unsigned char deftype_map[26]; /* A-Z */
+
+ /* RPN calculator mode (Forth-like stack calculator) */
+ RpnState rpn;
+
+ /* Last saved filename for UNSAVE */
+ char last_save_file[260];
 } RuntimeState;
 
 /* --- Runtime Functions ---

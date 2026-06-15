@@ -56,7 +56,8 @@ static const DialectConfig sbasic_config = {
     0,                      /* has_cls -- mainframe terminal */
     1,                      /* has_tron_troff */
     "SBAS",                 /* short_name */
-    DFLAG_SBAS              /* dialect_flag */
+    DFLAG_SBAS,             /* dialect_flag */
+    0                    /* apply_fn */
 };
 
 void dialect_register_sbasic(void)

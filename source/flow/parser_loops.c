@@ -49,28 +49,54 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
  start_val = parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
- /* Parse TO */
- if (!lexer_match_keyword(lex, KW_TO)) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- lexer_next(lex); /* consume TO */
-
- /* Parse limit expression */
- limit_val = parse_expression(lex, rt, line_num);
- if (error_occurred()) return;
-
- /* Parse optional STEP (or BY -- SUPER BASIC alternative) */
+ /*
+  * Parse TO or BY.
+  * Standard: FOR I = start TO limit [STEP step]
+  * SUPER BASIC: FOR I = start BY step TO limit
+  *
+  * If BY/STEP appears before TO, parse step first,
+  * then require TO, then parse limit.
+  */
  step_val = 1; /* default step */
- if (lexer_match_keyword(lex, KW_STEP) ||
- lexer_match_keyword(lex, KW_BY)) {
- lexer_next(lex); /* consume STEP or BY */
- step_val = parse_expression(lex, rt, line_num);
- if (error_occurred()) return;
- if (step_val == 0) {
- error_raise(ERR_HOW, line_num); /* zero step = infinite loop */
- return;
- }
+
+ if (lexer_match_keyword(lex, KW_BY) ||
+  lexer_match_keyword(lex, KW_STEP)) {
+  /* SUPER BASIC ordering: FOR I = start BY step TO limit */
+  lexer_next(lex); /* consume BY or STEP */
+  step_val = parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+  if (step_val == 0) {
+   error_raise(ERR_HOW, line_num);
+   return;
+  }
+  /* Now require TO */
+  if (!lexer_match_keyword(lex, KW_TO)) {
+   error_raise(ERR_WHAT, line_num);
+   return;
+  }
+  lexer_next(lex); /* consume TO */
+  limit_val = parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+ } else if (lexer_match_keyword(lex, KW_TO)) {
+  /* Standard ordering: FOR I = start TO limit [STEP step] */
+  lexer_next(lex); /* consume TO */
+  limit_val = parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+
+  /* Parse optional STEP or BY after TO */
+  if (lexer_match_keyword(lex, KW_STEP) ||
+   lexer_match_keyword(lex, KW_BY)) {
+   lexer_next(lex); /* consume STEP or BY */
+   step_val = parse_expression(lex, rt, line_num);
+   if (error_occurred()) return;
+   if (step_val == 0) {
+    error_raise(ERR_HOW, line_num);
+    return;
+   }
+  }
+ } else {
+  error_raise(ERR_WHAT, line_num);
+  return;
  }
 
  /* Set the variable to the start value */

@@ -20,7 +20,7 @@ static const DialectConfig trs1_config = {
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 1,
     32767, 0, 1, 0, 0, 0, 0, 0, 1, 1,
     "READY", 16, 0, 1, 0,
-    "TRS1", DFLAG_TRS1
+    "TRS1", DFLAG_TRS1, 0
 };
 
 void dialect_register_trs1(void)

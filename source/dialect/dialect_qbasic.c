@@ -29,7 +29,7 @@ static const DialectConfig qbasic_config = {
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     65529, 0, 1, 1, 1, 1, 1, 1, 1, 1,
     "Ok", 14, 1, 1, 1,
-    "QBAS", DFLAG_QBAS
+    "QBAS", DFLAG_QBAS, 0
 };
 
 void dialect_register_qbasic(void)

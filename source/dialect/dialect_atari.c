@@ -38,7 +38,7 @@ static const DialectConfig atari_config = {
     "READY",
     10,                     /* narrower zones */
     1, 0, 1,
-    "ATRI", DFLAG_ATRI
+    "ATRI", DFLAG_ATRI, 0
 };
 
 void dialect_register_atari(void)

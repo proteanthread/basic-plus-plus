@@ -53,7 +53,7 @@ static const DialectConfig sinclair_config = {
     9999, 0, 1, 0, 0, 1, 1,
     1, 1, 1,
     "0 OK", 16, 0, 1, 0,
-    "SINC", DFLAG_SINC
+    "SINC", DFLAG_SINC, 0
 };
 
 void dialect_register_sinclair(void)

@@ -18,6 +18,55 @@ void pi_parse_list_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
  (void)line_num;
 
+ /*
+ * LIST "filename" - Display file from disk
+ * without loading it into memory.
+ * Auto-appends .BAS if no extension.
+ */
+ if (lex->current.type == TOK_STRING) {
+ char filename[MAX_LINE_LENGTH + 1];
+ int flen = lex->current.str_length;
+ char linebuf[MAX_LINE_LENGTH + 2];
+ FILE *fp;
+ int ll;
+
+ if (flen >= MAX_LINE_LENGTH) {
+  error_raise(ERR_WHAT, line_num);
+  return;
+ }
+ memcpy(filename, lex->current.str_start,
+  (size_t)flen);
+ filename[flen] = '\0';
+ lexer_next(lex);
+
+ /* Auto-append .BAS if no extension */
+ pi_ensure_bas_ext(filename, flen,
+  MAX_LINE_LENGTH);
+
+ fp = fopen(filename, "r");
+ if (fp == NULL) {
+  printf("File not found: %s\n",
+  filename);
+  return;
+ }
+
+ printf("\n--- %s ---\n", filename);
+ while (fgets(linebuf, sizeof(linebuf),
+  fp) != NULL) {
+  /* Strip trailing newline */
+  ll = (int)strlen(linebuf);
+  while (ll > 0 &&
+  (linebuf[ll-1] == '\n' ||
+  linebuf[ll-1] == '\r')) {
+  linebuf[--ll] = '\0';
+  }
+  printf("%s\n", linebuf);
+ }
+ printf("--- end ---\n\n");
+ fclose(fp);
+ return;
+ }
+
  /* No arguments: list everything */
  if (lex->current.type != TOK_NUMBER &&
  lex->current.type != TOK_MINUS) {
@@ -207,20 +256,25 @@ void pi_parse_load_cmd(Lexer *lex, RuntimeState *rt, int line_num);
 void pi_parse_merge_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char filename[MAX_LINE_LENGTH + 1];
+ int flen;
 
  if (lex->current.type != TOK_STRING) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
 
- if (lex->current.str_length >= MAX_LINE_LENGTH) {
+ flen = lex->current.str_length;
+ if (flen >= MAX_LINE_LENGTH) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
  memcpy(filename, lex->current.str_start,
- (size_t)lex->current.str_length);
- filename[lex->current.str_length] = '\0';
+ (size_t)flen);
+ filename[flen] = '\0';
  lexer_next(lex);
+
+ /* Auto-append .BAS if no extension */
+ pi_ensure_bas_ext(filename, flen, MAX_LINE_LENGTH);
 
  fileio_merge(&rt->memory->program, filename);
 }
@@ -233,20 +287,25 @@ void pi_parse_merge_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 void pi_parse_chain_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char filename[MAX_LINE_LENGTH + 1];
+ int flen;
 
  if (lex->current.type != TOK_STRING) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
 
- if (lex->current.str_length >= MAX_LINE_LENGTH) {
+ flen = lex->current.str_length;
+ if (flen >= MAX_LINE_LENGTH) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
  memcpy(filename, lex->current.str_start,
- (size_t)lex->current.str_length);
- filename[lex->current.str_length] = '\0';
+ (size_t)flen);
+ filename[flen] = '\0';
  lexer_next(lex);
+
+ /* Auto-append .BAS if no extension */
+ pi_ensure_bas_ext(filename, flen, MAX_LINE_LENGTH);
 
  if (fileio_chain(&rt->memory->program, filename) == 0) {
  /* Trigger execution of the loaded program */
@@ -460,6 +519,15 @@ void pi_parse_save_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  fileio_save(&rt->memory->program, filename);
+
+ /* Track for UNSAVE */
+ {
+ int sl = (int)strlen(filename);
+ if (sl > 259) sl = 259;
+ memcpy(rt->last_save_file, filename,
+  (size_t)sl);
+ rt->last_save_file[sl] = '\0';
+ }
 }
 
 /*

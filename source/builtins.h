@@ -60,6 +60,8 @@ BValue builtin_fix(BValue *args, int argc, void *rt);
 BValue builtin_complex(BValue *args, int argc, void *rt);
 BValue builtin_real(BValue *args, int argc, void *rt);
 BValue builtin_imag(BValue *args, int argc, void *rt);
+BValue builtin_conj(BValue *args, int argc, void *rt);
+BValue builtin_cabs(BValue *args, int argc, void *rt);
 BValue builtin_min(BValue *args, int argc, void *rt);
 BValue builtin_max(BValue *args, int argc, void *rt);
 BValue builtin_avg(BValue *args, int argc, void *rt);
@@ -101,6 +103,9 @@ BValue builtin_lof(BValue *args, int argc, void *rt);
 BValue builtin_cvi(BValue *args, int argc, void *rt);
 BValue builtin_cvs(BValue *args, int argc, void *rt);
 BValue builtin_cvd(BValue *args, int argc, void *rt);
+BValue builtin_exists(BValue *args, int argc, void *rt);
+BValue builtin_filesize(BValue *args, int argc, void *rt);
+BValue builtin_filemod(BValue *args, int argc, void *rt);
 
 /* --- Input / Output (builtins_io.c) ---
  */

@@ -182,7 +182,7 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "FIX", KW_FIX, DFLAG_GWQB },
  { "FILES", KW_FILES, DFLAG_GWQB },
  { "BEEP", KW_BEEP, DFLAG_GWQB | DFLAG_SINC },
- { "COLOR", KW_COLOR, DFLAG_GWQB | DFLAG_COCO },
+ { "COLOR", KW_COLOR, DFLAG_GWQB | DFLAG_COCO | DFLAG_AINT | DFLAG_ASFT | DFLAG_ATRI },
  { "DIR", KW_DIR, DFLAG_ALL },
  { "AUTO", KW_AUTO, DFLAG_GWQB | DFLAG_TRS2 },
  { "TAB", KW_TAB_FUNC, DFLAG_ALL },
@@ -228,7 +228,7 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "LPRINT", KW_LPRINT, DFLAG_GWQB | DFLAG_SINC },
  /* SUB/FUNCTION */
  { "SUB", KW_SUB, DFLAG_QBAS | DFLAG_E116 },
- { "CALL", KW_CALL, DFLAG_GWQB | DFLAG_E116 },
+ { "CALL", KW_CALL, DFLAG_GWQB | DFLAG_E116 | DFLAG_AINT },
  { "FUNCTION", KW_FUNCTION, DFLAG_QBAS | DFLAG_E116 },
  /* Additional features */
  { "SHELL", KW_SHELL, DFLAG_GWQB },
@@ -243,13 +243,13 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "SEEK", KW_SEEK, DFLAG_QBAS },
  { "CHDIR", KW_CHDIR, DFLAG_GWQB },
  /* Memory / graphics */
- { "PEEK", KW_PEEK, DFLAG_MSBASIC | DFLAG_SINC | DFLAG_SUPA },
- { "POKE", KW_POKE, DFLAG_MSBASIC | DFLAG_SINC | DFLAG_SUPA },
+ { "PEEK", KW_PEEK, DFLAG_MSBASIC | DFLAG_SINC | DFLAG_SUPA | DFLAG_AINT },
+ { "POKE", KW_POKE, DFLAG_MSBASIC | DFLAG_SINC | DFLAG_SUPA | DFLAG_AINT },
  { "SEG", KW_SEG, DFLAG_GWQB },
  { "PSET", KW_PSET, DFLAG_GWQB | DFLAG_COCO },
  { "CIRCLE", KW_CIRCLE, DFLAG_GWQB },
  { "PALETTE", KW_PALETTE, DFLAG_GWQB },
- { "POINT", KW_POINT, DFLAG_GWQB | DFLAG_COCO },
+ { "POINT", KW_POINT, DFLAG_GWQB | DFLAG_COCO | DFLAG_TRS1 | DFLAG_TRS2 },
  { "TYPE", KW_TYPE, DFLAG_QBAS },
  { "PAINT", KW_PAINT, DFLAG_GWQB | DFLAG_COCO },
  { "ACCESS", KW_ACCESS, DFLAG_QBAS | DFLAG_E116 },
@@ -301,7 +301,7 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "PRESET", KW_PRESET, DFLAG_GWQB },
  { "HOME", KW_HOME, DFLAG_ALL },
  { "AT", KW_AT, DFLAG_ALL },
- { "RESET", KW_RESET, DFLAG_GWQB },
+ { "RESET", KW_RESET, DFLAG_GWQB | DFLAG_TRS1 | DFLAG_TRS2 | DFLAG_COCO },
  { "RMDIR", KW_RMDIR, DFLAG_GWQB },
  { "RSET", KW_RSET, DFLAG_GWQB },
  { "STICK", KW_STICK, DFLAG_GWQB },
@@ -318,7 +318,7 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "ERRORLEVEL", KW_ERRORLEVEL, DFLAG_ALL },
  { "BYE", KW_BYE, DFLAG_ALL },
  /* ECMA-116 Enhanced Files Module */
- { "SET", KW_SET, DFLAG_E116 },
+ { "SET", KW_SET, DFLAG_E116 | DFLAG_TRS1 | DFLAG_TRS2 | DFLAG_COCO },
  { "ASK", KW_ASK, DFLAG_E116 },
  { "REWRITE", KW_REWRITE, DFLAG_E116 },
  { "POINTER", KW_POINTER, DFLAG_E116 },
@@ -362,6 +362,15 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "COMPLEX", KW_COMPLEX, DFLAG_ALL },
  { "REAL", KW_REAL_FUNC, DFLAG_ALL },
  { "IMAG", KW_IMAG_FUNC, DFLAG_ALL },
+ { "CONJ", KW_CONJ_FUNC, DFLAG_ALL },
+ { "CABS", KW_CABS_FUNC, DFLAG_ALL },
+ /* Static analysis */
+ { "CHECK", KW_CHECK, DFLAG_ALL },
+ { "VERIFY", KW_VERIFY, DFLAG_ALL },
+ /* File query functions */
+ { "EXISTS", KW_EXISTS, DFLAG_ALL },
+ { "FILESIZE", KW_FILESIZE, DFLAG_ALL },
+ { "FILEMOD", KW_FILEMOD, DFLAG_ALL },
  /* Aggregate / rounding math functions (BASIC++) */
  { "MIN", KW_MIN_FUNC, DFLAG_ALL },
  { "MAX", KW_MAX_FUNC, DFLAG_ALL },

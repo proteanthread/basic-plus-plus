@@ -13,9 +13,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <sys/stat.h>
 #include "builtins.h"
 #include "fileio.h"
 #include "value.h"
+#include "runtime.h"
+#include "stringpool.h"
 
 /*
  * EOF(n) - End-of-file check.
@@ -131,4 +135,110 @@ BValue builtin_cvd(BValue *args, int argc, void *rt)
  }
  memcpy(&d, s, sizeof(double));
  return bval_float(d);
+}
+
+/*
+ * EXISTS(filename$) - File existence check.
+ *
+ * Returns 1 if the file exists, 0 if not.
+ * Auto-appends .BAS if no extension is present.
+ * Category: FCAT_UTIL | Safety: FSAFE_STATE
+ */
+BValue builtin_exists(BValue *args, int argc, void *rt)
+{
+ char fname[260];
+ int len;
+ FILE *fp;
+ (void)argc; (void)rt;
+ if (!bval_is_string(&args[0]))
+ return bval_int(0);
+ len = args[0].v.sval.length;
+ if (len > 255) len = 255;
+ if (args[0].v.sval.data != NULL)
+ memcpy(fname, args[0].v.sval.data,
+ (size_t)len);
+ fname[len] = '\0';
+
+ fp = fopen(fname, "r");
+ if (fp != NULL) {
+ fclose(fp);
+ return bval_int(1);
+ }
+ return bval_int(0);
+}
+
+/*
+ * FILESIZE(filename$) - File size in bytes.
+ *
+ * Returns the file size, or -1 if file not found.
+ * Category: FCAT_UTIL | Safety: FSAFE_STATE
+ */
+BValue builtin_filesize(BValue *args, int argc, void *rt)
+{
+ char fname[260];
+ int len;
+ FILE *fp;
+ long size;
+ (void)argc; (void)rt;
+ if (!bval_is_string(&args[0]))
+ return bval_int(-1);
+ len = args[0].v.sval.length;
+ if (len > 255) len = 255;
+ if (args[0].v.sval.data != NULL)
+ memcpy(fname, args[0].v.sval.data,
+ (size_t)len);
+ fname[len] = '\0';
+
+ fp = fopen(fname, "rb");
+ if (fp == NULL)
+ return bval_int(-1);
+ fseek(fp, 0L, SEEK_END);
+ size = ftell(fp);
+ fclose(fp);
+ return bval_int(size);
+}
+
+/*
+ * FILEMOD$(filename$) - File modified date/time.
+ *
+ * Returns the modification timestamp as a string
+ * in "YYYY-MM-DD HH:MM:SS" format, or empty string
+ * if file not found.
+ * Category: FCAT_UTIL | Safety: FSAFE_STATE
+ */
+BValue builtin_filemod(BValue *args, int argc, void *rt)
+{
+ RuntimeState *state = (RuntimeState *)rt;
+ char fname[260];
+ int len;
+ struct stat st;
+ char buf[32];
+ char *poolbuf;
+ int blen;
+ struct tm *tm;
+ (void)argc;
+ if (!bval_is_string(&args[0]))
+ return bval_string(NULL, 0);
+ len = args[0].v.sval.length;
+ if (len > 255) len = 255;
+ if (args[0].v.sval.data != NULL)
+ memcpy(fname, args[0].v.sval.data,
+ (size_t)len);
+ fname[len] = '\0';
+
+ if (stat(fname, &st) != 0)
+ return bval_string(NULL, 0);
+ tm = localtime(&st.st_mtime);
+ if (tm == NULL)
+ return bval_string(NULL, 0);
+ sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d",
+ tm->tm_year + 1900, tm->tm_mon + 1,
+ tm->tm_mday, tm->tm_hour,
+ tm->tm_min, tm->tm_sec);
+ blen = (int)strlen(buf);
+ poolbuf = strpool_alloc(&state->strpool, blen);
+ if (poolbuf == NULL)
+ return bval_string(NULL, 0);
+ memcpy(poolbuf, buf, (size_t)blen);
+ return bval_string(poolbuf, blen);
 }

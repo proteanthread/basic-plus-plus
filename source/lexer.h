@@ -431,6 +431,15 @@ enum {
  KW_DUMP,        /* DUMP - variable inspector */
  KW_BACKTRACE,   /* BACKTRACE - stack trace display */
  KW_TRACE,       /* TRACE - single-step execution (like RUN) */
+ /* Complex number functions */
+ KW_CONJ_FUNC,   /* CONJ - complex conjugate */
+ KW_CABS_FUNC,   /* CABS - complex absolute value (magnitude) */
+ /* Static analysis */
+ KW_CHECK,        /* CHECK - static program analyzer */
+ KW_VERIFY,       /* VERIFY - file-based static analyzer */
+ /* File query functions */
+ KW_EXISTS,       /* EXISTS - file existence check */
+ KW_FILEMOD,      /* FILEMOD$ - file modified date */
  KW_COUNT /* sentinel - must be last */
 };
 

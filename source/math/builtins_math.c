@@ -207,6 +207,37 @@ BValue builtin_imag(BValue *args, int argc, void *rt)
   return bval_float(args[0].v.cval.imag);
  return bval_float(0.0);
 }
+/*
+ * CONJ(z) - Complex conjugate.
+ * Returns the conjugate of a complex number (negates imaginary part).
+ * For non-complex numerics, returns the value itself.
+ * Category: FCAT_MATH | Safety: FSAFE_PURE
+ */
+BValue builtin_conj(BValue *args, int argc, void *rt)
+{
+ (void)argc; (void)rt;
+ if (bval_is_complex(&args[0]))
+  return bval_complex(args[0].v.cval.real,
+   -args[0].v.cval.imag);
+ return bval_float(bval_to_float(&args[0]));
+}
+
+/*
+ * CABS(z) - Complex absolute value (magnitude).
+ * Returns sqrt(real^2 + imag^2).
+ * For non-complex numerics, returns ABS.
+ * Category: FCAT_MATH | Safety: FSAFE_PURE
+ */
+BValue builtin_cabs(BValue *args, int argc, void *rt)
+{
+ (void)argc; (void)rt;
+ if (bval_is_complex(&args[0])) {
+  double re = args[0].v.cval.real;
+  double im = args[0].v.cval.imag;
+  return bval_float(sqrt(re * re + im * im));
+ }
+ return bval_float(fabs(bval_to_float(&args[0])));
+}
 
 /*
  * MIN(a, b, ...) - Minimum value.

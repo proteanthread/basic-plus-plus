@@ -26,7 +26,7 @@ static const DialectConfig gwbs_config = {
     ':', 1, 1, 1, 1, 0, 0, 1, 1, 0,
     65529, 0, 1, 1, 0, 1, 1, 1, 1, 1,
     "Ok", 14, 1, 1, 1,
-    "GWBS", DFLAG_GWBS
+    "GWBS", DFLAG_GWBS, 0
 };
 
 void dialect_register_gwbs(void)
