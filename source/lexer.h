@@ -473,6 +473,17 @@ enum {
  KW_COMMIT,       /* COMMIT - commit transaction */
  KW_ROLLBACK,     /* ROLLBACK - rollback transaction */
  KW_TXNSTATUS,    /* TXNSTATUS - transaction status query */
+
+ /* Network builtins (BASIC++ Milestone 12) */
+ KW_NSTATUS,      /* NSTATUS - network channel status */
+ KW_NHTTPSTATUS,  /* NHTTPSTATUS - HTTP response code */
+ KW_NEOF,         /* NEOF - network EOF flag */
+ KW_NBYTESWAITING,/* NBYTESWAITING - bytes available */
+ KW_NCONNECTED,   /* NCONNECTED - connection state */
+ KW_NERROR,       /* NERROR - last network error */
+ KW_NJSONQUERY,   /* NJSONQUERY$ - JSON path query */
+ KW_NINFO,        /* NINFO$ - adapter info query */
+
  KW_COUNT /* sentinel - must be last */
 };
 

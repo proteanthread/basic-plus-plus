@@ -153,4 +153,14 @@ BValue builtin_biocopy(BValue *args, int argc, void *rt);
 /* Transaction builtins (io/builtins_txn.c) */
 BValue builtin_txnstatus(BValue *args, int argc, void *rt);
 
+/* Network builtins (io/builtins_net.c) */
+BValue builtin_nstatus(BValue *args, int argc, void *rt);
+BValue builtin_nhttpstatus(BValue *args, int argc, void *rt);
+BValue builtin_neof(BValue *args, int argc, void *rt);
+BValue builtin_nbyteswaiting(BValue *args, int argc, void *rt);
+BValue builtin_nconnected(BValue *args, int argc, void *rt);
+BValue builtin_nerror(BValue *args, int argc, void *rt);
+BValue builtin_njsonquery(BValue *args, int argc, void *rt);
+BValue builtin_ninfo(BValue *args, int argc, void *rt);
+
 #endif /* BASICPP_BUILTINS_H */
