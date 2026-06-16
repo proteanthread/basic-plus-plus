@@ -192,7 +192,7 @@ void builtins_register(void)
  { "MID$", KW_MID, FCAT_STRING, FRET_STRING,2, 3,
  FSAFE_STATE, 1, builtin_mid,
  "Middle substring: MID$(\"HELLO\",2,3)=\"ELL\"" },
- { "INSTR", KW_INSTR, FCAT_STRING, FRET_INT, 2, 2,
+ { "INSTR", KW_INSTR, FCAT_STRING, FRET_INT, 2, 3,
  FSAFE_PURE, 0, builtin_instr,
  "Find substring: INSTR(\"HELLO\",\"LL\")=3" },
  { "SPACE$",KW_SPACE_FUNC, FCAT_STRING, FRET_STRING,1, 1,

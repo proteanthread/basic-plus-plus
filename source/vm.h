@@ -93,6 +93,7 @@ typedef enum VMOpcode {
  OP_MAT, OP_OPEN, OP_CLOSE,
  OP_CHAIN, OP_MERGE, OP_DIALECT,
  OP_BSAVE, OP_BLOAD, /* bytecode */
+ OP_BRUN,             /* bytecode run */
  OP_MODULE, /* module system */
  OP_SECURITY, /* security */
  OP_SYSTEM, /* cross-platform */

@@ -2,8 +2,18 @@
   BASIC++ on FreeDOS -- Build Guide and Memory Reference
 =====================================================================
 
-  This document covers building, configuring, and running BASIC++
-  on FreeDOS systems with 512K conventional memory.
+  NOTE: For the COMPLETE build tutorial including custom dialect
+  selection, module selection, section stripping, keyword
+  customization, and step-by-step instructions, see:
+
+    docs/FreeDOS_Compilation_Guide.md  (markdown)
+    help/freedos_compilation.txt       (plaintext)
+
+  This document is the quick-reference version.
+
+  The FreeDOS build now defaults to Palo Alto Tiny BASIC (PATB).
+  See FreeDOS_Compilation_Guide.md for how to switch to GW-BASIC
+  or any other dialect.
 
 
 =====================================================================

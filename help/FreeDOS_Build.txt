@@ -2,8 +2,18 @@
   BASIC++ on FreeDOS -- Build Guide and Memory Reference
 =====================================================================
 
-  This document covers building, configuring, and running BASIC++
-  on FreeDOS systems with 512K conventional memory.
+  NOTE: For the COMPLETE build tutorial including custom dialect
+  selection, module selection, section stripping, keyword
+  customization, and step-by-step instructions, see:
+
+    docs/FreeDOS_Compilation_Guide.md  (markdown)
+    help/freedos_compilation.txt       (plaintext)
+
+  This document is the quick-reference version.
+
+  The FreeDOS build now defaults to Palo Alto Tiny BASIC (PATB).
+  See freedos_compilation.txt for how to switch to GW-BASIC
+  or any other dialect.
 
 
 =====================================================================
@@ -19,12 +29,12 @@
   This full build exceeds 512K of conventional memory on FreeDOS.
 
   The FreeDOS "slim build" includes only:
-    - GW-BASIC dialect (GWBS)
-    - ECMA-116 Full BASIC dialect (E116)
+    - Palo Alto Tiny BASIC dialect (PATB)
     - STDLIB module only
 
-  This provides the two most capable and compatible BASIC dialects
+  This provides the smallest, most faithful Tiny BASIC dialect
   while fitting comfortably within the 512K memory constraint.
+  To add GW-BASIC or other dialects, see freedos_compilation.txt.
 
   Windows 11 and Linux builds are unaffected -- they include all
   16 dialects, all modules, and use much larger memory pools.
@@ -50,9 +60,9 @@
 
   The Makefile automatically defines -dBPP_FREEDOS, which:
     - Activates the slim memory pools in config.h
-    - Excludes 14 dialect registration functions
-    - Excludes USB, FujiNet, and UPnP module registration
-    - Removes 17 source files from compilation
+    - Sets default dialect to PATB
+    - Excludes 15 dialect registration functions
+    - Excludes USB, FujiNet, UPnP, JIT module registration
 
 
 =====================================================================
@@ -89,27 +99,27 @@
   4. AVAILABLE DIALECTS
 =====================================================================
 
-  At startup, BASIC++ defaults to GW-BASIC (GWBS).
+  At startup, BASIC++ defaults to Palo Alto Tiny BASIC (PATB).
 
-  To switch to ECMA-116 Full BASIC:
-
-    DIALECT "E116"
-
-  To switch back to GW-BASIC:
+  To switch to GW-BASIC (if compiled in):
 
     DIALECT "GWBS"
+
+  To switch back to PATB:
+
+    DIALECT "PATB"
 
   To see available dialects:
 
     DIALECT
 
-  On the FreeDOS build, this will list only GWBS and E116.
-  On Windows/Linux, it lists all 16 dialects.
+  On the default FreeDOS build, this lists only PATB.
+  Add more dialects via makefd -- see freedos_compilation.txt.
 
   You can also set the dialect at startup:
 
-    bpp -d E116             (command-line switch)
-    dialect=E116            (in basicpp.cfg)
+    bpp -d PATB             (command-line switch)
+    dialect=PATB            (in basicpp.cfg)
 
 
 =====================================================================

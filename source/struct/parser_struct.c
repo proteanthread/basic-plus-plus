@@ -634,6 +634,8 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  sd->param_is_string[
  sd->param_count] =
  is_str;
+ sd->param_type_index[
+ sd->param_count] = -1;
  sd->param_count++;
  }
  lexer_next(lex);
@@ -745,9 +747,62 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  sd->param_is_string[
  sd->param_count] =
  is_str;
- sd->param_count++;
+ sd->param_type_index[
+ sd->param_count] = -1;
+ sd->param_is_array[
+ sd->param_count] = 0;
+ lexer_next(lex);
+ /* Check for () = array param */
+ if (lex->current.type ==
+ TOK_LPAREN) {
+ lexer_next(lex);
+ if (lex->current.type ==
+ TOK_RPAREN) {
+ sd->param_is_array[
+ sd->param_count] = 1;
+ lexer_next(lex);
+ }
+ }
+ /* Check for AS TypeName */
+ if (lex->current.type ==
+ TOK_KEYWORD &&
+ lex->current.value
+ .keyword == KW_AS) {
+ lexer_next(lex);
+ if (lex->current.type ==
+ TOK_NAMED_VAR ||
+ lex->current.type ==
+ TOK_VARIABLE) {
+ const char *tn;
+ int tl;
+ char tb[2];
+ UserTypeDef *utd;
+ if (lex->current.type ==
+ TOK_NAMED_VAR) {
+ tn = lex->current
+ .str_start;
+ tl = lex->current
+ .str_length;
+ } else {
+ tb[0] = lex->current
+ .value.var_name;
+ tb[1] = '\0';
+ tn = tb;
+ tl = 1;
+ }
+ utd = runtime_find_type(
+ rt, tn, tl);
+ if (utd != NULL) {
+ sd->param_type_index[
+ sd->param_count] =
+ (int)(utd -
+ rt->user_types);
  }
  lexer_next(lex);
+ }
+ }
+ sd->param_count++;
+ }
  if (lex->current.type ==
  TOK_COMMA)
  lexer_next(lex);
@@ -1287,12 +1342,120 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  TOK_COMMA) break;
  lexer_next(lex);
  }
- av = parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred()) return;
- /* Set param as named var */
- pi_set_param_by_name(rt,
- sd->params[i], av);
+  /* Array param: pass by reference */
+  if (sd->param_is_array[i]) {
+   char aname[MAX_VAR_NAME_LEN+1];
+   int alen = 0, ai;
+   DimArray *src_arr, *dst_arr;
+   if (lex->current.type ==
+    TOK_NAMED_VAR) {
+    alen = lex->current.str_length;
+    if (alen > MAX_VAR_NAME_LEN)
+     alen = MAX_VAR_NAME_LEN;
+    memcpy(aname,
+     lex->current.str_start,
+     (size_t)alen);
+    aname[alen] = '\0';
+    lexer_next(lex);
+   } else if (lex->current.type ==
+    TOK_VARIABLE) {
+    aname[0] = lex->current
+     .value.var_name;
+    aname[1] = '\0';
+    alen = 1;
+    lexer_next(lex);
+   } else {
+    error_raise(ERR_WHAT, line_num);
+    return;
+   }
+   for (ai = 0; ai < alen; ai++) {
+    if (aname[ai] >= 'a' &&
+     aname[ai] <= 'z')
+     aname[ai] =
+      (char)(aname[ai] - 32);
+   }
+   /* Skip optional () */
+   if (lex->current.type ==
+    TOK_LPAREN) {
+    lexer_next(lex);
+    if (lex->current.type ==
+     TOK_RPAREN)
+     lexer_next(lex);
+   }
+   src_arr = runtime_find_dim(rt,
+    aname, alen);
+   if (src_arr == NULL) {
+    error_raise(ERR_HOW, line_num);
+    return;
+   }
+   /* Create alias: copy DimArray
+    * header but share elements */
+   if (rt->dim_count >=
+    MAX_DIM_ARRAYS) {
+    error_raise(ERR_SORRY,
+     line_num);
+    return;
+   }
+   dst_arr =
+    &rt->dim_arrays[rt->dim_count];
+   *dst_arr = *src_arr;
+   /* Set param name */
+   {
+    const char *pn = sd->params[i];
+    int pnl = (int)strlen(pn);
+    int pi2;
+    if (pnl > MAX_VAR_NAME_LEN)
+     pnl = MAX_VAR_NAME_LEN;
+    memcpy(dst_arr->name, pn,
+     (size_t)pnl);
+    dst_arr->name[pnl] = '\0';
+    for (pi2 = 0; pi2 < pnl; pi2++){
+     if (dst_arr->name[pi2]>='a'
+      && dst_arr->name[pi2]
+      <= 'z')
+      dst_arr->name[pi2] =
+       (char)(dst_arr->
+        name[pi2]-32);
+    }
+   }
+   rt->dim_count++;
+  } else
+  /* Typed param: bind a TypedVar copy */
+  if (sd->param_type_index[i] >= 0) {
+  /* Expect a named var that's a typed var */
+  if (lex->current.type == TOK_NAMED_VAR) {
+   const char *aname = lex->current.str_start;
+   int alen = lex->current.str_length;
+   TypedVar *src = runtime_find_typed_var(
+   rt, aname, alen);
+   if (src != NULL) {
+   /* Create local typed var with param name */
+   int pi = runtime_create_typed_var(rt,
+    sd->params[i],
+    (int)strlen(sd->params[i]),
+    sd->param_type_index[i]);
+   if (pi >= 0) {
+    int fi;
+    TypedVar *dst = &rt->typed_vars[pi];
+    /* Copy fields from source */
+    for (fi = 0; fi < MAX_TYPE_FIELDS; fi++)
+    dst->fields[fi] = src->fields[fi];
+   }
+   }
+   lexer_next(lex);
+  } else {
+   av = parse_expression_bval(
+   lex, rt, line_num);
+   if (error_occurred()) return;
+  }
+  } else {
+  av = parse_expression_bval(
+  lex, rt, line_num);
+  if (error_occurred()) return;
+  /* Set param as named var */
+  pi_set_param_by_name(rt,
+  sd->params[i], av);
+  }
  }
  if (lex->current.type == TOK_RPAREN)
  lexer_next(lex);

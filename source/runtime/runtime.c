@@ -101,6 +101,7 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
 
  /* String pool */
  strpool_init(&rt->strpool);
+ strpool_set_runtime(&rt->strpool, rt);
 
  /* Virtual devices */
  rt->dev_con = vdev_get(VDEV_CON);
@@ -168,6 +169,12 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  rt->sub_count = 0;
  rt->fn_return_value = bval_int(0);
  rt->in_sub_index = -1;
+
+ /* User-Defined Types (Milestone 17) */
+ rt->type_count = 0;
+ rt->typed_var_count = 0;
+ memset(rt->user_types, 0, sizeof(rt->user_types));
+ memset(rt->typed_vars, 0, sizeof(rt->typed_vars));
 
  /* Dynamic scope stack (Milestone 9) */
  scope_stack_init(&rt->scope_stack);
@@ -884,6 +891,7 @@ int runtime_dim(RuntimeState *rt, const char *name, int name_len,
  arr->size[2] = (dim3 > 0) ? dim3 + 1 - rt->option_base : 0;
  arr->elements = &rt->dim_elements[rt->dim_elements_used];
  arr->total = total;
+ arr->type_index = -1; /* normal (non-typed) array */
 
  /*
  * Initialize elements.
@@ -1455,4 +1463,220 @@ SubDef *runtime_find_sub(RuntimeState *rt, const char *name,
  }
  }
  return NULL;
+}
+
+/* --- User-Defined Type Runtime Functions (Milestone 17) ---
+ */
+
+/*
+ * runtime_find_type - Look up a UserTypeDef by name.
+ */
+UserTypeDef *runtime_find_type(RuntimeState *rt,
+                               const char *name, int len)
+{
+ int i;
+ for (i = 0; i < rt->type_count; i++) {
+  if (str_eq_nocase(name, len, rt->user_types[i].name))
+   return &rt->user_types[i];
+ }
+ return NULL;
+}
+
+/*
+ * runtime_find_typed_var - Look up a TypedVar by name.
+ */
+TypedVar *runtime_find_typed_var(RuntimeState *rt,
+                                 const char *name, int len)
+{
+ int i;
+ for (i = 0; i < rt->typed_var_count; i++) {
+  if (str_eq_nocase(name, len, rt->typed_vars[i].name))
+   return &rt->typed_vars[i];
+ }
+ return NULL;
+}
+
+/*
+ * runtime_find_field - Look up field index in a type.
+ */
+int runtime_find_field(UserTypeDef *td,
+                       const char *name, int len)
+{
+ int i;
+ if (td == NULL) return -1;
+ for (i = 0; i < td->field_count; i++) {
+  if (str_eq_nocase(name, len, td->fields[i].name))
+   return i;
+ }
+ return -1;
+}
+
+/*
+ * runtime_create_typed_var - Allocate a new TypedVar.
+ *
+ * Creates a typed variable with all fields initialized to
+ * zero (numeric) or empty string (string fields).
+ * For nested type fields (nested_type_index >= 0),
+ * recursively allocates child TypedVars and stores
+ * the child index as bval_int in the parent field slot.
+ * Nesting depth is bounded by pool exhaustion
+ * (MAX_TYPED_VARS).
+ */
+int runtime_create_typed_var(RuntimeState *rt,
+                             const char *name, int len,
+                             int type_index)
+{
+ int idx, i, copy_len;
+ TypedVar *tv;
+ UserTypeDef *td;
+
+ if (rt->typed_var_count >= MAX_TYPED_VARS)
+  return -1;
+ if (type_index < 0 || type_index >= rt->type_count)
+  return -1;
+
+ idx = rt->typed_var_count;
+ tv = &rt->typed_vars[idx];
+ td = &rt->user_types[type_index];
+
+ /* Store name (uppercase) */
+ copy_len = len;
+ if (copy_len > MAX_VAR_NAME_LEN)
+  copy_len = MAX_VAR_NAME_LEN;
+ memcpy(tv->name, name, (size_t)copy_len);
+ tv->name[copy_len] = '\0';
+ for (i = 0; i < copy_len; i++) {
+  if (tv->name[i] >= 'a' && tv->name[i] <= 'z')
+   tv->name[i] = (char)(tv->name[i] - 32);
+ }
+
+ tv->type_index = type_index;
+ rt->typed_var_count++;
+
+ /* Initialize fields based on type definition */
+ for (i = 0; i < MAX_TYPE_FIELDS; i++) {
+  if (i < td->field_count &&
+      td->fields[i].nested_type_index >= 0) {
+   /* Nested type: allocate child TypedVar.
+    * Child name = "parent.field" (internal).
+    * Store child index in parent's field. */
+   int child_idx;
+   char cname[MAX_VAR_NAME_LEN + 1];
+   int clen;
+   /* Build child name: truncated "PARENT.FIELD" */
+   clen = copy_len;
+   if (clen + 1 + (int)strlen(
+       td->fields[i].name) <= MAX_VAR_NAME_LEN) {
+    memcpy(cname, tv->name, (size_t)copy_len);
+    cname[copy_len] = '.';
+    strcpy(cname + copy_len + 1,
+     td->fields[i].name);
+    clen = (int)strlen(cname);
+   } else {
+    /* Name too long: use field name only */
+    strcpy(cname, td->fields[i].name);
+    clen = (int)strlen(cname);
+   }
+   child_idx = runtime_create_typed_var(
+    rt, cname, clen,
+    td->fields[i].nested_type_index);
+   if (child_idx < 0) {
+    /* Pool exhausted: store -1 */
+    tv->fields[i] = bval_int(-1);
+   } else {
+    tv->fields[i] = bval_int(child_idx);
+   }
+  } else if (i < td->field_count &&
+      td->fields[i].is_string) {
+   tv->fields[i] = bval_string(NULL, 0);
+  } else {
+   tv->fields[i] = bval_int(0);
+  }
+ }
+
+ return idx;
+}
+
+/*
+ * runtime_get_typed_array_field - Get field BValue from
+ * a typed array element.
+ *
+ * Typed arrays store field_count BValues per element in
+ * field-stride layout: element[i * field_count + field_index].
+ */
+BValue *runtime_get_typed_array_field(RuntimeState *rt,
+    DimArray *arr, int elem_index, int field_index)
+{
+ UserTypeDef *td;
+ int offset;
+
+ if (arr == NULL || arr->type_index < 0 ||
+     arr->type_index >= rt->type_count)
+  return NULL;
+
+ td = &rt->user_types[arr->type_index];
+ if (field_index < 0 || field_index >= td->field_count)
+  return NULL;
+
+ offset = elem_index * td->field_count + field_index;
+ if (offset < 0 || offset >= arr->total)
+  return NULL;
+
+ return &arr->elements[offset];
+}
+
+/*
+ * runtime_copy_typed_var - Copy all fields from src to dst.
+ *
+ * Both must have the same type_index (strict).
+ * String fields are re-stored in the string pool.
+ * Nested type fields are recursively copied.
+ * Returns 0 on success, -1 on error.
+ */
+int runtime_copy_typed_var(RuntimeState *rt,
+    TypedVar *dst, TypedVar *src)
+{
+ UserTypeDef *td;
+ int i;
+
+ if (dst == NULL || src == NULL)
+  return -1;
+ if (dst->type_index != src->type_index)
+  return -1;
+ if (dst->type_index < 0 ||
+     dst->type_index >= rt->type_count)
+  return -1;
+
+ td = &rt->user_types[dst->type_index];
+
+ for (i = 0; i < td->field_count; i++) {
+  if (td->fields[i].nested_type_index >= 0) {
+   /* Nested: recursively copy child TypedVars */
+   int src_ci = (int)bval_to_int(&src->fields[i]);
+   int dst_ci = (int)bval_to_int(&dst->fields[i]);
+   if (src_ci >= 0 &&
+       src_ci < rt->typed_var_count &&
+       dst_ci >= 0 &&
+       dst_ci < rt->typed_var_count) {
+    runtime_copy_typed_var(rt,
+     &rt->typed_vars[dst_ci],
+     &rt->typed_vars[src_ci]);
+   }
+  } else if (td->fields[i].is_string) {
+   /* Re-pool string data */
+   BValue sv = src->fields[i];
+   if (bval_is_string(&sv) &&
+       sv.v.sval.data != NULL) {
+    char *p = strpool_store(&rt->strpool,
+     sv.v.sval.data, sv.v.sval.length);
+    dst->fields[i] = bval_string(p,
+     sv.v.sval.length);
+   } else {
+    dst->fields[i] = bval_string(NULL, 0);
+   }
+  } else {
+   dst->fields[i] = src->fields[i];
+  }
+ }
+ return 0;
 }

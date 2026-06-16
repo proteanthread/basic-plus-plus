@@ -259,6 +259,9 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
    return;
   pi_parse_bload(lex, rt, line_num);
   return;
+ case KW_BRUN:
+  exec_brun(rt);
+  return;
  case KW_MODULE:
   pi_parse_module(lex, rt, line_num);
   return;
@@ -499,6 +502,13 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_locate(lex, rt, line_num);
   return;
  case KW_LINE:
+  /* LINE INPUT takes priority over LINE graphics */
+  if (lex->current.type == TOK_KEYWORD &&
+      lex->current.value.keyword == KW_INPUT) {
+   lexer_next(lex); /* consume INPUT */
+   pi_parse_line_input(lex, rt, line_num);
+   return;
+  }
   pi_parse_line(lex, rt, line_num);
   return;
  case KW_SELECT:

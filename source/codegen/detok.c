@@ -93,6 +93,9 @@ static const char *keyword_names[] = {
  "FN", /* KW_FN */
  
  "MAT", /* KW_MAT */
+ "LBOUND", /* KW_LBOUND */
+ "UBOUND", /* KW_UBOUND */
+ "DET", /* KW_DET */
  
  "OPEN", /* KW_OPEN */
  "CLOSE", /* KW_CLOSE */
@@ -401,7 +404,15 @@ static const char *keyword_names[] = {
  "NCONNECTED",      /* KW_NCONNECTED */
  "NERROR",          /* KW_NERROR */
  "NJSONQUERY$",     /* KW_NJSONQUERY */
- "NINFO$"           /* KW_NINFO */
+ "NINFO$",          /* KW_NINFO */
+ /* Advanced string functions (Milestone 19) */
+ "REPLACE$",        /* KW_REPLACE */
+ "REVERSE$",        /* KW_REVERSE */
+ "MCASE$",          /* KW_MCASE */
+ "ICASE$",          /* KW_ICASE */
+ "ONKEY$",          /* KW_ONKEY */
+ "LIKE",            /* KW_LIKE */
+ "HASH$"            /* KW_HASH */
 };
 
 /* --- Token Type Names (for diagnostic output) ---

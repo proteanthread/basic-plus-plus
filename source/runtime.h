@@ -154,6 +154,7 @@ typedef struct DimArray {
  int size[MAX_ARRAY_DIMS]; /* size of each dimension */
  BValue *elements; /* pointer into element pool */
  int total; /* total number of elements */
+ int type_index; /* -1=normal, >=0 = typed array (UserTypeDef index) */
 } DimArray;
 
 /* --- User-Defined Type (TYPE...END TYPE) ---
@@ -163,6 +164,7 @@ typedef struct DimArray {
 typedef struct UserTypeField {
  char name[MAX_VAR_NAME_LEN + 1];
  int is_string; /* 0=numeric, 1=string */
+ int nested_type_index; /* -1=primitive, >=0=nested UserTypeDef */
 } UserTypeField;
 
 typedef struct UserTypeDef {
@@ -199,6 +201,8 @@ typedef struct SubDef {
  int body_index; /* index of first line after SUB/FUNCTION */
  char params[MAX_SUB_PARAMS][MAX_VAR_NAME_LEN + 1];
  int param_is_string[MAX_SUB_PARAMS];
+ int param_type_index[MAX_SUB_PARAMS]; /* -1=scalar, >=0=typed */
+ int param_is_array[MAX_SUB_PARAMS]; /* 1=array param (by-ref) */
  int param_count;
  int is_function; /* 0=SUB, 1=FUNCTION */
  int is_static;   /* 1=all locals are static (SUB ... STATIC) */
@@ -812,5 +816,57 @@ int runtime_find_label(RuntimeState *rt, const char *name, int len);
  * Case-insensitive comparison.
  */
 SubDef *runtime_find_sub(RuntimeState *rt, const char *name, int len);
+
+/*
+ * --- User-Defined Type Runtime Functions ---
+ */
+
+/*
+ * runtime_find_type - Look up a UserTypeDef by name.
+ * Case-insensitive. Returns pointer or NULL.
+ */
+UserTypeDef *runtime_find_type(RuntimeState *rt,
+                               const char *name, int len);
+
+/*
+ * runtime_find_typed_var - Look up a TypedVar by name.
+ * Case-insensitive. Returns pointer or NULL.
+ */
+TypedVar *runtime_find_typed_var(RuntimeState *rt,
+                                 const char *name, int len);
+
+/*
+ * runtime_find_field - Look up a field index in a type.
+ * Case-insensitive. Returns field index (0-based) or -1.
+ */
+int runtime_find_field(UserTypeDef *td,
+                       const char *name, int len);
+
+/*
+ * runtime_create_typed_var - Allocate a new TypedVar.
+ * Returns index into typed_vars[], or -1 on error.
+ */
+int runtime_create_typed_var(RuntimeState *rt,
+                             const char *name, int len,
+                             int type_index);
+
+/*
+ * runtime_get_typed_array_field - Get a field BValue from a
+ * typed DimArray element.
+ *
+ * For typed arrays, elements are stored in field-stride layout:
+ * element[i * field_count + field_index].
+ * Returns pointer to the BValue, or NULL on error.
+ */
+BValue *runtime_get_typed_array_field(RuntimeState *rt,
+    DimArray *arr, int elem_index, int field_index);
+
+/*
+ * runtime_copy_typed_var - Copy all fields from src to dst.
+ * Both must have the same type_index (strict same-type).
+ * Returns 0 on success, -1 on type mismatch or error.
+ */
+int runtime_copy_typed_var(RuntimeState *rt,
+    TypedVar *dst, TypedVar *src);
 
 #endif /* BASICPP_RUNTIME_H */

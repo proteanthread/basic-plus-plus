@@ -135,12 +135,31 @@ BValue stdlib_core_mid(BValue *args, int argc, void *rt) {
     return bval_mid(&args[0], &args[1], &args[2], 0, &state->strpool);
 }
 BValue stdlib_core_instr(BValue *args, int argc, void *rt) {
-    const char *h, *n; int hl, nl, i; (void)rt;
-    if (argc < 2 || !bval_is_string(&args[0]) || !bval_is_string(&args[1])) return bval_int(0);
-    h = args[0].v.sval.data; hl = args[0].v.sval.length;
-    n = args[1].v.sval.data; nl = args[1].v.sval.length;
+    const char *h, *n; int hl, nl, i, start_off; (void)rt;
+    /*
+     * 2-arg: INSTR(haystack$, needle$)
+     * 3-arg: INSTR(start%, haystack$, needle$)
+     */
+    if (argc >= 3) {
+        /* 3-arg form */
+        start_off = (int)bval_to_int(&args[0]) - 1;
+        if (!bval_is_string(&args[1]) || !bval_is_string(&args[2]))
+            return bval_int(0);
+        h = args[1].v.sval.data; hl = args[1].v.sval.length;
+        n = args[2].v.sval.data; nl = args[2].v.sval.length;
+    } else {
+        /* 2-arg form */
+        start_off = 0;
+        if (argc < 2 || !bval_is_string(&args[0]) ||
+            !bval_is_string(&args[1]))
+            return bval_int(0);
+        h = args[0].v.sval.data; hl = args[0].v.sval.length;
+        n = args[1].v.sval.data; nl = args[1].v.sval.length;
+    }
     if (!h || !n || nl > hl || nl == 0) return bval_int(0);
-    for (i = 0; i <= hl - nl; i++) {
+    if (start_off < 0) start_off = 0;
+    if (start_off > hl - nl) return bval_int(0);
+    for (i = start_off; i <= hl - nl; i++) {
         if (memcmp(h + i, n, (size_t)nl) == 0) return bval_int(i + 1);
     }
     return bval_int(0);

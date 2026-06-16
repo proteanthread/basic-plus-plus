@@ -47,6 +47,22 @@
 #include "vdev.h"
 #include "errors.h"
 
+/* Directory API for FUJI: IOCTLs */
+#ifdef _WIN32
+  /* Windows directory enumeration */
+  /* windows.h already pulled in by winsock2.h below */
+  #define fn_popen  _popen
+  #define fn_pclose _pclose
+#elif !defined(__MSDOS__) && !defined(__DOS__)
+  #include <dirent.h>
+  #include <sys/stat.h>
+  #define fn_popen  popen
+  #define fn_pclose pclose
+#else
+  #define fn_popen(c,m)  ((void)(c),(void)(m),(FILE*)0)
+  #define fn_pclose(f)   ((void)(f), -1)
+#endif
+
 /* ================================================================
  * PLATFORM-SPECIFIC SOCKET ABSTRACTION
  * ================================================================ */
@@ -57,6 +73,7 @@
   #endif
   #include <winsock2.h>
   #include <ws2tcpip.h>
+  #include <windows.h>   /* FindFirstFileA etc. for FUJI: dir browsing */
   #pragma comment(lib, "ws2_32.lib")
   typedef int socklen_t;
   #define FN_INVALID_SOCKET INVALID_SOCKET
@@ -1031,6 +1048,240 @@ static int fn_base64_decode(const char *src, int src_len,
 }
 
 /* ================================================================
+ * HTTPS (limited) — via system curl
+ *
+ * Both Windows 11 and Linux ship with curl. We use popen()
+ * to invoke it, capturing the response into the channel's
+ * http_body buffer. This gives real TLS without any library
+ * dependency. "Limited" because it's fetch-and-buffer, not
+ * streaming, and does not support IOCTL-based header control.
+ * ================================================================ */
+
+/*
+ * fn_url_is_safe — reject shell metacharacters.
+ * Returns 1 if safe, 0 if the URL contains injection risk.
+ */
+static int fn_url_is_safe(const char *url)
+{
+    const char *p;
+    for (p = url; *p; p++) {
+        switch (*p) {
+        case ';': case '|': case '&': case '`':
+        case '$': case '(': case ')': case '{':
+        case '}': case '<': case '>': case '!':
+        case '\'': case '\\': case '\n': case '\r':
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/*
+ * fn_https_fetch — fetch an HTTPS URL via system curl.
+ *
+ * Builds a curl command, executes it via popen, and captures
+ * the entire response (headers + body) into ch->http_body.
+ * Parses out the HTTP status code and body offset.
+ */
+static int fn_https_fetch(FnChannel *ch, const char *method)
+{
+#ifdef FN_NO_NETWORKING
+    (void)ch; (void)method;
+    return FN_ERR_NOT_IMPL;
+#else
+    char cmd[1024];
+    FILE *pipe;
+    char *buf;
+    int capacity = 32768;
+    int total = 0;
+    int n;
+    const char *hdr_end;
+    const char *status_line;
+
+    /* Sanitize URL */
+    if (!fn_url_is_safe(ch->host) ||
+        !fn_url_is_safe(ch->path)) {
+        return FN_ERR_INVALID_URL;
+    }
+
+    /* Build curl command:
+     * -s: silent (no progress)
+     * -i: include response headers
+     * -L: follow redirects
+     * -X: HTTP method
+     * --max-time 30: timeout
+     *
+     * NOTE: On Windows, PowerShell aliases 'curl' to
+     * Invoke-WebRequest, so we must use 'curl.exe'.
+     */
+#ifdef _WIN32
+#define FN_CURL "curl.exe"
+#else
+#define FN_CURL "curl"
+#endif
+    if (ch->path[0] == '/')
+        snprintf(cmd, sizeof(cmd),
+            FN_CURL " -s -i -L --max-time 30 -X %s "
+            "\"https://%s:%d%s\" 2>&1",
+            method, ch->host, ch->port, ch->path);
+    else
+        snprintf(cmd, sizeof(cmd),
+            FN_CURL " -s -i -L --max-time 30 -X %s "
+            "\"https://%s:%d/%s\" 2>&1",
+            method, ch->host, ch->port, ch->path);
+#undef FN_CURL
+
+    pipe = fn_popen(cmd, "r");
+    if (pipe == NULL) {
+        ch->last_error = FN_ERR_IO_ERROR;
+        return FN_ERR_IO_ERROR;
+    }
+
+    /* Read entire response */
+    buf = (char *)malloc((size_t)capacity);
+    if (buf == NULL) {
+        fn_pclose(pipe);
+        return FN_ERR_IO_ERROR;
+    }
+
+    while ((n = (int)fread(buf + total, 1,
+            (size_t)(capacity - total - 1), pipe)) > 0) {
+        total += n;
+        if (total >= capacity - 1) {
+            int newcap = capacity * 2;
+            char *tmp = (char *)realloc(buf, (size_t)newcap);
+            if (tmp == NULL) break;
+            buf = tmp;
+            capacity = newcap;
+        }
+    }
+    buf[total] = '\0';
+    fn_pclose(pipe);
+
+    /* Parse HTTP status code from first line */
+    ch->http_status_code = 0;
+    status_line = buf;
+    if (strncmp(status_line, "HTTP/", 5) == 0) {
+        const char *sp = strchr(status_line, ' ');
+        if (sp != NULL)
+            ch->http_status_code = atoi(sp + 1);
+    }
+
+    /* Find header/body separator */
+    hdr_end = strstr(buf, "\r\n\r\n");
+    if (hdr_end != NULL) {
+        int hdr_len = (int)(hdr_end - buf);
+        int body_start = hdr_len + 4;
+
+        /* Copy headers */
+        if (hdr_len >= FN_HTTP_HEADER_MAX)
+            hdr_len = FN_HTTP_HEADER_MAX - 1;
+        memcpy(ch->http_headers, buf, (size_t)hdr_len);
+        ch->http_headers[hdr_len] = '\0';
+
+        /* Copy body */
+        ch->http_body_len = total - body_start;
+        if (ch->http_body != NULL) free(ch->http_body);
+        ch->http_body = (char *)malloc(
+            (size_t)(ch->http_body_len + 1));
+        if (ch->http_body != NULL) {
+            memcpy(ch->http_body, buf + body_start,
+                (size_t)ch->http_body_len);
+            ch->http_body[ch->http_body_len] = '\0';
+        }
+        ch->http_body_pos = 0;
+    } else {
+        /* No header separator — treat all as body */
+        ch->http_body_len = total;
+        if (ch->http_body != NULL) free(ch->http_body);
+        ch->http_body = buf;
+        buf = NULL;  /* ownership transferred */
+        ch->http_body_pos = 0;
+    }
+
+    if (buf != NULL) free(buf);
+    ch->connected = 1;
+    ch->eof_flag = 0;
+    return FN_ERR_OK;
+#endif
+}
+
+/* ================================================================
+ * SSH (limited) — TCP connect + version exchange
+ *
+ * Per RFC 4253, the SSH connection begins with both sides
+ * sending a version string:
+ *   SSH-protoversion-softwareversion SP comments CR LF
+ *
+ * We connect, read the server banner, send our version,
+ * then switch the channel to telnet-like raw interactive
+ * mode so the user can at least see server output. Actual
+ * SSH key exchange and encryption require a crypto library.
+ *
+ * After version exchange, the channel operates in raw TCP
+ * mode — same as FN_PROTO_TCP. This allows the SSH "limited"
+ * to at minimum identify the server and provide raw I/O.
+ * ================================================================ */
+
+static int fn_ssh_connect(FnChannel *ch)
+{
+#ifdef FN_NO_NETWORKING
+    (void)ch;
+    return FN_ERR_NOT_IMPL;
+#else
+    int fd;
+    int n;
+    char banner[256];
+    const char *our_version = "SSH-2.0-BASIC++_1.0\r\n";
+
+    fd = fn_tcp_connect(ch->host, ch->port);
+    if (fd < 0) return FN_ERR_CONN_REFUSED;
+
+    ch->sock_fd = fd;
+    ch->connected = 1;
+
+    /* Read server version string (up to 255 bytes per RFC 4253) */
+    memset(banner, 0, sizeof(banner));
+    n = recv(fd, banner, sizeof(banner) - 1, 0);
+    if (n <= 0) {
+        fn_closesocket(fd);
+        ch->sock_fd = -1;
+        ch->connected = 0;
+        return FN_ERR_CONN_REFUSED;
+    }
+    banner[n] = '\0';
+
+    /* Strip trailing CR/LF */
+    while (n > 0 && (banner[n-1] == '\r' || banner[n-1] == '\n'))
+        banner[--n] = '\0';
+
+    /* Store server SSH version */
+    strncpy(ch->ssh_version, banner, sizeof(ch->ssh_version) - 1);
+    ch->ssh_version[sizeof(ch->ssh_version) - 1] = '\0';
+    ch->ssh_exchanged = 1;
+
+    /* Send our version string */
+    send(fd, our_version, (int)strlen(our_version), 0);
+
+    /* Put the server banner into recv_buf so the user can
+     * read it with INPUT #ch, V$.
+     * After that, the channel operates in raw TCP mode
+     * (telnet-like) for any further data the server sends. */
+    {
+        int blen = (int)strlen(ch->ssh_version);
+        if (blen >= FN_RECV_BUF_SIZE)
+            blen = FN_RECV_BUF_SIZE - 1;
+        memcpy(ch->recv_buf, ch->ssh_version, (size_t)blen);
+        ch->recv_buf[blen] = '\n';
+        ch->recv_pos = 0;
+        ch->recv_len = blen + 1;
+    }
+
+    return FN_ERR_OK;
+#endif
+}
+
+/* ================================================================
  * N: DEVICE — VIRTUAL DEVICE CALLBACKS
  * ================================================================ */
 
@@ -1116,7 +1367,6 @@ static int fn_net_open(VDev *d, const char *path,
         break;
 
     case FN_PROTO_HTTP:
-    case FN_PROTO_HTTPS:
         /* HTTP: connect, send request, buffer response */
         fd = fn_tcp_connect(host, port);
         if (fd < 0) return FN_ERR_CONN_REFUSED;
@@ -1128,6 +1378,27 @@ static int fn_net_open(VDev *d, const char *path,
             ch->sock_fd = -1;
             return rc;
         }
+        break;
+
+    case FN_PROTO_HTTPS:
+        /* HTTPS (limited): use system curl for TLS */
+        ch->sock_fd = -1;  /* no raw socket — curl handles it */
+        rc = fn_https_fetch(ch, "GET");
+        if (rc != FN_ERR_OK) return rc;
+        break;
+
+    case FN_PROTO_SSH:
+        /* SSH (limited): version exchange + raw TCP mode */
+        rc = fn_ssh_connect(ch);
+        if (rc != FN_ERR_OK) return rc;
+        break;
+
+    case FN_PROTO_FTP:
+        /* FTP: raw TCP command channel */
+        fd = fn_tcp_connect(host, port);
+        if (fd < 0) return FN_ERR_CONN_REFUSED;
+        ch->sock_fd = fd;
+        ch->connected = 1;
         break;
 
     default:
@@ -1566,6 +1837,16 @@ static const char *fn_net_info(VDev *d, const char *key)
         sprintf(info_buf, "%d", ch->http_status_code);
         return info_buf;
     }
+    if (strcmp(key, "ssh_version") == 0)
+        return ch->ssh_version[0] ? ch->ssh_version : NULL;
+    if (strcmp(key, "bytes_waiting") == 0) {
+        sprintf(info_buf, "%d", ch->recv_len - ch->recv_pos);
+        return info_buf;
+    }
+    if (strcmp(key, "error") == 0) {
+        sprintf(info_buf, "%d", ch->last_error);
+        return info_buf;
+    }
 
     return NULL;
 }
@@ -1883,24 +2164,295 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_OK;
 
     case FNIO_SET_HOST_PREFIX:
+        /* Store a path prefix for a host slot.
+         * arg format: "slot:prefix" (e.g. "0:/games/") */
+        if (arg) {
+            const char *s = (const char *)arg;
+            int slot_n = atoi(s);
+            const char *colon = strchr(s, ':');
+            if (colon && slot_n >= 0 &&
+                slot_n < FN_MAX_HOST_SLOTS) {
+                strncpy(fn_fuji.host_prefix[slot_n],
+                    colon + 1, FN_HOST_SLOT_LEN - 1);
+                fn_fuji.host_prefix[slot_n][
+                    FN_HOST_SLOT_LEN - 1] = '\0';
+            }
+        }
+        return FN_ERR_OK;
+
     case FNIO_GET_HOST_PREFIX:
+        /* Return prefix for a host slot.
+         * arg is int* for slot, result written there as string */
+        if (arg) {
+            int slot_n = *(int *)arg;
+            if (slot_n >= 0 && slot_n < FN_MAX_HOST_SLOTS)
+                strcpy((char *)arg,
+                    fn_fuji.host_prefix[slot_n]);
+            else
+                ((char *)arg)[0] = '\0';
+        }
+        return FN_ERR_OK;
+
     case FNIO_SET_DEVICE_PATH:
+        /* Store a path for a device slot.
+         * arg format: "slot:path" */
+        if (arg) {
+            const char *s = (const char *)arg;
+            int slot_n = atoi(s);
+            const char *colon = strchr(s, ':');
+            if (colon && slot_n >= 0 &&
+                slot_n < FN_MAX_DEVICE_SLOTS) {
+                strncpy(fn_fuji.device_path[slot_n],
+                    colon + 1, FN_FILE_MAXLEN - 1);
+                fn_fuji.device_path[slot_n][
+                    FN_FILE_MAXLEN - 1] = '\0';
+            }
+        }
+        return FN_ERR_OK;
+
     case FNIO_GET_DEVICE_PATH:
-    case FNIO_COPY_FILE:
-    case FNIO_NEW_DISK:
-    case FNIO_SET_BOOT_MODE:
-    case FNIO_DEVICE_ENABLE:
-    case FNIO_DEVICE_DISABLE:
-    case FNIO_DEVICE_STATUS:
-    case FNIO_OPEN_DIRECTORY:
-    case FNIO_READ_DIR_ENTRY:
-    case FNIO_CLOSE_DIRECTORY:
-    case FNIO_SET_DIR_POSITION:
-    case FNIO_GET_DIR_POSITION:
+        if (arg) {
+            int slot_n = *(int *)arg;
+            if (slot_n >= 0 && slot_n < FN_MAX_DEVICE_SLOTS)
+                strcpy((char *)arg,
+                    fn_fuji.device_path[slot_n]);
+            else
+                ((char *)arg)[0] = '\0';
+        }
+        return FN_ERR_OK;
+
     case FNIO_READ_DEVICE_SLOTS:
+        if (arg)
+            memcpy(arg, fn_fuji.device_slots,
+                sizeof(fn_fuji.device_slots));
+        return FN_ERR_OK;
+
     case FNIO_WRITE_DEVICE_SLOTS:
-        /* Not applicable on desktop - hardware-only operations */
+        if (arg)
+            memcpy(fn_fuji.device_slots, arg,
+                sizeof(fn_fuji.device_slots));
+        return FN_ERR_OK;
+
+    case FNIO_DEVICE_ENABLE:
+        if (arg) {
+            int slot_n = *(int *)arg;
+            if (slot_n >= 0 && slot_n < FN_MAX_DEVICE_SLOTS)
+                fn_fuji.device_enabled[slot_n] = 1;
+        }
+        return FN_ERR_OK;
+
+    case FNIO_DEVICE_DISABLE:
+        if (arg) {
+            int slot_n = *(int *)arg;
+            if (slot_n >= 0 && slot_n < FN_MAX_DEVICE_SLOTS)
+                fn_fuji.device_enabled[slot_n] = 0;
+        }
+        return FN_ERR_OK;
+
+    case FNIO_DEVICE_STATUS:
+        if (arg) {
+            int slot_n = *(int *)arg;
+            if (slot_n >= 0 && slot_n < FN_MAX_DEVICE_SLOTS)
+                *(int *)arg = fn_fuji.device_enabled[slot_n];
+            else
+                *(int *)arg = 0;
+        }
+        return FN_ERR_OK;
+
+    case FNIO_SET_BOOT_MODE:
+        if (arg) fn_fuji.boot_mode = *(int *)arg;
+        return FN_ERR_OK;
+
+    case FNIO_COPY_FILE:
+        /* Copy file. arg = "src\0dst" (two null-terminated strings) */
+        if (arg) {
+            const char *src = (const char *)arg;
+            const char *dst = src + strlen(src) + 1;
+            FILE *fin = fopen(src, "rb");
+            FILE *fout;
+            if (!fin) return FN_ERR_IO_ERROR;
+            fout = fopen(dst, "wb");
+            if (!fout) { fclose(fin); return FN_ERR_IO_ERROR; }
+            {
+                char cpbuf[4096];
+                size_t nr;
+                while ((nr = fread(cpbuf, 1,
+                        sizeof(cpbuf), fin)) > 0) {
+                    fwrite(cpbuf, 1, nr, fout);
+                }
+            }
+            fclose(fin);
+            fclose(fout);
+        }
+        return FN_ERR_OK;
+
+    case FNIO_NEW_DISK:
+        /* Create empty file at specified path.
+         * arg = "path\0size" (size in bytes as string) */
+        if (arg) {
+            const char *path_str = (const char *)arg;
+            FILE *fp = fopen(path_str, "wb");
+            if (fp) {
+                const char *size_str;
+                long fsize;
+                size_str = path_str + strlen(path_str) + 1;
+                fsize = atol(size_str);
+                if (fsize > 0 && fsize <= 16777216) {
+                    /* Write zeros up to size */
+                    char zeros[512];
+                    long remaining = fsize;
+                    memset(zeros, 0, sizeof(zeros));
+                    while (remaining > 0) {
+                        size_t chunk = (size_t)(
+                            remaining > 512 ? 512 :
+                            remaining);
+                        fwrite(zeros, 1, chunk, fp);
+                        remaining -= (long)chunk;
+                    }
+                }
+                fclose(fp);
+            } else {
+                return FN_ERR_IO_ERROR;
+            }
+        }
+        return FN_ERR_OK;
+
+    case FNIO_OPEN_DIRECTORY:
+        /* Open directory for browsing.
+         * arg = directory path string. */
+        if (fn_fuji.dir_open && fn_fuji.dir_handle) {
+            /* Close previously open directory */
+#ifdef _WIN32
+            FindClose((HANDLE)fn_fuji.dir_handle);
+#elif !defined(__MSDOS__) && !defined(__DOS__)
+            closedir((DIR *)fn_fuji.dir_handle);
+#endif
+            fn_fuji.dir_handle = NULL;
+            fn_fuji.dir_open = 0;
+        }
+        if (arg) {
+            const char *dir_path = (const char *)arg;
+            strncpy(fn_fuji.dir_path, dir_path,
+                sizeof(fn_fuji.dir_path) - 1);
+            fn_fuji.dir_path[
+                sizeof(fn_fuji.dir_path) - 1] = '\0';
+            fn_fuji.dir_position = 0;
+#ifdef _WIN32
+            {
+                char pattern[272];
+                WIN32_FIND_DATAA fdata;
+                HANDLE h;
+                snprintf(pattern, sizeof(pattern),
+                    "%s\\*", dir_path);
+                h = FindFirstFileA(pattern, &fdata);
+                if (h == INVALID_HANDLE_VALUE)
+                    return FN_ERR_IO_ERROR;
+                fn_fuji.dir_handle = (void *)h;
+                fn_fuji.dir_open = 1;
+                /* Store first entry name so first
+                 * READ_DIR_ENTRY can return it */
+            }
+#elif !defined(__MSDOS__) && !defined(__DOS__)
+            {
+                DIR *dp = opendir(dir_path);
+                if (!dp) return FN_ERR_IO_ERROR;
+                fn_fuji.dir_handle = (void *)dp;
+                fn_fuji.dir_open = 1;
+            }
+#else
+            return FN_ERR_NOT_IMPL;
+#endif
+        }
+        return FN_ERR_OK;
+
+    case FNIO_READ_DIR_ENTRY:
+        /* Read next directory entry into arg (string buffer). */
+        if (!fn_fuji.dir_open || !fn_fuji.dir_handle) {
+            if (arg) ((char *)arg)[0] = '\0';
+            return FN_ERR_IO_ERROR;
+        }
+#ifdef _WIN32
+        {
+            WIN32_FIND_DATAA fdata;
+            if (fn_fuji.dir_position == 0) {
+                /* First entry was already found by
+                 * FindFirstFile — re-find it */
+                HANDLE h2;
+                char pattern[272];
+                FindClose((HANDLE)fn_fuji.dir_handle);
+                snprintf(pattern, sizeof(pattern),
+                    "%s\\*", fn_fuji.dir_path);
+                h2 = FindFirstFileA(pattern, &fdata);
+                if (h2 == INVALID_HANDLE_VALUE) {
+                    fn_fuji.dir_open = 0;
+                    if (arg) ((char *)arg)[0] = '\0';
+                    return FN_ERR_IO_ERROR;
+                }
+                fn_fuji.dir_handle = (void *)h2;
+                /* Skip entries to reach position */
+                {
+                    int skip = fn_fuji.dir_position;
+                    while (skip > 0) {
+                        if (!FindNextFileA(h2, &fdata)) {
+                            if (arg) ((char *)arg)[0] = '\0';
+                            return FN_ERR_EOF;
+                        }
+                        skip--;
+                    }
+                }
+                if (arg) strcpy((char *)arg, fdata.cFileName);
+                fn_fuji.dir_position++;
+            } else {
+                if (FindNextFileA(
+                        (HANDLE)fn_fuji.dir_handle,
+                        &fdata)) {
+                    if (arg) strcpy((char *)arg,
+                        fdata.cFileName);
+                    fn_fuji.dir_position++;
+                } else {
+                    if (arg) ((char *)arg)[0] = '\0';
+                    return FN_ERR_EOF;
+                }
+            }
+        }
+#elif !defined(__MSDOS__) && !defined(__DOS__)
+        {
+            struct dirent *ent;
+            ent = readdir((DIR *)fn_fuji.dir_handle);
+            if (ent) {
+                if (arg) strcpy((char *)arg, ent->d_name);
+                fn_fuji.dir_position++;
+            } else {
+                if (arg) ((char *)arg)[0] = '\0';
+                return FN_ERR_EOF;
+            }
+        }
+#else
+        if (arg) ((char *)arg)[0] = '\0';
         return FN_ERR_NOT_IMPL;
+#endif
+        return FN_ERR_OK;
+
+    case FNIO_CLOSE_DIRECTORY:
+        if (fn_fuji.dir_open && fn_fuji.dir_handle) {
+#ifdef _WIN32
+            FindClose((HANDLE)fn_fuji.dir_handle);
+#elif !defined(__MSDOS__) && !defined(__DOS__)
+            closedir((DIR *)fn_fuji.dir_handle);
+#endif
+            fn_fuji.dir_handle = NULL;
+        }
+        fn_fuji.dir_open = 0;
+        fn_fuji.dir_position = 0;
+        return FN_ERR_OK;
+
+    case FNIO_SET_DIR_POSITION:
+        if (arg) fn_fuji.dir_position = *(int *)arg;
+        return FN_ERR_OK;
+
+    case FNIO_GET_DIR_POSITION:
+        if (arg) *(int *)arg = fn_fuji.dir_position;
+        return FN_ERR_OK;
 
     default:
         return FN_ERR_BAD_CMD;

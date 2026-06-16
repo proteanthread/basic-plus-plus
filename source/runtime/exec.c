@@ -34,6 +34,7 @@
 #include "errors.h"
 #include "vdev.h"
 #include "vm.h"
+#include "pcode.h"
 #include "scope.h"
 #include "override.h"
 
@@ -759,4 +760,61 @@ int exec_cont(RuntimeState *rt)
 
  exec_run_from(rt, rt->resume_index);
  return 0;
+}
+
+/*
+ * exec_brun - Compile to bytecode and execute via VM.
+ *
+ * Milestone 13 bytecode execution path:
+ * 1. Reset runtime state
+ * 2. Collect DATA values
+ * 3. Compile program to PCode bytecode
+ * 4. Execute via vm_exec_pcode()
+ * 5. Free bytecode
+ *
+ * The interpreter path (exec_run) is untouched.
+ */
+void exec_brun(RuntimeState *rt)
+{
+ PCodeProgram pcode;
+ int result;
+
+ if (!rt->program || rt->program->count == 0) {
+ printf("No program to BRUN.\n");
+ return;
+ }
+
+ /* Reset runtime state for fresh run */
+ runtime_reset(rt);
+
+ /* Collect DATA values before execution */
+ runtime_collect_data(rt);
+
+ /* Compile to bytecode */
+ printf("Compiling %d lines to bytecode...\n",
+ rt->program->count);
+
+ if (pcode_compile(rt->program, &pcode) != 0) {
+ printf("BRUN: Compilation failed.\n");
+ return;
+ }
+
+ printf("Compiled: %d instructions, %d string bytes\n",
+ pcode.count,
+ pcode.str_used);
+
+ /* Execute bytecode */
+ vm_set_state(rt, VM_RUNNING);
+ result = vm_exec_pcode(rt, &pcode);
+
+ if (result != 0 && vm_get_state(rt) != VM_PAUSED) {
+ vm_set_state(rt, VM_ERROR);
+ }
+
+ /* Free bytecode */
+ pcode_free(&pcode);
+
+ if (vm_get_state(rt) != VM_PAUSED) {
+ vm_set_state(rt, VM_STOPPED);
+ }
 }

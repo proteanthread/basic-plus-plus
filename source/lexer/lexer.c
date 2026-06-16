@@ -136,6 +136,10 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "FN", KW_FN, DFLAG_MSBASIC | DFLAG_EC55 | DFLAG_E116 | DFLAG_SINC | DFLAG_SUPA | DFLAG_SBAS },
  /* MAT */
  { "MAT", KW_MAT, DFLAG_E116 | DFLAG_PATB | DFLAG_SBAS },
+ /* Array functions */
+ { "LBOUND", KW_LBOUND, DFLAG_GWQB | DFLAG_E116 },
+ { "UBOUND", KW_UBOUND, DFLAG_GWQB | DFLAG_E116 },
+ { "DET", KW_DET, DFLAG_E116 | DFLAG_PATB },
  /* File I/O */
  { "OPEN", KW_OPEN, DFLAG_GWQB | DFLAG_TRS2 | DFLAG_E116 },
  { "CLOSE", KW_CLOSE, DFLAG_GWQB | DFLAG_TRS2 | DFLAG_E116 | DFLAG_C64B },
@@ -146,6 +150,7 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "COMPILE", KW_COMPILE, DFLAG_ALL },
  { "BSAVE", KW_BSAVE, DFLAG_ALL },
  { "BLOAD", KW_BLOAD, DFLAG_ALL },
+ { "BRUN", KW_BRUN, DFLAG_ALL },
  { "MODULE", KW_MODULE, DFLAG_ALL },
  { "SECURITY", KW_SECURITY, DFLAG_ALL },
  { "SYSTEM", KW_SYSTEM, DFLAG_ALL },
@@ -207,6 +212,13 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "LTRIM", KW_LTRIM, DFLAG_QBAS | DFLAG_E116 },
  { "RTRIM", KW_RTRIM, DFLAG_QBAS | DFLAG_E116 },
  { "TRIM", KW_TRIM, DFLAG_ALL },
+ { "REPLACE", KW_REPLACE, DFLAG_ALL },
+ { "REVERSE", KW_REVERSE, DFLAG_ALL },
+ { "MCASE", KW_MCASE, DFLAG_ALL },
+ { "ICASE", KW_ICASE, DFLAG_ALL },
+ { "ONKEY", KW_ONKEY, DFLAG_ALL },
+ { "LIKE", KW_LIKE, DFLAG_GWQB | DFLAG_E116 },
+ { "HASH", KW_HASH, DFLAG_ALL },
  { "CINT", KW_CINT, DFLAG_GWQB },
  { "TIMER", KW_TIMER, DFLAG_GWQB },
  { "SLEEP", KW_SLEEP, DFLAG_QBAS },
@@ -799,7 +811,13 @@ int lexer_keyword_needs_dollar(KeywordId kw)
     kw == KW_SIOREADLN ||
     kw == KW_BIOREAD ||
     kw == KW_NJSONQUERY ||
-    kw == KW_NINFO);
+    kw == KW_NINFO ||
+    kw == KW_REPLACE ||
+    kw == KW_REVERSE ||
+    kw == KW_MCASE ||
+    kw == KW_ICASE ||
+    kw == KW_ONKEY ||
+    kw == KW_HASH);
 }
 
 /*
@@ -1476,7 +1494,13 @@ void lexer_next(Lexer *lex)
  kw == KW_SIOREADLN ||
  kw == KW_BIOREAD ||
  kw == KW_NJSONQUERY ||
- kw == KW_NINFO) {
+ kw == KW_NINFO ||
+ kw == KW_REPLACE ||
+ kw == KW_REVERSE ||
+ kw == KW_MCASE ||
+ kw == KW_ICASE ||
+ kw == KW_ONKEY ||
+ kw == KW_HASH) {
  lex->pos++; /* consume '$' */
  }
  /* INPUT$ -> KW_INPUT_FUNC */
@@ -1682,6 +1706,9 @@ void lexer_next(Lexer *lex)
  break;
  case '\\':
  lex->current.type = TOK_BACKSLASH;
+ break;
+ case '.':
+ lex->current.type = TOK_DOT;
  break;
  case '\'':
  /*
