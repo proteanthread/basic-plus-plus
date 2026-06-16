@@ -87,37 +87,102 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* MAT PRINT <name> */
+ /* MAT PRINT <name> [;|,] or MAT PRINT USING fmt$; <name> */
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_PRINT) {
  DimArray *arr;
  int r, c;
+ int use_tab = 1; /* default: tabbed */
+ int use_compact = 0;
+ char fmt_buf[64];
+ int has_using = 0;
 
  lexer_next(lex); /* consume PRINT */
+
+ /* Check for USING */
+ if (lex->current.type == TOK_KEYWORD &&
+  lex->current.value.keyword == KW_USING) {
+  BValue fv;
+  lexer_next(lex); /* consume USING */
+  fv = parse_expression_bval(lex, rt, line_num);
+  if (error_occurred()) return;
+  {
+   int fl = fv.v.sval.length;
+   if (fl > 63) fl = 63;
+   memcpy(fmt_buf, fv.v.sval.data,
+    (size_t)fl);
+   fmt_buf[fl] = '\0';
+  }
+  has_using = 1;
+  /* Expect semicolon separator */
+  if (lex->current.type == TOK_SEMICOLON)
+   lexer_next(lex);
+ }
+
  if (!pi_mat_get_array_name(lex, name_a, &name_a_len)) {
- error_raise(ERR_WHAT, line_num);
- return;
+  error_raise(ERR_WHAT, line_num);
+  return;
+ }
+
+ /* Check trailing delimiter: ; = compact, , = tabbed */
+ if (lex->current.type == TOK_SEMICOLON) {
+  use_compact = 1;
+  use_tab = 0;
+  lexer_next(lex);
+ } else if (lex->current.type == TOK_COMMA) {
+  use_tab = 1;
+  use_compact = 0;
+  lexer_next(lex);
  }
 
  arr = runtime_find_dim(rt, name_a, name_a_len);
- if (arr == NULL || arr->dims != 2) {
- error_raise(ERR_HOW, line_num);
- return;
+ if (arr == NULL) {
+  error_raise(ERR_HOW, line_num);
+  return;
  }
 
- /* Print matrix in row-major format, 1-based */
- for (r = 1; r < arr->size[0]; r++) {
- for (c = 1; c < arr->size[1]; c++) {
- int off = r * arr->size[1] + c;
- BValue v = arr->elements[off];
- if (v.type == VAL_FLOAT) {
- printf("%G", v.v.fval);
+ if (arr->dims == 1) {
+  /* 1D: print elements on one line */
+  int base = rt->option_base;
+  for (c = base; c < arr->size[0]; c++) {
+   BValue v = arr->elements[c - base];
+   if (has_using) {
+    printf(fmt_buf, bval_to_float(&v));
+   } else if (v.type == VAL_FLOAT) {
+    printf("%G", v.v.fval);
+   } else {
+    printf("%ld", bval_to_int(&v));
+   }
+   if (c < arr->size[0] - 1) {
+    if (use_compact)
+     printf(" ");
+    else
+     printf("\t");
+   }
+  }
+  printf("\n");
  } else {
- printf("%6ld", bval_to_int(&v));
- }
- if (c < arr->size[1] - 1) printf("\t");
- }
- printf("\n");
+  /* 2D: print as matrix rows */
+  for (r = 1; r < arr->size[0]; r++) {
+   for (c = 1; c < arr->size[1]; c++) {
+    int off = r * arr->size[1] + c;
+    BValue v = arr->elements[off];
+    if (has_using) {
+     printf(fmt_buf, bval_to_float(&v));
+    } else if (v.type == VAL_FLOAT) {
+     printf("%G", v.v.fval);
+    } else {
+     printf("%6ld", bval_to_int(&v));
+    }
+    if (c < arr->size[1] - 1) {
+     if (use_compact)
+      printf(" ");
+     else
+      printf("\t");
+    }
+   }
+   printf("\n");
+  }
  }
  return;
  }
@@ -130,24 +195,33 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 
  lexer_next(lex); /* consume READ */
  if (!pi_mat_get_array_name(lex, name_a, &name_a_len)) {
- error_raise(ERR_WHAT, line_num);
- return;
+  error_raise(ERR_WHAT, line_num);
+  return;
  }
 
  arr = runtime_find_dim(rt, name_a, name_a_len);
- if (arr == NULL || arr->dims != 2) {
- error_raise(ERR_HOW, line_num);
- return;
+ if (arr == NULL) {
+  error_raise(ERR_HOW, line_num);
+  return;
  }
 
- /* Read values from DATA into matrix, 1-based */
- for (r = 1; r < arr->size[0]; r++) {
- for (c = 1; c < arr->size[1]; c++) {
- int off = r * arr->size[1] + c;
- arr->elements[off] = runtime_read_data_bval(
- rt, line_num);
- if (error_occurred()) return;
- }
+ if (arr->dims == 1) {
+  /* 1D: read into elements */
+  for (c = 0; c < arr->total; c++) {
+   arr->elements[c] = runtime_read_data_bval(
+    rt, line_num);
+   if (error_occurred()) return;
+  }
+ } else {
+  /* 2D: read row-major, 1-based */
+  for (r = 1; r < arr->size[0]; r++) {
+   for (c = 1; c < arr->size[1]; c++) {
+    int off = r * arr->size[1] + c;
+    arr->elements[off] = runtime_read_data_bval(
+     rt, line_num);
+    if (error_occurred()) return;
+   }
+  }
  }
  return;
  }
@@ -205,11 +279,12 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  DimArray *arr = runtime_find_dim(rt, name_a, name_a_len);
  int i;
  if (arr == NULL) {
- error_raise(ERR_HOW, line_num);
- return;
+  error_raise(ERR_HOW, line_num);
+  return;
  }
+ /* Works on 1D, 2D, and 3D arrays */
  for (i = 0; i < arr->total; i++) {
- arr->elements[i] = bval_int(0);
+  arr->elements[i] = bval_int(0);
  }
  lexer_next(lex);
  return;
@@ -217,15 +292,14 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 
  if (pi_mat_match_ident(lex, "CON")) {
  DimArray *arr = runtime_find_dim(rt, name_a, name_a_len);
- int r, c;
- if (arr == NULL || arr->dims != 2) {
- error_raise(ERR_HOW, line_num);
- return;
+ int i;
+ if (arr == NULL) {
+  error_raise(ERR_HOW, line_num);
+  return;
  }
- for (r = 1; r < arr->size[0]; r++) {
- for (c = 1; c < arr->size[1]; c++) {
- arr->elements[r * arr->size[1] + c] = bval_int(1);
- }
+ /* Works on 1D, 2D, and 3D arrays */
+ for (i = 0; i < arr->total; i++) {
+  arr->elements[i] = bval_int(1);
  }
  lexer_next(lex);
  return;
@@ -537,47 +611,62 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  int name_c_len;
  DimArray *cc;
  int r, c_idx, k;
+ static BValue temp_b[4096];
+ static BValue temp_c[4096];
+ BValue *bp, *cp;
 
  lexer_next(lex); /* consume '*' */
  if (!pi_mat_get_array_name(lex, name_c, &name_c_len)) {
- error_raise(ERR_WHAT, line_num);
- return;
+  error_raise(ERR_WHAT, line_num);
+  return;
  }
 
  cc = runtime_find_dim(rt, name_c, name_c_len);
  if (cc == NULL || cc->dims != 2) {
- error_raise(ERR_HOW, line_num);
- return;
+  error_raise(ERR_HOW, line_num);
+  return;
  }
 
  /* B cols must match C rows */
  if (b->size[1] != cc->size[0]) {
- error_raise(ERR_HOW, line_num);
- return;
+  error_raise(ERR_HOW, line_num);
+  return;
  }
  /* A must be B rows x C cols */
  if (a->size[0] != b->size[0] ||
- a->size[1] != cc->size[1]) {
- error_raise(ERR_HOW, line_num);
- return;
+     a->size[1] != cc->size[1]) {
+  error_raise(ERR_HOW, line_num);
+  return;
+ }
+
+ /* In-place safety: copy source if it overlaps target */
+ bp = b->elements;
+ cp = cc->elements;
+ if (a == b) {
+  memcpy(temp_b, b->elements,
+   (size_t)b->total * sizeof(BValue));
+  bp = temp_b;
+ }
+ if (a == cc) {
+  memcpy(temp_c, cc->elements,
+   (size_t)cc->total * sizeof(BValue));
+  cp = temp_c;
  }
 
  /* Matrix multiply: A(r,c) = sum B(r,k)*C(k,c) */
  for (r = 1; r < a->size[0]; r++) {
- for (c_idx = 1; c_idx < a->size[1]; c_idx++) {
- double sum = 0.0;
- for (k = 1; k < b->size[1]; k++) {
- double bv = bval_to_float(
- &b->elements[
- r * b->size[1] + k]);
- double cv = bval_to_float(
- &cc->elements[
- k * cc->size[1] + c_idx]);
- sum += bv * cv;
- }
- a->elements[r * a->size[1] + c_idx] =
- bval_float(sum);
- }
+  for (c_idx = 1; c_idx < a->size[1]; c_idx++) {
+   double sum = 0.0;
+   for (k = 1; k < b->size[1]; k++) {
+    double bv = bval_to_float(
+     &bp[r * b->size[1] + k]);
+    double cv = bval_to_float(
+     &cp[k * cc->size[1] + c_idx]);
+    sum += bv * cv;
+   }
+   a->elements[r * a->size[1] + c_idx] =
+    bval_float(sum);
+  }
  }
  return;
  }

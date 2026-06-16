@@ -77,6 +77,7 @@ typedef enum TokenType {
  TOK_CARET, /* ^ (exponentiation) */
  TOK_BACKSLASH, /* \ (integer division) */
  TOK_PIPE, /* | (pipe operator) */
+ TOK_DOT, /* . (field access operator) */
  TOK_APPEND, /* >> (append redirect) */
  TOK_IMAGINARY, /* imaginary literal (e.g., 2i, 3.14i) */
  TOK_COMPLEX_VAR, /* complex variable (Z~) */
@@ -160,6 +161,10 @@ enum {
  KW_FN, /* FN - invoke user function */
  /* Matrix operations */
  KW_MAT, /* MAT - matrix operations */
+ /* Array functions */
+ KW_LBOUND, /* LBOUND - array lower bound */
+ KW_UBOUND, /* UBOUND - array upper bound */
+ KW_DET, /* DET - matrix determinant */
  /* File I/O channels */
  KW_OPEN, /* OPEN - open file channel */
  KW_CLOSE, /* CLOSE - close file channel */
@@ -168,6 +173,7 @@ enum {
  /* Bytecode format */
  KW_BSAVE, /* BSAVE - save program as bytecode */
  KW_BLOAD, /* BLOAD - load program from bytecode */
+ KW_BRUN,  /* BRUN - compile to bytecode and execute */
  /* Module system */
  KW_MODULE, /* MODULE - module management command */
  /* Security */
@@ -483,6 +489,15 @@ enum {
  KW_NERROR,       /* NERROR - last network error */
  KW_NJSONQUERY,   /* NJSONQUERY$ - JSON path query */
  KW_NINFO,        /* NINFO$ - adapter info query */
+
+ /* Advanced string functions (BASIC++ Milestone 19) */
+ KW_REPLACE,      /* REPLACE$ - find/replace in string */
+ KW_REVERSE,      /* REVERSE$ - reverse string */
+ KW_MCASE,        /* MCASE$ - mixed/random case */
+ KW_ICASE,        /* ICASE$ - invert case (swap upper/lower) */
+ KW_ONKEY,        /* ONKEY$ - key-triggered string */
+ KW_LIKE,         /* LIKE - glob pattern matching operator */
+ KW_HASH,         /* HASH$ - string hash (8/16/32/64/128/256 bit) */
 
  KW_COUNT /* sentinel - must be last */
 };

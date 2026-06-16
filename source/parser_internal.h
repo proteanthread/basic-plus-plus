@@ -158,6 +158,8 @@ void pi_parse_read(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_restore(Lexer *lex, RuntimeState *rt,
     int line_num);
+void pi_parse_line_input(Lexer *lex, RuntimeState *rt,
+    int line_num);
 
 /* parser_assign.c - Assignment & variable declaration */
 void pi_parse_let(Lexer *lex, RuntimeState *rt,

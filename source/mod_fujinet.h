@@ -228,6 +228,9 @@ typedef struct FnChannel {
     char     recv_buf[FN_RECV_BUF_SIZE];
     int      recv_pos;
     int      recv_len;
+    /* SSH state */
+    char     ssh_version[128]; /* server banner */
+    int      ssh_exchanged;    /* 1 = version exchange done */
 } FnChannel;
 
 /* ---- FUJI device state ---- */
@@ -247,6 +250,17 @@ typedef struct FnFujiState {
     unsigned int appkey_creator;
     unsigned int appkey_app;
     unsigned char appkey_mode;
+    /* Device slots (desktop: local path aliases) */
+    char     device_slots[FN_MAX_DEVICE_SLOTS][FN_FILE_MAXLEN];
+    int      device_enabled[FN_MAX_DEVICE_SLOTS];
+    char     host_prefix[FN_MAX_HOST_SLOTS][FN_HOST_SLOT_LEN];
+    char     device_path[FN_MAX_DEVICE_SLOTS][FN_FILE_MAXLEN];
+    int      boot_mode;
+    /* Directory browsing state */
+    void    *dir_handle;   /* platform dir handle */
+    char     dir_path[256];
+    int      dir_position;
+    int      dir_open;
 } FnFujiState;
 
 /* ---- Clock device state ---- */

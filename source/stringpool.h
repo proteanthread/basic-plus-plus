@@ -74,4 +74,24 @@ void strpool_reset(StringPool *pool);
  */
 char *strpool_store(StringPool *pool, const char *src, int len);
 
+/*
+ * strpool_compact - Compact the string pool (mark-sweep).
+ *
+ * Walks all live string references in the runtime state,
+ * copies them to a temporary buffer, resets the pool,
+ * and copies them back with updated pointers.
+ * Called automatically when the pool reaches 75% capacity.
+ * Returns bytes reclaimed, or 0 if nothing to do.
+ */
+int strpool_compact(StringPool *pool, void *runtime_state);
+
+/*
+ * strpool_set_runtime - Register runtime state for auto-compact.
+ *
+ * When the pool is exhausted, strpool_alloc will automatically
+ * call strpool_compact using this runtime pointer. Call this
+ * once during runtime_init.
+ */
+void strpool_set_runtime(StringPool *pool, void *rt);
+
 #endif /* BASICPP_STRINGPOOL_H */

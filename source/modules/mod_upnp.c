@@ -45,6 +45,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "config.h"
 #include "mod_upnp.h"
 #include "module.h"
@@ -75,6 +76,7 @@
  #include <sys/select.h>
  #include <netinet/in.h>
  #include <arpa/inet.h>
+ #include <netdb.h>
  #define UPNP_CLOSESOCKET close
  #define UPNP_INVALID_SOCKET (-1)
  typedef int SOCKET;
@@ -525,17 +527,170 @@ static int soap_ioctl(VDev *d, int cmd, void *arg)
  switch (cmd) {
  case VDIO_USER:  /* SOAP send */
   if (arg == NULL) return -1;
+#ifdef UPNP_NO_NETWORKING
+  strcpy(st->last_error,
+   "SOAP: not available on this platform");
+  return -1;
+#else
   {
   char body[2048];
   const char *input = (const char *)arg;
-  (void)soap_build_request(body, 2048,
-   input, "Action", NULL);
-  (void)body;
+  int body_len;
+  char host[256];
+  char path[256];
+  int port = 80;
+  const char *p;
+  const char *pp;
+  struct addrinfo hints, *res;
+  SOCKET sock;
+  char port_str[16];
+  char request[4096];
+  int req_len;
+  int total_read = 0;
 
-  strcpy(st->last_error,
-   "SOAP: action sent (stub response)");
+  /* Build the SOAP XML body */
+  body_len = soap_build_request(body, (int)sizeof(body),
+   input, "Action", NULL);
+  if (body_len <= 0) {
+   strcpy(st->last_error, "SOAP: bad request body");
+   return -1;
+  }
+
+  /* Parse soap_url: http://host:port/path */
+  host[0] = '\0';
+  path[0] = '/'; path[1] = '\0';
+  p = st->soap_url;
+
+  /* Skip http:// if present */
+  if (strncmp(p, "http://", 7) == 0) p += 7;
+  else if (strncmp(p, "HTTP://", 7) == 0) p += 7;
+
+  /* Extract host */
+  pp = p;
+  while (*pp && *pp != ':' && *pp != '/' && *pp != '\0')
+   pp++;
+  {
+   int hlen = (int)(pp - p);
+   if (hlen <= 0 || hlen >= (int)sizeof(host)) {
+    strcpy(st->last_error, "SOAP: bad URL");
+    return -1;
+   }
+   memcpy(host, p, (size_t)hlen);
+   host[hlen] = '\0';
+  }
+
+  /* Extract port if present */
+  if (*pp == ':') {
+   pp++;
+   port = atoi(pp);
+   while (*pp >= '0' && *pp <= '9') pp++;
+  }
+
+  /* Extract path */
+  if (*pp == '/') {
+   strncpy(path, pp, sizeof(path) - 1);
+   path[sizeof(path) - 1] = '\0';
+  }
+
+  /* Connect via TCP */
+  sprintf(port_str, "%d", port);
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+
+  if (getaddrinfo(host, port_str, &hints, &res) != 0) {
+   strcpy(st->last_error, "SOAP: DNS failed");
+   return -1;
+  }
+
+  sock = socket(res->ai_family, res->ai_socktype,
+   res->ai_protocol);
+  if (sock == (SOCKET)UPNP_INVALID_SOCKET) {
+   freeaddrinfo(res);
+   strcpy(st->last_error, "SOAP: socket failed");
+   return -1;
+  }
+
+  if (connect(sock, res->ai_addr,
+   (int)res->ai_addrlen) < 0) {
+   UPNP_CLOSESOCKET(sock);
+   freeaddrinfo(res);
+   strcpy(st->last_error, "SOAP: connect refused");
+   return -1;
+  }
+  freeaddrinfo(res);
+
+  /* Build HTTP POST request */
+  req_len = snprintf(request, sizeof(request),
+   "POST %s HTTP/1.1\r\n"
+   "Host: %s:%d\r\n"
+   "Content-Type: text/xml; charset=utf-8\r\n"
+   "SOAPAction: \"%s#Action\"\r\n"
+   "Content-Length: %d\r\n"
+   "Connection: close\r\n"
+   "\r\n"
+   "%s",
+   path, host, port, input, body_len, body);
+
+  /* Send request */
+  if (send(sock, request, req_len, 0) < 0) {
+   UPNP_CLOSESOCKET(sock);
+   strcpy(st->last_error, "SOAP: send failed");
+   return -1;
+  }
+
+  /* Read response */
+  st->soap_response[0] = '\0';
+  st->soap_response_len = 0;
+  total_read = 0;
+  while (total_read < UPNP_RESPONSE_MAX - 1) {
+   int n = recv(sock, st->soap_response + total_read,
+    UPNP_RESPONSE_MAX - 1 - total_read, 0);
+   if (n <= 0) break;
+   total_read += n;
+  }
+  st->soap_response[total_read] = '\0';
+  st->soap_response_len = total_read;
+
+  UPNP_CLOSESOCKET(sock);
+
+  /* Check for HTTP error */
+  if (total_read > 12 &&
+   strncmp(st->soap_response, "HTTP/", 5) == 0) {
+   const char *sp = strchr(st->soap_response, ' ');
+   if (sp) {
+    int status = atoi(sp + 1);
+    if (status >= 200 && status < 300) {
+     st->last_error[0] = '\0';
+    } else {
+     snprintf(st->last_error,
+      sizeof(st->last_error),
+      "SOAP: HTTP %d", status);
+    }
+   }
+  }
+
+  /* Strip HTTP headers from response,
+   * keep only the SOAP XML body */
+  {
+   char *body_start = strstr(st->soap_response,
+    "\r\n\r\n");
+   if (body_start) {
+    body_start += 4;
+    {
+    int blen = total_read -
+     (int)(body_start - st->soap_response);
+    memmove(st->soap_response,
+     body_start, (size_t)blen);
+    st->soap_response[blen] = '\0';
+    st->soap_response_len = blen;
+    }
+   }
+  }
   }
   return 0;
+#endif
 
  case VDIO_RESET:
   st->soap_response[0] = '\0';

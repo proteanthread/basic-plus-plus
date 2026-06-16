@@ -43,6 +43,7 @@ static const char *opcode_names[OP_COUNT] = {
  "MAT", "OPEN", "CLOSE",
  "CHAIN", "MERGE", "DIALECT",
  "BSAVE", "BLOAD",
+ "BRUN",
  "MODULE",
  "SECURITY",
  "SYSTEM",
@@ -113,6 +114,8 @@ static const KeywordOpcodeMap kw_opcode_map[] = {
  
  { KW_BSAVE, OP_BSAVE },
  { KW_BLOAD, OP_BLOAD },
+ 
+ { KW_BRUN, OP_BRUN },
  
  { KW_MODULE, OP_MODULE },
  
@@ -374,6 +377,11 @@ void vm_return_sub(void *rt_ptr, int line_num)
  }
 
  rt->next_index = frame.data.gosub.return_index;
+
+ /* If we were inside an event handler, clear the guard
+ * so future events can fire */
+ if (rt->event_in_handler)
+ rt->event_in_handler = 0;
 }
 
 /*

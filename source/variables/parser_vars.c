@@ -322,53 +322,90 @@ void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
 }
 
 /*
- * pi_parse_redim - Handle REDIM command.
+ * pi_parse_redim - Handle REDIM and REDIM PRESERVE.
  */
 void pi_parse_redim(Lexer *lex, RuntimeState *rt, int line_num)
 {
  /*
- * REDIM array(size)
- * Resize dynamic arrays. Peek at name,
- * erase existing array, then DIM.
+ * REDIM array(size)          -- erase and re-DIM
+ * REDIM PRESERVE array(size) -- resize keeping data
  */
- {
- /* Peek at the array name to erase it */
+ int preserve = 0;
  char rname[MAX_VAR_NAME_LEN + 1];
  int rlen = 0, ri;
  DimArray *existing;
+ /* Static buffer for PRESERVE: max 4096 elements */
+ static BValue saved[4096];
+ int saved_count = 0;
 
+ /* Check for PRESERVE keyword */
+ if (lex->current.type == TOK_NAMED_VAR) {
+  const char *s = lex->current.str_start;
+  int slen = lex->current.str_length;
+  if (slen == 8 &&
+   (s[0]=='P'||s[0]=='p') &&
+   (s[1]=='R'||s[1]=='r') &&
+   (s[2]=='E'||s[2]=='e') &&
+   (s[3]=='S'||s[3]=='s') &&
+   (s[4]=='E'||s[4]=='e') &&
+   (s[5]=='R'||s[5]=='r') &&
+   (s[6]=='V'||s[6]=='v') &&
+   (s[7]=='E'||s[7]=='e')) {
+   preserve = 1;
+   lexer_next(lex); /* consume PRESERVE */
+  }
+ }
+
+ /* Peek at array name */
  if (lex->current.type == TOK_VARIABLE) {
- rname[0] = lex->current.value
- .var_name;
- rname[1] = '\0';
- rlen = 1;
- } else if (lex->current.type ==
- TOK_NAMED_VAR) {
- rlen = lex->current.str_length;
- if (rlen > MAX_VAR_NAME_LEN)
- rlen = MAX_VAR_NAME_LEN;
- memcpy(rname,
- lex->current.str_start,
- (size_t)rlen);
- rname[rlen] = '\0';
+  rname[0] = lex->current.value.var_name;
+  rname[1] = '\0';
+  rlen = 1;
+ } else if (lex->current.type == TOK_NAMED_VAR) {
+  rlen = lex->current.str_length;
+  if (rlen > MAX_VAR_NAME_LEN)
+   rlen = MAX_VAR_NAME_LEN;
+  memcpy(rname, lex->current.str_start,
+   (size_t)rlen);
+  rname[rlen] = '\0';
  }
  /* Uppercase for matching */
  for (ri = 0; ri < rlen; ri++) {
- if (rname[ri] >= 'a' &&
- rname[ri] <= 'z')
- rname[ri] = (char)
- (rname[ri] - 32);
+  if (rname[ri] >= 'a' && rname[ri] <= 'z')
+   rname[ri] = (char)(rname[ri] - 32);
  }
 
- /* Find and erase existing array */
- existing = runtime_find_dim(
- rt, rname, rlen);
+ /* Find existing array */
+ existing = runtime_find_dim(rt, rname, rlen);
  if (existing != NULL) {
- existing->name[0] = '\0';
- existing->total = 0;
+  if (preserve) {
+   /* Save existing data */
+   saved_count = existing->total;
+   if (saved_count > 4096)
+    saved_count = 4096;
+   memcpy(saved, existing->elements,
+    (size_t)saved_count * sizeof(BValue));
+  }
+  /* Erase the old array */
+  existing->name[0] = '\0';
+  existing->total = 0;
  }
 
+ /* Re-DIM with new size */
  pi_parse_dim(lex, rt, line_num);
+ if (error_occurred()) return;
+
+ /* Restore preserved data */
+ if (preserve && saved_count > 0) {
+  DimArray *new_arr =
+   runtime_find_dim(rt, rname, rlen);
+  if (new_arr != NULL) {
+   int copy_count = saved_count;
+   if (copy_count > new_arr->total)
+    copy_count = new_arr->total;
+   memcpy(new_arr->elements, saved,
+    (size_t)copy_count * sizeof(BValue));
+  }
  }
  return;
 }
@@ -627,6 +664,23 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  tname[0] = lex->current.value
  .var_name;
  tlen = 1;
+ } else if (lex->current.type ==
+ TOK_KEYWORD) {
+ /* Allow keyword names as type names
+ * (e.g., TYPE Point where POINT is
+ * a builtin function keyword) */
+ const char *kn =
+ lexer_keyword_name(
+ lex->current.value.keyword);
+ if (kn != NULL) {
+ tlen = (int)strlen(kn);
+ if (tlen > MAX_VAR_NAME_LEN)
+ tlen = MAX_VAR_NAME_LEN;
+ memcpy(tname, kn, (size_t)tlen);
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
  } else {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -677,7 +731,9 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  if (fl.current.type ==
  TOK_NAMED_VAR ||
  fl.current.type ==
- TOK_VARIABLE) {
+ TOK_VARIABLE ||
+ fl.current.type ==
+ TOK_KEYWORD) {
  int fi = td->field_count;
  if (fi < MAX_TYPE_FIELDS) {
  int nl;
@@ -698,6 +754,33 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  td->fields[fi]
  .name[nl] =
  '\0';
+ } else if (fl.current.type ==
+ TOK_KEYWORD) {
+ /* Keyword as field name
+ * (e.g., Name, Color) */
+ const char *kn =
+ lexer_keyword_name(
+ fl.current.value
+ .keyword);
+ if (kn != NULL) {
+ nl = (int)strlen(kn);
+ if (nl >
+ MAX_VAR_NAME_LEN)
+ nl =
+ MAX_VAR_NAME_LEN;
+ memcpy(
+ td->fields[fi]
+ .name,
+ kn, (size_t)nl);
+ td->fields[fi]
+ .name[nl] =
+ '\0';
+ } else {
+ td->fields[fi]
+ .name[0] = '?';
+ td->fields[fi]
+ .name[1] = '\0';
+ }
  } else {
  td->fields[fi]
  .name[0] =
@@ -709,6 +792,8 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  }
  td->fields[fi]
  .is_string = 0;
+ td->fields[fi]
+ .nested_type_index = -1;
  lexer_next(&fl);
  /* Skip AS keyword */
  if (fl.current.type ==
@@ -727,6 +812,23 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  td->fields[fi]
  .is_string =
  1;
+ } else if (
+ fl.current.type ==
+ TOK_NAMED_VAR) {
+ /* Check for nested type */
+ UserTypeDef *nt =
+ runtime_find_type(
+ rt,
+ fl.current.str_start,
+ fl.current
+ .str_length);
+ if (nt != NULL) {
+ int nti = (int)(nt -
+ rt->user_types);
+ td->fields[fi]
+ .nested_type_index
+ = nti;
+ }
  }
  }
  td->field_count++;
@@ -1098,8 +1200,9 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
          }
      }
 
-     /* DIM arrays */
+     /* DIM arrays (skip typed arrays, shown separately) */
      for (v = 0; v < rt->dim_count; v++) {
+         if (rt->dim_arrays[v].type_index >= 0) continue;
          printf(" DIM %s(",
              rt->dim_arrays[v].name);
          if (rt->dim_arrays[v].dims == 1) {
@@ -1137,6 +1240,53 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
                  .v.ival);
          }
          printed = 1;
+     }
+
+     /* User-Defined Type instances */
+     for (v = 0; v < rt->typed_var_count; v++) {
+         TypedVar *tv = &rt->typed_vars[v];
+         UserTypeDef *td = &rt->user_types[tv->type_index];
+         int fi;
+         printf(" %s AS %s",
+             tv->name, td->name);
+         printf(" {");
+         for (fi = 0; fi < td->field_count; fi++) {
+             if (fi > 0) printf(",");
+             printf(" .%s=", td->fields[fi].name);
+             if (tv->fields[fi].type == VAL_STRING &&
+                 tv->fields[fi].v.sval.data != NULL) {
+                 printf("\"%.*s\"",
+                     tv->fields[fi].v.sval.length,
+                     tv->fields[fi].v.sval.data);
+             } else if (tv->fields[fi].type ==
+                 VAL_FLOAT) {
+                 printf("%g",
+                     tv->fields[fi].v.fval);
+             } else {
+                 printf("%ld",
+                     tv->fields[fi].v.ival);
+             }
+         }
+         printf(" }\n");
+         printed = 1;
+     }
+
+     /* Typed DIM arrays */
+     for (v = 0; v < rt->dim_count; v++) {
+         if (rt->dim_arrays[v].type_index >= 0) {
+             UserTypeDef *td = &rt->user_types[
+                 rt->dim_arrays[v].type_index];
+             int elem_count = rt->dim_arrays[v].total
+                 / td->field_count;
+             printf(" DIM %s(%d) AS %s"
+                 " [%d elements x %d fields]\n",
+                 rt->dim_arrays[v].name,
+                 elem_count,
+                 td->name,
+                 elem_count,
+                 td->field_count);
+             printed = 1;
+         }
      }
 
      if (!printed)

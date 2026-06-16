@@ -377,9 +377,14 @@ void pi_parse_mid(Lexer *lex, RuntimeState *rt, int line_num)
  /*
  * MID$(var$, start [, len]) = rep$
  * Replace characters in var$ in-place.
+ * Supports both single-letter string vars (A$)
+ * and named string vars (Name$).
  */
  {
- char sv_name;
+ int is_named = 0;
+ char sv_name = 0;
+ const char *nv_name = NULL;
+ int nv_len = 0;
  int start_pos, rep_len;
  int max_replace;
  BValue cur_val, rep_val;
@@ -395,15 +400,25 @@ void pi_parse_mid(Lexer *lex, RuntimeState *rt, int line_num)
  }
  lexer_next(lex);
 
- /* String variable name */
- if (lex->current.type !=
+ /* String variable name:
+  * TOK_STRING_VAR = single-letter A$
+  * TOK_NAMED_VAR = multi-char Name$ (also
+  *   used for A$ in some dialects) */
+ if (lex->current.type ==
  TOK_STRING_VAR) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
  sv_name =
  lex->current.value.var_name;
  lexer_next(lex);
+ } else if (lex->current.type ==
+ TOK_NAMED_VAR) {
+ is_named = 1;
+ nv_name = lex->current.str_start;
+ nv_len = lex->current.str_length;
+ lexer_next(lex);
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
 
  /* Comma, start position */
  if (lex->current.type != TOK_COMMA) {
@@ -444,8 +459,13 @@ void pi_parse_mid(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred()) return;
 
  /* Get current string value */
+ if (is_named) {
+ cur_val = runtime_get_named_var_bval(
+ rt, nv_name, nv_len);
+ } else {
  cur_val = runtime_get_string_var(
  rt, sv_name);
+ }
  if (cur_val.type != VAL_STRING ||
  cur_val.v.sval.data == NULL) {
  return; /* empty, nothing to do */
@@ -478,14 +498,22 @@ void pi_parse_mid(Lexer *lex, RuntimeState *rt, int line_num)
  memcpy(new_ptr + (start_pos - 1),
  rep_data,
  (size_t)copy_len);
+ if (is_named) {
+ runtime_set_named_var_bval(rt,
+ nv_name, nv_len,
+ bval_string(new_ptr,
+ cur_len));
+ } else {
  runtime_set_string_var(rt,
  sv_name,
  bval_string(new_ptr,
  cur_len));
  }
  }
+ }
  return;
 }
+
 
 /*
  * pi_parse_key - Handle KEY command.

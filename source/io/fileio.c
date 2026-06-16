@@ -541,7 +541,10 @@ int fileio_input_line(int chan, char *buf, int max_len, int line_num)
  /* Device-backed channel */
  if (channels[idx].mode == FCHAN_DEVICE &&
  channels[idx].vdev != NULL) {
- return vdev_gets(channels[idx].vdev, buf, max_len);
+  int rc = vdev_gets(channels[idx].vdev, buf, max_len);
+  /* vdev_gets returns char count (>=0) or -1 on error.
+   * Normalize to: 0 = success, -1 = error/EOF. */
+  return (rc >= 0) ? 0 : -1;
  }
 
  /* File-backed channel */

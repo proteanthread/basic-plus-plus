@@ -68,4 +68,19 @@ void exec_chain_run(RuntimeState *rt);
  */
 int exec_cont(RuntimeState *rt);
 
+/*
+ * exec_brun - Compile to bytecode and execute via VM.
+ *
+ * The bytecode execution path (Milestone 13):
+ * 1. Compile stored program to PCode bytecode
+ * 2. Execute bytecode via stack-based VM
+ * 3. Free bytecode on completion
+ *
+ * This is called by the BRUN command. It runs alongside
+ * the traditional interpreter (RUN/exec_run) as an
+ * alternative execution engine.
+ */
+void exec_brun(RuntimeState *rt);
+
 #endif /* BASICPP_EXEC_H */
+

@@ -984,3 +984,101 @@ void pi_parse_restore(Lexer *lex, RuntimeState *rt, int line_num)
  * parse_merge_cmd - Parse MERGE "filename"
  */
 
+/*
+ * pi_parse_line_input - Handle LINE INPUT statement.
+ *
+ * Syntax:
+ *   LINE INPUT [;] ["prompt";] var$
+ *   LINE INPUT #channel, var$
+ *
+ * Reads an entire line (including commas and
+ * quotes) into a string variable. Unlike INPUT,
+ * no splitting on commas.
+ */
+void pi_parse_line_input(Lexer *lex, RuntimeState *rt,
+ int line_num)
+{
+ int channel = -1;
+ int suppress_cr = 0;
+ const char *prompt = NULL;
+ int prompt_len = 0;
+ char buf[MAX_LINE_LENGTH + 1];
+ int blen;
+ char *ptr;
+
+ /* Check for semicolon (suppress CR after input) */
+ if (lex->current.type == TOK_SEMICOLON) {
+ suppress_cr = 1;
+ lexer_next(lex);
+ }
+
+ /* Check for #channel */
+ if (lex->current.type == TOK_HASH) {
+ lexer_next(lex);
+ channel = (int)parse_expression(lex, rt, line_num);
+ if (error_occurred()) return;
+ if (lex->current.type == TOK_COMMA)
+ lexer_next(lex);
+ }
+
+ /* Check for optional "prompt"; */
+ if (lex->current.type == TOK_STRING) {
+ prompt = lex->current.str_start;
+ prompt_len = lex->current.str_length;
+ lexer_next(lex);
+ /* Expect semicolon after prompt */
+ if (lex->current.type == TOK_SEMICOLON)
+ lexer_next(lex);
+ }
+
+ /* Target variable: string var or named var */
+ if (channel >= 0) {
+ /* File LINE INPUT */
+ if (fileio_input_line(channel, buf,
+  MAX_LINE_LENGTH, line_num) != 0) {
+  if (!error_occurred())
+   error_raise(ERR_HOW, line_num);
+  return;
+ }
+ blen = (int)strlen(buf);
+ } else {
+ /* Console LINE INPUT */
+ if (prompt && prompt_len > 0) {
+ fwrite(prompt, 1, (size_t)prompt_len, stdout);
+ fflush(stdout);
+ } else if (!suppress_cr) {
+ printf("? ");
+ fflush(stdout);
+ }
+ if (!fgets(buf, MAX_LINE_LENGTH, stdin)) {
+ buf[0] = '\0';
+ blen = 0;
+ } else {
+ blen = (int)strlen(buf);
+ /* Strip trailing newline */
+ while (blen > 0 &&
+ (buf[blen-1] == '\n' ||
+ buf[blen-1] == '\r'))
+ blen--;
+ }
+ }
+
+ buf[blen] = '\0';
+ ptr = strpool_store(&rt->strpool, buf, blen);
+
+ /* Assign to target variable */
+ if (lex->current.type == TOK_STRING_VAR) {
+ char vn = lex->current.value.var_name;
+ lexer_next(lex);
+ runtime_set_string_var(rt, vn,
+ bval_string(ptr, blen));
+ } else if (lex->current.type == TOK_NAMED_VAR) {
+ const char *name = lex->current.str_start;
+ int nlen = lex->current.str_length;
+ lexer_next(lex);
+ runtime_set_named_var_bval(rt, name, nlen,
+ bval_string(ptr, blen));
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ }
+}

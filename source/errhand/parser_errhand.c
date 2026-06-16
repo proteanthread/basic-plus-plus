@@ -84,18 +84,33 @@ void pi_parse_resume(Lexer *lex, RuntimeState *rt, int line_num)
  * RESUME [NEXT | line]
  * Return from ON ERROR GOTO handler.
  * RESUME - retry the failed line.
- * RESUME NEXT - continue at next line.
+ * RESUME NEXT - continue at next line after error.
+ * RESUME n - jump to line n.
  */
  if (lex->current.type == TOK_EOF ||
  lex->current.type == TOK_COLON) {
- /* RESUME - re-execute current line */
- /* (no-op, execution continues) */
+ /* RESUME - re-execute the error line */
+ if (rt->last_err_line > 0) {
+ vm_jump(rt, rt->last_err_line, line_num);
+ }
  } else if (lex->current.type ==
  TOK_KEYWORD &&
  lex->current.value.keyword ==
  KW_NEXT) {
  lexer_next(lex);
- /* RESUME NEXT: continue at next line */
+ /* RESUME NEXT: find the error line's program
+ * index, then advance to the next line after it */
+ if (rt->last_err_line > 0) {
+ int idx;
+ ProgramStore *pgm = rt->program;
+ for (idx = 0; idx < pgm->count; idx++) {
+ if (pgm->lines[idx].line_number ==
+ rt->last_err_line) {
+ rt->next_index = idx + 1;
+ break;
+ }
+ }
+ }
  } else {
  /* RESUME linenum */
  long target;
@@ -104,6 +119,7 @@ void pi_parse_resume(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred()) return;
  vm_jump(rt, (int)target, line_num);
  }
+ /* Re-enable error handler after RESUME */
  error_clear();
  return;
 }
