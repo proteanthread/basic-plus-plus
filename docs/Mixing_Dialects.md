@@ -1,6 +1,6 @@
 MIXING DIALECTS IN BASIC++
 ==========================
-Version 1.5.0
+Version 4.0.1
 
 BASIC++ is the union of all BASIC dialects.  This means you
 can mix features from GW-BASIC, QBasic, Commodore, Apple,

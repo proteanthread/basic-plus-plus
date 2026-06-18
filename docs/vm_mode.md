@@ -1,5 +1,16 @@
 # Hybrid VM Execution
 
+
+---
+
+## Table of Contents
+
+- P-Code Compilation
+  - Syntax
+- Architecture
+
+---
+
 BASIC++ 3.0.0 introduces a Hybrid VM Execution engine with a standard stack-based bytecode architecture. 
 
 ## P-Code Compilation

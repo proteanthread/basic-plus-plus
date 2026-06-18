@@ -1,35 +1,41 @@
-/*
- * ---
- * BASIC++ Interpreter - help.c
- * ---
- *
- * Help & introspection system.
- *
- * Makes BASIC++ self-describing: every command, function, and
- * system setting is documented within the interpreter itself.
- *
- * ORGANIZATION:
- * Both HELP and CATALOG group entries by functional category,
- * sorted alphabetically within each category. Categories:
- *
- *   Control Flow       - IF, FOR, GOTO, GOSUB, WHILE, DO, etc.
- *   Input / Output     - PRINT, INPUT, CLS, LOCATE, etc.
- *   Arithmetic / Math  - ABS, SIN, COS, RND, MOD, etc.
- *   String             - LEN, LEFT$, MID$, CHR$, ASC, etc.
- *   Variables & Memory - LET, DIM, PEEK, POKE, SWAP, etc.
- *   File I/O           - OPEN, CLOSE, READ, WRITE, etc.
- *   Graphics           - SCREEN, DRAW, PSET, CIRCLE, etc.
- *   Sound              - BEEP, SOUND, PLAY
- *   System & Environ   - SYSTEM, SHELL, ENVIRON, DIALECT, etc.
- *   Debug & Test       - BREAK, CONT, VARS, ASSERT, etc.
- *   Program Mgmt       - RUN, LIST, SAVE, LOAD, NEW, etc.
- *   Editing            - RENUM, DELETE, EDIT, AUTO
- *   Devices & Network  - VDEV, VNET, DEVMAP, FUJINET, etc.
- *   Operators          - AND, OR, NOT, XOR, MOD, EQV, IMP
- *   Introspection      - HELP, INFO, CATALOG, VER
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - help.c
+ // ---
+ //
+ // Help & introspection system.
+ //
+ // Makes BASIC++ self-describing: every command, function, and
+ // system setting is documented within the interpreter itself.
+ //
+ // ORGANIZATION:
+ // Both HELP and CATALOG group entries by functional category,
+ // sorted alphabetically within each category. Categories:
+ //
+ //   Control Flow       - IF, FOR, GOTO, GOSUB, WHILE, DO, etc.
+ //   Input / Output     - PRINT, INPUT, CLS, LOCATE, etc.
+ //   Arithmetic / Math  - ABS, SIN, COS, RND, MOD, etc.
+ //   String             - LEN, LEFT$, MID$, CHR$, ASC, etc.
+ //   Variables & Memory - LET, DIM, PEEK, POKE, SWAP, etc.
+ //   File I/O           - OPEN, CLOSE, READ, WRITE, etc.
+ //   Graphics           - SCREEN, DRAW, PSET, CIRCLE, etc.
+ //   Sound              - BEEP, SOUND, PLAY
+ //   System & Environ   - SYSTEM, SHELL, ENVIRON, DIALECT, etc.
+ //   Debug & Test       - BREAK, CONT, VARS, ASSERT, etc.
+ //   Program Mgmt       - RUN, LIST, SAVE, LOAD, NEW, etc.
+ //   Editing            - RENUM, DELETE, EDIT, AUTO
+ //   Devices & Network  - VDEV, VNET, DEVMAP, FUJINET, etc.
+ //   Operators          - AND, OR, NOT, XOR, MOD, EQV, IMP
+ //   Introspection      - HELP, INFO, CATALOG, VER
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #include <stdio.h>
 #include <string.h>
@@ -41,28 +47,27 @@
 #include "module.h"
 #include "memmap.h"
 
-/* --- Help Category IDs ---
- */
+// --- Help Category IDs ---
 typedef enum HelpCatId {
- HCAT_FLOW = 0,   /* Control Flow */
- HCAT_IO,         /* Input / Output */
- HCAT_MATH,       /* Arithmetic / Math */
- HCAT_STRING,     /* String Functions */
- HCAT_VARMEM,     /* Variables & Memory */
- HCAT_FILEIO,     /* File I/O */
- HCAT_GFX,        /* Graphics */
- HCAT_SOUND,      /* Sound */
- HCAT_SYSENV,     /* System & Environment */
- HCAT_DEBUG,      /* Debugging & Testing */
- HCAT_PROGMGMT,   /* Program Management */
- HCAT_EDIT,       /* Editing */
- HCAT_DEVICE,     /* Devices & Networking */
- HCAT_OPER,       /* Operators */
- HCAT_INTRO,      /* Introspection */
- HCAT_COUNT       /* sentinel */
+ HCAT_FLOW = 0, // Control Flow
+ HCAT_IO, // Input / Output
+ HCAT_MATH, // Arithmetic / Math
+ HCAT_STRING, // String Functions
+ HCAT_VARMEM, // Variables & Memory
+ HCAT_FILEIO, // File I/O
+ HCAT_GFX, // Graphics
+ HCAT_SOUND, // Sound
+ HCAT_SYSENV, // System & Environment
+ HCAT_DEBUG, // Debugging & Testing
+ HCAT_PROGMGMT, // Program Management
+ HCAT_EDIT, // Editing
+ HCAT_DEVICE, // Devices & Networking
+ HCAT_OPER, // Operators
+ HCAT_INTRO, // Introspection
+ HCAT_COUNT // sentinel
 } HelpCatId;
 
-/* Category display names */
+// Category display names
 static const char *help_cat_names[] = {
  "Control Flow",
  "Input / Output",
@@ -81,11 +86,10 @@ static const char *help_cat_names[] = {
  "Introspection"
 };
 
-/* --- Command Help Database ---
- * Each entry maps a keyword to a short description, usage
- * example, and category. Entries within each category are
- * sorted alphabetically by keyword.
- */
+// --- Command Help Database ---
+ // Each entry maps a keyword to a short description, usage
+ // example, and category. Entries within each category are
+ // sorted alphabetically by keyword.
 typedef struct HelpEntry {
  const char *keyword;
  const char *summary;
@@ -95,7 +99,7 @@ typedef struct HelpEntry {
 
 static const HelpEntry help_db[] = {
 
- /* ===== Control Flow ===== (alphabetical) */
+ // ===== Control Flow ===== (alphabetical)
  { "CALL", "Invoke a named subroutine",
  "CALL MySub(10, \"test\")",               HCAT_FLOW },
  { "CASE", "Case clause within SELECT CASE",
@@ -163,7 +167,7 @@ static const HelpEntry help_db[] = {
  { "WHILE", "Begin a conditional loop",
  "WHILE A>0 ... WEND",                   HCAT_FLOW },
 
- /* ===== Input / Output ===== (alphabetical) */
+ // ===== Input / Output ===== (alphabetical)
  { "CLS", "Clear the screen",
  "CLS",                                   HCAT_IO },
  { "COLOR", "Set text foreground/background",
@@ -195,7 +199,7 @@ static const HelpEntry help_db[] = {
  { "WRITE", "Write comma-delimited data",
  "WRITE #1, A, B$, C",                   HCAT_IO },
 
- /* ===== Arithmetic / Math ===== (alphabetical) */
+ // ===== Arithmetic / Math ===== (alphabetical)
  { "ABS", "Absolute value",
  "PRINT ABS(-5)  ' prints 5",            HCAT_MATH },
  { "ACOS", "Arccosine (SBASIC, returns radians)",
@@ -249,7 +253,7 @@ static const HelpEntry help_db[] = {
  { "TANH", "Hyperbolic tangent (SBASIC)",
  "PRINT TANH(1)  ' 0.7616",             HCAT_MATH },
 
- /* ===== String Functions ===== (alphabetical) */
+ // ===== String Functions ===== (alphabetical)
  { "ASC", "ASCII code of first character (array unpack form)",
  "X=ASC(\"A\") '65 | DIM A(10): A(0)=ASC(\"HELLO\") 'unpack to A(0..4)",
                                           HCAT_STRING },
@@ -311,7 +315,7 @@ static const HelpEntry help_db[] = {
  { "VAL", "Convert string to number",
  "A=VAL(\"42\")",                         HCAT_STRING },
 
- /* ===== Variables & Memory ===== (alphabetical) */
+ // ===== Variables & Memory ===== (alphabetical)
  { "CLEAR", "Clear stack and variables",
  "CLEAR",                                 HCAT_VARMEM },
  { "CLR", "Clear all variables (Atari/C64)",
@@ -373,7 +377,7 @@ static const HelpEntry help_db[] = {
  { "VARPTR", "Pointer index of a variable",
  "PRINT VARPTR(A)",                       HCAT_VARMEM },
 
- /* ===== File I/O ===== (alphabetical) */
+ // ===== File I/O ===== (alphabetical)
  { "ASK", "Query file info (ECMA-116)",
  "ASK #1: FILESIZE F",                   HCAT_FILEIO },
  { "BLOAD", "Load compiled bytecode",
@@ -423,7 +427,7 @@ static const HelpEntry help_db[] = {
  { "UNLOCK", "Unlock file records",
  "UNLOCK #1, record",                     HCAT_FILEIO },
 
- /* ===== Graphics ===== (alphabetical) */
+ // ===== Graphics ===== (alphabetical)
  { "CIRCLE", "Draw a circle",
  "CIRCLE (160,100), 50",                  HCAT_GFX },
  { "DRAW", "Draw using graphics macros",
@@ -445,7 +449,7 @@ static const HelpEntry help_db[] = {
  { "WINDOW", "Set logical coordinate system",
  "WINDOW (0,0)-(639,199)",               HCAT_GFX },
 
- /* ===== Sound ===== (alphabetical) */
+ // ===== Sound ===== (alphabetical)
  { "BEEP", "Emit an audible beep",
  "BEEP",                                  HCAT_SOUND },
  { "PLAY", "Play music macro language",
@@ -453,7 +457,7 @@ static const HelpEntry help_db[] = {
  { "SOUND", "Play a tone at frequency",
  "SOUND 440, 18",                         HCAT_SOUND },
 
- /* ===== System & Environment ===== (alphabetical) */
+ // ===== System & Environment ===== (alphabetical)
  { "ALARM$", "Get/set alarm time",
  "ALARM$=\"23:00:00\" or PRINT ALARM$",  HCAT_SYSENV },
  { "BYE", "Exit the interpreter",
@@ -527,7 +531,7 @@ static const HelpEntry help_db[] = {
  { "PLAY(n)", "Enable/disable music buffer interrupt",
  "PLAY ON | PLAY OFF | PLAY STOP",       HCAT_SYSENV },
 
- /* ===== Error Handling ===== */
+ // ===== Error Handling =====
  { "CAUSE", "Raise an exception (ECMA-116)",
  "CAUSE EXCEPTION 1000",                  HCAT_FLOW },
  { "ERL", "Line number of last error",
@@ -543,7 +547,7 @@ static const HelpEntry help_db[] = {
  { "TRAP", "Set error/event trap handler (hybrid)",
  "TRAP n | TRAP e,s,n | TRAP (status) | ON TRAP GOSUB n", HCAT_FLOW },
 
- /* ===== Debugging & Testing ===== (alphabetical) */
+ // ===== Debugging & Testing ===== (alphabetical)
  { "ASSERT", "Test an assertion (pass/fail)",
  "ASSERT 2+3=5 or ASSERT A>0",           HCAT_DEBUG },
  { "BREAK", "Set/clear/list breakpoints",
@@ -564,7 +568,7 @@ static const HelpEntry help_db[] = {
  "VARS [USER|ENV|SYSTEM|ALL] - program, user, OS, or BASIC++ env",
                                           HCAT_DEBUG },
 
- /* ===== Program Management ===== (alphabetical) */
+ // ===== Program Management ===== (alphabetical)
  { "COMPILE", "Transpile BASIC to C source",
  "COMPILE \"output.c\"",                  HCAT_PROGMGMT },
  { "LIST", "Display program lines",
@@ -584,7 +588,7 @@ static const HelpEntry help_db[] = {
  { "UNSAVE", "Delete the last saved file",
  "UNSAVE  Deletes last SAVE/LOAD filename",     HCAT_PROGMGMT },
 
- /* ===== Editing ===== (alphabetical) */
+ // ===== Editing ===== (alphabetical)
  { "ALIAS", "Remap keywords, operators, load language packs",
  "ALIAS PRINT = \"X\" | LIST | CLEAR | COUNT | REMOVE | SAVE | LOAD | LANG",
                                           HCAT_EDIT },
@@ -609,7 +613,7 @@ static const HelpEntry help_db[] = {
  { "RENUM", "Renumber program lines",
  "RENUM or RENUM 100,5",                 HCAT_EDIT },
 
- /* ===== Devices & Networking ===== (alphabetical) */
+ // ===== Devices & Networking ===== (alphabetical)
  { "CLOCK:", "FujiNet NTP clock device",
  "Read time via CLOCK: device (ISO/binary formats)",
                                           HCAT_DEVICE },
@@ -651,7 +655,7 @@ static const HelpEntry help_db[] = {
  { "WAIT", "Wait for port status",
  "WAIT port, AND_mask [,XOR_mask]",       HCAT_DEVICE },
 
- /* ===== Operators ===== (alphabetical) */
+ // ===== Operators ===== (alphabetical)
  { "AND", "Logical/bitwise AND operator",
  "IF A>0 AND B>0 THEN ...",               HCAT_OPER },
  { "EQV", "Logical equivalence operator",
@@ -667,7 +671,7 @@ static const HelpEntry help_db[] = {
  { "XOR", "Bitwise exclusive OR",
  "PRINT 5 XOR 3  ' prints 6",            HCAT_OPER },
 
- /* ===== Introspection ===== (alphabetical) */
+ // ===== Introspection ===== (alphabetical)
  { "CATALOG", "List all commands & functions",
  "CATALOG",                               HCAT_INTRO },
  { "DIALECT$", "Current dialect name (read-only)",
@@ -689,19 +693,18 @@ static const HelpEntry help_db[] = {
  { NULL, NULL, NULL, 0 }
 };
 
-/* Security level names for INFO */
+// Security level names for INFO
 static const char *sec_names[] = {
  "OPEN", "STANDARD", "RESTRICTED"
 };
 
-/* --- Alphabetical sorting helpers ---
- *
- * help_db[] is intended to be alphabetical in source, but
- * to guarantee correct output regardless of source order we
- * sort indices at display time.
- */
+// --- Alphabetical sorting helpers ---
+ //
+ // help_db[] is intended to be alphabetical in source, but
+ // to guarantee correct output regardless of source order we
+ // sort indices at display time.
 
-/* Case-insensitive string compare (like stricmp but portable C89) */
+// Case-insensitive string compare (like stricmp but portable C89)
 static int str_cmp_ci(const char *a, const char *b)
 {
  while (*a && *b) {
@@ -714,7 +717,7 @@ static int str_cmp_ci(const char *a, const char *b)
  return (unsigned char)*a - (unsigned char)*b;
 }
 
-/* Sort an array of indices into help_db[] by keyword name */
+// Sort an array of indices into help_db[] by keyword name
 static void sort_indices(int *idx, int count)
 {
  int i, j;
@@ -731,23 +734,22 @@ static void sort_indices(int *idx, int count)
  }
 }
 
-/* --- help_show - Display command help ---
- */
+// --- help_show - Display command help ---
 void help_show(const char *topic)
 {
  if (topic == NULL || topic[0] == '\0') {
- /* No topic - show categorized command summary */
+ // No topic - show categorized command summary
  int cat;
  int i;
  int fcount;
- /* Index buffer for sorting within each category */
+ // Index buffer for sorting within each category
  int sorted[256];
  int scount;
 
  printf("=== BASIC++ COMMAND REFERENCE ===\n\n");
 
  for (cat = 0; cat < HCAT_COUNT; cat++) {
- /* Collect indices for this category */
+ // Collect indices for this category
  scount = 0;
  for (i = 0; help_db[i].keyword != NULL; i++) {
  if ((int)help_db[i].category == cat &&
@@ -757,7 +759,7 @@ void help_show(const char *topic)
  }
  if (scount == 0) continue;
 
- /* Sort alphabetically */
+ // Sort alphabetically
  sort_indices(sorted, scount);
 
  printf("[%s]\n", help_cat_names[cat]);
@@ -770,11 +772,9 @@ void help_show(const char *topic)
  printf("\n");
  }
 
- /*
-  * Also list registered functions that have
-  * help_text set. This covers functions added
-  * by external modules, libraries, and plugins.
-  */
+  // Also list registered functions that have
+  // help_text set. This covers functions added
+  // by external modules, libraries, and plugins.
  fcount = funcreg_count();
  if (fcount > 0) {
  int shown = 0;
@@ -797,13 +797,13 @@ void help_show(const char *topic)
  printf("Type CATALOG for categorized list.\n");
  printf("Type INFO for system information.\n");
  } else {
- /* Search for specific topic */
+ // Search for specific topic
  int i;
  int found = 0;
 
- /* 1. Search static command help database */
+ // 1. Search static command help database
  for (i = 0; help_db[i].keyword != NULL; i++) {
- /* Case-insensitive compare */
+ // Case-insensitive compare
  const char *a = topic;
  const char *b = help_db[i].keyword;
  int match = 1;
@@ -831,11 +831,9 @@ void help_show(const char *topic)
  }
  }
 
- /*
-  * 2. If not found in static db, search function
-  * registry. This covers built-in functions AND
-  * any functions added by external modules.
-  */
+  // 2. If not found in static db, search function
+  // registry. This covers built-in functions AND
+  // any functions added by external modules.
  if (!found) {
  const FunctionEntry *f =
      funcreg_find_by_name(topic);
@@ -859,10 +857,8 @@ void help_show(const char *topic)
  }
  }
 
- /*
-  * 3. If not found in functions, search module
-  * registry. External modules have descriptions.
-  */
+  // 3. If not found in functions, search module
+  // registry. External modules have descriptions.
  if (!found) {
  const ModuleInfo *m = module_find(topic);
  if (m) {
@@ -885,8 +881,7 @@ void help_show(const char *topic)
  }
 }
 
-/* --- help_info - Display system information ---
- */
+// --- help_info - Display system information ---
 void help_info(RuntimeState *rt)
 {
  SecLevel sec;
@@ -918,14 +913,13 @@ void help_info(RuntimeState *rt)
  printf(" Standard: ANSI C89/C90\n");
 }
 
-/* --- help_catalog - List all commands & functions ---
- *
- * Shows BOTH the static help database (statements/commands)
- * AND the function registry, organized by category with
- * alphabetical sorting within each category.
- */
+// --- help_catalog - List all commands & functions ---
+ //
+ // Shows BOTH the static help database (statements/commands)
+ // AND the function registry, organized by category with
+ // alphabetical sorting within each category.
 
-/* Function category names (from funcreg.h) */
+// Function category names (from funcreg.h)
 static const char *fcat_names[] = {
  "Core", "Math", "String", "I/O", "Utility", "User"
 };
@@ -941,11 +935,11 @@ void help_catalog(void)
 
  printf("=== BASIC++ CATALOG ===\n\n");
 
- /* --- Part 1: Statements & Commands (sorted) --- */
+ // --- Part 1: Statements & Commands (sorted) ---
  for (cat = 0; cat < HCAT_COUNT; cat++) {
  int col;
 
- /* Collect indices for this category */
+ // Collect indices for this category
  scount = 0;
  for (i = 0; help_db[i].keyword != NULL; i++) {
  if ((int)help_db[i].category == cat &&
@@ -955,7 +949,7 @@ void help_catalog(void)
  }
  if (scount == 0) continue;
 
- /* Sort alphabetically */
+ // Sort alphabetically
  sort_indices(sorted, scount);
 
  printf("[%s]\n ", help_cat_names[cat]);
@@ -975,18 +969,18 @@ void help_catalog(void)
  printf("\n\n");
  }
 
- /* --- Part 2: Registered Functions (sorted) --- */
+ // --- Part 2: Registered Functions (sorted) ---
  if (fcount > 0) {
  int fcat;
  int shown_any = 0;
- /* Reuse sorted[] for function indices */
+ // Reuse sorted[] for function indices
  int fsorted[256];
  int fscount;
 
  for (fcat = 0; fcat < 6; fcat++) {
  int col;
 
- /* Collect function indices for this category */
+ // Collect function indices for this category
  fscount = 0;
  for (i = 0; i < fcount && fscount < 256; i++) {
  const FunctionEntry *f = funcreg_get(i);
@@ -996,7 +990,7 @@ void help_catalog(void)
  }
  if (fscount == 0) continue;
 
- /* Sort by function name */
+ // Sort by function name
  for (i = 1; i < fscount; i++) {
  int key = fsorted[i];
  const char *kname = funcreg_get(key)->name;

@@ -1,27 +1,33 @@
-/*
- * ---
- * BASIC++ Interpreter - exec.c
- * ---
- *
- * Program execution loop implementation.
- *
- * DESIGN RATIONALE:
- * The execution loop iterates through program lines in stored
- * order, tokenizes each line on-the-fly, and delegates to the
- * parser for execution. Flow control (GOTO, GOSUB, RETURN)
- * works by modifying rt->next_index, which the loop checks
- * after each line.
- *
- * VM Formalization
- * The execution loop now uses the formal VM state machine
- * (VMState) instead of the ad-hoc rt->running flag. State
- * transitions go through vm_set_state()/vm_get_state().
- * The opcode is resolved via vm_resolve_opcode() for trace
- * output, and the control flow primitives (vm_jump, vm_call,
- * vm_return_sub) are available to the parser.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - exec.c
+ // ---
+ //
+ // Program execution loop implementation.
+ //
+ // DESIGN RATIONALE:
+ // The execution loop iterates through program lines in stored
+ // order, tokenizes each line on-the-fly, and delegates to the
+ // parser for execution. Flow control (GOTO, GOSUB, RETURN)
+ // works by modifying rt->next_index, which the loop checks
+ // after each line.
+ //
+ // VM Formalization
+ // The execution loop now uses the formal VM state machine
+ // (VMState) instead of the ad-hoc rt->running flag. State
+ // transitions go through vm_set_state()/vm_get_state().
+ // The opcode is resolved via vm_resolve_opcode() for trace
+ // output, and the control flow primitives (vm_jump, vm_call,
+ // vm_return_sub) are available to the parser.
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #include <stdio.h>
 #include <string.h>
@@ -38,10 +44,9 @@
 #include "scope.h"
 #include "override.h"
 
-/* --- OS Signal Handler (Tier 3) ---
- * Async-safe: only sets a flag. The event_poll() loop
- * checks this flag cooperatively.
- */
+// --- OS Signal Handler (Tier 3) ---
+ // Async-safe: only sets a flag. The event_poll() loop
+ // checks this flag cooperatively.
 static volatile int g_signal_pending = 0;
 static RuntimeState *g_signal_rt = NULL;
 
@@ -51,35 +56,33 @@ static void signal_handler(int sig)
  g_signal_pending = 1;
  if (g_signal_rt != NULL)
   g_signal_rt->signal_pending = 1;
- /* Re-install handler (required on some platforms) */
+ // Re-install handler (required on some platforms)
  signal(SIGINT, signal_handler);
 }
 
-/*
- * event_poll - Cooperative event dispatch (called between statements).
- *
- * Checks all event tiers in priority order and fires the first
- * pending event handler via GOSUB. Only one event fires per poll
- * cycle to keep latency bounded.
- *
- * Priority:
- * Tier 3 - OS signals (Ctrl+C / SIGINT)
- * Tier 1 - TIMER
- * Tier 2 - Device I/O (VDev poll)
- * Tier 4 - File I/O
- *
- * STOP-mode: events in state==EVT_STOP are queued instead of fired.
- */
+ // event_poll - Cooperative event dispatch (called between statements).
+ //
+ // Checks all event tiers in priority order and fires the first
+ // pending event handler via GOSUB. Only one event fires per poll
+ // cycle to keep latency bounded.
+ //
+ // Priority:
+ // Tier 3 - OS signals (Ctrl+C / SIGINT)
+ // Tier 1 - TIMER
+ // Tier 2 - Device I/O (VDev poll)
+ // Tier 4 - File I/O
+ //
+ // STOP-mode: events in state==EVT_STOP are queued instead of fired.
 static void event_poll(RuntimeState *rt, int line_num)
 {
- /* Guard: don't fire events inside event handlers */
+ // Guard: don't fire events inside event handlers
  if (rt->event_in_handler) return;
 
- /* Guard: don't fire if error or not running */
+ // Guard: don't fire if error or not running
  if (error_occurred()) return;
  if (vm_get_state(rt) != VM_RUNNING) return;
 
- /* --- Tier 3: OS signal (SIGINT / Ctrl+C) --- */
+ // --- Tier 3: OS signal (SIGINT / Ctrl+C) ---
  if (rt->signal_pending) {
   rt->signal_pending = 0;
   g_signal_pending = 0;
@@ -95,7 +98,7 @@ static void event_poll(RuntimeState *rt, int line_num)
    }
    return;
   }
-  /* No handler: default behavior (stop program) */
+  // No handler: default behavior (stop program)
   if (rt->on_break_line == 0) {
    printf("\n[BREAK - Ctrl+C at line %d]\n",
     line_num);
@@ -105,7 +108,7 @@ static void event_poll(RuntimeState *rt, int line_num)
   }
  }
 
- /* --- Tier 1: TIMER event --- */
+ // --- Tier 1: TIMER event ---
  if (rt->timer_event_state == EVT_ON &&
      rt->on_timer_line > 0 &&
      rt->timer_interval > 0.0) {
@@ -124,11 +127,10 @@ static void event_poll(RuntimeState *rt, int line_num)
   }
  }
 
- /* --- Tier 2: Device I/O (VDev VDCAP_EVENT poll) ---
-  * Walk registered devices. For any with VDCAP_EVENT
-  * and ON state, call dev_poll(). Fire handler on
-  * data ready.
-  */
+ // --- Tier 2: Device I/O (VDev VDCAP_EVENT poll) ---
+  // Walk registered devices. For any with VDCAP_EVENT
+  // and ON state, call dev_poll(). Fire handler on
+  // data ready.
  {
   int di;
   for (di = 0; di < MAX_DEVICE_TRAPS; di++) {
@@ -154,7 +156,7 @@ static void event_poll(RuntimeState *rt, int line_num)
   }
  }
 
- /* --- Tier 4: File I/O events --- */
+ // --- Tier 4: File I/O events ---
  if (rt->fileio_event_state == EVT_ON &&
      rt->on_fileio_line > 0 &&
      rt->fileio_pending) {
@@ -171,33 +173,29 @@ static void event_poll(RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * exec_run - Main program execution loop.
- *
- * Execution flow:
- * 1. Reset runtime state (variables, stack, position).
- * 2. Collect DATA values from all program lines.
- * 3. Set VM state to VM_RUNNING.
- * 4. Loop:
- * a. Get line at current_index.
- * b. Tokenize line.
- * c. Skip line number token.
- * d. Resolve opcode via VM dispatch table (for trace).
- * e. Execute via parser_execute_line().
- * f. Check for errors -> transition to VM_ERROR.
- * g. Check next_index -> jump or advance.
- * h. Check bounds -> halt if past last line.
- * 5. On exit: set VM state to VM_STOPPED.
- */
-/*
- * exec_run_from - Internal execution loop starting from a given index.
- *
- * Shared by exec_run (fresh start) and exec_cont (resume).
- */
+ // exec_run - Main program execution loop.
+ //
+ // Execution flow:
+ // 1. Reset runtime state (variables, stack, position).
+ // 2. Collect DATA values from all program lines.
+ // 3. Set VM state to VM_RUNNING.
+ // 4. Loop:
+ // a. Get line at current_index.
+ // b. Tokenize line.
+ // c. Skip line number token.
+ // d. Resolve opcode via VM dispatch table (for trace).
+ // e. Execute via parser_execute_line().
+ // f. Check for errors -> transition to VM_ERROR.
+ // g. Check next_index -> jump or advance.
+ // h. Check bounds -> halt if past last line.
+ // 5. On exit: set VM state to VM_STOPPED.
+ // exec_run_from - Internal execution loop starting from a given index.
+ //
+ // Shared by exec_run (fresh start) and exec_cont (resume).
 static void exec_run_from(RuntimeState *rt, int start_index)
 {
  Lexer lex;
- int skip_first_break = 1; /* Skip breakpoint on first line (CONT resume) */
+ int skip_first_break = 1; // Skip breakpoint on first line (CONT resume)
 
  vm_set_state(rt, VM_RUNNING);
  rt->current_index = start_index;
@@ -208,16 +206,14 @@ static void exec_run_from(RuntimeState *rt, int start_index)
  ProgramLine *line;
  int line_num;
 
- /* Get the current line */
+ // Get the current line
  line = &rt->program->lines[rt->current_index];
  line_num = line->line_number;
 
- /*
- * Breakpoint / single-step check.
- * If we hit a breakpoint or single_step is on,
- * pause and return to REPL so user can inspect.
- * Skip the check on the first line after CONT.
- */
+ // Breakpoint / single-step check.
+ // If we hit a breakpoint or single_step is on,
+ // pause and return to REPL so user can inspect.
+ // Skip the check on the first line after CONT.
  if (!skip_first_break) {
  if (rt->single_step ||
  (rt->breakpoint_count > 0 &&
@@ -230,45 +226,37 @@ static void exec_run_from(RuntimeState *rt, int start_index)
  }
  skip_first_break = 0;
 
- /*
-  * Trace output (TRON/TROFF).
-  */
+  // Trace output (TRON/TROFF).
   if (rt->trace_on) {
   vdev_printf(rt->dev_con, "[%d]", line_num);
   }
 
-  /*
-  * Verbose trace output (DEBUG ON/OFF).
-  * Shows [line] followed by the full source text.
-  */
+  // Verbose trace output (DEBUG ON/OFF).
+  // Shows [line] followed by the full source text.
   if (rt->debug_on) {
   vdev_printf(rt->dev_con, "[%d] %s\n",
    line_num, line->text);
   }
 
- /* Initialize lexer on the line text */
+ // Initialize lexer on the line text
  lexer_init(&lex, line->text);
 
- /*
- * Skip the line number.
- */
+ // Skip the line number.
  if (lex.current.type == TOK_NUMBER) {
  lexer_next(&lex);
  }
 
- /* Reset next_index to -1 (no jump pending) */
+ // Reset next_index to -1 (no jump pending)
  rt->next_index = -1;
 
- /*
- * Suppress error messages when ON ERROR GOTO
- * or WHEN EXCEPTION is active.
- */
+ // Suppress error messages when ON ERROR GOTO
+ // or WHEN EXCEPTION is active.
  {
  int suppress = 0;
  if (rt->on_error_line > 0)
  suppress = 1;
  if (!suppress) {
- /* Check stack for FRAME_EXCEPTION */
+ // Check stack for FRAME_EXCEPTION
  int ei;
  for (ei = rt->stack_top - 1;
  ei >= 0; ei--) {
@@ -282,23 +270,21 @@ static void exec_run_from(RuntimeState *rt, int start_index)
  error_set_suppress(suppress);
  }
 
-  /*
-   * SCOPE hook dispatch via event queue (Q10).
-   *
-   * Before executing the line, peek at the first keyword
-   * and check for SCOPE rules (disabled, BEFORE,
-   * OVERRIDE, AFTER hooks). Hooks are queued into the
-   * event queue and drained between statements.
-   */
+   // SCOPE hook dispatch via event queue (Q10).
+   //
+   // Before executing the line, peek at the first keyword
+   // and check for SCOPE rules (disabled, BEFORE,
+   // OVERRIDE, AFTER hooks). Hooks are queued into the
+   // event queue and drained between statements.
   {
   KeywordId first_kw = KW_COUNT;
   int in_hook = 0;
 
-  /* Peek at first keyword without consuming */
+  // Peek at first keyword without consuming
   if (lex.current.type == TOK_KEYWORD)
    first_kw = lex.current.value.keyword;
 
-  /* Disabled check (always applies) */
+  // Disabled check (always applies)
   if (first_kw < KW_COUNT &&
    scope_is_disabled(first_kw)) {
    printf("Keyword disabled by SCOPE"
@@ -307,22 +293,20 @@ static void exec_run_from(RuntimeState *rt, int start_index)
    goto scope_done;
   }
 
-  /*
-   * Re-entrancy guard: if we're inside
-   * a hook subroutine (stack is above
-   * the saved hook entry point), don't
-   * fire hooks.
-   */
+   // Re-entrancy guard: if we're inside
+   // a hook subroutine (stack is above
+   // the saved hook entry point), don't
+   // fire hooks.
   if (rt->scope_hook_depth >= 0 &&
    rt->stack_top >
    rt->scope_hook_depth) {
    in_hook = 1;
   }
 
-  /* Queue hooks (only outside hook subs) */
+  // Queue hooks (only outside hook subs)
   if (!in_hook && first_kw < KW_COUNT) {
 
-   /* BEFORE hook -> queue */
+   // BEFORE hook -> queue
    if (scope_get_before(first_kw) >= 0 &&
     rt->scope_before_done !=
     rt->current_index &&
@@ -342,7 +326,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
      rt->current_index;
    }
 
-   /* OVERRIDE hook -> queue (skips keyword) */
+   // OVERRIDE hook -> queue (skips keyword)
    if (scope_get_override(first_kw) >= 0 &&
     rt->scope_evq_count < SCOPE_EVQ_SIZE) {
     int qi = rt->scope_evq_tail;
@@ -359,10 +343,8 @@ static void exec_run_from(RuntimeState *rt, int start_index)
    }
   }
 
-  /*
-   * Drain event queue: process queued hooks
-   * before executing the current statement.
-   */
+   // Drain event queue: process queued hooks
+   // before executing the current statement.
   if (rt->scope_evq_count > 0) {
    int qi = rt->scope_evq_head;
    int htype = rt->scope_evq[qi].hook_type;
@@ -383,13 +365,13 @@ static void exec_run_from(RuntimeState *rt, int start_index)
    if (runtime_push(rt, &hf) != 0)
     goto scope_done;
    vm_jump(rt, hline, line_num);
-   /* BEFORE: return to same line
-    * OVERRIDE: return to next line */
+   // BEFORE: return to same line
+    // OVERRIDE: return to next line 
    (void)htype;
    goto scope_done;
   }
 
-  /* Record AFTER hook keyword for post-exec */
+  // Record AFTER hook keyword for post-exec
   if (!in_hook &&
    first_kw < KW_COUNT &&
    scope_get_after(first_kw) >= 0) {
@@ -398,11 +380,11 @@ static void exec_run_from(RuntimeState *rt, int start_index)
    rt->scope_after_kw = -1;
   }
 
-   /* OVERRIDE keyword interpretation.
-    * If the first keyword has an active
-    * override and we're not inside a hook,
-    * build a modified parse string from
-    * the override text + original args. */
+   // OVERRIDE keyword interpretation.
+    // If the first keyword has an active
+    // override and we're not inside a hook,
+    // build a modified parse string from
+    // the override text + original args. 
    if (!in_hook && first_kw < KW_COUNT &&
     override_is_active(first_kw)) {
     const char *otxt =
@@ -449,20 +431,20 @@ static void exec_run_from(RuntimeState *rt, int start_index)
     }
    }
 
-   /* Parse and execute the line */
+   // Parse and execute the line
    parser_execute_line(&lex, rt, line_num);
 override_done:
-   ; /* empty statement after label */
-   } /* end scope/override block */
+   ; // empty statement after label
+   } // end scope/override block
 
-  /* Clear BEFORE-done guard now that
-   * the line has fully executed. */
+  // Clear BEFORE-done guard now that
+   // the line has fully executed. 
   if (rt->scope_before_done ==
    rt->current_index) {
    rt->scope_before_done = -1;
   }
 
-  /* SCOPE AFTER hook: queue into event queue */
+  // SCOPE AFTER hook: queue into event queue
   if (rt->scope_after_kw >= 0 &&
    !error_occurred() &&
    rt->next_index < 0 &&
@@ -487,7 +469,7 @@ override_done:
    rt->scope_after_kw = -1;
   }
 
-  /* Drain AFTER events immediately */
+  // Drain AFTER events immediately
   if (rt->scope_evq_count > 0 &&
    !error_occurred() &&
    rt->next_index < 0) {
@@ -510,7 +492,7 @@ override_done:
    }
   }
 
-   /* --- Event polling (6-tier cooperative dispatch) --- */
+   // --- Event polling (6-tier cooperative dispatch) ---
    if (!error_occurred() &&
        vm_get_state(rt) == VM_RUNNING &&
        rt->next_index < 0) {
@@ -518,16 +500,14 @@ override_done:
    }
 scope_done:
 
- /* Restore error output */
+ // Restore error output
  error_set_suppress(0);
 
- /*
- * WHEN EXCEPTION handler (ECMA-116).
- *
- * Block-scoped: checked FIRST, before ON ERROR GOTO.
- * If an error occurred and there's a FRAME_EXCEPTION
- * on the stack, redirect to the USE handler.
- */
+ // WHEN EXCEPTION handler (ECMA-116).
+ //
+ // Block-scoped: checked FIRST, before ON ERROR GOTO.
+ // If an error occurred and there's a FRAME_EXCEPTION
+ // on the stack, redirect to the USE handler.
  if (error_occurred()) {
  int ei;
  for (ei = rt->stack_top - 1; ei >= 0; ei--) {
@@ -535,37 +515,34 @@ scope_done:
  int use_idx = rt->stack[ei]
  .data.exception.use_index;
 
- /* Save error info for ERR/ERL */
+ // Save error info for ERR/ERL
  if (rt->last_err_line != line_num) {
  rt->last_err_code =
  (int)error_get();
  rt->last_err_line = line_num;
  }
 
- /* Record err_index for CONTINUE */
+ // Record err_index for CONTINUE
  rt->stack[ei].data.exception
  .err_index = rt->current_index;
 
  error_clear();
- /* Jump to first line of USE handler */
+ // Jump to first line of USE handler
  rt->next_index = use_idx + 1;
  break;
  }
  }
  }
 
- /*
- * ON ERROR GOTO handler.
- * (Only reached if no WHEN EXCEPTION frame handled it.)
- */
+ // ON ERROR GOTO handler.
+ // (Only reached if no WHEN EXCEPTION frame handled it.)
  if (error_occurred() && rt->on_error_line > 0) {
  int target_line = rt->on_error_line;
 
- /* Save error info for ERL/ERR.
- * If CAUSE EXCEPTION already set last_err_code
- * and last_err_line for this line, preserve
- * the user's exception code.
- */
+ // Save error info for ERL/ERR.
+ // If CAUSE EXCEPTION already set last_err_code
+ // and last_err_line for this line, preserve
+ // the user's exception code.
  if (rt->last_err_line != line_num) {
  rt->last_err_code = (int)error_get();
  rt->last_err_line = line_num;
@@ -582,28 +559,26 @@ scope_done:
  }
  }
 
- /* Check for unhandled error */
+ // Check for unhandled error
  if (error_occurred()) {
  vm_set_state(rt, VM_ERROR);
  break;
  }
 
- /*
- * Check if STOP paused execution.
- * If VM is PAUSED (set by STOP handler), save
- * resume position and return to REPL.
- */
+ // Check if STOP paused execution.
+ // If VM is PAUSED (set by STOP handler), save
+ // resume position and return to REPL.
  if (vm_get_state(rt) == VM_PAUSED) {
- /* Determine resume point */
+ // Determine resume point
  if (rt->next_index >= 0) {
  rt->resume_index = rt->next_index;
  } else {
  rt->resume_index = rt->current_index + 1;
  }
- return; /* Don't set STOPPED */
+ return; // Don't set STOPPED
  }
 
- /* Determine next line */
+ // Determine next line
  if (rt->next_index >= 0) {
  rt->current_index = rt->next_index;
  } else if (vm_get_state(rt) == VM_RUNNING) {
@@ -614,34 +589,30 @@ scope_done:
  vm_set_state(rt, VM_STOPPED);
 }
 
-/*
- * exec_run - Start program execution from the beginning.
- */
+ // exec_run - Start program execution from the beginning.
 void exec_run(RuntimeState *rt)
 {
- /* Reset execution state for fresh run */
+ // Reset execution state for fresh run
  runtime_reset(rt);
 
- /* Collect DATA values before execution begins */
+ // Collect DATA values before execution begins
  runtime_collect_data(rt);
 
- /* Collect line labels for GOTO/GOSUB label resolution */
+ // Collect line labels for GOTO/GOSUB label resolution
  runtime_collect_labels(rt);
 
- /* Install OS signal handler (Tier 3) */
+ // Install OS signal handler (Tier 3)
  g_signal_rt = rt;
  g_signal_pending = 0;
  signal(SIGINT, signal_handler);
 
- /*
- * Pre-scan for SUB/FUNCTION definitions.
- *
- * QBasic-style: resolve all SUB/FUNCTION bodies
- * before the first line executes. This makes
- * DECLARE EXTERNAL and forward references work
- * correctly. Execute each SUB/FUNCTION line which
- * registers the body and skips to END SUB/FUNCTION.
- */
+ // Pre-scan for SUB/FUNCTION definitions.
+ //
+ // QBasic-style: resolve all SUB/FUNCTION bodies
+ // before the first line executes. This makes
+ // DECLARE EXTERNAL and forward references work
+ // correctly. Execute each SUB/FUNCTION line which
+ // registers the body and skips to END SUB/FUNCTION.
  {
  int idx;
  ProgramStore *pgm = rt->program;
@@ -655,8 +626,8 @@ void exec_run(RuntimeState *rt)
  if (cl.current.type == TOK_KEYWORD &&
  (cl.current.value.keyword == KW_SUB ||
  cl.current.value.keyword == KW_FUNCTION)) {
- /* Execute this line to register the
- * SUB/FUNCTION definition */
+ // Execute this line to register the
+ // SUB/FUNCTION definition 
  rt->current_index = idx;
  rt->next_index = -1;
  parser_execute_line(&cl, rt, ln);
@@ -664,13 +635,13 @@ void exec_run(RuntimeState *rt)
  vm_set_state(rt, VM_ERROR);
  return;
  }
- /* SUB handler skips to END SUB; advance
- * past it */
+ // SUB handler skips to END SUB; advance
+ // past it 
  if (rt->next_index > idx)
  idx = rt->next_index - 1;
  }
  }
- /* Reset execution state for actual run */
+ // Reset execution state for actual run
  rt->current_index = 0;
  rt->next_index = -1;
  }
@@ -678,35 +649,33 @@ void exec_run(RuntimeState *rt)
  exec_run_from(rt, 0);
 }
 
-/*
- * exec_chain_run - Execute after CHAIN (preserves variables).
- *
- * Like exec_run but does NOT call runtime_reset, so variables
- * (A-Z, A$-Z$, named vars, @() array) survive. The caller
- * (pi_parse_chain_cmd) has already reset the scope stack,
- * SUB table, call stack, and execution pointers.
- *
- * We still need to:
- * - Collect DATA values from the new program
- * - Collect labels
- * - Pre-scan SUB/FUNCTION definitions
- * - Install signal handler
- * - Run from index 0
- */
+ // exec_chain_run - Execute after CHAIN (preserves variables).
+ //
+ // Like exec_run but does NOT call runtime_reset, so variables
+ // (A-Z, A$-Z$, named vars, @() array) survive. The caller
+ // (pi_parse_chain_cmd) has already reset the scope stack,
+ // SUB table, call stack, and execution pointers.
+ //
+ // We still need to:
+ // - Collect DATA values from the new program
+ // - Collect labels
+ // - Pre-scan SUB/FUNCTION definitions
+ // - Install signal handler
+ // - Run from index 0
 void exec_chain_run(RuntimeState *rt)
 {
- /* Collect DATA values from the new program */
+ // Collect DATA values from the new program
  runtime_collect_data(rt);
 
- /* Collect line labels */
+ // Collect line labels
  runtime_collect_labels(rt);
 
- /* Install OS signal handler */
+ // Install OS signal handler
  g_signal_rt = rt;
  g_signal_pending = 0;
  signal(SIGINT, signal_handler);
 
- /* Pre-scan for SUB/FUNCTION definitions */
+ // Pre-scan for SUB/FUNCTION definitions
  {
  int idx;
  ProgramStore *pgm = rt->program;
@@ -738,12 +707,10 @@ void exec_chain_run(RuntimeState *rt)
  exec_run_from(rt, 0);
 }
 
-/*
- * exec_cont - Continue execution from paused state.
- *
- * Resumes from the saved resume_index without resetting state.
- * Returns 0 on success, -1 if not paused.
- */
+ // exec_cont - Continue execution from paused state.
+ //
+ // Resumes from the saved resume_index without resetting state.
+ // Returns 0 on success, -1 if not paused.
 int exec_cont(RuntimeState *rt)
 {
  if (vm_get_state(rt) != VM_PAUSED) {
@@ -762,18 +729,16 @@ int exec_cont(RuntimeState *rt)
  return 0;
 }
 
-/*
- * exec_brun - Compile to bytecode and execute via VM.
- *
- * Milestone 13 bytecode execution path:
- * 1. Reset runtime state
- * 2. Collect DATA values
- * 3. Compile program to PCode bytecode
- * 4. Execute via vm_exec_pcode()
- * 5. Free bytecode
- *
- * The interpreter path (exec_run) is untouched.
- */
+ // exec_brun - Compile to bytecode and execute via VM.
+ //
+ // Milestone 13 bytecode execution path:
+ // 1. Reset runtime state
+ // 2. Collect DATA values
+ // 3. Compile program to PCode bytecode
+ // 4. Execute via vm_exec_pcode()
+ // 5. Free bytecode
+ //
+ // The interpreter path (exec_run) is untouched.
 void exec_brun(RuntimeState *rt)
 {
  PCodeProgram pcode;
@@ -784,13 +749,13 @@ void exec_brun(RuntimeState *rt)
  return;
  }
 
- /* Reset runtime state for fresh run */
+ // Reset runtime state for fresh run
  runtime_reset(rt);
 
- /* Collect DATA values before execution */
+ // Collect DATA values before execution
  runtime_collect_data(rt);
 
- /* Compile to bytecode */
+ // Compile to bytecode
  printf("Compiling %d lines to bytecode...\n",
  rt->program->count);
 
@@ -803,7 +768,7 @@ void exec_brun(RuntimeState *rt)
  pcode.count,
  pcode.str_used);
 
- /* Execute bytecode */
+ // Execute bytecode
  vm_set_state(rt, VM_RUNNING);
  result = vm_exec_pcode(rt, &pcode);
 
@@ -811,7 +776,7 @@ void exec_brun(RuntimeState *rt)
  vm_set_state(rt, VM_ERROR);
  }
 
- /* Free bytecode */
+ // Free bytecode
  pcode_free(&pcode);
 
  if (vm_get_state(rt) != VM_PAUSED) {

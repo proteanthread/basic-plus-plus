@@ -1,6 +1,51 @@
 # BASIC++ FujiNet Module — User Guide
 
-**Version 1.1.0** · Module: `FUJINET` · Devices: `N:` `FUJI:` `CLOCK:`
+**Version 4.0.1** · Module: `FUJINET` · Devices: `N:` `FUJI:` `CLOCK:`
+
+
+---
+
+## Table of Contents
+
+- Overview
+- Activating the Module
+- The N: Network Device
+  - 1 DeviceSpec Format
+  - 2 Supported Protocols
+  - 3 Opening a Connection
+  - 4 Reading and Writing
+  - 5 Closing a Connection
+- HTTP / HTTPS
+  - 1 HTTP GET
+  - 2 HTTP POST
+  - 3 Custom Headers
+  - 4 JSON Parsing
+- TNFS (Trivial Network File System)
+- Telnet / BBS Access
+- UDP Datagrams
+- The FUJI: Configuration Device
+  - 1 WiFi Management
+  - 2 Host Slots
+  - 3 AppKey Storage
+- The CLOCK: Device
+- IOCTL Command Reference
+  - 1 N: Device IOCTLs
+  - 2 FUJI: Device IOCTLs
+  - 3 CLOCK: Device IOCTLs
+- Translation Modes
+- Error Codes
+- Introspection Commands
+- Example Programs
+  - Simple HTTP GET
+  - JSON API Client
+  - TCP Chat Client
+  - TNFS File Reader
+  - Network Time
+- Differences from ENVIRON$
+- Platform Notes
+- Quick Reference
+
+---
 
 ---
 

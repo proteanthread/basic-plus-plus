@@ -1,28 +1,36 @@
-/*
- * ---
- * BASIC++ Interpreter - builtins_bio.c
- * ---
- *
- * Block I/O (BIO) function handlers for the built-in function
- * registry. These are the Option B "full primitive set" for
- * block-oriented (random-access) device I/O.
- *
- * BIO functions provide position-addressed read/write access
- * to files and devices. They complement the SIO (stream)
- * functions and the existing FIELD/GET/PUT wrappers (Option A).
- *
- * FUNCTIONS:
- *   BIOREAD$(chan, pos, len)     - Read block at position
- *   BIOWRITE(chan, pos, data$)   - Write block at position
- *   BIOSTATUS(chan)              - Block-level status flags
- *   BIOSIZE(chan)                - Total size of file/device
- *   BIOCHECKSUM(data$)          - CRC-16 checksum of data
- *   BIOCOMPARE(chan, pos, data$) - Compare block with data
- *   BIOFILL(chan, pos, len, val) - Fill block with byte value
- *   BIOCOPY(chan, src, dst, len) - Copy block within file
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - builtins_bio.c
+ // ---
+ //
+ // Block I/O (BIO) function handlers for the built-in function
+ // registry. These are the Option B "full primitive set" for
+ // block-oriented (random-access) device I/O.
+ //
+ // BIO functions provide position-addressed read/write access
+ // to files and devices. They complement the SIO (stream)
+ // functions and the existing FIELD/GET/PUT wrappers (Option A).
+ //
+ // FUNCTIONS:
+ //   BIOREAD$(chan, pos, len)     - Read block at position
+ //   BIOWRITE(chan, pos, data$)   - Write block at position
+ //   BIOSTATUS(chan)              - Block-level status flags
+ //   BIOSIZE(chan)                - Total size of file/device
+ //   BIOCHECKSUM(data$)          - CRC-16 checksum of data
+ //   BIOCOMPARE(chan, pos, data$) - Compare block with data
+ //   BIOFILL(chan, pos, len, val) - Fill block with byte value
+ //   BIOCOPY(chan, src, dst, len) - Copy block within file
+ //
+//
+// HOW TO EXTEND:
+//   To add a new built-in function:
+//   1. Write a handler: BValue my_func(BValue *args, int argc, void *ctx)
+//   2. Register it in the init function with funcreg_add().
+//   3. Specify min/max argument counts and return type.
+//
+// TROUBLESHOOTING:
+//   - Wrong arg count: check min_args/max_args in registration.
+//   - Type mismatch: use bval_to_float/bval_to_int for conversion.
+ // ---
 
 #include <stdio.h>
 #include <string.h>
@@ -34,15 +42,13 @@
 #include "vdev.h"
 #include "txn.h"
 
-/*
- * BIOREAD$(chan, pos, len) - Read block at absolute position.
- *
- * Seeks to 'pos', reads 'len' bytes, returns as string.
- * Does not alter the channel's stream position permanently
- * (saves and restores it).
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // BIOREAD$(chan, pos, len) - Read block at absolute position.
+ //
+ // Seeks to 'pos', reads 'len' bytes, returns as string.
+ // Does not alter the channel's stream position permanently
+ // (saves and restores it).
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_bioread(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -60,12 +66,12 @@ BValue builtin_bioread(BValue *args, int argc, void *rt)
  if (len <= 0) return bval_string(NULL, 0);
  if (len > 1024) len = 1024;
 
- /* VDev path */
+ // VDev path
  vd = fileio_get_channel_vdev(chan);
  if (vd != NULL) {
   if (vd->dev_seek != NULL && vd->dev_read != NULL) {
-   long orig = vd->dev_seek(vd, 0, 1); /* SEEK_CUR */
-   vd->dev_seek(vd, pos, 0); /* SEEK_SET */
+   long orig = vd->dev_seek(vd, 0, 1); // SEEK_CUR
+   vd->dev_seek(vd, pos, 0); // SEEK_SET
    actual = vd->dev_read(vd, tmpbuf, len);
    if (orig >= 0) vd->dev_seek(vd, orig, 0);
   } else {
@@ -78,13 +84,13 @@ BValue builtin_bioread(BValue *args, int argc, void *rt)
   return bval_string(poolbuf, actual);
  }
 
- /* File path */
+ // File path
  fp = fileio_get_fp(chan);
  if (fp == NULL) return bval_string(NULL, 0);
  saved = ftell(fp);
  fseek(fp, pos, SEEK_SET);
  actual = (int)fread(tmpbuf, 1, (size_t)len, fp);
- fseek(fp, saved, SEEK_SET); /* restore */
+ fseek(fp, saved, SEEK_SET); // restore
  if (actual <= 0) return bval_string(NULL, 0);
  poolbuf = strpool_alloc(&state->strpool, actual);
  if (poolbuf == NULL) return bval_string(NULL, 0);
@@ -92,14 +98,12 @@ BValue builtin_bioread(BValue *args, int argc, void *rt)
  return bval_string(poolbuf, actual);
 }
 
-/*
- * BIOWRITE(chan, pos, data$) - Write block at position.
- *
- * Seeks to 'pos', writes data$, returns bytes written.
- * Restores original position after write.
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // BIOWRITE(chan, pos, data$) - Write block at position.
+ //
+ // Seeks to 'pos', writes data$, returns bytes written.
+ // Restores original position after write.
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_biowrite(BValue *args, int argc, void *rt)
 {
  int chan, written;
@@ -119,7 +123,7 @@ BValue builtin_biowrite(BValue *args, int argc, void *rt)
  if (data == NULL || dlen <= 0)
   return bval_int(0);
 
- /* VDev path */
+ // VDev path
  vd = fileio_get_channel_vdev(chan);
  if (vd != NULL) {
   if (vd->dev_seek != NULL && vd->dev_write != NULL) {
@@ -133,11 +137,11 @@ BValue builtin_biowrite(BValue *args, int argc, void *rt)
   return bval_int((long)written);
  }
 
- /* File path */
+ // File path
  fp = fileio_get_fp(chan);
  if (fp == NULL) return bval_int(0);
 
- /* TXN: journal original data before overwriting */
+ // TXN: journal original data before overwriting
  txn_journal_write(chan, pos, dlen, 0);
 
  saved = ftell(fp);
@@ -147,20 +151,18 @@ BValue builtin_biowrite(BValue *args, int argc, void *rt)
  return bval_int((long)written);
 }
 
-/*
- * BIOSTATUS(chan) - Block-level status.
- *
- * Returns a bitmask:
- *   Bit 0 (1):   Channel open
- *   Bit 1 (2):   Seekable
- *   Bit 2 (4):   Random-access mode
- *   Bit 3 (8):   Binary mode
- *   Bit 4 (16):  Read-capable
- *   Bit 5 (32):  Write-capable
- *   Bit 6 (64):  VDev-backed with binary I/O
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // BIOSTATUS(chan) - Block-level status.
+ //
+ // Returns a bitmask:
+ //   Bit 0 (1):   Channel open
+ //   Bit 1 (2):   Seekable
+ //   Bit 2 (4):   Random-access mode
+ //   Bit 3 (8):   Binary mode
+ //   Bit 4 (16):  Read-capable
+ //   Bit 5 (32):  Write-capable
+ //   Bit 6 (64):  VDev-backed with binary I/O
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_biostatus(BValue *args, int argc, void *rt)
 {
  int chan;
@@ -178,17 +180,17 @@ BValue builtin_biostatus(BValue *args, int argc, void *rt)
  if (fp == NULL && vd == NULL)
   return bval_int(0);
 
- flags |= 1; /* open */
+ flags |= 1; // open
 
  if (fp != NULL) {
-  flags |= 2;  /* seekable (files always are) */
-  flags |= 16; /* read */
-  flags |= 32; /* write */
+  flags |= 2; // seekable (files always are)
+  flags |= 16; // read
+  flags |= 32; // write
  }
 
  mode = fileio_get_channel_mode(chan);
- if (mode == 3) flags |= 4;  /* FCHAN_RANDOM */
- if (mode == 4) flags |= 8;  /* FCHAN_BINARY */
+ if (mode == 3) flags |= 4; // FCHAN_RANDOM
+ if (mode == 4) flags |= 8; // FCHAN_BINARY
 
  if (vd != NULL) {
   if (vd->dev_seek != NULL) flags |= 2;
@@ -199,14 +201,12 @@ BValue builtin_biostatus(BValue *args, int argc, void *rt)
  return bval_int((long)flags);
 }
 
-/*
- * BIOSIZE(chan) - Total size of file or device.
- *
- * For files: returns file length in bytes.
- * For VDevs: returns -1 (size unknown/not applicable).
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // BIOSIZE(chan) - Total size of file or device.
+ //
+ // For files: returns file length in bytes.
+ // For VDevs: returns -1 (size unknown/not applicable).
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_biosize(BValue *args, int argc, void *rt)
 {
  int chan;
@@ -226,19 +226,17 @@ BValue builtin_biosize(BValue *args, int argc, void *rt)
  return bval_int(size);
 }
 
-/*
- * BIOCHECKSUM(data$) - CRC-16/CCITT checksum.
- *
- * Computes a 16-bit CRC over the string data.
- * Polynomial: 0x1021 (CRC-CCITT).
- * Initial value: 0xFFFF.
- *
- * Useful for verifying block integrity after reads,
- * comparing device data, or building error-detection
- * protocols for USB/serial communication.
- *
- * Category: FCAT_UTIL | Safety: FSAFE_PURE
- */
+ // BIOCHECKSUM(data$) - CRC-16/CCITT checksum.
+ //
+ // Computes a 16-bit CRC over the string data.
+ // Polynomial: 0x1021 (CRC-CCITT).
+ // Initial value: 0xFFFF.
+ //
+ // Useful for verifying block integrity after reads,
+ // comparing device data, or building error-detection
+ // protocols for USB/serial communication.
+ //
+ // Category: FCAT_UTIL | Safety: FSAFE_PURE
 BValue builtin_biochecksum(BValue *args, int argc, void *rt)
 {
  const char *data;
@@ -267,16 +265,14 @@ BValue builtin_biochecksum(BValue *args, int argc, void *rt)
  return bval_int((long)crc);
 }
 
-/*
- * BIOCOMPARE(chan, pos, data$) - Compare block with data.
- *
- * Reads 'len(data$)' bytes from position 'pos' on channel
- * and compares with data$. Returns 0 if identical, or the
- * byte offset (1-based) of the first difference.
- * Returns -1 on read error.
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // BIOCOMPARE(chan, pos, data$) - Compare block with data.
+ //
+ // Reads 'len(data$)' bytes from position 'pos' on channel
+ // and compares with data$. Returns 0 if identical, or the
+ // byte offset (1-based) of the first difference.
+ // Returns -1 on read error.
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_biocompare(BValue *args, int argc, void *rt)
 {
  int chan, dlen, actual, i;
@@ -310,18 +306,16 @@ BValue builtin_biocompare(BValue *args, int argc, void *rt)
   if (tmpbuf[i] != data[i])
    return bval_int((long)(i + 1));
  }
- return bval_int(0); /* identical */
+ return bval_int(0); // identical
 }
 
-/*
- * BIOFILL(chan, pos, len, val) - Fill block with byte.
- *
- * Writes 'len' bytes of value 'val' starting at position
- * 'pos'. Returns the number of bytes written.
- * Useful for zeroing sectors or initializing device buffers.
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // BIOFILL(chan, pos, len, val) - Fill block with byte.
+ //
+ // Writes 'len' bytes of value 'val' starting at position
+ // 'pos'. Returns the number of bytes written.
+ // Useful for zeroing sectors or initializing device buffers.
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_biofill(BValue *args, int argc, void *rt)
 {
  int chan, len, val, written;
@@ -342,7 +336,7 @@ BValue builtin_biofill(BValue *args, int argc, void *rt)
  fp = fileio_get_fp(chan);
  if (fp == NULL) return bval_int(0);
 
- /* TXN: journal original data before fill */
+ // TXN: journal original data before fill
  txn_journal_write(chan, pos, len, 0);
 
  saved = ftell(fp);
@@ -362,15 +356,13 @@ BValue builtin_biofill(BValue *args, int argc, void *rt)
  return bval_int((long)written);
 }
 
-/*
- * BIOCOPY(chan, src, dst, len) - Copy block within file.
- *
- * Copies 'len' bytes from position 'src' to position 'dst'
- * within the same file channel. Returns bytes copied.
- * Handles overlapping regions correctly.
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // BIOCOPY(chan, src, dst, len) - Copy block within file.
+ //
+ // Copies 'len' bytes from position 'src' to position 'dst'
+ // within the same file channel. Returns bytes copied.
+ // Handles overlapping regions correctly.
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_biocopy(BValue *args, int argc, void *rt)
 {
  int chan, len, copied;
@@ -388,14 +380,14 @@ BValue builtin_biocopy(BValue *args, int argc, void *rt)
  fp = fileio_get_fp(chan);
  if (fp == NULL) return bval_int(0);
 
- /* TXN: journal destination region before copy */
+ // TXN: journal destination region before copy
  txn_journal_write(chan, dst, len, 0);
 
  saved = ftell(fp);
 
- /* Handle overlap: if dst > src, copy backwards */
+ // Handle overlap: if dst > src, copy backwards
  if (dst > src && dst < src + len) {
-  /* Overlap: reverse copy in chunks */
+  // Overlap: reverse copy in chunks
   int offset = len;
   copied = 0;
   while (offset > 0) {
@@ -411,7 +403,7 @@ BValue builtin_biocopy(BValue *args, int argc, void *rt)
    copied += actual;
   }
  } else {
-  /* No overlap or dst < src: forward copy */
+  // No overlap or dst < src: forward copy
   int offset = 0;
   copied = 0;
   while (offset < len) {

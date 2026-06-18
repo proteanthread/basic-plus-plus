@@ -1,6 +1,34 @@
 # BASIC++ Timer & I/O Event Programming
 # TSR-Style Background Processing Tutorial
 
+---
+
+## Table of Contents
+
+- Timer-based events (screensavers, clocks, auto-save)
+- Keyboard interrupt handlers (hotkeys, function keys)
+- Device I/O events (serial ports, USB, network)
+- Mouse/pointer events
+- Signal/break handlers
+- Combining events for complex systems
+- Building a text-based screensaver engine
+- Integration with TUI desktops
+- Current statement finishes (not interrupted mid-calc)
+- GOSUB pushes current position onto the stack
+- Execution jumps to the handler
+- Handler runs and ends with RETURN
+- Execution resumes exactly where it left off
+- Saves the current screen
+- Runs an animation on a timer
+- Restores the screen on any keypress
+- Main program sets: ON TIMER(300) GOSUB Screensaver
+- Every keypress resets the idle counter
+- When 5 minutes pass with no input, screensaver fires
+- Any keypress dismisses and restores the desktop
+
+---
+
+
 ## Overview
 
 BASIC++ provides a software interrupt system inspired by the

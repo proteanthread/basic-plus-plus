@@ -1,6 +1,6 @@
 THE BASIC++ USB DEVICE SYSTEM
 ===============================
-Version 1.5.0
+Version 4.0.1
 
 This manual explains how BASIC++ programs access USB
 devices — joysticks, gamepads, keyboards, serial adapters,

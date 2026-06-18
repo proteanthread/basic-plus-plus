@@ -1,73 +1,79 @@
-/*
- * ---
- * BASIC++ Interpreter - gfxbuf.c
- * ---
- *
- * Virtual Graphics Framebuffer implementation.
- *
- * RENDERING STRATEGY:
- * The framebuffer stores color indices (0-15) per pixel in a
- * flat byte array. When gfxbuf_render() is called, it outputs
- * ANSI escape sequences with Unicode half-block characters.
- *
- * Each character cell displays 2 vertical pixels:
- * Upper half = pixel at (x, y)
- * Lower half = pixel at (x, y+1)
- *
- * Half-block char: U+2580 (upper half block)
- * The foreground color = upper pixel, background = lower pixel.
- * If both are the same, a full block or space is used.
- *
- * CGA-COMPATIBLE PALETTE:
- * Colors 0-15 map to standard ANSI terminal colors.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - gfxbuf.c
+ // ---
+ //
+ // Virtual Graphics Framebuffer implementation.
+ //
+ // RENDERING STRATEGY:
+ // The framebuffer stores color indices (0-15) per pixel in a
+ // flat byte array. When gfxbuf_render() is called, it outputs
+ // ANSI escape sequences with Unicode half-block characters.
+ //
+ // Each character cell displays 2 vertical pixels:
+ // Upper half = pixel at (x, y)
+ // Lower half = pixel at (x, y+1)
+ //
+ // Half-block char: U+2580 (upper half block)
+ // The foreground color = upper pixel, background = lower pixel.
+ // If both are the same, a full block or space is used.
+ //
+ // CGA-COMPATIBLE PALETTE:
+ // Colors 0-15 map to standard ANSI terminal colors.
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #include <stdio.h>
 #include <string.h>
 #include "gfxbuf.h"
 
-/* Multi-page pixel buffers: each byte is a color index 0-15 */
+// Multi-page pixel buffers: each byte is a color index 0-15
 static unsigned char framepages[GFX_MAX_PAGES]
  [GFX_WIDTH * GFX_HEIGHT];
 
-/* Active drawing page and visual display page */
+// Active drawing page and visual display page
 static int active_page = 0;
 static int visual_page = 0;
 
-/* Convenience pointer to active page */
+// Convenience pointer to active page
 #define framebuf (framepages[active_page])
 
-/* Palette: maps color indices to ANSI color codes */
+// Palette: maps color indices to ANSI color codes
 static int palette[GFX_MAX_COLORS];
 
-/* Graphics mode active flag */
+// Graphics mode active flag
 static int gfx_active = 0;
 
-/* Viewport clipping rectangle (pixels) */
+// Viewport clipping rectangle (pixels)
 static int vp_x1 = 0, vp_y1 = 0;
 static int vp_x2 = GFX_WIDTH - 1;
 static int vp_y2 = GFX_HEIGHT - 1;
 
-/* Default CGA palette -> ANSI 256-color indices */
+// Default CGA palette -> ANSI 256-color indices
 static const int default_palette[16] = {
- 0, /* 0: Black */
- 4, /* 1: Blue */
- 2, /* 2: Green */
- 6, /* 3: Cyan */
- 1, /* 4: Red */
- 5, /* 5: Magenta */
- 3, /* 6: Brown */
- 7, /* 7: Light Gray */
- 8, /* 8: Dark Gray */
- 12, /* 9: Light Blue */
- 10, /* 10: Light Green */
- 14, /* 11: Light Cyan */
- 9, /* 12: Light Red */
- 13, /* 13: Light Magenta */
- 11, /* 14: Yellow */
- 15 /* 15: White */
+ 0, // 0: Black
+ 4, // 1: Blue
+ 2, // 2: Green
+ 6, // 3: Cyan
+ 1, // 4: Red
+ 5, // 5: Magenta
+ 3, // 6: Brown
+ 7, // 7: Light Gray
+ 8, // 8: Dark Gray
+ 12, // 9: Light Blue
+ 10, // 10: Light Green
+ 14, // 11: Light Cyan
+ 9, // 12: Light Red
+ 13, // 13: Light Magenta
+ 11, // 14: Yellow
+ 15 // 15: White
 };
 
 void gfxbuf_init(void)
@@ -94,7 +100,7 @@ void gfxbuf_clear(int color)
 
 void gfxbuf_pset(int x, int y, int color)
 {
- /* Clip against viewport bounds */
+ // Clip against viewport bounds
  if (x < vp_x1 || x > vp_x2 ||
  y < vp_y1 || y > vp_y2)
  return;
@@ -115,10 +121,8 @@ int gfxbuf_point(int x, int y)
  [y * GFX_WIDTH + x];
 }
 
-/*
- * Bresenham's line algorithm.
- * Draws a line from (x1,y1) to (x2,y2) in the given color.
- */
+ // Bresenham's line algorithm.
+ // Draws a line from (x1,y1) to (x2,y2) in the given color.
 void gfxbuf_line(int x1, int y1, int x2, int y2, int color)
 {
  int dx, dy, sx, sy, err, e2;
@@ -162,9 +166,7 @@ void gfxbuf_box(int x1, int y1, int x2, int y2,
  }
 }
 
-/*
- * Midpoint circle algorithm.
- */
+ // Midpoint circle algorithm.
 void gfxbuf_circle(int cx, int cy, int r, int color)
 {
  int x = 0, y = r;
@@ -189,15 +191,13 @@ void gfxbuf_circle(int cx, int cy, int r, int color)
  }
 }
 
-/*
- * Flood fill using a stack-based iterative approach.
- * Bounded to prevent stack overflow on large areas.
- */
+ // Flood fill using a stack-based iterative approach.
+ // Bounded to prevent stack overflow on large areas.
 void gfxbuf_paint(int x, int y, int fill_color,
  int border_color)
 {
- /* Simple iterative scanline fill */
- /* Use a static stack to avoid dynamic allocation */
+ // Simple iterative scanline fill
+ // Use a static stack to avoid dynamic allocation
 #define PAINT_STACK_SIZE 4096
  struct { int x, y; } stack[PAINT_STACK_SIZE];
  int top = 0;
@@ -248,31 +248,29 @@ void gfxbuf_palette(int attr, int color)
  }
 }
 
-/*
- * Render framebuffer to terminal.
- *
- * Uses ANSI 256-color mode and Unicode half-block characters.
- * Each character cell represents 2 vertical pixels.
- *
- * Output format per cell:
- * ESC[38;5;FGm ESC[48;5;BGm <halfblock>
- *
- * Where FG = upper pixel color, BG = lower pixel color.
- * Half-block U+2580 = upper half filled.
- *
- * On Windows, the UTF-8 sequence for U+2580 is E2 96 80.
- */
+ // Render framebuffer to terminal.
+ //
+ // Uses ANSI 256-color mode and Unicode half-block characters.
+ // Each character cell represents 2 vertical pixels.
+ //
+ // Output format per cell:
+ // ESC[38;5;FGm ESC[48;5;BGm <halfblock>
+ //
+ // Where FG = upper pixel color, BG = lower pixel color.
+ // Half-block U+2580 = upper half filled.
+ //
+ // On Windows, the UTF-8 sequence for U+2580 is E2 96 80.
 void gfxbuf_render(void)
 {
  int row, col;
- int term_cols = GFX_WIDTH / 4; /* 320/4 = 80 columns */
- int term_rows = GFX_HEIGHT / 2; /* 200/2 = 100 rows */
+ int term_cols = GFX_WIDTH / 4; // 320/4 = 80 columns
+ int term_rows = GFX_HEIGHT / 2; // 200/2 = 100 rows
  unsigned char *vpage = framepages[visual_page];
 
- /* Limit to reasonable terminal size */
+ // Limit to reasonable terminal size
  if (term_rows > 50) term_rows = 50;
 
- /* Move cursor to top-left */
+ // Move cursor to top-left
  printf("\033[H");
 
  for (row = 0; row < term_rows; row++) {
@@ -301,18 +299,18 @@ void gfxbuf_render(void)
  }
 
  if (fg_idx == bg_idx) {
- /* Both same: full block or space */
+ // Both same: full block or space
  if (fg_idx == 0)
  putchar(' ');
  else
- /* Full block U+2588 = E2 96 88 */
+ // Full block U+2588 = E2 96 88
  printf("\xe2\x96\x88");
  } else {
- /* Upper half block U+2580 = E2 96 80 */
+ // Upper half block U+2580 = E2 96 80
  printf("\xe2\x96\x80");
  }
  }
- /* Reset colors and newline */
+ // Reset colors and newline
  printf("\033[0m\n");
  }
  fflush(stdout);
@@ -331,7 +329,7 @@ void gfxbuf_set_active(int on)
  }
 }
 
-/* --- Viewport Clipping --- */
+// --- Viewport Clipping ---
 
 void gfxbuf_set_viewport(int x1, int y1, int x2, int y2)
 {
@@ -366,11 +364,11 @@ void gfxbuf_fill_viewport(int fill_color,
  int border_color)
 {
  int x, y;
- /* Fill interior */
+ // Fill interior
  for (y = vp_y1; y <= vp_y2; y++)
  for (x = vp_x1; x <= vp_x2; x++)
  gfxbuf_pset(x, y, fill_color);
- /* Draw border if different from fill */
+ // Draw border if different from fill
  if (border_color >= 0 &&
  border_color != fill_color) {
  for (x = vp_x1; x <= vp_x2; x++) {
@@ -384,7 +382,7 @@ void gfxbuf_fill_viewport(int fill_color,
  }
 }
 
-/* --- Multi-Page Support --- */
+// --- Multi-Page Support ---
 
 void gfxbuf_set_active_page(int page)
 {

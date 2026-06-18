@@ -1,202 +1,191 @@
-# BASIC++ System and Environment
+BASIC++ System and Environment
 
-**Version 2.0.0**
+Version 4.0.1
 
 This guide covers all system, environment, and OS interaction commands in BASIC++.
 
----
+---------------------------------------------------------------------
 
-## Exiting the Interpreter
 
-### BYE / SYSTEM — Exit BASIC++
+=====================================================================
+TABLE OF CONTENTS
+=====================================================================
 
-```
+   1.  Exiting the Interpreter
+   2.  Dialect Management
+   3.  Directory and File Management
+   4.  Shell and OS Commands
+   5.  Environment Variables
+   6.  Time and Date
+   7.  Program Chaining
+   8.  Security Levels
+   9.  SLEEP — Pause Execution
+  10.  Module Management
+  11.  System Information
+
+
+Exiting the Interpreter
+
+BYE / SYSTEM — Exit BASIC++
+
 BYE              ' Exit to operating system
 SYSTEM           ' Same as BYE
-```
 
 Both commands close all open files, release memory, and return to the OS. Any unsaved program is lost.
 
----
+---------------------------------------------------------------------
 
-## Dialect Management
+Dialect Management
 
-### DIALECT — Switch BASIC Dialect
+DIALECT — Switch BASIC Dialect
 
 BASIC++ supports 16 built-in BASIC dialects:
 
-| Command | Dialect |
-|---------|---------|
-| `DIALECT "GWBS"` | GW-BASIC *(default)* |
-| `DIALECT "QBAS"` | QBasic |
-| `DIALECT "PATB"` | Palo Alto Tiny BASIC |
-| `DIALECT "TRS1"` | TRS-80 Level I |
-| `DIALECT "TRS2"` | TRS-80 Level II |
-| `DIALECT "AINT"` | Applesoft Integer BASIC |
-| `DIALECT "ASFT"` | Applesoft Floating-Point BASIC |
-| `DIALECT "ATRI"` | Atari BASIC |
-| `DIALECT "C64B"` | Commodore 64 BASIC |
-| `DIALECT "COCO"` | TRS-80 Color Computer |
-| `DIALECT "EC55"` | ECMA-55 Minimal BASIC |
-| `DIALECT "E116"` | ECMA-116 Full BASIC |
-| `DIALECT "MBAS"` | Microsoft MBASIC (CP/M) |
-| `DIALECT "SINC"` | Sinclair ZX Spectrum BASIC |
-| `DIALECT "SBLQ"` | Sinclair QL SuperBASIC |
-| `DIALECT "SBAS"` | Tymshare SUPER BASIC |
+  Command             Dialect
+  ----------------------------------------------------------------------
+  DIALECT "GWBS"      GW-BASIC (default)
+  DIALECT "QBAS"      QBasic
+  DIALECT "PATB"      Palo Alto Tiny BASIC
+  DIALECT "TRS1"      TRS-80 Level I
+  DIALECT "TRS2"      TRS-80 Level II
+  DIALECT "AINT"      Applesoft Integer BASIC
+  DIALECT "ASFT"      Applesoft Floating-Point BASIC
+  DIALECT "ATRI"      Atari BASIC
+  DIALECT "C64B"      Commodore 64 BASIC
+  DIALECT "COCO"      TRS-80 Color Computer
+  DIALECT "EC55"      ECMA-55 Minimal BASIC
+  DIALECT "E116"      ECMA-116 Full BASIC
+  DIALECT "MBAS"      Microsoft MBASIC (CP/M)
+  DIALECT "SINC"      Sinclair ZX Spectrum BASIC
+  DIALECT "SBLQ"      Sinclair QL SuperBASIC
+  DIALECT "SBAS"      Tymshare SUPER BASIC
 
-Without arguments, `DIALECT` prints the current dialect:
+Without arguments, DIALECT prints the current dialect:
 
-```
 DIALECT
 Current dialect: GWBS (GW-BASIC)
-```
 
-### DIALECT$ — Read Current Dialect Name
+DIALECT$ — Read Current Dialect Name
 
-```basic
 PRINT DIALECT$     ' prints "GWBS"
 IF DIALECT$ = "PATB" THEN PRINT "Tiny BASIC mode"
-```
 
-`DIALECT$` is a read-only string variable.
+DIALECT$ is a read-only string variable.
 
----
+---------------------------------------------------------------------
 
-## Directory and File Management
+Directory and File Management
 
-| Command | Description |
-|---------|-------------|
-| `FILES` / `DIR` | List all files in current directory |
-| `FILES "*.BAS"` / `DIR "*.BAS"` | List matching files |
-| `CHDIR "C:\GAMES"` | Change current directory |
-| `CHDIR ".."` | Go up one directory |
-| `MKDIR "newdir"` | Create a directory |
-| `RMDIR "olddir"` | Remove a directory (must be empty) |
-| `KILL "temp.dat"` | Delete a file |
-| `SCRATCH "temp.dat"` | Delete a file (SBASIC alias for KILL) |
-| `NAME "old.bas" AS "new.bas"` | Rename a file (GW-BASIC syntax) |
-| `RENAME "old.bas", "new.bas"` | Rename a file (alternative syntax) |
+  Command             Description
+  ----------------------------------------------------------------------
+  FILES / DIR         List all files in current directory
+  FILES ".BAS" / DIR ".BAS"List matching files
+  CHDIR "C:\GAMES"    Change current directory
+  CHDIR ".."          Go up one directory
+  MKDIR "newdir"      Create a directory
+  RMDIR "olddir"      Remove a directory (must be empty)
+  KILL "temp.dat"     Delete a file
+  SCRATCH "temp.dat"  Delete a file (SBASIC alias for KILL)
+  NAME "old.bas" AS "new.bas"Rename a file (GW-BASIC syntax)
+  RENAME "old.bas", "new.bas"Rename a file (alternative syntax)
 
----
+---------------------------------------------------------------------
 
-## Shell and OS Commands
+Shell and OS Commands
 
-### SHELL — Execute OS Command
+SHELL — Execute OS Command
 
-```basic
 SHELL "dir"              ' Run command, wait for completion
 SHELL "notepad file.txt" ' Open Notepad
-```
 
-`SHELL` pauses BASIC++ until the command finishes.
+SHELL pauses BASIC++ until the command finishes.
 
-### SHELL$ — Capture Command Output
+SHELL$ — Capture Command Output
 
-```basic
 A$ = SHELL$("date /t")
 PRINT A$                 ' prints today's date
-```
 
-`SHELL$` runs the command and returns its STDOUT as a string.
+SHELL$ runs the command and returns its STDOUT as a string.
 
-### EXEC — Fire-and-Forget Command
+EXEC — Fire-and-Forget Command
 
-```basic
 EXEC "notepad"
-```
 
-`EXEC` launches the command without waiting for it to finish. BASIC++ continues executing immediately.
+EXEC launches the command without waiting for it to finish. BASIC++ continues executing immediately.
 
-### ERRORLEVEL — Last Shell Exit Code
+ERRORLEVEL — Last Shell Exit Code
 
-```basic
 SHELL "command"
 PRINT ERRORLEVEL         ' 0 = success, nonzero = error
-```
 
----
+---------------------------------------------------------------------
 
-## Environment Variables
+Environment Variables
 
-### ENVIRON$ — Read Environment Variable
+ENVIRON$ — Read Environment Variable
 
-```basic
 A$ = ENVIRON$("PATH")
 A$ = ENVIRON$("HOME")
 A$ = ENVIRON$("USERNAME")
-```
 
 Returns the value of the named variable, or empty string if not found.
 
-### ENVIRON — Set Environment Variable
+ENVIRON — Set Environment Variable
 
-```basic
 ENVIRON "MYVAR=hello"
-```
 
 Sets an environment variable for the current process.
 
----
+---------------------------------------------------------------------
 
-## Time and Date
+Time and Date
 
-| Function | Description | Example Output |
-|----------|-------------|----------------|
-| `TIME$` | Current time (HH:MM:SS, 24-hour) | `"14:30:45"` |
-| `DATE$` | Current date (MM-DD-YYYY) | `"06-11-2026"` |
-| `TIMER` | Seconds since midnight (float) | `52245.123` |
-| `CLOCK$` | Full timestamp (YYYY-MM-DD HH:MM:SS) | `"2026-06-11 14:30:45"` |
-| `ALARM$` | Get/set alarm time (advisory only) | `"23:00:00"` |
+  Function            Description         Example Output
+  ----------------------------------------------------------------------
+  TIME$               Current time (HH:MM:SS, 24-hour)"14:30:45"
+  DATE$               Current date (MM-DD-YYYY)"06-11-2026"
+  TIMER               Seconds since midnight (float)52245.123
+  CLOCK$              Full timestamp (YYYY-MM-DD HH:MM:SS)"2026-06-11 14:30:45"
+  ALARM$              Get/set alarm time (advisory only)"23:00:00"
 
-**Timing example:**
+Timing example:
 
-```basic
 T = TIMER
 ' ... do work ...
 PRINT "Elapsed:"; TIMER - T; "seconds"
-```
 
----
+---------------------------------------------------------------------
 
-## Program Chaining
+Program Chaining
 
-### CHAIN — Load and Run Another Program
+CHAIN — Load and Run Another Program
 
-```basic
 CHAIN "next.bas"
-```
 
-`CHAIN` loads the named program and runs it. By default, all variables are cleared.
+CHAIN loads the named program and runs it. By default, all variables are cleared.
 
-### COMMON — Share Variables with CHAIN
+COMMON — Share Variables with CHAIN
 
-```basic
 COMMON A, B$, C()
-```
 
-Variables listed in `COMMON` are preserved across `CHAIN`. Both the calling and called program must declare the same `COMMON` variables.
+Variables listed in COMMON are preserved across CHAIN. Both the calling and called program must declare the same COMMON variables.
 
-**Example:**
+Example:
 
-Program 1 (`main.bas`):
-```basic
+Program 1 (main.bas):
 10 A = 42
 20 B$ = "Hello"
 30 COMMON A, B$
 40 CHAIN "part2.bas"
-```
 
-Program 2 (`part2.bas`):
-```basic
+Program 2 (part2.bas):
 10 COMMON A, B$
 20 PRINT A, B$     ' prints 42  Hello
-```
 
----
+---------------------------------------------------------------------
 
-## Security Levels
+Security Levels
 
-```basic
 SECURITY 0             ' OPEN: no restrictions
 SECURITY 1             ' STANDARD: limited file/shell access
 SECURITY 2             ' RESTRICTED: no file, shell, or POKE
@@ -206,58 +195,47 @@ SECURITY "STANDARD"    ' Same as SECURITY 1
 SECURITY "RESTRICTED"  ' Same as SECURITY 2
 
 SECURITY LEVEL 1       ' Alternative syntax
-```
 
-> **Important:** Security is a **one-way ratchet** — you can increase the level but never decrease it within a session. This prevents untrusted code from escaping restrictions.
+  Important: Security is a one-way ratchet — you can increase the level but never decrease it within a session. This prevents untrusted code from escaping restrictions.
 
----
+---------------------------------------------------------------------
 
-## SLEEP — Pause Execution
+SLEEP — Pause Execution
 
-```basic
 SLEEP              ' Pause until keypress
 SLEEP 5            ' Pause for 5 seconds
-```
 
-`SLEEP` pauses program execution. With no argument, it waits for a keypress. With a numeric argument, it waits for the specified number of seconds.
+SLEEP pauses program execution. With no argument, it waits for a keypress. With a numeric argument, it waits for the specified number of seconds.
 
----
+---------------------------------------------------------------------
 
-## Module Management
+Module Management
 
-```basic
 MODULE "STDLIB"        ' Activate standard library module
 MODULE "FUJINET"       ' Activate FujiNet network module
 MODULE "USB"           ' Activate USB device module
 MODULE                 ' List loaded modules
-```
 
-Modules add additional functions, statements, and virtual devices to the interpreter. See [External_Modules](External_Modules.md) for full module documentation.
+Modules add additional functions, statements, and virtual devices to the interpreter. See External_Modules for full module documentation.
 
----
+---------------------------------------------------------------------
 
-## System Information
+System Information
 
-### INFO — Display System State
+INFO — Display System State
 
-```
 INFO
-```
 
 Prints current interpreter state: version, dialect, security level, loaded modules, memory usage, and platform info.
 
-### VER — Display Version
+VER — Display Version
 
-```
 VER
-```
 
 Prints the BASIC++ version string.
 
-### SYSTEM — Query Platform Info
+SYSTEM — Query Platform Info
 
-```basic
 A$ = SYSTEM("OS")        ' "Windows", "Linux", "macOS"
 A$ = SYSTEM("ARCH")      ' "x86_64", "x86", "arm"
 A$ = SYSTEM("VERSION")   ' "2.0.0"
-```

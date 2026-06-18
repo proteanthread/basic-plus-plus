@@ -1,46 +1,44 @@
-/*
- * ---
- * BASIC++ Interpreter - mod_upnp.c
- * ---
- *
- * UPnP/SSDP Device Discovery Module.
- *
- * PURPOSE:
- * Provides UPnP device discovery and control for BASIC++
- * programs via the VDev2 framework. Registers two virtual
- * devices:
- *
- * UPNP:  UPnP device discovery (SSDP M-SEARCH)
- * SOAP:  UPnP control point (SOAP action invocation)
- *
- * PROTOCOL OVERVIEW:
- * UPnP uses SSDP (Simple Service Discovery Protocol) over
- * UDP multicast (239.255.255.250:1900) for device discovery.
- * Control commands use SOAP over HTTP to device endpoints.
- *
- * PLATFORM SUPPORT:
- * Windows:  Winsock2 (ws2_32.dll)
- * Linux:    BSD sockets (sys/socket.h)
- * FreeDOS:  Stub only (no network stack)
- *
- * BASIC USAGE:
- * MODULE "UPNP"
- * DEVICES            ' lists UPNP:, SOAP:
- * OPEN "UPNP:" FOR INPUT AS #1
- * IOCTL #1, "SEARCH", "ssdp:all"
- * DO WHILE NOT EOF(1)
- *   INPUT #1, D$
- *   PRINT D$
- * LOOP
- * CLOSE #1
- *
- * SECURITY:
- * Requires CAP_NET.
- * All network access is gated by the security system.
- * In SEC_RESTRICTED mode, the module cannot activate.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - mod_upnp.c
+ // ---
+ //
+ // UPnP/SSDP Device Discovery Module.
+ //
+ // PURPOSE:
+ // Provides UPnP device discovery and control for BASIC++
+ // programs via the VDev2 framework. Registers two virtual
+ // devices:
+ //
+ // UPNP:  UPnP device discovery (SSDP M-SEARCH)
+ // SOAP:  UPnP control point (SOAP action invocation)
+ //
+ // PROTOCOL OVERVIEW:
+ // UPnP uses SSDP (Simple Service Discovery Protocol) over
+ // UDP multicast (239.255.255.250:1900) for device discovery.
+ // Control commands use SOAP over HTTP to device endpoints.
+ //
+ // PLATFORM SUPPORT:
+ // Windows:  Winsock2 (ws2_32.dll)
+ // Linux:    BSD sockets (sys/socket.h)
+ // FreeDOS:  Stub only (no network stack)
+ //
+ // BASIC USAGE:
+ // MODULE "UPNP"
+ // DEVICES            ' lists UPNP:, SOAP:
+ // OPEN "UPNP:" FOR INPUT AS #1
+ // IOCTL #1, "SEARCH", "ssdp:all"
+ // DO WHILE NOT EOF(1)
+ //   INPUT #1, D$
+ //   PRINT D$
+ // LOOP
+ // CLOSE #1
+ //
+ // SECURITY:
+ // Requires CAP_NET.
+ // All network access is gated by the security system.
+ // In SEC_RESTRICTED mode, the module cannot activate.
+ //
+ // ---
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +49,7 @@
 #include "module.h"
 #include "vdev.h"
 
-/* --- Platform-Specific Socket Abstraction --- */
+// --- Platform-Specific Socket Abstraction ---
 
 #if defined(_WIN32) || defined(_WIN64)
  #ifndef WIN32_LEAN_AND_MEAN
@@ -82,59 +80,56 @@
  typedef int SOCKET;
 #endif
 
-/* --- SSDP Constants --- */
+// --- SSDP Constants ---
 
 #define SSDP_MULTICAST_ADDR "239.255.255.250"
 #define SSDP_PORT           1900
-#define SSDP_MX_DEFAULT     3     /* max wait seconds */
+#define SSDP_MX_DEFAULT     3 // max wait seconds
 
-/* Maximum discovered devices per search */
+// Maximum discovered devices per search
 #define UPNP_MAX_DEVICES    32
 #define UPNP_URL_MAX        512
 #define UPNP_NAME_MAX       128
 #define UPNP_RESPONSE_MAX   2048
 
-/* --- UPnP Device State ---
- * Each VDev instance maintains its own state via user_data.
- */
+// --- UPnP Device State ---
+ // Each VDev instance maintains its own state via user_data.
 
 typedef struct UPnPDeviceEntry {
- char name[UPNP_NAME_MAX];      /* friendly name / USN */
- char location[UPNP_URL_MAX];   /* description URL */
- char st[UPNP_NAME_MAX];        /* search target */
+ char name[UPNP_NAME_MAX]; // friendly name / USN
+ char location[UPNP_URL_MAX]; // description URL
+ char st[UPNP_NAME_MAX]; // search target
 } UPnPDeviceEntry;
 
 typedef struct UPnPState {
- int is_open;                    /* 1 if device is open */
- SOCKET sock_handle;             /* platform socket handle */
- char last_error[128];           /* last error message */
- char search_target[UPNP_NAME_MAX]; /* current ST filter */
- int mx_seconds;                 /* M-SEARCH MX value */
+ int is_open; // 1 if device is open
+ SOCKET sock_handle; // platform socket handle
+ char last_error[128]; // last error message
+ char search_target[UPNP_NAME_MAX]; // current ST filter
+ int mx_seconds; // M-SEARCH MX value
 
- /* Discovery results */
- int device_count;               /* discovered device count */
+ // Discovery results
+ int device_count; // discovered device count
  UPnPDeviceEntry devices[UPNP_MAX_DEVICES];
- int read_cursor;                /* current read position */
+ int read_cursor; // current read position
 
- /* SOAP state */
- char soap_url[UPNP_URL_MAX];   /* target service URL */
- char soap_action[UPNP_NAME_MAX]; /* current SOAP action */
- char soap_response[UPNP_RESPONSE_MAX]; /* last response */
- int soap_response_len;          /* response length */
+ // SOAP state
+ char soap_url[UPNP_URL_MAX]; // target service URL
+ char soap_action[UPNP_NAME_MAX]; // current SOAP action
+ char soap_response[UPNP_RESPONSE_MAX]; // last response
+ int soap_response_len; // response length
 } UPnPState;
 
-/* Static state for the two device instances */
+// Static state for the two device instances
 static UPnPState upnp_state;
 static UPnPState soap_state;
 
 
-/* ================================================================
- * UPNP: Device Discovery (SSDP M-SEARCH)
- * ================================================================ */
+// ================================================================
+ // UPNP: Device Discovery (SSDP M-SEARCH)
+ // ================================================================ 
 
-/*
- * upnp_build_msearch - Build an SSDP M-SEARCH request.
- */
+ // upnp_build_msearch - Build an SSDP M-SEARCH request.
 static int upnp_build_msearch(char *buf, int maxlen,
     const char *st, int mx)
 {
@@ -148,9 +143,7 @@ static int upnp_build_msearch(char *buf, int maxlen,
   SSDP_MULTICAST_ADDR, SSDP_PORT, mx, st);
 }
 
-/*
- * upnp_parse_response - Parse an SSDP response.
- */
+ // upnp_parse_response - Parse an SSDP response.
 static int upnp_parse_response(const char *resp, int len,
     UPnPDeviceEntry *entry)
 {
@@ -170,7 +163,7 @@ static int upnp_parse_response(const char *resp, int len,
    eol++;
   line_len = (int)(eol - p);
 
-  /* LOCATION: header */
+  // LOCATION: header
   if (line_len > 10 &&
    (p[0] == 'L' || p[0] == 'l') &&
    (p[1] == 'O' || p[1] == 'o') &&
@@ -192,7 +185,7 @@ static int upnp_parse_response(const char *resp, int len,
    got_location = 1;
   }
 
-  /* ST: header */
+  // ST: header
   if (line_len > 3 &&
    (p[0] == 'S' || p[0] == 's') &&
    (p[1] == 'T' || p[1] == 't') &&
@@ -207,7 +200,7 @@ static int upnp_parse_response(const char *resp, int len,
    entry->st[vlen] = '\0';
   }
 
-  /* USN: header */
+  // USN: header
   if (line_len > 4 &&
    (p[0] == 'U' || p[0] == 'u') &&
    (p[1] == 'S' || p[1] == 's') &&
@@ -290,23 +283,19 @@ static int upnp_status(VDev *d)
  return st->is_open ? 0 : -1;
 }
 
-/*
- * upnp_ioctl - Handle UPnP control commands.
- *
- * VDIO_ENUMERATE: Send M-SEARCH and collect responses.
- * VDIO_RESET: Clear discovery results.
- * VDIO_GET_ERROR: Return last error string.
- */
+ // upnp_ioctl - Handle UPnP control commands.
+ //
+ // VDIO_ENUMERATE: Send M-SEARCH and collect responses.
+ // VDIO_RESET: Clear discovery results.
+ // VDIO_GET_ERROR: Return last error string.
 static int upnp_ioctl(VDev *d, int cmd, void *arg)
 {
  UPnPState *st = (UPnPState *)d->user_data;
 
  switch (cmd) {
  case VDIO_ENUMERATE:
-  /*
-   * Perform SSDP M-SEARCH discovery.
-   * Real socket implementation for Windows/Linux.
-   */
+   // Perform SSDP M-SEARCH discovery.
+   // Real socket implementation for Windows/Linux.
   st->device_count = 0;
   st->read_cursor = 0;
   st->last_error[0] = '\0';
@@ -340,7 +329,7 @@ static int upnp_ioctl(VDev *d, int cmd, void *arg)
   setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL,
    (const char *)&ttl, sizeof(ttl));
 
-  /* Set receive timeout */
+  // Set receive timeout
 #ifdef _WIN32
   timeout_ms = st->mx_seconds * 1000;
   setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,
@@ -352,7 +341,7 @@ static int upnp_ioctl(VDev *d, int cmd, void *arg)
    &tv, sizeof(tv));
 #endif
 
-  /* Build and send M-SEARCH */
+  // Build and send M-SEARCH
   rlen = upnp_build_msearch(req, (int)sizeof(req),
    st->search_target, st->mx_seconds);
 
@@ -371,7 +360,7 @@ static int upnp_ioctl(VDev *d, int cmd, void *arg)
    break;
   }
 
-  /* Read responses until timeout */
+  // Read responses until timeout
   while (st->device_count < UPNP_MAX_DEVICES) {
    char buf[UPNP_RESPONSE_MAX];
    int n;
@@ -415,9 +404,7 @@ static int upnp_ioctl(VDev *d, int cmd, void *arg)
  return 0;
 }
 
-/*
- * upnp_gets - Read next discovered device.
- */
+ // upnp_gets - Read next discovered device.
 static int upnp_gets(VDev *d, char *buf, int max)
 {
  UPnPState *st = (UPnPState *)d->user_data;
@@ -456,9 +443,9 @@ static const char *upnp_info(VDev *d, const char *key)
 }
 
 
-/* ================================================================
- * SOAP: UPnP Control Point (SOAP Action Invocation)
- * ================================================================ */
+// ================================================================
+ // SOAP: UPnP Control Point (SOAP Action Invocation)
+ // ================================================================ 
 
 static int soap_build_request(char *buf, int maxlen,
     const char *service_type,
@@ -525,7 +512,7 @@ static int soap_ioctl(VDev *d, int cmd, void *arg)
  UPnPState *st = (UPnPState *)d->user_data;
 
  switch (cmd) {
- case VDIO_USER:  /* SOAP send */
+ case VDIO_USER: // SOAP send
   if (arg == NULL) return -1;
 #ifdef UPNP_NO_NETWORKING
   strcpy(st->last_error,
@@ -548,7 +535,7 @@ static int soap_ioctl(VDev *d, int cmd, void *arg)
   int req_len;
   int total_read = 0;
 
-  /* Build the SOAP XML body */
+  // Build the SOAP XML body
   body_len = soap_build_request(body, (int)sizeof(body),
    input, "Action", NULL);
   if (body_len <= 0) {
@@ -556,16 +543,16 @@ static int soap_ioctl(VDev *d, int cmd, void *arg)
    return -1;
   }
 
-  /* Parse soap_url: http://host:port/path */
+  // Parse soap_url: http://host:port/path
   host[0] = '\0';
   path[0] = '/'; path[1] = '\0';
   p = st->soap_url;
 
-  /* Skip http:// if present */
+  // Skip http:// if present
   if (strncmp(p, "http://", 7) == 0) p += 7;
   else if (strncmp(p, "HTTP://", 7) == 0) p += 7;
 
-  /* Extract host */
+  // Extract host
   pp = p;
   while (*pp && *pp != ':' && *pp != '/' && *pp != '\0')
    pp++;
@@ -579,20 +566,20 @@ static int soap_ioctl(VDev *d, int cmd, void *arg)
    host[hlen] = '\0';
   }
 
-  /* Extract port if present */
+  // Extract port if present
   if (*pp == ':') {
    pp++;
    port = atoi(pp);
    while (*pp >= '0' && *pp <= '9') pp++;
   }
 
-  /* Extract path */
+  // Extract path
   if (*pp == '/') {
    strncpy(path, pp, sizeof(path) - 1);
    path[sizeof(path) - 1] = '\0';
   }
 
-  /* Connect via TCP */
+  // Connect via TCP
   sprintf(port_str, "%d", port);
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_INET;
@@ -621,7 +608,7 @@ static int soap_ioctl(VDev *d, int cmd, void *arg)
   }
   freeaddrinfo(res);
 
-  /* Build HTTP POST request */
+  // Build HTTP POST request
   req_len = snprintf(request, sizeof(request),
    "POST %s HTTP/1.1\r\n"
    "Host: %s:%d\r\n"
@@ -633,14 +620,14 @@ static int soap_ioctl(VDev *d, int cmd, void *arg)
    "%s",
    path, host, port, input, body_len, body);
 
-  /* Send request */
+  // Send request
   if (send(sock, request, req_len, 0) < 0) {
    UPNP_CLOSESOCKET(sock);
    strcpy(st->last_error, "SOAP: send failed");
    return -1;
   }
 
-  /* Read response */
+  // Read response
   st->soap_response[0] = '\0';
   st->soap_response_len = 0;
   total_read = 0;
@@ -655,7 +642,7 @@ static int soap_ioctl(VDev *d, int cmd, void *arg)
 
   UPNP_CLOSESOCKET(sock);
 
-  /* Check for HTTP error */
+  // Check for HTTP error
   if (total_read > 12 &&
    strncmp(st->soap_response, "HTTP/", 5) == 0) {
    const char *sp = strchr(st->soap_response, ' ');
@@ -671,8 +658,8 @@ static int soap_ioctl(VDev *d, int cmd, void *arg)
    }
   }
 
-  /* Strip HTTP headers from response,
-   * keep only the SOAP XML body */
+  // Strip HTTP headers from response,
+   // keep only the SOAP XML body 
   {
    char *body_start = strstr(st->soap_response,
     "\r\n\r\n");
@@ -742,16 +729,16 @@ static const char *soap_info(VDev *d, const char *key)
 }
 
 
-/* ================================================================
- * Module Init / Cleanup
- * ================================================================ */
+// ================================================================
+ // Module Init / Cleanup
+ // ================================================================ 
 
 static int upnp_module_init(void *rt)
 {
  VDev dev;
  (void)rt;
 
- /* Clear device states */
+ // Clear device states
  memset(&upnp_state, 0, sizeof(upnp_state));
  memset(&soap_state, 0, sizeof(soap_state));
  upnp_state.sock_handle = (SOCKET)UPNP_INVALID_SOCKET;
@@ -766,7 +753,7 @@ static int upnp_module_init(void *rt)
  }
 #endif
 
- /* --- UPNP: Device Discovery --- */
+ // --- UPNP: Device Discovery ---
  memset(&dev, 0, sizeof(dev));
  dev.name = "UPNP:";
  dev.dev_class = VDCLASS_NETWORK;
@@ -786,7 +773,7 @@ static int upnp_module_init(void *rt)
  dev.user_data = &upnp_state;
  vdev_register(&dev);
 
- /* --- SOAP: UPnP Control Point --- */
+ // --- SOAP: UPnP Control Point ---
  memset(&dev, 0, sizeof(dev));
  dev.name = "SOAP:";
  dev.dev_class = VDCLASS_NETWORK;
@@ -810,7 +797,7 @@ static int upnp_module_init(void *rt)
 
 static void upnp_module_cleanup(void)
 {
- /* Close any open sockets */
+ // Close any open sockets
 #ifndef UPNP_NO_NETWORKING
  if (upnp_state.is_open &&
      upnp_state.sock_handle !=
@@ -838,20 +825,18 @@ static void upnp_module_cleanup(void)
 #endif
 }
 
-/* Module descriptor */
+// Module descriptor
 static const ModuleInfo upnp_module_info = {
- "UPNP",                                 /* name */
- "1.0",                                  /* version */
- "UPnP/SSDP device discovery and control", /* description */
- MOD_DEVICE,                             /* mod_class */
- CAP_NETWORK | CAP_IO,                   /* capabilities */
- upnp_module_init,                       /* init */
- upnp_module_cleanup                     /* cleanup */
+ "UPNP", // name
+ "1.0", // version
+ "UPnP/SSDP device discovery and control", // description
+ MOD_DEVICE, // mod_class
+ CAP_NETWORK | CAP_IO, // capabilities
+ upnp_module_init, // init
+ upnp_module_cleanup // cleanup
 };
 
-/*
- * mod_upnp_register - Register the UPnP module.
- */
+ // mod_upnp_register - Register the UPnP module.
 void mod_upnp_register(void)
 {
  module_register(&upnp_module_info);

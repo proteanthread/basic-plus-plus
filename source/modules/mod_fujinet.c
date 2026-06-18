@@ -1,29 +1,39 @@
-/*
- * ---
- * BASIC++ Interpreter - mod_fujinet.c
- * ---
- *
- * FujiNet Virtual Device Module — Full Implementation.
- *
- * Three virtual devices that expose FujiNet hardware services
- * through the VDev2 interface:
- *
- *   N:      Network adapter (TCP/UDP/HTTP/TNFS/TELNET)
- *   FUJI:   Configuration (WiFi, slots, AppKey, directory)
- *   CLOCK:  Network time via NTP
- *
- * Desktop implementation uses Winsock2 (Windows) or BSD sockets
- * (POSIX) for the N: device. FUJI: uses local config files and
- * platform APIs. CLOCK: returns system time.
- *
- * When compiled for FujiNet hardware targets (Atari, Apple II,
- * C64, CoCo), replace the socket calls with fujinet-lib calls.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - mod_fujinet.c
+ // ---
+ //
+ // FujiNet Virtual Device Module -- Full Implementation.
+ //
+ // Three virtual devices that expose FujiNet hardware services
+ // through the VDev2 interface:
+ //
+ //   N:      Network adapter (TCP/UDP/HTTP/TNFS/TELNET)
+ //   FUJI:   Configuration (WiFi, slots, AppKey, directory)
+ //   CLOCK:  Network time via NTP
+ //
+ // Desktop implementation uses Winsock2 (Windows) or BSD sockets
+ // (POSIX) for the N: device. FUJI: uses local config files and
+ // platform APIs. CLOCK: returns system time.
+ //
+ // When compiled for FujiNet hardware targets (Atari, Apple II,
+ // C64, CoCo), replace the socket calls with fujinet-lib calls.
+ //
+//
+// HOW TO EXTEND:
+//   To add new functions to this module:
+//   1. Add the function implementation in this file.
+//   2. Register it in the module's init function using
+//      module_register_function().
+//   3. Update the module's header with the new declaration.
+//
+// TROUBLESHOOTING:
+//   - Module not loading: check module_init() registration.
+//   - Function not found: verify registration name matches
+//     the BASIC keyword exactly (case-insensitive).
+ // ---
 
-/* POSIX feature test macros — needed for getaddrinfo/struct addrinfo
- * when compiling with -std=c90 on Linux/POSIX systems. */
+// POSIX feature test macros -- needed for getaddrinfo/struct addrinfo
+ // when compiling with -std=c90 on Linux/POSIX systems. 
 #if !defined(_WIN32) && !defined(__MSDOS__) && !defined(__DOS__)
   #if !defined(_POSIX_C_SOURCE) || (_POSIX_C_SOURCE < 200112L)
     #undef _POSIX_C_SOURCE
@@ -47,10 +57,10 @@
 #include "vdev.h"
 #include "errors.h"
 
-/* Directory API for FUJI: IOCTLs */
+// Directory API for FUJI: IOCTLs
 #ifdef _WIN32
-  /* Windows directory enumeration */
-  /* windows.h already pulled in by winsock2.h below */
+  // Windows directory enumeration
+  // windows.h already pulled in by winsock2.h below
   #define fn_popen  _popen
   #define fn_pclose _pclose
 #elif !defined(__MSDOS__) && !defined(__DOS__)
@@ -63,9 +73,9 @@
   #define fn_pclose(f)   ((void)(f), -1)
 #endif
 
-/* ================================================================
- * PLATFORM-SPECIFIC SOCKET ABSTRACTION
- * ================================================================ */
+// ================================================================
+ // PLATFORM-SPECIFIC SOCKET ABSTRACTION
+ // ================================================================ 
 
 #ifdef _WIN32
   #ifndef WIN32_LEAN_AND_MEAN
@@ -73,7 +83,7 @@
   #endif
   #include <winsock2.h>
   #include <ws2tcpip.h>
-  #include <windows.h>   /* FindFirstFileA etc. for FUJI: dir browsing */
+  #include <windows.h> // FindFirstFileA etc. for FUJI: dir browsing
   #pragma comment(lib, "ws2_32.lib")
   typedef int socklen_t;
   #define FN_INVALID_SOCKET INVALID_SOCKET
@@ -82,7 +92,7 @@
   #define fn_socket_errno   WSAGetLastError()
   static int wsa_initialized = 0;
 #elif defined(__MSDOS__) || defined(__DOS__) || defined(MSDOS)
-  /* DOS stub — no networking available */
+  // DOS stub -- no networking available
   #define FN_INVALID_SOCKET (-1)
   #define FN_SOCKET_ERROR   (-1)
   #define fn_closesocket(s) ((void)(s), -1)
@@ -90,7 +100,7 @@
   typedef int SOCKET;
   typedef int socklen_t;
   #define FN_NO_NETWORKING 1
-  /* Stub socket constants and functions for compilation */
+  // Stub socket constants and functions for compilation
   #define AF_INET     2
   #define SOCK_STREAM 1
   #define SOCK_DGRAM  2
@@ -117,30 +127,28 @@
   typedef int SOCKET;
 #endif
 
-/* ================================================================
- * MODULE STATE
- * ================================================================ */
+// ================================================================
+ // MODULE STATE
+ // ================================================================ 
 
 static FnChannel fn_channels[FN_MAX_CHANNELS];
 static FnFujiState fn_fuji;
 static FnClockState fn_clock_state;
 
-/* VDev IDs assigned at registration */
+// VDev IDs assigned at registration
 static int fn_net_vdev_id = -1;
 static int fn_fuji_vdev_id = -1;
 static int fn_clock_vdev_id = -1;
 
-/* ================================================================
- * INTERNAL HELPERS
- * ================================================================ */
+// ================================================================
+ // INTERNAL HELPERS
+ // ================================================================ 
 
-/*
- * Initialize the socket subsystem (Winsock on Windows).
- */
+ // Initialize the socket subsystem (Winsock on Windows).
 static int fn_socket_init(void)
 {
 #ifdef FN_NO_NETWORKING
-    return -1; /* no networking on DOS */
+    return -1; // no networking on DOS
 #elif defined(_WIN32)
     WSADATA wsa;
     if (!wsa_initialized) {
@@ -154,13 +162,11 @@ static int fn_socket_init(void)
 #endif
 }
 
-/*
- * Shut down the socket subsystem.
- */
+ // Shut down the socket subsystem.
 static void fn_socket_cleanup(void)
 {
 #ifdef FN_NO_NETWORKING
-    /* nothing to clean up on DOS */
+    // nothing to clean up on DOS
 #elif defined(_WIN32)
     if (wsa_initialized) {
         WSACleanup();
@@ -169,9 +175,7 @@ static void fn_socket_cleanup(void)
 #endif
 }
 
-/*
- * Set a socket to non-blocking mode.
- */
+ // Set a socket to non-blocking mode.
 static int fn_set_nonblocking(int fd)
 {
 #ifdef FN_NO_NETWORKING
@@ -187,14 +191,12 @@ static int fn_set_nonblocking(int fd)
 #endif
 }
 
-/*
- * Parse a FujiNet devicespec URL into protocol, host, port, path.
- *
- * Format: N:PROTO://host:port/path
- *         or just PROTO://host:port/path
- *
- * Returns 0 on success, -1 on parse failure.
- */
+ // Parse a FujiNet devicespec URL into protocol, host, port, path.
+ //
+ // Format: N:PROTO://host:port/path
+ //         or just PROTO://host:port/path
+ //
+ // Returns 0 on success, -1 on parse failure.
 static int fn_parse_devicespec(const char *spec,
     FnProto *proto, char *host, int host_max,
     int *port, char *path, int path_max)
@@ -209,11 +211,11 @@ static int fn_parse_devicespec(const char *spec,
     int proto_len;
     int i;
 
-    /* Skip leading "N:" if present */
+    // Skip leading "N:" if present
     if ((p[0] == 'N' || p[0] == 'n') && p[1] == ':')
         p += 2;
 
-    /* Extract protocol (everything before "://") */
+    // Extract protocol (everything before "://")
     proto_start = p;
     proto_end = strstr(p, "://");
     if (proto_end == NULL) return -1;
@@ -225,7 +227,7 @@ static int fn_parse_devicespec(const char *spec,
         proto_str[i] = (char)toupper((unsigned char)proto_start[i]);
     proto_str[proto_len] = '\0';
 
-    /* Map protocol string to enum */
+    // Map protocol string to enum
     *proto = FN_PROTO_UNKNOWN;
     if (strcmp(proto_str, "TCP") == 0)
         *proto = FN_PROTO_TCP;
@@ -246,10 +248,10 @@ static int fn_parse_devicespec(const char *spec,
 
     if (*proto == FN_PROTO_UNKNOWN) return -1;
 
-    /* Skip past "://" */
+    // Skip past "://"
     p = proto_end + 3;
 
-    /* Extract host (up to ':' or '/' or end) */
+    // Extract host (up to ':' or '/' or end)
     host_start = p;
     host_end = p;
     while (*host_end && *host_end != ':' && *host_end != '/')
@@ -260,7 +262,7 @@ static int fn_parse_devicespec(const char *spec,
     memcpy(host, host_start, i);
     host[i] = '\0';
 
-    /* Extract port (optional) */
+    // Extract port (optional)
     *port = 0;
     if (*host_end == ':') {
         port_start = host_end + 1;
@@ -274,7 +276,7 @@ static int fn_parse_devicespec(const char *spec,
         p = host_end;
     }
 
-    /* Default ports by protocol */
+    // Default ports by protocol
     if (*port == 0) {
         switch (*proto) {
         case FN_PROTO_HTTP:   *port = 80; break;
@@ -287,7 +289,7 @@ static int fn_parse_devicespec(const char *spec,
         }
     }
 
-    /* Extract path (everything after host:port) */
+    // Extract path (everything after host:port)
     if (*p == '/') {
         i = (int)strlen(p);
         if (i >= path_max) i = path_max - 1;
@@ -301,9 +303,7 @@ static int fn_parse_devicespec(const char *spec,
     return 0;
 }
 
-/*
- * Find a free channel slot.
- */
+ // Find a free channel slot.
 static int fn_alloc_channel(void)
 {
     int i;
@@ -314,9 +314,7 @@ static int fn_alloc_channel(void)
     return -1;
 }
 
-/*
- * Resolve hostname and connect a TCP socket.
- */
+ // Resolve hostname and connect a TCP socket.
 static int fn_tcp_connect(const char *host, int port)
 {
 #ifdef FN_NO_NETWORKING
@@ -346,7 +344,7 @@ static int fn_tcp_connect(const char *host, int port)
 
         if (connect(fd, rp->ai_addr,
                     (int)rp->ai_addrlen) == 0) {
-            break;  /* connected */
+            break; // connected
         }
         fn_closesocket(fd);
         fd = -1;
@@ -357,9 +355,7 @@ static int fn_tcp_connect(const char *host, int port)
 #endif
 }
 
-/*
- * Create and bind a UDP socket.
- */
+ // Create and bind a UDP socket.
 static int fn_udp_create(const char *host, int port)
 {
 #ifdef FN_NO_NETWORKING
@@ -388,7 +384,7 @@ static int fn_udp_create(const char *host, int port)
         return -1;
     }
 
-    /* For UDP, "connect" sets the default destination */
+    // For UDP, "connect" sets the default destination
     if (connect(fd, result->ai_addr,
                 (int)result->ai_addrlen) != 0) {
         fn_closesocket(fd);
@@ -401,16 +397,14 @@ static int fn_udp_create(const char *host, int port)
 #endif
 }
 
-/* ================================================================
- * HTTP CLIENT (simplified, desktop only)
- *
- * Builds an HTTP/1.1 request, sends it over a TCP socket,
- * and captures the response headers + body into the channel.
- * ================================================================ */
+// ================================================================
+ // HTTP CLIENT (simplified, desktop only)
+ //
+ // Builds an HTTP/1.1 request, sends it over a TCP socket,
+ // and captures the response headers + body into the channel.
+ // ================================================================ 
 
-/*
- * Build and send an HTTP GET request, read the full response.
- */
+ // Build and send an HTTP GET request, read the full response.
 static int fn_http_request(FnChannel *ch, const char *method)
 {
     char request[1024];
@@ -421,7 +415,7 @@ static int fn_http_request(FnChannel *ch, const char *method)
     char *status_line;
     int header_len;
 
-    /* Build HTTP/1.1 request */
+    // Build HTTP/1.1 request
     sprintf(request,
         "%s %s HTTP/1.1\r\n"
         "Host: %s\r\n"
@@ -433,11 +427,11 @@ static int fn_http_request(FnChannel *ch, const char *method)
         method, ch->path, ch->host,
         ch->http_headers[0] ? ch->http_headers : "");
 
-    /* Send request */
+    // Send request
     n = send(ch->sock_fd, request, (int)strlen(request), 0);
     if (n <= 0) return FN_ERR_IO_ERROR;
 
-    /* If POST/PUT, send body */
+    // If POST/PUT, send body
     if (ch->http_body && ch->http_body_len > 0 &&
         (strcmp(method, "POST") == 0 ||
          strcmp(method, "PUT") == 0)) {
@@ -446,7 +440,7 @@ static int fn_http_request(FnChannel *ch, const char *method)
         if (n <= 0) return FN_ERR_IO_ERROR;
     }
 
-    /* Read response in chunks */
+    // Read response in chunks
     memset(response, 0, sizeof(response));
     while (total < (int)sizeof(response) - 1) {
         n = recv(ch->sock_fd, response + total,
@@ -456,7 +450,7 @@ static int fn_http_request(FnChannel *ch, const char *method)
     }
     response[total] = '\0';
 
-    /* Parse status code from first line */
+    // Parse status code from first line
     status_line = response;
     ch->http_status_code = 0;
     if (strncmp(status_line, "HTTP/", 5) == 0) {
@@ -464,7 +458,7 @@ static int fn_http_request(FnChannel *ch, const char *method)
         if (sp) ch->http_status_code = atoi(sp + 1);
     }
 
-    /* Split headers from body at \r\n\r\n */
+    // Split headers from body at \r\n\r\n
     body_start = strstr(response, "\r\n\r\n");
     if (body_start) {
         header_len = (int)(body_start - response);
@@ -473,7 +467,7 @@ static int fn_http_request(FnChannel *ch, const char *method)
         memcpy(ch->http_headers, response, header_len);
         ch->http_headers[header_len] = '\0';
 
-        body_start += 4;  /* skip \r\n\r\n */
+        body_start += 4; // skip \r\n\r\n
         ch->http_body_len = total - (int)(body_start - response);
         if (ch->http_body_len > 0) {
             ch->http_body = (char *)malloc(
@@ -492,19 +486,17 @@ static int fn_http_request(FnChannel *ch, const char *method)
     return FN_ERR_OK;
 }
 
-/* ================================================================
- * TNFS CLIENT (Trivial Network File System)
- *
- * TNFS uses UDP packets with a simple header:
- *   [session_hi][session_lo][seq][cmd][payload...]
- *
- * This implements mount, open, read, write, close, unmount.
- * ================================================================ */
+// ================================================================
+ // TNFS CLIENT (Trivial Network File System)
+ //
+ // TNFS uses UDP packets with a simple header:
+ //   [session_hi][session_lo][seq][cmd][payload...]
+ //
+ // This implements mount, open, read, write, close, unmount.
+ // ================================================================ 
 
-/*
- * Send a TNFS packet and receive the response.
- * Returns response payload length, or -1 on error.
- */
+ // Send a TNFS packet and receive the response.
+ // Returns response payload length, or -1 on error.
 static int fn_tnfs_transaction(FnChannel *ch,
     unsigned char cmd,
     const unsigned char *payload, int payload_len,
@@ -514,7 +506,7 @@ static int fn_tnfs_transaction(FnChannel *ch,
     int pkt_len;
     int n;
 
-    /* Build TNFS packet header */
+    // Build TNFS packet header
     pkt[0] = ch->tnfs_session[0];
     pkt[1] = ch->tnfs_session[1];
     pkt[2] = ch->tnfs_seq++;
@@ -528,15 +520,15 @@ static int fn_tnfs_transaction(FnChannel *ch,
         pkt_len += payload_len;
     }
 
-    /* Send via UDP */
+    // Send via UDP
     n = send(ch->sock_fd, (char *)pkt, pkt_len, 0);
     if (n <= 0) return -1;
 
-    /* Receive response */
+    // Receive response
     n = recv(ch->sock_fd, (char *)resp, resp_max, 0);
     if (n < 4) return -1;
 
-    /* Check for error in response (byte 4 = return code) */
+    // Check for error in response (byte 4 = return code)
     if (n > 4 && resp[4] != 0) {
         ch->last_error = resp[4];
         return -1;
@@ -545,10 +537,8 @@ static int fn_tnfs_transaction(FnChannel *ch,
     return n;
 }
 
-/*
- * Mount a TNFS share. Establishes the session.
- * TNFS CMD 0x00 = MOUNT
- */
+ // Mount a TNFS share. Establishes the session.
+ // TNFS CMD 0x00 = MOUNT
 static int fn_tnfs_mount(FnChannel *ch)
 {
     unsigned char payload[256];
@@ -556,11 +546,11 @@ static int fn_tnfs_mount(FnChannel *ch)
     int plen = 0;
     int n;
 
-    /* Version 1.2, no auth */
-    payload[plen++] = 0x01;  /* version major */
-    payload[plen++] = 0x02;  /* version minor */
+    // Version 1.2, no auth
+    payload[plen++] = 0x01; // version major
+    payload[plen++] = 0x02; // version minor
 
-    /* Mount path (null-terminated) */
+    // Mount path (null-terminated)
     if (ch->path[0]) {
         int pathlen = (int)strlen(ch->path);
         if (pathlen > 200) pathlen = 200;
@@ -569,11 +559,11 @@ static int fn_tnfs_mount(FnChannel *ch)
     }
     payload[plen++] = 0x00;
 
-    /* No username or password */
+    // No username or password
     payload[plen++] = 0x00;
     payload[plen++] = 0x00;
 
-    /* Clear session for mount request */
+    // Clear session for mount request
     ch->tnfs_session[0] = 0;
     ch->tnfs_session[1] = 0;
     ch->tnfs_seq = 0;
@@ -582,16 +572,14 @@ static int fn_tnfs_mount(FnChannel *ch)
                             resp, sizeof(resp));
     if (n < 6) return FN_ERR_IO_ERROR;
 
-    /* Response: [session_hi][session_lo][seq][cmd][err][ver_lo][ver_hi] */
+    // Response: [session_hi][session_lo][seq][cmd][err][ver_lo][ver_hi]
     ch->tnfs_session[0] = resp[0];
     ch->tnfs_session[1] = resp[1];
     return FN_ERR_OK;
 }
 
-/*
- * Open a file on a TNFS share.
- * TNFS CMD 0x29 = OPEN
- */
+ // Open a file on a TNFS share.
+ // TNFS CMD 0x29 = OPEN
 static int fn_tnfs_open(FnChannel *ch, const char *filename, int mode)
 {
     unsigned char payload[256];
@@ -600,15 +588,15 @@ static int fn_tnfs_open(FnChannel *ch, const char *filename, int mode)
     int flen;
     int n;
 
-    /* Open flags: 0x0001=read, 0x0002=write, 0x0008=create */
+    // Open flags: 0x0001=read, 0x0002=write, 0x0008=create
     payload[plen++] = (unsigned char)(mode & 0xFF);
     payload[plen++] = (unsigned char)((mode >> 8) & 0xFF);
 
-    /* Permission mode (Unix-style, 0644) */
+    // Permission mode (Unix-style, 0644)
     payload[plen++] = 0xA4;
     payload[plen++] = 0x01;
 
-    /* Filename (null-terminated) */
+    // Filename (null-terminated)
     flen = (int)strlen(filename);
     if (flen > 200) flen = 200;
     memcpy(payload + plen, filename, flen);
@@ -623,10 +611,8 @@ static int fn_tnfs_open(FnChannel *ch, const char *filename, int mode)
     return FN_ERR_OK;
 }
 
-/*
- * Read from a TNFS file.
- * TNFS CMD 0x21 = READ
- */
+ // Read from a TNFS file.
+ // TNFS CMD 0x21 = READ
 static int fn_tnfs_read(FnChannel *ch, void *buf, int len)
 {
     unsigned char payload[4];
@@ -653,10 +639,8 @@ static int fn_tnfs_read(FnChannel *ch, void *buf, int len)
     return data_len;
 }
 
-/*
- * Write to a TNFS file.
- * TNFS CMD 0x22 = WRITE
- */
+ // Write to a TNFS file.
+ // TNFS CMD 0x22 = WRITE
 static int fn_tnfs_write(FnChannel *ch,
     const void *buf, int len)
 {
@@ -678,14 +662,12 @@ static int fn_tnfs_write(FnChannel *ch,
                             resp, sizeof(resp));
     if (n < 5) return -1;
 
-    /* Response byte 5-6 = bytes actually written */
+    // Response byte 5-6 = bytes actually written
     return (int)resp[5] | ((int)resp[6] << 8);
 }
 
-/*
- * Close a TNFS file handle.
- * TNFS CMD 0x23 = CLOSE
- */
+ // Close a TNFS file handle.
+ // TNFS CMD 0x23 = CLOSE
 static int fn_tnfs_close_file(FnChannel *ch)
 {
     unsigned char payload[1];
@@ -698,10 +680,8 @@ static int fn_tnfs_close_file(FnChannel *ch)
     return FN_ERR_OK;
 }
 
-/*
- * Unmount a TNFS session.
- * TNFS CMD 0x01 = UMOUNT
- */
+ // Unmount a TNFS session.
+ // TNFS CMD 0x01 = UMOUNT
 static int fn_tnfs_unmount(FnChannel *ch)
 {
     unsigned char resp[32];
@@ -712,18 +692,16 @@ static int fn_tnfs_unmount(FnChannel *ch)
     return FN_ERR_OK;
 }
 
-/* ================================================================
- * SIMPLE JSON PARSER
- *
- * Supports JSONPath-like queries: /key1/key2/array[n]/key3
- * Returns the raw value (string, number, boolean) as text.
- * FujiNet does this parsing on the ESP32 hardware - we do
- * it in software on the desktop.
- * ================================================================ */
+// ================================================================
+ // SIMPLE JSON PARSER
+ //
+ // Supports JSONPath-like queries: /key1/key2/array[n]/key3
+ // Returns the raw value (string, number, boolean) as text.
+ // FujiNet does this parsing on the ESP32 hardware - we do
+ // it in software on the desktop.
+ // ================================================================ 
 
-/*
- * Skip whitespace in JSON text.
- */
+ // Skip whitespace in JSON text.
 static const char *json_skip_ws(const char *p)
 {
     while (*p == ' ' || *p == '\t' ||
@@ -732,10 +710,8 @@ static const char *json_skip_ws(const char *p)
     return p;
 }
 
-/*
- * Skip a JSON value (string, number, object, array, bool, null).
- * Returns pointer past the end of the value.
- */
+ // Skip a JSON value (string, number, object, array, bool, null).
+ // Returns pointer past the end of the value.
 static const char *json_skip_value(const char *p)
 {
     int depth;
@@ -743,10 +719,10 @@ static const char *json_skip_value(const char *p)
     p = json_skip_ws(p);
 
     if (*p == '"') {
-        /* String: skip to closing quote */
+        // String: skip to closing quote
         p++;
         while (*p && *p != '"') {
-            if (*p == '\\') p++;  /* skip escape */
+            if (*p == '\\') p++; // skip escape
             if (*p) p++;
         }
         if (*p == '"') p++;
@@ -754,7 +730,7 @@ static const char *json_skip_value(const char *p)
     }
 
     if (*p == '{' || *p == '[') {
-        /* Object or array: count braces */
+        // Object or array: count braces
         char open = *p;
         char close_ch = (open == '{') ? '}' : ']';
         depth = 1;
@@ -776,7 +752,7 @@ static const char *json_skip_value(const char *p)
         return p;
     }
 
-    /* Number, boolean, or null: skip to delimiter */
+    // Number, boolean, or null: skip to delimiter
     while (*p && *p != ',' && *p != '}' &&
            *p != ']' && *p != ' ' && *p != '\t' &&
            *p != '\n' && *p != '\r')
@@ -784,13 +760,11 @@ static const char *json_skip_value(const char *p)
     return p;
 }
 
-/*
- * Query a JSON document with a simple path.
- * Path format: /key1/key2/[0]/key3
- *
- * Returns a pointer to the start of the matched value
- * within the json string, or NULL on failure.
- */
+ // Query a JSON document with a simple path.
+ // Path format: /key1/key2/[0]/key3
+ //
+ // Returns a pointer to the start of the matched value
+ // within the json string, or NULL on failure.
 static const char *fn_json_query(const char *json,
     const char *path)
 {
@@ -802,11 +776,11 @@ static const char *fn_json_query(const char *json,
     if (!json || !path) return NULL;
     p = json_skip_ws(p);
 
-    /* Walk path segments separated by '/' */
+    // Walk path segments separated by '/'
     if (*path == '/') path++;
 
     while (*path) {
-        /* Extract next path segment */
+        // Extract next path segment
         seg_start = path;
         while (*path && *path != '/') path++;
         seg_len = (int)(path - seg_start);
@@ -817,7 +791,7 @@ static const char *fn_json_query(const char *json,
 
         p = json_skip_ws(p);
 
-        /* Check if this is an array index [n] */
+        // Check if this is an array index [n]
         if (seg[0] == '[' || (seg[0] >= '0' && seg[0] <= '9')) {
             int idx;
             int cur = 0;
@@ -829,7 +803,7 @@ static const char *fn_json_query(const char *json,
             }
 
             if (*p != '[') return NULL;
-            p++; /* skip '[' */
+            p++; // skip '['
 
             while (cur < idx) {
                 p = json_skip_ws(p);
@@ -840,13 +814,13 @@ static const char *fn_json_query(const char *json,
                 cur++;
             }
             p = json_skip_ws(p);
-            /* p now points to the idx-th element */
+            // p now points to the idx-th element
             continue;
         }
 
-        /* Object key lookup */
+        // Object key lookup
         if (*p != '{') return NULL;
-        p++; /* skip '{' */
+        p++; // skip '{'
 
         while (1) {
             const char *key_start;
@@ -855,7 +829,7 @@ static const char *fn_json_query(const char *json,
             p = json_skip_ws(p);
             if (*p == '}' || *p == '\0') return NULL;
 
-            /* Read key */
+            // Read key
             if (*p != '"') return NULL;
             p++;
             key_start = p;
@@ -866,19 +840,19 @@ static const char *fn_json_query(const char *json,
             key_len = (int)(p - key_start);
             if (*p == '"') p++;
 
-            /* Skip colon */
+            // Skip colon
             p = json_skip_ws(p);
             if (*p == ':') p++;
             p = json_skip_ws(p);
 
-            /* Check if key matches segment */
+            // Check if key matches segment
             if (key_len == seg_len &&
                 memcmp(key_start, seg, seg_len) == 0) {
-                /* Found the key - p points to its value */
+                // Found the key - p points to its value
                 break;
             }
 
-            /* Skip the value and move to next key */
+            // Skip the value and move to next key
             p = json_skip_value(p);
             p = json_skip_ws(p);
             if (*p == ',') p++;
@@ -888,10 +862,8 @@ static const char *fn_json_query(const char *json,
     return p;
 }
 
-/*
- * Extract a JSON value into a string buffer.
- * Strips outer quotes from strings.
- */
+ // Extract a JSON value into a string buffer.
+ // Strips outer quotes from strings.
 static int fn_json_extract(const char *value_ptr,
     char *buf, int buf_max)
 {
@@ -904,7 +876,7 @@ static int fn_json_extract(const char *value_ptr,
     value_ptr = json_skip_ws(value_ptr);
 
     if (*value_ptr == '"') {
-        /* String value - extract without quotes */
+        // String value - extract without quotes
         value_ptr++;
         end = value_ptr;
         while (*end && *end != '"') {
@@ -918,7 +890,7 @@ static int fn_json_extract(const char *value_ptr,
         return len;
     }
 
-    /* Non-string value (number, bool, null, object, array) */
+    // Non-string value (number, bool, null, object, array)
     end = json_skip_value(value_ptr);
     len = (int)(end - value_ptr);
     if (len >= buf_max) len = buf_max - 1;
@@ -927,13 +899,13 @@ static int fn_json_extract(const char *value_ptr,
     return len;
 }
 
-/* ================================================================
- * TELNET IAC NEGOTIATION
- *
- * Handles Telnet command sequences (IAC WILL/WONT/DO/DONT).
- * Responds with WONT/DONT to decline all options, which is
- * the simplest compliant Telnet client behavior.
- * ================================================================ */
+// ================================================================
+ // TELNET IAC NEGOTIATION
+ //
+ // Handles Telnet command sequences (IAC WILL/WONT/DO/DONT).
+ // Responds with WONT/DONT to decline all options, which is
+ // the simplest compliant Telnet client behavior.
+ // ================================================================ 
 
 static int fn_telnet_filter(FnChannel *ch,
     const unsigned char *raw, int raw_len,
@@ -944,14 +916,14 @@ static int fn_telnet_filter(FnChannel *ch,
 
     while (ri < raw_len) {
         if (raw[ri] == 0xFF && ri + 2 < raw_len) {
-            /* IAC command */
+            // IAC command
             unsigned char cmd = raw[ri + 1];
             unsigned char opt = raw[ri + 2];
             unsigned char resp[3];
 
             resp[0] = 0xFF;
             if (cmd == 0xFB || cmd == 0xFD) {
-                /* WILL or DO - respond with DONT/WONT */
+                // WILL or DO - respond with DONT/WONT
                 resp[1] = (cmd == 0xFB) ? 0xFE : 0xFC;
                 resp[2] = opt;
                 send(ch->sock_fd, (char *)resp, 3, 0);
@@ -969,12 +941,12 @@ static int fn_telnet_filter(FnChannel *ch,
     return ci;
 }
 
-/* ================================================================
- * BASE64 CODEC
- *
- * FujiNet provides hardware-accelerated Base64 on the ESP32.
- * Desktop implementation is pure software.
- * ================================================================ */
+// ================================================================
+ // BASE64 CODEC
+ //
+ // FujiNet provides hardware-accelerated Base64 on the ESP32.
+ // Desktop implementation is pure software.
+ // ================================================================ 
 
 static const char b64_table[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrst"
@@ -1047,20 +1019,18 @@ static int fn_base64_decode(const char *src, int src_len,
     return o;
 }
 
-/* ================================================================
- * HTTPS (limited) — via system curl
- *
- * Both Windows 11 and Linux ship with curl. We use popen()
- * to invoke it, capturing the response into the channel's
- * http_body buffer. This gives real TLS without any library
- * dependency. "Limited" because it's fetch-and-buffer, not
- * streaming, and does not support IOCTL-based header control.
- * ================================================================ */
+// ================================================================
+ // HTTPS (limited) -- via system curl
+ //
+ // Both Windows 11 and Linux ship with curl. We use popen()
+ // to invoke it, capturing the response into the channel's
+ // http_body buffer. This gives real TLS without any library
+ // dependency. "Limited" because it's fetch-and-buffer, not
+ // streaming, and does not support IOCTL-based header control.
+ // ================================================================ 
 
-/*
- * fn_url_is_safe — reject shell metacharacters.
- * Returns 1 if safe, 0 if the URL contains injection risk.
- */
+ // fn_url_is_safe -- reject shell metacharacters.
+ // Returns 1 if safe, 0 if the URL contains injection risk.
 static int fn_url_is_safe(const char *url)
 {
     const char *p;
@@ -1076,13 +1046,11 @@ static int fn_url_is_safe(const char *url)
     return 1;
 }
 
-/*
- * fn_https_fetch — fetch an HTTPS URL via system curl.
- *
- * Builds a curl command, executes it via popen, and captures
- * the entire response (headers + body) into ch->http_body.
- * Parses out the HTTP status code and body offset.
- */
+ // fn_https_fetch -- fetch an HTTPS URL via system curl.
+ //
+ // Builds a curl command, executes it via popen, and captures
+ // the entire response (headers + body) into ch->http_body.
+ // Parses out the HTTP status code and body offset.
 static int fn_https_fetch(FnChannel *ch, const char *method)
 {
 #ifdef FN_NO_NETWORKING
@@ -1098,22 +1066,21 @@ static int fn_https_fetch(FnChannel *ch, const char *method)
     const char *hdr_end;
     const char *status_line;
 
-    /* Sanitize URL */
+    // Sanitize URL
     if (!fn_url_is_safe(ch->host) ||
         !fn_url_is_safe(ch->path)) {
         return FN_ERR_INVALID_URL;
     }
 
-    /* Build curl command:
-     * -s: silent (no progress)
-     * -i: include response headers
-     * -L: follow redirects
-     * -X: HTTP method
-     * --max-time 30: timeout
-     *
-     * NOTE: On Windows, PowerShell aliases 'curl' to
-     * Invoke-WebRequest, so we must use 'curl.exe'.
-     */
+    // Build curl command:
+     // -s: silent (no progress)
+     // -i: include response headers
+     // -L: follow redirects
+     // -X: HTTP method
+     // --max-time 30: timeout
+     //
+     // NOTE: On Windows, PowerShell aliases 'curl' to
+     // Invoke-WebRequest, so we must use 'curl.exe'.
 #ifdef _WIN32
 #define FN_CURL "curl.exe"
 #else
@@ -1137,7 +1104,7 @@ static int fn_https_fetch(FnChannel *ch, const char *method)
         return FN_ERR_IO_ERROR;
     }
 
-    /* Read entire response */
+    // Read entire response
     buf = (char *)malloc((size_t)capacity);
     if (buf == NULL) {
         fn_pclose(pipe);
@@ -1158,7 +1125,7 @@ static int fn_https_fetch(FnChannel *ch, const char *method)
     buf[total] = '\0';
     fn_pclose(pipe);
 
-    /* Parse HTTP status code from first line */
+    // Parse HTTP status code from first line
     ch->http_status_code = 0;
     status_line = buf;
     if (strncmp(status_line, "HTTP/", 5) == 0) {
@@ -1167,19 +1134,19 @@ static int fn_https_fetch(FnChannel *ch, const char *method)
             ch->http_status_code = atoi(sp + 1);
     }
 
-    /* Find header/body separator */
+    // Find header/body separator
     hdr_end = strstr(buf, "\r\n\r\n");
     if (hdr_end != NULL) {
         int hdr_len = (int)(hdr_end - buf);
         int body_start = hdr_len + 4;
 
-        /* Copy headers */
+        // Copy headers
         if (hdr_len >= FN_HTTP_HEADER_MAX)
             hdr_len = FN_HTTP_HEADER_MAX - 1;
         memcpy(ch->http_headers, buf, (size_t)hdr_len);
         ch->http_headers[hdr_len] = '\0';
 
-        /* Copy body */
+        // Copy body
         ch->http_body_len = total - body_start;
         if (ch->http_body != NULL) free(ch->http_body);
         ch->http_body = (char *)malloc(
@@ -1191,11 +1158,11 @@ static int fn_https_fetch(FnChannel *ch, const char *method)
         }
         ch->http_body_pos = 0;
     } else {
-        /* No header separator — treat all as body */
+        // No header separator -- treat all as body
         ch->http_body_len = total;
         if (ch->http_body != NULL) free(ch->http_body);
         ch->http_body = buf;
-        buf = NULL;  /* ownership transferred */
+        buf = NULL; // ownership transferred
         ch->http_body_pos = 0;
     }
 
@@ -1206,22 +1173,22 @@ static int fn_https_fetch(FnChannel *ch, const char *method)
 #endif
 }
 
-/* ================================================================
- * SSH (limited) — TCP connect + version exchange
- *
- * Per RFC 4253, the SSH connection begins with both sides
- * sending a version string:
- *   SSH-protoversion-softwareversion SP comments CR LF
- *
- * We connect, read the server banner, send our version,
- * then switch the channel to telnet-like raw interactive
- * mode so the user can at least see server output. Actual
- * SSH key exchange and encryption require a crypto library.
- *
- * After version exchange, the channel operates in raw TCP
- * mode — same as FN_PROTO_TCP. This allows the SSH "limited"
- * to at minimum identify the server and provide raw I/O.
- * ================================================================ */
+// ================================================================
+ // SSH (limited) -- TCP connect + version exchange
+ //
+ // Per RFC 4253, the SSH connection begins with both sides
+ // sending a version string:
+ //   SSH-protoversion-softwareversion SP comments CR LF
+ //
+ // We connect, read the server banner, send our version,
+ // then switch the channel to telnet-like raw interactive
+ // mode so the user can at least see server output. Actual
+ // SSH key exchange and encryption require a crypto library.
+ //
+ // After version exchange, the channel operates in raw TCP
+ // mode -- same as FN_PROTO_TCP. This allows the SSH "limited"
+ // to at minimum identify the server and provide raw I/O.
+ // ================================================================ 
 
 static int fn_ssh_connect(FnChannel *ch)
 {
@@ -1240,7 +1207,7 @@ static int fn_ssh_connect(FnChannel *ch)
     ch->sock_fd = fd;
     ch->connected = 1;
 
-    /* Read server version string (up to 255 bytes per RFC 4253) */
+    // Read server version string (up to 255 bytes per RFC 4253)
     memset(banner, 0, sizeof(banner));
     n = recv(fd, banner, sizeof(banner) - 1, 0);
     if (n <= 0) {
@@ -1251,22 +1218,22 @@ static int fn_ssh_connect(FnChannel *ch)
     }
     banner[n] = '\0';
 
-    /* Strip trailing CR/LF */
+    // Strip trailing CR/LF
     while (n > 0 && (banner[n-1] == '\r' || banner[n-1] == '\n'))
         banner[--n] = '\0';
 
-    /* Store server SSH version */
+    // Store server SSH version
     strncpy(ch->ssh_version, banner, sizeof(ch->ssh_version) - 1);
     ch->ssh_version[sizeof(ch->ssh_version) - 1] = '\0';
     ch->ssh_exchanged = 1;
 
-    /* Send our version string */
+    // Send our version string
     send(fd, our_version, (int)strlen(our_version), 0);
 
-    /* Put the server banner into recv_buf so the user can
-     * read it with INPUT #ch, V$.
-     * After that, the channel operates in raw TCP mode
-     * (telnet-like) for any further data the server sends. */
+    // Put the server banner into recv_buf so the user can
+     // read it with INPUT #ch, V$.
+     // After that, the channel operates in raw TCP mode
+     // (telnet-like) for any further data the server sends. 
     {
         int blen = (int)strlen(ch->ssh_version);
         if (blen >= FN_RECV_BUF_SIZE)
@@ -1281,13 +1248,11 @@ static int fn_ssh_connect(FnChannel *ch)
 #endif
 }
 
-/* ================================================================
- * N: DEVICE — VIRTUAL DEVICE CALLBACKS
- * ================================================================ */
+// ================================================================
+ // N: DEVICE -- VIRTUAL DEVICE CALLBACKS
+ // ================================================================ 
 
-/*
- * N: open — Parse devicespec and connect.
- */
+ // N: open -- Parse devicespec and connect.
 static int fn_net_open(VDev *d, const char *path,
     const char *mode)
 {
@@ -1310,10 +1275,10 @@ static int fn_net_open(VDev *d, const char *path,
     ch->sock_fd = -1;
     ch->tnfs_fd = -1;
 
-    /* Store devicespec */
+    // Store devicespec
     strncpy(ch->devicespec, path, FN_MAX_DEVICESPEC - 1);
 
-    /* Parse the URL */
+    // Parse the URL
     rc = fn_parse_devicespec(path, &proto, host, sizeof(host),
                              &port, url_path, sizeof(url_path));
     if (rc != 0) return FN_ERR_INVALID_URL;
@@ -1323,7 +1288,7 @@ static int fn_net_open(VDev *d, const char *path,
     ch->port = port;
     strncpy(ch->path, url_path, sizeof(ch->path) - 1);
 
-    /* Parse mode string */
+    // Parse mode string
     ch->mode = FN_MODE_READWRITE;
     if (mode) {
         if (mode[0] == 'R' || mode[0] == 'r') {
@@ -1339,7 +1304,7 @@ static int fn_net_open(VDev *d, const char *path,
 
     ch->translation = FN_TRANS_NONE;
 
-    /* Connect based on protocol */
+    // Connect based on protocol
     switch (proto) {
     case FN_PROTO_TCP:
     case FN_PROTO_TELNET:
@@ -1355,7 +1320,7 @@ static int fn_net_open(VDev *d, const char *path,
         if (fd < 0) return FN_ERR_CONN_REFUSED;
         ch->sock_fd = fd;
         ch->connected = 1;
-        /* TNFS requires a mount step */
+        // TNFS requires a mount step
         if (proto == FN_PROTO_TNFS) {
             rc = fn_tnfs_mount(ch);
             if (rc != FN_ERR_OK) {
@@ -1367,7 +1332,7 @@ static int fn_net_open(VDev *d, const char *path,
         break;
 
     case FN_PROTO_HTTP:
-        /* HTTP: connect, send request, buffer response */
+        // HTTP: connect, send request, buffer response
         fd = fn_tcp_connect(host, port);
         if (fd < 0) return FN_ERR_CONN_REFUSED;
         ch->sock_fd = fd;
@@ -1381,20 +1346,20 @@ static int fn_net_open(VDev *d, const char *path,
         break;
 
     case FN_PROTO_HTTPS:
-        /* HTTPS (limited): use system curl for TLS */
-        ch->sock_fd = -1;  /* no raw socket — curl handles it */
+        // HTTPS (limited): use system curl for TLS
+        ch->sock_fd = -1; // no raw socket -- curl handles it
         rc = fn_https_fetch(ch, "GET");
         if (rc != FN_ERR_OK) return rc;
         break;
 
     case FN_PROTO_SSH:
-        /* SSH (limited): version exchange + raw TCP mode */
+        // SSH (limited): version exchange + raw TCP mode
         rc = fn_ssh_connect(ch);
         if (rc != FN_ERR_OK) return rc;
         break;
 
     case FN_PROTO_FTP:
-        /* FTP: raw TCP command channel */
+        // FTP: raw TCP command channel
         fd = fn_tcp_connect(host, port);
         if (fd < 0) return FN_ERR_CONN_REFUSED;
         ch->sock_fd = fd;
@@ -1409,16 +1374,14 @@ static int fn_net_open(VDev *d, const char *path,
     ch->eof_flag = 0;
     ch->last_error = FN_ERR_OK;
 
-    /* Return channel number as the "file descriptor"
-     * via user_data so the caller can retrieve it */
+    // Return channel number as the "file descriptor"
+     // via user_data so the caller can retrieve it 
     d->user_data = (void *)(intptr_t)slot;
 
     return FN_ERR_OK;
 }
 
-/*
- * N: close — Disconnect and free the channel.
- */
+ // N: close -- Disconnect and free the channel.
 static int fn_net_close(VDev *d)
 {
     int slot = (int)(intptr_t)d->user_data;
@@ -1431,7 +1394,7 @@ static int fn_net_close(VDev *d)
     if (!ch->in_use)
         return FN_ERR_NOT_OPEN;
 
-    /* Protocol-specific teardown */
+    // Protocol-specific teardown
     if (ch->proto == FN_PROTO_TNFS) {
         if (ch->tnfs_fd >= 0)
             fn_tnfs_close_file(ch);
@@ -1459,9 +1422,7 @@ static int fn_net_close(VDev *d)
     return FN_ERR_OK;
 }
 
-/*
- * N: read — Read binary data from the channel.
- */
+ // N: read -- Read binary data from the channel.
 static int fn_net_read(VDev *d, void *buf, int len)
 {
     int slot = (int)(intptr_t)d->user_data;
@@ -1473,7 +1434,7 @@ static int fn_net_read(VDev *d, void *buf, int len)
     ch = &fn_channels[slot];
     if (!ch->in_use || !ch->connected) return -1;
 
-    /* HTTP: read from buffered body */
+    // HTTP: read from buffered body
     if (ch->proto == FN_PROTO_HTTP ||
         ch->proto == FN_PROTO_HTTPS) {
         int avail = ch->http_body_len - ch->http_body_pos;
@@ -1486,14 +1447,14 @@ static int fn_net_read(VDev *d, void *buf, int len)
         return len;
     }
 
-    /* TNFS: use TNFS read command */
+    // TNFS: use TNFS read command
     if (ch->proto == FN_PROTO_TNFS) {
         n = fn_tnfs_read(ch, buf, len);
         if (n <= 0) ch->eof_flag = 1;
         return n;
     }
 
-    /* TCP/UDP/Telnet: read from socket */
+    // TCP/UDP/Telnet: read from socket
     n = recv(ch->sock_fd, (char *)buf, len, 0);
 
     if (n <= 0) {
@@ -1502,7 +1463,7 @@ static int fn_net_read(VDev *d, void *buf, int len)
         return 0;
     }
 
-    /* Telnet IAC filtering */
+    // Telnet IAC filtering
     if (ch->proto == FN_PROTO_TELNET) {
         unsigned char filtered[FN_RECV_BUF_SIZE];
         int filtered_len = sizeof(filtered);
@@ -1517,9 +1478,7 @@ static int fn_net_read(VDev *d, void *buf, int len)
     return n;
 }
 
-/*
- * N: write — Write binary data to the channel.
- */
+ // N: write -- Write binary data to the channel.
 static int fn_net_write(VDev *d, const void *buf, int len)
 {
     int slot = (int)(intptr_t)d->user_data;
@@ -1531,12 +1490,12 @@ static int fn_net_write(VDev *d, const void *buf, int len)
     ch = &fn_channels[slot];
     if (!ch->in_use || !ch->connected) return -1;
 
-    /* TNFS: use TNFS write command */
+    // TNFS: use TNFS write command
     if (ch->proto == FN_PROTO_TNFS) {
         return fn_tnfs_write(ch, buf, len);
     }
 
-    /* HTTP POST body: buffer it for later sending */
+    // HTTP POST body: buffer it for later sending
     if (ch->proto == FN_PROTO_HTTP ||
         ch->proto == FN_PROTO_HTTPS) {
         if (ch->http_body) free(ch->http_body);
@@ -1548,7 +1507,7 @@ static int fn_net_write(VDev *d, const void *buf, int len)
         return len;
     }
 
-    /* TCP/UDP/Telnet: write to socket */
+    // TCP/UDP/Telnet: write to socket
     n = send(ch->sock_fd, (const char *)buf, len, 0);
     if (n <= 0) {
         ch->connected = 0;
@@ -1557,27 +1516,21 @@ static int fn_net_write(VDev *d, const void *buf, int len)
     return n;
 }
 
-/*
- * N: putc — Write a single character (line-mode output).
- */
+ // N: putc -- Write a single character (line-mode output).
 static int fn_net_putc(VDev *d, int ch_char)
 {
     char c = (char)ch_char;
     return fn_net_write(d, &c, 1);
 }
 
-/*
- * N: puts — Write a string.
- */
+ // N: puts -- Write a string.
 static int fn_net_puts(VDev *d, const char *s)
 {
     if (!s) return 0;
     return fn_net_write(d, s, (int)strlen(s));
 }
 
-/*
- * N: gets — Read a line (up to newline or max).
- */
+ // N: gets -- Read a line (up to newline or max).
 static int fn_net_gets(VDev *d, char *buf, int max)
 {
     int i = 0;
@@ -1595,9 +1548,7 @@ static int fn_net_gets(VDev *d, char *buf, int max)
     return i;
 }
 
-/*
- * N: getc — Read a single character.
- */
+ // N: getc -- Read a single character.
 static int fn_net_getc(VDev *d)
 {
     char c;
@@ -1606,9 +1557,7 @@ static int fn_net_getc(VDev *d)
     return (int)(unsigned char)c;
 }
 
-/*
- * N: status — Check connection status.
- */
+ // N: status -- Check connection status.
 static int fn_net_status(VDev *d)
 {
     int slot = (int)(intptr_t)d->user_data;
@@ -1621,9 +1570,7 @@ static int fn_net_status(VDev *d)
     return ch->connected ? 0 : -1;
 }
 
-/*
- * N: poll — Check for data availability (non-blocking).
- */
+ // N: poll -- Check for data availability (non-blocking).
 static int fn_net_poll(VDev *d)
 {
     int slot = (int)(intptr_t)d->user_data;
@@ -1632,13 +1579,13 @@ static int fn_net_poll(VDev *d)
     if (slot < 0 || slot >= FN_MAX_CHANNELS) return -1;
     ch = &fn_channels[slot];
 
-    /* HTTP: check buffered body */
+    // HTTP: check buffered body
     if (ch->proto == FN_PROTO_HTTP ||
         ch->proto == FN_PROTO_HTTPS) {
         return (ch->http_body_pos < ch->http_body_len) ? 1 : 0;
     }
 
-    /* Socket: use non-blocking recv peek */
+    // Socket: use non-blocking recv peek
 #ifndef FN_NO_NETWORKING
     if (ch->sock_fd >= 0) {
         char tmp;
@@ -1652,12 +1599,10 @@ static int fn_net_poll(VDev *d)
     return 0;
 }
 
-/*
- * N: ioctl — Extended network control commands.
- *
- * This is where FujiNet-specific operations live:
- * JSON parsing, HTTP methods, translation modes, etc.
- */
+ // N: ioctl -- Extended network control commands.
+ //
+ // This is where FujiNet-specific operations live:
+ // JSON parsing, HTTP methods, translation modes, etc.
 static int fn_net_ioctl(VDev *d, int cmd, void *arg)
 {
     int slot = (int)(intptr_t)d->user_data;
@@ -1670,15 +1615,13 @@ static int fn_net_ioctl(VDev *d, int cmd, void *arg)
     switch (cmd) {
 
     case FNIO_JSON_PARSE:
-        /*
-         * Read all available data and parse as JSON.
-         * On real FujiNet, the ESP32 does this parsing.
-         */
+         // Read all available data and parse as JSON.
+         // On real FujiNet, the ESP32 does this parsing.
         if (ch->json_data) { free(ch->json_data); ch->json_data = NULL; }
 
         if (ch->proto == FN_PROTO_HTTP ||
             ch->proto == FN_PROTO_HTTPS) {
-            /* Use HTTP response body */
+            // Use HTTP response body
             if (ch->http_body && ch->http_body_len > 0) {
                 ch->json_data = (char *)malloc(
                     ch->http_body_len + 1);
@@ -1692,7 +1635,7 @@ static int fn_net_ioctl(VDev *d, int cmd, void *arg)
                 }
             }
         } else {
-            /* TCP/UDP: read until EOF into buffer */
+            // TCP/UDP: read until EOF into buffer
             char *buf = (char *)malloc(FN_HTTP_BODY_MAX);
             int total = 0;
             int n;
@@ -1712,14 +1655,12 @@ static int fn_net_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_JSON_PARSE;
 
     case FNIO_JSON_QUERY:
-        /*
-         * Query parsed JSON with a path expression.
-         * arg = pointer to struct { char *query; char *result; int max; }
-         */
+         // Query parsed JSON with a path expression.
+         // arg = pointer to struct { char *query; char *result; int max; }
         if (!ch->json_parsed || !ch->json_data)
             return FN_ERR_JSON_PARSE;
         if (arg) {
-            /* arg points to: query_str, result_buf, max_len */
+            // arg points to: query_str, result_buf, max_len
             char **args = (char **)arg;
             const char *val;
             val = fn_json_query(ch->json_data, args[0]);
@@ -1798,9 +1739,7 @@ static int fn_net_ioctl(VDev *d, int cmd, void *arg)
     }
 }
 
-/*
- * N: info — Return device metadata.
- */
+ // N: info -- Return device metadata.
 static const char *fn_net_info(VDev *d, const char *key)
 {
     int slot = (int)(intptr_t)d->user_data;
@@ -1851,20 +1790,18 @@ static const char *fn_net_info(VDev *d, const char *key)
     return NULL;
 }
 
-/* ================================================================
- * FUJI: DEVICE — VIRTUAL DEVICE CALLBACKS
- *
- * Configuration device for WiFi, host/device slots, AppKey
- * storage, directory browsing, and adapter status.
- *
- * On desktop, WiFi operations report "connected" using the
- * host OS network stack. Host slots and AppKey data are stored
- * in a local config file (~/.basicpp/fujinet.cfg).
- * ================================================================ */
+// ================================================================
+ // FUJI: DEVICE -- VIRTUAL DEVICE CALLBACKS
+ //
+ // Configuration device for WiFi, host/device slots, AppKey
+ // storage, directory browsing, and adapter status.
+ //
+ // On desktop, WiFi operations report "connected" using the
+ // host OS network stack. Host slots and AppKey data are stored
+ // in a local config file (~/.basicpp/fujinet.cfg).
+ // ================================================================ 
 
-/*
- * FUJI: Initialize adapter configuration from platform APIs.
- */
+ // FUJI: Initialize adapter configuration from platform APIs.
 static void fn_fuji_init_config(void)
 {
     memset(&fn_fuji, 0, sizeof(fn_fuji));
@@ -1873,7 +1810,7 @@ static void fn_fuji_init_config(void)
     strcpy(fn_fuji.hostname, "basicpp");
     strcpy(fn_fuji.fn_version, "1.0-desktop");
 
-    /* Local IP = 127.0.0.1 */
+    // Local IP = 127.0.0.1
     fn_fuji.local_ip[0] = 127;
     fn_fuji.local_ip[3] = 1;
     fn_fuji.gateway[0] = 192;
@@ -1891,9 +1828,7 @@ static void fn_fuji_init_config(void)
     fn_fuji.initialized = 1;
 }
 
-/*
- * FUJI: Load host slots from local config file.
- */
+ // FUJI: Load host slots from local config file.
 static void fn_fuji_load_slots(void)
 {
     FILE *fp;
@@ -1920,7 +1855,7 @@ static void fn_fuji_load_slots(void)
             if (fgets(fn_fuji.host_slots[i],
                       FN_HOST_SLOT_LEN, fp) == NULL)
                 break;
-            /* Strip trailing newline */
+            // Strip trailing newline
             {
                 int len = (int)strlen(fn_fuji.host_slots[i]);
                 while (len > 0 && (
@@ -1933,9 +1868,7 @@ static void fn_fuji_load_slots(void)
     }
 }
 
-/*
- * FUJI: Save host slots to local config file.
- */
+ // FUJI: Save host slots to local config file.
 static void fn_fuji_save_slots(void)
 {
     FILE *fp;
@@ -1949,7 +1882,7 @@ static void fn_fuji_save_slots(void)
         if (!home) home = ".";
         sprintf(dir, "%s\\.basicpp", home);
         sprintf(path, "%s\\fujinet_slots.cfg", dir);
-        /* Ensure directory exists */
+        // Ensure directory exists
         CreateDirectoryA(dir, NULL);
     }
 #else
@@ -1970,10 +1903,8 @@ static void fn_fuji_save_slots(void)
     }
 }
 
-/*
- * FUJI: AppKey file I/O.
- * AppKeys are stored as individual files in ~/.basicpp/appkeys/
- */
+ // FUJI: AppKey file I/O.
+ // AppKeys are stored as individual files in ~/.basicpp/appkeys/
 static void fn_appkey_path(unsigned int creator,
     unsigned int app, char *path, int max)
 {
@@ -1999,9 +1930,7 @@ static void fn_appkey_path(unsigned int creator,
     (void)max;
 }
 
-/*
- * FUJI: ioctl — Handle all fuji device commands.
- */
+ // FUJI: ioctl -- Handle all fuji device commands.
 static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
 {
     (void)d;
@@ -2017,7 +1946,7 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_OK;
 
     case FNIO_GET_WIFI_ENABLED:
-        if (arg) *(int *)arg = 1;  /* always enabled on desktop */
+        if (arg) *(int *)arg = 1; // always enabled on desktop
         return FN_ERR_OK;
 
     case FNIO_GET_SSID:
@@ -2027,19 +1956,19 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
 
     case FNIO_SET_SSID:
         if (arg) {
-            /* arg points to {ssid, password} */
+            // arg points to {ssid, password}
             const char *ssid = (const char *)arg;
             strncpy(fn_fuji.ssid, ssid, FN_SSID_MAXLEN - 1);
         }
         return FN_ERR_OK;
 
     case FNIO_SCAN_NETWORKS:
-        /* Desktop: scanning not supported, return 0 networks */
+        // Desktop: scanning not supported, return 0 networks
         if (arg) *(int *)arg = 0;
         return FN_ERR_OK;
 
     case FNIO_GET_SCAN_RESULT:
-        /* Desktop: no scan results available */
+        // Desktop: no scan results available
         return FN_ERR_NOT_IMPL;
 
     case FNIO_READ_HOST_SLOTS:
@@ -2057,25 +1986,25 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_OK;
 
     case FNIO_MOUNT_HOST:
-        /* Desktop: host mount is implicit (just DNS resolve) */
+        // Desktop: host mount is implicit (just DNS resolve)
         return FN_ERR_OK;
 
     case FNIO_UNMOUNT_HOST:
         return FN_ERR_OK;
 
     case FNIO_MOUNT_IMAGE:
-        /* Desktop: disk image mount not supported */
+        // Desktop: disk image mount not supported
         return FN_ERR_NOT_IMPL;
 
     case FNIO_UNMOUNT_IMAGE:
         return FN_ERR_OK;
 
     case FNIO_GET_ADAPTER_CONFIG:
-        /* Return adapter configuration struct */
+        // Return adapter configuration struct
         if (arg) {
-            /* Fill a flat buffer with adapter info:
-             * IP(4), gateway(4), netmask(4), dns(4),
-             * mac(6), ssid(33), hostname(64), version(16) */
+            // Fill a flat buffer with adapter info:
+             // IP(4), gateway(4), netmask(4), dns(4),
+             // mac(6), ssid(33), hostname(64), version(16) 
             unsigned char *out = (unsigned char *)arg;
             memcpy(out, fn_fuji.local_ip, 4);
             memcpy(out + 4, fn_fuji.gateway, 4);
@@ -2136,7 +2065,7 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_BAD_CMD;
 
     case FNIO_HASH_COMPUTE:
-        /* Desktop: hash not implemented (would need SHA lib) */
+        // Desktop: hash not implemented (would need SHA lib)
         return FN_ERR_NOT_IMPL;
 
     case FNIO_RANDOM_NUMBER:
@@ -2146,7 +2075,7 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_OK;
 
     case FNIO_GENERATE_GUID:
-        /* Generate a pseudo-GUID: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx */
+        // Generate a pseudo-GUID: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
         if (arg) {
             char *guid = (char *)arg;
             int i;
@@ -2164,8 +2093,8 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_OK;
 
     case FNIO_SET_HOST_PREFIX:
-        /* Store a path prefix for a host slot.
-         * arg format: "slot:prefix" (e.g. "0:/games/") */
+        // Store a path prefix for a host slot.
+         // arg format: "slot:prefix" (e.g. "0:/games/") 
         if (arg) {
             const char *s = (const char *)arg;
             int slot_n = atoi(s);
@@ -2181,8 +2110,8 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_OK;
 
     case FNIO_GET_HOST_PREFIX:
-        /* Return prefix for a host slot.
-         * arg is int* for slot, result written there as string */
+        // Return prefix for a host slot.
+         // arg is int* for slot, result written there as string 
         if (arg) {
             int slot_n = *(int *)arg;
             if (slot_n >= 0 && slot_n < FN_MAX_HOST_SLOTS)
@@ -2194,8 +2123,8 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_OK;
 
     case FNIO_SET_DEVICE_PATH:
-        /* Store a path for a device slot.
-         * arg format: "slot:path" */
+        // Store a path for a device slot.
+         // arg format: "slot:path" 
         if (arg) {
             const char *s = (const char *)arg;
             int slot_n = atoi(s);
@@ -2264,7 +2193,7 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_OK;
 
     case FNIO_COPY_FILE:
-        /* Copy file. arg = "src\0dst" (two null-terminated strings) */
+        // Copy file. arg = "src\0dst" (two null-terminated strings)
         if (arg) {
             const char *src = (const char *)arg;
             const char *dst = src + strlen(src) + 1;
@@ -2287,8 +2216,8 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_OK;
 
     case FNIO_NEW_DISK:
-        /* Create empty file at specified path.
-         * arg = "path\0size" (size in bytes as string) */
+        // Create empty file at specified path.
+         // arg = "path\0size" (size in bytes as string) 
         if (arg) {
             const char *path_str = (const char *)arg;
             FILE *fp = fopen(path_str, "wb");
@@ -2298,7 +2227,7 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
                 size_str = path_str + strlen(path_str) + 1;
                 fsize = atol(size_str);
                 if (fsize > 0 && fsize <= 16777216) {
-                    /* Write zeros up to size */
+                    // Write zeros up to size
                     char zeros[512];
                     long remaining = fsize;
                     memset(zeros, 0, sizeof(zeros));
@@ -2318,10 +2247,10 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_OK;
 
     case FNIO_OPEN_DIRECTORY:
-        /* Open directory for browsing.
-         * arg = directory path string. */
+        // Open directory for browsing.
+         // arg = directory path string. 
         if (fn_fuji.dir_open && fn_fuji.dir_handle) {
-            /* Close previously open directory */
+            // Close previously open directory
 #ifdef _WIN32
             FindClose((HANDLE)fn_fuji.dir_handle);
 #elif !defined(__MSDOS__) && !defined(__DOS__)
@@ -2349,8 +2278,8 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
                     return FN_ERR_IO_ERROR;
                 fn_fuji.dir_handle = (void *)h;
                 fn_fuji.dir_open = 1;
-                /* Store first entry name so first
-                 * READ_DIR_ENTRY can return it */
+                // Store first entry name so first
+                 // READ_DIR_ENTRY can return it 
             }
 #elif !defined(__MSDOS__) && !defined(__DOS__)
             {
@@ -2366,7 +2295,7 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         return FN_ERR_OK;
 
     case FNIO_READ_DIR_ENTRY:
-        /* Read next directory entry into arg (string buffer). */
+        // Read next directory entry into arg (string buffer).
         if (!fn_fuji.dir_open || !fn_fuji.dir_handle) {
             if (arg) ((char *)arg)[0] = '\0';
             return FN_ERR_IO_ERROR;
@@ -2375,8 +2304,8 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
         {
             WIN32_FIND_DATAA fdata;
             if (fn_fuji.dir_position == 0) {
-                /* First entry was already found by
-                 * FindFirstFile — re-find it */
+                // First entry was already found by
+                 // FindFirstFile -- re-find it 
                 HANDLE h2;
                 char pattern[272];
                 FindClose((HANDLE)fn_fuji.dir_handle);
@@ -2389,7 +2318,7 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
                     return FN_ERR_IO_ERROR;
                 }
                 fn_fuji.dir_handle = (void *)h2;
-                /* Skip entries to reach position */
+                // Skip entries to reach position
                 {
                     int skip = fn_fuji.dir_position;
                     while (skip > 0) {
@@ -2459,9 +2388,7 @@ static int fn_fuji_ioctl(VDev *d, int cmd, void *arg)
     }
 }
 
-/*
- * FUJI: info — Return adapter information.
- */
+ // FUJI: info -- Return adapter information.
 static const char *fn_fuji_info(VDev *d, const char *key)
 {
     static char buf[64];
@@ -2492,16 +2419,14 @@ static const char *fn_fuji_info(VDev *d, const char *key)
     return NULL;
 }
 
-/* ================================================================
- * CLOCK: DEVICE — VIRTUAL DEVICE CALLBACKS
- *
- * Network time from FujiNet hardware. On desktop, returns
- * the system clock in the requested format.
- * ================================================================ */
+// ================================================================
+ // CLOCK: DEVICE -- VIRTUAL DEVICE CALLBACKS
+ //
+ // Network time from FujiNet hardware. On desktop, returns
+ // the system clock in the requested format.
+ // ================================================================ 
 
-/*
- * CLOCK: read — Return current time.
- */
+ // CLOCK: read -- Return current time.
 static int fn_clock_read(VDev *d, void *buf, int len)
 {
     time_t now;
@@ -2514,7 +2439,7 @@ static int fn_clock_read(VDev *d, void *buf, int len)
 
     switch (fn_clock_state.format) {
     case FN_TIME_BINARY_SIMPLE: {
-        /* 7 bytes: century, year, month, day, hour, min, sec */
+        // 7 bytes: century, year, month, day, hour, min, sec
         unsigned char *out = (unsigned char *)buf;
         if (len < 7) return -1;
         out[0] = (unsigned char)((tm_ptr->tm_year + 1900) / 100);
@@ -2528,7 +2453,7 @@ static int fn_clock_read(VDev *d, void *buf, int len)
     }
 
     case FN_TIME_BINARY_PRODOS: {
-        /* 4 bytes: ProDOS date/time format */
+        // 4 bytes: ProDOS date/time format
         unsigned char *out = (unsigned char *)buf;
         unsigned int date_word;
         unsigned int time_word;
@@ -2546,7 +2471,7 @@ static int fn_clock_read(VDev *d, void *buf, int len)
     }
 
     case FN_TIME_BINARY_APETIME: {
-        /* 6 bytes: day, month, year, hour, min, sec */
+        // 6 bytes: day, month, year, hour, min, sec
         unsigned char *out = (unsigned char *)buf;
         if (len < 6) return -1;
         out[0] = (unsigned char)tm_ptr->tm_mday;
@@ -2560,7 +2485,7 @@ static int fn_clock_read(VDev *d, void *buf, int len)
 
     case FN_TIME_ISO_STRING:
     default: {
-        /* ISO 8601 string: YYYY-MM-DDTHH:MM:SS */
+        // ISO 8601 string: YYYY-MM-DDTHH:MM:SS
         char iso[32];
         int iso_len;
         sprintf(iso, "%04d-%02d-%02dT%02d:%02d:%02d",
@@ -2579,9 +2504,7 @@ static int fn_clock_read(VDev *d, void *buf, int len)
     }
 }
 
-/*
- * CLOCK: ioctl — Set time format and timezone.
- */
+ // CLOCK: ioctl -- Set time format and timezone.
 static int fn_clock_ioctl(VDev *d, int cmd, void *arg)
 {
     (void)d;
@@ -2604,9 +2527,7 @@ static int fn_clock_ioctl(VDev *d, int cmd, void *arg)
     }
 }
 
-/*
- * CLOCK: info — Return clock metadata.
- */
+ // CLOCK: info -- Return clock metadata.
 static const char *fn_clock_info(VDev *d, const char *key)
 {
     (void)d;
@@ -2625,16 +2546,14 @@ static const char *fn_clock_info(VDev *d, const char *key)
     return NULL;
 }
 
-/* ================================================================
- * MODULE LIFECYCLE
- * ================================================================ */
+// ================================================================
+ // MODULE LIFECYCLE
+ // ================================================================ 
 
-/*
- * Module init — Called when BASIC program issues MODULE "FUJINET".
- *
- * Initializes Winsock, clears channels, configures FUJI state,
- * and registers the three virtual devices.
- */
+ // Module init -- Called when BASIC program issues MODULE "FUJINET".
+ //
+ // Initializes Winsock, clears channels, configures FUJI state,
+ // and registers the three virtual devices.
 static int fn_module_init(void *rt)
 {
     VDev net_dev;
@@ -2644,25 +2563,25 @@ static int fn_module_init(void *rt)
 
     (void)rt;
 
-    /* Initialize platform sockets */
+    // Initialize platform sockets
     if (fn_socket_init() != 0) return -1;
 
-    /* Clear all channels */
+    // Clear all channels
     for (i = 0; i < FN_MAX_CHANNELS; i++) {
         memset(&fn_channels[i], 0, sizeof(FnChannel));
         fn_channels[i].sock_fd = -1;
         fn_channels[i].tnfs_fd = -1;
     }
 
-    /* Initialize FUJI state */
+    // Initialize FUJI state
     fn_fuji_init_config();
     fn_fuji_load_slots();
 
-    /* Initialize clock state */
+    // Initialize clock state
     memset(&fn_clock_state, 0, sizeof(fn_clock_state));
     fn_clock_state.format = FN_TIME_ISO_STRING;
 
-    /* --- Register N: device --- */
+    // --- Register N: device ---
     memset(&net_dev, 0, sizeof(net_dev));
     net_dev.name = "N:";
     net_dev.dev_class = VDCLASS_NETWORK;
@@ -2689,7 +2608,7 @@ static int fn_module_init(void *rt)
     fn_net_vdev_id = vdev_register(&net_dev);
     if (fn_net_vdev_id < 0) return -1;
 
-    /* --- Register FUJI: device --- */
+    // --- Register FUJI: device ---
     memset(&fuji_dev, 0, sizeof(fuji_dev));
     fuji_dev.name = "FUJI:";
     fuji_dev.dev_class = VDCLASS_STORAGE;
@@ -2704,7 +2623,7 @@ static int fn_module_init(void *rt)
     fn_fuji_vdev_id = vdev_register(&fuji_dev);
     if (fn_fuji_vdev_id < 0) return -1;
 
-    /* --- Register CLOCK: device --- */
+    // --- Register CLOCK: device ---
     memset(&clock_dev, 0, sizeof(clock_dev));
     clock_dev.name = "CLOCK:";
     clock_dev.dev_class = VDCLASS_TIMER;
@@ -2722,14 +2641,12 @@ static int fn_module_init(void *rt)
     return 0;
 }
 
-/*
- * Module cleanup — Close all open channels, shut down sockets.
- */
+ // Module cleanup -- Close all open channels, shut down sockets.
 static void fn_module_cleanup(void)
 {
     int i;
 
-    /* Close any open channels */
+    // Close any open channels
     for (i = 0; i < FN_MAX_CHANNELS; i++) {
         if (fn_channels[i].in_use) {
             if (fn_channels[i].proto == FN_PROTO_TNFS) {
@@ -2748,10 +2665,10 @@ static void fn_module_cleanup(void)
         }
     }
 
-    /* Save host slot configuration */
+    // Save host slot configuration
     fn_fuji_save_slots();
 
-    /* Shut down socket subsystem */
+    // Shut down socket subsystem
     fn_socket_cleanup();
 
     fn_net_vdev_id = -1;
@@ -2759,9 +2676,9 @@ static void fn_module_cleanup(void)
     fn_clock_vdev_id = -1;
 }
 
-/* ================================================================
- * MODULE DESCRIPTOR AND REGISTRATION
- * ================================================================ */
+// ================================================================
+ // MODULE DESCRIPTOR AND REGISTRATION
+ // ================================================================ 
 
 static const ModuleInfo fn_module_info = {
     "FUJINET",

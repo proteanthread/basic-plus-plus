@@ -1,6 +1,29 @@
 # Compiling BASIC++ Programs
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- The COMPILE Command
+- What the Compiler Generates
+- Compiling for Windows 11
+- Compiling for Linux
+- Compiling for FreeDOS
+- Compiling for Other Platforms
+- Supported BASIC Features in Compiled Output
+  - Fully Supported
+  - Partial Support
+  - Not Yet Supported in Compiled Output
+- Optimization Tips
+- Workflow Summary
+- Example: Full Workflow
+- Advanced: Embedding C in BASIC Programs
+- Troubleshooting
+
+---
 
 BASIC++ includes a built-in transpiler that converts your BASIC program into a self-contained ANSI C89 source file. This C file can then be compiled with any C compiler on any platform — giving you native executables for Linux, Windows, FreeDOS, or any system with a C compiler.
 
@@ -145,7 +168,7 @@ You can write your program on Windows and compile for Linux.
 gcc -O2 -o myprog myprog.c -lm
 
 # Or with maximum optimization:
-gcc -std=c89 -O3 -march=native -o myprog myprog.c -lm
+gcc -std=c17 -O3 -march=native -o myprog myprog.c -lm
 
 # Or with Clang:
 clang -O2 -o myprog myprog.c -lm

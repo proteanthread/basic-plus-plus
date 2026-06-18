@@ -1,13 +1,19 @@
-/*
- * ---
- * BASIC++ Interpreter - stdlib_dialect.c
- * ---
- *
- * Dialect-Overridable API Layer.
- * Allows mapping and overriding behaviors dynamically.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - stdlib_dialect.c
+ // ---
+ //
+ // Dialect-Overridable API Layer.
+ // Allows mapping and overriding behaviors dynamically.
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #include <string.h>
 #include <stdio.h>
@@ -21,31 +27,31 @@ void stdlib_dialect_init(void) {
 }
 
 void stdlib_dialect_set_overrides(DialectId dialect, DialectOverrides *overrides) {
-    /* If the dialect matches the currently active dialect, install these overrides */
+    // If the dialect matches the currently active dialect, install these overrides
     if (dialect_get_config()->id == dialect && overrides != NULL) {
         memcpy(&active_overrides, overrides, sizeof(DialectOverrides));
     }
 }
 
 void stdlib_dialect_load_profile(const char *profile_name) {
-    /* Explicitly load a dialect profile. 
-       This provides the hybrid ability to load profiles from .LIB 
-       or invoke internal initialization routines. */
+    // Explicitly load a dialect profile. 
+       // This provides the hybrid ability to load profiles from .LIB 
+       //        or invoke internal initialization routines. 
     if (strcmp(profile_name, "GWBASIC") == 0) {
-        /* Future: Could load a .LIB or call a specific init */
+        // Future: Could load a .LIB or call a specific init
         dialect_init(DIALECT_GW_BASIC);
     } else if (strcmp(profile_name, "QBASIC") == 0) {
         dialect_init(DIALECT_QBASIC);
     }
-    /* etc... */
+    // etc...
 }
 
-/* API Dispatchers */
+// API Dispatchers
 void stdlib_dialect_format_error(int error_code, void *rt) {
     if (active_overrides.format_error) {
         active_overrides.format_error(error_code, rt);
     } else {
-        /* Default formatting if no dialect overrides it */
+        // Default formatting if no dialect overrides it
         printf("Error: %d\n", error_code);
     }
 }
@@ -54,7 +60,7 @@ BValue stdlib_dialect_format_number(double val, void *rt) {
     if (active_overrides.format_number) {
         return active_overrides.format_number(val, rt);
     }
-    /* Default: just float formatting */
+    // Default: just float formatting
     return bval_float(val);
 }
 
@@ -62,7 +68,7 @@ void stdlib_dialect_initialize_variable(BValue *var, void *rt) {
     if (active_overrides.initialize_variable) {
         active_overrides.initialize_variable(var, rt);
     } else {
-        /* Default MS-BASIC behavior: zero/empty string */
+        // Default MS-BASIC behavior: zero/empty string
         *var = bval_int(0);
     }
 }

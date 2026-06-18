@@ -1,27 +1,33 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_vars.c
- * ---
- *
- * Variable, constant & type declaration commands.
- *
- * CONST, SWAP, REDIM, SHARED, STATIC, COMMON,
- * TYPE, DEFINT, DEFDBL, DEFSNG, DEFSTR, VARS.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_vars.c
+ // ---
+ //
+ // Variable, constant & type declaration commands.
+ //
+ // CONST, SWAP, REDIM, SHARED, STATIC, COMMON,
+ // TYPE, DEFINT, DEFDBL, DEFSNG, DEFSTR, VARS.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * pi_parse_const_stmt - Handle CONST_KW command.
- */
+ // pi_parse_const_stmt - Handle CONST_KW command.
 void pi_parse_const_stmt(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * CONST name = value
- * Store named constant in runtime table.
- */
+ // CONST name = value
+ // Store named constant in runtime table.
  {
  const char *nm;
  int nlen, ci;
@@ -36,7 +42,7 @@ void pi_parse_const_stmt(Lexer *lex, RuntimeState *rt, int line_num)
  nm = lex->current.str_start;
  nlen = lex->current.str_length;
  if (nm == NULL || nlen == 0) {
- /* Single letter variable */
+ // Single letter variable
  nm = &lex->current.value.var_name;
  nlen = 1;
  }
@@ -62,35 +68,29 @@ void pi_parse_const_stmt(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_swap - Handle SWAP command.
- */
+ // pi_parse_swap - Handle SWAP command.
 void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * SWAP A,B - exchange two variable values.
- * Supports:
- * - Numeric scalars: SWAP A, B
- * - String scalars:  SWAP A$, B$
- * - Named variables: SWAP Score, Total
- * - Array elements:  SWAP A(1), A(2)
- * - String arrays:   SWAP A$(1), A$(2)
- * - Mixed named:     SWAP Names$(1), Names$(2)
- */
+ // SWAP A,B - exchange two variable values.
+ // Supports:
+ // - Numeric scalars: SWAP A, B
+ // - String scalars:  SWAP A$, B$
+ // - Named variables: SWAP Score, Total
+ // - Array elements:  SWAP A(1), A(2)
+ // - String arrays:   SWAP A$(1), A$(2)
+ // - Mixed named:     SWAP Names$(1), Names$(2)
  {
- /*
- * SwapRef describes one side of the SWAP. It captures
- * enough information to get/set the value.
- * kind: 0=var, 1=strvar, 2=named, 3=dim
- */
+ // SwapRef describes one side of the SWAP. It captures
+ // enough information to get/set the value.
+ // kind: 0=var, 1=strvar, 2=named, 3=dim
  struct SwapRef {
  int kind;
- char var_name;       /* kind 0,1 */
- const char *nv_name; /* kind 2 */
- int nv_len;          /* kind 2 */
- char dim_name[34];   /* kind 3: array name */
- int dim_nlen;        /* kind 3 */
- int idx1, idx2, idx3; /* kind 3 */
+ char var_name; // kind 0,1
+ const char *nv_name; // kind 2
+ int nv_len; // kind 2
+ char dim_name[34]; // kind 3: array name
+ int dim_nlen; // kind 3
+ int idx1, idx2, idx3; // kind 3
  };
  struct SwapRef ref[2];
  BValue val[2];
@@ -102,18 +102,18 @@ void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume comma */
+ lexer_next(lex); // consume comma
  }
 
  if (lex->current.type == TOK_VARIABLE) {
  char vn = lex->current.value.var_name;
  lexer_next(lex);
- /* Check for array element: A(i) */
+ // Check for array element: A(i)
  if (lex->current.type == TOK_LPAREN &&
  dialect_get_config()->has_dim_arrays &&
  runtime_find_dim(rt, &vn, 1) != NULL) {
  int i1, i2 = 0, i3 = 0;
- lexer_next(lex); /* consume ( */
+ lexer_next(lex); // consume (
  i1 = (int)parse_expression(
  lex, rt, line_num);
  if (error_occurred()) return;
@@ -146,7 +146,7 @@ void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
  TOK_STRING_VAR) {
  char vn = lex->current.value.var_name;
  lexer_next(lex);
- /* Check for string array: A$(i) */
+ // Check for string array: A$(i)
  if (lex->current.type == TOK_LPAREN &&
  dialect_get_config()->has_dim_arrays) {
  char sn[3];
@@ -154,7 +154,7 @@ void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
  if (runtime_find_dim(rt, sn, 2) != NULL) {
  int i1, i2 = 0, i3 = 0;
  BValue sv;
- lexer_next(lex); /* ( */
+ lexer_next(lex); // (
  sv = parse_expression_bval(
  lex, rt, line_num);
  i1 = (int)bval_to_subscript(&sv);
@@ -196,12 +196,12 @@ void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
  const char *nm = lex->current.str_start;
  int nl = lex->current.str_length;
  lexer_next(lex);
- /* Check for named array: Arr(i) */
+ // Check for named array: Arr(i)
  if (lex->current.type == TOK_LPAREN &&
  dialect_get_config()->has_dim_arrays &&
  runtime_find_dim(rt, nm, nl) != NULL) {
  int i1, i2 = 0, i3 = 0;
- lexer_next(lex); /* ( */
+ lexer_next(lex); // (
  i1 = (int)parse_expression(
  lex, rt, line_num);
  if (error_occurred()) return;
@@ -240,9 +240,9 @@ void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  return;
  }
- } /* end for(side) */
+ } // end for(side)
 
- /* Get values from both sides */
+ // Get values from both sides
  for (side = 0; side < 2; side++) {
  switch (ref[side].kind) {
  case 0:
@@ -270,7 +270,7 @@ void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Set swapped values */
+ // Set swapped values
  switch (ref[0].kind) {
  case 0:
  runtime_set_var_bval(rt,
@@ -321,24 +321,20 @@ void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_redim - Handle REDIM and REDIM PRESERVE.
- */
+ // pi_parse_redim - Handle REDIM and REDIM PRESERVE.
 void pi_parse_redim(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * REDIM array(size)          -- erase and re-DIM
- * REDIM PRESERVE array(size) -- resize keeping data
- */
+ // REDIM array(size)          -- erase and re-DIM
+ // REDIM PRESERVE array(size) -- resize keeping data
  int preserve = 0;
  char rname[MAX_VAR_NAME_LEN + 1];
  int rlen = 0, ri;
  DimArray *existing;
- /* Static buffer for PRESERVE: max 4096 elements */
+ // Static buffer for PRESERVE: max 4096 elements
  static BValue saved[4096];
  int saved_count = 0;
 
- /* Check for PRESERVE keyword */
+ // Check for PRESERVE keyword
  if (lex->current.type == TOK_NAMED_VAR) {
   const char *s = lex->current.str_start;
   int slen = lex->current.str_length;
@@ -352,11 +348,11 @@ void pi_parse_redim(Lexer *lex, RuntimeState *rt, int line_num)
    (s[6]=='V'||s[6]=='v') &&
    (s[7]=='E'||s[7]=='e')) {
    preserve = 1;
-   lexer_next(lex); /* consume PRESERVE */
+   lexer_next(lex); // consume PRESERVE
   }
  }
 
- /* Peek at array name */
+ // Peek at array name
  if (lex->current.type == TOK_VARIABLE) {
   rname[0] = lex->current.value.var_name;
   rname[1] = '\0';
@@ -369,33 +365,33 @@ void pi_parse_redim(Lexer *lex, RuntimeState *rt, int line_num)
    (size_t)rlen);
   rname[rlen] = '\0';
  }
- /* Uppercase for matching */
+ // Uppercase for matching
  for (ri = 0; ri < rlen; ri++) {
   if (rname[ri] >= 'a' && rname[ri] <= 'z')
    rname[ri] = (char)(rname[ri] - 32);
  }
 
- /* Find existing array */
+ // Find existing array
  existing = runtime_find_dim(rt, rname, rlen);
  if (existing != NULL) {
   if (preserve) {
-   /* Save existing data */
+   // Save existing data
    saved_count = existing->total;
    if (saved_count > 4096)
     saved_count = 4096;
    memcpy(saved, existing->elements,
     (size_t)saved_count * sizeof(BValue));
   }
-  /* Erase the old array */
+  // Erase the old array
   existing->name[0] = '\0';
   existing->total = 0;
  }
 
- /* Re-DIM with new size */
+ // Re-DIM with new size
  pi_parse_dim(lex, rt, line_num);
  if (error_occurred()) return;
 
- /* Restore preserved data */
+ // Restore preserved data
  if (preserve && saved_count > 0) {
   DimArray *new_arr =
    runtime_find_dim(rt, rname, rlen);
@@ -410,18 +406,16 @@ void pi_parse_redim(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * scope_parse_varlist - Parse a variable name list.
- *
- * Consumes comma-separated variable names:
- *   SHARED A, B$, Counter, Arr()
- * Handles single-letter vars (TOK_VARIABLE),
- * string vars (TOK_STRING_VAR), named vars
- * (TOK_NAMED_VAR), and array indicators ().
- *
- * Returns the count of variables parsed.
- * Used by SHARED, STATIC, and COMMON.
- */
+ // scope_parse_varlist - Parse a variable name list.
+ //
+ // Consumes comma-separated variable names:
+ //   SHARED A, B$, Counter, Arr()
+ // Handles single-letter vars (TOK_VARIABLE),
+ // string vars (TOK_STRING_VAR), named vars
+ // (TOK_NAMED_VAR), and array indicators ().
+ //
+ // Returns the count of variables parsed.
+ // Used by SHARED, STATIC, and COMMON.
 static int scope_parse_varlist(Lexer *lex)
 {
  int count = 0;
@@ -433,18 +427,18 @@ static int scope_parse_varlist(Lexer *lex)
    lexer_next(lex);
    count++;
 
-   /* Skip optional () for arrays */
+   // Skip optional () for arrays
    if (lex->current.type == TOK_LPAREN) {
     lexer_next(lex);
     if (lex->current.type == TOK_RPAREN)
      lexer_next(lex);
    }
 
-   /* Check for AS type clause */
+   // Check for AS type clause
    if (lex->current.type == TOK_KEYWORD &&
     lex->current.value.keyword == KW_AS) {
     lexer_next(lex);
-    /* Skip type name */
+    // Skip type name
     if (lex->current.type == TOK_KEYWORD ||
      lex->current.type ==
       TOK_NAMED_VAR) {
@@ -452,7 +446,7 @@ static int scope_parse_varlist(Lexer *lex)
     }
    }
 
-   /* Comma continues the list */
+   // Comma continues the list
    if (lex->current.type == TOK_COMMA) {
     lexer_next(lex);
    } else {
@@ -465,21 +459,17 @@ static int scope_parse_varlist(Lexer *lex)
  return count;
 }
 
-/*
- * pi_parse_shared - Handle SHARED command.
- */
+ // pi_parse_shared - Handle SHARED command.
 void pi_parse_shared(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * SHARED var1 [AS type], var2, ...
- *
- * QBasic: makes procedure-local variables refer to
- * the module-level copy instead. Changes propagate
- * back to the caller on scope exit.
- *
- * Register each variable with scope_stack_add_shared
- * so scope_stack_pop skips restoring them.
- */
+ // SHARED var1 [AS type], var2, ...
+ //
+ // QBasic: makes procedure-local variables refer to
+ // the module-level copy instead. Changes propagate
+ // back to the caller on scope exit.
+ //
+ // Register each variable with scope_stack_add_shared
+ // so scope_stack_pop skips restoring them.
  while (lex->current.type != TOK_EOF &&
   lex->current.type != TOK_CR &&
   lex->current.type != TOK_COLON) {
@@ -491,7 +481,7 @@ void pi_parse_shared(Lexer *lex, RuntimeState *rt, int line_num)
    lexer_next(lex);
   } else if (lex->current.type ==
    TOK_VARIABLE) {
-   /* Single-letter: build 1-char name */
+   // Single-letter: build 1-char name
    char buf[2];
    buf[0] = lex->current.value.var_name;
    buf[1] = '\0';
@@ -500,7 +490,7 @@ void pi_parse_shared(Lexer *lex, RuntimeState *rt, int line_num)
    lexer_next(lex);
   } else if (lex->current.type ==
    TOK_STRING_VAR) {
-   /* String var: build "X$" name */
+   // String var: build "X$" name
    char buf[3];
    buf[0] = lex->current.value.var_name;
    buf[1] = '$'; buf[2] = '\0';
@@ -510,13 +500,13 @@ void pi_parse_shared(Lexer *lex, RuntimeState *rt, int line_num)
   } else {
    break;
   }
-  /* Skip optional () for arrays */
+  // Skip optional () for arrays
   if (lex->current.type == TOK_LPAREN) {
    lexer_next(lex);
    if (lex->current.type == TOK_RPAREN)
     lexer_next(lex);
   }
-  /* Skip optional AS type */
+  // Skip optional AS type
   if (lex->current.type == TOK_KEYWORD &&
    lex->current.value.keyword == KW_AS) {
    lexer_next(lex);
@@ -533,22 +523,18 @@ void pi_parse_shared(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_static - Handle STATIC command.
- */
+ // pi_parse_static - Handle STATIC command.
 void pi_parse_static(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * STATIC var1 [AS type], var2, ...
- *
- * QBasic: preserves variable values between calls
- * to the same SUB/FUNCTION. Without STATIC, local
- * variables are re-initialized on each entry.
- *
- * Register each variable with scope_stack_add_static
- * so it's saved back to SubDef on scope exit and
- * restored on the next entry.
- */
+ // STATIC var1 [AS type], var2, ...
+ //
+ // QBasic: preserves variable values between calls
+ // to the same SUB/FUNCTION. Without STATIC, local
+ // variables are re-initialized on each entry.
+ //
+ // Register each variable with scope_stack_add_static
+ // so it's saved back to SubDef on scope exit and
+ // restored on the next entry.
  while (lex->current.type != TOK_EOF &&
   lex->current.type != TOK_CR &&
   lex->current.type != TOK_COLON) {
@@ -576,13 +562,13 @@ void pi_parse_static(Lexer *lex, RuntimeState *rt, int line_num)
   } else {
    break;
   }
-  /* Skip optional () for arrays */
+  // Skip optional () for arrays
   if (lex->current.type == TOK_LPAREN) {
    lexer_next(lex);
    if (lex->current.type == TOK_RPAREN)
     lexer_next(lex);
   }
-  /* Skip optional AS type */
+  // Skip optional AS type
   if (lex->current.type == TOK_KEYWORD &&
    lex->current.value.keyword == KW_AS) {
    lexer_next(lex);
@@ -599,28 +585,24 @@ void pi_parse_static(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_common - Handle COMMON command.
- */
+ // pi_parse_common - Handle COMMON command.
 void pi_parse_common(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * COMMON [SHARED] var1, var2, ...
- *
- * GW-BASIC/QBasic: declares variables that
- * persist across CHAIN to another program.
- * Without COMMON, variables are cleared
- * when CHAINing.
- *
- * BASIC++ architecture: CHAIN runs in the
- * same process with the same RuntimeState,
- * so all variables naturally survive CHAIN.
- * This makes COMMON a semantic no-op.
- *
- * Hybrid mode: parse optional SHARED keyword
- * and the variable list correctly.
- */
- /* Consume optional SHARED keyword */
+ // COMMON [SHARED] var1, var2, ...
+ //
+ // GW-BASIC/QBasic: declares variables that
+ // persist across CHAIN to another program.
+ // Without COMMON, variables are cleared
+ // when CHAINing.
+ //
+ // BASIC++ architecture: CHAIN runs in the
+ // same process with the same RuntimeState,
+ // so all variables naturally survive CHAIN.
+ // This makes COMMON a semantic no-op.
+ //
+ // Hybrid mode: parse optional SHARED keyword
+ // and the variable list correctly.
+ // Consume optional SHARED keyword
  if (lex->current.type == TOK_KEYWORD &&
   lex->current.value.keyword == KW_SHARED) {
   lexer_next(lex);
@@ -630,19 +612,15 @@ void pi_parse_common(Lexer *lex, RuntimeState *rt, int line_num)
 
 }
 
-/*
- * pi_parse_type - Handle TYPE command.
- */
+ // pi_parse_type - Handle TYPE command.
 void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * TYPE name
- * field AS STRING/INTEGER/...
- * END TYPE
- *
- * Define a user type. Scan lines until
- * END TYPE is found.
- */
+ // TYPE name
+ // field AS STRING/INTEGER/...
+ // END TYPE
+ //
+ // Define a user type. Scan lines until
+ // END TYPE is found.
  {
  char tname[MAX_VAR_NAME_LEN + 1];
  int tlen = 0, ti;
@@ -650,7 +628,7 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  UserTypeDef *td;
  ProgramStore *pgm = rt->program;
 
- /* Get type name */
+ // Get type name
  if (lex->current.type ==
  TOK_NAMED_VAR) {
  tlen = lex->current.str_length;
@@ -666,9 +644,9 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  tlen = 1;
  } else if (lex->current.type ==
  TOK_KEYWORD) {
- /* Allow keyword names as type names
- * (e.g., TYPE Point where POINT is
- * a builtin function keyword) */
+ // Allow keyword names as type names
+ // (e.g., TYPE Point where POINT is
+ // a builtin function keyword) 
  const char *kn =
  lexer_keyword_name(
  lex->current.value.keyword);
@@ -699,7 +677,7 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  (size_t)(tlen + 1));
  td->field_count = 0;
 
- /* Scan forward for fields */
+ // Scan forward for fields
  ti = rt->current_index + 1;
  while (ti < pgm->count) {
  Lexer fl;
@@ -708,11 +686,11 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  src = pgm->lines[ti].text;
  lexer_init(&fl, src);
 
- /* Skip line number */
+ // Skip line number
  if (fl.current.type == TOK_NUMBER)
  lexer_next(&fl);
 
- /* Check for END TYPE */
+ // Check for END TYPE
  if (fl.current.type ==
  TOK_KEYWORD &&
  fl.current.value.keyword ==
@@ -727,7 +705,7 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Parse field: name AS type */
+ // Parse field: name AS type
  if (fl.current.type ==
  TOK_NAMED_VAR ||
  fl.current.type ==
@@ -756,8 +734,8 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  '\0';
  } else if (fl.current.type ==
  TOK_KEYWORD) {
- /* Keyword as field name
- * (e.g., Name, Color) */
+ // Keyword as field name
+ // (e.g., Name, Color) 
  const char *kn =
  lexer_keyword_name(
  fl.current.value
@@ -795,14 +773,14 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  td->fields[fi]
  .nested_type_index = -1;
  lexer_next(&fl);
- /* Skip AS keyword */
+ // Skip AS keyword
  if (fl.current.type ==
  TOK_KEYWORD &&
  fl.current.value
  .keyword ==
  KW_AS) {
  lexer_next(&fl);
- /* Check STRING */
+ // Check STRING
  if (fl.current.type
  == TOK_KEYWORD
  &&
@@ -815,7 +793,7 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  } else if (
  fl.current.type ==
  TOK_NAMED_VAR) {
- /* Check for nested type */
+ // Check for nested type
  UserTypeDef *nt =
  runtime_find_type(
  rt,
@@ -837,29 +815,27 @@ void pi_parse_type(Lexer *lex, RuntimeState *rt, int line_num)
  ti++;
  }
 
- /* Skip past END TYPE */
+ // Skip past END TYPE
  rt->current_index = ti;
  rt->type_count++;
  }
  return;
 }
 
-/*
- * deftype_parse_range - Parse letter range and set type.
- *
- * Parses GW-BASIC letter range syntax:
- *   DEFINT A-C, X-Z
- *   DEFDBL I
- *   DEFSNG A-Z
- *
- * For each letter in the range, sets
- * rt->deftype_map[letter_index] to the given
- * type code. Supports comma-separated ranges.
- *
- * Hybrid mode: the deftype_map is populated and
- * enforced at runtime - assigning a float to an
- * integer-declared variable silently truncates.
- */
+ // deftype_parse_range - Parse letter range and set type.
+ //
+ // Parses GW-BASIC letter range syntax:
+ //   DEFINT A-C, X-Z
+ //   DEFDBL I
+ //   DEFSNG A-Z
+ //
+ // For each letter in the range, sets
+ // rt->deftype_map[letter_index] to the given
+ // type code. Supports comma-separated ranges.
+ //
+ // Hybrid mode: the deftype_map is populated and
+ // enforced at runtime - assigning a float to an
+ // integer-declared variable silently truncates.
 static void deftype_parse_range(Lexer *lex,
  RuntimeState *rt, int line_num,
  unsigned char dtype)
@@ -868,7 +844,7 @@ static void deftype_parse_range(Lexer *lex,
   char start_ch, end_ch;
   int si, ei;
 
-  /* Get start letter */
+  // Get start letter
   if (lex->current.type == TOK_VARIABLE) {
    start_ch = lex->current.value.var_name;
   } else if (lex->current.type ==
@@ -878,15 +854,15 @@ static void deftype_parse_range(Lexer *lex,
    if (start_ch >= 'a' && start_ch <= 'z')
     start_ch = (char)(start_ch - 32);
   } else {
-   /* No more range specs */
+   // No more range specs
    break;
   }
   lexer_next(lex);
 
-  /* Default: single letter range */
+  // Default: single letter range
   end_ch = start_ch;
 
-  /* Check for '-' range separator */
+  // Check for '-' range separator
   if (lex->current.type == TOK_MINUS) {
    lexer_next(lex);
    if (lex->current.type == TOK_VARIABLE) {
@@ -901,7 +877,7 @@ static void deftype_parse_range(Lexer *lex,
    lexer_next(lex);
   }
 
-  /* Validate range */
+  // Validate range
   if (start_ch >= 'A' && start_ch <= 'Z' &&
    end_ch >= 'A' && end_ch <= 'Z') {
    si = start_ch - 'A';
@@ -913,7 +889,7 @@ static void deftype_parse_range(Lexer *lex,
    }
   }
 
-  /* Comma for next range, or done */
+  // Comma for next range, or done
   if (lex->current.type == TOK_COMMA) {
    lexer_next(lex);
   } else {
@@ -923,95 +899,75 @@ static void deftype_parse_range(Lexer *lex,
  return;
 }
 
-/*
- * pi_parse_defint - Handle DEFINT command.
- */
+ // pi_parse_defint - Handle DEFINT command.
 void pi_parse_defint(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * DEFINT letter-range [, letter-range ...]
- * Declare variables starting with the given
- * letters as INTEGER type. Enforced at runtime:
- * populates deftype_map for coercion on assignment.
- */
+ // DEFINT letter-range [, letter-range ...]
+ // Declare variables starting with the given
+ // letters as INTEGER type. Enforced at runtime:
+ // populates deftype_map for coercion on assignment.
  deftype_parse_range(lex, rt, line_num,
   DEFTYPE_INT);
  return;
 }
 
-/*
- * pi_parse_defdbl - Handle DEFDBL command.
- */
+ // pi_parse_defdbl - Handle DEFDBL command.
 void pi_parse_defdbl(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * DEFDBL letter-range [, letter-range ...]
- * Declare variables starting with the given
- * letters as DOUBLE type. Enforced at runtime:
- * populates deftype_map for coercion on assignment.
- */
+ // DEFDBL letter-range [, letter-range ...]
+ // Declare variables starting with the given
+ // letters as DOUBLE type. Enforced at runtime:
+ // populates deftype_map for coercion on assignment.
  deftype_parse_range(lex, rt, line_num,
   DEFTYPE_DBL);
  return;
 }
 
-/*
- * pi_parse_defsng - Handle DEFSNG command.
- */
+ // pi_parse_defsng - Handle DEFSNG command.
 void pi_parse_defsng(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * DEFSNG letter-range [, letter-range ...]
- * Declare variables starting with the given
- * letters as SINGLE type. Enforced at runtime:
- * populates deftype_map for coercion on assignment.
- */
+ // DEFSNG letter-range [, letter-range ...]
+ // Declare variables starting with the given
+ // letters as SINGLE type. Enforced at runtime:
+ // populates deftype_map for coercion on assignment.
  deftype_parse_range(lex, rt, line_num,
   DEFTYPE_SNG);
  return;
 }
 
-/*
- * pi_parse_defstr - Handle DEFSTR command.
- */
+ // pi_parse_defstr - Handle DEFSTR command.
 void pi_parse_defstr(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * DEFSTR letter-range [, letter-range ...]
- * Declare variables starting with the given
- * letters as STRING type. Enforced at runtime:
- * populates deftype_map for coercion on assignment.
- */
+ // DEFSTR letter-range [, letter-range ...]
+ // Declare variables starting with the given
+ // letters as STRING type. Enforced at runtime:
+ // populates deftype_map for coercion on assignment.
  deftype_parse_range(lex, rt, line_num,
   DEFTYPE_STR);
  return;
 }
 
 
-/*
- * pi_parse_vars - Handle VARS command.
- */
+ // pi_parse_vars - Handle VARS command.
 void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
 {
  {
- /*
-  * VARS [ENV | SYSTEM | ALL]
-  *
-  * With no argument: show BASIC++ program variables
-  * (A-Z, A$-Z$, named vars, DIM arrays, CONST).
-  *
-  * VARS ENV: List OS environment variables (the
-  * process environment block). Read-only listing.
-  * This is NOT the same as ENVIRON$ which gets/sets
-  * individual env vars by name — VARS ENV dumps
-  * the entire environment table.
-  *
-  * VARS SYSTEM: List BASIC++ interpreter internal
-  * environment variables (dialect, version, security
-  * level, platform, build info, etc.) as key=value.
-  *
-  * VARS ALL: Show all three sections.
-  */
+  // VARS [ENV | SYSTEM | ALL]
+  //
+  // With no argument: show BASIC++ program variables
+  // (A-Z, A$-Z$, named vars, DIM arrays, CONST).
+  //
+  // VARS ENV: List OS environment variables (the
+  // process environment block). Read-only listing.
+  // This is NOT the same as ENVIRON$ which gets/sets
+  // individual env vars by name -- VARS ENV dumps
+  // the entire environment table.
+  //
+  // VARS SYSTEM: List BASIC++ interpreter internal
+  // environment variables (dialect, version, security
+  // level, platform, build info, etc.) as key=value.
+  //
+  // VARS ALL: Show all three sections.
  int show_prog = 0;
  int show_env = 0;
  int show_sys = 0;
@@ -1019,36 +975,35 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
  int v;
  int printed;
 
- /* Parse optional sub-keyword.
-  *
-  * VARS is a meta-command — its argument (ENV, USER,
-  * SYSTEM, ALL) is not a BASIC expression. In dialects
-  * with single-letter variables (PATB), the lexer has
-  * already tokenized e.g. "USER" as variable 'U' with
-  * the remaining "SER" still in lex->source after the
-  * current token. We reconstruct the full word by
-  * combining the current token with what follows.
-  *
-  * In dialects with named variables (QBasic), the
-  * lexer gives us the full word as TOK_NAMED_VAR.
-  */
+ // Parse optional sub-keyword.
+  //
+  // VARS is a meta-command -- its argument (ENV, USER,
+  // SYSTEM, ALL) is not a BASIC expression. In dialects
+  // with single-letter variables (PATB), the lexer has
+  // already tokenized e.g. "USER" as variable 'U' with
+  // the remaining "SER" still in lex->source after the
+  // current token. We reconstruct the full word by
+  // combining the current token with what follows.
+  //
+  // In dialects with named variables (QBasic), the
+  // lexer gives us the full word as TOK_NAMED_VAR.
  {
      char word[16];
      int wlen = 0;
      const char *rest;
 
      if (lex->current.type == TOK_NAMED_VAR) {
-         /* Multi-char var: copy name directly */
+         // Multi-char var: copy name directly
          int n = lex->current.str_length;
          if (n > 15) n = 15;
          memcpy(word, lex->current.str_start,
              (size_t)n);
          wlen = n;
          word[wlen] = '\0';
-         lexer_next(lex); /* consume it */
+         lexer_next(lex); // consume it
      } else if (lex->current.type ==
                 TOK_KEYWORD) {
-         /* SYSTEM is a keyword */
+         // SYSTEM is a keyword
          if (lex->current.value.keyword ==
              KW_SYSTEM) {
              word[0] = 'S'; word[1] = 'Y';
@@ -1060,9 +1015,9 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
          }
      } else if (lex->current.type ==
                 TOK_VARIABLE) {
-         /* Single-letter var: reconstruct word.
-          * The lexer consumed one letter; remaining
-          * alphabetic chars are still in source. */
+         // Single-letter var: reconstruct word.
+          // The lexer consumed one letter; remaining
+          // alphabetic chars are still in source. 
          word[0] = lex->current.value.var_name;
          wlen = 1;
          rest = lex->source + lex->pos;
@@ -1074,17 +1029,17 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
              word[wlen++] = *rest++;
          }
          word[wlen] = '\0';
-         /* Advance lexer past the extra chars */
+         // Advance lexer past the extra chars
          lex->pos = (int)(rest - lex->source);
          lexer_next(lex);
      } else if (lex->current.type == TOK_CR ||
                 lex->current.type == TOK_EOF) {
-         /* No argument: show program vars */
+         // No argument: show program vars
          wlen = 0;
          word[0] = '\0';
      }
 
-     /* Match the reconstructed word */
+     // Match the reconstructed word
      if (wlen == 3 &&
          (word[0] == 'E' || word[0] == 'e') &&
          (word[1] == 'N' || word[1] == 'n') &&
@@ -1113,18 +1068,18 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
          show_sys = 1;
          show_user = 1;
      } else {
-         /* No match or no argument: program vars */
+         // No match or no argument: program vars
          show_prog = 1;
      }
  }
 
- /* ---- Section 1: BASIC++ Program Variables ---- */
+ // ---- Section 1: BASIC++ Program Variables ----
  if (show_prog) {
      printed = 0;
 
      printf("=== PROGRAM VARIABLES ===\n\n");
 
-     /* Numeric variables A-Z */
+     // Numeric variables A-Z
      for (v = 0; v < MAX_VARIABLES; v++) {
          if (rt->variables[v].type ==
              VAL_INTEGER &&
@@ -1144,7 +1099,7 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
          }
      }
 
-     /* String variables A$-Z$ */
+     // String variables A$-Z$
      for (v = 0; v < MAX_STRING_VARS; v++) {
          if (rt->string_vars[v].type ==
              VAL_STRING &&
@@ -1162,7 +1117,7 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
          }
      }
 
-     /* Named variables */
+     // Named variables
      for (v = 0; v < rt->named_count; v++) {
          if (rt->named_vars[v].value.type ==
              VAL_INTEGER &&
@@ -1200,7 +1155,7 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
          }
      }
 
-     /* DIM arrays (skip typed arrays, shown separately) */
+     // DIM arrays (skip typed arrays, shown separately)
      for (v = 0; v < rt->dim_count; v++) {
          if (rt->dim_arrays[v].type_index >= 0) continue;
          printf(" DIM %s(",
@@ -1218,7 +1173,7 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
          printed = 1;
      }
 
-     /* CONST table */
+     // CONST table
      for (v = 0; v < rt->const_count; v++) {
          printf(" CONST %s = ",
              rt->constants[v].name);
@@ -1242,7 +1197,7 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
          printed = 1;
      }
 
-     /* User-Defined Type instances */
+     // User-Defined Type instances
      for (v = 0; v < rt->typed_var_count; v++) {
          TypedVar *tv = &rt->typed_vars[v];
          UserTypeDef *td = &rt->user_types[tv->type_index];
@@ -1271,7 +1226,7 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
          printed = 1;
      }
 
-     /* Typed DIM arrays */
+     // Typed DIM arrays
      for (v = 0; v < rt->dim_count; v++) {
          if (rt->dim_arrays[v].type_index >= 0) {
              UserTypeDef *td = &rt->user_types[
@@ -1294,7 +1249,7 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
      printf("\n");
  }
 
- /* ---- Section 2: User Environment Variables ---- */
+ // ---- Section 2: User Environment Variables ----
  if (show_user) {
      int ecount;
      printf("=== USER ENVIRONMENT ===\n\n");
@@ -1302,7 +1257,7 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
      printf("\n %d variable(s).\n\n", ecount);
  }
 
- /* ---- Section 3: OS Environment Variables ---- */
+ // ---- Section 3: OS Environment Variables ----
  if (show_env) {
      int ecount;
      printf("=== OS ENVIRONMENT ===\n\n");
@@ -1310,7 +1265,7 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
      printf("\n %d variable(s).\n\n", ecount);
  }
 
- /* ---- Section 4: BASIC++ System Environment ---- */
+ // ---- Section 4: BASIC++ System Environment ----
  if (show_sys) {
      printf("=== BASIC++ ENVIRONMENT ===\n\n");
      printf(" VERSION=%s\n", BASICPP_VERSION);
@@ -1383,6 +1338,6 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* ===== Self-test framework ===== */
+ // ===== Self-test framework =====
 }
 

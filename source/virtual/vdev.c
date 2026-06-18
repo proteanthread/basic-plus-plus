@@ -1,28 +1,26 @@
-/*
- * ---
- * BASIC++ Interpreter - vdev.c
- * ---
- *
- * Virtual Device System implementation (VDev2).
- *
- * PURPOSE:
- * Implements the three built-in virtual devices (CON:, ERR:, FILE:)
- * and the device management functions (init, get, register). This
- * is the ONLY file in the interpreter that makes direct calls to
- * C stdio functions for I/O. All other modules route I/O through
- * the VDev function pointers.
- *
- * ADDITIONS:
- * - 64 device slots (up from 16)
- * - Device discovery by name and class
- * - Binary I/O convenience wrappers
- * - IOCTL2, status, poll, info wrappers
- * - Device enumeration (DEVICES command)
- * - Class name lookup
- * - Built-in devices now have class/caps metadata
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - vdev.c
+ // ---
+ //
+ // Virtual Device System implementation (VDev2).
+ //
+ // PURPOSE:
+ // Implements the three built-in virtual devices (CON:, ERR:, FILE:)
+ // and the device management functions (init, get, register). This
+ // is the ONLY file in the interpreter that makes direct calls to
+ // C stdio functions for I/O. All other modules route I/O through
+ // the VDev function pointers.
+ //
+ // ADDITIONS:
+ // - 64 device slots (up from 16)
+ // - Device discovery by name and class
+ // - Binary I/O convenience wrappers
+ // - IOCTL2, status, poll, info wrappers
+ // - Device enumeration (DEVICES command)
+ // - Class name lookup
+ // - Built-in devices now have class/caps metadata
+ //
+ // ---
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,27 +28,23 @@
 #include <stdarg.h>
 #include "vdev.h"
 
-/*
- * Platform-specific headers for beep support.
- */
+ // Platform-specific headers for beep support.
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #include <conio.h>
 #endif
 
-/* --- Device Table ---
- * Static table of all registered devices. Slots 0-2 are reserved
- * for built-in devices. Slots 3-63 are available for user devices.
- *
- * Expanded from 16 to 64 slots. Each VDev is ~200 bytes,
- * so the table is ~12 KB - well within stack/BSS limits on all
- * target platforms including FreeDOS.
- */
+// --- Device Table ---
+ // Static table of all registered devices. Slots 0-2 are reserved
+ // for built-in devices. Slots 3-63 are available for user devices.
+ //
+ // Expanded from 16 to 64 slots. Each VDev is ~200 bytes,
+ // so the table is ~12 KB - well within stack/BSS limits on all
+ // target platforms including FreeDOS.
 static VDev device_table[VDEV_MAX];
 static int device_used = 0;
 
-/* --- Console Device (CON:) - stdout + stdin ---
- */
+// --- Console Device (CON:) - stdout + stdin ---
 
 static int con_putc(VDev *d, int ch)
 {
@@ -97,8 +91,7 @@ static int con_gets(VDev *d, char *buf, int max)
  return 0;
 }
 
-/* --- Error Device (ERR:) - stderr ---
- */
+// --- Error Device (ERR:) - stderr ---
 
 static int err_putc(VDev *d, int ch)
 {
@@ -119,8 +112,7 @@ static int err_flush(VDev *d)
  return 0;
 }
 
-/* --- File Device (FILE:) - fopen/fclose/fprintf/fgets ---
- */
+// --- File Device (FILE:) - fopen/fclose/fprintf/fgets ---
 
 static int file_open(VDev *d, const char *path, const char *mode)
 {
@@ -176,7 +168,7 @@ static int file_gets(VDev *d, char *buf, int max)
  return 0;
 }
 
-/* Binary I/O for FILE: device */
+// Binary I/O for FILE: device
 static int file_read(VDev *d, void *buf, int len)
 {
  if (d->user_data == NULL) return -1;
@@ -196,16 +188,15 @@ static long file_seek(VDev *d, long offset, int whence)
  return ftell((FILE *)d->user_data);
 }
 
-/* --- Device System Functions ---
- */
+// --- Device System Functions ---
 
 void vdev_init(void)
 {
- /* Clear entire device table */
+ // Clear entire device table
  memset(device_table, 0, sizeof(device_table));
  device_used = 0;
 
- /* --- CON: device (slot 0) --- */
+ // --- CON: device (slot 0) ---
  device_table[VDEV_CON].name = "CON:";
  device_table[VDEV_CON].dev_putc = con_putc;
  device_table[VDEV_CON].dev_puts = con_puts;
@@ -216,14 +207,14 @@ void vdev_init(void)
  device_table[VDEV_CON].dev_open = NULL;
  device_table[VDEV_CON].dev_close = NULL;
  device_table[VDEV_CON].user_data = NULL;
- /* metadata */
+ // metadata
  device_table[VDEV_CON].dev_class = VDCLASS_CONSOLE;
  device_table[VDEV_CON].dev_caps = VDCAP_READ | VDCAP_WRITE;
  device_table[VDEV_CON].dev_version = "1.0";
  device_table[VDEV_CON].dev_description = "Console (stdout + stdin)";
  device_table[VDEV_CON].dev_req_caps = 0;
 
- /* --- ERR: device (slot 1) --- */
+ // --- ERR: device (slot 1) ---
  device_table[VDEV_ERR].name = "ERR:";
  device_table[VDEV_ERR].dev_putc = err_putc;
  device_table[VDEV_ERR].dev_puts = err_puts;
@@ -234,14 +225,14 @@ void vdev_init(void)
  device_table[VDEV_ERR].dev_open = NULL;
  device_table[VDEV_ERR].dev_close = NULL;
  device_table[VDEV_ERR].user_data = NULL;
- /* metadata */
+ // metadata
  device_table[VDEV_ERR].dev_class = VDCLASS_CONSOLE;
  device_table[VDEV_ERR].dev_caps = VDCAP_WRITE;
  device_table[VDEV_ERR].dev_version = "1.0";
  device_table[VDEV_ERR].dev_description = "Error output (stderr)";
  device_table[VDEV_ERR].dev_req_caps = 0;
 
- /* --- FILE: device (slot 2) --- */
+ // --- FILE: device (slot 2) ---
  device_table[VDEV_FILE].name = "FILE:";
  device_table[VDEV_FILE].dev_putc = file_putc;
  device_table[VDEV_FILE].dev_puts = file_puts;
@@ -252,13 +243,13 @@ void vdev_init(void)
  device_table[VDEV_FILE].dev_open = file_open;
  device_table[VDEV_FILE].dev_close = file_close;
  device_table[VDEV_FILE].user_data = NULL;
- /* metadata */
+ // metadata
  device_table[VDEV_FILE].dev_class = VDCLASS_FILE;
  device_table[VDEV_FILE].dev_caps = VDCAP_FILELIKE;
  device_table[VDEV_FILE].dev_version = "1.0";
  device_table[VDEV_FILE].dev_description = "File I/O (stdio)";
  device_table[VDEV_FILE].dev_req_caps = 0;
- /* binary I/O */
+ // binary I/O
  device_table[VDEV_FILE].dev_read = file_read;
  device_table[VDEV_FILE].dev_write = file_write;
  device_table[VDEV_FILE].dev_seek = file_seek;
@@ -278,7 +269,7 @@ int vdev_register(VDev *dev)
  int slot;
  if (dev == NULL) return -1;
 
- /* Find next empty slot */
+ // Find next empty slot
  for (slot = VDEV_USER; slot < VDEV_MAX; slot++) {
  if (device_table[slot].name == NULL) {
  memcpy(&device_table[slot], dev, sizeof(VDev));
@@ -286,15 +277,12 @@ int vdev_register(VDev *dev)
  return slot;
  }
  }
- return -1; /* table full */
+ return -1; // table full
 }
 
-/* --- Device Discovery ---
- */
+// --- Device Discovery ---
 
-/*
- * vdev_find_by_name - Case-insensitive name search.
- */
+ // vdev_find_by_name - Case-insensitive name search.
 int vdev_find_by_name(const char *name)
 {
  int i;
@@ -305,7 +293,7 @@ int vdev_find_by_name(const char *name)
  int j, match;
  if (dn == NULL) continue;
 
- /* Case-insensitive compare */
+ // Case-insensitive compare
  match = 1;
  for (j = 0; ; j++) {
  char a = name[j];
@@ -320,9 +308,7 @@ int vdev_find_by_name(const char *name)
  return -1;
 }
 
-/*
- * vdev_find_by_class - Find devices by class.
- */
+ // vdev_find_by_class - Find devices by class.
 int vdev_find_by_class(VDevClass cls, int start_from)
 {
  int i;
@@ -336,9 +322,7 @@ int vdev_find_by_class(VDevClass cls, int start_from)
  return -1;
 }
 
-/*
- * vdev_count_class - Count devices of a given class.
- */
+ // vdev_count_class - Count devices of a given class.
 int vdev_count_class(VDevClass cls)
 {
  int i, count = 0;
@@ -351,9 +335,7 @@ int vdev_count_class(VDevClass cls)
  return count;
 }
 
-/*
- * vdev_class_name - Human-readable class name.
- */
+ // vdev_class_name - Human-readable class name.
 const char *vdev_class_name(VDevClass cls)
 {
  switch (cls) {
@@ -382,9 +364,7 @@ const char *vdev_class_name(VDevClass cls)
  }
 }
 
-/*
- * vdev_list_all - Print all registered devices.
- */
+ // vdev_list_all - Print all registered devices.
 void vdev_list_all(void)
 {
  int i;
@@ -403,8 +383,7 @@ void vdev_list_all(void)
  }
 }
 
-/* --- Convenience I/O Functions (Original) ---
- */
+// --- Convenience I/O Functions (Original) ---
 
 int vdev_putc(VDev *d, int ch)
 {
@@ -456,8 +435,7 @@ int vdev_cls(VDev *d)
  return d->dev_cls(d);
 }
 
-/* --- Binary I/O Convenience ---
- */
+// --- Binary I/O Convenience ---
 
 int vdev_read(VDev *d, void *buf, int len)
 {
@@ -477,8 +455,7 @@ long vdev_seek(VDev *d, long offset, int whence)
  return d->dev_seek(d, offset, whence);
 }
 
-/* --- Control & Status Convenience ---
- */
+// --- Control & Status Convenience ---
 
 int vdev_ioctl(VDev *d, int cmd, void *arg)
 {
@@ -488,13 +465,13 @@ int vdev_ioctl(VDev *d, int cmd, void *arg)
 
 int vdev_status(VDev *d)
 {
- if (d == NULL || d->dev_status == NULL) return 0; /* assume ready */
+ if (d == NULL || d->dev_status == NULL) return 0; // assume ready
  return d->dev_status(d);
 }
 
 int vdev_poll(VDev *d)
 {
- if (d == NULL || d->dev_poll == NULL) return 0; /* no data */
+ if (d == NULL || d->dev_poll == NULL) return 0; // no data
  return d->dev_poll(d);
 }
 
@@ -502,7 +479,7 @@ const char *vdev_info(VDev *d, const char *key)
 {
  if (d == NULL) return NULL;
 
- /* Built-in keys handled here */
+ // Built-in keys handled here
  if (key != NULL) {
  if (strcmp(key, "name") == 0) return d->name;
  if (strcmp(key, "class") == 0) return vdev_class_name(d->dev_class);
@@ -510,13 +487,12 @@ const char *vdev_info(VDev *d, const char *key)
  if (strcmp(key, "description") == 0) return d->dev_description;
  }
 
- /* Delegate to device-specific info handler */
+ // Delegate to device-specific info handler
  if (d->dev_info != NULL) return d->dev_info(d, key);
  return NULL;
 }
 
-/* --- Platform Convenience Functions (Original - unchanged) ---
- */
+// --- Platform Convenience Functions (Original - unchanged) ---
 
 void vdev_beep(void)
 {
@@ -538,16 +514,14 @@ void vdev_sound(int freq_hz, int duration_ms)
 #if defined(_WIN32) || defined(_WIN64)
  Beep((DWORD)freq_hz, (DWORD)duration_ms);
 #else
- /*
-  * Non-Windows: emit BEL character for audible
-  * feedback. True frequency control requires
-  * platform audio APIs (ALSA, PulseAudio) which
-  * are outside our stdio-only design.
-  *
-  * For terminals that support it, we also emit
-  * an OSC title flash to indicate the tone
-  * parameters, then restore the title.
-  */
+  // Non-Windows: emit BEL character for audible
+  // feedback. True frequency control requires
+  // platform audio APIs (ALSA, PulseAudio) which
+  // are outside our stdio-only design.
+  //
+  // For terminals that support it, we also emit
+  // an OSC title flash to indicate the tone
+  // parameters, then restore the title.
  printf("\033]0;BEEP %dHz %dms\a", freq_hz,
   duration_ms);
  fflush(stdout);

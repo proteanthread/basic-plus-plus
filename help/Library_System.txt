@@ -1,12 +1,24 @@
 Library System
 ==============
 
+
+=====================================================================
+TABLE OF CONTENTS
+=====================================================================
+
+  1. Reads REM @LIBRARY, @VERSION, @SECURITY headers
+  2. Checks security level compatibility
+  3. Scans for SUB/FUNCTION/DEF FN declarations
+  4. Stores source lines for interpreter-mode execution
+  5. Initializes an isolated variable space (26 vars A-Z)
+
+
 BASIC++ supports loading external libraries (.LIB source files
 and .BPL pre-compiled binary files) that provide reusable
 SUB, FUNCTION, and DEF FN definitions.
 
 LOADING LIBRARIES
------------------
+---------------------------------------------------------------------
 
   LOAD LIBRARY "filename.lib"
 
@@ -24,7 +36,7 @@ LOADING LIBRARIES
     directly from the portable binary format.
 
 UNLOADING LIBRARIES
--------------------
+---------------------------------------------------------------------
 
   UNLOAD LIBRARY "LIBNAME"
 
@@ -32,7 +44,7 @@ UNLOADING LIBRARIES
     associated symbol table entries and source lines.
 
 CALLING LIBRARY FUNCTIONS
--------------------------
+---------------------------------------------------------------------
 
   CALL LibName_SubName(arg1, arg2, ...)
 
@@ -45,7 +57,7 @@ CALLING LIBRARY FUNCTIONS
     Calls a FUNCTION and returns a value.
 
 COMPILING LIBRARIES
--------------------
+---------------------------------------------------------------------
 
   COMPILE LIBRARY "LIBNAME"
 
@@ -58,7 +70,7 @@ COMPILING LIBRARIES
     Saves to a specific output file.
 
 .BPL FILE FORMAT
-----------------
+---------------------------------------------------------------------
 
   The .BPL format is a portable, OS-independent binary:
 
@@ -87,7 +99,7 @@ COMPILING LIBRARIES
     N bytes:  line text (ASCII)
 
 LIBRARY FILE FORMAT (.LIB)
---------------------------
+---------------------------------------------------------------------
 
   Libraries are plain text files with REM header tags:
 
@@ -109,7 +121,7 @@ LIBRARY FILE FORMAT (.LIB)
     DEF FN LibName_Square(x) = x * x
 
 SECURITY
---------
+---------------------------------------------------------------------
 
   Libraries specify their required security level via:
 
@@ -126,7 +138,7 @@ SECURITY
   See: HELP SECURITY
 
 VARIABLE ISOLATION
-------------------
+---------------------------------------------------------------------
 
   Each library has its own isolated variable space:
   - 26 numeric variables (A-Z) per library
@@ -136,7 +148,7 @@ VARIABLE ISOLATION
   - Caller's variables are saved/restored on CALL
 
 SAMPLE LIBRARIES
-----------------
+---------------------------------------------------------------------
 
   BASIC++ ships with 7 sample libraries in ./samples/:
 
@@ -149,7 +161,7 @@ SAMPLE LIBRARIES
   EXTCMDS.LIB - Additional utility commands
 
 EXAMPLES
---------
+---------------------------------------------------------------------
 
   Example 1: Load and use turtle graphics
 
@@ -172,7 +184,7 @@ EXAMPLES
     REM Loaded from pre-compiled binary
 
 SEE ALSO
---------
+---------------------------------------------------------------------
 
   HELP SECURITY
   HELP MODULES

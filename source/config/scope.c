@@ -1,33 +1,39 @@
-/*
- * ---
- * BASIC++ Interpreter - scope.c
- * ---
- *
- * SCOPE keyword implementation: keyword access control
- * and behavior hooks.
- *
- * The scope table is a static array indexed by KeywordId.
- * Each entry tracks disabled state and hook line numbers.
- *
- * Presets disable groups of keywords for common use cases:
- * - STRUCTURED: disable GOTO for clean control flow
- * - SAFE: disable low-level access (PEEK/POKE/EXEC)
- * - MINIMAL: disable I/O and system access
- * - EDUCATIONAL: beginner-friendly subset
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - scope.c
+ // ---
+ //
+ // SCOPE keyword implementation: keyword access control
+ // and behavior hooks.
+ //
+ // The scope table is a static array indexed by KeywordId.
+ // Each entry tracks disabled state and hook line numbers.
+ //
+ // Presets disable groups of keywords for common use cases:
+ // - STRUCTURED: disable GOTO for clean control flow
+ // - SAFE: disable low-level access (PEEK/POKE/EXEC)
+ // - MINIMAL: disable I/O and system access
+ // - EDUCATIONAL: beginner-friendly subset
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #include <stdio.h>
 #include <string.h>
 #include "scope.h"
 #include "lexer.h"
 
-/* --- Scope Table --- */
+// --- Scope Table ---
 static ScopeEntry scope_table[KW_COUNT];
 static KeywordId last_hook_kw = KW_COUNT;
 
-/* --- Case-insensitive compare --- */
+// --- Case-insensitive compare ---
 static int sci_eq(const char *a, const char *b)
 {
  while (*a && *b) {
@@ -41,7 +47,7 @@ static int sci_eq(const char *a, const char *b)
  return (*a == '\0' && *b == '\0');
 }
 
-/* --- Init / Reset --- */
+// --- Init / Reset ---
 
 void scope_init(void)
 {
@@ -61,11 +67,10 @@ void scope_reset(void)
  printf("All scope rules cleared.\n");
 }
 
-/* --- Protected Keywords ---
- * These keywords cannot be disabled or hooked via SCOPE.
- * Prevents lock-out scenarios where the user disables
- * the tools needed to undo the damage.
- */
+// --- Protected Keywords ---
+ // These keywords cannot be disabled or hooked via SCOPE.
+ // Prevents lock-out scenarios where the user disables
+ // the tools needed to undo the damage.
 static int is_protected(KeywordId kw)
 {
  return (kw == KW_SCOPE || kw == KW_ALIAS ||
@@ -73,7 +78,7 @@ static int is_protected(KeywordId kw)
   kw == KW_SECURITY || kw == KW_OVERRIDE);
 }
 
-/* --- Disable / Enable --- */
+// --- Disable / Enable ---
 
 int scope_is_disabled(KeywordId kw)
 {
@@ -98,7 +103,7 @@ void scope_enable(KeywordId kw)
  scope_table[kw].disabled = 0;
 }
 
-/* --- Hooks --- */
+// --- Hooks ---
 
 void scope_set_before(KeywordId kw, int line)
 {
@@ -168,7 +173,7 @@ void scope_restore(KeywordId kw)
  }
 }
 
-/* --- Introspection --- */
+// --- Introspection ---
 
 int scope_has_any_rules(void)
 {
@@ -236,13 +241,13 @@ void scope_list(void)
  printf("  (none)\n");
 }
 
-/* --- Presets --- */
+// --- Presets ---
 
 int scope_load_preset(const char *name)
 {
  if (sci_eq(name, "STRUCTURED")) {
  scope_disable(KW_GOTO);
- scope_disable(KW_ON); /* ON...GOTO */
+ scope_disable(KW_ON); // ON...GOTO
  printf("Preset STRUCTURED: GOTO, ON"
  " disabled.\n");
  return 0;

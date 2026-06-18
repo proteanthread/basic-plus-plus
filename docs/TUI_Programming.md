@@ -2,6 +2,72 @@
  BASIC++ TUI (Text User Interface) Programming Guide
 =========================================================
 
+
+---
+
+## Table of Contents
+
+- Introduction
+- The VCON Buffer
+- Cursor Control (CURSOR ON/OFF)
+- Double Buffering (SCREEN LOCK/UNLOCK)
+- Scroll Regions (VIEW PRINT)
+- Color Commands (COLOR, INK, PAPER)
+- Arrow Key & Special Key Input
+- Mouse Support (MOUSE ON/OFF, MOUSE())
+- Screen Save/Restore (SCREENSAVE/SCREENRESTORE)
+- Box Drawing Helpers
+- Windowed Dialogs
+- Pull-Down Menus
+- Multi-Window Desktop
+- Text Selection & Clipboard
+- Full-Screen Text Editor
+- Dual-Pane File Manager
+- Complete TUI Desktop
+- Tips & Best Practices
+- Introduction
+- The VCON Buffer
+- Cursor Control (CURSOR ON/OFF)
+- Double Buffering (SCREEN LOCK/UNLOCK)
+- Hides cursor temporarily
+- Iterates all 25 rows, emitting ANSI position
+- Restores cursor position and visibility
+- Flushes stdout in one write
+- Scroll Regions (VIEW PRINT)
+- Color Commands (COLOR, INK, PAPER)
+- Arrow Key & Special Key Input
+- Mouse Support (MOUSE ON/OFF, MOUSE())
+- Screen Save/Restore (SCREENSAVE/SCREENRESTORE)
+- Box Drawing Helpers
+- Windowed Dialogs
+- Saves the screen area behind it
+- Draws a bordered box with title
+- Captures input
+- Restores the background on close
+- Pull-Down Menus
+- A menu bar at row 1
+- Drop-down panels that appear on activation
+- Arrow key navigation
+- ESC to dismiss
+- Multi-Window Desktop
+- Text Selection & Clipboard
+- Full-Screen Text Editor
+- Dual-Pane File Manager
+- Complete TUI Desktop
+- Tips & Best Practices
+- ALWAYS restore cursor visibility before exiting:
+- ALWAYS disable mouse tracking before exiting:
+- Use SCREEN LOCK/UNLOCK for any full-screen redraw
+- Use SCREENSAVE/SCREENRESTORE for popups and dialogs
+- Use VIEW PRINT to protect title bars and status bars
+- Use COLOR 0, 7 for menu bars (black on white),
+- For box drawing, define constants at the top:
+- Check MOUSE(3) before using mouse functions to
+- When building complex TUI apps, use subroutines
+- Test your TUI on both Windows Terminal and a Linux
+
+---
+
  Contents
  --------
  1. Introduction

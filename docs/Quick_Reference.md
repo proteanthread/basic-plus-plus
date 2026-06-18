@@ -1,6 +1,20 @@
 # BASIC++ Quick Reference Card
 
-**Version 4.0.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- Commands (Direct Mode)
+- Statements
+- Numeric Functions
+- String Functions
+- Operators (Precedence Order)
+- Special Symbols
+
+---
 
 Alphabetical listing of every keyword, statement, function, and command in BASIC++.
 

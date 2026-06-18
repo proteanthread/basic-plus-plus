@@ -1,6 +1,28 @@
 # BASIC++ Scripting Functions
 
-**Version 2.0.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- SHELL Statement
+- SHELL$ Function
+- ERRORLEVEL
+- EXEC Statement
+- SHELL Redirection
+- PRINT Redirection
+- ENVIRON$ Function
+- Shebang Support
+- Scripting Patterns
+  - Build automation
+  - File processing
+  - System monitoring
+  - Log aggregation
+- Security Notes
+
+---
 
 BASIC++ includes shell-scripting capabilities that make it viable as a replacement for batch files and shell scripts.
 

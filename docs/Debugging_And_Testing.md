@@ -1,6 +1,27 @@
 # BASIC++ Debugging and Testing
 
-**Version 4.0.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- Trace Mode (TRON / TROFF)
+- Breakpoints (BREAK)
+- Stopping and Continuing (STOP / CONT)
+- Variables Inspection (VARS)
+- Assertions (ASSERT)
+- Test Blocks (TEST / ENDTEST)
+- Built-in Self-Test (SELFTEST)
+- Error Line and Code (ERL / ERR)
+- Debugging Workflow
+- CHECK — Static Program Analysis
+- VERIFY — Full Program Verification
+- BACKTRACE — Call Stack Dump
+- ERROR$ — Error Message Lookup
+
+---
 
 This guide covers all debugging and testing features built into BASIC++. These tools help you find bugs, verify behavior, and build confidence in your programs.
 

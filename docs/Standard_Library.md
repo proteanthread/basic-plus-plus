@@ -1,5 +1,18 @@
 # Standard Library & Built-In Function Model
 
+
+---
+
+## Table of Contents
+
+- Core Immutable API (VM Contract Layer)
+- Dialect-Overridable API Layer
+- Granular File I/O Hooks
+- Extensible Error Architecture
+- Virtual Device (vdev) API
+
+---
+
 BASIC++ separates its runtime environment from its virtual machine core. The Standard Library acts as the primary API between BASIC programs and the execution layer.
 
 ## Core Immutable API (VM Contract Layer)

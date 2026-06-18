@@ -1,5 +1,26 @@
 # Advanced String Functions (Milestone 19)
 
+
+---
+
+## Table of Contents
+
+- Overview
+- REPLACE$(source$, old$, new$)
+- REVERSE$(s$)
+- MCASE$(s$)
+- ICASE$(s$)
+- HASH$(s$ [, bits])
+- ONKEY$
+- LIKE Operator
+  - Pattern Metacharacters
+  - Examples
+  - Notes
+- Dialect Availability
+- See Also
+
+---
+
 **BASIC++ v3.3.0**
 
 ---

@@ -1,5 +1,36 @@
 # BASIC++ Event & Error Trapping Tutorial
 
+
+---
+
+## Table of Contents
+
+- Overview
+- Error Trapping
+  - 1 ON ERROR GOTO (GW-BASIC / QBasic Style)
+  - 2 TRAP n (Atari BASIC Style)
+  - 3 Bare TRAP (Status Query)
+- Structured Exception Handling (ECMA-116)
+- Event Trapping
+  - 1 ON event GOSUB/GOTO
+  - 2 Event Enable/Disable
+  - 3 How Event Polling Works
+  - 4 ON BREAK — OS Signal Handler
+  - 5 Device I/O Events (VDev Tier 2)
+  - 6 UPnP / Network Events (Tier 5)
+- ON TRAP — The Hybrid Event Router
+  - 1 Syntax
+  - 2 Event Classes
+  - 3 Examples
+  - 4 Dialect Conflicts
+- The TRAP Three-Argument Form
+- Error Codes (ERR)
+- Comparison of Trapping Styles
+- Best Practices
+- Quick Reference
+
+---
+
 ## Overview
 
 BASIC++ provides a unified trapping system for handling errors, events, and

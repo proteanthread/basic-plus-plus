@@ -1,34 +1,40 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_sound.c
- * ---
- *
- * Sound & music commands.
- *
- * BEEP, SOUND, PLAY.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_sound.c
+ // ---
+ //
+ // Sound & music commands.
+ //
+ // BEEP, SOUND, PLAY.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * pi_parse_beep - Handle BEEP command.
- */
+ // pi_parse_beep - Handle BEEP command.
 void pi_parse_beep(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * BEEP - Emit audible bell.
-  * BEEP ON - Enable error beep (default).
-  * BEEP OFF - Disable error beep.
-  * BEEP duration, pitch - Sinclair format.
-  *   duration = seconds (float).
-  *   pitch = semitones above middle C.
-  *   Frequency = 440 * 2^((pitch-9)/12).
-  *
-  * Routes through vdev_beep() for simple bell
-  * or vdev_sound() for frequency-mapped tone.
-  */
+  // BEEP - Emit audible bell.
+  // BEEP ON - Enable error beep (default).
+  // BEEP OFF - Disable error beep.
+  // BEEP duration, pitch - Sinclair format.
+  //   duration = seconds (float).
+  //   pitch = semitones above middle C.
+  //   Frequency = 440 * 2^((pitch-9)/12).
+  //
+  // Routes through vdev_beep() for simple bell
+  // or vdev_sound() for frequency-mapped tone.
  if (lexer_match_keyword(lex, KW_ON)) {
   lexer_next(lex);
   error_set_beep(1);
@@ -46,14 +52,12 @@ void pi_parse_beep(Lexer *lex, RuntimeState *rt, int line_num)
  } else if (lex->current.type == TOK_EOF ||
   lex->current.type == TOK_CR ||
   lex->current.type == TOK_COLON) {
-  /* Simple BEEP with no args */
+  // Simple BEEP with no args
   vdev_beep();
  } else {
-  /*
-   * BEEP duration, pitch
-   * duration in seconds, pitch in semitones.
-   * Frequency = 440 * 2^((pitch-9)/12)
-   */
+   // BEEP duration, pitch
+   // duration in seconds, pitch in semitones.
+   // Frequency = 440 * 2^((pitch-9)/12)
   double dur_sec, pitch, freq;
   int dur_ms, freq_hz;
   BValue dv;
@@ -62,7 +66,7 @@ void pi_parse_beep(Lexer *lex, RuntimeState *rt, int line_num)
   if (error_occurred()) return;
   dur_sec = bval_to_float(&dv);
   if (lex->current.type != TOK_COMMA) {
-    /* BEEP n: repeat n times */
+    // BEEP n: repeat n times
     {
      int bcount = (int)dur_sec;
      int bi;
@@ -73,7 +77,7 @@ void pi_parse_beep(Lexer *lex, RuntimeState *rt, int line_num)
     }
    return;
   }
-  lexer_next(lex); /* consume comma */
+  lexer_next(lex); // consume comma
   {
    BValue pv;
    pv = parse_expression_bval(
@@ -81,7 +85,7 @@ void pi_parse_beep(Lexer *lex, RuntimeState *rt, int line_num)
    if (error_occurred()) return;
    pitch = bval_to_float(&pv);
   }
-  /* Calculate frequency */
+  // Calculate frequency
   freq = 440.0 * pow(2.0,
    (pitch - 9.0) / 12.0);
   freq_hz = (int)(freq + 0.5);
@@ -95,22 +99,18 @@ void pi_parse_beep(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_sound - Handle SOUND command.
- */
+ // pi_parse_sound - Handle SOUND command.
 void pi_parse_sound(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * SOUND freq, duration
- *
- * GW-BASIC: freq is Hz (37-32767).
- * duration is in clock ticks at 18.2
- * ticks per second. We convert to ms:
- * ms = ticks * 1000 / 18.2
- * = ticks * 55 (approximately)
- *
- * SOUND 0,n is a pause (silence).
- */
+ // SOUND freq, duration
+ //
+ // GW-BASIC: freq is Hz (37-32767).
+ // duration is in clock ticks at 18.2
+ // ticks per second. We convert to ms:
+ // ms = ticks * 1000 / 18.2
+ // = ticks * 55 (approximately)
+ //
+ // SOUND 0,n is a pause (silence).
  {
  int freq, dur_ticks, dur_ms;
  freq = (int)parse_expression(
@@ -126,7 +126,7 @@ void pi_parse_sound(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred()) return;
  dur_ms = dur_ticks * 55;
  if (freq <= 0) {
- /* Silence: just pause */
+ // Silence: just pause
  vdev_sleep(dur_ms);
  } else {
  vdev_sound(freq, dur_ms);
@@ -135,55 +135,47 @@ void pi_parse_sound(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_play - Handle PLAY command.
- */
+ // pi_parse_play - Handle PLAY command.
 void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * PLAY string$ - Music macro language.
- *
- * GW-BASIC music commands:
- * C D E F G A B - notes
- * # or + - sharp
- * - - flat
- * O0-O6 - set octave (default 4)
- * > - octave up
- * < - octave down
- * L1-L64 - set note length (default 4)
- * T32-T255 - set tempo (default 120)
- * Pn - pause for length n
- * Nn - play note by number (0-84)
- * . - dot (extend 1.5x)
- * MN/ML/MS - music normal/legato/staccato
- * (ignored - we play full length)
- */
+ // PLAY string$ - Music macro language.
+ //
+ // GW-BASIC music commands:
+ // C D E F G A B - notes
+ // # or + - sharp
+ // - - flat
+ // O0-O6 - set octave (default 4)
+ // > - octave up
+ // < - octave down
+ // L1-L64 - set note length (default 4)
+ // T32-T255 - set tempo (default 120)
+ // Pn - pause for length n
+ // Nn - play note by number (0-84)
+ // . - dot (extend 1.5x)
+ // MN/ML/MS - music normal/legato/staccato
+ // (ignored - we play full length)
  {
- /*
- * Note frequency table: semitone
- * frequencies for octave 4 (middle).
- * Index: 0=C 1=C# 2=D 3=D# 4=E 5=F
- * 6=F# 7=G 8=G# 9=A 10=A# 11=B
- */
+ // Note frequency table: semitone
+ // frequencies for octave 4 (middle).
+ // Index: 0=C 1=C# 2=D 3=D# 4=E 5=F
+ // 6=F# 7=G 8=G# 9=A 10=A# 11=B
  static const int note_freq4[] = {
  262, 277, 294, 311, 330, 349,
  370, 392, 415, 440, 466, 494
  };
- /*
- * Map note letter to semitone index.
- * C=0 D=2 E=4 F=5 G=7 A=9 B=11
- */
+ // Map note letter to semitone index.
+ // C=0 D=2 E=4 F=5 G=7 A=9 B=11
  static const int note_semi[] = {
  9, 11, 0, 2, 4, 5, 7
- }; /* A B C D E F G */
+ }; // A B C D E F G
 
  const char *s;
  int slen, si;
  int octave = 4;
- int note_len = 4; /* quarter note */
- int tempo = 120; /* BPM */
+ int note_len = 4; // quarter note
+ int tempo = 120; // BPM
 
- /* Get the music string */
+ // Get the music string
  if (lex->current.type != TOK_STRING) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -192,22 +184,22 @@ void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
  slen = lex->current.str_length;
  lexer_next(lex);
 
- /* Parse the music string */
+ // Parse the music string
  for (si = 0; si < slen; si++) {
  char ch;
  ch = s[si];
- /* Uppercase */
+ // Uppercase
  if (ch >= 'a' && ch <= 'z')
  ch = (char)(ch - 32);
 
  if (ch >= 'A' && ch <= 'G') {
- /* Note */
+ // Note
  int semi, freq, dur;
  int this_len = note_len;
  int dotted = 0;
  semi = note_semi[ch - 'A'];
 
- /* Check for sharp/flat */
+ // Check for sharp/flat
  if (si+1 < slen &&
  (s[si+1] == '#' ||
  s[si+1] == '+')) {
@@ -221,7 +213,7 @@ void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
  si++;
  }
 
- /* Check for length suffix */
+ // Check for length suffix
  if (si+1 < slen &&
  s[si+1] >= '1' &&
  s[si+1] <= '9') {
@@ -239,14 +231,14 @@ void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
  this_len = num;
  }
 
- /* Check for dot */
+ // Check for dot
  if (si+1 < slen &&
  s[si+1] == '.') {
  dotted = 1;
  si++;
  }
 
- /* Calculate frequency */
+ // Calculate frequency
  freq = note_freq4[semi];
  if (octave < 4) {
  int sh;
@@ -262,8 +254,8 @@ void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
  freq *= 2;
  }
 
- /* Calculate duration ms */
- /* quarter = 60000/tempo ms */
+ // Calculate duration ms
+ // quarter = 60000/tempo ms
  dur = (240000 /
  (tempo * this_len));
  if (dotted)
@@ -272,7 +264,7 @@ void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
  vdev_sound(freq, dur);
 
  } else if (ch == 'O') {
- /* Set octave */
+ // Set octave
  if (si+1 < slen &&
  s[si+1] >= '0' &&
  s[si+1] <= '6') {
@@ -284,7 +276,7 @@ void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
  } else if (ch == '<') {
  if (octave > 0) octave--;
  } else if (ch == 'L') {
- /* Set default note length */
+ // Set default note length
  int num = 0;
  si++;
  while (si < slen &&
@@ -298,7 +290,7 @@ void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
  if (num >= 1 && num <= 64)
  note_len = num;
  } else if (ch == 'T') {
- /* Set tempo */
+ // Set tempo
  int num = 0;
  si++;
  while (si < slen &&
@@ -312,7 +304,7 @@ void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
  if (num >= 32 && num <= 255)
  tempo = num;
  } else if (ch == 'P') {
- /* Pause */
+ // Pause
  int plen = note_len;
  int dur;
  if (si+1 < slen &&
@@ -335,7 +327,7 @@ void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
  (tempo * plen);
  vdev_sleep(dur);
  } else if (ch == 'N') {
- /* Note by number 0-84 */
+ // Note by number 0-84
  int num = 0;
  int freq, oct, semi, dur;
  si++;
@@ -348,7 +340,7 @@ void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
  }
  si--;
  if (num == 0) {
- /* N0 = rest */
+ // N0 = rest
  dur = 240000 /
  (tempo * note_len);
  vdev_sleep(dur);
@@ -375,7 +367,7 @@ void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
  vdev_sound(freq, dur);
  }
  }
- /* M, space, etc: skip */
+ // M, space, etc: skip
  }
  }
  return;

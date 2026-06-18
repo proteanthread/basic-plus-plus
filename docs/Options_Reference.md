@@ -1,6 +1,24 @@
 # OPTION Statement Reference
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- OPTION BASE
+- OPTION STRICT
+- OPTION ANGLE
+- OPTION TAB
+- OPTION ZONE
+- OPTION ALIASES
+- OPTION KEYWORD
+- OPTION ARITHMETIC
+- Summary Table
+- See Also
+
+---
 
 The `OPTION` statement configures interpreter behavior at runtime. All `OPTION` sub-commands take effect immediately and persist until changed, overridden by a dialect switch, or the interpreter exits.
 

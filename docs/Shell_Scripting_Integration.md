@@ -1,6 +1,6 @@
 BASIC++ SHELL SCRIPTING INTEGRATION
 =====================================
-Version 2.0.0
+Version 4.0.1
 
 This guide covers using BASIC++ as a scripting tool within
 bash shell scripts, Windows batch files, and PowerShell

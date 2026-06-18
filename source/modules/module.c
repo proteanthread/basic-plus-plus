@@ -1,19 +1,29 @@
-/*
- * ---
- * BASIC++ Interpreter - module.c
- * ---
- *
- * Module System implementation.
- *
- * IMPLEMENTATION:
- * Static module table with MAX_MODULES slots. Each slot stores
- * a ModuleInfo descriptor and an active flag. Modules are
- * registered at boot and activated on demand.
- *
- * Name lookups are case-insensitive (BASIC convention).
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - module.c
+ // ---
+ //
+ // Module System implementation.
+ //
+ // IMPLEMENTATION:
+ // Static module table with MAX_MODULES slots. Each slot stores
+ // a ModuleInfo descriptor and an active flag. Modules are
+ // registered at boot and activated on demand.
+ //
+ // Name lookups are case-insensitive (BASIC convention).
+ //
+//
+// HOW TO EXTEND:
+//   To add new functions to this module:
+//   1. Add the function implementation in this file.
+//   2. Register it in the module's init function using
+//      module_register_function().
+//   3. Update the module's header with the new declaration.
+//
+// TROUBLESHOOTING:
+//   - Module not loading: check module_init() registration.
+//   - Function not found: verify registration name matches
+//     the BASIC keyword exactly (case-insensitive).
+ // ---
 
 #include <stdio.h>
 #include <string.h>
@@ -27,19 +37,17 @@
 #include <dlfcn.h>
 #endif
 
-/* --- Module Table ---
- */
+// --- Module Table ---
 typedef struct ModuleSlot {
  ModuleInfo info;
- int active; /* 1 = active, 0 = inactive */
- int occupied; /* 1 = slot used, 0 = empty */
+ int active; // 1 = active, 0 = inactive
+ int occupied; // 1 = slot used, 0 = empty
 } ModuleSlot;
 
 static ModuleSlot module_table[MAX_MODULES];
 static int module_table_count = 0;
 
-/* --- Case-insensitive string compare (portable C89) ---
- */
+// --- Case-insensitive string compare (portable C89) ---
 static int str_iequal(const char *a, const char *b)
 {
  if (!a || !b) return 0;
@@ -54,16 +62,14 @@ static int str_iequal(const char *a, const char *b)
  return (*a == '\0' && *b == '\0');
 }
 
-/* --- module_system_init ---
- */
+// --- module_system_init ---
 void module_system_init(void)
 {
  memset(module_table, 0, sizeof(module_table));
  module_table_count = 0;
 }
 
-/* --- module_register ---
- */
+// --- module_register ---
 int module_register(const ModuleInfo *info)
 {
  if (!info || !info->name) return -1;
@@ -73,14 +79,14 @@ int module_register(const ModuleInfo *info)
  return -1;
  }
 
- /* Check for duplicate name */
+ // Check for duplicate name
  {
  int i;
  for (i = 0; i < module_table_count; i++) {
  if (module_table[i].occupied &&
  str_iequal(module_table[i].info.name,
  info->name)) {
- /* Already registered - skip silently */
+ // Already registered - skip silently
  return 0;
  }
  }
@@ -94,8 +100,7 @@ int module_register(const ModuleInfo *info)
  return 0;
 }
 
-/* --- module_activate ---
- */
+// --- module_activate ---
 int module_activate(const char *name, void *rt)
 {
  int i;
@@ -103,12 +108,12 @@ int module_activate(const char *name, void *rt)
  for (i = 0; i < module_table_count; i++) {
  if (module_table[i].occupied &&
  str_iequal(module_table[i].info.name, name)) {
- /* Already active - idempotent */
+ // Already active - idempotent
  if (module_table[i].active) {
  return 0;
  }
 
- /* Check security before activation */
+ // Check security before activation
  if (!security_module_allowed(
  module_table[i].info.capabilities)) {
  printf("Module '%s' blocked by "
@@ -119,7 +124,7 @@ int module_activate(const char *name, void *rt)
  return -1;
  }
 
- /* Call init callback */
+ // Call init callback
  if (module_table[i].info.init) {
  int result = module_table[i].info.init(rt);
  if (result != 0) {
@@ -138,8 +143,7 @@ int module_activate(const char *name, void *rt)
  return -1;
 }
 
-/* --- module_deactivate ---
- */
+// --- module_deactivate ---
 int module_deactivate(const char *name)
 {
  int i;
@@ -148,10 +152,10 @@ int module_deactivate(const char *name)
  if (module_table[i].occupied &&
  str_iequal(module_table[i].info.name, name)) {
  if (!module_table[i].active) {
- return -1; /* not active */
+ return -1; // not active
  }
 
- /* Call cleanup callback */
+ // Call cleanup callback
  if (module_table[i].info.cleanup) {
  module_table[i].info.cleanup();
  }
@@ -164,8 +168,7 @@ int module_deactivate(const char *name)
  return -1;
 }
 
-/* --- module_is_active ---
- */
+// --- module_is_active ---
 int module_is_active(const char *name)
 {
  int i;
@@ -180,8 +183,7 @@ int module_is_active(const char *name)
  return 0;
 }
 
-/* --- module_find ---
- */
+// --- module_find ---
 const ModuleInfo *module_find(const char *name)
 {
  int i;
@@ -196,15 +198,13 @@ const ModuleInfo *module_find(const char *name)
  return NULL;
 }
 
-/* --- module_count ---
- */
+// --- module_count ---
 int module_count(void)
 {
  return module_table_count;
 }
 
-/* --- module_get ---
- */
+// --- module_get ---
 const ModuleInfo *module_get(int index)
 {
  if (index < 0 || index >= module_table_count) return NULL;
@@ -212,16 +212,14 @@ const ModuleInfo *module_get(int index)
  return &module_table[index].info;
 }
 
-/* --- module_is_loaded ---
- */
+// --- module_is_loaded ---
 int module_is_loaded(int index)
 {
  if (index < 0 || index >= module_table_count) return 0;
  return module_table[index].active;
 }
 
-/* --- module_class_name ---
- */
+// --- module_class_name ---
 const char *module_class_name(ModuleClass cls)
 {
  switch (cls) {
@@ -233,10 +231,9 @@ const char *module_class_name(ModuleClass cls)
  }
 }
 
-/* --- module_caps_string ---
- * Formats capability flags as abbreviated letters:
- * M=Math S=String I=IO F=File Y=System G=Graphics A=Sound N=Net
- */
+// --- module_caps_string ---
+ // Formats capability flags as abbreviated letters:
+ // M=Math S=String I=IO F=File Y=System G=Graphics A=Sound N=Net
 void module_caps_string(unsigned int caps, char *buf, int buf_len)
 {
  int pos = 0;
@@ -259,8 +256,7 @@ void module_caps_string(unsigned int caps, char *buf, int buf_len)
     buf[pos] = '\0';
 }
 
-/* --- module_load_dynamic ---
- */
+// --- module_load_dynamic ---
 int module_load_dynamic(const char *path)
 {
 #ifdef BPP_FREEDOS

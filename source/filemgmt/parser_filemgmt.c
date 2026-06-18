@@ -1,32 +1,38 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_filemgmt.c
- * ---
- *
- * File management & directory navigation.
- *
- * FILES, DIR, KILL, SCRATCH, UNSAVE, COPY, MOVE,
- * PWD, CHDIR, MKDIR, RMDIR, NAME, RENAME, ERASE.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_filemgmt.c
+ // ---
+ //
+ // File management & directory navigation.
+ //
+ // FILES, DIR, KILL, SCRATCH, UNSAVE, COPY, MOVE,
+ // PWD, CHDIR, MKDIR, RMDIR, NAME, RENAME, ERASE.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * pi_parse_files - Handle FILES command.
- */
+ // pi_parse_files - Handle FILES command.
 void pi_parse_files(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * FILES [pattern] - List directory (detailed).
- *
- * Native dir scanning — no system() call.
- * Shows filename, size, and <DIR> markers.
- * With no argument, lists current dir.
- * With a string argument, uses it as a
- * wildcard pattern (e.g. FILES "*.BAS")
- */
+ // FILES [pattern] - List directory (detailed).
+ //
+ // Native dir scanning -- no system() call.
+ // Shows filename, size, and <DIR> markers.
+ // With no argument, lists current dir.
+ // With a string argument, uses it as a
+ // wildcard pattern (e.g. FILES "*.BAS")
  {
  char pattern[280];
  int have_pat = 0;
@@ -80,10 +86,10 @@ void pi_parse_files(Lexer *lex, RuntimeState *rt, int line_num)
  int col = 0;
  char dirpath[280];
  if (!have_pat) strcpy(pattern, ".");
- /* Extract directory from pattern */
+ // Extract directory from pattern
  strcpy(dirpath, pattern);
- /* Simple: if pattern is just "*" or "."
- * or has no path separator, use "." */
+ // Simple: if pattern is just "*" or "."
+ // or has no path separator, use "." 
  {
  int has_sep = 0, pi;
  for (pi = 0; dirpath[pi]; pi++) {
@@ -98,7 +104,7 @@ void pi_parse_files(Lexer *lex, RuntimeState *rt, int line_num)
  } else {
  while ((ep = readdir(dp)) != NULL) {
  char fullpath[560];
- /* Skip . and .. */
+ // Skip . and ..
  if (ep->d_name[0] == '.' &&
  (ep->d_name[1] == '\0' ||
  (ep->d_name[1] == '.' &&
@@ -135,17 +141,13 @@ void pi_parse_files(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_dir - Handle DIR command.
- */
+ // pi_parse_dir - Handle DIR command.
 void pi_parse_dir(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * DIR [pattern] - List filenames only.
- *
- * Native dir scanning — no system() call.
- * Shows one filename per line, no sizes.
- */
+ // DIR [pattern] - List filenames only.
+ //
+ // Native dir scanning -- no system() call.
+ // Shows one filename per line, no sizes.
  {
  char pattern[280];
  int have_pat = 0;
@@ -213,15 +215,11 @@ void pi_parse_dir(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_kill - Handle KILL command.
- */
+ // pi_parse_kill - Handle KILL command.
 void pi_parse_kill(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * KILL "filename" - Delete a file (GW-BASIC).
- * Auto-appends .BAS if no extension given.
- */
+ // KILL "filename" - Delete a file (GW-BASIC).
+ // Auto-appends .BAS if no extension given.
  {
  char fname[260];
  int flen;
@@ -240,7 +238,7 @@ void pi_parse_kill(Lexer *lex, RuntimeState *rt, int line_num)
  fname[flen] = '\0';
  lexer_next(lex);
 
- /* Auto-append .BAS if no extension */
+ // Auto-append .BAS if no extension
  pi_ensure_bas_ext(fname, flen, 259);
 
  if (remove(fname) != 0) {
@@ -251,15 +249,11 @@ void pi_parse_kill(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_scratch - Handle SCRATCH command.
- */
+ // pi_parse_scratch - Handle SCRATCH command.
 void pi_parse_scratch(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * SCRATCH filename$ -- SUPER BASIC alias for KILL.
- * Deletes a file from disk.
- */
+ // SCRATCH filename$ -- SUPER BASIC alias for KILL.
+ // Deletes a file from disk.
  {
  char fname[260];
  int flen;
@@ -286,16 +280,12 @@ void pi_parse_scratch(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_unsave - Handle UNSAVE command.
- */
+ // pi_parse_unsave - Handle UNSAVE command.
 void pi_parse_unsave(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * UNSAVE - Delete the last-saved file.
- * If no file has been saved this session,
- * prints an error message.
- */
+ // UNSAVE - Delete the last-saved file.
+ // If no file has been saved this session,
+ // prints an error message.
  (void)lex; (void)line_num;
  if (rt->last_save_file[0] == '\0') {
  printf("UNSAVE: No saved file to delete.\n");
@@ -312,16 +302,12 @@ void pi_parse_unsave(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_copy - Handle COPY command.
- */
+ // pi_parse_copy - Handle COPY command.
 void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * COPY "source" TO "dest"
- * Copy a file using binary fopen/fread/fwrite.
- * Pure C89 — no SHELL needed.
- */
+ // COPY "source" TO "dest"
+ // Copy a file using binary fopen/fread/fwrite.
+ // Pure C89 -- no SHELL needed.
  {
  char src[260], dst[260];
  int slen, dlen;
@@ -329,7 +315,7 @@ void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
  char buf[4096];
  size_t n;
 
- /* Source filename */
+ // Source filename
  if (lex->current.type != TOK_STRING
  || lex->current.str_start == NULL
  || lex->current.str_length < 1) {
@@ -344,7 +330,7 @@ void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
  src[slen] = '\0';
  lexer_next(lex);
 
- /* Expect TO keyword */
+ // Expect TO keyword
  if (!lexer_match_keyword(lex,
  KW_TO)) {
  error_raise(ERR_WHAT, line_num);
@@ -352,7 +338,7 @@ void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
  }
  lexer_next(lex);
 
- /* Destination filename */
+ // Destination filename
  if (lex->current.type != TOK_STRING
  || lex->current.str_start == NULL
  || lex->current.str_length < 1) {
@@ -367,14 +353,14 @@ void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
  dst[dlen] = '\0';
  lexer_next(lex);
 
- /* Open source for binary reading */
+ // Open source for binary reading
  fin = fopen(src, "rb");
  if (fin == NULL) {
  printf("File not found: %s\n",
  src);
  return;
  }
- /* Open dest for binary writing */
+ // Open dest for binary writing
  fout = fopen(dst, "wb");
  if (fout == NULL) {
  fclose(fin);
@@ -382,7 +368,7 @@ void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
  dst);
  return;
  }
- /* Copy in 4KB chunks */
+ // Copy in 4KB chunks
  while ((n = fread(buf, 1,
  sizeof(buf), fin)) > 0) {
  if (fwrite(buf, 1, n, fout) != n) {
@@ -399,22 +385,18 @@ void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_move - Handle MOVE command.
- */
+ // pi_parse_move - Handle MOVE command.
 void pi_parse_move(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * MOVE "source" TO "dest"
- * Move a file. Tries rename() first;
- * if that fails (cross-device), falls
- * back to copy + delete.
- */
+ // MOVE "source" TO "dest"
+ // Move a file. Tries rename() first;
+ // if that fails (cross-device), falls
+ // back to copy + delete.
  {
  char src[260], dst[260];
  int slen, dlen;
 
- /* Source filename */
+ // Source filename
  if (lex->current.type != TOK_STRING
  || lex->current.str_start == NULL
  || lex->current.str_length < 1) {
@@ -429,7 +411,7 @@ void pi_parse_move(Lexer *lex, RuntimeState *rt, int line_num)
  src[slen] = '\0';
  lexer_next(lex);
 
- /* Expect TO keyword */
+ // Expect TO keyword
  if (!lexer_match_keyword(lex,
  KW_TO)) {
  error_raise(ERR_WHAT, line_num);
@@ -437,7 +419,7 @@ void pi_parse_move(Lexer *lex, RuntimeState *rt, int line_num)
  }
  lexer_next(lex);
 
- /* Destination filename */
+ // Destination filename
  if (lex->current.type != TOK_STRING
  || lex->current.str_start == NULL
  || lex->current.str_length < 1) {
@@ -452,9 +434,9 @@ void pi_parse_move(Lexer *lex, RuntimeState *rt, int line_num)
  dst[dlen] = '\0';
  lexer_next(lex);
 
- /* Try rename first (fast, same device) */
+ // Try rename first (fast, same device)
  if (rename(src, dst) != 0) {
- /* Fallback: copy + delete */
+ // Fallback: copy + delete
  FILE *fin, *fout;
  char buf[4096];
  size_t n;
@@ -493,16 +475,12 @@ void pi_parse_move(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_pwd - Handle PWD command.
- */
+ // pi_parse_pwd - Handle PWD command.
 void pi_parse_pwd(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * PWD - Print working directory.
- * No arguments. Prints the current
- * working directory path to stdout.
- */
+ // PWD - Print working directory.
+ // No arguments. Prints the current
+ // working directory path to stdout.
  {
  char cwd[512];
 #ifdef _WIN32
@@ -519,15 +497,11 @@ void pi_parse_pwd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_chdir - Handle CHDIR command.
- */
+ // pi_parse_chdir - Handle CHDIR command.
 void pi_parse_chdir(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * CHDIR path$
- * Change the current working directory.
- */
+ // CHDIR path$
+ // Change the current working directory.
  {
  BValue pv;
  pv = parse_expression_bval(
@@ -553,15 +527,11 @@ void pi_parse_chdir(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_mkdir - Handle MKDIR command.
- */
+ // pi_parse_mkdir - Handle MKDIR command.
 void pi_parse_mkdir(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * MKDIR path$
- * Create a directory.
- */
+ // MKDIR path$
+ // Create a directory.
  {
  char dname[260];
  int dlen;
@@ -588,15 +558,11 @@ void pi_parse_mkdir(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_rmdir - Handle RMDIR command.
- */
+ // pi_parse_rmdir - Handle RMDIR command.
 void pi_parse_rmdir(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * RMDIR path$
- * Remove a directory.
- */
+ // RMDIR path$
+ // Remove a directory.
  {
  char dname[260];
  int dlen;
@@ -623,20 +589,16 @@ void pi_parse_rmdir(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_name - Handle NAME command.
- */
+ // pi_parse_name - Handle NAME command.
 void pi_parse_name(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * NAME "oldname" AS "newname"
- * Rename a file (GW-BASIC compatible).
- */
+ // NAME "oldname" AS "newname"
+ // Rename a file (GW-BASIC compatible).
  {
  char old_name[260], new_name[260];
  int olen, nlen;
 
- /* Old filename */
+ // Old filename
  if (lex->current.type != TOK_STRING
  || lex->current.str_start == NULL
  || lex->current.str_length < 1) {
@@ -651,7 +613,7 @@ void pi_parse_name(Lexer *lex, RuntimeState *rt, int line_num)
  old_name[olen] = '\0';
  lexer_next(lex);
 
- /* Expect AS keyword */
+ // Expect AS keyword
  if (!lexer_match_keyword(lex,
  KW_AS)) {
  error_raise(ERR_WHAT, line_num);
@@ -659,7 +621,7 @@ void pi_parse_name(Lexer *lex, RuntimeState *rt, int line_num)
  }
  lexer_next(lex);
 
- /* New filename */
+ // New filename
  if (lex->current.type != TOK_STRING
  || lex->current.str_start == NULL
  || lex->current.str_length < 1) {
@@ -682,16 +644,12 @@ void pi_parse_name(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_rename - Handle RENAME command.
- */
+ // pi_parse_rename - Handle RENAME command.
 void pi_parse_rename(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * RENAME "oldname" AS "newname"
- * Like NAME but auto-appends .bas/.bpp
- * extension if not present.
- */
+ // RENAME "oldname" AS "newname"
+ // Like NAME but auto-appends .bas/.bpp
+ // extension if not present.
  {
  char old_name[260], new_name[260];
  char old_try[264], new_try[264];
@@ -699,7 +657,7 @@ void pi_parse_rename(Lexer *lex, RuntimeState *rt, int line_num)
  int has_ext_o, has_ext_n;
  int ok = 0;
 
- /* Old filename */
+ // Old filename
  if (lex->current.type != TOK_STRING
  || lex->current.str_start == NULL
  || lex->current.str_length < 1) {
@@ -714,7 +672,7 @@ void pi_parse_rename(Lexer *lex, RuntimeState *rt, int line_num)
  old_name[olen] = '\0';
  lexer_next(lex);
 
- /* Expect AS keyword */
+ // Expect AS keyword
  if (!lexer_match_keyword(lex,
  KW_AS)) {
  error_raise(ERR_WHAT, line_num);
@@ -722,7 +680,7 @@ void pi_parse_rename(Lexer *lex, RuntimeState *rt, int line_num)
  }
  lexer_next(lex);
 
- /* New filename */
+ // New filename
  if (lex->current.type != TOK_STRING
  || lex->current.str_start == NULL
  || lex->current.str_length < 1) {
@@ -737,7 +695,7 @@ void pi_parse_rename(Lexer *lex, RuntimeState *rt, int line_num)
  new_name[nlen] = '\0';
  lexer_next(lex);
 
- /* Check if names have extensions */
+ // Check if names have extensions
  {
  int di;
  has_ext_o = 0;
@@ -764,9 +722,9 @@ void pi_parse_rename(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Try with extensions if none given */
+ // Try with extensions if none given
  if (!has_ext_o && !has_ext_n) {
- /* Try .bas first */
+ // Try .bas first
  sprintf(old_try, "%s.bas",
  old_name);
  sprintf(new_try, "%s.bas",
@@ -775,7 +733,7 @@ void pi_parse_rename(Lexer *lex, RuntimeState *rt, int line_num)
  new_try) == 0) {
  ok = 1;
  } else {
- /* Try .bpp */
+ // Try .bpp
  sprintf(old_try, "%s.bpp",
  old_name);
  sprintf(new_try, "%s.bpp",
@@ -787,7 +745,7 @@ void pi_parse_rename(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Fall back to exact names */
+ // Fall back to exact names
  if (!ok) {
  if (rename(old_name,
  new_name) != 0) {
@@ -799,15 +757,11 @@ void pi_parse_rename(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_erase - Handle ERASE command.
- */
+ // pi_parse_erase - Handle ERASE command.
 void pi_parse_erase(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * ERASE # n - truncate file (ECMA-116)
- * ERASE arrayname [, ...] - clear DIM arrays
- */
+ // ERASE # n - truncate file (ECMA-116)
+ // ERASE arrayname [, ...] - clear DIM arrays
  if (lex->current.type == TOK_HASH) {
  pi_parse_erase_file(lex, rt, line_num);
  return;
@@ -833,7 +787,7 @@ void pi_parse_erase(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  return;
  }
- /* Save name before advancing */
+ // Save name before advancing
  if (nlen > MAX_VAR_NAME_LEN)
  nlen = MAX_VAR_NAME_LEN;
  memcpy(namebuf, nm, (size_t)nlen);
@@ -841,7 +795,7 @@ void pi_parse_erase(Lexer *lex, RuntimeState *rt, int line_num)
  nm = namebuf;
  lexer_next(lex);
 
- /* Find and clear the DIM array */
+ // Find and clear the DIM array
  for (di = 0; di < rt->dim_count;
  di++) {
  DimArray *da =
@@ -850,7 +804,7 @@ void pi_parse_erase(Lexer *lex, RuntimeState *rt, int line_num)
  nlen &&
  memcmp(da->name, nm,
  (size_t)nlen) == 0) {
- /* Zero out elements */
+ // Zero out elements
  int j;
  for (j = 0; j < da->total;
  j++) {

@@ -35,10 +35,8 @@ void spec_list_all(void) {
     }
 }
 
-/* 
- * Basic parser for DEFINE SPECIFICATION "NAME"
- * It expects a very simple line-based declarative syntax.
- */
+ // Basic parser for DEFINE SPECIFICATION "NAME"
+ // It expects a very simple line-based declarative syntax.
 int spec_load_file(const char *filename) {
     FILE *fp = fopen(filename, "r");
     char line[256];
@@ -66,7 +64,7 @@ int spec_load_file(const char *filename) {
             }
         } else if (in_spec && strncmp(p, "END SPECIFICATION", 17) == 0) {
             if (spec_count < MAX_SPECS) {
-                /* Register the new keyword dynamically! */
+                // Register the new keyword dynamically!
                 if (current_spec.category == SPEC_CAT_STATEMENT) {
                     current_spec.kw_id = keyword_register_custom(current_spec.name, DFLAG_ALL);
                 }
@@ -118,11 +116,9 @@ void pi_parse_custom_statement(Lexer *lex, RuntimeState *rt, int line_num, int k
             printf("[SPEC-LIB LOADER] Executing dynamically defined statement: %s\n", spec_registry[i].name);
             printf("[SPEC-LIB LOADER] Loading logic from external cross-platform .LIB archive: %s\n", 
                 spec_registry[i].lib_path[0] ? spec_registry[i].lib_path : "(unspecified)");
-            /* 
-             * In a full implementation, the VM would now load the custom 
-             * BASIC++ .LIB bytecode and GOSUB into the routine here.
-             */
-            lexer_next(lex); /* Consume keyword */
+             // In a full implementation, the VM would now load the custom 
+             // BASIC++ .LIB bytecode and GOSUB into the routine here.
+            lexer_next(lex); // Consume keyword
             return;
         }
     }

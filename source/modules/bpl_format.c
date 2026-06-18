@@ -1,33 +1,43 @@
-/*
- * ---
- * BASIC++ Interpreter - bpl_format.c
- * ---
- *
- * .BPL (BASIC++ Portable Library) serializer/deserializer.
- *
- * IMPLEMENTATION:
- * Binary I/O uses unsigned char buffers with manual byte
- * packing (little-endian) to avoid struct alignment issues.
- * No platform-specific types or endianness assumptions.
- *
- * FORMAT v2: Stores source lines instead of PCode instructions.
- * Each source line is stored as: LE16(vline) + LE16(len) + text.
- * This makes .BPL files portable and OS-independent while
- * preserving the "compile-on-load" interpreter-mode approach.
- *
- * CRC-16/CCITT is used for integrity checking.
- *
- * C89/C90 COMPLIANT.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - bpl_format.c
+ // ---
+ //
+ // .BPL (BASIC++ Portable Library) serializer/deserializer.
+ //
+ // IMPLEMENTATION:
+ // Binary I/O uses unsigned char buffers with manual byte
+ // packing (little-endian) to avoid struct alignment issues.
+ // No platform-specific types or endianness assumptions.
+ //
+ // FORMAT v2: Stores source lines instead of PCode instructions.
+ // Each source line is stored as: LE16(vline) + LE16(len) + text.
+ // This makes .BPL files portable and OS-independent while
+ // preserving the "compile-on-load" interpreter-mode approach.
+ //
+ // CRC-16/CCITT is used for integrity checking.
+ //
+ // C89/C90 COMPLIANT.
+ //
+//
+// HOW TO EXTEND:
+//   To add new functions to this module:
+//   1. Add the function implementation in this file.
+//   2. Register it in the module's init function using
+//      module_register_function().
+//   3. Update the module's header with the new declaration.
+//
+// TROUBLESHOOTING:
+//   - Module not loading: check module_init() registration.
+//   - Function not found: verify registration name matches
+//     the BASIC keyword exactly (case-insensitive).
+ // ---
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "bpl_format.h"
 
-/* --- Little-endian helpers --- */
+// --- Little-endian helpers ---
 static void bpl_write_le16(unsigned char *buf, unsigned int val)
 {
     buf[0] = (unsigned char)(val & 0xFF);
@@ -40,12 +50,11 @@ static unsigned int bpl_read_le16(const unsigned char *buf)
            ((unsigned int)buf[1] << 8);
 }
 
-/* --- CRC-16/CCITT --- */
+// --- CRC-16/CCITT ---
 
-/* bpl_crc16_update - Continue CRC from a previous seed.
- * Use seed=0xFFFF for the first call, then chain
- * by passing the return value as seed for subsequent calls.
- */
+// bpl_crc16_update - Continue CRC from a previous seed.
+ // Use seed=0xFFFF for the first call, then chain
+ // by passing the return value as seed for subsequent calls.
 static unsigned int bpl_crc16_update(unsigned int seed,
                                      const unsigned char *data,
                                      int len)
@@ -65,13 +74,13 @@ static unsigned int bpl_crc16_update(unsigned int seed,
     return crc;
 }
 
-/* bpl_crc16 - Compute CRC-16/CCITT over a single buffer. */
+// bpl_crc16 - Compute CRC-16/CCITT over a single buffer.
 unsigned int bpl_crc16(const unsigned char *data, int len)
 {
     return bpl_crc16_update(0xFFFF, data, len);
 }
 
-/* --- bpl_save --- */
+// --- bpl_save ---
 int bpl_save(const LoadedLibrary *lib, const char *filename)
 {
     int i;
@@ -90,7 +99,7 @@ int bpl_save(const LoadedLibrary *lib, const char *filename)
         return -1;
     }
 
-    /* Build header */
+    // Build header
     memset(header, 0, BPL_HEADER_SIZE);
     header[0] = (unsigned char)BPL_MAGIC_0;
     header[1] = (unsigned char)BPL_MAGIC_1;
@@ -99,14 +108,14 @@ int bpl_save(const LoadedLibrary *lib, const char *filename)
     header[4] = BPL_FORMAT_VER;
     header[5] = (unsigned char)lib->required_level;
     header[6] = (unsigned char)lib->ext_type;
-    header[7] = 0; /* flags */
+    header[7] = 0; // flags
     bpl_write_le16(&header[8],
                    (unsigned int)lib->symbol_count);
     bpl_write_le16(&header[10],
                    (unsigned int)lib->src_line_count);
-    /* header[12-13] = string pool size (0 for source mode) */
+    // header[12-13] = string pool size (0 for source mode)
     bpl_write_le16(&header[12], 0);
-    /* Compute CRC over all source lines (accumulated) */
+    // Compute CRC over all source lines (accumulated)
     crc = 0xFFFF;
     for (int i = 0; i < lib->src_line_count; i++) {
         if (lib->src_lines[i].text) {
@@ -125,7 +134,7 @@ int bpl_save(const LoadedLibrary *lib, const char *filename)
         return -1;
     }
 
-    /* Write symbol table */
+    // Write symbol table
 
     for (i = 0; i < lib->symbol_count; i++) {
         const LibSymbol *sym = &lib->symbols[i];
@@ -148,7 +157,7 @@ int bpl_save(const LoadedLibrary *lib, const char *filename)
         }
     }
 
-    /* Write source lines */
+    // Write source lines
     for (int i = 0; i < lib->src_line_count; i++) {
         const LibSourceLine *sl = &lib->src_lines[i];
         int text_len = sl->text ? (int)strlen(sl->text) : 0;
@@ -182,7 +191,7 @@ int bpl_save(const LoadedLibrary *lib, const char *filename)
     return 0;
 }
 
-/* --- bpl_load --- */
+// --- bpl_load ---
 int bpl_load(const char *filename, LoadedLibrary *lib)
 {
     FILE *fp;
@@ -196,7 +205,7 @@ int bpl_load(const char *filename, LoadedLibrary *lib)
         return -1;
     }
 
-    /* Read header */
+    // Read header
     if (fread(header, 1, BPL_HEADER_SIZE, fp) !=
         BPL_HEADER_SIZE) {
         printf("'%s' too short for .BPL.\n", filename);
@@ -204,7 +213,7 @@ int bpl_load(const char *filename, LoadedLibrary *lib)
         return -1;
     }
 
-    /* Validate magic */
+    // Validate magic
     if (header[0] != (unsigned char)BPL_MAGIC_0 ||
         header[1] != (unsigned char)BPL_MAGIC_1 ||
         header[2] != (unsigned char)BPL_MAGIC_2 ||
@@ -214,7 +223,7 @@ int bpl_load(const char *filename, LoadedLibrary *lib)
         return -1;
     }
 
-    /* Validate version */
+    // Validate version
     if (header[4] != BPL_FORMAT_VER) {
         printf("'%s' version %d unsupported (expected %d).\n",
                filename, (int)header[4], BPL_FORMAT_VER);
@@ -222,7 +231,7 @@ int bpl_load(const char *filename, LoadedLibrary *lib)
         return -1;
     }
 
-    /* Extract header fields */
+    // Extract header fields
     memset(lib, 0, sizeof(LoadedLibrary));
     lib->required_level = (SecLevel)header[5];
     lib->ext_type = (LibExtType)header[6];
@@ -231,7 +240,7 @@ int bpl_load(const char *filename, LoadedLibrary *lib)
     strncpy(lib->name, (const char *)&header[16], 16);
     lib->name[16] = '\0';
 
-    /* Read symbol table */
+    // Read symbol table
     for (int i = 0; i < (int)sym_count && i < MAX_LIB_SYMBOLS;
          i++) {
         unsigned char sym_hdr[5];
@@ -262,7 +271,7 @@ int bpl_load(const char *filename, LoadedLibrary *lib)
         lib->symbol_count++;
     }
 
-    /* Read source lines */
+    // Read source lines
     lib->src_line_cap = (int)line_count + 16;
     lib->src_lines = (LibSourceLine *)malloc(
         (size_t)lib->src_line_cap * sizeof(LibSourceLine));
@@ -314,7 +323,7 @@ int bpl_load(const char *filename, LoadedLibrary *lib)
 
     fclose(fp);
 
-    /* Validate CRC integrity */
+    // Validate CRC integrity
     {
         unsigned int stored_crc = bpl_read_le16(&header[14]);
         unsigned int computed_crc = 0xFFFF;

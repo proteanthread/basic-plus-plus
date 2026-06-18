@@ -1,29 +1,35 @@
-/*
- * ---
- * BASIC++ Interpreter - vm_exec.c
- * ---
- *
- * PCode VM executor: stack-based bytecode interpreter.
- *
- * DESIGN:
- * Classic fetch-decode-execute loop over PCodeInstr array.
- * Uses VMEvalStack (from vm.c) for expression evaluation.
- * Uses RuntimeState for variable storage, GOSUB stack, and
- * DATA pointer.
- *
- * BValue API:
- * - bval_to_float(const BValue *v) — takes pointer
- * - bval_string(char *data, int length) — constructor
- * - bval_is_string(const BValue *v) — type check
- * - bval_add/sub/mul/div(const BValue *, const BValue *, int line_num)
- *
- * C89 COMPLIANCE:
- * - No VLAs, no C99 features
- * - All locals declared at block top
- * - No recursion in the main loop
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - vm_exec.c
+ // ---
+ //
+ // PCode VM executor: stack-based bytecode interpreter.
+ //
+ // DESIGN:
+ // Classic fetch-decode-execute loop over PCodeInstr array.
+ // Uses VMEvalStack (from vm.c) for expression evaluation.
+ // Uses RuntimeState for variable storage, GOSUB stack, and
+ // DATA pointer.
+ //
+ // BValue API:
+ // - bval_to_float(const BValue *v) -- takes pointer
+ // - bval_string(char *data, int length) -- constructor
+ // - bval_is_string(const BValue *v) -- type check
+ // - bval_add/sub/mul/div(const BValue *, const BValue *, int line_num)
+ //
+ // C89 COMPLIANCE:
+ // - No VLAs, no C99 features
+ // - All locals declared at block top
+ // - No recursion in the main loop
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,29 +42,26 @@
 #include "errors.h"
 #include "stringpool.h"
 
-/* ===================================================================
- * GOSUB CALL STACK
- * ===================================================================
- */
+// ===================================================================
+ // GOSUB CALL STACK
+ // ===================================================================
 #define VM_CALL_STACK_SIZE 256
 
-/* ===================================================================
- * FOR LOOP FRAME
- * ===================================================================
- */
+// ===================================================================
+ // FOR LOOP FRAME
+ // ===================================================================
 #define VM_FOR_STACK_SIZE 64
 
 typedef struct VMForFrame {
-    int    var_id;     /* 0-25 for A-Z */
+    int    var_id; // 0-25 for A-Z
     double limit;
     double step;
-    int    check_pc;   /* instruction index of FOR_CHECK */
+    int    check_pc; // instruction index of FOR_CHECK
 } VMForFrame;
 
-/* ===================================================================
- * HELPER: Print a BValue
- * ===================================================================
- */
+// ===================================================================
+ // HELPER: Print a BValue
+ // ===================================================================
 static void print_bvalue(const BValue *val)
 {
     if (bval_is_string(val)) {
@@ -74,17 +77,16 @@ static void print_bvalue(const BValue *val)
     }
 }
 
-/* ===================================================================
- * BUILT-IN FUNCTION DISPATCH
- * ===================================================================
- */
+// ===================================================================
+ // BUILT-IN FUNCTION DISPATCH
+ // ===================================================================
 static BValue exec_func1(int func_id, BValue *arg, int line_num,
                           RuntimeState *rt)
 {
     (void)rt;
     switch (func_id) {
     case 0:  return bval_abs(arg, line_num);
-    case 1:  /* RND */
+    case 1: // RND
     {
         long mx = bval_to_int(arg);
         if (mx <= 0) return bval_int(0);
@@ -114,9 +116,9 @@ static BValue exec_func2(int func_id, BValue *a1, BValue *a2,
                           int line_num, RuntimeState *rt)
 {
     switch (func_id) {
-    case 17: /* LEFT$ */
+    case 17: // LEFT$
         return bval_left(a1, a2, line_num, &rt->strpool);
-    case 18: /* RIGHT$ */
+    case 18: // RIGHT$
         return bval_right(a1, a2, line_num, &rt->strpool);
     default:
         return bval_int(0);
@@ -127,28 +129,27 @@ static BValue exec_func3(int func_id, BValue *a1, BValue *a2,
                           BValue *a3, int line_num, RuntimeState *rt)
 {
     switch (func_id) {
-    case 19: /* MID$ */
+    case 19: // MID$
         return bval_mid(a1, a2, a3, line_num, &rt->strpool);
     default:
         return bval_int(0);
     }
 }
 
-/* ===================================================================
- * MAIN EXECUTION LOOP
- * ===================================================================
- */
+// ===================================================================
+ // MAIN EXECUTION LOOP
+ // ===================================================================
 
 int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
 {
     int pc = 0;
     VMEvalStack stk;
 
-    /* Call stack for GOSUB/RETURN */
+    // Call stack for GOSUB/RETURN
     int call_stack[VM_CALL_STACK_SIZE];
     int call_sp = 0;
 
-    /* FOR loop stack */
+    // FOR loop stack
     VMForFrame for_stack[VM_FOR_STACK_SIZE];
     int for_sp = 0;
 
@@ -162,12 +163,12 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
         PCodeInstr *inst = &pcode->instrs[pc];
         PCodeOp op = (PCodeOp)inst->op;
 
-        /* Track current line for error reporting */
+        // Track current line for error reporting
         line_num = (pcode->line_map) ? pcode->line_map[pc] : 0;
 
         switch (op) {
 
-        /* --- Stack / Control --- */
+        // --- Stack / Control ---
         case PCODE_NOP:
             break;
 
@@ -188,7 +189,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             vm_eval_pop(&stk);
             break;
 
-        /* --- Push Constants --- */
+        // --- Push Constants ---
         case PCODE_PUSH_INT:
             vm_eval_push(&stk, bval_int(inst->operand.u.ival));
             break;
@@ -204,7 +205,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             char *pooled;
             s = pcode_get_string(pcode,
                 inst->operand.u.str.idx, &slen);
-            /* Allocate in string pool for proper ownership */
+            // Allocate in string pool for proper ownership
             pooled = strpool_alloc(&rt->strpool, slen);
             if (pooled) {
                 memcpy(pooled, s, (size_t)slen);
@@ -223,7 +224,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             vm_eval_push(&stk, bval_int(1));
             break;
 
-        /* --- Load Variables --- */
+        // --- Load Variables ---
         case PCODE_LOAD_VAR:
         {
             int vid = (int)inst->operand.u.ival;
@@ -288,7 +289,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             break;
         }
 
-        /* --- Store Variables --- */
+        // --- Store Variables ---
         case PCODE_STORE_VAR:
         {
             int vid = (int)inst->operand.u.ival;
@@ -345,7 +346,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             break;
         }
 
-        /* --- Arithmetic --- */
+        // --- Arithmetic ---
         case PCODE_ADD:
         {
             BValue b = vm_eval_pop(&stk);
@@ -417,7 +418,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             break;
         }
 
-        /* --- Comparison --- */
+        // --- Comparison ---
         case PCODE_CMP_EQ:
         {
             BValue b = vm_eval_pop(&stk);
@@ -472,7 +473,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             break;
         }
 
-        /* --- Logic --- */
+        // --- Logic ---
         case PCODE_AND:
         {
             BValue b = vm_eval_pop(&stk);
@@ -501,10 +502,10 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             break;
         }
 
-        /* --- Control Flow --- */
+        // --- Control Flow ---
         case PCODE_JUMP:
             pc = inst->operand.u.offset;
-            continue; /* skip pc++ */
+            continue; // skip pc++
 
         case PCODE_JUMP_FALSE:
         {
@@ -556,7 +557,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             int table_base = (int)inst->operand.u.ival;
             int target_idx;
 
-            sel--; /* ON is 1-based */
+            sel--; // ON is 1-based
             if (sel < 0) break;
 
             target_idx = table_base + sel;
@@ -570,9 +571,9 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
         }
 
         case PCODE_ON_GOSUB:
-            break; /* TODO */
+            break; // TODO
 
-        /* --- I/O --- */
+        // --- I/O ---
         case PCODE_PRINT_EXPR:
         {
             BValue val = vm_eval_pop(&stk);
@@ -640,7 +641,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             break;
         }
 
-        /* --- Built-in Functions --- */
+        // --- Built-in Functions ---
         case PCODE_FUNC1:
         {
             int fid = (int)(inst->operand.u.ival & 0xFF);
@@ -672,7 +673,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             break;
         }
 
-        /* --- Loops --- */
+        // --- Loops ---
         case PCODE_FOR_INIT:
         {
             int vid = (int)inst->operand.u.ival;
@@ -686,7 +687,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
                 return -1;
             }
 
-            /* Initialize loop variable */
+            // Initialize loop variable
             if (vid >= 0 && vid < 26)
                 runtime_set_var(rt, (char)('A' + vid),
                                 bval_to_int(&init_val));
@@ -788,13 +789,13 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             break;
 
         default:
-            /* Unimplemented opcode — skip */
+            // Unimplemented opcode -- skip
             break;
 
-        } /* end switch */
+        } // end switch
 
         pc++;
-    } /* end while */
+    } // end while
 
     vm_set_state(rt, VM_HALTED);
     return 0;

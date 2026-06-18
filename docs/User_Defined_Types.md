@@ -1,6 +1,6 @@
 THE BASIC++ USER-DEFINED TYPE SYSTEM
 =======================================
-Version 1.5.0
+Version 4.0.1
 
 This manual explains how to define and use custom data
 types in BASIC++ — structured records with named fields,

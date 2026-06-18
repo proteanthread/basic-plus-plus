@@ -1,25 +1,33 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_io.c
- * ---
- *
- * I/O statement handlers: PRINT, INPUT, DATA, READ, RESTORE.
- *
- * Handles all console I/O operations including formatted output,
- * user input parsing, and the DATA/READ/RESTORE mechanism.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_io.c
+ // ---
+ //
+ // I/O statement handlers: PRINT, INPUT, DATA, READ, RESTORE.
+ //
+ // Handles all console I/O operations including formatted output,
+ // user input parsing, and the DATA/READ/RESTORE mechanism.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * print_margin_check - Auto-wrap when cursor exceeds margin.
- *
- * Both ECMA-55 and GW-BASIC/QBasic wrap output to the next
- * line when the cursor position exceeds the defined margin
- * (screen_width). This is a no-op for file channel output.
- */
+ // print_margin_check - Auto-wrap when cursor exceeds margin.
+ //
+ // Both ECMA-55 and GW-BASIC/QBasic wrap output to the next
+ // line when the cursor position exceeds the defined margin
+ // (screen_width). This is a no-op for file channel output.
 void pi_print_margin_check(RuntimeState *rt)
 {
  if (rt->print_col > rt->screen_width) {
@@ -31,38 +39,34 @@ void pi_print_margin_check(RuntimeState *rt)
 
 void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
 {
- int need_newline = 1; /* print newline unless trailing comma */
+ int need_newline = 1; // print newline unless trailing comma
  char sep;
- int file_chan = 0; /* 0=stdout, 1-8=file channel */
+ int file_chan = 0; // 0=stdout, 1-8=file channel
 
  sep = dialect_get_separator();
 
- /*
- * PRINT #n, ...
- * If the first token is #, parse channel number then comma.
- * All output redirects to the file channel.
- */
+ // PRINT #n, ...
+ // If the first token is #, parse channel number then comma.
+ // All output redirects to the file channel.
  if (lex->current.type == TOK_HASH) {
- lexer_next(lex); /* consume # */
+ lexer_next(lex); // consume #
  file_chan = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
- /* Expect comma after channel number */
+ // Expect comma after channel number
  if (lex->current.type != TOK_COMMA) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume comma */
+ lexer_next(lex); // consume comma
  }
 
- /*
- * PRINT > "file", expr-list (redirect, overwrite)
- * PRINT >> "file", expr-list (redirect, append)
- * PRINT | "command", expr-list (pipe to command)
- *
- * These redirect PRINT output to a file or pipe.
- * The file/command is opened, all PRINT output goes
- * there, and it is closed after the statement.
- */
+ // PRINT > "file", expr-list (redirect, overwrite)
+ // PRINT >> "file", expr-list (redirect, append)
+ // PRINT | "command", expr-list (pipe to command)
+ //
+ // These redirect PRINT output to a file or pipe.
+ // The file/command is opened, all PRINT output goes
+ // there, and it is closed after the statement.
  if (file_chan == 0 && (lex->current.type == TOK_GT ||
  lex->current.type == TOK_APPEND ||
  lex->current.type == TOK_PIPE)) {
@@ -83,13 +87,13 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  rname[rnlen] = '\0';
  lexer_next(lex);
 
- /* Consume comma before expression list */
+ // Consume comma before expression list
  if (lex->current.type == TOK_COMMA)
  lexer_next(lex);
 
  if (redir_mode == TOK_PIPE) {
 #if defined(__MSDOS__) || defined(__DOS__) || defined(MSDOS)
- rfp = NULL; /* pipes not supported on DOS */
+ rfp = NULL; // pipes not supported on DOS
 #elif defined(_WIN32)
  rfp = _popen(rname, "w");
 #else
@@ -106,7 +110,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Print all expressions to the file/pipe */
+ // Print all expressions to the file/pipe
  while (lex->current.type != TOK_EOF &&
  lex->current.type != TOK_CR &&
  lex->current.type != TOK_COLON) {
@@ -134,7 +138,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
 
  if (redir_mode == TOK_PIPE) {
 #if defined(__MSDOS__) || defined(__DOS__) || defined(MSDOS)
- /* no pipe on DOS */
+ // no pipe on DOS
 #elif defined(_WIN32)
  _pclose(rfp);
 #else
@@ -146,17 +150,15 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /*
- * PRINT AT (col, row), expr-list
- * Relative cursor positioning then print.
- * Moves cursor to column col, row row.
- */
+ // PRINT AT (col, row), expr-list
+ // Relative cursor positioning then print.
+ // Moves cursor to column col, row row.
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_AT) {
  int at_col, at_row;
- lexer_next(lex); /* consume AT */
+ lexer_next(lex); // consume AT
 
- /* Expect ( col , row ) */
+ // Expect ( col , row )
  if (lex->current.type == TOK_LPAREN)
  lexer_next(lex);
  at_col = (int)parse_expression(
@@ -170,34 +172,32 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  if (lex->current.type == TOK_RPAREN)
  lexer_next(lex);
 
- /* Clamp to valid range */
+ // Clamp to valid range
  if (at_row < 1) at_row = 1;
  if (at_col < 1) at_col = 1;
 
- /* Move cursor */
+ // Move cursor
  printf("\033[%d;%dH", at_row, at_col);
  fflush(stdout);
  rt->cursor_row = at_row;
  rt->cursor_col = at_col;
 
- /* Consume separator before print-list */
+ // Consume separator before print-list
  if (lex->current.type == TOK_COMMA ||
  lex->current.type == TOK_SEMICOLON)
  lexer_next(lex);
  }
 
- /*
- * PRINT @pos, expr-list
- * TRS-80 absolute cursor positioning.
- * Position = row * screen_width + col (0-based).
- * Converts to 1-based row,col for ANSI output.
- */
+ // PRINT @pos, expr-list
+ // TRS-80 absolute cursor positioning.
+ // Position = row * screen_width + col (0-based).
+ // Converts to 1-based row,col for ANSI output.
  if (lex->current.type == TOK_AT) {
  int abs_pos, at_row, at_col;
  int sw = rt->screen_width;
- lexer_next(lex); /* consume @ */
+ lexer_next(lex); // consume @
 
- if (sw < 1) sw = 64; /* TRS-80 default */
+ if (sw < 1) sw = 64; // TRS-80 default
 
  abs_pos = (int)parse_expression(
  lex, rt, line_num);
@@ -207,48 +207,44 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  at_row = (abs_pos / sw) + 1;
  at_col = (abs_pos % sw) + 1;
 
- /* Move cursor */
+ // Move cursor
  printf("\033[%d;%dH", at_row, at_col);
  fflush(stdout);
  rt->cursor_row = at_row;
  rt->cursor_col = at_col;
 
- /* Consume separator before print-list */
+ // Consume separator before print-list
  if (lex->current.type == TOK_COMMA ||
  lex->current.type == TOK_SEMICOLON)
  lexer_next(lex);
  }
 
- /*
- * PRINT USING "format"; expr [; expr...]
- * Format patterns:
- * # - digit placeholder
- * . - decimal point
- * \ \ - string field (width = # of chars between)
- */
+ // PRINT USING "format"; expr [; expr...]
+ // Format patterns:
+ // # - digit placeholder
+ // . - decimal point
+ // \ \ - string field (width = # of chars between)
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_USING) {
   const char *fmt;
  int flen;
- lexer_next(lex); /* consume USING */
+ lexer_next(lex); // consume USING
 
- /* Parse format: string literal or IMAGE line ref */
+ // Parse format: string literal or IMAGE line ref
  if (lex->current.type == TOK_STRING) {
- /* PRINT USING "###.##"; expr */
+ // PRINT USING "###.##"; expr
  fmt = lex->current.str_start;
  flen = lex->current.str_length;
  lexer_next(lex);
  } else if (lex->current.type == TOK_NUMBER) {
- /*
-  * PRINT USING 100, expr
-  * Line 100 must be an IMAGE line. Extract
-  * the format text after the IMAGE keyword.
-  */
+  // PRINT USING 100, expr
+  // Line 100 must be an IMAGE line. Extract
+  // the format text after the IMAGE keyword.
  int img_line = (int)lex->current.value.num_value;
  int img_idx;
  const char *img_text;
  const char *p;
- lexer_next(lex); /* consume line number */
+ lexer_next(lex); // consume line number
 
  img_idx = program_find(
  rt->program, img_line);
@@ -258,12 +254,12 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  }
  img_text = rt->program->lines[img_idx].text;
 
- /* Skip past line number and whitespace */
+ // Skip past line number and whitespace
  p = img_text;
  while (*p >= '0' && *p <= '9') p++;
  while (*p == ' ' || *p == '\t') p++;
 
- /* Verify it's an IMAGE statement */
+ // Verify it's an IMAGE statement
  if (!((*p == 'I' || *p == 'i') &&
  (*(p+1) == 'M' || *(p+1) == 'm') &&
  (*(p+2) == 'A' || *(p+2) == 'a') &&
@@ -272,7 +268,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_HOW, line_num);
  return;
  }
- p += 5; /* skip IMAGE */
+ p += 5; // skip IMAGE
  while (*p == ' ' || *p == '\t') p++;
 
  fmt = p;
@@ -282,17 +278,15 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Expect semicolon or comma after format */
+ // Expect semicolon or comma after format
  if (lex->current.type == TOK_SEMICOLON)
  lexer_next(lex);
  else if (lex->current.type == TOK_COMMA)
  lexer_next(lex);
 
- /*
-  * Delegate to the format engine.
-  * The engine reads values from the lexer as needed,
-  * outputs formatted text to the target stream.
-  */
+  // Delegate to the format engine.
+  // The engine reads values from the lexer as needed,
+  // outputs formatted text to the target stream.
  {
  FILE *target = (file_chan > 0)
  ? fileio_get_fp(file_chan) : stdout;
@@ -304,7 +298,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Handle empty PRINT (just prints a newline) */
+ // Handle empty PRINT (just prints a newline)
  if (lex->current.type == TOK_EOF ||
  lex->current.type == TOK_CR ||
  (lex->current.type == TOK_SEMICOLON && sep == ';') ||
@@ -317,15 +311,13 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /*
-  * Handle leading comma: PRINT ,expr tabs to the next zone.
-  * In GW-BASIC, a comma at the start of PRINT advances to
-  * the second column zone (typically column 15).
-  */
+  // Handle leading comma: PRINT ,expr tabs to the next zone.
+  // In GW-BASIC, a comma at the start of PRINT advances to
+  // the second column zone (typically column 15).
  while (lex->current.type == TOK_COMMA) {
-  lexer_next(lex); /* consume comma */
-  need_newline = 0; /* trailing comma = no newline */
-  /* ECMA-55: advance to next print zone */
+  lexer_next(lex); // consume comma
+  need_newline = 0; // trailing comma = no newline
+  // ECMA-55: advance to next print zone
   if (file_chan == 0) {
   int zone = dialect_get_config()->print_zone_width;
   int prop_zone =
@@ -340,21 +332,21 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
   putchar(' ');
   rt->print_col++;
   }
-  /* GW-BASIC: consecutive commas (,,) skip extra zones */
+  // GW-BASIC: consecutive commas (,,) skip extra zones
   while (lex->current.type == TOK_COMMA) {
   lexer_next(lex);
   while ((rt->print_col - 1) % zone != 0) {
    putchar(' ');
    rt->print_col++;
   }
-  /* GW-BASIC: handle consecutive commas (,,) */
+  // GW-BASIC: handle consecutive commas (,,)
   while (lex->current.type == TOK_COMMA) {
   lexer_next(lex);
   while ((rt->print_col - 1) % zone != 0) {
    putchar(' ');
    rt->print_col++;
   }
-  /* GW-BASIC: consecutive commas skip extra zones */
+  // GW-BASIC: consecutive commas skip extra zones
   while (lex->current.type == TOK_COMMA) {
   lexer_next(lex);
   while ((rt->print_col - 1) % zone != 0) {
@@ -375,7 +367,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  while (!error_occurred()) {
  need_newline = 1;
 
- /* KEYWORD PRINT PREFIX - prepend to output */
+ // KEYWORD PRINT PREFIX - prepend to output
  {
  const char *pfx =
  keyword_prop_get(KW_PRINT,
@@ -386,46 +378,44 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Check for # format specifier (only for stdout) */
+ // Check for # format specifier (only for stdout)
  if (lex->current.type == TOK_HASH && file_chan == 0) {
  long width;
- lexer_next(lex); /* consume # */
+ lexer_next(lex); // consume #
  width = parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
  rt->print_width = (int)width;
- /* Continue to next item */
+ // Continue to next item
  }
- /*
- * TAB(n) - Move to column n.
- * Emits spaces until the cursor reaches column n.
- * Vintage BASIC games use: PRINT TAB(26);"TITLE"
- */
+ // TAB(n) - Move to column n.
+ // Emits spaces until the cursor reaches column n.
+ // Vintage BASIC games use: PRINT TAB(26);"TITLE"
  else if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_TAB_FUNC) {
  int col;
- lexer_next(lex); /* consume TAB */
+ lexer_next(lex); // consume TAB
  if (lex->current.type != TOK_LPAREN) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume ( */
+ lexer_next(lex); // consume (
  col = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
  if (lex->current.type != TOK_RPAREN) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume ) */
+ lexer_next(lex); // consume )
  if (col > 0 && file_chan == 0) {
- /* ECMA-55: move to absolute column col */
+ // ECMA-55: move to absolute column col
  if (rt->tab_mode == 1) {
- /* REAL: emit HT character */
+ // REAL: emit HT character
  putchar('\t');
  rt->print_col = col;
  } else {
- /* SPACES: pad with spaces */
+ // SPACES: pad with spaces
  if (rt->print_col > col) {
- /* Past target: advance to next line */
+ // Past target: advance to next line
  printf("\n");
  rt->print_col = 1;
  }
@@ -436,40 +426,38 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
  }
- /*
- * SPC(n) - Print n spaces.
- * Vintage BASIC: PRINT SPC(5);"TEXT"
- */
+ // SPC(n) - Print n spaces.
+ // Vintage BASIC: PRINT SPC(5);"TEXT"
  else if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_SPC_FUNC) {
  int n;
- lexer_next(lex); /* consume SPC */
+ lexer_next(lex); // consume SPC
  if (lex->current.type != TOK_LPAREN) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume ( */
+ lexer_next(lex); // consume (
  n = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
  if (lex->current.type != TOK_RPAREN) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume ) */
+ lexer_next(lex); // consume )
  if (n > 0 && file_chan == 0) {
  int i;
  for (i = 0; i < n; i++)
  putchar(' ');
  }
  }
- /* Expression (numeric or string value via BValue) */
+ // Expression (numeric or string value via BValue)
  else {
  BValue val;
  val = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return;
 
  if (file_chan > 0) {
- /* Write to file channel */
+ // Write to file channel
  char buf[64];
  if (bval_is_string(&val)) {
  char sbuf[MAX_LINE_LENGTH + 1];
@@ -490,10 +478,10 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  fileio_print(file_chan, buf, line_num);
  }
  } else {
- /* Print to stdout (original behavior) */
+ // Print to stdout (original behavior)
  if (bval_is_string(&val)) {
  int si;
- /* KEYWORD PRINT UPPERCASE/LOWERCASE */
+ // KEYWORD PRINT UPPERCASE/LOWERCASE
  int force_up =
  keyword_prop_is_on(KW_PRINT,
  "UPPERCASE");
@@ -511,7 +499,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  pi_print_margin_check(rt);
  }
  } else if (bval_is_complex(&val)) {
- /* Complex: print as (real+imagÂ·i) */
+ // Complex: print as (real+imagai)
  int nc;
  char cbuf[64];
  bval_to_string_buf(&val, cbuf, 64);
@@ -520,27 +508,27 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  pi_print_margin_check(rt);
  } else if (bval_is_float(&val)) {
  int nc;
- /* ECMA-55: leading space for positive */
+ // ECMA-55: leading space for positive
  if (val.v.fval >= 0.0) {
  putchar(' ');
  rt->print_col++;
  }
  nc = printf("%.14G", val.v.fval);
  rt->print_col += nc;
- /* ECMA-55: trailing space */
+ // ECMA-55: trailing space
  putchar(' ');
  rt->print_col++;
  pi_print_margin_check(rt);
  } else {
  int nc;
- /* ECMA-55: leading space for positive */
+ // ECMA-55: leading space for positive
  if (val.v.ival >= 0) {
  putchar(' ');
  rt->print_col++;
  }
  nc = printf("%ld", val.v.ival);
  rt->print_col += nc;
- /* ECMA-55: trailing space */
+ // ECMA-55: trailing space
  putchar(' ');
  rt->print_col++;
  pi_print_margin_check(rt);
@@ -548,11 +536,11 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Check for comma or semicolon separator between items */
+ // Check for comma or semicolon separator between items
  if (lex->current.type == TOK_COMMA) {
- lexer_next(lex); /* consume comma */
- need_newline = 0; /* trailing comma = no newline */
- /* ECMA-55: advance to next print zone */
+ lexer_next(lex); // consume comma
+ need_newline = 0; // trailing comma = no newline
+ // ECMA-55: advance to next print zone
  if (file_chan == 0) {
  int zone = dialect_get_config()->print_zone_width;
  int prop_zone =
@@ -567,7 +555,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  putchar(' ');
  rt->print_col++;
  }
- /* GW-BASIC: consecutive commas skip zones */
+ // GW-BASIC: consecutive commas skip zones
  while (lex->current.type == TOK_COMMA) {
  lexer_next(lex);
  while ((rt->print_col - 1) % zone != 0) {
@@ -582,7 +570,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
   break;
   }
  } else if (lex->current.type == TOK_SEMICOLON) {
-  lexer_next(lex); /* consume semicolon */
+  lexer_next(lex); // consume semicolon
   need_newline = 0;
   if (lex->current.type == TOK_EOF ||
   lex->current.type == TOK_CR ||
@@ -609,54 +597,48 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
 }
 
 
-/*
- * parse_input - Parse and execute INPUT statement.
- *
- * Syntax:
- * INPUT var-list
- * INPUT "prompt", var-list
- * INPUT "prompt" var-list (PATB: no comma after prompt)
- *
- * Reads integer values from stdin. For each variable in the list,
- * prints "?" prompt (or custom prompt) and reads a number.
- */
+ // parse_input - Parse and execute INPUT statement.
+ //
+ // Syntax:
+ // INPUT var-list
+ // INPUT "prompt", var-list
+ // INPUT "prompt" var-list (PATB: no comma after prompt)
+ //
+ // Reads integer values from stdin. For each variable in the list,
+ // prints "?" prompt (or custom prompt) and reads a number.
 void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
 {
  int has_custom_prompt = 0;
  char input_buf[INPUT_BUFFER_SIZE];
- int file_chan = 0; /* 0=stdin, 1-8=file channel */
- /* For file INPUT#: read whole line, split on commas */
+ int file_chan = 0; // 0=stdin, 1-8=file channel
+ // For file INPUT#: read whole line, split on commas
  char file_buf[INPUT_BUFFER_SIZE];
  int file_buf_valid = 0;
  int file_buf_pos = 0;
 
- /*
- * INPUT #n, var
- * If first token is #, read from file channel.
- */
+ // INPUT #n, var
+ // If first token is #, read from file channel.
  if (lex->current.type == TOK_HASH) {
- lexer_next(lex); /* consume # */
+ lexer_next(lex); // consume #
  file_chan = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
  if (lex->current.type != TOK_COMMA) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume comma */
+ lexer_next(lex); // consume comma
  }
 
- /*
- * INPUT USING "format"; var-list
- * Validated input: reads input, checks against format,
- * re-prompts if invalid (Microsoft-style protection).
- */
+ // INPUT USING "format"; var-list
+ // Validated input: reads input, checks against format,
+ // re-prompts if invalid (Microsoft-style protection).
  if (file_chan == 0 && lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_USING) {
  const char *ufmt;
  int uflen;
  char ubuf[INPUT_BUFFER_SIZE];
  int ulen;
- lexer_next(lex); /* consume USING */
+ lexer_next(lex); // consume USING
 
  if (lex->current.type != TOK_STRING) {
  error_raise(ERR_WHAT, line_num);
@@ -666,12 +648,12 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  uflen = lex->current.str_length;
  lexer_next(lex);
 
- /* Consume semicolon or comma after format */
+ // Consume semicolon or comma after format
  if (lex->current.type == TOK_SEMICOLON ||
  lex->current.type == TOK_COMMA)
  lexer_next(lex);
 
- /* Read and validate */
+ // Read and validate
  ulen = format_input_using(ubuf, INPUT_BUFFER_SIZE,
  ufmt, uflen, "? ");
  if (ulen < 0) {
@@ -679,7 +661,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Store in the target variable */
+ // Store in the target variable
  if (lex->current.type == TOK_STRING_VAR) {
  char svar = lex->current.value.var_name;
  char *ptr;
@@ -703,23 +685,23 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Check for custom prompt string (only for stdin) */
+ // Check for custom prompt string (only for stdin)
  if (file_chan == 0 && lex->current.type == TOK_STRING) {
  int i;
  for (i = 0; i < lex->current.str_length; i++) {
  putchar(lex->current.str_start[i]);
  }
- lexer_next(lex); /* consume string */
+ lexer_next(lex); // consume string
  has_custom_prompt = 1;
 
- /* Skip optional comma or semicolon after prompt */
+ // Skip optional comma or semicolon after prompt
  if (lex->current.type == TOK_COMMA ||
  lex->current.type == TOK_SEMICOLON) {
  lexer_next(lex);
  }
  }
 
- /* Read each variable */
+ // Read each variable
  while (!error_occurred()) {
  char var_name;
  long value;
@@ -727,14 +709,14 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
 
  if (lex->current.type == TOK_VARIABLE) {
  var_name = lex->current.value.var_name;
- lexer_next(lex); /* consume variable */
+ lexer_next(lex); // consume variable
 
- /* Check for DIM array element: A(expr) */
+ // Check for DIM array element: A(expr)
  if (lex->current.type == TOK_LPAREN &&
   dialect_get_config()->has_dim_arrays) {
   int idx1, idx2 = 0, idx3 = 0;
   BValue dval;
-  lexer_next(lex); /* consume ( */
+  lexer_next(lex); // consume (
   idx1 = (int)parse_expression(lex, rt, line_num);
   if (error_occurred()) return;
   if (lex->current.type == TOK_COMMA) {
@@ -749,7 +731,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
   }
   if (!lexer_expect(lex, TOK_RPAREN)) return;
 
-  /* Read input for array element */
+  // Read input for array element
   if (file_chan > 0) {
   if (!file_buf_valid) {
    if (fileio_input_line(file_chan, file_buf,
@@ -785,9 +767,9 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
   goto check_more_vars;
  }
  } else if (lex->current.type == TOK_AT) {
- /* @(expr) = input */
+ // @(expr) = input
  long index;
- lexer_next(lex); /* consume @ */
+ lexer_next(lex); // consume @
  if (!lexer_expect(lex, TOK_LPAREN)) return;
  index = parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
@@ -848,20 +830,20 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  runtime_set_array(rt, index, value);
  goto check_more_vars;
  } else if (lex->current.type == TOK_STRING_VAR) {
- /* String variable INPUT: reads entire line as string */
+ // String variable INPUT: reads entire line as string
  char svar_name = lex->current.value.var_name;
  int slen;
  char *ptr;
  lexer_next(lex);
 
- /* Check for DIM string array: O$(expr) */
+ // Check for DIM string array: O$(expr)
  if (lex->current.type == TOK_LPAREN &&
   dialect_get_config()->has_dim_arrays) {
   char sname[3];
   int idx1, idx2 = 0, idx3 = 0;
   BValue dval;
   sname[0] = svar_name; sname[1] = '$'; sname[2] = '\0';
-  lexer_next(lex); /* consume ( */
+  lexer_next(lex); // consume (
   idx1 = (int)parse_expression(lex, rt, line_num);
   if (error_occurred()) return;
   if (lex->current.type == TOK_COMMA) {
@@ -871,7 +853,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
   }
   if (!lexer_expect(lex, TOK_RPAREN)) return;
 
-  /* Read input */
+  // Read input
   if (file_chan > 0) {
   if (!file_buf_valid) {
    if (fileio_input_line(file_chan, file_buf,
@@ -910,7 +892,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (file_chan > 0) {
- /* Use shared buffer, split on commas */
+ // Use shared buffer, split on commas
  if (!file_buf_valid) {
  if (fileio_input_line(file_chan,
  file_buf, INPUT_BUFFER_SIZE,
@@ -949,7 +931,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Strip trailing newline */
+ // Strip trailing newline
  slen = (int)strlen(input_buf);
  while (slen > 0 && (input_buf[slen-1] == '\n' ||
  input_buf[slen-1] == '\r')) {
@@ -965,23 +947,21 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  bval_string(ptr, slen));
  goto check_more_vars;
  } else if (lex->current.type == TOK_NAMED_VAR) {
-  /*
-   * Named variable INPUT: B7, T1, Y$, KEYWORD$(n), etc.
-   * Check trailing '$' to determine string vs numeric.
-   */
+   // Named variable INPUT: B7, T1, Y$, KEYWORD$(n), etc.
+   // Check trailing '$' to determine string vs numeric.
   const char *nm = lex->current.str_start;
   int nlen = lex->current.str_length;
   int is_str = (nlen > 0 && nm[nlen - 1] == '$');
-  lexer_next(lex); /* consume named var */
+  lexer_next(lex); // consume named var
 
-  /* Check for DIM array subscript: B$(C) or A(I) */
+  // Check for DIM array subscript: B$(C) or A(I)
   if (lex->current.type == TOK_LPAREN &&
   dialect_get_config()->has_dim_arrays) {
   DimArray *arr = runtime_find_dim(rt, nm, nlen);
   if (arr != NULL) {
    int idx1, idx2 = 0, idx3 = 0;
    BValue dval;
-   lexer_next(lex); /* consume ( */
+   lexer_next(lex); // consume (
    idx1 = (int)parse_expression(lex, rt, line_num);
    if (error_occurred()) return;
    if (lex->current.type == TOK_COMMA) {
@@ -996,7 +976,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
    }
    if (!lexer_expect(lex, TOK_RPAREN)) return;
 
-   /* Read input for array element */
+   // Read input for array element
    if (file_chan > 0) {
    if (!file_buf_valid) {
     if (fileio_input_line(file_chan, file_buf,
@@ -1046,7 +1026,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
   }
 
   if (is_str) {
-  /* String named variable INPUT */
+  // String named variable INPUT
   int slen; char *ptr;
   if (file_chan > 0) {
    if (!file_buf_valid) {
@@ -1083,7 +1063,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
    bval_string(ptr, slen));
   goto check_more_vars;
   } else {
-  /* Numeric named variable INPUT */
+  // Numeric named variable INPUT
   if (file_chan > 0) {
    if (!file_buf_valid) {
    if (fileio_input_line(file_chan, file_buf,
@@ -1132,8 +1112,8 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (file_chan > 0) {
- /* Multi-var file input: read line once,
- * split on commas for subsequent vars */
+ // Multi-var file input: read line once,
+ // split on commas for subsequent vars 
  if (!file_buf_valid) {
  if (fileio_input_line(file_chan,
  file_buf, INPUT_BUFFER_SIZE,
@@ -1143,7 +1123,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  file_buf_valid = 1;
  file_buf_pos = 0;
  }
- /* Extract next comma-delimited value */
+ // Extract next comma-delimited value
  {
  int di = 0;
  while (file_buf[file_buf_pos] != '\0' &&
@@ -1155,12 +1135,12 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  file_buf[file_buf_pos++];
  }
  input_buf[di] = '\0';
- /* Skip comma */
+ // Skip comma
  if (file_buf[file_buf_pos] == ',')
  file_buf_pos++;
  }
  } else {
- /* Print prompt if no custom prompt */
+ // Print prompt if no custom prompt
  if (!has_custom_prompt) {
  const char *kp =
  keyword_prop_get(KW_INPUT,
@@ -1169,21 +1149,19 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  }
  fflush(stdout);
 
- /* Read input line */
+ // Read input line
  if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
  error_raise(ERR_HOW, line_num);
  return;
  }
  }
 
- /* Parse integer */
+ // Parse integer
  value = strtol(input_buf, &endptr, 10);
  while (endptr == input_buf) {
- /*
- * Not a number. If reading from stdin,
- * reprompt (GW-BASIC/ECMA-55 behavior).
- * If from file, it's a hard error.
- */
+ // Not a number. If reading from stdin,
+ // reprompt (GW-BASIC/ECMA-55 behavior).
+ // If from file, it's a hard error.
  if (file_chan > 0) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -1201,39 +1179,37 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  runtime_set_var(rt, var_name, value);
 
 check_more_vars:
- /* Check for comma (more variables) */
+ // Check for comma (more variables)
  if (lex->current.type == TOK_COMMA) {
- lexer_next(lex); /* consume comma */
- has_custom_prompt = 0; /* reset prompt for next var */
+ lexer_next(lex); // consume comma
+ has_custom_prompt = 0; // reset prompt for next var
  } else {
  break;
  }
  }
 }
 
-/*
- * parse_if - Parse and execute IF statement.
- *
- * Supports TWO forms:
- *
- * 1. SINGLE-LINE IF (original):
- * IF condition THEN statement [ELSE statement]
- *
- * 2. BLOCK IF (ECMA-116 / QBasic):
- * IF condition THEN
- * ...statements...
- * [ELSEIF condition THEN
- * ...statements...]
- * [ELSE
- * ...statements...]
- * END IF
- *
- * Detection: If THEN is followed by end-of-line (no statement),
- * it's a block IF. Otherwise, it's single-line.
- *
- * PATB syntax (NO THEN keyword):
- * IF expression relop expression statement
- */
+ // parse_if - Parse and execute IF statement.
+ //
+ // Supports TWO forms:
+ //
+ // 1. SINGLE-LINE IF (original):
+ // IF condition THEN statement [ELSE statement]
+ //
+ // 2. BLOCK IF (ECMA-116 / QBasic):
+ // IF condition THEN
+ // ...statements...
+ // [ELSEIF condition THEN
+ // ...statements...]
+ // [ELSE
+ // ...statements...]
+ // END IF
+ //
+ // Detection: If THEN is followed by end-of-line (no statement),
+ // it's a block IF. Otherwise, it's single-line.
+ //
+ // PATB syntax (NO THEN keyword):
+ // IF expression relop expression statement
 
 
 void pi_parse_data(Lexer *lex, RuntimeState *rt, int line_num)
@@ -1243,30 +1219,28 @@ void pi_parse_data(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_skip_to_end(lex);
 }
 
-/*
- * parse_read - Parse and execute READ statement.
- *
- * Syntax: READ var [, var ...]
- *
- * Reads the next value from the DATA pool for each variable.
- */
+ // parse_read - Parse and execute READ statement.
+ //
+ // Syntax: READ var [, var ...]
+ //
+ // Reads the next value from the DATA pool for each variable.
 void pi_parse_read(Lexer *lex, RuntimeState *rt, int line_num)
 {
  while (!error_occurred()) {
  BValue val;
 
  if (lex->current.type == TOK_VARIABLE) {
-  /* Single-letter var: READ A or READ A(idx) */
+  // Single-letter var: READ A or READ A(idx)
   char var_name = lex->current.value.var_name;
-  lexer_next(lex); /* consume variable */
+  lexer_next(lex); // consume variable
 
-  /* Check for DIM array subscript: A(idx) */
+  // Check for DIM array subscript: A(idx)
   if (lex->current.type == TOK_LPAREN &&
   dialect_get_config()->has_dim_arrays) {
   char sname[2];
   int idx1, idx2 = 0, idx3 = 0;
   sname[0] = var_name; sname[1] = '\0';
-  lexer_next(lex); /* consume ( */
+  lexer_next(lex); // consume (
   idx1 = (int)parse_expression(lex, rt, line_num);
   if (error_occurred()) return;
   if (lex->current.type == TOK_COMMA) {
@@ -1290,17 +1264,17 @@ void pi_parse_read(Lexer *lex, RuntimeState *rt, int line_num)
   runtime_set_var(rt, var_name, bval_to_int(&val));
   }
  } else if (lex->current.type == TOK_STRING_VAR) {
-  /* Single-letter string var: READ A$ or A$(idx) */
+  // Single-letter string var: READ A$ or A$(idx)
   char svar = lex->current.value.var_name;
-  lexer_next(lex); /* consume string var */
+  lexer_next(lex); // consume string var
 
-  /* Check for DIM string array: A$(idx) */
+  // Check for DIM string array: A$(idx)
   if (lex->current.type == TOK_LPAREN &&
   dialect_get_config()->has_dim_arrays) {
   char sname[3];
   int idx1, idx2 = 0, idx3 = 0;
   sname[0] = svar; sname[1] = '$'; sname[2] = '\0';
-  lexer_next(lex); /* consume ( */
+  lexer_next(lex); // consume (
   idx1 = (int)parse_expression(lex, rt, line_num);
   if (error_occurred()) return;
   if (lex->current.type == TOK_COMMA) {
@@ -1324,7 +1298,7 @@ void pi_parse_read(Lexer *lex, RuntimeState *rt, int line_num)
   if (bval_is_string(&val)) {
    runtime_set_string_var(rt, svar, val);
   } else {
-   /* Numeric DATA into string var - convert */
+   // Numeric DATA into string var - convert
    char nbuf[32];
    char *ptr;
    int nlen;
@@ -1338,16 +1312,16 @@ void pi_parse_read(Lexer *lex, RuntimeState *rt, int line_num)
   }
   }
  } else if (lex->current.type == TOK_NAMED_VAR) {
-  /* Named var: READ Score or READ B7 or READ A$(idx) */
+  // Named var: READ Score or READ B7 or READ A$(idx)
   const char *name = lex->current.str_start;
   int name_len = lex->current.str_length;
-  lexer_next(lex); /* consume named var */
+  lexer_next(lex); // consume named var
 
-  /* Check for DIM array subscript */
+  // Check for DIM array subscript
   if (lex->current.type == TOK_LPAREN &&
   dialect_get_config()->has_dim_arrays) {
   int idx1, idx2 = 0, idx3 = 0;
-  lexer_next(lex); /* consume ( */
+  lexer_next(lex); // consume (
   idx1 = (int)parse_expression(lex, rt, line_num);
   if (error_occurred()) return;
   if (lex->current.type == TOK_COMMA) {
@@ -1376,18 +1350,16 @@ void pi_parse_read(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (lex->current.type == TOK_COMMA) {
-  lexer_next(lex); /* consume comma */
+  lexer_next(lex); // consume comma
  } else {
   break;
  }
  }
 }
 
-/*
- * parse_restore - Execute RESTORE statement.
- *
- * Resets the DATA pointer to the beginning.
- */
+ // parse_restore - Execute RESTORE statement.
+ //
+ // Resets the DATA pointer to the beginning.
 void pi_parse_restore(Lexer *lex, RuntimeState *rt, int line_num)
 {
  (void)lex;
@@ -1395,21 +1367,17 @@ void pi_parse_restore(Lexer *lex, RuntimeState *rt, int line_num)
  runtime_restore_data(rt);
 }
 
-/*
- * parse_merge_cmd - Parse MERGE "filename"
- */
+ // parse_merge_cmd - Parse MERGE "filename"
 
-/*
- * pi_parse_line_input - Handle LINE INPUT statement.
- *
- * Syntax:
- *   LINE INPUT [;] ["prompt";] var$
- *   LINE INPUT #channel, var$
- *
- * Reads an entire line (including commas and
- * quotes) into a string variable. Unlike INPUT,
- * no splitting on commas.
- */
+ // pi_parse_line_input - Handle LINE INPUT statement.
+ //
+ // Syntax:
+ //   LINE INPUT [;] ["prompt";] var$
+ //   LINE INPUT #channel, var$
+ //
+ // Reads an entire line (including commas and
+ // quotes) into a string variable. Unlike INPUT,
+ // no splitting on commas.
 void pi_parse_line_input(Lexer *lex, RuntimeState *rt,
  int line_num)
 {
@@ -1421,13 +1389,13 @@ void pi_parse_line_input(Lexer *lex, RuntimeState *rt,
  int blen;
  char *ptr;
 
- /* Check for semicolon (suppress CR after input) */
+ // Check for semicolon (suppress CR after input)
  if (lex->current.type == TOK_SEMICOLON) {
  suppress_cr = 1;
  lexer_next(lex);
  }
 
- /* Check for #channel */
+ // Check for #channel
  if (lex->current.type == TOK_HASH) {
  lexer_next(lex);
  channel = (int)parse_expression(lex, rt, line_num);
@@ -1436,19 +1404,19 @@ void pi_parse_line_input(Lexer *lex, RuntimeState *rt,
  lexer_next(lex);
  }
 
- /* Check for optional "prompt"; */
+ // Check for optional "prompt";
  if (lex->current.type == TOK_STRING) {
  prompt = lex->current.str_start;
  prompt_len = lex->current.str_length;
  lexer_next(lex);
- /* Expect semicolon after prompt */
+ // Expect semicolon after prompt
  if (lex->current.type == TOK_SEMICOLON)
  lexer_next(lex);
  }
 
- /* Target variable: string var or named var */
+ // Target variable: string var or named var
  if (channel >= 0) {
- /* File LINE INPUT */
+ // File LINE INPUT
  if (fileio_input_line(channel, buf,
   MAX_LINE_LENGTH, line_num) != 0) {
   if (!error_occurred())
@@ -1457,7 +1425,7 @@ void pi_parse_line_input(Lexer *lex, RuntimeState *rt,
  }
  blen = (int)strlen(buf);
  } else {
- /* Console LINE INPUT */
+ // Console LINE INPUT
  if (prompt && prompt_len > 0) {
  fwrite(prompt, 1, (size_t)prompt_len, stdout);
  fflush(stdout);
@@ -1470,7 +1438,7 @@ void pi_parse_line_input(Lexer *lex, RuntimeState *rt,
  blen = 0;
  } else {
  blen = (int)strlen(buf);
- /* Strip trailing newline */
+ // Strip trailing newline
  while (blen > 0 &&
  (buf[blen-1] == '\n' ||
  buf[blen-1] == '\r'))
@@ -1481,7 +1449,7 @@ void pi_parse_line_input(Lexer *lex, RuntimeState *rt,
  buf[blen] = '\0';
  ptr = strpool_store(&rt->strpool, buf, blen);
 
- /* Assign to target variable */
+ // Assign to target variable
  if (lex->current.type == TOK_STRING_VAR) {
  char vn = lex->current.value.var_name;
  lexer_next(lex);

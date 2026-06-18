@@ -1,6 +1,30 @@
 # Implementing Older Dialects and Memory Maps
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- The MEMMAP System
+- Memory Map Details
+  - 1 MS-DOS (MSDOS) — Default
+  - 2 Commodore 64 (C64)
+  - 3 Atari 8-bit (ATARI8)
+  - 4 Apple II (APPLE2)
+  - 5 ZX Spectrum (ZXSPEC)
+  - 6 TI-99/4A (TI99)
+  - 7 BBC Micro (BBC)
+  - 8 MSX (MSX)
+  - 9 Amstrad CPC (CPC)
+- Using PEEK and POKE
+- INP and OUT with MEMMAP
+- Combining Dialect + MEMMAP
+- What the Memory Maps Do
+- Writing Portable Code
+
+---
 
 BASIC++ can emulate classic computer systems by combining its dialect engine with the MEMMAP virtual memory system. This guide explains how to recreate the experience of programming a Commodore 64, Apple II, Atari 800, or other classic machines.
 

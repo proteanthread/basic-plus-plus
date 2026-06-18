@@ -1,36 +1,34 @@
-/*
- * ---
- * BASIC++ Interpreter - ext_plugin.c
- * ---
- *
- * External Plugin loader implementation.
- *
- * IMPLEMENTATION:
- * Static table of MAX_EXT_PLUGINS slots. A plugin is a
- * directory containing a plugin.yaml manifest and any
- * combination of modules, libraries, features, and specs.
- *
- * YAML MANIFEST PARSER:
- * Minimal YAML subset parser for C89. Handles flat
- * key-value pairs and simple list entries with "- type:"
- * and "  file:" structure. Does NOT implement full YAML.
- *
- * LOAD ORDER (dependency-safe):
- *   1. Specs (.spec)         - keyword definitions
- *   2. Features (.spec+.lib) - language extensions
- *   3. Modules (.dll/.so)    - native code
- *   4. Libraries (.lib/.bas) - BASIC++ source
- *
- * UNLOAD ORDER (reverse):
- *   4. Libraries
- *   3. Modules
- *   2. Features
- *   1. Specs
- *
- * C89/C90 COMPLIANT.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - ext_plugin.c
+ // ---
+ //
+ // External Plugin loader implementation.
+ //
+ // IMPLEMENTATION:
+ // Static table of MAX_EXT_PLUGINS slots. A plugin is a
+ // directory containing a plugin.yaml manifest and any
+ // combination of modules, libraries, features, and specs.
+ //
+ // YAML MANIFEST PARSER:
+ // Minimal YAML subset parser for C89. Handles flat
+ // key-value pairs and simple list entries with "- type:"
+ // and "  file:" structure. Does NOT implement full YAML.
+ //
+ // LOAD ORDER (dependency-safe):
+ //   1. Specs (.spec)         - keyword definitions
+ //   2. Features (.spec+.lib) - language extensions
+ //   3. Modules (.dll/.so)    - native code
+ //   4. Libraries (.lib/.bas) - BASIC++ source
+ //
+ // UNLOAD ORDER (reverse):
+ //   4. Libraries
+ //   3. Modules
+ //   2. Features
+ //   1. Specs
+ //
+ // C89/C90 COMPLIANT.
+ //
+ // ---
 
 #include <stdio.h>
 #include <string.h>
@@ -45,11 +43,11 @@
 #include "../spec.h"
 #include "../security.h"
 
-/* --- Slot --- */
+// --- Slot ---
 static BppPlugin plug_table[MAX_EXT_PLUGINS];
 static int plug_count = 0;
 
-/* --- Case-insensitive compare (C89) --- */
+// --- Case-insensitive compare (C89) ---
 static int plug_str_iequal(const char *a, const char *b)
 {
     if (!a || !b) return 0;
@@ -62,7 +60,7 @@ static int plug_str_iequal(const char *a, const char *b)
     return (*a == '\0' && *b == '\0');
 }
 
-/* --- Trim trailing whitespace/newlines --- */
+// --- Trim trailing whitespace/newlines ---
 static void trim_trailing(char *s)
 {
     int len = (int)strlen(s);
@@ -72,7 +70,7 @@ static void trim_trailing(char *s)
         s[--len] = '\0';
 }
 
-/* --- Strip surrounding quotes --- */
+// --- Strip surrounding quotes ---
 static void strip_quotes(char *s)
 {
     int len = (int)strlen(s);
@@ -82,11 +80,10 @@ static void strip_quotes(char *s)
     }
 }
 
-/* --- Parse YAML key-value pair ---
- * Given a line like "name: GAMEDEV", extracts
- * key into key_buf and value into val_buf.
- * Returns 1 if a key-value pair was found, 0 otherwise.
- */
+// --- Parse YAML key-value pair ---
+ // Given a line like "name: GAMEDEV", extracts
+ // key into key_buf and value into val_buf.
+ // Returns 1 if a key-value pair was found, 0 otherwise.
 static int parse_yaml_kv(const char *line,
                           char *key_buf, int key_len,
                           char *val_buf, int val_len)
@@ -95,25 +92,25 @@ static int parse_yaml_kv(const char *line,
     const char *p;
     int klen;
 
-    /* Skip leading whitespace */
+    // Skip leading whitespace
     p = line;
     while (*p == ' ' || *p == '\t') p++;
 
-    /* Skip comments and empty lines */
+    // Skip comments and empty lines
     if (*p == '#' || *p == '\0' || *p == '\n') return 0;
 
-    /* Find colon */
+    // Find colon
     colon = strchr(p, ':');
     if (!colon) return 0;
 
-    /* Extract key */
+    // Extract key
     klen = (int)(colon - p);
     if (klen >= key_len) klen = key_len - 1;
     strncpy(key_buf, p, (size_t)klen);
     key_buf[klen] = '\0';
     trim_trailing(key_buf);
 
-    /* Extract value */
+    // Extract value
     p = colon + 1;
     while (*p == ' ' || *p == '\t') p++;
     strncpy(val_buf, p, (size_t)(val_len - 1));
@@ -124,19 +121,18 @@ static int parse_yaml_kv(const char *line,
     return 1;
 }
 
-/* --- parse_yaml_manifest ---
- * Minimal YAML parser for plugin.yaml.
- *
- * Handles:
- *   name: VALUE
- *   version: VALUE
- *   author: VALUE
- *   description: VALUE
- *   security: VALUE
- *   entries:
- *     - type: module
- *       file: path.dll
- */
+// --- parse_yaml_manifest ---
+ // Minimal YAML parser for plugin.yaml.
+ //
+ // Handles:
+ //   name: VALUE
+ //   version: VALUE
+ //   author: VALUE
+ //   description: VALUE
+ //   security: VALUE
+ //   entries:
+ //     - type: module
+ //       file: path.dll
 static int parse_yaml_manifest(const char *manifest_path,
                                 BppPlugin *plug)
 {
@@ -151,12 +147,12 @@ static int parse_yaml_manifest(const char *manifest_path,
     if (!fp) return -1;
 
     while (fgets(line, sizeof(line), fp)) {
-        /* Check for list item "- type:" */
+        // Check for list item "- type:"
         {
             const char *p = line;
             while (*p == ' ' || *p == '\t') p++;
             if (*p == '-') {
-                /* New list entry */
+                // New list entry
                 p++;
                 while (*p == ' ' || *p == '\t') p++;
                 if (in_entries &&
@@ -165,7 +161,7 @@ static int parse_yaml_manifest(const char *manifest_path,
                     plug->entry_count++;
                     memset(&plug->entries[cur_entry], 0,
                            sizeof(BppPluginEntry));
-                    /* Parse inline "type: value" */
+                    // Parse inline "type: value"
                     if (parse_yaml_kv(p, key, sizeof(key),
                                       val, sizeof(val))) {
                         if (plug_str_iequal(key, "type")) {
@@ -200,7 +196,7 @@ static int parse_yaml_manifest(const char *manifest_path,
                            val, sizeof(val)))
             continue;
 
-        /* Top-level keys */
+        // Top-level keys
         if (plug_str_iequal(key, "name")) {
             strncpy(plug->name, val, 63);
             in_entries = 0;
@@ -219,7 +215,7 @@ static int parse_yaml_manifest(const char *manifest_path,
         } else if (plug_str_iequal(key, "entries")) {
             in_entries = 1;
         } else if (plug_str_iequal(key, "file")) {
-            /* File for current list entry */
+            // File for current list entry
             if (cur_entry >= 0 &&
                 cur_entry < plug->entry_count) {
                 strncpy(
@@ -233,9 +229,8 @@ static int parse_yaml_manifest(const char *manifest_path,
     return (plug->name[0] != '\0') ? 0 : -1;
 }
 
-/* --- Build full entry path ---
- * Combines plugin directory + entry filename.
- */
+// --- Build full entry path ---
+ // Combines plugin directory + entry filename.
 static void build_entry_path(char *buf, int buf_len,
                               const char *dir,
                               const char *filename)
@@ -251,23 +246,22 @@ static void build_entry_path(char *buf, int buf_len,
     }
 }
 
-/* --- ext_plugin_init --- */
+// --- ext_plugin_init ---
 void ext_plugin_init(void)
 {
     memset(plug_table, 0, sizeof(plug_table));
     plug_count = 0;
 }
 
-/* --- ext_plugin_load ---
- * Load a plugin from a directory.
- *
- * Steps:
- *   1. Security check (SECOP_EXT_LOAD)
- *   2. Parse plugin.yaml manifest
- *   3. Validate pinned level
- *   4. Validate all entry paths (within plugin dir)
- *   5. Load entries in dependency order
- */
+// --- ext_plugin_load ---
+ // Load a plugin from a directory.
+ //
+ // Steps:
+ //   1. Security check (SECOP_EXT_LOAD)
+ //   2. Parse plugin.yaml manifest
+ //   3. Validate pinned level
+ //   4. Validate all entry paths (within plugin dir)
+ //   5. Load entries in dependency order
 int ext_plugin_load(const char *dir_path, void *rt)
 {
     int slot = -1;
@@ -275,11 +269,11 @@ int ext_plugin_load(const char *dir_path, void *rt)
     char manifest[512];
     char entry_path[512];
 
-    /* Security gate */
+    // Security gate
     if (security_check(SECOP_EXT_LOAD, 0) != 0)
         return -1;
 
-    /* Find a free slot */
+    // Find a free slot
     for (int i = 0; i < plug_count; i++) {
         if (!plug_table[i].loaded) {
             slot = i;
@@ -294,23 +288,23 @@ int ext_plugin_load(const char *dir_path, void *rt)
         slot = plug_count;
     }
 
-    /* Build manifest path */
+    // Build manifest path
     build_entry_path(manifest, sizeof(manifest),
                      dir_path, "plugin.yaml");
 
-    /* Initialize descriptor */
+    // Initialize descriptor
     memset(&temp, 0, sizeof(temp));
     strncpy(temp.path, dir_path, 255);
     temp.required_level = SEC_COUNT;
 
-    /* Parse YAML manifest */
+    // Parse YAML manifest
     if (parse_yaml_manifest(manifest, &temp) != 0) {
         printf("Failed to parse plugin manifest: "
                "%s\n", manifest);
         return -1;
     }
 
-    /* Check security pinning */
+    // Check security pinning
     if (!security_check_pinned_level(
             temp.required_level)) {
         printf("Plugin '%s' requires security level "
@@ -322,7 +316,7 @@ int ext_plugin_load(const char *dir_path, void *rt)
         return -1;
     }
 
-    /* Validate all entry paths are within plugin dir */
+    // Validate all entry paths are within plugin dir
     int i;
     for (i = 0; i < temp.entry_count; i++) {
         if (strstr(temp.entries[i].filename, "..")) {
@@ -334,8 +328,8 @@ int ext_plugin_load(const char *dir_path, void *rt)
         }
     }
 
-    /* Load entries in dependency order */
-    /* Pass 1: Specs */
+    // Load entries in dependency order
+    // Pass 1: Specs
 
     for (i = 0; i < temp.entry_count; i++) {
         if (temp.entries[i].type == BPP_PLUG_SPEC) {
@@ -346,7 +340,7 @@ int ext_plugin_load(const char *dir_path, void *rt)
         }
     }
 
-    /* Pass 2: Features */
+    // Pass 2: Features
 
     for (i = 0; i < temp.entry_count; i++) {
         if (temp.entries[i].type == BPP_PLUG_FEATURE) {
@@ -357,7 +351,7 @@ int ext_plugin_load(const char *dir_path, void *rt)
         }
     }
 
-    /* Pass 3: Modules */
+    // Pass 3: Modules
 
     for (i = 0; i < temp.entry_count; i++) {
         if (temp.entries[i].type == BPP_PLUG_MODULE) {
@@ -368,7 +362,7 @@ int ext_plugin_load(const char *dir_path, void *rt)
         }
     }
 
-    /* Pass 4: Libraries */
+    // Pass 4: Libraries
     for (int i = 0; i < temp.entry_count; i++) {
         if (temp.entries[i].type == BPP_PLUG_LIBRARY) {
             build_entry_path(entry_path,
@@ -378,7 +372,7 @@ int ext_plugin_load(const char *dir_path, void *rt)
         }
     }
 
-    /* Store in table */
+    // Store in table
     temp.loaded = 1;
     plug_table[slot] = temp;
     if (slot >= plug_count) plug_count = slot + 1;
@@ -395,21 +389,21 @@ int ext_plugin_load(const char *dir_path, void *rt)
     return 0;
 }
 
-/* --- ext_plugin_unload --- */
+// --- ext_plugin_unload ---
 int ext_plugin_unload(const char *name)
 {
     int j;
     for (int i = 0; i < plug_count; i++) {
         if (plug_table[i].loaded &&
             plug_str_iequal(plug_table[i].name, name)) {
-            /* Unload in reverse order */
-            /* Libraries first */
+            // Unload in reverse order
+            // Libraries first
 
             for (j = plug_table[i].entry_count - 1;
                  j >= 0; j--) {
                 if (plug_table[i].entries[j].type ==
                     BPP_PLUG_LIBRARY) {
-                    /* Extract name from filename */
+                    // Extract name from filename
                     char lib_name[64];
                     const char *base =
                         plug_table[i].entries[j].filename;
@@ -427,16 +421,16 @@ int ext_plugin_unload(const char *name)
                     ext_lib_unload(lib_name);
                 }
             }
-            /* Then modules (deactivate) */
+            // Then modules (deactivate)
 
             for (j = plug_table[i].entry_count - 1;
                  j >= 0; j--) {
                 if (plug_table[i].entries[j].type ==
                     BPP_PLUG_MODULE) {
-                    /* TODO: module_unload_dynamic() */
+                    // TODO: module_unload_dynamic()
                 }
             }
-            /* Then features */
+            // Then features
             for (int j = plug_table[i].entry_count - 1;
                  j >= 0; j--) {
                 if (plug_table[i].entries[j].type ==
@@ -468,7 +462,7 @@ int ext_plugin_unload(const char *name)
     return -1;
 }
 
-/* --- ext_plugin_is_loaded --- */
+// --- ext_plugin_is_loaded ---
 int ext_plugin_is_loaded(const char *name)
 {
     for (int i = 0; i < plug_count; i++) {
@@ -479,7 +473,7 @@ int ext_plugin_is_loaded(const char *name)
     return 0;
 }
 
-/* --- ext_plugin_find --- */
+// --- ext_plugin_find ---
 const BppPlugin *ext_plugin_find(const char *name)
 {
     for (int i = 0; i < plug_count; i++) {
@@ -490,7 +484,7 @@ const BppPlugin *ext_plugin_find(const char *name)
     return NULL;
 }
 
-/* --- ext_plugin_list --- */
+// --- ext_plugin_list ---
 void ext_plugin_list(void)
 {
     static const char *type_names[] = {
@@ -523,7 +517,7 @@ void ext_plugin_list(void)
     if (!found) printf("  (none)\n");
 }
 
-/* --- ext_plugin_count --- */
+// --- ext_plugin_count ---
 int ext_plugin_count(void)
 {
     int n = 0;

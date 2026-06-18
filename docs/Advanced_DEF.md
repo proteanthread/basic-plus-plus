@@ -1,6 +1,27 @@
 # Advanced DEF Functions in BASIC++
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- DEF FN (Single-Line Functions)
+- DEF FN with Strings
+- FUNCTION Blocks (QBasic Style)
+- SUB Procedures
+- Scope and Variables
+- Recursion
+- DEF USR (Machine Code Functions)
+- Practical Patterns
+  - Lookup table function
+  - Clamping function
+  - Linear interpolation
+  - Sorting subroutine
+- Limitations
+
+---
 
 BASIC++ supports user-defined functions at three levels of complexity: single-line `DEF FN`, multi-line `FUNCTION` blocks, and `SUB` procedures.
 

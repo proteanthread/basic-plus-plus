@@ -1,6 +1,26 @@
 # Sinclair BASIC (ZX Spectrum) Dialect Reference
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+---
+
+## Table of Contents
+
+- History
+- Activation
+- Spectrum-Specific Features
+  - Color Control
+  - Sound
+  - Memory Access
+  - Screen Memory
+- Dialect Configuration
+- Example Programs
+  - Simple color demo
+  - Number guessing game (Spectrum style)
+- See Also
+
+---
+
 **Dialect Code:** `SINC`
 
 ---

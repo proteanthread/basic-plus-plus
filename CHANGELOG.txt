@@ -1,7 +1,25 @@
 BASIC++ CHANGELOG
 =================
 
-4.0.0  (2026-06-17) — Stable Release
+4.0.1  (2026-06-18) -- Documentation & Code Quality
+--------------------------------------
+  DOCUMENTATION:
+  - Complete source code documentation overhaul (176 files)
+  - All /* */ comments converted to // for readability
+  - Enhanced preambles: PURPOSE, HOW IT WORKS, HOW TO EXTEND,
+    FINE-TUNING, TROUBLESHOOTING sections in every file
+  - Comprehensive "Adding a New Memory Pool" guide (memory.c)
+  - Dynamic Memory Sizing Guide (4GB-128GB+)
+  - Context-aware HOW TO EXTEND for dialects, modules, parsers,
+    builtins, codegen, and header files
+
+  CODE QUALITY:
+  - UTF-8 to ANSI cleanup: all source files now pure ASCII
+  - Fixed trailing-backslash-in-comment bug (format_using.c)
+  - Build verified clean on MSVC 2026 (C17 mode)
+  - Zero behavioral changes -- documentation only
+
+4.0.0  (2026-06-17) -- Stable Release
 --------------------------------------
   MILESTONE:
   - Full codebase audit: C89/C90 compliance verified across all

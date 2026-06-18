@@ -1,38 +1,46 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_assign.c
- * ---
- *
- * Assignment and variable declaration handlers: LET, DIM.
- *
- * Handles explicit and implicit variable assignment, string
- * variable assignment, array element assignment, and DIM
- * array declarations.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_assign.c
+ // ---
+ //
+ // Assignment and variable declaration handlers: LET, DIM.
+ //
+ // Handles explicit and implicit variable assignment, string
+ // variable assignment, array element assignment, and DIM
+ // array declarations.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * parse_let - Parse and execute LET (or bare assignment).
- *
- * Syntax:
- * LET var = expr
- * var = expr (LET is optional in PATB)
- * LET @(expr) = expr
- * @(expr) = expr
- *
- * The 'has_let' parameter indicates whether the LET keyword was
- * already consumed by the caller.
- */
+ // parse_let - Parse and execute LET (or bare assignment).
+ //
+ // Syntax:
+ // LET var = expr
+ // var = expr (LET is optional in PATB)
+ // LET @(expr) = expr
+ // @(expr) = expr
+ //
+ // The 'has_let' parameter indicates whether the LET keyword was
+ // already consumed by the caller.
 void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  int has_let)
 {
- /* Check for @() array assignment */
+ // Check for @() array assignment
  if (lex->current.type == TOK_AT) {
  long index, value;
- lexer_next(lex); /* consume @ */
+ lexer_next(lex); // consume @
  if (!lexer_expect(lex, TOK_LPAREN)) return;
  index = parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
@@ -44,12 +52,12 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  return;
  }
 
- /* Standard variable assignment (or DIM array assignment) */
+ // Standard variable assignment (or DIM array assignment)
  if (lex->current.type == TOK_VARIABLE) {
  char var_name;
  var_name = lex->current.value.var_name;
- lexer_next(lex); /* consume variable */
- /* Check for typed var dot-access: V.field = expr */
+ lexer_next(lex); // consume variable
+ // Check for typed var dot-access: V.field = expr
  if (lex->current.type == TOK_DOT) {
  TypedVar *tv = runtime_find_typed_var(
   rt, &var_name, 1);
@@ -61,7 +69,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
   BValue bv;
   BValue *target = NULL;
 
-  lexer_next(lex); /* consume dot */
+  lexer_next(lex); // consume dot
   if (lex->current.type != TOK_NAMED_VAR &&
       lex->current.type != TOK_VARIABLE &&
       lex->current.type != TOK_KEYWORD) {
@@ -86,10 +94,10 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
   error_raise(ERR_WHAT, line_num);
   return;
   }
-  lexer_next(lex); /* consume field */
+  lexer_next(lex); // consume field
   target = &tv->fields[fi];
 
-  /* Nested type: walk into child TypedVar */
+  // Nested type: walk into child TypedVar
   while (td->fields[fi].nested_type_index >= 0
       && lex->current.type == TOK_DOT) {
    int ci = (int)bval_to_int(target);
@@ -99,7 +107,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
    }
    tv = &rt->typed_vars[ci];
    td = &rt->user_types[tv->type_index];
-   lexer_next(lex); /* consume dot */
+   lexer_next(lex); // consume dot
    if (lex->current.type == TOK_NAMED_VAR) {
     fname = lex->current.str_start;
     flen = lex->current.str_length;
@@ -118,7 +126,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
     error_raise(ERR_WHAT, line_num);
     return;
    }
-   lexer_next(lex); /* consume field */
+   lexer_next(lex); // consume field
    target = &tv->fields[fi];
   }
 
@@ -141,12 +149,12 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  }
  }
 
- /* Check for DIM array assignment: A(i) = expr */
+ // Check for DIM array assignment: A(i) = expr
  if (lex->current.type == TOK_LPAREN &&
  dialect_get_config()->has_dim_arrays) {
  int idx1, idx2 = 0, idx3 = 0;
  BValue val;
- lexer_next(lex); /* consume ( */
+ lexer_next(lex); // consume (
  idx1 = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
  if (lex->current.type == TOK_COMMA) {
@@ -162,17 +170,15 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  if (!lexer_expect(lex, TOK_RPAREN)) return;
  if (!lexer_expect(lex, TOK_EQUALS)) return;
 
- /*
-  * ASC() array unpack: X(n) = ASC(string$)
-  * For 1D arrays, unpack each character's ASCII
-  * value into consecutive slots starting at idx1.
-  * Truncates if string exceeds remaining slots.
-  */
+  // ASC() array unpack: X(n) = ASC(string$)
+  // For 1D arrays, unpack each character's ASCII
+  // value into consecutive slots starting at idx1.
+  // Truncates if string exceeds remaining slots.
  if (idx2 == 0 && idx3 == 0 &&
  lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_ASC) {
  BValue str_val;
- lexer_next(lex); /* consume ASC */
+ lexer_next(lex); // consume ASC
  if (!lexer_expect(lex, TOK_LPAREN)) return;
  str_val = parse_expression_bval(lex, rt,
  line_num);
@@ -212,7 +218,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
 
  if (!lexer_expect(lex, TOK_EQUALS)) return;
 
- /* Whole-record assignment: B = A (single-letter) */
+ // Whole-record assignment: B = A (single-letter)
  {
   TypedVar *lhs_tv = runtime_find_typed_var(
    rt, &var_name, 1);
@@ -250,11 +256,9 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  bv = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return;
 
- /*
- * FUNCTION / multi-line DEF FN return value:
- * if inside a function, check if var_name
- * matches the function name (or FN suffix).
- */
+ // FUNCTION / multi-line DEF FN return value:
+ // if inside a function, check if var_name
+ // matches the function name (or FN suffix).
  if (rt->in_sub_index >= 0 &&
  rt->in_sub_index < rt->sub_count &&
  rt->subs[rt->in_sub_index].is_function) {
@@ -264,13 +268,13 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  var_name <= 'z' ?
  var_name - 32 :
  var_name);
- /* Direct match: FUNCTION S -> S = v */
+ // Direct match: FUNCTION S -> S = v
  if (cur->name_len == 1 &&
  cur->name[0] == uc) {
  rt->fn_return_value = bv;
  return;
  }
- /* DEF FN match: FNS -> S = v */
+ // DEF FN match: FNS -> S = v
  if (cur->name_len == 3 &&
  cur->name[0] == 'F' &&
  cur->name[1] == 'N' &&
@@ -283,28 +287,26 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  runtime_set_var_bval(rt, var_name, bv);
  }
  } else if (lex->current.type == TOK_NAMED_VAR) {
- /* Extended variable assignment */
+ // Extended variable assignment
  const char *name = lex->current.str_start;
  int name_len = lex->current.str_length;
  BValue bv;
 
- lexer_next(lex); /* consume named variable */
+ lexer_next(lex); // consume named variable
 
- /*
- * Dot-access for scalar TypedVar: Player.HP = 100
- * Must check before DIM array check.
- */
+ // Dot-access for scalar TypedVar: Player.HP = 100
+ // Must check before DIM array check.
  if (lex->current.type == TOK_DOT) {
  TypedVar *tv = runtime_find_typed_var(rt, name, name_len);
  if (tv != NULL) {
   UserTypeDef *td = &rt->user_types[tv->type_index];
   BValue *target = NULL;
 
-  /* Walk dot chain for nested types */
+  // Walk dot chain for nested types
   while (lex->current.type == TOK_DOT) {
   const char *fname;
   int flen, fi;
-  lexer_next(lex); /* consume dot */
+  lexer_next(lex); // consume dot
   if (lex->current.type != TOK_NAMED_VAR &&
        lex->current.type != TOK_VARIABLE &&
        lex->current.type != TOK_KEYWORD) {
@@ -326,12 +328,12 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
    error_raise(ERR_WHAT, line_num);
    return;
   }
-  lexer_next(lex); /* consume field name */
+  lexer_next(lex); // consume field name
   target = &tv->fields[fi];
 
-   /* If this field is a nested type and more dots follow,
-    * walk into the child TypedVar. The parent field
-    * stores the child's typed_vars[] index. */
+   // If this field is a nested type and more dots follow,
+    // walk into the child TypedVar. The parent field
+    // stores the child's typed_vars[] index. 
    if (td->fields[fi].nested_type_index >= 0 &&
        lex->current.type == TOK_DOT) {
     int ci = (int)bval_to_int(target);
@@ -341,7 +343,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
     }
     tv = &rt->typed_vars[ci];
     td = &rt->user_types[tv->type_index];
-    target = NULL; /* will be set next iteration */
+    target = NULL; // will be set next iteration
     continue;
    }
   }
@@ -350,7 +352,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
   bv = parse_expression_bval(lex, rt, line_num);
   if (error_occurred()) return;
 
-  /* Store string values in string pool */
+  // Store string values in string pool
   if (bval_is_string(&bv) && bv.v.sval.data != NULL) {
   char *p = strpool_store(&rt->strpool,
    bv.v.sval.data, bv.v.sval.length);
@@ -362,21 +364,19 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  }
  }
 
- /*
- * Typed array dot-write: Enemies(1).HP = 100
- * Check if DIM array exists and is typed, then
- * handle subscript + dot + field.
- */
+ // Typed array dot-write: Enemies(1).HP = 100
+ // Check if DIM array exists and is typed, then
+ // handle subscript + dot + field.
  if (lex->current.type == TOK_LPAREN &&
      dialect_get_config()->has_dim_arrays) {
  DimArray *arr = runtime_find_dim(rt, name, name_len);
  if (arr != NULL && arr->type_index >= 0) {
-  /* Typed array: parse subscript, expect dot */
+  // Typed array: parse subscript, expect dot
   int idx1, idx2 = 0, idx3 = 0;
   int elem_idx;
   UserTypeDef *td;
 
-  lexer_next(lex); /* consume ( */
+  lexer_next(lex); // consume (
   idx1 = (int)parse_expression(lex, rt, line_num);
   if (error_occurred()) return;
   if (lex->current.type == TOK_COMMA) {
@@ -393,7 +393,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
 
   td = &rt->user_types[arr->type_index];
 
-  /* Calculate element index */
+  // Calculate element index
   elem_idx = idx1 - rt->option_base;
   if (arr->dims >= 2)
   elem_idx = elem_idx * arr->size[1]
@@ -407,7 +407,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
   int flen, fi;
   BValue *fval;
 
-  lexer_next(lex); /* consume dot */
+  lexer_next(lex); // consume dot
   if (lex->current.type != TOK_NAMED_VAR &&
        lex->current.type != TOK_VARIABLE &&
        lex->current.type != TOK_KEYWORD) {
@@ -429,13 +429,13 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
    error_raise(ERR_WHAT, line_num);
    return;
   }
-  lexer_next(lex); /* consume field name */
+  lexer_next(lex); // consume field name
 
   if (!lexer_expect(lex, TOK_EQUALS)) return;
   bv = parse_expression_bval(lex, rt, line_num);
   if (error_occurred()) return;
 
-  /* Store strings in pool */
+  // Store strings in pool
   if (bval_is_string(&bv) && bv.v.sval.data != NULL) {
    char *p = strpool_store(&rt->strpool,
    bv.v.sval.data, bv.v.sval.length);
@@ -451,17 +451,17 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
   *fval = bv;
   return;
   }
-  /* No dot: fall through to normal array assign below */
+  // No dot: fall through to normal array assign below
  }
  }
 
- /* Check for DIM array assignment: Arr(i) = expr */
+ // Check for DIM array assignment: Arr(i) = expr
  if (lex->current.type == TOK_LPAREN &&
  dialect_get_config()->has_dim_arrays &&
  runtime_find_dim(rt, name, name_len) != NULL) {
  int idx1, idx2 = 0, idx3 = 0;
  BValue dval;
- lexer_next(lex); /* consume ( */
+ lexer_next(lex); // consume (
  idx1 = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
  if (lex->current.type == TOK_COMMA) {
@@ -479,15 +479,13 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  if (!lexer_expect(lex, TOK_RPAREN)) return;
  if (!lexer_expect(lex, TOK_EQUALS)) return;
 
- /*
-  * ASC() array unpack: Arr(n) = ASC(string$)
-  * Same as single-letter path above.
-  */
+  // ASC() array unpack: Arr(n) = ASC(string$)
+  // Same as single-letter path above.
  if (idx2 == 0 && idx3 == 0 &&
  lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_ASC) {
  BValue str_val;
- lexer_next(lex); /* consume ASC */
+ lexer_next(lex); // consume ASC
  if (!lexer_expect(lex, TOK_LPAREN)) return;
  str_val = parse_expression_bval(lex, rt,
  line_num);
@@ -528,16 +526,14 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
 
  if (!lexer_expect(lex, TOK_EQUALS)) return;
 
- /*
- * Whole-record assignment: B = A
- * If LHS is a typed var and RHS is also a typed var
- * of the same type, copy all fields.
- */
+ // Whole-record assignment: B = A
+ // If LHS is a typed var and RHS is also a typed var
+ // of the same type, copy all fields.
  {
   TypedVar *lhs_tv = runtime_find_typed_var(
    rt, name, name_len);
   if (lhs_tv != NULL) {
-   /* RHS must be a typed var name */
+   // RHS must be a typed var name
    TypedVar *rhs_tv = NULL;
    if (lex->current.type == TOK_NAMED_VAR) {
     rhs_tv = runtime_find_typed_var(
@@ -558,7 +554,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
      error_raise(ERR_WHAT, line_num);
      return;
     }
-    lexer_next(lex); /* consume RHS name */
+    lexer_next(lex); // consume RHS name
     runtime_copy_typed_var(rt, lhs_tv,
      rhs_tv);
     return;
@@ -569,18 +565,16 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  bv = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return;
 
- /*
- * FUNCTION return value: if we are inside a
- * FUNCTION and the LHS matches the function name,
- * set fn_return_value instead of a variable.
- */
+ // FUNCTION return value: if we are inside a
+ // FUNCTION and the LHS matches the function name,
+ // set fn_return_value instead of a variable.
  if (rt->in_sub_index >= 0 &&
  rt->in_sub_index < rt->sub_count &&
  rt->subs[rt->in_sub_index].is_function) {
  SubDef *cur = &rt->subs[rt->in_sub_index];
  int fn_match = 0;
  if (cur->name_len == name_len) {
- /* Case-insensitive compare */
+ // Case-insensitive compare
  int j, match = 1;
  for (j = 0; j < name_len; j++) {
  char a = name[j];
@@ -593,11 +587,9 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  }
  if (match) fn_match = 1;
  }
- /*
- * Multi-line DEF FN: function name is
- * "FN<x>", but LET uses just "<x>".
- * Match suffix after "FN" prefix.
- */
+ // Multi-line DEF FN: function name is
+ // "FN<x>", but LET uses just "<x>".
+ // Match suffix after "FN" prefix.
  if (!fn_match && cur->name_len > 2 &&
  cur->name[0] == 'F' &&
  cur->name[1] == 'N' &&
@@ -623,11 +615,9 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  runtime_set_named_var_bval(rt, name, name_len, bv);
  } else if (lex->current.type == TOK_KEYWORD &&
  dialect_get_config()->has_extended_vars) {
- /*
-  * GW-BASIC keyword-as-variable: RUNNING, DELAY, etc.
-  * The lexer split it into a keyword prefix. Reconstruct
-  * the full variable name from keyword + trailing chars.
-  */
+  // GW-BASIC keyword-as-variable: RUNNING, DELAY, etc.
+  // The lexer split it into a keyword prefix. Reconstruct
+  // the full variable name from keyword + trailing chars.
  const char *kn = lexer_keyword_name(
   lex->current.value.keyword);
  if (kn != NULL) {
@@ -640,9 +630,9 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
   if (klen > MAX_VAR_NAME_LEN) klen = MAX_VAR_NAME_LEN;
   memcpy(fullname, kn, (size_t)klen);
 
-  lexer_next(lex); /* consume keyword */
+  lexer_next(lex); // consume keyword
 
-  /* Absorb trailing alpha/digit characters (NING from RUNNING) */
+  // Absorb trailing alpha/digit characters (NING from RUNNING)
   saved_pos = lex->pos;
   if (lex->current.type == TOK_NAMED_VAR &&
   lex->current.str_start != NULL) {
@@ -652,7 +642,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
    (size_t)tlen);
    flen += tlen;
   }
-  lexer_next(lex); /* consume trailing */
+  lexer_next(lex); // consume trailing
   }
   fullname[flen] = '\0';
 
@@ -664,15 +654,13 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  }
  error_raise(ERR_WHAT, line_num);
  } else if (lex->current.type == TOK_STRING_VAR) {
- /* String variable or string array assignment */
+ // String variable or string array assignment
  char var_name = lex->current.value.var_name;
  BValue val;
- lexer_next(lex); /* consume string variable */
+ lexer_next(lex); // consume string variable
 
- /*
- * Check for DIM string array assignment: A$(idx) = expr
- * The DIM name is "A$" (2 chars).
- */
+ // Check for DIM string array assignment: A$(idx) = expr
+ // The DIM name is "A$" (2 chars).
  if (lex->current.type == TOK_LPAREN &&
  dialect_get_config()->has_dim_arrays) {
  char sname[3];
@@ -681,7 +669,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  sname[2] = '\0';
  {
   int idx1, idx2 = 0, idx3 = 0;
-  lexer_next(lex); /* consume ( */
+  lexer_next(lex); // consume (
   val = parse_expression_bval(lex, rt, line_num);
   idx1 = (int)bval_to_subscript(&val);
   if (error_occurred()) return;
@@ -717,14 +705,13 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  error_raise(ERR_WHAT, line_num);
  }
 
- (void)has_let; /* suppress unused parameter warning */
+ (void)has_let; // suppress unused parameter warning
 }
 
-/* --- DIM Statement Handler ---
- * Syntax:
- * DIM name(size) - 1D array
- * DIM name(size1,size2) - 2D array
- */
+// --- DIM Statement Handler ---
+ // Syntax:
+ // DIM name(size) - 1D array
+ // DIM name(size1,size2) - 2D array
 void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
 {
  if (!dialect_get_config()->has_dim_arrays) {
@@ -732,16 +719,14 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /*
- * DIM supports comma-separated declarations:
- * DIM A(10), B(20), RM$(255)
- * DIM Player AS Enemy         (scalar typed var)
- * DIM Enemies(5) AS Enemy     (typed array)
- *
- * Each declaration is: name[(subscripts)] [AS TypeName]
- * Name can be TOK_VARIABLE (A), TOK_NAMED_VAR (RM, RM$),
- * or TOK_STRING_VAR (A$).
- */
+ // DIM supports comma-separated declarations:
+ // DIM A(10), B(20), RM$(255)
+ // DIM Player AS Enemy         (scalar typed var)
+ // DIM Enemies(5) AS Enemy     (typed array)
+ //
+ // Each declaration is: name[(subscripts)] [AS TypeName]
+ // Name can be TOK_VARIABLE (A), TOK_NAMED_VAR (RM, RM$),
+ // or TOK_STRING_VAR (A$).
  do {
  char name[MAX_VAR_NAME_LEN + 1];
  int name_len;
@@ -750,7 +735,7 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
  int dim3 = 0;
  int has_subscripts = 0;
 
- /* Get array name */
+ // Get array name
  if (lex->current.type == TOK_VARIABLE) {
  name[0] = lex->current.value.var_name;
  name[1] = '\0';
@@ -770,8 +755,8 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
  name[name_len] = '\0';
  lexer_next(lex);
  } else if (lex->current.type == TOK_KEYWORD) {
- /* Keyword as var name (e.g., DIM Pos where POS
-  * is a builtin function keyword) */
+ // Keyword as var name (e.g., DIM Pos where POS
+  // is a builtin function keyword) 
  const char *kn = lexer_keyword_name(
   lex->current.value.keyword);
  if (kn != NULL) {
@@ -790,18 +775,16 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /*
- * Check for AS TypeName (scalar typed var, no parens).
- * e.g. DIM Boss AS Enemy
- */
+ // Check for AS TypeName (scalar typed var, no parens).
+ // e.g. DIM Boss AS Enemy
  if (lex->current.type == TOK_KEYWORD &&
      lex->current.value.keyword == KW_AS) {
- /* Scalar typed variable: DIM Name AS TypeName */
+ // Scalar typed variable: DIM Name AS TypeName
  char tname[MAX_VAR_NAME_LEN + 1];
  int tlen;
  UserTypeDef *td;
 
- lexer_next(lex); /* consume AS */
+ lexer_next(lex); // consume AS
  if (lex->current.type != TOK_NAMED_VAR &&
        lex->current.type != TOK_VARIABLE &&
        lex->current.type != TOK_KEYWORD) {
@@ -822,7 +805,7 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
   tlen = 1;
  }
  tname[tlen] = '\0';
- lexer_next(lex); /* consume type name */
+ lexer_next(lex); // consume type name
 
  td = runtime_find_type(rt, tname, tlen);
  if (td == NULL) {
@@ -847,11 +830,11 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred()) return;
 
  if (lex->current.type == TOK_COMMA) {
- lexer_next(lex); /* consume comma */
+ lexer_next(lex); // consume comma
  dim2 = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
  if (lex->current.type == TOK_COMMA) {
- lexer_next(lex); /* consume comma */
+ lexer_next(lex); // consume comma
  dim3 = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
  }
@@ -859,11 +842,9 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
 
  if (!lexer_expect(lex, TOK_RPAREN)) return;
 
- /*
- * Check for AS TypeName after subscripts.
- * e.g. DIM Enemies(5) AS Enemy
- * Creates a typed array with field-stride storage.
- */
+ // Check for AS TypeName after subscripts.
+ // e.g. DIM Enemies(5) AS Enemy
+ // Creates a typed array with field-stride storage.
  if (has_subscripts &&
      lex->current.type == TOK_KEYWORD &&
      lex->current.value.keyword == KW_AS) {
@@ -874,7 +855,7 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
  int tidx, total, i;
  int copy_len;
 
- lexer_next(lex); /* consume AS */
+ lexer_next(lex); // consume AS
  if (lex->current.type != TOK_NAMED_VAR &&
        lex->current.type != TOK_VARIABLE &&
        lex->current.type != TOK_KEYWORD) {
@@ -895,7 +876,7 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
   tlen = 1;
  }
  tname[tlen] = '\0';
- lexer_next(lex); /* consume type name */
+ lexer_next(lex); // consume type name
 
  td = runtime_find_type(rt, tname, tlen);
  if (td == NULL) {
@@ -904,9 +885,8 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
  }
  tidx = (int)(td - rt->user_types);
 
- /* Calculate total BValues needed:
-  * num_elements * field_count
-  */
+ // Calculate total BValues needed:
+  // num_elements * field_count
  total = dim1 + 1 - rt->option_base;
  if (dim2 > 0) total *= (dim2 + 1 - rt->option_base);
  if (dim3 > 0) total *= (dim3 + 1 - rt->option_base);
@@ -918,7 +898,7 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  }
 
- /* Check for re-DIM */
+ // Check for re-DIM
  if (runtime_find_dim(rt, name, name_len) != NULL) {
   error_raise(ERR_HOW, line_num);
   return;
@@ -944,7 +924,7 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
  arr->total = total;
  arr->type_index = tidx;
 
- /* Initialize: string fields empty, numeric zero */
+ // Initialize: string fields empty, numeric zero
  for (i = 0; i < total; i++) {
   int fi = i % td->field_count;
   if (td->fields[fi].is_string)
@@ -962,9 +942,9 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred()) return;
 
 dim_next:
- /* Check for comma -> more arrays to DIM */
+ // Check for comma -> more arrays to DIM
  if (lex->current.type == TOK_COMMA) {
- lexer_next(lex); /* consume comma, loop */
+ lexer_next(lex); // consume comma, loop
  } else {
  break;
  }

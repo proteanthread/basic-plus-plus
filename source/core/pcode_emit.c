@@ -1,30 +1,28 @@
-/*
- * ---
- * BASIC++ Interpreter - pcode_emit.c
- * ---
- *
- * PCode bytecode emitter.
- *
- * PURPOSE:
- * Walks the AST (built by ast.c) and emits stack-based bytecode
- * instructions into a PCodeProgram. This is the "compiler" phase
- * of the bytecode pipeline.
- *
- * DESIGN:
- * - Expression emission is recursive: walk the tree, emit leaves
- *   first (post-order), then operators. Result is left on stack.
- * - Statement emission is linear: each statement type has a
- *   dedicated emitter function.
- * - Jump targets use backpatching: emit a placeholder JUMP(0),
- *   record its index, then patch it once the target is known.
- * - String constants are interned into the string pool.
- *
- * C89 COMPLIANCE:
- * - No VLAs, no C99 declarations-after-statements.
- * - All variables declared at block top.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - pcode_emit.c
+ // ---
+ //
+ // PCode bytecode emitter.
+ //
+ // PURPOSE:
+ // Walks the AST (built by ast.c) and emits stack-based bytecode
+ // instructions into a PCodeProgram. This is the "compiler" phase
+ // of the bytecode pipeline.
+ //
+ // DESIGN:
+ // - Expression emission is recursive: walk the tree, emit leaves
+ //   first (post-order), then operators. Result is left on stack.
+ // - Statement emission is linear: each statement type has a
+ //   dedicated emitter function.
+ // - Jump targets use backpatching: emit a placeholder JUMP(0),
+ //   record its index, then patch it once the target is known.
+ // - String constants are interned into the string pool.
+ //
+ // C89 COMPLIANCE:
+ // - No VLAs, no C99 declarations-after-statements.
+ // - All variables declared at block top.
+ //
+ // ---
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,12 +31,11 @@
 #include "errors.h"
 #include "config.h"
 
-/* ===================================================================
- * PCODE PROGRAM INITIALIZATION & MEMORY
- * ===================================================================
- */
+// ===================================================================
+ // PCODE PROGRAM INITIALIZATION & MEMORY
+ // ===================================================================
 
-/* Current line number for line_map tracking */
+// Current line number for line_map tracking
 static int s_current_line = 0;
 
 void pcode_emit_init(PCodeProgram *prog)
@@ -57,7 +54,7 @@ void pcode_emit_init(PCodeProgram *prog)
 
     if (!prog->instrs || !prog->line_map ||
         !prog->str_pool || !prog->on_tables) {
-        /* Fatal: cannot allocate bytecode buffers */
+        // Fatal: cannot allocate bytecode buffers
         printf("PCODE: Out of memory.\n");
     }
 }
@@ -73,10 +70,9 @@ static void pcode_ensure_capacity(PCodeProgram *prog, int needed)
         sizeof(int) * (size_t)prog->capacity);
 }
 
-/* ===================================================================
- * INSTRUCTION EMISSION HELPERS
- * ===================================================================
- */
+// ===================================================================
+ // INSTRUCTION EMISSION HELPERS
+ // ===================================================================
 
 int pcode_emit_instr(PCodeProgram *prog, PCodeOp op, PCodeOperand operand)
 {
@@ -134,16 +130,15 @@ void pcode_patch_offset(PCodeProgram *prog, int instr_idx, int target)
     }
 }
 
-/* ===================================================================
- * STRING CONSTANT POOL
- * ===================================================================
- */
+// ===================================================================
+ // STRING CONSTANT POOL
+ // ===================================================================
 
 int pcode_add_string(PCodeProgram *prog, const char *str, int len)
 {
     int idx;
 
-    /* Simple dedup: scan existing pool for match */
+    // Simple dedup: scan existing pool for match
     {
         int pos = 0;
         while (pos < prog->str_used) {
@@ -157,7 +152,7 @@ int pcode_add_string(PCodeProgram *prog, const char *str, int len)
         }
     }
 
-    /* Need len+1 bytes (string + NUL) */
+    // Need len+1 bytes (string + NUL)
     while (prog->str_used + len + 1 > prog->str_capacity) {
         prog->str_capacity *= 2;
         prog->str_pool = (char *)realloc(prog->str_pool,
@@ -183,20 +178,19 @@ const char *pcode_get_string(PCodeProgram *prog, int idx, int *out_len)
     return s;
 }
 
-/* ===================================================================
- * EXPRESSION EMITTER
- * ===================================================================
- *
- * Post-order traversal: emit children first, then operator.
- * The result is always left on top of the evaluation stack.
- */
+// ===================================================================
+ // EXPRESSION EMITTER
+ // ===================================================================
+ //
+ // Post-order traversal: emit children first, then operator.
+ // The result is always left on top of the evaluation stack.
 
 void pcode_emit_expr(PCodeProgram *prog, AstExpr *expr)
 {
     PCodeOperand o;
 
     if (!expr) {
-        /* NULL expression -> push 0 */
+        // NULL expression -> push 0
         pcode_emit_simple(prog, PCODE_PUSH_ZERO);
         return;
     }
@@ -242,20 +236,20 @@ void pcode_emit_expr(PCodeProgram *prog, AstExpr *expr)
     {
         memcpy(o.u.dim.name, expr->v.named.name,
                (size_t)(expr->v.named.name_len + 1));
-        o.u.dim.ndims = 0; /* not an array access */
+        o.u.dim.ndims = 0; // not an array access
         pcode_emit_instr(prog, PCODE_LOAD_NAMED, o);
         break;
     }
 
     case EXPR_ARRAY_AT:
-        /* Push index, then LOAD_AT */
+        // Push index, then LOAD_AT
         pcode_emit_expr(prog, expr->v.array_at.index);
         pcode_emit_simple(prog, PCODE_LOAD_AT);
         break;
 
     case EXPR_DIM_ACCESS:
     {
-        /* Push indices, then LOAD_DIM with name */
+        // Push indices, then LOAD_DIM with name
         pcode_emit_expr(prog, expr->v.dim_access.idx1);
         if (expr->v.dim_access.idx2) {
             pcode_emit_expr(prog, expr->v.dim_access.idx2);
@@ -270,7 +264,7 @@ void pcode_emit_expr(PCodeProgram *prog, AstExpr *expr)
     }
 
     case EXPR_BINOP:
-        /* Emit left, right, then operator */
+        // Emit left, right, then operator
         pcode_emit_expr(prog, expr->v.binop.left);
         pcode_emit_expr(prog, expr->v.binop.right);
         switch (expr->v.binop.op) {
@@ -302,7 +296,7 @@ void pcode_emit_expr(PCodeProgram *prog, AstExpr *expr)
 
     case EXPR_FUNC_CALL:
     {
-        /* Push arguments, then FUNC1/2/3 with func_id */
+        // Push arguments, then FUNC1/2/3 with func_id
         int argc = expr->v.func_call.arg_count;
         int fi;
         PCodeOp func_op;
@@ -312,15 +306,15 @@ void pcode_emit_expr(PCodeProgram *prog, AstExpr *expr)
             }
         }
         switch (argc) {
-        case 0:  func_op = PCODE_FUNC1; break; /* SIZE() etc */
+        case 0:  func_op = PCODE_FUNC1; break; // SIZE() etc
         case 1:  func_op = PCODE_FUNC1; break;
         case 2:  func_op = PCODE_FUNC2; break;
         case 3:  func_op = PCODE_FUNC3; break;
         default: func_op = PCODE_FUNC1; break;
         }
-        /* Encode function ID + FN letter for user funcs */
+        // Encode function ID + FN letter for user funcs
         if (expr->v.func_call.func == FUNC_FN_USER) {
-            /* Pack: high byte = fn_letter, low byte = FUNC_FN_USER */
+            // Pack: high byte = fn_letter, low byte = FUNC_FN_USER
             o.u.ival = (long)expr->v.func_call.func |
                        ((long)expr->v.func_call.fn_letter << 8);
         } else {
@@ -329,19 +323,18 @@ void pcode_emit_expr(PCodeProgram *prog, AstExpr *expr)
         pcode_emit_instr(prog, func_op, o);
         break;
     }
-    } /* end switch */
+    } // end switch
 }
 
-/* ===================================================================
- * STATEMENT EMITTER
- * ===================================================================
- */
+// ===================================================================
+ // STATEMENT EMITTER
+ // ===================================================================
 
 void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
                      RuntimeState *rt)
 {
     PCodeOperand o;
-    (void)rt; /* reserved for future use (DATA collection etc.) */
+    (void)rt; // reserved for future use (DATA collection etc.)
 
     if (!stmt) return;
 
@@ -350,11 +343,11 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
     switch (stmt->type) {
 
     case STMT_REM:
-        /* Comments are not emitted */
+        // Comments are not emitted
         break;
 
     case STMT_DATA:
-        /* DATA is collected separately, not executed */
+        // DATA is collected separately, not executed
         break;
 
     case STMT_PRINT:
@@ -363,8 +356,8 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
         for (pi = 0; pi < stmt->v.print.item_count; pi++) {
             AstPrintItem *item = &stmt->v.print.items[pi];
             if (item->is_hash_width) {
-                /* #width: emit expression but don't print it —
-                 * set print width. For now, pop and discard. */
+                // #width: emit expression but don't print it --
+                 // set print width. For now, pop and discard. 
                 if (item->expr) {
                     pcode_emit_expr(prog, item->expr);
                     pcode_emit_simple(prog, PCODE_POP);
@@ -373,7 +366,7 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
                 pcode_emit_expr(prog, item->expr);
                 pcode_emit_simple(prog, PCODE_PRINT_EXPR);
             } else {
-                /* NULL expr = tab advance (comma separator) */
+                // NULL expr = tab advance (comma separator)
                 pcode_emit_simple(prog, PCODE_PRINT_TAB);
             }
         }
@@ -403,7 +396,7 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
 
     case STMT_LET_DIM:
     {
-        /* Push indices, then value, then STORE_DIM */
+        // Push indices, then value, then STORE_DIM
         pcode_emit_expr(prog, stmt->v.let_dim.idx1);
         if (stmt->v.let_dim.idx2) {
             pcode_emit_expr(prog, stmt->v.let_dim.idx2);
@@ -421,32 +414,32 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
     case STMT_IF:
     {
         int jmp_false_idx;
-        /* Emit condition */
+        // Emit condition
         pcode_emit_expr(prog, stmt->v.if_stmt.condition);
-        /* Emit conditional jump (patch later) */
+        // Emit conditional jump (patch later)
         jmp_false_idx = pcode_emit_offset(prog, PCODE_JUMP_FALSE, 0);
-        /* Emit THEN body */
+        // Emit THEN body
         if (stmt->v.if_stmt.then_stmt) {
             pcode_emit_stmt(prog, stmt->v.if_stmt.then_stmt, rt);
         }
-        /* Patch jump to skip over THEN body */
+        // Patch jump to skip over THEN body
         pcode_patch_offset(prog, jmp_false_idx, prog->count);
         break;
     }
 
     case STMT_GOTO:
     {
-        /* GOTO: emit a JUMP. The target is a BASIC line number
-         * stored as an expression (usually a constant). We store
-         * the line number in the operand and resolve later. */
+        // GOTO: emit a JUMP. The target is a BASIC line number
+         // stored as an expression (usually a constant). We store
+         // the line number in the operand and resolve later. 
         if (stmt->v.goto_stmt.target &&
             stmt->v.goto_stmt.target->type == EXPR_INT_LIT) {
-            /* Store negative line number as marker for
-             * line-number-based jump (resolved after full compile) */
+            // Store negative line number as marker for
+             // line-number-based jump (resolved after full compile) 
             pcode_emit_int(prog, PCODE_JUMP,
                            -(stmt->v.goto_stmt.target->v.ival));
         } else {
-            /* Computed GOTO — emit expression, not supported yet */
+            // Computed GOTO -- emit expression, not supported yet
             pcode_emit_simple(prog, PCODE_HALT);
         }
         break;
@@ -470,9 +463,9 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
 
     case STMT_FOR:
     {
-        /* FOR var = init TO limit [STEP step]
-         * Emit: push init, push limit, push step, FOR_INIT(var)
-         * The FOR_CHECK and NEXT are emitted by NEXT. */
+        // FOR var = init TO limit [STEP step]
+         // Emit: push init, push limit, push step, FOR_INIT(var)
+         // The FOR_CHECK and NEXT are emitted by NEXT. 
         pcode_emit_expr(prog, stmt->v.for_stmt.init);
         pcode_emit_expr(prog, stmt->v.for_stmt.limit);
         if (stmt->v.for_stmt.step) {
@@ -482,17 +475,17 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
         }
         pcode_emit_int(prog, PCODE_FOR_INIT,
                        (long)(stmt->v.for_stmt.var_name - 'A'));
-        /* FOR_CHECK is emitted as a placeholder — the NEXT handler
-         * will patch back to here for the loop check. The FOR_CHECK
-         * instruction index is recorded by the compiler for pairing. */
+        // FOR_CHECK is emitted as a placeholder -- the NEXT handler
+         // will patch back to here for the loop check. The FOR_CHECK
+         // instruction index is recorded by the compiler for pairing. 
         pcode_emit_int(prog, PCODE_FOR_CHECK, 0);
         break;
     }
 
     case STMT_NEXT:
     {
-        /* NEXT var: increment and jump back to FOR_CHECK.
-         * The target is resolved by the compiler's loop stack. */
+        // NEXT var: increment and jump back to FOR_CHECK.
+         // The target is resolved by the compiler's loop stack. 
         pcode_emit_int(prog, PCODE_NEXT,
                        (long)(stmt->v.next.var_name - 'A'));
         break;
@@ -501,26 +494,26 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
     case STMT_INPUT:
     {
         int vi;
-        /* Emit prompt if present */
+        // Emit prompt if present
         if (stmt->v.input.prompt) {
             pcode_emit_expr(prog, stmt->v.input.prompt);
             pcode_emit_simple(prog, PCODE_INPUT_PROMPT);
         } else {
-            /* Default prompt: "? " */
+            // Default prompt: "? "
             int pidx = pcode_add_string(prog, "? ", 2);
             o.u.str.idx = pidx;
             o.u.str.len = 2;
             pcode_emit_instr(prog, PCODE_PUSH_STRING, o);
             pcode_emit_simple(prog, PCODE_INPUT_PROMPT);
         }
-        /* Input each variable */
+        // Input each variable
         for (vi = 0; vi < stmt->v.input.var_count; vi++) {
             if (stmt->v.input.var_types[vi] == 1) {
-                /* String variable */
+                // String variable
                 pcode_emit_int(prog, PCODE_INPUT_STRVAR,
                     (long)(stmt->v.input.var_names[vi] - 'A'));
             } else {
-                /* Numeric variable */
+                // Numeric variable
                 pcode_emit_int(prog, PCODE_INPUT_VAR,
                     (long)(stmt->v.input.var_names[vi] - 'A'));
             }
@@ -538,7 +531,7 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
 
     case STMT_DIM:
     {
-        /* DIM name(d1[,d2]) */
+        // DIM name(d1[,d2])
         pcode_emit_expr(prog, stmt->v.dim.dim1);
         if (stmt->v.dim.dim2) {
             pcode_emit_expr(prog, stmt->v.dim.dim2);
@@ -573,13 +566,13 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
 
     case STMT_WHILE:
     {
-        /* WHILE is handled specially: emit condition check.
-         * WEND will backpatch the jump back to here. */
-        /* WHILE uses left relop right format in the AST */
+        // WHILE is handled specially: emit condition check.
+         // WEND will backpatch the jump back to here. 
+        // WHILE uses left relop right format in the AST
         pcode_emit_expr(prog, stmt->v.while_stmt.left);
         if (stmt->v.while_stmt.right) {
             pcode_emit_expr(prog, stmt->v.while_stmt.right);
-            /* Emit comparison based on relop */
+            // Emit comparison based on relop
             switch (stmt->v.while_stmt.relop) {
             case TOK_EQUALS: pcode_emit_simple(prog, PCODE_CMP_EQ); break;
             case TOK_NOT_EQ: pcode_emit_simple(prog, PCODE_CMP_NE); break;
@@ -590,26 +583,26 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
             default:         pcode_emit_simple(prog, PCODE_CMP_NE); break;
             }
         }
-        /* JUMP_FALSE placeholder (patched by WEND) */
+        // JUMP_FALSE placeholder (patched by WEND)
         pcode_emit_offset(prog, PCODE_JUMP_FALSE, 0);
         break;
     }
 
     case STMT_WEND:
-        /* WEND: jump back to WHILE condition.
-         * Resolved by the compiler's loop stack. */
+        // WEND: jump back to WHILE condition.
+         // Resolved by the compiler's loop stack. 
         pcode_emit_offset(prog, PCODE_JUMP, 0);
         break;
 
     case STMT_DO:
-        /* DO [WHILE/UNTIL condition]: loop top marker.
-         * Condition check emitted here for pre-test loops. */
+        // DO [WHILE/UNTIL condition]: loop top marker.
+         // Condition check emitted here for pre-test loops. 
         if (stmt->v.do_stmt.has_condition == 1) {
-            /* DO WHILE: emit condition */
+            // DO WHILE: emit condition
             pcode_emit_expr(prog, stmt->v.do_stmt.left);
             if (stmt->v.do_stmt.right) {
                 pcode_emit_expr(prog, stmt->v.do_stmt.right);
-                /* Comparison for relop */
+                // Comparison for relop
                 switch (stmt->v.do_stmt.relop) {
                 case TOK_EQUALS: pcode_emit_simple(prog, PCODE_CMP_EQ); break;
                 case TOK_NOT_EQ: pcode_emit_simple(prog, PCODE_CMP_NE); break;
@@ -622,7 +615,7 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
             }
             pcode_emit_offset(prog, PCODE_JUMP_FALSE, 0);
         } else if (stmt->v.do_stmt.has_condition == 2) {
-            /* DO UNTIL: emit condition, jump if TRUE */
+            // DO UNTIL: emit condition, jump if TRUE
             pcode_emit_expr(prog, stmt->v.do_stmt.left);
             if (stmt->v.do_stmt.right) {
                 pcode_emit_expr(prog, stmt->v.do_stmt.right);
@@ -638,14 +631,14 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
             }
             pcode_emit_offset(prog, PCODE_JUMP_TRUE, 0);
         }
-        /* DO (infinite): no condition, no jump */
+        // DO (infinite): no condition, no jump
         break;
 
     case STMT_LOOP:
-        /* LOOP: jump back to DO. Resolved by compiler loop stack.
-         * LOOP WHILE/UNTIL conditions handled similarly. */
+        // LOOP: jump back to DO. Resolved by compiler loop stack.
+         // LOOP WHILE/UNTIL conditions handled similarly. 
         if (stmt->v.loop_stmt.has_condition == 1) {
-            /* LOOP WHILE */
+            // LOOP WHILE
             pcode_emit_expr(prog, stmt->v.loop_stmt.left);
             if (stmt->v.loop_stmt.right) {
                 pcode_emit_expr(prog, stmt->v.loop_stmt.right);
@@ -659,10 +652,10 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
                 default:         pcode_emit_simple(prog, PCODE_CMP_NE); break;
                 }
             }
-            /* Jump back to loop top if TRUE */
+            // Jump back to loop top if TRUE
             pcode_emit_offset(prog, PCODE_JUMP_TRUE, 0);
         } else if (stmt->v.loop_stmt.has_condition == 2) {
-            /* LOOP UNTIL */
+            // LOOP UNTIL
             pcode_emit_expr(prog, stmt->v.loop_stmt.left);
             if (stmt->v.loop_stmt.right) {
                 pcode_emit_expr(prog, stmt->v.loop_stmt.right);
@@ -676,10 +669,10 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
                 default:         pcode_emit_simple(prog, PCODE_CMP_NE); break;
                 }
             }
-            /* Jump back if FALSE (condition NOT met yet) */
+            // Jump back if FALSE (condition NOT met yet)
             pcode_emit_offset(prog, PCODE_JUMP_FALSE, 0);
         } else {
-            /* LOOP (infinite) - unconditional jump back */
+            // LOOP (infinite) - unconditional jump back
             pcode_emit_offset(prog, PCODE_JUMP, 0);
         }
         break;
@@ -687,23 +680,23 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
     case STMT_ON_GOTO:
     {
         int ti;
-        /* ON expr GOTO line1, line2, ... */
+        // ON expr GOTO line1, line2, ...
         pcode_emit_expr(prog, stmt->v.on_goto.selector);
-        /* Store jump table base in on_tables */
+        // Store jump table base in on_tables
         o.u.ival = (long)prog->on_table_count;
         pcode_emit_instr(prog, PCODE_ON_GOTO, o);
-        /* Append target line numbers to on_tables (resolved later) */
+        // Append target line numbers to on_tables (resolved later)
         for (ti = 0; ti < stmt->v.on_goto.target_count; ti++) {
             if (prog->on_table_count >= prog->on_table_capacity) {
                 prog->on_table_capacity *= 2;
                 prog->on_tables = (int *)realloc(prog->on_tables,
                     sizeof(int) * (size_t)prog->on_table_capacity);
             }
-            /* Store as negative line number for later resolution */
+            // Store as negative line number for later resolution
             prog->on_tables[prog->on_table_count++] =
                 -(stmt->v.on_goto.targets[ti]);
         }
-        /* Sentinel: 0 marks end of table */
+        // Sentinel: 0 marks end of table
         if (prog->on_table_count >= prog->on_table_capacity) {
             prog->on_table_capacity *= 2;
             prog->on_tables = (int *)realloc(prog->on_tables,
@@ -714,12 +707,12 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
     }
 
     case STMT_DEF_FN:
-        /* DEF FN is handled at parse time, not in bytecode */
+        // DEF FN is handled at parse time, not in bytecode
         break;
 
-    } /* end switch */
+    } // end switch
 
-    /* Emit chain (multi-statement lines: 10 PRINT "A": PRINT "B") */
+    // Emit chain (multi-statement lines: 10 PRINT "A": PRINT "B")
     if (stmt->next) {
         pcode_emit_stmt(prog, stmt->next, rt);
     }

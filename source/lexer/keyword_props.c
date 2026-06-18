@@ -1,51 +1,51 @@
-/*
- * ---
- * BASIC++ Interpreter - keyword_props.c
- * ---
- *
- * Per-keyword property table implementation.
- *
- * Each keyword has up to MAX_KW_PROPS named properties.
- * Properties are stored as string key-value pairs. The
- * parser handlers call keyword_prop_get / keyword_prop_is_on
- * to check active properties and modify their behavior.
- *
- * Supported properties by keyword:
- *
- * PRINT:
- *   UPPERCASE   ON/OFF  - force output to uppercase
- *   LOWERCASE   ON/OFF  - force output to lowercase
- *   PREFIX      string  - prepend to every PRINT output
- *   SUFFIX      string  - append to every PRINT output
- *   NEWLINE     ON/OFF  - control trailing newline (default ON)
- *   ZONE        number  - print zone width (default 14)
- *
- * INPUT:
- *   PROMPT      string  - custom default prompt
- *   UPPERCASE   ON/OFF  - force input to uppercase
- *
- * GOTO/GOSUB:
- *   STRICT      ON/OFF  - error if target line not found
- *   BOUNDS      "lo-hi" - restrict jump range
- *
- * FOR:
- *   MAXITER     number  - maximum iterations (loop guard)
- *
- * LIST:
- *   NUMBERS     ON/OFF  - show/hide line numbers
- *
- * RUN:
- *   TRACE       ON/OFF  - auto-enable TRON
- *
- * ---
- */
+// ---
+// BASIC++ Interpreter - keyword_props.c
+// ---
+//
+// Per-keyword property table implementation.
+//
+// PURPOSE:
+//   Each keyword can have up to MAX_KW_PROPS named properties
+//   (key-value string pairs). Parser handlers check properties
+//   via keyword_prop_get() / keyword_prop_is_on() to modify
+//   their behavior at runtime.
+//
+//   Example BASIC usage:
+//     KEYWORD PRINT UPPERCASE ON
+//     KEYWORD FOR MAXITER 10000
+//     KEYWORD INPUT PROMPT "Enter> "
+//
+// SUPPORTED PROPERTIES BY KEYWORD:
+//   PRINT:  UPPERCASE, LOWERCASE, PREFIX, SUFFIX, NEWLINE, ZONE
+//   INPUT:  PROMPT, UPPERCASE
+//   GOTO:   STRICT, BOUNDS
+//   GOSUB:  STRICT, BOUNDS
+//   FOR:    MAXITER
+//   LIST:   NUMBERS
+//   RUN:    TRACE
+//   REM:    VISIBLE
+//   LET:    STRICT, READONLY
+//
+// HOW TO EXTEND:
+//   Adding properties to a new keyword:
+//   1. Add a case to keyword_prop_describe() below.
+//   2. In the keyword's parser handler, check the property:
+//        if (keyword_prop_is_on(KW_YOURNAME, "MYPROP")) { ... }
+//   No other changes needed -- the table is fully generic.
+//
+// FINE-TUNING:
+//   MAX_KW_PROPS (8): max properties per keyword.
+//   MAX_PROP_NAME (32): max property name length.
+//   MAX_PROP_VALUE (64): max property value length.
+//
+// ---
 
 #include <stdio.h>
 #include <string.h>
 #include "keyword_props.h"
 #include "lexer.h"
 
-/* --- Property Entry --- */
+// --- Property Entry ---
 typedef struct {
  char name[MAX_PROP_NAME];
  char value[MAX_PROP_VALUE];
@@ -56,10 +56,10 @@ typedef struct {
  int count;
 } KwPropSet;
 
-/* --- Global Property Table --- */
+// --- Global Property Table ---
 static KwPropSet kw_props[KW_COUNT];
 
-/* --- Case-insensitive string compare --- */
+// --- Case-insensitive string compare ---
 static int prop_eq(const char *a, const char *b)
 {
  while (*a && *b) {
@@ -72,7 +72,7 @@ static int prop_eq(const char *a, const char *b)
  return (*a == '\0' && *b == '\0');
 }
 
-/* --- Init / Reset --- */
+// --- Init / Reset ---
 
 void keyword_props_init(void)
 {
@@ -90,7 +90,7 @@ void keyword_props_reset(void)
  printf("All keyword properties cleared.\n");
 }
 
-/* --- Set / Get / Remove --- */
+// --- Set / Get / Remove ---
 
 int keyword_prop_set(KeywordId kw, const char *name,
  const char *value)
@@ -104,7 +104,7 @@ int keyword_prop_set(KeywordId kw, const char *name,
 
  ps = &kw_props[kw];
 
- /* Update existing */
+ // Update existing
  for (i = 0; i < ps->count; i++) {
  if (prop_eq(ps->props[i].name, name)) {
  vlen = (int)strlen(value);
@@ -117,7 +117,7 @@ int keyword_prop_set(KeywordId kw, const char *name,
  }
  }
 
- /* Add new */
+ // Add new
  if (ps->count >= MAX_KW_PROPS)
  return -1;
 
@@ -127,7 +127,7 @@ int keyword_prop_set(KeywordId kw, const char *name,
  memcpy(ps->props[ps->count].name,
  name, (size_t)nlen);
  ps->props[ps->count].name[nlen] = '\0';
- /* Uppercase the name */
+ // Uppercase the name
  for (i = 0; i < nlen; i++) {
  char c = ps->props[ps->count].name[i];
  if (c >= 'a' && c <= 'z')
@@ -189,7 +189,7 @@ int keyword_prop_get_int(KeywordId kw, const char *name,
  if (*p == '-') { neg = 1; p++; }
  while (*p >= '0' && *p <= '9') {
  digit = *p - '0';
- /* Overflow guard: 2147483647 / 10 = 214748364 */
+ // Overflow guard: 2147483647 / 10 = 214748364
  if (result > 214748364 ||
   (result == 214748364 && digit > 7))
   return default_val;
@@ -214,7 +214,7 @@ int keyword_prop_remove(KeywordId kw, const char *name)
 
  for (i = 0; i < ps->count; i++) {
  if (prop_eq(ps->props[i].name, name)) {
- /* Shift remaining */
+ // Shift remaining
  int j;
  for (j = i; j < ps->count - 1; j++)
  ps->props[j] = ps->props[j + 1];
@@ -238,7 +238,7 @@ int keyword_prop_count(KeywordId kw)
  return kw_props[kw].count;
 }
 
-/* --- Introspection --- */
+// --- Introspection ---
 
 void keyword_prop_list(KeywordId kw)
 {
@@ -278,7 +278,7 @@ void keyword_prop_list_all(void)
  printf("  (none)\n");
 }
 
-/* --- Built-in Documentation --- */
+// --- Built-in Documentation ---
 
 void keyword_prop_describe(KeywordId kw)
 {
@@ -346,7 +346,7 @@ void keyword_prop_describe(KeywordId kw)
  break;
  default:
  printf("  (no documented properties"
- " — custom properties allowed)\n");
+ " -- custom properties allowed)\n");
  break;
  }
 }

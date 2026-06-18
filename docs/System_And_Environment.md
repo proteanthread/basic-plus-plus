@@ -1,6 +1,39 @@
 # BASIC++ System and Environment
 
-**Version 2.0.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- Exiting the Interpreter
+  - BYE / SYSTEM — Exit BASIC++
+- Dialect Management
+  - DIALECT — Switch BASIC Dialect
+  - DIALECT$ — Read Current Dialect Name
+- Directory and File Management
+- Shell and OS Commands
+  - SHELL — Execute OS Command
+  - SHELL$ — Capture Command Output
+  - EXEC — Fire-and-Forget Command
+  - ERRORLEVEL — Last Shell Exit Code
+- Environment Variables
+  - ENVIRON$ — Read Environment Variable
+  - ENVIRON — Set Environment Variable
+- Time and Date
+- Program Chaining
+  - CHAIN — Load and Run Another Program
+  - COMMON — Share Variables with CHAIN
+- Security Levels
+- SLEEP — Pause Execution
+- Module Management
+- System Information
+  - INFO — Display System State
+  - VER — Display Version
+  - SYSTEM — Query Platform Info
+
+---
 
 This guide covers all system, environment, and OS interaction commands in BASIC++.
 

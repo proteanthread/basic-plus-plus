@@ -1,24 +1,34 @@
-/*
- * ---
- * BASIC++ Interpreter - ext_func.c
- * ---
- *
- * External Function loader implementation.
- *
- * IMPLEMENTATION:
- * Static table of MAX_EXT_FUNCS slots. Each slot stores
- * a BppExtFunc descriptor and a native library handle.
- * Functions are loaded from .dll/.so files and registered
- * in the function registry (funcreg).
- *
- * Hot-reload is supported: loading a function with the
- * same name as an existing one replaces it. Best practice
- * is to UNLOAD first.
- *
- * C89/C90 COMPLIANT.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - ext_func.c
+ // ---
+ //
+ // External Function loader implementation.
+ //
+ // IMPLEMENTATION:
+ // Static table of MAX_EXT_FUNCS slots. Each slot stores
+ // a BppExtFunc descriptor and a native library handle.
+ // Functions are loaded from .dll/.so files and registered
+ // in the function registry (funcreg).
+ //
+ // Hot-reload is supported: loading a function with the
+ // same name as an existing one replaces it. Best practice
+ // is to UNLOAD first.
+ //
+ // C89/C90 COMPLIANT.
+ //
+//
+// HOW TO EXTEND:
+//   To add new functions to this module:
+//   1. Add the function implementation in this file.
+//   2. Register it in the module's init function using
+//      module_register_function().
+//   3. Update the module's header with the new declaration.
+//
+// TROUBLESHOOTING:
+//   - Module not loading: check module_init() registration.
+//   - Function not found: verify registration name matches
+//     the BASIC keyword exactly (case-insensitive).
+ // ---
 
 #include <stdio.h>
 #include <string.h>
@@ -29,7 +39,7 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
-#define TokenType WinTokenType  /* avoid winnt.h collision */
+#define TokenType WinTokenType // avoid winnt.h collision
 #include <windows.h>
 #undef TokenType
 #elif !defined(BPP_FREEDOS) && !defined(BPP_EMBEDDED)
@@ -37,18 +47,17 @@
 #include <stdbool.h>
 #endif
 
-/* --- Slot ---
- */
+// --- Slot ---
 typedef struct ExtFuncSlot {
-    BppExtFunc   desc;       /* function descriptor       */
-    void        *handle;     /* native library handle     */
-    int          occupied;   /* 1 = slot used             */
+    BppExtFunc   desc; // function descriptor
+    void        *handle; // native library handle
+    int          occupied; // 1 = slot used
 } ExtFuncSlot;
 
 static ExtFuncSlot func_table[MAX_EXT_FUNCS];
 static int func_count = 0;
 
-/* --- Case-insensitive compare (C89) --- */
+// --- Case-insensitive compare (C89) ---
 static int ext_str_iequal(const char *a, const char *b)
 {
     if (!a || !b) return 0;
@@ -61,24 +70,23 @@ static int ext_str_iequal(const char *a, const char *b)
     return (*a == '\0' && *b == '\0');
 }
 
-/* --- ext_func_init --- */
+// --- ext_func_init ---
 void ext_func_init(void)
 {
     memset(func_table, 0, sizeof(func_table));
     func_count = 0;
 }
 
-/* --- ext_func_load ---
- * Load an external function from a .dll/.so.
- *
- * Steps:
- *   1. Security check (SECOP_EXT_LOAD)
- *   2. Path validation
- *   3. LoadLibrary / dlopen
- *   4. Resolve bpp_func_register symbol
- *   5. Validate descriptor and pinned level
- *   6. Register in funcreg (hot-reload if exists)
- */
+// --- ext_func_load ---
+ // Load an external function from a .dll/.so.
+ //
+ // Steps:
+ //   1. Security check (SECOP_EXT_LOAD)
+ //   2. Path validation
+ //   3. LoadLibrary / dlopen
+ //   4. Resolve bpp_func_register symbol
+ //   5. Validate descriptor and pinned level
+ //   6. Register in funcreg (hot-reload if exists)
 int ext_func_load(const char *path, void *rt)
 {
 #if defined(BPP_FREEDOS) || defined(BPP_EMBEDDED)
@@ -94,13 +102,13 @@ int ext_func_load(const char *path, void *rt)
     int slot;
     (void)rt;
 
-    /* Security gate */
+    // Security gate
     if (security_check(SECOP_EXT_LOAD, 0) != 0)
         return -1;
     if (security_check_path(path, 0) != 0)
         return -1;
 
-    /* Find a free slot (or existing for hot-reload) */
+    // Find a free slot (or existing for hot-reload)
     slot = -1;
     for (int i = 0; i < func_count; i++) {
         if (!func_table[i].occupied) {
@@ -115,7 +123,7 @@ int ext_func_load(const char *path, void *rt)
         slot = func_count;
     }
 
-    /* Load the library */
+    // Load the library
     {
 #ifdef _WIN32
         HMODULE handle = LoadLibraryA(path);
@@ -147,7 +155,7 @@ int ext_func_load(const char *path, void *rt)
         }
 #endif
 
-        /* Get the descriptor */
+        // Get the descriptor
         desc = reg_fn();
         if (!desc || !desc->name || !desc->handler) {
             printf("Invalid function descriptor "
@@ -160,7 +168,7 @@ int ext_func_load(const char *path, void *rt)
             return -1;
         }
 
-        /* Check security pinning */
+        // Check security pinning
         if (!security_check_pinned_level(
                 desc->required_level)) {
             printf("Function '%s' requires security "
@@ -178,13 +186,13 @@ int ext_func_load(const char *path, void *rt)
             return -1;
         }
 
-        /* Hot-reload: check if name already loaded */
+        // Hot-reload: check if name already loaded
         for (int i = 0; i < func_count; i++) {
             if (func_table[i].occupied &&
                 ext_str_iequal(
                     func_table[i].desc.name,
                     desc->name)) {
-                /* Replace existing */
+                // Replace existing
 #ifdef _WIN32
                 if (func_table[i].handle)
                     FreeLibrary(
@@ -198,14 +206,14 @@ int ext_func_load(const char *path, void *rt)
             }
         }
 
-        /* Store in table */
+        // Store in table
         func_table[slot].desc = *desc;
         func_table[slot].handle = handle;
         func_table[slot].occupied = 1;
         if (slot >= func_count)
             func_count = slot + 1;
 
-        /* Register in funcreg */
+        // Register in funcreg
         memset(&entry, 0, sizeof(entry));
         entry.name = desc->name;
         entry.keyword = KW_COUNT;
@@ -223,10 +231,10 @@ int ext_func_load(const char *path, void *rt)
                desc->name);
         return 0;
     }
-#endif /* !(BPP_FREEDOS || BPP_EMBEDDED) */
+#endif // !(BPP_FREEDOS || BPP_EMBEDDED)
 }
 
-/* --- ext_func_unload --- */
+// --- ext_func_unload ---
 int ext_func_unload(const char *name)
 {
     for (int i = 0; i < func_count; i++) {
@@ -243,9 +251,9 @@ int ext_func_unload(const char *name)
                 dlclose(func_table[i].handle);
 #endif
 #endif
-            /* Note: funcreg doesn't support unregister,
-             * but the handler pointer is now invalid.
-             * The slot is cleared so find won't match. */
+            // Note: funcreg doesn't support unregister,
+             // but the handler pointer is now invalid.
+             // The slot is cleared so find won't match. 
             func_table[i].occupied = 0;
             func_table[i].handle = NULL;
             printf("Unloaded function: %s\n", name);
@@ -256,7 +264,7 @@ int ext_func_unload(const char *name)
     return -1;
 }
 
-/* --- ext_func_find --- */
+// --- ext_func_find ---
 const BppExtFunc *ext_func_find(const char *name)
 {
     for (int i = 0; i < func_count; i++) {
@@ -269,7 +277,7 @@ const BppExtFunc *ext_func_find(const char *name)
     return NULL;
 }
 
-/* --- ext_func_list --- */
+// --- ext_func_list ---
 void ext_func_list(void)
 {
     bool found = false;
@@ -290,7 +298,7 @@ void ext_func_list(void)
     if (!found) printf("  (none)\n");
 }
 
-/* --- ext_func_count --- */
+// --- ext_func_count ---
 int ext_func_count(void)
 {
     int n = 0;

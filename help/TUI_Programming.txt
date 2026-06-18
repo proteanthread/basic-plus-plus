@@ -2,8 +2,73 @@
  BASIC++ TUI (Text User Interface) Programming Guide
 =========================================================
 
+
+=====================================================================
+TABLE OF CONTENTS
+=====================================================================
+
+  1. Introduction
+  2. The VCON Buffer
+  3. Cursor Control (CURSOR ON/OFF)
+  4. Double Buffering (SCREEN LOCK/UNLOCK)
+  5. Scroll Regions (VIEW PRINT)
+  6. Color Commands (COLOR, INK, PAPER)
+  7. Arrow Key & Special Key Input
+  8. Mouse Support (MOUSE ON/OFF, MOUSE())
+  9. Screen Save/Restore (SCREENSAVE/SCREENRESTORE)
+  10. Box Drawing Helpers
+  11. Windowed Dialogs
+  12. Pull-Down Menus
+  13. Multi-Window Desktop
+  14. Text Selection & Clipboard
+  15. Full-Screen Text Editor
+  16. Dual-Pane File Manager
+  17. Complete TUI Desktop
+  18. Tips & Best Practices
+  1. Introduction
+  2. The VCON Buffer
+  3. Cursor Control (CURSOR ON/OFF)
+  4. Double Buffering (SCREEN LOCK/UNLOCK)
+  1. Hides cursor temporarily
+  2. Iterates all 25 rows, emitting ANSI position
+  3. Restores cursor position and visibility
+  4. Flushes stdout in one write
+  5. Scroll Regions (VIEW PRINT)
+  6. Color Commands (COLOR, INK, PAPER)
+  7. Arrow Key & Special Key Input
+  8. Mouse Support (MOUSE ON/OFF, MOUSE())
+  9. Screen Save/Restore (SCREENSAVE/SCREENRESTORE)
+  10. Box Drawing Helpers
+  11. Windowed Dialogs
+  1. Saves the screen area behind it
+  2. Draws a bordered box with title
+  3. Captures input
+  4. Restores the background on close
+  12. Pull-Down Menus
+  1. A menu bar at row 1
+  2. Drop-down panels that appear on activation
+  3. Arrow key navigation
+  4. ESC to dismiss
+  13. Multi-Window Desktop
+  14. Text Selection & Clipboard
+  15. Full-Screen Text Editor
+  16. Dual-Pane File Manager
+  17. Complete TUI Desktop
+  18. Tips & Best Practices
+  1. ALWAYS restore cursor visibility before exiting:
+  2. ALWAYS disable mouse tracking before exiting:
+  3. Use SCREEN LOCK/UNLOCK for any full-screen redraw
+  4. Use SCREENSAVE/SCREENRESTORE for popups and dialogs
+  5. Use VIEW PRINT to protect title bars and status bars
+  6. Use COLOR 0, 7 for menu bars (black on white),
+  7. For box drawing, define constants at the top:
+  8. Check MOUSE(3) before using mouse functions to
+  9. When building complex TUI apps, use subroutines
+  10. Test your TUI on both Windows Terminal and a Linux
+
+
  Contents
- --------
+---------------------------------------------------------------------
  1. Introduction
  2. The VCON Buffer
  3. Cursor Control (CURSOR ON/OFF)
@@ -58,8 +123,8 @@ on the terminal. Every character and its color attribute
 are stored in this buffer.
 
 Key properties:
- - Characters: rt->vcon_chars[25][80]
- - Colors:     rt->vcon_colors[25][80]
+ - Characters: rt->vcon_chars25
+ - Colors:     rt->vcon_colors25
  - Color byte: (background << 4) | foreground
    (GW-BASIC 16-color palette, 0-15)
 
@@ -385,29 +450,29 @@ CHR$():
 
   Single-line box:
   +----+----+------+-------+
-  | Char | Code | CHR$() | Name    |
+  Char                Code                CHR$()              Name
   +------+------+--------+---------+
-  |  +   | 218  | CHR$(218) | Top-left     |
-  |  +   | 191  | CHR$(191) | Top-right    |
-  |  +   | 192  | CHR$(192) | Bot-left     |
-  |  +   | 217  | CHR$(217) | Bot-right    |
-  |  -   | 196  | CHR$(196) | Horizontal   |
-  |  |   | 179  | CHR$(179) | Vertical     |
-  |  +   | 195  | CHR$(195) | Left-T       |
-  |  +   | 180  | CHR$(180) | Right-T      |
-  |  +   | 194  | CHR$(194) | Top-T        |
-  |  +   | 193  | CHR$(193) | Bot-T        |
-  |  +   | 197  | CHR$(197) | Cross        |
+  +                   218                 CHR$(218)           Top-left
+  +                   191                 CHR$(191)           Top-right
+  +                   192                 CHR$(192)           Bot-left
+  +                   217                 CHR$(217)           Bot-right
+  ----------------------------------------------------------------------
+  ----------------------------------------------------------------------
+  +                   195                 CHR$(195)           Left-T
+  +                   180                 CHR$(180)           Right-T
+  +                   194                 CHR$(194)           Top-T
+  +                   193                 CHR$(193)           Bot-T
+  +                   197                 CHR$(197)           Cross
   +------+------+--------+---------+
 
   Double-line box:
   +------+------+--------+---------+
-  |  +   | 201  | CHR$(201) | Top-left     |
-  |  +   | 187  | CHR$(187) | Top-right    |
-  |  +   | 200  | CHR$(200) | Bot-left     |
-  |  +   | 188  | CHR$(188) | Bot-right    |
-  |  =   | 205  | CHR$(205) | Horizontal   |
-  |  |   | 186  | CHR$(186) | Vertical     |
+  +                   201                 CHR$(201)           Top-left
+  +                   187                 CHR$(187)           Top-right
+  +                   200                 CHR$(200)           Bot-left
+  +                   188                 CHR$(188)           Bot-right
+  =                   205                 CHR$(205)           Horizontal
+  ----------------------------------------------------------------------
   +------+------+--------+---------+
 
 Subroutine to draw a box (single-line):

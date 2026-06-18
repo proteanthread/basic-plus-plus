@@ -1,6 +1,6 @@
 CREATING YOUR OWN DIALECTS
 ===========================
-Version 1.5.0
+Version 4.0.1
 
 BASIC++ has a configurable dialect engine that controls which
 keywords are accepted, how variables work, what syntax rules

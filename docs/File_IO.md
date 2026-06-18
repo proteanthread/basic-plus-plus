@@ -1,6 +1,6 @@
 FILE I/O IN BASIC++
 ===================
-Version 1.5.0
+Version 4.0.1
 
 BASIC++ provides complete file I/O with three modes: sequential,
 random-access, and binary.  Up to 8 files can be open at once.

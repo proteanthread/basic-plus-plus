@@ -2,7 +2,7 @@ BASIC++ Internals and Architecture
 ====================================
 A Technical Guide to the Interpreter's Design
 
-Version 1.5.0
+Version 4.0.1
 
 TABLE OF CONTENTS
 -----------------
@@ -47,7 +47,7 @@ interpreter.  It is written for programmers who want to:
   * Debug interpreter behavior at the C level
   * Write dialect or module plug-ins
 
-BASIC++ is written in strict ANSI C89/C90 with zero external
+BASIC++ is written in portable C17 with zero external
 dependencies (not even POSIX).  The entire interpreter compiles to
 a single executable of approximately 346 KB.
 

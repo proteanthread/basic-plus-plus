@@ -1,6 +1,6 @@
 FILE I/O IN BASIC++
 ===================
-Version 1.5.0
+Version 4.0.1
 
 BASIC++ provides complete file I/O with three modes: sequential,
 random-access, and binary.  Up to 8 files can be open at once.
@@ -597,16 +597,16 @@ chaos of legacy device access.  It provides a single,
 uniform interface for ALL I/O:
 
   struct VDev {
-      const char *name;          /* "CON:", "SER:", etc. */
-      int  (*dev_putc)(VDev*, int);     /* write char */
-      int  (*dev_puts)(VDev*, const char*); /* write string */
-      int  (*dev_getc)(VDev*);          /* read char */
-      int  (*dev_gets)(VDev*, char*, int); /* read line */
-      int  (*dev_flush)(VDev*);         /* flush buffer */
-      int  (*dev_cls)(VDev*);           /* clear/reset */
-      int  (*dev_open)(VDev*, const char*, const char*);
-      int  (*dev_close)(VDev*);         /* close */
-      void *user_data;                  /* device state */
+      const char name;          / "CON:", "SER:", etc. */
+      int  (dev_putc)(VDev, int);     /* write char */
+      int  (dev_puts)(VDev, const char); / write string */
+      int  (dev_getc)(VDev);          /* read char */
+      int  (dev_gets)(VDev, char, int); / read line */
+      int  (dev_flush)(VDev);         /* flush buffer */
+      int  (dev_cls)(VDev);           /* clear/reset */
+      int  (dev_open)(VDev, const char, const char);
+      int  (dev_close)(VDev);         /* close */
+      void user_data;                  / device state */
   };
 
 16 device slots:
@@ -807,7 +807,7 @@ BASIC++ routes printer access through a VDev.  You can:
   #if defined(_WIN32)
       /* Windows: open the default printer spool file */
       printer_fp = fopen("PRNTOUT.TXT", "a");
-  #elif defined(__linux__)
+  #elif defined(linux)
       /* Linux: pipe to lp command */
       printer_fp = popen("lp", "w");
   #else
@@ -830,7 +830,7 @@ BASIC++ routes printer access through a VDev.  You can:
   {
       (void)d;
       if (printer_fp) {
-  #if defined(__linux__)
+  #if defined(linux)
           pclose(printer_fp);
   #else
           fclose(printer_fp);

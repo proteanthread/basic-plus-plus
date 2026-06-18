@@ -1,5 +1,35 @@
 # Self-Hosting Specification Architecture
 
+
+---
+
+## Table of Contents
+
+- Dynamic Keyword Dictionary
+- Specification File Format (.BPPSPEC)
+  - Supported Directives
+  - Category Types
+- Loading Features
+  - From the BASIC++ Command Line
+  - From Plugins
+  - From the Config File
+- Companion .LIB Files
+  - Example: turtle.lib
+  - Library Loading Flow
+  - Execution Flow
+- Security Pinning
+- Specification Registry
+  - Listing Loaded Specs
+  - Finding a Spec by Name
+- Dependencies
+- Complete Example
+  - Step 1: Create the Spec File (counter.spec)
+  - Step 2: Create the Library (counter.lib)
+  - Step 3: Use It
+- Architecture Summary
+
+---
+
 BASIC++ includes a **Self-Hosting Specification Architecture** that
 transforms the interpreter into a self-extensible language ecosystem.
 New statements, functions, and commands can be defined at runtime

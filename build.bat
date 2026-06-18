@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ========================================================
-echo BASIC++ 4.0.0 (Stable) — Windows 11 Build (MSVC)
+echo BASIC++ 4.0.1 (Stable) -- Windows 11 Build (MSVC)
 echo ========================================================
 
 :: Attempt to locate Visual Studio using vswhere

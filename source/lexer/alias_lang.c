@@ -1,35 +1,40 @@
-/*
- * ---
- * BASIC++ Interpreter - alias_lang.c
- * ---
- *
- * Language packs for keyword aliasing. Each pack maps
- * ~30 core BASIC keywords to their natural language
- * equivalents. Loaded via ALIAS LANG "code".
- *
- * Supported languages:
- *   ES - Spanish (Español)
- *   PT - Portuguese (Português)
- *   FR - French (Français)
- *   DE - German (Deutsch)
- *   IT - Italian (Italiano)
- *   JA - Japanese (Romaji)
- *
- * ---
- */
+// ---
+// BASIC++ Interpreter - alias_lang.c
+// ---
+//
+// Language packs for keyword aliasing.
+//
+// PURPOSE:
+//   Each pack maps ~30 core BASIC keywords to their natural
+//   language equivalents. Loaded via ALIAS LANG "code".
+//
+// SUPPORTED LANGUAGES:
+//   ES - Spanish (Espanol)       PT - Portuguese (Portugues)
+//   FR - French (Francais)       DE - German (Deutsch)
+//   IT - Italian (Italiano)      JA - Japanese (Romaji)
+//
+// HOW TO EXTEND:
+//   Adding a new language pack:
+//   1. Create a static const LangEntry lang_xx[] array below.
+//   2. Map each KeywordId to the translated keyword string.
+//   3. Terminate with { KW_COUNT, NULL }.
+//   4. Add { "XX", "Language Name", lang_xx } to lang_packs[].
+//   That's it -- ALIAS LANG "XX" will now work.
+//
+// ---
 
 #include <stdio.h>
 #include <string.h>
 #include "lexer.h"
 #include "alias_lang.h"
 
-/* --- Language Pack Entry --- */
+// --- Language Pack Entry ---
 typedef struct {
  KeywordId kw;
  const char *alias;
 } LangEntry;
 
-/* --- Spanish (ES) --- */
+// --- Spanish (ES) ---
 static const LangEntry lang_es[] = {
  { KW_PRINT,    "IMPRIMIR" },
  { KW_INPUT,    "ENTRADA" },
@@ -69,7 +74,7 @@ static const LangEntry lang_es[] = {
  { KW_COUNT, NULL }
 };
 
-/* --- Portuguese (PT) --- */
+// --- Portuguese (PT) ---
 static const LangEntry lang_pt[] = {
  { KW_PRINT,    "IMPRIMIR" },
  { KW_INPUT,    "ENTRADA" },
@@ -109,7 +114,7 @@ static const LangEntry lang_pt[] = {
  { KW_COUNT, NULL }
 };
 
-/* --- French (FR) --- */
+// --- French (FR) ---
 static const LangEntry lang_fr[] = {
  { KW_PRINT,    "AFFICHER" },
  { KW_INPUT,    "SAISIR" },
@@ -149,7 +154,7 @@ static const LangEntry lang_fr[] = {
  { KW_COUNT, NULL }
 };
 
-/* --- German (DE) --- */
+// --- German (DE) ---
 static const LangEntry lang_de[] = {
  { KW_PRINT,    "DRUCKE" },
  { KW_INPUT,    "EINGABE" },
@@ -189,7 +194,7 @@ static const LangEntry lang_de[] = {
  { KW_COUNT, NULL }
 };
 
-/* --- Italian (IT) --- */
+// --- Italian (IT) ---
 static const LangEntry lang_it[] = {
  { KW_PRINT,    "STAMPA" },
  { KW_INPUT,    "INGRESSO" },
@@ -229,7 +234,7 @@ static const LangEntry lang_it[] = {
  { KW_COUNT, NULL }
 };
 
-/* --- Japanese Romaji (JA) --- */
+// --- Japanese Romaji (JA) ---
 static const LangEntry lang_ja[] = {
  { KW_PRINT,    "HYOUJI" },
  { KW_INPUT,    "NYUURYOKU" },
@@ -269,7 +274,7 @@ static const LangEntry lang_ja[] = {
  { KW_COUNT, NULL }
 };
 
-/* --- Pack Table --- */
+// --- Pack Table ---
 typedef struct {
  const char *code;
  const char *name;
@@ -286,7 +291,7 @@ static const LangPack lang_packs[] = {
  { NULL, NULL, NULL }
 };
 
-/* --- Implementation --- */
+// --- Implementation ---
 
 static int str_eq_ci(const char *a, const char *b)
 {
@@ -305,7 +310,7 @@ int alias_lang_load(const char *code)
  int i, count = 0;
  const LangPack *pack = NULL;
 
- /* Find the pack */
+ // Find the pack
  for (i = 0; lang_packs[i].code != NULL; i++) {
  if (str_eq_ci(code, lang_packs[i].code)) {
  pack = &lang_packs[i];
@@ -315,7 +320,7 @@ int alias_lang_load(const char *code)
 
  if (pack == NULL) return -1;
 
- /* Load all entries with LANG scope */
+ // Load all entries with LANG scope
  for (i = 0; pack->entries[i].alias != NULL; i++) {
  int alen = (int)strlen(pack->entries[i].alias);
  if (lexer_add_alias_scoped(

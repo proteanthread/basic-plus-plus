@@ -1,6 +1,6 @@
 OVERRIDE: KEYWORD INTERPRETATION OVERRIDES
 ============================================
-Version 1.4.0
+Version 4.0.1
 
 OVERRIDE changes how the interpreter processes a keyword's arguments
 at parse time.  It does NOT modify the user's stored source code

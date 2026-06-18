@@ -1,6 +1,6 @@
 THE BASIC++ SUBROUTINE AND FUNCTION SYSTEM
 ============================================
-Version 1.5.0
+Version 4.0.1
 
 This manual explains every way BASIC++ programs organize
 reusable code — from classic GOSUB/RETURN subroutines to

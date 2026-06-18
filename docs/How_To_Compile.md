@@ -1,8 +1,29 @@
 # How to Compile BASIC++
 
-**Version 1.5.0**
+**Version 4.0.1**
 
-BASIC++ is written in strict ANSI C89/C90. It has **zero external dependencies**. Any standards-conforming C compiler will build it.
+
+---
+
+## Table of Contents
+
+- Source Files
+  - Core
+  - Language
+  - Subsystems
+  - Infrastructure
+- Windows (MSVC)
+- Linux (GCC)
+- macOS (Clang)
+- BSD / Other Unix
+- Cross-Compiling
+- Using the Makefile
+- Verification
+- Build-Time Configuration
+
+---
+
+BASIC++ is written in portable C17. It has **zero external dependencies**. Any standards-conforming C compiler will build it.
 
 ---
 
@@ -104,7 +125,7 @@ Expected output size: **~346 KB**
 
 ## 3. Linux (GCC)
 
-**Requirements:** GCC 4.x or later (any version with C89 support), GNU Make (optional).
+**Requirements:** GCC 4.x or later (any version with C17 support), GNU Make (optional).
 
 **Basic build:**
 
@@ -115,7 +136,7 @@ gcc -ansi -pedantic -O2 -o basicpp *.c -lm
 **Optimized release build:**
 
 ```bash
-gcc -std=c89 -pedantic -Wall -Wextra -Werror \
+gcc -std=c17 -pedantic -Wall -Wextra -Werror \
     -O3 -march=native -flto -DNDEBUG \
     -o basicpp *.c -lm
 ```
@@ -128,7 +149,7 @@ make
 
 | Flag | Description |
 |------|-------------|
-| `-std=c89` | Strict C89 compliance |
+| `-std=c17` | C17 compliance |
 | `-pedantic` | Reject non-standard extensions |
 | `-O3` | Maximum optimization |
 | `-march=native` | Optimize for the local CPU |
@@ -150,7 +171,7 @@ clang -ansi -O2 -o basicpp *.c -lm
 **Optimized release build:**
 
 ```bash
-clang -std=c89 -pedantic -Wall -Wextra -Werror \
+clang -std=c17 -pedantic -Wall -Wextra -Werror \
       -O3 -flto -DNDEBUG \
       -o basicpp *.c -lm
 ```
@@ -163,7 +184,7 @@ clang -std=c89 -pedantic -Wall -Wextra -Werror \
 cc -ansi -O2 -o basicpp *.c -lm
 ```
 
-Any POSIX system with a C89 compiler should work.
+Any POSIX system with a C17 compiler should work.
 
 ---
 
@@ -173,10 +194,10 @@ For embedded targets or older platforms:
 
 ```bash
 # ARM cross-compile
-arm-none-eabi-gcc -std=c89 -Os -o basicpp *.c -lm
+arm-none-eabi-gcc -std=c17 -Os -o basicpp *.c -lm
 
 # MIPS (OpenWrt router)
-mipsel-openwrt-linux-gcc -std=c89 -Os -o basicpp *.c -lm
+mipsel-openwrt-linux-gcc -std=c17 -Os -o basicpp *.c -lm
 ```
 
 BASIC++ has no OS-specific code in the core. Platform-specific code is isolated in `platform.c` and conditionally compiled.

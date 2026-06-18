@@ -1,171 +1,162 @@
-# BASIC++ Debugging and Testing
+BASIC++ Debugging and Testing
 
-**Version 4.0.0**
+Version 4.0.1
 
 This guide covers all debugging and testing features built into BASIC++. These tools help you find bugs, verify behavior, and build confidence in your programs.
 
----
+---------------------------------------------------------------------
 
-## Trace Mode (TRON / TROFF)
 
-`TRON` enables line-number tracing. As each line executes, its number is printed in square brackets:
+=====================================================================
+TABLE OF CONTENTS
+=====================================================================
 
-```
+   1.  Trace Mode (TRON / TROFF)
+   2.  Breakpoints (BREAK)
+   3.  Stopping and Continuing (STOP / CONT)
+   4.  Variables Inspection (VARS)
+   5.  Assertions (ASSERT)
+   6.  Test Blocks (TEST / ENDTEST)
+   7.  Built-in Self-Test (SELFTEST)
+   8.  Error Line and Code (ERL / ERR)
+   9.  Debugging Workflow
+  10.  CHECK — Static Program Analysis
+  11.  VERIFY — Full Program Verification
+  12.  BACKTRACE — Call Stack Dump
+  13.  ERROR$ — Error Message Lookup
+
+
+Trace Mode (TRON / TROFF)
+
+TRON enables line-number tracing. As each line executes, its number is printed in square brackets:
+
 TRON
 RUN
 [10][20][30][40][50]
-```
 
-`TROFF` disables tracing.
+TROFF disables tracing.
 
-Trace output goes to the console (STDOUT) and is interleaved with normal `PRINT` output. This is useful for finding infinite loops, unexpected `GOTO`/`GOSUB` paths, and confirming execution order.
+Trace output goes to the console (STDOUT) and is interleaved with normal PRINT output. This is useful for finding infinite loops, unexpected GOTO/GOSUB paths, and confirming execution order.
 
-**Example:**
+Example:
 
-```basic
 10 TRON
 20 FOR I = 1 TO 3
 30 PRINT I
 40 NEXT I
 50 TROFF
-```
 
 Output:
-```
 [10][20][30] 1
 [40][20][30] 2
 [40][20][30] 3
 [40][50]
-```
 
----
+---------------------------------------------------------------------
 
-## Breakpoints (BREAK)
+Breakpoints (BREAK)
 
-`BREAK` sets a breakpoint on a specific line number. When execution reaches that line, the program pauses and drops to direct mode (like `STOP`).
+BREAK sets a breakpoint on a specific line number. When execution reaches that line, the program pauses and drops to direct mode (like STOP).
 
-```
 BREAK 100          ' Set breakpoint at line 100
 BREAK -100         ' Clear breakpoint at line 100
 BREAK              ' List all active breakpoints
-```
 
 When a breakpoint fires:
 
-```
 Break at line 100
 >
-```
 
-You can examine variables with `VARS` or `PRINT`, then resume with `CONT`.
+You can examine variables with VARS or PRINT, then resume with CONT.
 
-Multiple breakpoints are supported (up to **16** simultaneously). Breakpoints survive `RUN` but are cleared by `NEW`.
+Multiple breakpoints are supported (up to 16 simultaneously). Breakpoints survive RUN but are cleared by NEW.
 
----
+---------------------------------------------------------------------
 
-## Stopping and Continuing (STOP / CONT)
+Stopping and Continuing (STOP / CONT)
 
-`STOP` pauses execution and drops to direct mode:
+STOP pauses execution and drops to direct mode:
 
-```basic
 100 STOP
-```
 
-When `STOP` executes:
+When STOP executes:
 
-```
 Break in 100
 >
-```
 
 In direct mode you can:
-- `PRINT` variables to inspect state
-- Use `VARS` to see all variables
-- Modify variables with `LET`
-- Resume execution with `CONT`
+- PRINT variables to inspect state
+- Use VARS to see all variables
+- Modify variables with LET
+- Resume execution with CONT
 
-`CONT` resumes from where the program stopped. It remembers the exact position (line and statement). If you modify the program (add/delete lines), `CONT` may not work correctly — use `RUN` instead.
+CONT resumes from where the program stopped. It remembers the exact position (line and statement). If you modify the program (add/delete lines), CONT may not work correctly — use RUN instead.
 
----
+---------------------------------------------------------------------
 
-## Variables Inspection (VARS)
+Variables Inspection (VARS)
 
-`VARS` displays variables and environment information:
+VARS displays variables and environment information:
 
-| Command | Description |
-|---------|-------------|
-| `VARS` | Show all program variables |
-| `VARS USER` | Show user-defined variables only |
-| `VARS ENV` | Show OS environment variables |
-| `VARS SYSTEM` | Show BASIC++ system state |
-| `VARS ALL` | Show everything |
+  Command             Description
+  ----------------------------------------------------------------------
+  VARS                Show all program variables
+  VARS USER           Show user-defined variables only
+  VARS ENV            Show OS environment variables
+  VARS SYSTEM         Show BASIC++ system state
+  VARS ALL            Show everything
 
-**VARS USER** output example:
-```
+VARS USER output example:
 [User Variables]
 A         = 42
 B$        = "Hello"
 X(3)      = 99
 I         = 10
-```
 
-**VARS SYSTEM** output example:
-```
+VARS SYSTEM output example:
 [System Variables]
 Dialect   = GWBS
 Version   = 2.0.0
 Memory    = 524288 bytes
 Free      = 511420 bytes
-```
 
----
+---------------------------------------------------------------------
 
-## Assertions (ASSERT)
+Assertions (ASSERT)
 
-`ASSERT` tests a condition and reports pass or fail:
+ASSERT tests a condition and reports pass or fail:
 
-```basic
 ASSERT 2 + 3 = 5         ' passes
 ASSERT A > 0             ' passes if A is positive
 ASSERT LEN("HELLO") = 5  ' passes
-```
 
-When an assertion **passes**, nothing is printed (silent).
-When an assertion **fails**:
+When an assertion passes, nothing is printed (silent).
+When an assertion fails:
 
-```
 ASSERT FAILED in line 100: 2 + 3 = 6
-```
 
-`ASSERT` is useful for validating function output, checking boundary conditions, and regression testing. In a `TEST` block, `ASSERT` results contribute to the block's pass/fail count.
+ASSERT is useful for validating function output, checking boundary conditions, and regression testing. In a TEST block, ASSERT results contribute to the block's pass/fail count.
 
----
+---------------------------------------------------------------------
 
-## Test Blocks (TEST / ENDTEST)
+Test Blocks (TEST / ENDTEST)
 
-`TEST` and `ENDTEST` create named test blocks that collect multiple assertions and report results:
+TEST and ENDTEST create named test blocks that collect multiple assertions and report results:
 
-```basic
 TEST "Arithmetic"
 ASSERT 2 + 3 = 5
 ASSERT 10 - 7 = 3
 ASSERT 4 * 5 = 20
 ENDTEST
-```
 
 Output:
-```
 TEST "Arithmetic": 3 passed, 0 failed
-```
 
 If any assertion fails:
-```
 TEST "Arithmetic": 2 passed, 1 failed ***FAIL***
-```
 
-You can have multiple `TEST` blocks in a single program:
+You can have multiple TEST blocks in a single program:
 
-```basic
 10 TEST "Math"
 20 ASSERT ABS(-5) = 5
 30 ASSERT INT(3.7) = 3
@@ -174,15 +165,13 @@ You can have multiple `TEST` blocks in a single program:
 60 ASSERT LEN("ABC") = 3
 70 ASSERT LEFT$("HELLO", 3) = "HEL"
 80 ENDTEST
-```
 
----
+---------------------------------------------------------------------
 
-## Built-in Self-Test (SELFTEST)
+Built-in Self-Test (SELFTEST)
 
-`SELFTEST` runs the interpreter's internal validation suite. This tests the core subsystems:
+SELFTEST runs the interpreter's internal validation suite. This tests the core subsystems:
 
-```
 > SELFTEST
 === BASIC++ SELF-TEST ===
 Lexer............. PASS
@@ -191,86 +180,78 @@ String pool....... PASS
 Function registry. PASS
 Memory pool....... PASS
 === 5 passed, 0 failed ===
-```
 
-`SELFTEST` is a direct-mode command. It does not affect the current program or variables. Use it after building from source to verify the interpreter is working correctly.
+SELFTEST is a direct-mode command. It does not affect the current program or variables. Use it after building from source to verify the interpreter is working correctly.
 
----
+---------------------------------------------------------------------
 
-## Error Line and Code (ERL / ERR)
+Error Line and Code (ERL / ERR)
 
-After an error occurs (and is caught by `ON ERROR GOTO`):
+After an error occurs (and is caught by ON ERROR GOTO):
 
-| Variable | Description |
-|----------|-------------|
-| `ERL` | Line number where the error occurred |
-| `ERR` | Numeric error code |
+  Variable            Description
+  ----------------------------------------------------------------------
+  ERL                 Line number where the error occurred
+  ERR                 Numeric error code
 
-**Example:**
+Example:
 
-```basic
 10 ON ERROR GOTO 100
 20 X = 1 / 0
 30 END
 100 PRINT "Error"; ERR; "at line"; ERL
 110 RESUME NEXT
-```
 
 Output:
-```
 Error 11 at line 20
-```
 
----
+---------------------------------------------------------------------
 
-## Debugging Workflow
+Debugging Workflow
 
 A typical debugging session:
 
-1. `RUN` your program
-2. If it hangs, press **Ctrl+C** to break
-3. Use `TRON` to enable tracing, then `RUN` again
+1. RUN your program
+2. If it hangs, press Ctrl+C to break
+3. Use TRON to enable tracing, then RUN again
 4. Once you find the problem area, set breakpoints:
-   ```
+
    BREAK 200
    BREAK 350
-   ```
-5. `RUN` again. When a breakpoint fires, inspect:
-   ```
+
+5. RUN again. When a breakpoint fires, inspect:
+
    PRINT X, Y, Z
    VARS USER
-   ```
-6. `CONT` to resume, or fix the code and `RUN` again
-7. Write `ASSERT`s to prevent regressions:
-   ```basic
+
+6. CONT to resume, or fix the code and RUN again
+7. Write ASSERTs to prevent regressions:
+
    ASSERT X > 0
    ASSERT LEN(A$) <= 255
-   ```
-8. Wrap tests in `TEST` blocks for organized reporting
-9. Use `CHECK` or `VERIFY` for static analysis before running
 
----
+8. Wrap tests in TEST blocks for organized reporting
+9. Use CHECK or VERIFY for static analysis before running
 
-## CHECK — Static Program Analysis
+---------------------------------------------------------------------
 
-`CHECK` analyzes a program for common issues **without running it**:
+CHECK — Static Program Analysis
 
-```
+CHECK analyzes a program for common issues without running it:
+
 > CHECK                      ' Check current program in memory
 > CHECK "filename.bas"       ' Check a file on disk
-```
 
 CHECK reports:
 
-- **Errors**: `FOR` without matching `NEXT`, `GOTO`/`GOSUB` targets that don't exist
-- **Warnings**: Variables used but never assigned, variables assigned but never read
-- **Program statistics**: Lines, variables, FOR loops, subroutines, branch targets
-- **Memory usage**: Source text bytes, line storage, total footprint
-- **Cyclomatic complexity**: Simple / moderate / complex / very complex / extremely complex
+- Errors: FOR without matching NEXT, GOTO/GOSUB targets that don't exist
+- Warnings: Variables used but never assigned, variables assigned but never read
+- Program statistics: Lines, variables, FOR loops, subroutines, branch targets
+- Memory usage: Source text bytes, line storage, total footprint
+- Cyclomatic complexity: Simple / moderate / complex / very complex / extremely complex
 
-**Example:**
+Example:
 
-```
 > CHECK
 === CHECK: Program Analysis ===
 
@@ -293,18 +274,15 @@ CHECK reports:
   Cyclomatic: 12 (moderate)
 
 === 1 error, 1 warning ===
-```
 
----
+---------------------------------------------------------------------
 
-## VERIFY — Full Program Verification
+VERIFY — Full Program Verification
 
-`VERIFY` runs everything `CHECK` does, plus additional deep analysis:
+VERIFY runs everything CHECK does, plus additional deep analysis:
 
-```
 > VERIFY                     ' Verify current program
 > VERIFY "filename.bas"      ' Verify a file on disk
-```
 
 Includes everything CHECK reports, plus:
 
@@ -313,9 +291,8 @@ Includes everything CHECK reports, plus:
 - Branch target integrity checks
 - Type suffix consistency
 
-**Example:**
+Example:
 
-```
 > VERIFY "mygame.bas"
 === VERIFY: mygame.bas ===
 === CHECK: Program Analysis ===
@@ -335,55 +312,48 @@ Includes everything CHECK reports, plus:
   Cyclomatic: 40 (very complex)
 
 === 0 errors, 3 warnings ===
-```
 
----
+---------------------------------------------------------------------
 
-## BACKTRACE — Call Stack Dump
+BACKTRACE — Call Stack Dump
 
-`BACKTRACE` shows the current GOSUB/SUB/FUNCTION call stack. Use it after a `STOP`, `BREAK`, or Ctrl+C to see how the program reached the current point:
+BACKTRACE shows the current GOSUB/SUB/FUNCTION call stack. Use it after a STOP, BREAK, or Ctrl+C to see how the program reached the current point:
 
-```
 > BACKTRACE
 [3] line 500 (GOSUB from 200)
 [2] line 300 (GOSUB from 100)
 [1] line 100 (main)
-```
 
 This is invaluable for debugging deeply nested subroutine calls or recursive FUNCTION definitions.
 
----
+---------------------------------------------------------------------
 
-## ERROR$ — Error Message Lookup
+ERROR$ — Error Message Lookup
 
-`ERROR$(n)` returns the human-readable description for any error code:
+ERROR$(n) returns the human-readable description for any error code:
 
-```basic
 100 ON ERROR GOTO 900
 110 X = 1 / 0
 120 END
 900 PRINT "Error "; ERR; ": "; ERROR$(ERR); " at line "; ERL
 910 RESUME NEXT
-```
 
 Output:
-```
 Error 11: Division by zero at line 110
-```
 
 Common error codes:
 
-| Code | ERROR$ | Meaning |
-|------|--------|---------|
-| 1 | `WHAT?` | Syntax error |
-| 2 | `Syntax error` | Statement syntax |
-| 5 | `Illegal function call` | Bad argument |
-| 11 | `Division by zero` | Math error |
-| 53 | `File not found` | I/O error |
+  Code                ERROR$              Meaning
+  ----------------------------------------------------------------------
+  1                   WHAT?               Syntax error
+  2                   Syntax error        Statement syntax
+  5                   Illegal function callBad argument
+  11                  Division by zero    Math error
+  53                  File not found      I/O error
 
-**Tips:**
-- Use `BREAK` for targeted debugging
-- Use `TRON` for understanding flow
-- Use `ASSERT` at the start of subroutines to validate input assumptions
-- Use `TEST` blocks to create repeatable test suites
-- `SELFTEST` after any source-level changes to the interpreter itself
+Tips:
+- Use BREAK for targeted debugging
+- Use TRON for understanding flow
+- Use ASSERT at the start of subroutines to validate input assumptions
+- Use TEST blocks to create repeatable test suites
+- SELFTEST after any source-level changes to the interpreter itself

@@ -1,34 +1,40 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_streamio.c
- * ---
- *
- * Stream I/O & printer output commands.
- *
- * LPRINT, LLIST, WRITE.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_streamio.c
+ // ---
+ //
+ // Stream I/O & printer output commands.
+ //
+ // LPRINT, LLIST, WRITE.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * pi_parse_lprint - Handle LPRINT command.
- */
+ // pi_parse_lprint - Handle LPRINT command.
 void pi_parse_lprint(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * LPRINT USING "format"; expr [; expr...]
- * LPRINT [expr] [; expr...] [;]
- * Print to stderr (portable printer substitute).
- */
+ // LPRINT USING "format"; expr [; expr...]
+ // LPRINT [expr] [; expr...] [;]
+ // Print to stderr (portable printer substitute).
 
- /* Check for LPRINT USING */
+ // Check for LPRINT USING
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_USING) {
  const char *fmt;
  int flen;
- lexer_next(lex); /* consume USING */
+ lexer_next(lex); // consume USING
 
  if (lex->current.type == TOK_STRING) {
  fmt = lex->current.str_start;
@@ -39,7 +45,7 @@ void pi_parse_lprint(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Consume semicolon or comma after format */
+ // Consume semicolon or comma after format
  if (lex->current.type == TOK_SEMICOLON)
  lexer_next(lex);
  else if (lex->current.type == TOK_COMMA)
@@ -52,7 +58,7 @@ void pi_parse_lprint(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Regular LPRINT (no USING) */
+ // Regular LPRINT (no USING)
  {
  while (lex->current.type != TOK_EOF &&
  lex->current.type != TOK_COLON) {
@@ -91,16 +97,12 @@ void pi_parse_lprint(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_llist - Handle LLIST command.
- */
+ // pi_parse_llist - Handle LLIST command.
 void pi_parse_llist(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * LLIST [start] [-] [end]
- * List program to printer. In our
- * terminal environment, same as LIST.
- */
+ // LLIST [start] [-] [end]
+ // List program to printer. In our
+ // terminal environment, same as LIST.
  {
  int ls = 0, le = 0;
  if (lex->current.type ==
@@ -122,7 +124,7 @@ void pi_parse_llist(Lexer *lex, RuntimeState *rt, int line_num)
  } else if (ls > 0) {
  le = ls;
  }
- /* Reuse LIST output */
+ // Reuse LIST output
  {
  int li;
  for (li = 0;
@@ -144,25 +146,21 @@ void pi_parse_llist(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_write - Handle WRITE command.
- */
+ // pi_parse_write - Handle WRITE command.
 void pi_parse_write(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * WRITE [#n,] expr [, expr ...]
- * Output data items separated by commas.
- * Strings are enclosed in double quotes.
- * A newline is printed at the end.
- *
- * WRITE (no args) prints a blank line.
- * WRITE #n, ... writes to file channel.
- */
+ // WRITE [#n,] expr [, expr ...]
+ // Output data items separated by commas.
+ // Strings are enclosed in double quotes.
+ // A newline is printed at the end.
+ //
+ // WRITE (no args) prints a blank line.
+ // WRITE #n, ... writes to file channel.
  {
- int wfile = 0; /* file channel */
- int wfirst = 1; /* first item? */
+ int wfile = 0; // file channel
+ int wfirst = 1; // first item?
 
- /* WRITE #n, ... */
+ // WRITE #n, ...
  if (lex->current.type == TOK_HASH) {
  lexer_next(lex);
  wfile = (int)parse_expression(
@@ -173,13 +171,13 @@ void pi_parse_write(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  }
 
- /* Parse expression list */
+ // Parse expression list
  while (lex->current.type != TOK_EOF &&
  lex->current.type != TOK_CR &&
  lex->current.type !=
  TOK_COLON) {
 
- /* Print comma between items */
+ // Print comma between items
  if (!wfirst) {
  if (wfile > 0)
  fileio_print(wfile,
@@ -189,10 +187,10 @@ void pi_parse_write(Lexer *lex, RuntimeState *rt, int line_num)
  }
  wfirst = 0;
 
- /* String literal or expression */
+ // String literal or expression
  if (lex->current.type ==
  TOK_STRING) {
- /* Print quoted string */
+ // Print quoted string
  char buf[256];
  int slen =
  lex->current.str_length;
@@ -210,7 +208,7 @@ void pi_parse_write(Lexer *lex, RuntimeState *rt, int line_num)
  printf("%s", buf);
  lexer_next(lex);
  } else {
- /* Numeric expression */
+ // Numeric expression
  BValue val =
  parse_expression_bval(
  lex, rt, line_num);
@@ -245,7 +243,7 @@ void pi_parse_write(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Consume comma separator */
+ // Consume comma separator
  if (lex->current.type ==
  TOK_COMMA)
  lexer_next(lex);
@@ -253,7 +251,7 @@ void pi_parse_write(Lexer *lex, RuntimeState *rt, int line_num)
  break;
  }
 
- /* Newline at end */
+ // Newline at end
  if (wfile > 0)
  fileio_print_newline(wfile,
  line_num);
@@ -263,20 +261,18 @@ void pi_parse_write(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_display - Handle DISPLAY command.
- *
- * DISPLAY "filename"
- *
- * BBC BASIC-style file-to-screen output. Reads a file and
- * outputs its contents to stdout. For text files, prints
- * each line. This is a file display command, NOT a synonym
- * for PRINT.
- *
- * Usage:
- *   DISPLAY "readme.txt"    - show file on screen
- *   DISPLAY "data.csv"      - show CSV on screen
- */
+ // pi_parse_display - Handle DISPLAY command.
+ //
+ // DISPLAY "filename"
+ //
+ // BBC BASIC-style file-to-screen output. Reads a file and
+ // outputs its contents to stdout. For text files, prints
+ // each line. This is a file display command, NOT a synonym
+ // for PRINT.
+ //
+ // Usage:
+ //   DISPLAY "readme.txt"    - show file on screen
+ //   DISPLAY "data.csv"      - show CSV on screen
 void pi_parse_display(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char fname[MAX_LINE_LENGTH + 1];
@@ -286,7 +282,7 @@ void pi_parse_display(Lexer *lex, RuntimeState *rt, int line_num)
 
  (void)rt;
 
- /* Expect filename */
+ // Expect filename
  if (lex->current.type == TOK_STRING) {
  flen = lex->current.str_length;
  if (flen > MAX_LINE_LENGTH) flen = MAX_LINE_LENGTH;
@@ -307,7 +303,7 @@ void pi_parse_display(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Security check */
+ // Security check
  if (security_check(SECOP_FILE_READ, line_num))
  return;
 
@@ -317,28 +313,26 @@ void pi_parse_display(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Output file contents to stdout */
+ // Output file contents to stdout
  while (fgets(line_buf, sizeof(line_buf), fp) != NULL) {
  printf("%s", line_buf);
  }
  fclose(fp);
 }
 
-/*
- * pi_parse_type_cmd - Handle TYPE command.
- *
- * TYPE "filename"
- * TYPE USING "format"; "filename"
- *
- * Read file input, then output to terminal/console/printer.
- * Without USING: same as DISPLAY (show file on screen).
- * With USING: read file lines and apply format specifiers,
- * then output formatted text to stdout.
- *
- * Usage:
- *   TYPE "data.txt"                  - show file
- *   TYPE USING "###.##"; "data.csv"  - format each CSV field
- */
+ // pi_parse_type_cmd - Handle TYPE command.
+ //
+ // TYPE "filename"
+ // TYPE USING "format"; "filename"
+ //
+ // Read file input, then output to terminal/console/printer.
+ // Without USING: same as DISPLAY (show file on screen).
+ // With USING: read file lines and apply format specifiers,
+ // then output formatted text to stdout.
+ //
+ // Usage:
+ //   TYPE "data.txt"                  - show file
+ //   TYPE USING "###.##"; "data.csv"  - format each CSV field
 void pi_parse_type_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char fname[MAX_LINE_LENGTH + 1];
@@ -346,16 +340,16 @@ void pi_parse_type_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  char line_buf[1024];
  int flen;
 
- /* Check for TYPE USING */
+ // Check for TYPE USING
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_USING) {
  const char *fmt;
  int fmt_len;
  Lexer line_lex;
 
- lexer_next(lex); /* consume USING */
+ lexer_next(lex); // consume USING
 
- /* Parse format string */
+ // Parse format string
  if (lex->current.type != TOK_STRING) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -364,12 +358,12 @@ void pi_parse_type_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  fmt_len = lex->current.str_length;
  lexer_next(lex);
 
- /* Consume separator */
+ // Consume separator
  if (lex->current.type == TOK_SEMICOLON ||
  lex->current.type == TOK_COMMA)
  lexer_next(lex);
 
- /* Parse filename */
+ // Parse filename
  if (lex->current.type == TOK_STRING) {
  flen = lex->current.str_length;
  if (flen > MAX_LINE_LENGTH) flen = MAX_LINE_LENGTH;
@@ -390,16 +384,16 @@ void pi_parse_type_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Read each line, lex it, apply format */
+ // Read each line, lex it, apply format
  while (fgets(line_buf, sizeof(line_buf), fp) != NULL) {
- /* Strip trailing newline */
+ // Strip trailing newline
  int ll = (int)strlen(line_buf);
  while (ll > 0 && (line_buf[ll-1] == '\n' ||
  line_buf[ll-1] == '\r'))
  ll--;
  line_buf[ll] = '\0';
 
- /* Create a temporary lexer for the line data */
+ // Create a temporary lexer for the line data
  lexer_init(&line_lex, line_buf);
  format_using_process(stdout, fmt, fmt_len,
  &line_lex, rt, line_num);
@@ -409,7 +403,7 @@ void pi_parse_type_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Plain TYPE "filename" = display file (same as DISPLAY) */
+ // Plain TYPE "filename" = display file (same as DISPLAY)
  if (lex->current.type == TOK_STRING) {
  flen = lex->current.str_length;
  if (flen > MAX_LINE_LENGTH) flen = MAX_LINE_LENGTH;

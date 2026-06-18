@@ -1,6 +1,6 @@
 THE BASIC++ VIRTUAL FILESYSTEM
 ================================
-Version 1.5.0
+Version 4.0.1
 
 This manual explains how BASIC++ programs access files on the
 local file system — how it works internally, why every layer
@@ -408,7 +408,7 @@ structures (channels 1-16, stored 0-indexed):
 6. LAYER 5: THE C STDIO LAYER
 =====================================================================
 
-BASIC++ uses ONLY ANSI C89 stdio functions for file access.
+BASIC++ uses ONLY standard C17 stdio functions for file access.
 No POSIX, no Win32, no platform-specific APIs (except for
 LOCK/UNLOCK on Windows).
 
@@ -455,7 +455,7 @@ LOCK/UNLOCK on Windows).
        needs to worry about this.
 
     4. ANSI C89: The entire interpreter compiles with
-       any C89-compliant compiler.  No extensions needed.
+       any C17-compliant compiler.  No extensions needed.
 
   TEXT MODE VS BINARY MODE:
 

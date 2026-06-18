@@ -1,6 +1,30 @@
 # SuperBASIC (Sinclair QL) Dialect Reference
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+---
+
+## Table of Contents
+
+- History
+  - Key Innovations
+- Activation
+- Structured Programming Features
+  - Block IF / END IF
+  - FOR / END FOR
+  - REPeat / END REPeat
+  - SELect ON
+  - DEF PROCedure / DEF FuNction
+- QDOS and Memory Map
+  - Display Modes
+- Dialect Configuration
+- Example Programs
+  - Fibonacci sequence (structured)
+  - Using SELECT CASE
+- See Also
+
+---
+
 **Dialect Code:** `SBLQ`
 
 ---
