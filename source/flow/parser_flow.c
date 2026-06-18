@@ -865,16 +865,16 @@ void pi_parse_on(Lexer *lex, RuntimeState *rt, int line_num)
  * as ON ERROR GOTO. Otherwise, parse as
  * ON expr GOTO/GOSUB line-list.
  */
- 	if (lex->current.type == TOK_KEYWORD &&
-	lex->current.value.keyword ==
-	KW_ERROR) {
-	/* ON ERROR GOTO n */
-	long target;
-	if (!dialect_check_feature("ON ERROR",
-	dialect_get_config()->has_on_error,
-	line_num))
-	return;
-	lexer_next(lex); /* consume ERROR */
+  if (lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword ==
+ KW_ERROR) {
+ /* ON ERROR GOTO n */
+ long target;
+ if (!dialect_check_feature("ON ERROR",
+ dialect_get_config()->has_on_error,
+ line_num))
+ return;
+ lexer_next(lex); /* consume ERROR */
  if (lex->current.type != TOK_KEYWORD
  || lex->current.value.keyword !=
  KW_GOTO) {
@@ -886,111 +886,111 @@ void pi_parse_on(Lexer *lex, RuntimeState *rt, int line_num)
  lex, rt, line_num);
  rt->on_error_line = (int)target;
  }
-		/*
-		 * ON COM(n) / KEY(n) / PEN / PLAY(n) /
-		 * STRIG(n) / TIMER(n) / BREAK GOSUB line
-		 *
-		 * Event trapping handler registration.
-		 * Stores the GOSUB target line in the
-		 * appropriate RuntimeState field for
-		 * event_poll() to dispatch.
-		 */
-		else if (lex->current.type ==
-			 TOK_KEYWORD &&
-			 (lex->current.value.keyword
-			 == KW_COM ||
-			 lex->current.value.keyword
-			 == KW_KEY ||
-			 lex->current.value.keyword
-			 == KW_PEN ||
-			 lex->current.value.keyword
-			 == KW_PLAY ||
-			 lex->current.value.keyword
-			 == KW_STRIG ||
-			 lex->current.value.keyword
-			 == KW_TIMER ||
-			 lex->current.value.keyword
-			 == KW_TRAP ||
-			 lex->current.value.keyword
-			 == KW_BREAK)) {
-			KeywordId evkw =
-				lex->current.value.keyword;
-			long ev_arg = 0;
-			lexer_next(lex);
+  /*
+   * ON COM(n) / KEY(n) / PEN / PLAY(n) /
+   * STRIG(n) / TIMER(n) / BREAK GOSUB line
+   *
+   * Event trapping handler registration.
+   * Stores the GOSUB target line in the
+   * appropriate RuntimeState field for
+   * event_poll() to dispatch.
+   */
+  else if (lex->current.type ==
+    TOK_KEYWORD &&
+    (lex->current.value.keyword
+    == KW_COM ||
+    lex->current.value.keyword
+    == KW_KEY ||
+    lex->current.value.keyword
+    == KW_PEN ||
+    lex->current.value.keyword
+    == KW_PLAY ||
+    lex->current.value.keyword
+    == KW_STRIG ||
+    lex->current.value.keyword
+    == KW_TIMER ||
+    lex->current.value.keyword
+    == KW_TRAP ||
+    lex->current.value.keyword
+    == KW_BREAK)) {
+   KeywordId evkw =
+    lex->current.value.keyword;
+   long ev_arg = 0;
+   lexer_next(lex);
 
-			/* Consume optional (n) */
-			if (lex->current.type ==
-			    TOK_LPAREN) {
-				lexer_next(lex);
-				ev_arg = parse_expression(
-					lex, rt, line_num);
-				if (error_occurred()) return;
-				if (lex->current.type ==
-				    TOK_RPAREN)
-					lexer_next(lex);
-			}
+   /* Consume optional (n) */
+   if (lex->current.type ==
+       TOK_LPAREN) {
+    lexer_next(lex);
+    ev_arg = parse_expression(
+     lex, rt, line_num);
+    if (error_occurred()) return;
+    if (lex->current.type ==
+        TOK_RPAREN)
+     lexer_next(lex);
+   }
 
-			/* Expect GOSUB or GOTO */
-			if (!lexer_match_keyword(lex,
-				KW_GOSUB) &&
-			    !lexer_match_keyword(lex,
-				KW_GOTO)) {
-				error_raise(ERR_WHAT,
-					line_num);
-				return;
-			}
-			lexer_next(lex);
+   /* Expect GOSUB or GOTO */
+   if (!lexer_match_keyword(lex,
+    KW_GOSUB) &&
+       !lexer_match_keyword(lex,
+    KW_GOTO)) {
+    error_raise(ERR_WHAT,
+     line_num);
+    return;
+   }
+   lexer_next(lex);
 
-			/* Parse target line */
-			{
-			long tgt = parse_expression(
-				lex, rt, line_num);
-			if (error_occurred()) return;
+   /* Parse target line */
+   {
+   long tgt = parse_expression(
+    lex, rt, line_num);
+   if (error_occurred()) return;
 
-			/* Register handler by event type */
-			if (evkw == KW_TIMER) {
-				rt->timer_interval =
-					(double)ev_arg;
-				rt->on_timer_line =
-					(int)tgt;
-			} else if (evkw == KW_KEY) {
-				if (ev_arg >= 1 &&
-				    ev_arg <= MAX_KEY_TRAPS) {
-					rt->on_key_line[
-					    (int)ev_arg - 1] =
-						(int)tgt;
-				}
-			} else if (evkw == KW_COM) {
-				if (ev_arg >= 1 &&
-				    ev_arg <= MAX_COM_PORTS) {
-					rt->on_com_line[
-					    (int)ev_arg - 1] =
-						(int)tgt;
-				}
-			} else if (evkw == KW_PEN) {
-				rt->on_pen_line =
-					(int)tgt;
-			} else if (evkw == KW_PLAY) {
-				rt->on_play_line =
-					(int)tgt;
-			} else if (evkw == KW_STRIG) {
-				if (ev_arg >= 0 &&
-				    ev_arg < MAX_STRIG_BUTTONS) {
-					rt->on_strig_line[
-					    (int)ev_arg] =
-						(int)tgt;
-				}
-			} else if (evkw == KW_TRAP) {
-				rt->on_error_line =
-					(int)tgt;
-			} else if (evkw == KW_BREAK) {
-				rt->on_break_line =
-					(int)tgt;
-				rt->break_event_state =
-					EVT_ON;
-			}
-			}
-		} else {
+   /* Register handler by event type */
+   if (evkw == KW_TIMER) {
+    rt->timer_interval =
+     (double)ev_arg;
+    rt->on_timer_line =
+     (int)tgt;
+   } else if (evkw == KW_KEY) {
+    if (ev_arg >= 1 &&
+        ev_arg <= MAX_KEY_TRAPS) {
+     rt->on_key_line[
+         (int)ev_arg - 1] =
+      (int)tgt;
+    }
+   } else if (evkw == KW_COM) {
+    if (ev_arg >= 1 &&
+        ev_arg <= MAX_COM_PORTS) {
+     rt->on_com_line[
+         (int)ev_arg - 1] =
+      (int)tgt;
+    }
+   } else if (evkw == KW_PEN) {
+    rt->on_pen_line =
+     (int)tgt;
+   } else if (evkw == KW_PLAY) {
+    rt->on_play_line =
+     (int)tgt;
+   } else if (evkw == KW_STRIG) {
+    if (ev_arg >= 0 &&
+        ev_arg < MAX_STRIG_BUTTONS) {
+     rt->on_strig_line[
+         (int)ev_arg] =
+      (int)tgt;
+    }
+   } else if (evkw == KW_TRAP) {
+    rt->on_error_line =
+     (int)tgt;
+   } else if (evkw == KW_BREAK) {
+    rt->on_break_line =
+     (int)tgt;
+    rt->break_event_state =
+     EVT_ON;
+   }
+   }
+  } else {
  /*
  * ON expr GOTO/GOSUB line-list.
  * Evaluate expr, then parse the

@@ -34,9 +34,10 @@ void pi_parse_randomize(Lexer *lex, RuntimeState *rt, int line_num)
  if (lex->current.type != TOK_EOF &&
  lex->current.type != TOK_CR &&
  lex->current.type != TOK_COLON) {
- seed = parse_expression(
+ BValue sv = parse_expression_bval(
  lex, rt, line_num);
  if (error_occurred()) return;
+ seed = bval_to_int(&sv);
  }
  if (seed == 0) {
  unsigned long ts;

@@ -1,6 +1,6 @@
 # BASIC++ Programmer's Guide
 
-**Version 1.5.0**
+**Version 4.0.0**
 
 ## Table of Contents
 
@@ -361,6 +361,7 @@ See [Advanced_Matrices](Advanced_Matrices.md) for MAT operations.
 PRINT expression
 PRINT expr1; expr2          ' No space between items
 PRINT expr1, expr2          ' Tab-separated (14-column zones)
+PRINT expr1,, expr2         ' Skip a tab zone (double comma)
 PRINT USING "##.##"; value  ' Formatted output
 PRINT #n, expression        ' Write to file channel
 ```
@@ -398,7 +399,7 @@ See [File_IO](File_IO.md) for complete file operations.
 | `FIX(x)` | Truncate toward zero |
 | `INT(x)` | Floor (largest integer ≤ x) |
 | `LOG(x)` | Natural logarithm |
-| `RND(x)` | Random number (0 to 1) |
+| `RND[(x)]` | Random number (0 to 1); parens optional |
 | `SGN(x)` | Sign: −1, 0, or 1 |
 | `SIN(x)` | Sine |
 | `SQR(x)` | Square root |

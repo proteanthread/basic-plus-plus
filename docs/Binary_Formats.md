@@ -1,0 +1,279 @@
+# Binary Formats in BASIC++
+
+> **Milestone 27** — Serialization and Portable Execution
+
+BASIC++ provides two binary file formats for portable storage and execution
+of programs and libraries. Both use little-endian byte ordering and are
+platform-independent.
+
+---
+
+## .BPP Format (Programs)
+
+The `.bpp` format stores BASIC++ programs in a compact binary container.
+
+### Commands
+
+| Command | Purpose | Security |
+|---------|---------|----------|
+| `BSAVE "file.bpp"` | Save program to .BPP | SECOP_FILE_WRITE |
+| `BLOAD "file.bpp"` | Load .BPP into program store | SECOP_FILE_READ |
+| `BRUN` | Compile in-memory program to PCode + execute | — |
+
+### File Structure
+
+```
+┌─────────────────────────────┐
+│  Header (16 bytes)          │
+├─────────────────────────────┤
+│  Line Record 0              │
+│  Line Record 1              │
+│  ...                        │
+│  Line Record N-1            │
+└─────────────────────────────┘
+```
+
+### Header (16 bytes)
+
+| Offset | Size | Field | Description |
+|--------|------|-------|-------------|
+| 0–3 | 4 | Magic | `"BPP"` + `0x1A` (Ctrl-Z EOF marker) |
+| 4 | 1 | Version | Format version (currently 1) |
+| 5 | 1 | Dialect | `DialectId` of the creating session |
+| 6–7 | 2 | Flags | Reserved (zero) |
+| 8–9 | 2 | Line count | Number of line records (LE16) |
+| 10–15 | 6 | Reserved | Padding (zero) |
+
+### Line Record (variable length)
+
+| Size | Field | Description |
+|------|-------|-------------|
+| 2 | Line number | LE16 |
+| 2 | Text length | LE16 (N) |
+| N | Source text | Raw ASCII, no NUL terminator |
+
+Source text is stored **verbatim** — the interpreter re-tokenizes each line
+when it executes. This keeps the format simple and maximally compatible.
+
+### Usage
+
+```basic
+10 PRINT "Hello, World!"
+20 END
+BSAVE "hello.bpp"
+NEW
+BLOAD "hello.bpp"
+RUN
+```
+
+### Dialect Auto-Switch
+
+If the `.bpp` file was saved with a different dialect than the current
+session, `BLOAD` automatically switches dialects to match.
+
+---
+
+## .BPL Format (Libraries)
+
+The `.bpl` format stores pre-compiled BASIC++ libraries (SUBs, FUNCTIONs,
+DEF FN definitions) for distribution without source code.
+
+### Commands
+
+| Command | Purpose |
+|---------|---------|
+| `COMPILE LIBRARY "name"` | Save loaded library to .BPL |
+| `COMPILE LIBRARY "name", "out.bpl"` | Save with explicit filename |
+| `LOAD LIBRARY "file.bpl"` | Load pre-compiled library |
+
+### File Structure
+
+```
+┌─────────────────────────────┐
+│  Header (32 bytes)          │
+├─────────────────────────────┤
+│  Symbol Table               │
+│    Entry 0                  │
+│    Entry 1                  │
+│    ...                      │
+├─────────────────────────────┤
+│  Source Lines               │
+│    Line 0                   │
+│    Line 1                   │
+│    ...                      │
+└─────────────────────────────┘
+```
+
+### Header (32 bytes)
+
+| Offset | Size | Field | Description |
+|--------|------|-------|-------------|
+| 0–3 | 4 | Magic | `"BPL"` + `0x1A` (Ctrl-Z EOF marker) |
+| 4 | 1 | Version | Format version (currently 1) |
+| 5 | 1 | Security | Required `SecLevel` |
+| 6 | 1 | Ext type | Extension type (see table below) |
+| 7 | 1 | Flags | Reserved (zero) |
+| 8–9 | 2 | Symbol count | Number of symbol entries (LE16) |
+| 10–11 | 2 | Line count | Number of source lines (LE16) |
+| 12–13 | 2 | Str pool | String pool size (LE16, reserved) |
+| 14–15 | 2 | CRC-16 | CRC-16/CCITT integrity checksum |
+| 16–31 | 16 | Name | Library name (NUL-padded) |
+
+### Extension Types
+
+| Code | Type | File Extension | Description |
+|------|------|---------------|-------------|
+| 0 | LIB | `.LIB` | Library (SUB/FUNCTION collection) |
+| 1 | FN | `.FN` | External function |
+| 2 | FT | `.FT` | External feature |
+| 3 | MOD | `.MOD` | External module |
+| 4 | PLG | `.PLG` | External plugin |
+
+### Symbol Table Entry (variable length)
+
+| Size | Field | Description |
+|------|-------|-------------|
+| 1 | Type | 0=SUB, 1=FUNCTION, 2=DEF_FN |
+| 1 | Params | Parameter count |
+| 2 | Offset | Instruction/line offset (LE16) |
+| 1 | Name len | Length of name (N) |
+| N | Name | ASCII symbol name |
+
+### Source Line Record (variable length)
+
+| Size | Field | Description |
+|------|-------|-------------|
+| 2 | VLine | Virtual line number (LE16) |
+| 2 | Length | Text length (LE16, N) |
+| N | Text | Source text (no NUL) |
+
+### CRC-16/CCITT Integrity
+
+The checksum is computed across **all** source lines (accumulated, not
+per-line). On load, the stored CRC is validated against the loaded content.
+A mismatch prints a warning but does not prevent loading (for backward
+compatibility).
+
+### Usage
+
+```basic
+' Save a library to .BPL
+LOAD LIBRARY "TURTLE.LIB"
+COMPILE LIBRARY "TURTLE"
+' Creates TURTLE.bpl
+
+' Load pre-compiled library
+LOAD LIBRARY "TURTLE.bpl"
+CALL FORWARD(100)
+```
+
+---
+
+## Custom Detokenizer Hook
+
+The `BLOAD` command supports a **pluggable detokenizer** for loading
+tokenized program files from other BASIC systems.
+
+When `BLOAD` encounters a file that doesn't begin with the `"BPP"` magic
+bytes, it checks for a registered custom detokenizer. If one exists, the
+entire file is read into memory (up to 256KB) and passed to the callback.
+
+### Supported Formats (via modules)
+
+| Format | First Byte | System |
+|--------|-----------|--------|
+| GW-BASIC tokenized | `0xFF` | IBM PC, MS-DOS |
+| Commodore PRG | Load address | C64, VIC-20, C128 |
+| Atari BASIC | Variable table | Atari 400/800/XL/XE |
+
+### C API
+
+```c
+/* Register a detokenizer */
+bytecode_set_detokenizer(my_detokenizer_fn);
+
+/* Callback signature */
+typedef int (*DetokenizerFn)(
+    const unsigned char *data,  /* raw file bytes */
+    int len,                    /* file length */
+    char *out_text,             /* output buffer */
+    int max_out                 /* buffer size */
+);
+/* Return >= 0 on success, -1 on failure */
+```
+
+---
+
+## Round-Trip Workflows
+
+### Program Round-Trip
+
+```basic
+' Create a program
+10 PRINT "Hello"
+20 FOR I = 1 TO 5
+30   PRINT I
+40 NEXT I
+50 END
+
+' Save to binary
+BSAVE "demo.bpp"
+
+' Clear and reload
+NEW
+BLOAD "demo.bpp"
+LIST
+RUN
+```
+
+### Library Round-Trip
+
+```basic
+' Load from source and compile to binary
+LOAD LIBRARY "MATH.LIB"
+COMPILE LIBRARY "MATH"
+
+' Later session: load pre-compiled
+NEW
+LOAD LIBRARY "MATH.bpl"
+PRINT SQUARE(7)
+```
+
+### PCode Execution (BRUN)
+
+```basic
+' BRUN compiles to PCode and executes via VM
+' (faster for compute-heavy programs)
+10 S = 0
+20 FOR I = 1 TO 1000000
+30   S = S + SQR(I)
+40 NEXT I
+50 PRINT "Sum:"; S
+BRUN
+```
+
+---
+
+## Version Compatibility
+
+| Field | .BPP | .BPL |
+|-------|------|------|
+| Current version | 1 | 1 |
+| Version validation | ✅ Strict (reject on mismatch) | ✅ Strict |
+| Dialect tracking | ✅ Auto-switch on load | — |
+| CRC integrity | — | ✅ Warning on mismatch |
+
+Files created with a future format version will be rejected with a clear
+error message. There is no automatic migration — re-save from the original
+source if needed.
+
+---
+
+## See Also
+
+- `SAVE` / `LOAD` — Text-format program I/O
+- `COMPILE` — Transpile to C source code
+- `LIBRARY` — Library management commands
+- `BRUN` — PCode VM execution
+- [Library System](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/Library_System.md)
+- [Virtual Machines](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/Virtual_Machines.md)

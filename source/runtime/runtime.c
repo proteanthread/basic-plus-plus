@@ -28,9 +28,11 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "runtime.h"
 #include "lexer.h"
+#include "dialect.h"
 #include "errors.h"
 
 /* --- Runtime Initialization ---
@@ -922,8 +924,16 @@ BValue runtime_get_dim(RuntimeState *rt, const char *name, int name_len,
  int offset;
 
  if (arr == NULL) {
- error_raise(ERR_HOW, line_num);
- return bval_int(0);
+ /* GW-BASIC auto-DIM: create array with default size 10 */
+ if (dialect_get_config()->has_dim_arrays) {
+  runtime_dim(rt, name, name_len, 10, 0, 0, line_num);
+  if (error_occurred()) return bval_int(0);
+  arr = runtime_find_dim(rt, name, name_len);
+ }
+ if (arr == NULL) {
+  error_raise(ERR_HOW, line_num);
+  return bval_int(0);
+ }
  }
 
  if (arr->dims == 1) {
@@ -969,8 +979,16 @@ void runtime_set_dim(RuntimeState *rt, const char *name, int name_len,
  int offset;
 
  if (arr == NULL) {
- error_raise(ERR_HOW, line_num);
- return;
+ /* GW-BASIC auto-DIM: create array with default size 10 */
+ if (dialect_get_config()->has_dim_arrays) {
+  runtime_dim(rt, name, name_len, 10, 0, 0, line_num);
+  if (error_occurred()) return;
+  arr = runtime_find_dim(rt, name, name_len);
+ }
+ if (arr == NULL) {
+  error_raise(ERR_HOW, line_num);
+  return;
+ }
  }
 
  if (arr->dims == 1) {

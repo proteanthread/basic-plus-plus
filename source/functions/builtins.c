@@ -161,7 +161,7 @@ void builtins_register(void)
   { "PI", KW_PI_FUNC, FCAT_MATH, FRET_FLOAT,0, 0,
   FSAFE_PURE, 0, builtin_pi,
   "Pi constant: PI=3.14159" },
- { "RND", KW_RND, FCAT_MATH, FRET_ANY, 1, 1,
+ { "RND", KW_RND, FCAT_MATH, FRET_ANY, 0, 1,
  FSAFE_STATE, 1, builtin_rnd,
  "Random number: RND(N) returns 1..N" }
  };

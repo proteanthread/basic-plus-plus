@@ -103,10 +103,14 @@ typedef struct StackFrame {
  int return_index;
  } gosub;
  struct {
- char var_name; /* loop variable 'A'-'Z' */
- long limit; /* TO value */
- long step; /* STEP value (default 1) */
+  char var_name; /* loop variable 'A'-'Z' (single-char) */
+  char var_name_ext[MAX_VAR_NAME_LEN + 1]; /* extended name */
+  int var_name_len; /* 0 = single-char, >0 = extended */
+ double limit; /* TO value */
+ double step; /* STEP value (default 1) */
  int body_index; /* index of first line of loop body */
+ int inline_body_pos; /* lexer pos for inline FOR...NEXT (-1 = multi-line) */
+ int inline_line_num; /* line number for inline loop */
  } for_loop;
  struct {
  int loop_index; /* index of the WHILE line */

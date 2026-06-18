@@ -1,0 +1,195 @@
+10 REM =============================================
+20 REM  PAC-MAN - BASIC++ Text Game
+30 REM  Arrow keys to move, ESC to quit
+40 REM =============================================
+50 RANDOMIZE TIMER
+60 CURSOR OFF
+70 REM --- Maze definition (20x20 inside border) ---
+80 DIM M$(25)
+90 M$(1) = "XXXXXXXXXXXXXXXXXXXX"
+100 M$(2) = "X........X.........X"
+110 M$(3) = "X.XX.XXX.X.XXX.XX.X"
+120 M$(4) = "XO................OX"
+130 M$(5) = "X.XX.X.XXXXX.X.XX.X"
+140 M$(6) = "X....X...X...X....X"
+150 M$(7) = "XXXX.XXX X XXX.XXXX"
+160 M$(8) = "   X.X       X.X   "
+170 M$(9) = "XXXX.X XX XX X.XXXX"
+180 M$(10)= "    .  XGHX  .     "
+190 M$(11)= "XXXX.X XXXXX X.XXXX"
+200 M$(12)= "   X.X       X.X   "
+210 M$(13)= "XXXX.X XXXXX X.XXXX"
+220 M$(14)= "X........X........X"
+230 M$(15)= "X.XX.XXX.X.XXX.XX.X"
+240 M$(16)= "XO.X...........X.OX"
+250 M$(17)= "XX.X.X.XXXXX.X.X.XX"
+260 M$(18)= "X....X...X...X....X"
+270 M$(19)= "X.XXXXXX.X.XXXXXX.X"
+280 M$(20)= "X..................X"
+290 M$(21)= "XXXXXXXXXXXXXXXXXXXX"
+300 REM Maze offset (draw at col 31, row 2)
+310 MX0 = 31: MY0 = 2
+320 REM
+330 REM --- Game state ---
+340 PX = 10: PY = 16: PDIR = 0
+350 SC = 0: LV = 3: DOTS = 0: TOTAL.DOTS = 0
+360 POWER = 0: PTIME = 0
+370 REM Ghost positions
+380 DIM GX(4), GY(4), GD(4), GC(4)
+390 GX(1)=9: GY(1)=10: GC(1)=12
+400 GX(2)=10: GY(2)=10: GC(2)=13
+410 GX(3)=11: GY(3)=10: GC(3)=14
+420 GX(4)=10: GY(4)=8: GC(4)=6
+430 FOR I = 1 TO 4: GD(I) = 0: NEXT I
+440 REM Count dots
+450 FOR R = 1 TO 21
+460   FOR C = 1 TO 20
+470     CH$ = MID$(M$(R), C, 1)
+480     IF CH$ = "." OR CH$ = "O" THEN TOTAL.DOTS = TOTAL.DOTS + 1
+490   NEXT C
+500 NEXT R
+510 DOTS = TOTAL.DOTS
+520 REM
+530 REM --- Draw initial maze ---
+540 CLS
+550 COLOR 15, 1
+560 LOCATE 1, 1
+570 PRINT STRING$(80, " ");
+580 LOCATE 1, 2
+590 PRINT "PAC-MAN";
+600 LOCATE 1, 25
+610 PRINT "Score:"; SC;
+620 LOCATE 1, 50
+630 PRINT "Lives: "; STRING$(LV, CHR$(3));
+640 REM Draw maze
+650 FOR R = 1 TO 21
+660   FOR C = 1 TO 20
+670     LOCATE MY0 + R - 1, MX0 + C - 1
+680     CH$ = MID$(M$(R), C, 1)
+690     IF CH$ = "X" THEN COLOR 9, 0: PRINT CHR$(219);
+700     IF CH$ = "." THEN COLOR 15, 0: PRINT CHR$(250);
+710     IF CH$ = "O" THEN COLOR 15, 0: PRINT CHR$(15);
+720     IF CH$ = " " THEN COLOR 0, 0: PRINT " ";
+730     IF CH$ = "G" OR CH$ = "H" THEN COLOR 0, 0: PRINT " ";
+740   NEXT C
+750 NEXT R
+760 REM
+770 REM ========== MAIN GAME LOOP ==========
+780 GFT = TICKS
+790 REM --- Read input ---
+800 K$ = INKEY$
+810 IF K$ = CHR$(27) THEN 2000
+820 IF LEN(K$) = 2 THEN SK = ASC(MID$(K$, 2, 1)) ELSE SK = 0
+830 IF SK = 72 THEN PDIR = 1
+840 IF SK = 80 THEN PDIR = 2
+850 IF SK = 75 THEN PDIR = 3
+860 IF SK = 77 THEN PDIR = 4
+870 REM
+880 REM --- Move Pac-Man ---
+890 NX = PX: NY = PY
+900 IF PDIR = 1 THEN NY = PY - 1
+910 IF PDIR = 2 THEN NY = PY + 1
+920 IF PDIR = 3 THEN NX = PX - 1
+930 IF PDIR = 4 THEN NX = PX + 1
+940 REM Wrap tunnel
+950 IF NX < 1 THEN NX = 20
+960 IF NX > 20 THEN NX = 1
+970 REM Check wall
+980 CH$ = MID$(M$(NY), NX, 1)
+990 IF CH$ = "X" THEN 1060
+1000 REM Erase old position
+1010 LOCATE MY0 + PY - 1, MX0 + PX - 1
+1020 COLOR 0, 0: PRINT " ";
+1030 PX = NX: PY = NY
+1040 REM Check dot
+1050 IF CH$ = "." THEN SC = SC + 10: DOTS = DOTS - 1: MID$(M$(PY), PX, 1) = " "
+1055 IF CH$ = "O" THEN SC = SC + 50: DOTS = DOTS - 1: POWER = 1: PTIME = TICKS: MID$(M$(PY), PX, 1) = " "
+1060 REM Draw Pac-Man
+1070 COLOR 14, 0
+1080 LOCATE MY0 + PY - 1, MX0 + PX - 1
+1090 IF PDIR = 4 THEN PRINT CHR$(16);
+1095 IF PDIR = 3 THEN PRINT CHR$(17);
+1096 IF PDIR = 1 THEN PRINT CHR$(30);
+1097 IF PDIR = 2 THEN PRINT CHR$(31);
+1098 IF PDIR = 0 THEN PRINT "C";
+1100 REM
+1110 REM --- Move ghosts ---
+1120 FOR G = 1 TO 4
+1130   REM Simple AI: random direction change
+1140   IF RND(1) < 0.3 THEN GD(G) = INT(RND(1) * 4) + 1
+1150   NX = GX(G): NY = GY(G)
+1160   IF GD(G) = 1 THEN NY = NY - 1
+1170   IF GD(G) = 2 THEN NY = NY + 1
+1180   IF GD(G) = 3 THEN NX = NX - 1
+1190   IF GD(G) = 4 THEN NX = NX + 1
+1200   IF NX < 1 THEN NX = 20
+1210   IF NX > 20 THEN NX = 1
+1220   CH$ = MID$(M$(NY), NX, 1)
+1230   IF CH$ = "X" THEN GD(G) = INT(RND(1) * 4) + 1: GOTO 1280
+1240   REM Erase old
+1250   LOCATE MY0 + GY(G) - 1, MX0 + GX(G) - 1
+1260   COLOR 0, 0: PRINT " ";
+1270   GX(G) = NX: GY(G) = NY
+1280   REM Draw ghost
+1290   IF POWER = 1 THEN COLOR 9, 0 ELSE COLOR GC(G), 0
+1300   LOCATE MY0 + GY(G) - 1, MX0 + GX(G) - 1
+1310   PRINT CHR$(2);
+1320   REM Check ghost-pacman collision
+1330   IF GX(G) = PX AND GY(G) = PY THEN GOSUB 1500
+1340 NEXT G
+1350 REM
+1360 REM --- Update HUD ---
+1370 COLOR 15, 1
+1380 LOCATE 1, 32
+1390 PRINT SC; "   ";
+1400 REM --- Power-up timer ---
+1410 IF POWER = 1 AND TICKS - PTIME > 5000 THEN POWER = 0
+1420 REM --- Win check ---
+1430 IF DOTS <= 0 THEN GOSUB 1700: GOTO 530
+1440 REM --- Frame wait ---
+1450 GT2 = TICKS
+1460 GT1 = GT2 - GFT
+1470 IF GT1 < 120 THEN DELAY 120 - GT1
+1480 GFT = TICKS
+1490 GOTO 780
+1500 REM === Ghost collision ===
+1510 IF POWER = 1 THEN
+1520   REM Eat ghost
+1530   SC = SC + 200
+1540   GX(G) = 10: GY(G) = 10
+1550   SOUND 1000, 1
+1560   RETURN
+1570 END IF
+1580 REM Player dies
+1590 LV = LV - 1
+1600 SOUND 200, 3
+1610 IF LV <= 0 THEN 2000
+1620 PX = 10: PY = 16: PDIR = 0
+1630 FOR I = 1 TO 4
+1640   GX(I) = 9 + I MOD 3: GY(I) = 10
+1650 NEXT I
+1660 DELAY 1000
+1670 RETURN
+1700 REM === Level complete ===
+1710 COLOR 14, 0
+1720 LOCATE 12, 35
+1730 PRINT "LEVEL CLEAR!"
+1740 SOUND 800, 2
+1750 DELAY 2000
+1760 DOTS = TOTAL.DOTS
+1770 REM Reset dots in maze
+1780 RETURN
+2000 REM === GAME OVER ===
+2010 CURSOR ON
+2020 CLS
+2030 COLOR 14, 0
+2040 LOCATE 10, 30
+2050 PRINT "G A M E   O V E R"
+2060 LOCATE 12, 30
+2070 PRINT "Final Score: "; SC
+2080 LOCATE 16, 25
+2090 PRINT "Press any key to exit..."
+2100 K$ = ""
+2110 WHILE K$ = "": K$ = INKEY$: WEND
+2120 CLS
+2130 END

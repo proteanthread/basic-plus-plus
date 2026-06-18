@@ -58,9 +58,9 @@ void pi_parse_def_fn(Lexer *lex, RuntimeState *rt, int line_num)
  */
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_DEFUSR) {
-		lexer_next(lex);
-		lexer_skip_to_end(lex);
-		return;
+  lexer_next(lex);
+  lexer_skip_to_end(lex);
+  return;
  }
  /*
  * Also handle plain identifier USR after DEF.

@@ -1,0 +1,188 @@
+10 REM =============================================
+20 REM  ZELDA - BASIC++ Text Adventure Game
+30 REM  Arrow keys move, SPACE to attack, ESC quit
+40 REM  Explore rooms, defeat enemies, find items
+50 REM =============================================
+60 RANDOMIZE TIMER
+70 CURSOR OFF
+80 REM --- Constants ---
+90 CONST MAP.W = 16: CONST MAP.H = 16
+100 CONST VIEW.W = 16: CONST VIEW.H = 12
+110 CONST MAX.MOB = 8
+120 CONST FPS = 100
+130 REM --- Player ---
+140 PX = 8: PY = 8: PDIR = 2
+150 HP = 10: MAXHP = 10: ATK = 1
+160 SC = 0: KEYS = 0: HASWORD = 0
+170 ROOMX = 3: ROOMY = 3
+180 REM --- Room data (simplified overworld) ---
+190 REM Each room is a 16x12 grid
+200 DIM RM$(12)
+210 DIM MO.X(MAX.MOB), MO.Y(MAX.MOB)
+220 DIM MO.HP(MAX.MOB), MO.A(MAX.MOB)
+230 REM
+240 GOSUB 3000: REM Generate room
+250 REM
+260 REM --- Draw initial screen ---
+270 CLS
+280 GOSUB 1800: REM Draw HUD
+290 GOSUB 1900: REM Draw room
+300 REM
+310 REM ========== MAIN GAME LOOP ==========
+320 GFT = TICKS
+330 REM --- Input ---
+340 K$ = INKEY$
+350 IF K$ = CHR$(27) THEN 2000
+360 IF LEN(K$) = 2 THEN SK = ASC(MID$(K$, 2, 1)) ELSE SK = 0
+370 OX = PX: OY = PY
+380 IF SK = 72 THEN PY = PY - 1: PDIR = 1
+390 IF SK = 80 THEN PY = PY + 1: PDIR = 2
+400 IF SK = 75 THEN PX = PX - 1: PDIR = 3
+410 IF SK = 77 THEN PX = PX + 1: PDIR = 4
+420 REM Boundary/room transition
+430 IF PX < 1 THEN PX = MAP.W: ROOMX = ROOMX - 1: GOSUB 3000: GOSUB 1900
+440 IF PX > MAP.W THEN PX = 1: ROOMX = ROOMX + 1: GOSUB 3000: GOSUB 1900
+450 IF PY < 1 THEN PY = VIEW.H: ROOMY = ROOMY - 1: GOSUB 3000: GOSUB 1900
+460 IF PY > VIEW.H THEN PY = 1: ROOMY = ROOMY + 1: GOSUB 3000: GOSUB 1900
+470 REM Wall collision
+480 CH$ = MID$(RM$(PY), PX, 1)
+490 IF CH$ = "#" OR CH$ = "D" THEN PX = OX: PY = OY
+500 IF CH$ = "D" AND KEYS > 0 THEN KEYS = KEYS - 1: MID$(RM$(PY), PX, 1) = ".": PX = OX: PY = OY
+510 REM Item pickup
+520 IF CH$ = "K" THEN KEYS = KEYS + 1: SC = SC + 50: MID$(RM$(PY), PX, 1) = ".": SOUND 1000, 1
+530 IF CH$ = "H" THEN HP = HP + 3: IF HP > MAXHP THEN HP = MAXHP
+535 IF CH$ = "H" THEN SC = SC + 10: MID$(RM$(PY), PX, 1) = ".": SOUND 800, 1
+540 IF CH$ = "W" THEN HASWORD = 1: ATK = 3: SC = SC + 200: MID$(RM$(PY), PX, 1) = ".": SOUND 1200, 2
+550 REM Attack
+560 IF K$ = " " THEN GOSUB 1400
+570 REM
+580 REM --- Move enemies ---
+590 FOR I = 1 TO MAX.MOB
+600   IF MO.A(I) = 0 THEN 670
+610   IF RND(1) < 0.2 THEN
+620     REM Move toward player
+630     IF MO.X(I) < PX THEN MO.X(I) = MO.X(I) + 1
+640     IF MO.X(I) > PX THEN MO.X(I) = MO.X(I) - 1
+650     IF MO.Y(I) < PY THEN MO.Y(I) = MO.Y(I) + 1
+660     IF MO.Y(I) > PY THEN MO.Y(I) = MO.Y(I) - 1
+665   END IF
+670   REM Check collision with player
+680   IF MO.A(I) = 1 AND MO.X(I) = PX AND MO.Y(I) = PY THEN
+690     HP = HP - 1: SOUND 200, 1
+700     IF HP <= 0 THEN 2000
+710   END IF
+720 NEXT I
+730 REM
+740 REM --- Render ---
+750 SCREEN LOCK
+760 GOSUB 1900
+770 REM Draw enemies
+780 FOR I = 1 TO MAX.MOB
+790   IF MO.A(I) = 0 THEN 820
+800   COLOR 12, 0
+810   LOCATE MO.Y(I) + 3, MO.X(I) * 3 + 8: PRINT CHR$(234);
+820 NEXT I
+830 REM Draw player
+840 COLOR 14, 0
+850 LOCATE PY + 3, PX * 3 + 8
+860 IF PDIR = 1 THEN PRINT CHR$(30);
+870 IF PDIR = 2 THEN PRINT CHR$(31);
+880 IF PDIR = 3 THEN PRINT CHR$(17);
+890 IF PDIR = 4 THEN PRINT CHR$(16);
+900 GOSUB 1800
+910 SCREEN UNLOCK
+920 REM
+930 REM --- Frame wait ---
+940 GT2 = TICKS: GT1 = GT2 - GFT
+950 IF GT1 < FPS THEN DELAY FPS - GT1
+960 GFT = TICKS
+970 GOTO 320
+980 REM
+1400 REM === Attack ===
+1410 REM Check for enemy in facing direction
+1420 AX = PX: AY = PY
+1430 IF PDIR = 1 THEN AY = AY - 1
+1440 IF PDIR = 2 THEN AY = AY + 1
+1450 IF PDIR = 3 THEN AX = AX - 1
+1460 IF PDIR = 4 THEN AX = AX + 1
+1470 FOR I = 1 TO MAX.MOB
+1480   IF MO.A(I) = 0 THEN 1520
+1490   IF MO.X(I) = AX AND MO.Y(I) = AY THEN
+1500     MO.HP(I) = MO.HP(I) - ATK
+1510     IF MO.HP(I) <= 0 THEN MO.A(I) = 0: SC = SC + 30: SOUND 1000, 1
+1515     SOUND 500, 1
+1520   END IF
+1530 NEXT I
+1540 REM Draw sword flash
+1550 COLOR 15, 0
+1560 LOCATE AY + 3, AX * 3 + 8: PRINT "*";
+1570 RETURN
+1580 REM
+1800 REM === Draw HUD ===
+1810 COLOR 15, 1
+1820 LOCATE 1, 1: PRINT STRING$(80, " ");
+1830 LOCATE 1, 2: PRINT "ZELDA";
+1840 LOCATE 1, 15: PRINT "HP:";
+1850 COLOR 12, 1
+1860 PRINT STRING$(HP, CHR$(3));
+1870 IF HP < MAXHP THEN COLOR 8, 1: PRINT STRING$(MAXHP - HP, CHR$(3));
+1880 COLOR 15, 1
+1885 LOCATE 1, 35: PRINT "Score:"; SC;
+1890 LOCATE 1, 55: PRINT "Keys:"; KEYS;
+1895 IF HASWORD = 1 THEN LOCATE 1, 70: COLOR 14, 1: PRINT CHR$(24); "Sword";
+1896 COLOR 7, 0
+1897 LOCATE 2, 1: PRINT STRING$(80, CHR$(196));
+1898 LOCATE 3, 1: PRINT "Room ("; ROOMX; ","; ROOMY; ")";
+1899 RETURN
+1900 REM === Draw room ===
+1910 FOR R = 1 TO VIEW.H
+1920   FOR C = 1 TO MAP.W
+1930     LOCATE R + 3, C * 3 + 8
+1940     CH$ = MID$(RM$(R), C, 1)
+1950     IF CH$ = "#" THEN COLOR 8, 0: PRINT CHR$(219);
+1960     IF CH$ = "." THEN COLOR 0, 0: PRINT " ";
+1970     IF CH$ = "K" THEN COLOR 14, 0: PRINT CHR$(12);
+1980     IF CH$ = "H" THEN COLOR 12, 0: PRINT CHR$(3);
+1990     IF CH$ = "W" THEN COLOR 15, 0: PRINT CHR$(24);
+1995     IF CH$ = "D" THEN COLOR 6, 0: PRINT CHR$(219);
+1996     IF CH$ = "T" THEN COLOR 2, 0: PRINT CHR$(6);
+1997   NEXT C
+1998 NEXT R
+1999 RETURN
+3000 REM === Generate room ===
+3010 REM Create room based on ROOMX, ROOMY
+3020 FOR R = 1 TO VIEW.H
+3030   RM$(R) = ""
+3040   FOR C = 1 TO MAP.W
+3050     IF R = 1 OR R = VIEW.H OR C = 1 OR C = MAP.W THEN
+3060       REM Border walls with openings
+3070       IF (R = 6 AND C = 1) OR (R = 6 AND C = MAP.W) THEN RM$(R) = RM$(R) + "." ELSE IF (C = 8 AND R = 1) OR (C = 8 AND R = VIEW.H) THEN RM$(R) = RM$(R) + "." ELSE RM$(R) = RM$(R) + "#"
+3080     ELSE
+3090       REM Interior: random obstacles
+3100       RR = RND(1)
+3110       IF RR < 0.08 THEN RM$(R) = RM$(R) + "#" ELSE IF RR < 0.1 THEN RM$(R) = RM$(R) + "T" ELSE RM$(R) = RM$(R) + "."
+3120     END IF
+3130   NEXT C
+3140 NEXT R
+3150 REM Place items
+3160 IF RND(1) < 0.3 THEN MID$(RM$(6), 8, 1) = "K"
+3170 IF RND(1) < 0.2 THEN MID$(RM$(4), 12, 1) = "H"
+3180 IF ROOMX = 5 AND ROOMY = 5 AND HASWORD = 0 THEN MID$(RM$(6), 8, 1) = "W"
+3190 REM Spawn enemies
+3200 FOR I = 1 TO MAX.MOB: MO.A(I) = 0: NEXT I
+3210 NE = INT(RND(1) * 4) + 1
+3220 FOR I = 1 TO NE
+3230   MO.X(I) = INT(RND(1) * 14) + 2
+3240   MO.Y(I) = INT(RND(1) * 10) + 2
+3250   MO.HP(I) = 2: MO.A(I) = 1
+3260 NEXT I
+3270 RETURN
+2000 REM === GAME OVER ===
+2010 CURSOR ON: CLS
+2020 COLOR 14, 0
+2030 LOCATE 10, 25: PRINT "Y O U   D I E D"
+2040 LOCATE 12, 25: PRINT "Score: "; SC
+2050 LOCATE 14, 25: PRINT "Rooms Explored: "; ROOMX + ROOMY
+2060 LOCATE 16, 25: PRINT "Press any key..."
+2070 K$ = "": WHILE K$ = "": K$ = INKEY$: WEND
+2080 CLS: END

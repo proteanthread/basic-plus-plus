@@ -1,41 +1,63 @@
 # Security and Sandboxing in BASIC++
 
-**Version 1.5.0**
+**Version 3.3.0**
 
-BASIC++ includes a security model that restricts what programs can do. This is essential when running untrusted BASIC code.
+BASIC++ includes a 6-level security model that restricts what programs can
+do.  This is essential when running untrusted BASIC code, educational
+environments, and extension/plugin development.
+
+Security levels can only go UP, never down (one-way ratchet).  Once you
+set SECURITY SAFE, you cannot return to SECURITY OPEN within the same
+session.  Only a NEW or direct-mode command at level 0 can lower it.
 
 ---
 
 ## 1. Security Levels
 
-| Level | Name | Description |
-|-------|------|-------------|
-| **0** | Unrestricted | Everything is allowed. Full system access. *(default)* |
-| **1** | Cautious | Dangerous memory operations blocked. `PEEK`/`POKE` restricted to virtual memory only. `DEF USR` restricted. |
-| **2** | Sandboxed | All I/O restricted. `SHELL`, `SHELL$`, `EXEC` blocked. File operations limited to current directory. No `KILL`, `MKDIR`, `RMDIR`, `CHDIR`. |
-| **3** | Locked Down | Only pure computation allowed. No file I/O, no shell, no `PEEK`/`POKE`. Only `PRINT` to console. No `ENVIRON$`. Maximum isolation. |
+BASIC++ uses named security levels.  Numbers are supported but the named
+form is preferred.
+
+| # | Name         | Description                                         |
+|---|--------------|-----------------------------------------------------|
+| 0 | OPEN         | Everything allowed. Full system access. *(default)* |
+| 1 | SAFE         | Dangerous memory ops blocked. PEEK/POKE virtual     |
+|   |              | only. DEF USR restricted.                           |
+| 2 | STANDARD     | No SHELL, EXEC. File I/O current dir only. No KILL, |
+|   |              | MKDIR, RMDIR, CHDIR. Environment vars blocked.      |
+| 3 | EDUCATIONAL  | STANDARD restrictions + no external code loading.   |
+|   |              | LOAD FUNCTION/LIBRARY/FEATURE/PLUGIN blocked.       |
+|   |              | Ideal for classroom environments.                   |
+| 4 | RESTRICTED   | EDUCATIONAL + no graphics, sound, or network.       |
+|   |              | CHAIN and MERGE for file management only.           |
+| 5 | PARANOID     | Math and strings only. No file I/O, no memory, no   |
+|   |              | graphics, no sound, no network. No external         |
+|   |              | extensions of any kind. LIST, LOAD, SAVE, RUN       |
+|   |              | still work. Pure computation only.                  |
 
 ---
 
 ## 2. Setting Security Level
 
 ```basic
-SECURITY LEVEL 0         ' Unrestricted
-SECURITY LEVEL 1         ' Cautious
-SECURITY LEVEL 2         ' Sandboxed
-SECURITY LEVEL 3         ' Locked down
+SECURITY OPEN              ' Level 0 - unrestricted
+SECURITY SAFE              ' Level 1 - memory protected
+SECURITY STANDARD          ' Level 2 - sandboxed I/O
+SECURITY EDUCATIONAL       ' Level 3 - classroom mode
+SECURITY RESTRICTED        ' Level 4 - minimal I/O
+SECURITY PARANOID          ' Level 5 - pure computation
 
-SANDBOX                  ' Shortcut for SECURITY LEVEL 2
+SECURITY 0                 ' Numeric form (discouraged)
+SECURITY 1                 ' Use named form instead
 ```
+
+Use named form (SECURITY SAFE) rather than numeric (SECURITY 1).
 
 Security can be set in direct mode or in a program:
 
 ```basic
-10 SECURITY LEVEL 2
-20 ' Rest of program runs sandboxed
+10 SECURITY SAFE
+20 ' Rest of program runs with memory protection
 ```
-
-> **Important:** Security level can only be **increased**, never decreased, within a program. Once you sandbox, you cannot un-sandbox. Only a `NEW` or direct-mode command at level 0 can lower the level.
 
 ---
 
@@ -43,88 +65,160 @@ Security can be set in direct mode or in a program:
 
 Every built-in function has a safety classification:
 
-| Category | Description | Blocked At | Examples |
-|----------|-------------|------------|----------|
-| `FSAFE_PURE` | No side effects. Always allowed. | Never | `ABS`, `LEN`, `LEFT$`, `MID$`, `SIN`, `COS`, `VAL`, `STR$` |
-| `FSAFE_STATE` | Reads or modifies interpreter state. | Level 3 | `RND`, `FRE`, `TIMER`, `POS`, `CSRLIN` |
-| `FSAFE_IO` | Performs I/O operations. | Level 2+ | `SHELL$`, `ENVIRON$`, `OPEN`, `CLOSE` |
-| `FSAFE_UNSAFE` | Direct system access. | Level 1+ | `PEEK`, `POKE`, `INP`, `OUT`, `DEF USR` |
+| Category      | Description                    | Blocked At    |
+|---------------|--------------------------------|---------------|
+| FSAFE_PURE    | No side effects. Always safe.  | Never         |
+| FSAFE_STATE   | Reads/modifies interpreter     | PARANOID      |
+| FSAFE_IO      | Performs I/O operations         | STANDARD+     |
+| FSAFE_SYSTEM  | Direct system/OS access        | SAFE+         |
+
+Examples:
+  FSAFE_PURE:   ABS, LEN, LEFT$, MID$, SIN, COS, VAL, STR$
+  FSAFE_STATE:  RND, FRE, TIMER, POS, CSRLIN
+  FSAFE_IO:     SHELL$, ENVIRON$, OPEN, CLOSE
+  FSAFE_SYSTEM: PEEK, POKE, INP, OUT, DEF USR
 
 ---
 
-## 4. What's Blocked at Each Level
+## 4. Permission Matrix
 
-| Feature | L0 | L1 | L2 | L3 |
-|---------|:--:|:--:|:--:|:--:|
-| `PRINT` (console) | ✅ | ✅ | ✅ | ✅ |
-| `INPUT` (keyboard) | ✅ | ✅ | ✅ | ✅ |
-| Math functions | ✅ | ✅ | ✅ | ✅ |
-| String functions | ✅ | ✅ | ✅ | ✅ |
-| Arrays / `DIM` | ✅ | ✅ | ✅ | ✅ |
-| `FOR`/`NEXT`/`WHILE`/`WEND` | ✅ | ✅ | ✅ | ✅ |
-| `GOSUB`/`RETURN` | ✅ | ✅ | ✅ | ✅ |
-| `RND` / `RANDOMIZE` | ✅ | ✅ | ✅ | ❌ |
-| `TIMER` / `DATE$` / `TIME$` | ✅ | ✅ | ✅ | ❌ |
-| `PEEK` / `POKE` | ✅ | ❌ | ❌ | ❌ |
-| `INP` / `OUT` | ✅ | ❌ | ❌ | ❌ |
-| `DEF USR` / `USR` | ✅ | ❌ | ❌ | ❌ |
-| `OPEN` / `CLOSE` | ✅ | ✅ | Limited | ❌ |
-| `PRINT #n` / `INPUT #n` | ✅ | ✅ | Limited | ❌ |
-| `KILL` / `NAME` | ✅ | ✅ | ❌ | ❌ |
-| `MKDIR` / `RMDIR` / `CHDIR` | ✅ | ✅ | ❌ | ❌ |
-| `SHELL` / `SHELL$` | ✅ | ✅ | ❌ | ❌ |
-| `EXEC` | ✅ | ✅ | ❌ | ❌ |
-| `ENVIRON$` | ✅ | ✅ | ❌ | ❌ |
-| `SAVE` / `LOAD` / `MERGE` | ✅ | ✅ | Limited | ❌ |
-| `CHAIN` | ✅ | ✅ | ❌ | ❌ |
+What's allowed at each security level:
+
+| Feature                     | OPEN | SAFE | STD  | EDU  | REST | PARA |
+|-----------------------------|:----:|:----:|:----:|:----:|:----:|:----:|
+| PRINT (console)             |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| INPUT (keyboard)            |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| Math functions              |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| String functions            |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| Arrays / DIM                |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| FOR/NEXT/WHILE/WEND         |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| GOSUB/RETURN                |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| LIST / LOAD / SAVE / RUN    |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| RND / RANDOMIZE             |  Y   |  Y   |  Y   |  Y   |  Y   |  -   |
+| TIMER / DATE$ / TIME$       |  Y   |  Y   |  Y   |  Y   |  Y   |  -   |
+| PEEK / POKE (virtual)       |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| PEEK / POKE (hardware)      |  Y   |  -   |  -   |  -   |  -   |  -   |
+| INP / OUT                   |  Y   |  -   |  -   |  -   |  -   |  -   |
+| DEF USR / USR               |  Y   |  -   |  -   |  -   |  -   |  -   |
+| OPEN / CLOSE (files)        |  Y   |  Y   |  CWD  |  CWD  |  -   |  -   |
+| PRINT# / INPUT#             |  Y   |  Y   |  CWD  |  CWD  |  -   |  -   |
+| KILL / NAME / SCRATCH       |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| MKDIR / RMDIR / CHDIR       |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| SHELL / SHELL$ / EXEC       |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| ENVIRON$                    |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| SAVE / LOAD / MERGE         |  Y   |  Y   |  CWD  |  CWD  | Lim  |  -   |
+| CHAIN                       |  Y   |  Y   |  -   |  -   | Lim  |  -   |
+| Graphics (PSET, CIRCLE etc) |  Y   |  Y   |  Y   |  Y   |  -   |  -   |
+| Sound (BEEP, PLAY, SOUND)   |  Y   |  Y   |  Y   |  Y   |  -   |  -   |
+| Network (N:, VNET)          |  Y   |  Y   |  Y   |  -   |  -   |  -   |
+| Port I/O (port gate)        |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| LOAD FUNCTION/LIBRARY/etc   |  Y   |  Y   |  Y   |  -   |  -   |  -   |
+| COMPILE LIBRARY             |  Y   |  Y   |  Y   |  -   |  -   |  -   |
+| LOAD .BPL (pre-compiled)    |  Y   |  Y   |  Y   |  -   |  -   |  -   |
+
+Key: Y=allowed, -=blocked, CWD=current directory only, Lim=limited
 
 ---
 
-## 5. Limited File Access (Level 2)
+## 5. External Extension Security
 
-At level 2, file operations are restricted to:
-- **Current directory only** (no path traversal)
-- Cannot delete files (`KILL` blocked)
-- Cannot create directories (`MKDIR` blocked)
-- Cannot change directory (`CHDIR` blocked)
-- Read and write allowed in current dir
-- `SAVE`/`LOAD`/`MERGE` only in current dir
+### 5.1 Extension Loading Gate (SECOP_EXT_LOAD)
+
+External code loading (LOAD FUNCTION, LOAD LIBRARY, LOAD FEATURE,
+LOAD PLUGIN) is controlled by the SECOP_EXT_LOAD permission:
+
+  OPEN:        Allowed
+  SAFE:        Allowed
+  STANDARD:    Allowed
+  EDUCATIONAL: BLOCKED (no external code in classrooms)
+  RESTRICTED:  BLOCKED
+  PARANOID:    BLOCKED (no external anything)
+
+### 5.2 Security Pinning (Minimum-Floor Model)
+
+Every external extension declares a required security level:
+
+  External functions:  required_level in BppExtFunc struct
+  External libraries:  REM @SECURITY tag in .lib file
+  External features:   SECURITY in .spec file
+  External plugins:    security: in plugin.yaml manifest
+  External modules:    required_level in ModuleInfo struct
+
+Pinning uses a MINIMUM-FLOOR model:
+
+  An extension pinned to SAFE requires the interpreter to be at
+  SAFE or higher.  It works at SAFE, STANDARD, EDUCATIONAL,
+  RESTRICTED (subject to SECOP_EXT_LOAD gate).
+
+  An extension pinned to STANDARD requires STANDARD or higher.
+
+  OPEN (level 0) is LESS secure than SAFE (level 1), so an
+  extension pinned to SAFE will NOT load at OPEN.
+
+  PARANOID (level 5) blocks ALL external extensions regardless
+  of pinning.
+
+  Unpinned extensions (SEC_COUNT) work at any level that passes
+  the SECOP_EXT_LOAD gate.
+
+### 5.3 Path Validation
+
+All external code paths are validated:
+
+  Allowed:   CWD-relative paths only
+  Allowed:   .dll .so .lib .bpl .bpp .bas .spec .yaml extensions
+  Blocked:   Absolute paths (C:\, /, \\)
+  Blocked:   Path traversal (..)
+  Blocked:   Unrecognized extensions (.exe .bat .cmd .py etc)
 
 ---
 
 ## 6. Use Cases
 
-### A. Running student homework
+### A. Running student homework (EDUCATIONAL)
 
 ```basic
-10 SECURITY LEVEL 2
-20 ' Students can compute but can't damage the system
-30 CHAIN "student_program.bas"
+10 SECURITY EDUCATIONAL
+20 ' Students can compute, use graphics, but
+30 ' cannot load external code or delete files
+40 CHAIN "student_program.bas"
 ```
 
-### B. Online BASIC playground
+### B. Online BASIC playground (PARANOID)
 
 ```basic
-SECURITY LEVEL 3
-' Only pure computation -- safe for web execution
+SECURITY PARANOID
+' Pure computation only -- safe for web execution
+' Only math, strings, and flow control
 ```
 
-### C. Batch processing with limited I/O
+### C. Extension development (SAFE)
 
 ```basic
-10 SECURITY LEVEL 1
-20 ' Can do file I/O but can't POKE arbitrary memory
-30 OPEN "data.txt" FOR INPUT AS #1
-40 ' ...process data...
-50 CLOSE #1
+10 SECURITY SAFE
+20 ' Extensions pinned to SAFE will load here
+30 LOAD FUNCTION "myext.dll"
+40 PRINT MYEXT(42)
 ```
 
-### D. Plugin testing
+### D. Batch processing (STANDARD)
 
 ```basic
-10 SECURITY LEVEL 2
-20 ' Test untrusted module code safely
-30 IMPORT untrusted_module
+10 SECURITY STANDARD
+20 ' Can do file I/O in current dir
+30 ' No SHELL, no EXEC, no KILL
+40 OPEN "data.txt" FOR INPUT AS #1
+50 ' ...process data...
+60 CLOSE #1
+```
+
+### E. Game toolkit (SAFE with extensions)
+
+```basic
+10 SECURITY SAFE
+20 LOAD PLUGIN "gamedev"
+30 ' Plugin loads at SAFE because SAFE >= SAFE
+40 ' Graphics, sound, input all available
 ```
 
 ---
@@ -134,14 +228,14 @@ SECURITY LEVEL 3
 When a blocked operation is attempted:
 
 ```
-"Permission denied in 50"
+SORRY? Security: shell access not permitted at level STANDARD in line 30
 ```
 
-This is error code **70**. The error can be caught with `ON ERROR GOTO`:
+This triggers error code 70.  Catch with ON ERROR GOTO:
 
 ```basic
 10 ON ERROR GOTO 100
-20 SECURITY LEVEL 2
+20 SECURITY STANDARD
 30 SHELL "dir"              ' Blocked!
 40 END
 100 IF ERR = 70 THEN PRINT "Not allowed!" : RESUME NEXT
@@ -151,24 +245,31 @@ This is error code **70**. The error can be caught with `ON ERROR GOTO`:
 
 ## 8. Implementation Notes
 
-The security system is implemented in `security.c`/`.h`. It checks the current security level before executing any sensitive operation.
+The security system is implemented in security.c / security.h.
 
-For C module authors: Set the appropriate `FSAFE_*` level on your registered functions. The security system will automatically enforce the restrictions.
+Key components:
+  - Permission matrix: static 2D array [6][19] (levels x operations)
+  - security_check():  operation-level gate
+  - security_check_pinned_level():  minimum-floor pinning
+  - security_check_path():  path traversal/extension validation
+  - security_check_mem():   hardware memory bounds
+  - security_check_port():  port I/O gate (explicit port whitelist)
 
-| Constant | Blocked At |
-|----------|------------|
-| `FSAFE_PURE` | Never |
-| `FSAFE_STATE` | Level 3 |
-| `FSAFE_IO` | Level 2+ |
-| `FSAFE_UNSAFE` | Level 1+ |
+For C module authors: set the appropriate FSAFE_* level on your
+registered functions.  Set required_level on your ModuleInfo to
+declare the minimum security level your module requires.
 
 ---
 
 ## 9. Best Practices
 
-- Set security level **early** in your program
-- Use the **lowest level** that meets your needs
-- Remember: level can go **up** but not **down**
+- Set security level EARLY in your program
+- Use the LOWEST level that meets your needs
+- Use named levels (SECURITY SAFE) not numbers (SECURITY 1)
+- Remember: level can go UP but not DOWN
 - Test at each security level to verify behavior
-- Use `ON ERROR GOTO` to handle permission errors gracefully
-- For maximum safety, combine `SECURITY LEVEL 3` with a restricted dialect (e.g., Tiny BASIC)
+- Use ON ERROR GOTO to handle permission errors gracefully
+- Pin external extensions to SAFE (the recommended default)
+- For classroom use, EDUCATIONAL blocks external code loading
+- For maximum safety, combine SECURITY PARANOID with a
+  restricted dialect (e.g., Tiny BASIC)

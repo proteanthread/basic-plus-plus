@@ -1,6 +1,6 @@
 # BASIC++ Debugging and Testing
 
-**Version 2.0.0**
+**Version 4.0.0**
 
 This guide covers all debugging and testing features built into BASIC++. These tools help you find bugs, verify behavior, and build confidence in your programs.
 
@@ -247,6 +247,139 @@ A typical debugging session:
    ASSERT LEN(A$) <= 255
    ```
 8. Wrap tests in `TEST` blocks for organized reporting
+9. Use `CHECK` or `VERIFY` for static analysis before running
+
+---
+
+## CHECK — Static Program Analysis
+
+`CHECK` analyzes a program for common issues **without running it**:
+
+```
+> CHECK                      ' Check current program in memory
+> CHECK "filename.bas"       ' Check a file on disk
+```
+
+CHECK reports:
+
+- **Errors**: `FOR` without matching `NEXT`, `GOTO`/`GOSUB` targets that don't exist
+- **Warnings**: Variables used but never assigned, variables assigned but never read
+- **Program statistics**: Lines, variables, FOR loops, subroutines, branch targets
+- **Memory usage**: Source text bytes, line storage, total footprint
+- **Cyclomatic complexity**: Simple / moderate / complex / very complex / extremely complex
+
+**Example:**
+
+```
+> CHECK
+=== CHECK: Program Analysis ===
+
+  120 FOR X=0 TO 7:FOR Y=0 TO 7:READ J:IF J=15 THEN 180
+    ERROR: FOR X without matching NEXT
+  WARNING (line 50): Variable Z used but never assigned
+
+--- Program Statistics ---
+  Lines:      42
+  Variables:  8
+  FOR loops:  3
+  Subroutines: 2 GOSUB calls
+
+--- Memory Usage ---
+  Source text:  1024 bytes
+  Line storage: 10920 bytes
+  Total:        11944 bytes
+
+--- Complexity ---
+  Cyclomatic: 12 (moderate)
+
+=== 1 error, 1 warning ===
+```
+
+---
+
+## VERIFY — Full Program Verification
+
+`VERIFY` runs everything `CHECK` does, plus additional deep analysis:
+
+```
+> VERIFY                     ' Verify current program
+> VERIFY "filename.bas"      ' Verify a file on disk
+```
+
+Includes everything CHECK reports, plus:
+
+- Cross-reference validation
+- DATA/READ balance analysis
+- Branch target integrity checks
+- Type suffix consistency
+
+**Example:**
+
+```
+> VERIFY "mygame.bas"
+=== VERIFY: mygame.bas ===
+=== CHECK: Program Analysis ===
+
+--- Program Statistics ---
+  Lines:      155 (137 code, 18 comments)
+  Variables:  20
+  DATA/READ:  34 items, 2 reads
+  FOR loops:  10
+  Subroutines: 13 GOSUB calls
+
+--- Memory Usage ---
+  Source text:  4220 bytes
+  Total:        44520 bytes
+
+--- Complexity ---
+  Cyclomatic: 40 (very complex)
+
+=== 0 errors, 3 warnings ===
+```
+
+---
+
+## BACKTRACE — Call Stack Dump
+
+`BACKTRACE` shows the current GOSUB/SUB/FUNCTION call stack. Use it after a `STOP`, `BREAK`, or Ctrl+C to see how the program reached the current point:
+
+```
+> BACKTRACE
+[3] line 500 (GOSUB from 200)
+[2] line 300 (GOSUB from 100)
+[1] line 100 (main)
+```
+
+This is invaluable for debugging deeply nested subroutine calls or recursive FUNCTION definitions.
+
+---
+
+## ERROR$ — Error Message Lookup
+
+`ERROR$(n)` returns the human-readable description for any error code:
+
+```basic
+100 ON ERROR GOTO 900
+110 X = 1 / 0
+120 END
+900 PRINT "Error "; ERR; ": "; ERROR$(ERR); " at line "; ERL
+910 RESUME NEXT
+```
+
+Output:
+```
+Error 11: Division by zero at line 110
+```
+
+Common error codes:
+
+| Code | ERROR$ | Meaning |
+|------|--------|---------|
+| 1 | `WHAT?` | Syntax error |
+| 2 | `Syntax error` | Statement syntax |
+| 5 | `Illegal function call` | Bad argument |
+| 11 | `Division by zero` | Math error |
+| 53 | `File not found` | I/O error |
 
 **Tips:**
 - Use `BREAK` for targeted debugging

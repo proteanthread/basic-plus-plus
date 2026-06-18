@@ -329,58 +329,58 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
    return;
   }
  }
-	/*
-	 * OPTION KEYWORD UPPER | LOWER | TITLE | MIXED
-	 * Set keyword display/storage case mode.
-	 */
-	if (lex->current.type == TOK_KEYWORD &&
-	lex->current.value.keyword == KW_KEYWORD) {
-	lexer_next(lex); /* consume KEYWORD */
-	if (lex->current.type == TOK_NAMED_VAR &&
-	lex->current.str_length >= 3 &&
-	lex->current.str_start != NULL) {
-	const char *m = lex->current.str_start;
-	if ((m[0]=='U'||m[0]=='u') &&
-	(m[1]=='P'||m[1]=='p') &&
-	(m[2]=='P'||m[2]=='p')) {
-	lexer_set_keyword_case(KWCASE_UPPER);
-	printf("Keyword case: UPPER\n");
-	lexer_next(lex);
-	} else if (
-	(m[0]=='L'||m[0]=='l') &&
-	(m[1]=='O'||m[1]=='o') &&
-	(m[2]=='W'||m[2]=='w')) {
-	lexer_set_keyword_case(KWCASE_LOWER);
-	printf("Keyword case: LOWER\n");
-	lexer_next(lex);
-	} else if (
-	(m[0]=='T'||m[0]=='t') &&
-	(m[1]=='I'||m[1]=='i') &&
-	(m[2]=='T'||m[2]=='t')) {
-	lexer_set_keyword_case(KWCASE_TITLE);
-	printf("Keyword case: TITLE\n");
-	lexer_next(lex);
-	} else if (
-	(m[0]=='M'||m[0]=='m') &&
-	(m[1]=='I'||m[1]=='i') &&
-	(m[2]=='X'||m[2]=='x')) {
-	lexer_set_keyword_case(KWCASE_MIXED);
-	printf("Keyword case: MIXED"
-	" (as-is)\n");
-	lexer_next(lex);
-	} else {
-	error_raise(ERR_WHAT, line_num);
-	}
-	} else {
-	/* No argument: show current mode */
-	const char *names[] = {
-	"MIXED", "UPPER", "LOWER", "TITLE"
-	};
-	printf("Keyword case: %s\n",
-	names[lexer_get_keyword_case()]);
-	}
-	return;
-	}
+ /*
+  * OPTION KEYWORD UPPER | LOWER | TITLE | MIXED
+  * Set keyword display/storage case mode.
+  */
+ if (lex->current.type == TOK_KEYWORD &&
+ lex->current.value.keyword == KW_KEYWORD) {
+ lexer_next(lex); /* consume KEYWORD */
+ if (lex->current.type == TOK_NAMED_VAR &&
+ lex->current.str_length >= 3 &&
+ lex->current.str_start != NULL) {
+ const char *m = lex->current.str_start;
+ if ((m[0]=='U'||m[0]=='u') &&
+ (m[1]=='P'||m[1]=='p') &&
+ (m[2]=='P'||m[2]=='p')) {
+ lexer_set_keyword_case(KWCASE_UPPER);
+ printf("Keyword case: UPPER\n");
+ lexer_next(lex);
+ } else if (
+ (m[0]=='L'||m[0]=='l') &&
+ (m[1]=='O'||m[1]=='o') &&
+ (m[2]=='W'||m[2]=='w')) {
+ lexer_set_keyword_case(KWCASE_LOWER);
+ printf("Keyword case: LOWER\n");
+ lexer_next(lex);
+ } else if (
+ (m[0]=='T'||m[0]=='t') &&
+ (m[1]=='I'||m[1]=='i') &&
+ (m[2]=='T'||m[2]=='t')) {
+ lexer_set_keyword_case(KWCASE_TITLE);
+ printf("Keyword case: TITLE\n");
+ lexer_next(lex);
+ } else if (
+ (m[0]=='M'||m[0]=='m') &&
+ (m[1]=='I'||m[1]=='i') &&
+ (m[2]=='X'||m[2]=='x')) {
+ lexer_set_keyword_case(KWCASE_MIXED);
+ printf("Keyword case: MIXED"
+ " (as-is)\n");
+ lexer_next(lex);
+ } else {
+ error_raise(ERR_WHAT, line_num);
+ }
+ } else {
+ /* No argument: show current mode */
+ const char *names[] = {
+ "MIXED", "UPPER", "LOWER", "TITLE"
+ };
+ printf("Keyword case: %s\n",
+ names[lexer_get_keyword_case()]);
+ }
+ return;
+ }
  /*
   * OPTION RPN [ON | OFF]
   * Enable or disable Forth-style RPN calculator mode.
@@ -745,7 +745,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  /* ALIAS op = "name" (symbolic operator alias)
-  * Accepts bare operator tokens: ALIAS >= = "≥"
+  * Accepts bare operator tokens: ALIAS >= = "â‰¥"
   */
  if (lex->current.type == TOK_GT_EQ ||
   lex->current.type == TOK_LT_EQ ||
@@ -1739,7 +1739,7 @@ void pi_parse_security(Lexer *lex, RuntimeState *rt, int line_num)
  *   level, activation is denied and the module is either:
  *   - Blocked entirely (RESTRICTED mode), or
  *   - Downgraded: only safe capabilities are honored (STANDARD mode).
- *   This is dynamic, not absolute — changing the security level at
+ *   This is dynamic, not absolute â€” changing the security level at
  *   runtime affects which modules can be activated.
  */
 void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)

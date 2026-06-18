@@ -1,6 +1,6 @@
 # BASIC++ Quick Reference Card
 
-**Version 2.0.0**
+**Version 4.0.0**
 
 Alphabetical listing of every keyword, statement, function, and command in BASIC++.
 
@@ -32,6 +32,9 @@ Alphabetical listing of every keyword, statement, function, and command in BASIC
 | `SYSTEM` | Exit BASIC++ |
 | `TROFF` | Disable trace mode |
 | `TRON` | Enable trace mode |
+| `VERIFY ["filename"]` | Full program verification (CHECK + deep analysis) |
+| `CHECK ["filename"]` | Static program analysis (errors, warnings, stats) |
+| `BACKTRACE` | Show GOSUB/SUB/FUNCTION call stack |
 
 ---
 
@@ -112,7 +115,7 @@ Alphabetical listing of every keyword, statement, function, and command in BASIC
 | `PRINT USING fmt; expr` | Formatted output |
 | `PSET (x, y) [, color]` | Plot pixel |
 | `PUT #n [, record]` | Write record/bytes |
-| `RANDOMIZE [seed]` | Seed random generator |
+| `RANDOMIZE [seed \| TIMER]` | Seed random generator |
 | `READ var [, var, ...]` | Read from DATA |
 | `REM comment` | Comment (`'` also works) |
 | `RESET` | Close all files |
@@ -195,7 +198,7 @@ Alphabetical listing of every keyword, statement, function, and command in BASIC
 | `POINT(x, y)` | Pixel color |
 | `POS(x)` | Cursor column |
 | `REAL(z)` | Real part of complex |
-| `RND(x)` | Random number (0–1) |
+| `RND[(x)]` | Random number (0–1); parens optional |
 | `ROUND(x [, n])` | Round to N decimal places |
 | `SCREEN(r, c)` | Character at position |
 | `SGN(x)` | Sign (−1, 0, 1) |

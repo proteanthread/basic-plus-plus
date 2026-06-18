@@ -1,0 +1,856 @@
+# Implementing, Debugging, and Testing Memory Maps
+
+**BASIC++ Developer Tutorial — Version 1.0**
+
+This tutorial walks you through the complete lifecycle of a memory
+map: researching a real machine, writing the init function, verifying
+every byte against hardware references, and debugging PEEK/POKE
+behavior in BASIC programs.  By the end you will be able to create
+maps that faithfully reproduce any 8-bit or 16-bit computer's
+cold-boot memory state.
+
+---
+
+## Table of Contents
+
+  1.  Architecture Overview
+  2.  How Memory Maps Work Internally
+  3.  Research: Getting the Right Values
+  4.  Step-by-Step: Implementing a New Map
+  5.  Testing Your Map
+  6.  Debugging Techniques
+  7.  Platform-Specific Verification Suites
+  8.  Advanced: Side Effects and Magic Addresses
+  9.  Advanced: DEF SEG Interaction
+  10. Troubleshooting Common Problems
+  11. Reference: All 21 Maps at a Glance
+
+---
+
+## 1. Architecture Overview
+
+BASIC++ uses a single 64 KB byte array (65536 bytes, addresses
+$0000-$FFFF) to emulate the memory of a target platform.  When the
+user executes `MEMMAP "C64"`, the interpreter:
+
+  1. Clears the entire array to zero  (`memset(mem, 0, 65536)`)
+  2. Calls the platform's init function  (`memmap_init_c64(mem)`)
+  3. The init function writes non-zero values using helpers:
+     - `mem_set(mem, addr, byte)`       — single byte
+     - `mem_set16(mem, addr, word)`     — 16-bit little-endian word
+     - `mem_fill(mem, start, len, val)` — fill range with byte
+
+After initialization, `PEEK(addr)` reads from the array and
+`POKE addr, val` writes to it.  `INP(port)` and `OUT port, val`
+are aliases that use the same array.
+
+**Key design rule:**  The array is always zeroed first, so your init
+function only needs to set values that are NOT zero at cold boot.
+
+
+### Source Files
+
+  File                          Purpose
+  ----                          -------
+  source/memmap.h               Enum of all map types
+  source/memory/memmap.c        Init functions + name table + API
+  source/memory/memory.c        The 64K array itself
+  source/memory/builtins_memory.c   PEEK/POKE/INP/OUT/DEF SEG
+
+
+---
+
+## 2. How Memory Maps Work Internally
+
+### The Enum (memmap.h)
+
+Every platform has an entry in `MemMapType`:
+
+    typedef enum MemMapType {
+        MMAP_NONE = 0,
+        MMAP_MSDOS,
+        MMAP_C64,
+        /* ... */
+        MMAP_COUNT          /* sentinel, must be last */
+    } MemMapType;
+
+### The Init Function (memmap.c)
+
+A static function that fills the 64K array:
+
+    static void memmap_init_c64(unsigned char *mem)
+    {
+        mem_set(mem, 0x0001, 0x37);     /* CPU port */
+        mem_fill(mem, 0x0400, 1000, 0x20);  /* Screen */
+        mem_set(mem, 0xD020, 0x0E);     /* Border: light blue */
+        /* ... */
+    }
+
+### The Dispatch Switch
+
+`memmap_init()` dispatches based on type:
+
+    void memmap_init(unsigned char *mem, MemMapType type)
+    {
+        memset(mem, 0, 65536);
+        switch (type) {
+        case MMAP_C64: memmap_init_c64(mem); break;
+        /* ... */
+        }
+    }
+
+### The Name Table
+
+Maps string names to enums for `MEMMAP "name"` parsing:
+
+    static const struct {
+        const char *name;
+        const char *desc;
+        MemMapType  type;
+    } memmap_table[] = {
+        { "C64", "Commodore 64 (VIC-II, SID, CIA)", MMAP_C64 },
+        /* ... */
+        { NULL, NULL, MMAP_COUNT }
+    };
+
+
+---
+
+## 3. Research: Getting the Right Values
+
+The single most important step is finding out what EVERY byte in
+memory looks like at the exact moment the real machine shows its
+READY/OK/> prompt after cold boot.
+
+### Primary Sources (Best to Worst)
+
+  1. **MAME/MESS memory dumps** — Boot the machine in MAME, then use
+     the debugger to dump memory.  This is ground truth.
+
+         mame c64 -debug
+         # At MAME debugger prompt:
+         dump "c64_boot.bin",0,10000
+
+  2. **Official technical reference manuals** — The machine vendor's
+     own documentation of register defaults.  Examples:
+     - "Mapping the Commodore 64" by Sheldon Leemon
+     - "Apple II Reference Manual" (Apple Computer)
+     - "De Re Atari" (Atari, Inc.)
+     - "MSX Technical Data Book" (ASCII Corporation)
+
+  3. **ROM disassembly listings** — Show you the boot sequence and
+     what values the ROM writes to I/O registers.
+
+  4. **Community wikis** — c64-wiki.com, speccy.info, msx.org, etc.
+     Good for quick lookups but always cross-reference.
+
+### What to Capture
+
+For each address you plan to set, record:
+
+    Address   Value   Chip/Area     Register Name     Source
+    -------   -----   ---------     -------------     ------
+    $D020     $0E     VIC-II        EXTCOL (border)   MAME dump
+    $D021     $06     VIC-II        BGCOL0 (bg)       Tech Ref p.147
+
+### What to Skip
+
+  - Addresses that are $00 at boot (already zero from memset)
+  - Entire ROM contents (too large; just set identification bytes)
+  - Addresses that real programs never PEEK (save for later)
+  - Writable-only registers (can't be read back on real hardware)
+
+### Priority Order
+
+Focus on what BASIC programs actually access:
+
+  1. Screen memory (users POKE characters and colors here)
+  2. Color registers (border, background, text colors)
+  3. BASIC pointers (TXTTAB, VARTAB, HIMEM, etc.)
+  4. ROM signatures (used for platform detection)
+  5. Hardware vectors (RESET, IRQ, NMI)
+  6. I/O chip defaults (keyboard, timers, sound registers)
+
+
+---
+
+## 4. Step-by-Step: Implementing a New Map
+
+This worked example adds a hypothetical "Acme 8000" platform.
+
+### Step 1: Add the Enum
+
+In `memmap.h`, add before `MMAP_COUNT`:
+
+    MMAP_ACME8K,    /* Acme 8000 */
+
+### Step 2: Write the Init Function
+
+In `memmap.c`, add a new static function:
+
+    /* --- Acme 8000 Memory Map ---
+     * Z80 CPU (4 MHz), custom video, 32K RAM
+     * Screen: 40x25 at $F000, color at $F800
+     * BASIC pointers at $0040-$0044
+     */
+    static void memmap_init_acme8k(unsigned char *mem)
+    {
+        /* Screen memory: 40x25 = 1000 spaces */
+        mem_fill(mem, 0xF000, 1000, 0x20);
+
+        /* Color memory: white on black */
+        mem_fill(mem, 0xF800, 1000, 0x0F);
+
+        /* BASIC pointers */
+        mem_set16(mem, 0x0040, 0x1000);     /* TXTTAB */
+        mem_set16(mem, 0x0042, 0x7FFF);     /* HIMEM */
+
+        /* ROM identification */
+        mem_set(mem, 0x0000, 0xC3);         /* JP (Z80) */
+
+        /* RESET vector */
+        mem_set16(mem, 0xFFFC, 0x0000);
+    }
+
+### Step 3: Register in the Switch
+
+In `memmap_init()`:
+
+    case MMAP_ACME8K: memmap_init_acme8k(mem); break;
+
+### Step 4: Add to the Name Table
+
+    { "ACME8K", "Acme 8000", MMAP_ACME8K },
+
+### Step 5: Build and Smoke Test
+
+    > build.bat
+    > basicpp
+    > MEMMAP "ACME8K"
+    Memory map: ACME8K
+    > PRINT PEEK(&HF000)
+     32
+    > MEMMAP LIST
+    Available memory maps:
+      ...
+      ACME8K     Acme 8000
+
+
+---
+
+## 5. Testing Your Map
+
+### 5.1 Smoke Test: Key Addresses
+
+Write a BASIC program that PEEKs every address you set and verifies
+the expected value:
+
+    10 MEMMAP "C64"
+    20 TEST "C64 Memory Map"
+    30 ASSERT PEEK(&H0001) = &H37, "CPU port"
+    40 ASSERT PEEK(&HD020) = &H0E, "Border light blue"
+    50 ASSERT PEEK(&HD021) = &H06, "Background blue"
+    60 ASSERT PEEK(&HD018) = &H15, "VIC memory setup"
+    70 ASSERT PEEK(&HFF80) = &H03, "KERNAL rev 3"
+    80 ASSERT PEEK(&H0400) = &H20, "Screen space"
+    90 ASSERT PEEK(&HD800) = &H0E, "Color RAM lt blue"
+    100 ENDTEST
+
+### 5.2 Full Validation Suite
+
+Test EVERY address your init function sets.  Use the spec as a
+checklist and write one ASSERT per address:
+
+    10 MEMMAP "MSDOS"
+    20 TEST "MSDOS BDA - Complete"
+    30 REM --- COM/LPT ports ---
+    40 ASSERT PEEK(&H0400) = &HF8, "COM1 low"
+    50 ASSERT PEEK(&H0401) = &H03, "COM1 high"
+    60 ASSERT PEEK(&H0402) = &HF8, "COM2 low"
+    70 ASSERT PEEK(&H0403) = &H02, "COM2 high"
+    80 ASSERT PEEK(&H0408) = &H78, "LPT1 low"
+    90 ASSERT PEEK(&H0409) = &H03, "LPT1 high"
+    100 REM --- Equipment word ---
+    110 ASSERT PEEK(&H0410) = &H21, "Equip low"
+    120 ASSERT PEEK(&H0411) = &H00, "Equip high"
+    130 REM --- Memory size ---
+    140 ASSERT PEEK(&H0413) = &H80, "Mem low"
+    150 ASSERT PEEK(&H0414) = &H02, "Mem high"
+    160 REM --- Keyboard buffer ---
+    170 ASSERT PEEK(&H041A) = &H1E, "Kbd head low"
+    180 ASSERT PEEK(&H041B) = &H00, "Kbd head high"
+    190 REM --- Video mode ---
+    200 ASSERT PEEK(&H0449) = &H03, "Video mode 3"
+    210 ASSERT PEEK(&H044A) = &H50, "80 columns low"
+    220 REM --- Cursor shape ---
+    230 ASSERT PEEK(&H0460) = &H07, "Cursor end line"
+    240 ASSERT PEEK(&H0461) = &H06, "Cursor start line"
+    250 REM --- CRT port ---
+    260 ASSERT PEEK(&H0463) = &HD4, "CRT port low"
+    270 ASSERT PEEK(&H0464) = &H03, "CRT port high"
+    280 REM --- Mode/palette ---
+    290 ASSERT PEEK(&H0465) = &H29, "Mode select"
+    300 ASSERT PEEK(&H0466) = &H30, "Color palette"
+    310 REM --- Hard drives ---
+    320 ASSERT PEEK(&H0475) = &H01, "Hard drives"
+    330 REM --- Screen geometry ---
+    340 ASSERT PEEK(&H0484) = &H18, "Rows - 1"
+    350 ASSERT PEEK(&H0485) = &H10, "Char height low"
+    360 ENDTEST
+
+### 5.3 Zero-Check Test
+
+Verify that addresses you did NOT set are still zero:
+
+    10 MEMMAP "C64"
+    20 TEST "C64 Zero Regions"
+    30 FOR I = &H0002 TO &H0029
+    40   ASSERT PEEK(I) = 0, "Zero page $" + HEX$(I)
+    50 NEXT
+    60 REM SID registers should be silent
+    70 FOR I = &HD400 TO &HD41C
+    80   ASSERT PEEK(I) = 0, "SID $" + HEX$(I)
+    90 NEXT
+    100 ENDTEST
+
+### 5.4 Cross-Map Isolation Test
+
+Verify that switching maps doesn't leak state:
+
+    10 MEMMAP "C64"
+    20 POKE &HD020, 5         ' Change border to green
+    30 ASSERT PEEK(&HD020) = 5
+    40 MEMMAP "C64"           ' Re-initialize
+    50 ASSERT PEEK(&HD020) = &H0E, "Should be reset to 14"
+    60 MEMMAP "SPECTRUM"
+    70 ASSERT PEEK(&HD020) = 0, "Spectrum has no VIC-II"
+
+### 5.5 Multi-Platform Detection Test
+
+Verify ROM signatures work for platform detection:
+
+    10 DIM M$(5)
+    20 M$(0) = "C64"
+    30 M$(1) = "APPLE2"
+    40 M$(2) = "SPECTRUM"
+    50 M$(3) = "ATARI8"
+    60 M$(4) = "TRS80"
+    70 FOR I = 0 TO 4
+    80   MEMMAP M$(I)
+    90   D$ = ""
+    100  IF PEEK(&HA004) = ASC("C") THEN D$ = "C64"
+    110  IF PEEK(&HFBB3) = 6 THEN D$ = "APPLE2"
+    120  IF PEEK(&H5C53) = &HCB THEN D$ = "SPECTRUM"
+    130  IF PEEK(&HD400) = &H22 THEN D$ = "ATARI8"
+    140  IF PEEK(&H0062) = ASC("R") THEN D$ = "TRS80"
+    150  ASSERT D$ = M$(I), M$(I) + " detection"
+    160 NEXT
+
+
+---
+
+## 6. Debugging Techniques
+
+### 6.1 Memory Hex Dump
+
+When a value doesn't match, dump the region:
+
+    10 MEMMAP "C64"
+    20 ADDR = &HD000
+    30 PRINT "VIC-II Register Dump:"
+    40 FOR ROW = 0 TO 2
+    50   PRINT HEX$(ADDR + ROW * 16); ": ";
+    60   FOR COL = 0 TO 15
+    70     V = PEEK(ADDR + ROW * 16 + COL)
+    80     IF V < 16 THEN PRINT "0";
+    90     PRINT HEX$(V); " ";
+    100  NEXT COL
+    110  PRINT
+    120 NEXT ROW
+
+Expected output for C64:
+
+    D000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    D010: 00 1B 00 00 00 00 C8 00 15 00 00 00 00 00 00 00
+    D020: 0E 06 00 00 00 00 00 01 00 00 00 00 00 00 00 00
+
+### 6.2 Comparing Two Maps
+
+Dump both maps and diff them:
+
+    10 DIM A(255), B(255)
+    20 MEMMAP "DRAGON"
+    30 FOR I = 0 TO 255 : A(I) = PEEK(&HFF00 + I) : NEXT
+    40 MEMMAP "COCO"
+    50 FOR I = 0 TO 255 : B(I) = PEEK(&HFF00 + I) : NEXT
+    60 PRINT "Differences in $FF00-$FFFF:"
+    70 FOR I = 0 TO 255
+    80   IF A(I) <> B(I) THEN
+    90     PRINT HEX$(&HFF00 + I); ": Dragon=";
+    100    PRINT HEX$(A(I)); " CoCo="; HEX$(B(I))
+    110  END IF
+    120 NEXT
+
+### 6.3 Endianness Verification
+
+16-bit values stored in little-endian (low byte first).
+Verify with paired PEEKs:
+
+    10 MEMMAP "C64"
+    20 LO = PEEK(&H002B) : HI = PEEK(&H002C)
+    30 TXTTAB = LO + HI * 256
+    40 PRINT "TXTTAB = $"; HEX$(TXTTAB)
+    50 ASSERT TXTTAB = &H0801, "TXTTAB should be $0801"
+
+### 6.4 Screen Memory Boundary Test
+
+Verify screen memory is exactly the right size:
+
+    10 MEMMAP "C64"
+    20 REM Screen is $0400-$07E7 (1000 bytes)
+    30 ASSERT PEEK(&H03FF) = 0, "Before screen"
+    40 ASSERT PEEK(&H0400) = &H20, "Screen start"
+    50 ASSERT PEEK(&H07E7) = &H20, "Screen end"
+    60 ASSERT PEEK(&H07E8) = 0, "After screen"
+
+### 6.5 Debugging from C Source
+
+If your init function has a bug, add temporary printf() calls:
+
+    static void memmap_init_myplatform(unsigned char *mem)
+    {
+        mem_set16(mem, 0x002B, 0x0801);
+    #ifdef DEBUG_MEMMAP
+        printf("DEBUG: $002B = %02X, $002C = %02X\n",
+               mem[0x002B], mem[0x002C]);
+    #endif
+    }
+
+Build with:  cl /DDEBUG_MEMMAP ...
+
+### 6.6 MAME/MESS Comparison Workflow
+
+The gold standard for debugging is comparing against MAME:
+
+  1. Boot target machine in MAME with -debug flag
+  2. Wait for BASIC prompt
+  3. In MAME debugger: dump "mame_boot.bin",0,10000
+  4. Write a BASIC++ program that PEEKs the same range
+  5. Compare byte-by-byte
+
+MAME debugger commands:
+    dump filename,start,length     Dump memory to file
+    b address                      Set breakpoint
+    go                             Continue execution
+    r                              Show registers
+    d address                      Disassemble at address
+
+
+---
+
+## 7. Platform-Specific Verification Suites
+
+### 7.1 MS-DOS / PC-DOS
+
+Key areas to verify:
+
+    Area                    Addresses         What to Check
+    ----                    ---------         -------------
+    Interrupt Vector Table  $0000-$03FF       All zeros (stubs)
+    BIOS Data Area          $0400-$04FF       COM/LPT, video, kbd
+    Video mode registers    $0449-$0466       Mode 3, 80 cols
+    Timer + drives          $046C-$0486       Ticks, HDD count
+
+Test program:
+
+    10 MEMMAP "MSDOS"
+    20 TEST "MSDOS Complete"
+    30 REM IVT should be all zeros
+    40 FAIL = 0
+    50 FOR I = 0 TO &H3FF
+    60   IF PEEK(I) <> 0 THEN FAIL = FAIL + 1
+    70 NEXT
+    80 REM But we set COM/LPT ports IN the IVT range
+    90 REM $0400+ is actually BDA, not IVT
+    100 REM IVT is $0000-$03FF - should be zero
+    110 FOR I = 0 TO &H3FF
+    120   IF PEEK(I) <> 0 THEN
+    130     PRINT "Non-zero IVT at $"; HEX$(I); " = "; PEEK(I)
+    140   END IF
+    150 NEXT
+    160 REM BDA checks
+    170 ASSERT PEEK(&H0449) = 3, "Video mode 3"
+    180 ASSERT PEEK(&H044A) = 80, "80 columns"
+    190 ASSERT PEEK(&H0462) = 0, "Page 0"
+    200 ASSERT PEEK(&H0484) = 24, "24 rows"
+    210 ASSERT PEEK(&H0475) = 1, "1 hard drive"
+    220 ENDTEST
+
+### 7.2 Commodore 64
+
+Key areas:
+
+    Area              Addresses         What to Check
+    ----              ---------         -------------
+    CPU port          $0000-$0001       DDR=$2F, Port=$37
+    BASIC pointers    $002B-$0038       TXTTAB=$0801
+    Screen memory     $0400-$07E7       1000 x $20
+    Color RAM         $D800-$DBE7       1000 x $0E
+    VIC-II            $D000-$D02E       Border=$0E, Bg=$06
+    SID               $D400-$D41C       All zeros (silence)
+    CIA 1             $DC00-$DC0F       Ports, DDR
+    CIA 2             $DD00-$DD0F       Port A=$97
+    KERNAL            $FF80             Rev 3
+    Vectors           $FFFC-$FFFF       RESET, IRQ
+
+Test program:
+
+    10 MEMMAP "C64"
+    20 TEST "C64 Complete"
+    30 ASSERT PEEK(&H0000) = &H2F, "DDR"
+    40 ASSERT PEEK(&H0001) = &H37, "CPU port"
+    50 ASSERT PEEK(&H002B) + PEEK(&H002C)*256 = &H0801, "TXTTAB"
+    60 ASSERT PEEK(&H002D) + PEEK(&H002E)*256 = &H0803, "VARTAB"
+    70 ASSERT PEEK(&H0037) + PEEK(&H0038)*256 = &HA000, "MEMSIZ"
+    80 ASSERT PEEK(&HD020) = &H0E, "Border"
+    90 ASSERT PEEK(&HD021) = &H06, "Background"
+    100 ASSERT PEEK(&HD018) = &H15, "VIC mem setup"
+    110 ASSERT PEEK(&H0286) = &H0E, "Cursor color"
+    120 ASSERT PEEK(&H00BA) = &H08, "Device 8"
+    130 ASSERT PEEK(&HFF80) = &H03, "KERNAL rev"
+    140 ASSERT PEEK(&HFFFC) + PEEK(&HFFFD)*256 = &HFCE2, "RESET"
+    150 ASSERT PEEK(&HFFFE) + PEEK(&HFFFF)*256 = &HFF48, "IRQ"
+    160 ASSERT PEEK(&HFFFA) + PEEK(&HFFFB)*256 = &HFE43, "NMI"
+    170 ASSERT PEEK(&HD027) = &H01, "Sprite 0 color"
+    180 ASSERT PEEK(&HDC00) = &H7F, "CIA1 PA"
+    190 ASSERT PEEK(&HDC01) = &HFF, "CIA1 PB"
+    200 ASSERT PEEK(&HDC02) = &HFF, "CIA1 DDRA"
+    210 ASSERT PEEK(&HDC03) = &H00, "CIA1 DDRB"
+    220 ASSERT PEEK(&HDD00) = &H97, "CIA2 PA"
+    230 ENDTEST
+
+### 7.3 ZX Spectrum
+
+Key areas:
+
+    Area              Addresses         What to Check
+    ----              ---------         -------------
+    ROM ID            $0000-$0002       $F3, $AF, $11
+    Screen bitmap     $4000-$57FF       6144 x $00
+    Attributes        $5800-$5AFF       768 x $38
+    System vars       $5C36-$5C8F       CHARS, PROG, VARS
+    BORDCR            $5C48             $01
+
+### 7.4 MSX
+
+Key areas:
+
+    Area              Addresses         What to Check
+    ----              ---------         -------------
+    RST vectors       $0000,$0008,...   $C3 (JP opcode)
+    VDP ports         $0006-$0007       $98, $99
+    MSX version       $002D             $00 (MSX1)
+    VRAM name table   $1800-$1AFF       768 x $20
+    VRAM color table  $2000-$201F       32 x $F4
+    BASIC work area   $F676-$F677       TXTTAB = $8001
+    HIMEM             $FC4A-$FC4B       $F380
+    Screen settings   $F3AE-$F421       Colors, dimensions
+
+### 7.5 BBC Micro
+
+    Area              Addresses         What to Check
+    ----              ---------         -------------
+    Screen mode       $0018             $07 (Mode 7)
+    PAGE              $0028-$0029       $1900
+    HIMEM             $0002-$0003       $7C00
+    Screen RAM        $7C00-$7FE7       1000 x $20
+    OS ID             $FFF7             $01
+    RESET             $FFFC-$FFFD       $D9CD
+
+### 7.6 Amstrad CPC
+
+    Area              Addresses         What to Check
+    ----              ---------         -------------
+    BASIC start       $0040-$0041       $0170
+    Jumpblock         $BB00,$BB5A,...   $C3 (JP opcode)
+    Screen RAM        $C000-$FFFF       16K x $00
+    PPI               $F500             $1E
+    ROM ID            $0006             $01
+
+### 7.7 TRS-80 Family (TRS80 / Dragon / CoCo)
+
+    Map      Screen Start  Screen Size  Fill  TXTTAB    RESET
+    -----    ------------  -----------  ----  ------    -----
+    TRS80    $3C00         1024         $20   $4200     (none)
+    DRAGON   $0400         512          $60   $0600     $B3B4
+    COCO     $0400         512          $60   $2601     $A027
+
+### 7.8 Oric / SAM Coupe / Electron / Aquarius
+
+    Map        Screen         Size    Fill  Notes
+    ---        ------         ----    ----  -----
+    ORIC       $BB80          1120    $20   40x28 text
+    SAMCOUPE   $4000+$5800    6912    mixed Spectrum-compatible
+    ELECTRON   $7C00          1000    $20   BBC minus Mode 7
+    AQUARIUS   $3000+$3400    1920    mixed Screen + color
+
+
+---
+
+## 8. Advanced: Side Effects and Magic Addresses
+
+Some addresses on real hardware trigger side effects when written
+(e.g., writing to a VIC-II register immediately changes the screen).
+BASIC++ currently treats ALL memory as plain read/write — no
+side effects are triggered.
+
+The spec (Section 7 of Memory_Maps.md) documents planned magic
+addresses:
+
+    C64:        POKE 53280, n  -> border color change
+    MSDOS:      POKE &H449, n  -> video mode change
+    ATARI8:     POKE 559, n    -> DMA control
+    SPECTRUM:   OUT 254, n     -> border color
+
+To implement side effects in the future, you would add intercept
+logic in `builtins_memory.c` in the POKE handler:
+
+    /* After writing to virtual memory */
+    if (current_memmap == MMAP_C64) {
+        if (addr == 0xD020) {
+            /* Could trigger real terminal color change */
+        }
+    }
+
+
+---
+
+## 9. Advanced: DEF SEG Interaction
+
+`DEF SEG` sets a segment base for subsequent PEEK/POKE operations.
+The effective address is: `(DEF SEG * 16 + offset) MOD 65536`
+
+This is primarily useful for the MSDOS map where video memory
+lives at segment $B800:
+
+    DEF SEG = &HB800
+    POKE 0, 65          ' 'A' at top-left
+    POKE 1, 7           ' White on black attribute
+    DEF SEG = 0          ' Reset to normal
+
+On non-x86 platforms, DEF SEG still works mathematically but
+doesn't correspond to real hardware behavior.
+
+**Testing DEF SEG:**
+
+    10 MEMMAP "MSDOS"
+    20 DEF SEG = 0
+    30 ASSERT PEEK(&H0449) = 3, "Video mode"
+    40 DEF SEG = &H0044
+    50 REM $0044 * 16 = $0440, + 9 = $0449
+    60 ASSERT PEEK(9) = 3, "Video mode via segment"
+    70 DEF SEG = 0
+
+
+---
+
+## 10. Troubleshooting Common Problems
+
+### Problem: PEEK returns 0 for an address I set
+
+**Cause 1:** Address overflow.  `mem_set(mem, 0x10000, val)` is
+out of range (max is 0xFFFF = 65535).  The `mem_set` helper has
+a bounds check that silently drops out-of-range writes.
+
+**Cause 2:** Another init function overwrites your value.  For
+maps that chain (e.g., C128 calls C64 first), the child function
+may set a conflicting value.
+
+**Fix:**  Add a printf() after your mem_set to verify:
+    printf("Set $%04X = $%02X, read back $%02X\n",
+           addr, val, mem[addr]);
+
+### Problem: 16-bit value reads back wrong
+
+**Cause:** Endianness confusion.  `mem_set16` stores little-endian:
+    mem_set16(mem, 0x002B, 0x0801)
+    -> mem[0x002B] = 0x01 (low byte)
+    -> mem[0x002C] = 0x08 (high byte)
+
+Read back:
+    PEEK(&H002B) returns 1   (low byte)
+    PEEK(&H002C) returns 8   (high byte)
+    Value = PEEK(&H002B) + PEEK(&H002C) * 256 = $0801
+
+### Problem: MEMMAP "NAME" says "Unknown memory map"
+
+**Cause:** Name not added to `memmap_table[]`, or spelling doesn't
+match.  The lookup is case-insensitive, but the name must be
+an exact match in length.
+
+### Problem: Build error "use of undeclared identifier MMAP_XXX"
+
+**Cause:** Enum added to `memmap.h` but the source file doesn't
+include the updated header.  Ensure `memmap.c` includes
+`"memmap.h"` and rebuild the entire project.
+
+### Problem: Screen memory shows wrong character codes
+
+**Cause:** Different platforms use different character encodings:
+    Platform    Space Code    Encoding
+    --------    ----------    --------
+    C64         $20           Screen codes (NOT PETSCII)
+    Apple II    $A0           ASCII with high bit set
+    Atari 8     $00           ATASCII
+    TRS-80      $20           ASCII
+    Dragon/CoCo $60           Semigraphics encoding
+
+
+---
+
+## 11. Reference: All 21 Maps at a Glance
+
+    Name       CPU        Video Chip        Screen Addr  Fill  Size
+    ----       ---        ----------        -----------  ----  ----
+    NONE       any        -                 -            $00   -
+    MSDOS      8086       MDA/CGA/VGA       (DEF SEG)    -     -
+    C64        6510       VIC-II            $0400        $20   1000
+    C128       8502       VIC-II            $0400        $20   1000
+    VIC20      6502       VIC               $1E00        $20   506
+    PLUS4      7501       TED               $0C00        $20   1000
+    PET        6502       -                 $8000        $20   1000
+    ATARI8     6502       ANTIC+GTIA        $9C40        $00   960
+    APPLE2     6502       custom            $0400        $A0   1024
+    TRS80      Z80        direct video      $3C00        $20   1024
+    SPECTRUM   Z80        ULA               $4000        $00   6144
+    QL         68008      custom            $2000        $00   8192
+    MSX        Z80        TMS9918A          $1800        $20   768
+    BBC        6502       6845+ULA          $7C00        $20   1000
+    CPC        Z80        6845+Gate Array   $C000        $00   16384
+    DRAGON     6809       6847 VDG          $0400        $60   512
+    COCO       6809       6847 VDG          $0400        $60   512
+    ORIC       6502       custom ULA        $BB80        $20   1120
+    SAMCOUPE   Z80        custom ASIC       $4000        $00   6144
+    ELECTRON   6502       ULA               $7C00        $20   1000
+    AQUARIUS   Z80        TMS9918A-compat   $3000        $20   960
+
+
+---
+
+## Appendix A: Complete Test Suite Template
+
+Save as `test_memmap.bas` and run to validate all maps:
+
+    10 REM === BASIC++ Memory Map Test Suite ===
+    20 REM Tests every map's key addresses
+    30 PASS = 0 : FAIL = 0 : MAPS = 0
+    40 REM
+    50 MEMMAP "MSDOS" : MAPS = MAPS + 1
+    60 GOSUB 10000
+    70 MEMMAP "C64" : MAPS = MAPS + 1
+    80 GOSUB 11000
+    90 MEMMAP "SPECTRUM" : MAPS = MAPS + 1
+    100 GOSUB 12000
+    110 MEMMAP "ATARI8" : MAPS = MAPS + 1
+    120 GOSUB 13000
+    130 MEMMAP "APPLE2" : MAPS = MAPS + 1
+    140 GOSUB 14000
+    150 MEMMAP "TRS80" : MAPS = MAPS + 1
+    160 GOSUB 15000
+    170 MEMMAP "MSX" : MAPS = MAPS + 1
+    180 GOSUB 16000
+    190 MEMMAP "BBC" : MAPS = MAPS + 1
+    200 GOSUB 17000
+    210 PRINT
+    220 PRINT "=== SUMMARY: "; MAPS; " maps tested ==="
+    230 PRINT "PASS: "; PASS; "  FAIL: "; FAIL
+    240 IF FAIL = 0 THEN PRINT "ALL TESTS PASSED"
+    250 END
+    260 REM
+    9990 REM --- Check subroutine ---
+    9991 REM Call with A=address, E=expected, N$=name
+    9992 V = PEEK(A)
+    9993 IF V = E THEN PASS=PASS+1 : RETURN
+    9994 FAIL = FAIL + 1
+    9995 PRINT "FAIL: "; N$; " at $"; HEX$(A);
+    9996 PRINT " expected $"; HEX$(E); " got $"; HEX$(V)
+    9997 RETURN
+    10000 REM --- MSDOS ---
+    10010 A=&H0449 : E=3 : N$="Video mode" : GOSUB 9992
+    10020 A=&H044A : E=80 : N$="Columns" : GOSUB 9992
+    10030 A=&H0475 : E=1 : N$="Hard drives" : GOSUB 9992
+    10040 A=&H0484 : E=24 : N$="Rows" : GOSUB 9992
+    10050 RETURN
+    11000 REM --- C64 ---
+    11010 A=&H0001 : E=&H37 : N$="CPU port" : GOSUB 9992
+    11020 A=&HD020 : E=&H0E : N$="Border" : GOSUB 9992
+    11030 A=&HD021 : E=&H06 : N$="Background" : GOSUB 9992
+    11040 A=&HFF80 : E=&H03 : N$="KERNAL" : GOSUB 9992
+    11050 RETURN
+    12000 REM --- SPECTRUM ---
+    12010 A=&H0000 : E=&HF3 : N$="ROM DI" : GOSUB 9992
+    12020 A=&H5800 : E=&H38 : N$="Attr default" : GOSUB 9992
+    12030 A=&H5C48 : E=&H01 : N$="BORDCR" : GOSUB 9992
+    12040 RETURN
+    13000 REM --- ATARI8 ---
+    13010 A=&H02C8 : E=&H00 : N$="COLBK" : GOSUB 9992
+    13020 A=&HD400 : E=&H22 : N$="DMACTL" : GOSUB 9992
+    13030 A=&HFFF7 : E=&H02 : N$="OS ver" : GOSUB 9992
+    13040 RETURN
+    14000 REM --- APPLE2 ---
+    14010 A=&H0400 : E=&HA0 : N$="Text page" : GOSUB 9992
+    14020 A=&HFBB3 : E=&H06 : N$="IIe ID" : GOSUB 9992
+    14030 RETURN
+    15000 REM --- TRS80 ---
+    15010 A=&H3C00 : E=&H20 : N$="Video RAM" : GOSUB 9992
+    15020 A=&H0062 : E=&H52 : N$="Radio Shack" : GOSUB 9992
+    15030 RETURN
+    16000 REM --- MSX ---
+    16010 A=&H0000 : E=&HC3 : N$="JP RESET" : GOSUB 9992
+    16020 A=&H0006 : E=&H98 : N$="VDP port" : GOSUB 9992
+    16030 A=&HF41F : E=15 : N$="FORCLR" : GOSUB 9992
+    16040 RETURN
+    17000 REM --- BBC ---
+    17010 A=&H0018 : E=&H07 : N$="Mode 7" : GOSUB 9992
+    17020 A=&HFFF7 : E=&H01 : N$="MOS ID" : GOSUB 9992
+    17030 RETURN
+
+
+## Appendix B: MAME Quick Reference for Memory Dumps
+
+### Booting Each Platform in MAME
+
+    mame c64 -debug                # Commodore 64
+    mame apple2e -debug            # Apple IIe
+    mame spectrum -debug           # ZX Spectrum 48K
+    mame a800xl -debug             # Atari 800XL
+    mame trs80 -debug              # TRS-80 Model I
+    mame msx -debug                # MSX (generic)
+    mame bbcb -debug               # BBC Micro Model B
+    mame cpc464 -debug             # Amstrad CPC 464
+    mame dragon32 -debug           # Dragon 32
+    mame coco -debug               # TRS-80 Color Computer
+    mame oric1 -debug              # Oric-1
+    mame samcoupe -debug           # SAM Coupe
+
+### MAME Debugger Commands
+
+    dump "filename.bin",start,length   Dump memory range to file
+    dasm "filename.asm",start,length   Disassemble to file
+    b address                          Set breakpoint
+    g                                  Run (go)
+    s                                  Step one instruction
+    r                                  Show CPU registers
+    wm address,value                   Write memory
+    rm address                         Read memory
+
+### Workflow
+
+  1. Boot with -debug
+  2. Set breakpoint at BASIC warm-start: b known_address
+  3. Run until BASIC prompt: g
+  4. Dump all 64K: dump "platform_boot.bin",0,10000
+  5. Open the dump in a hex editor
+  6. Compare against your memmap.c init function
+  7. Every non-zero byte in the dump that you haven't set
+     is a potential gap in your map
