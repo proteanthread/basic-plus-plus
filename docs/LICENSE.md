@@ -1,7 +1,7 @@
 # Modified MIT License
 
 
-## Copyright (c) 2025 Jeff
+### Copyright (c) 2025 BASIC++ Community
 
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -12,8 +12,8 @@ copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
 
-### The above copyright notice and this permission notice shall be included in all
-### copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -25,4 +25,4 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-### THIS SOFTWARE IS NOT TO BE SOLD.
+## THIS SOFTWARE IS NOT TO BE SOLD.
