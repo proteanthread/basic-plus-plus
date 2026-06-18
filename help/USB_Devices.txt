@@ -1,6 +1,6 @@
 THE BASIC++ USB DEVICE SYSTEM
 ===============================
-Version 1.5.0
+Version 4.0.1
 
 This manual explains how BASIC++ programs access USB
 devices — joysticks, gamepads, keyboards, serial adapters,
@@ -93,7 +93,7 @@ Part I:  ARCHITECTURE
 
 
 1.  OVERVIEW: THE USB MODULE
--------------------------------
+---------------------------------------------------------------------
 
 The USB module is an optional extension that provides
 USB device access for BASIC++ programs.  It is not loaded
@@ -115,7 +115,7 @@ any other VDev device.
 
 
 2.  THE THREE USB VIRTUAL DEVICES
-------------------------------------
+---------------------------------------------------------------------
 
 2.1  USB: (General USB Device)
 
@@ -169,7 +169,7 @@ any other VDev device.
 
 
 3.  HOW IT FITS INTO THE VDEV FRAMEWORK
-------------------------------------------
+---------------------------------------------------------------------
 
 The USB module sits on top of the VDev2 framework
 (see Virtual_Devices.txt for full VDev architecture).
@@ -202,7 +202,7 @@ The system:
 
 
 4.  PLATFORM SUPPORT MATRIX
-------------------------------
+---------------------------------------------------------------------
 
   Feature              Linux          Windows         FreeDOS
   ───────────────────  ─────────────  ──────────────  ─────────
@@ -232,7 +232,7 @@ The system:
 
 
 5.  SECURITY: CAP_USB AND CAP_IO
-------------------------------------
+---------------------------------------------------------------------
 
 USB access requires two capability flags:
 
@@ -272,7 +272,7 @@ Part II:  ACTIVATING THE USB MODULE
 
 
 6.  MODULE "USB"
-------------------
+---------------------------------------------------------------------
 
 The USB module must be explicitly activated before use:
 
@@ -306,7 +306,7 @@ To check if the module loaded successfully:
 
 
 7.  DEVICE DISCOVERY (DEVICES COMMAND)
------------------------------------------
+---------------------------------------------------------------------
 
 After loading the USB module, the DEVICES command lists
 all registered VDevs, including the three USB devices:
@@ -337,7 +337,7 @@ You can also query device information programmatically:
 
 
 8.  ERROR HANDLING AND DIAGNOSTICS
--------------------------------------
+---------------------------------------------------------------------
 
 USB operations can fail for many reasons: device not
 connected, permission denied, device busy, etc.  Always
@@ -371,7 +371,7 @@ Part III:  USB DEVICE ENUMERATION
 
 
 9.  SCANNING FOR CONNECTED DEVICES
---------------------------------------
+---------------------------------------------------------------------
 
 Before opening a specific device, you should enumerate
 what's connected.  The USB: device handles this:
@@ -407,7 +407,7 @@ Output on a typical Windows system:
 
 
 10.  THE ENUMERATION LIST
-----------------------------
+---------------------------------------------------------------------
 
 The enumeration list is a snapshot taken at the moment
 you call VDIO_ENUMERATE.  It does not update in real
@@ -439,7 +439,7 @@ To reset the cursor and re-read:
 
 
 11.  PLATFORM-SPECIFIC DISCOVERY
------------------------------------
+---------------------------------------------------------------------
 
 11.1  Linux: /dev/hidraw* and /dev/ttyUSB*
 
@@ -503,7 +503,7 @@ Part IV:  HID DEVICES (JOYSTICKS, GAMEPADS, KEYBOARDS)
 
 
 12.  WHAT IS HID?
--------------------
+---------------------------------------------------------------------
 
 HID (Human Interface Device) is a USB device class for
 input devices: keyboards, mice, joysticks, gamepads,
@@ -529,7 +529,7 @@ discover) the format for your specific device.
 
 
 13.  OPENING A HID DEVICE
-----------------------------
+---------------------------------------------------------------------
 
 Open the default HID device:
 
@@ -550,7 +550,7 @@ the first discovered HID device (Windows).
 
 
 14.  READING HID REPORTS
----------------------------
+---------------------------------------------------------------------
 
 Read a HID report as binary data:
 
@@ -572,7 +572,7 @@ Read a HID report as binary data:
 
 
 15.  PARSING REPORT DATA
----------------------------
+---------------------------------------------------------------------
 
 15.1  Gamepad Report Format (Generic USB Gamepad)
 
@@ -677,7 +677,7 @@ Classic joysticks typically send a simpler report:
 
 
 16.  POLLING AND NON-BLOCKING READS
----------------------------------------
+---------------------------------------------------------------------
 
 HID reports arrive when the device state changes.  If
 no buttons are pressed and no axes have moved, GET #
@@ -718,7 +718,7 @@ To check if data is available without blocking:
 
 
 17.  HID DEVICE INFORMATION
-------------------------------
+---------------------------------------------------------------------
 
 Query HID device metadata:
 
@@ -731,7 +731,7 @@ Query HID device metadata:
 
 
 18.  COMPLETE GAMEPAD EXAMPLE
---------------------------------
+---------------------------------------------------------------------
 
 A full-featured gamepad input display:
 
@@ -775,7 +775,7 @@ Part V:  USB-TO-SERIAL ADAPTERS
 
 
 19.  WHAT IS USB-SERIAL?
---------------------------
+---------------------------------------------------------------------
 
 A USB-to-serial adapter converts USB into an RS-232 or
 TTL serial port.  This is how most modern computers talk
@@ -797,7 +797,7 @@ USBSER: virtual device.
 
 
 20.  SUPPORTED CHIPSETS
--------------------------
+---------------------------------------------------------------------
 
   Chipset        Manufacturer     Linux Driver    Common Use
   ─────────────  ──────────────   ─────────────   ────────────────
@@ -813,7 +813,7 @@ The OS driver handles chipset-specific differences.
 
 
 21.  OPENING A SERIAL PORT
------------------------------
+---------------------------------------------------------------------
 
 Open the default USB serial port:
 
@@ -840,7 +840,7 @@ Default serial parameters:
 
 
 22.  SERIAL COMMUNICATION
-----------------------------
+---------------------------------------------------------------------
 
 22.1  Writing Data (PRINT #, PUT #)
 
@@ -900,7 +900,7 @@ are automatically stripped.
 
 
 23.  BAUD RATE AND SERIAL CONFIGURATION
-------------------------------------------
+---------------------------------------------------------------------
 
 The default baud rate is 9600.  To change it:
 
@@ -941,7 +941,7 @@ Example: Arduino at 115200 baud:
 
 
 24.  TIMEOUTS AND BUFFER MANAGEMENT
----------------------------------------
+---------------------------------------------------------------------
 
 Set a read timeout:
 
@@ -966,7 +966,7 @@ Flush the serial buffers:
 
 
 25.  COMPLETE ARDUINO COMMUNICATION EXAMPLE
-----------------------------------------------
+---------------------------------------------------------------------
 
 A full Arduino serial monitor:
 
@@ -1028,7 +1028,7 @@ Part VI:  ADVANCED TOPICS
 
 
 26.  IOCTL COMMANDS
----------------------
+---------------------------------------------------------------------
 
 The USB devices support these IOCTL commands:
 
@@ -1063,7 +1063,7 @@ Examples:
 
 
 27.  HOT-PLUG DETECTION
---------------------------
+---------------------------------------------------------------------
 
 All three USB devices have the VDCAP_HOTPLUG flag,
 meaning they support devices that appear and disappear
@@ -1097,7 +1097,7 @@ To detect hot-plug events, periodically re-enumerate:
 
 
 28.  MULTIPLE SIMULTANEOUS DEVICES
---------------------------------------
+---------------------------------------------------------------------
 
 You can open multiple USB devices on different channels:
 
@@ -1130,7 +1130,7 @@ device names (e.g., "HID:0", "HID:1").
 
 
 29.  RAW BINARY I/O
-----------------------
+---------------------------------------------------------------------
 
 Both HID: and USBSER: support binary I/O via the
 dev_read and dev_write function pointers.  From BASIC,
@@ -1149,7 +1149,7 @@ as-is without any CR/LF conversion.
 
 
 30.  BUILDING A USB DEVICE MONITOR
---------------------------------------
+---------------------------------------------------------------------
 
 A comprehensive USB monitoring tool:
 
@@ -1212,7 +1212,7 @@ Part VII:  ERROR REFERENCE
 
 
 31.  USB ERROR CODES
-----------------------
+---------------------------------------------------------------------
 
   Code  Constant             Description
   ────  ───────────────────  ──────────────────────────────
@@ -1241,7 +1241,7 @@ To get the last device-level error:
 
 
 32.  TROUBLESHOOTING CHECKLIST
----------------------------------
+---------------------------------------------------------------------
 
   Problem: "USB access denied" (ERR 200)
   Fix:     Run with --capabilities=USB,IO or use
@@ -1284,7 +1284,7 @@ Part VIII:  COMPLETE EXAMPLES
 
 
 33.  EXAMPLE: USB DEVICE SCANNER
------------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Scan and display all USB devices
@@ -1315,7 +1315,7 @@ Part VIII:  COMPLETE EXAMPLES
 
 
 34.  EXAMPLE: GAMEPAD-CONTROLLED GAME
------------------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Gamepad Cursor Demo
@@ -1362,7 +1362,7 @@ Part VIII:  COMPLETE EXAMPLES
 
 
 35.  EXAMPLE: SERIAL DATA LOGGER
--------------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Serial Data Logger
@@ -1408,7 +1408,7 @@ Part VIII:  COMPLETE EXAMPLES
 
 
 36.  EXAMPLE: ARDUINO BRIDGE
--------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  BASIC++ <-> Arduino Bridge
@@ -1459,7 +1459,7 @@ Part VIII:  COMPLETE EXAMPLES
 
 
 37.  KEYWORD QUICK REFERENCE
--------------------------------
+---------------------------------------------------------------------
 
 All USB-related operations at a glance:
 

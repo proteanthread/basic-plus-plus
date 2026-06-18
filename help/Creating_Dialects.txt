@@ -1,6 +1,6 @@
 CREATING YOUR OWN DIALECTS
 ===========================
-Version 1.5.0
+Version 4.0.1
 
 BASIC++ has a configurable dialect engine that controls which
 keywords are accepted, how variables work, what syntax rules
@@ -106,7 +106,7 @@ Every dialect is defined by a single C structure:
 
   typedef struct DialectConfig {
       DialectId   id;                 /* enum index */
-      const char *name;               /* "GW-BASIC" */
+      const char name;               / "GW-BASIC" */
       char        stmt_separator;     /* ':' or ';' */
       int         has_then_keyword;   /* IF requires THEN? */
       int         has_let_optional;   /* Can omit LET? */
@@ -127,12 +127,12 @@ Every dialect is defined by a single C structure:
       int         has_float;          /* Floating-point? */
       int         has_dim_arrays;     /* DIM arrays? */
       int         has_string_functions; /* String funcs? */
-      const char *ready_prompt;       /* "Ok", "READY", etc. */
+      const char ready_prompt;       / "Ok", "READY", etc. */
       int         print_zone_width;   /* 8, 10, 14, 16 */
       int         has_on_error;       /* ON ERROR GOTO? */
       int         has_cls;            /* CLS command? */
       int         has_tron_troff;     /* TRON/TROFF debug? */
-      const char *short_name;         /* "GWBS", 4 chars */
+      const char short_name;         / "GWBS", 4 chars */
       unsigned int dialect_flag;      /* DFLAG_GWBS bitmask */
   } DialectConfig;
 

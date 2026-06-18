@@ -3,11 +3,18 @@
 
 #include "value.h"
 
-/*
- * BASIC++ Core Immutable API
- * These functions are guaranteed across all dialects and 
- * interact directly with the VM memory pool.
- */
+ // BASIC++ Core Immutable API
+ // These functions are guaranteed across all dialects and 
+//
+// HOW TO EXTEND:
+//   See the corresponding .c implementation file for
+//   detailed extension and customization instructions.
+//
+// TROUBLESHOOTING:
+//   If you get 'undeclared identifier' errors after adding
+//   new functions, make sure the declaration is added here
+//   AND the definition exists in the .c file.
+ // interact directly with the VM memory pool.
 
 void stdlib_core_register(void);
 
@@ -16,7 +23,7 @@ BValue stdlib_core_chr(BValue *args, int argc, void *rt);
 BValue stdlib_core_str(BValue *args, int argc, void *rt);
 BValue stdlib_core_rnd(BValue *args, int argc, void *rt);
 
-/* MS-BASIC Common Math Functions */
+// MS-BASIC Common Math Functions
 BValue stdlib_core_abs(BValue *args, int argc, void *rt);
 BValue stdlib_core_sgn(BValue *args, int argc, void *rt);
 BValue stdlib_core_int(BValue *args, int argc, void *rt);
@@ -28,7 +35,7 @@ BValue stdlib_core_atn(BValue *args, int argc, void *rt);
 BValue stdlib_core_log(BValue *args, int argc, void *rt);
 BValue stdlib_core_exp(BValue *args, int argc, void *rt);
 
-/* MS-BASIC Common String Functions */
+// MS-BASIC Common String Functions
 BValue stdlib_core_left(BValue *args, int argc, void *rt);
 BValue stdlib_core_right(BValue *args, int argc, void *rt);
 BValue stdlib_core_mid(BValue *args, int argc, void *rt);

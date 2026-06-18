@@ -1,38 +1,36 @@
-/*
- * ---
- * BASIC++ Interpreter - main.c
- * ---
- *
- * Entry point, REPL (Read-Eval-Print Loop), and bootstrap.
- *
- * PURPOSE:
- * This module provides:
- * 1. The main() entry point.
- * 2. Memory subsystem initialization and shutdown.
- * 3. The interactive REPL loop (classic BASIC prompt style).
- * 4. Input classification (line storage vs. immediate execution).
- *
- * REPL BEHAVIOR (Palo Alto Tiny BASIC compatible):
- * - On startup, prints a banner with version and dialect info.
- * - Prints "READY" and a prompt ("> ").
- * - Reads a line of input.
- * - If the line starts with a digit -> it's a program line:
- * - If only a line number -> delete that line.
- * - Otherwise -> store the line (insert or replace).
- * - If the line starts with a letter or keyword -> immediate mode:
- * - Tokenize and execute immediately.
- * - Results are printed; errors return to prompt.
- * - After any error, prints "READY" and returns to prompt.
- * - On EOF (Ctrl-Z on Windows, Ctrl-D on Unix) -> exit.
- *
- * DESIGN RATIONALE:
- * The REPL is kept minimal. It classifies input and delegates
- * to the appropriate subsystem. No parsing logic lives here
- * (that's in parser.c). No execution logic lives here (that's
- * in exec.c). Main.c is glue code.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - main.c
+ // ---
+ //
+ // Entry point, REPL (Read-Eval-Print Loop), and bootstrap.
+ //
+ // PURPOSE:
+ // This module provides:
+ // 1. The main() entry point.
+ // 2. Memory subsystem initialization and shutdown.
+ // 3. The interactive REPL loop (classic BASIC prompt style).
+ // 4. Input classification (line storage vs. immediate execution).
+ //
+ // REPL BEHAVIOR (Palo Alto Tiny BASIC compatible):
+ // - On startup, prints a banner with version and dialect info.
+ // - Prints "READY" and a prompt ("> ").
+ // - Reads a line of input.
+ // - If the line starts with a digit -> it's a program line:
+ // - If only a line number -> delete that line.
+ // - Otherwise -> store the line (insert or replace).
+ // - If the line starts with a letter or keyword -> immediate mode:
+ // - Tokenize and execute immediately.
+ // - Results are printed; errors return to prompt.
+ // - After any error, prints "READY" and returns to prompt.
+ // - On EOF (Ctrl-Z on Windows, Ctrl-D on Unix) -> exit.
+ //
+ // DESIGN RATIONALE:
+ // The REPL is kept minimal. It classifies input and delegates
+ // to the appropriate subsystem. No parsing logic lives here
+ // (that's in parser.c). No execution logic lives here (that's
+ // in exec.c). Main.c is glue code.
+ //
+ // ---
 
 #ifndef _WIN32
   #if !defined(_POSIX_C_SOURCE) || (_POSIX_C_SOURCE < 200112L)
@@ -75,36 +73,33 @@
 #include "config_file.h"
 #include "boot.h"
 
-/* --- Input Classification ---
- */
+// --- Input Classification ---
 
-/*
- * parse_line_number - Extract a line number from the start of input.
- *
- * If the input starts with digits, parses the line number and
- * returns it. Sets *end_pos to the position after the line number
- * and any trailing whitespace.
- *
- * Returns the line number (>= 1), or 0 if the input does not
- * start with a digit.
- */
+ // parse_line_number - Extract a line number from the start of input.
+ //
+ // If the input starts with digits, parses the line number and
+ // returns it. Sets *end_pos to the position after the line number
+ // and any trailing whitespace.
+ //
+ // Returns the line number (>= 1), or 0 if the input does not
+ // start with a digit.
 static int parse_line_number(const char *input, int *end_pos)
 {
  int pos = 0;
  int num = 0;
 
- /* Skip leading whitespace */
+ // Skip leading whitespace
  while (input[pos] == ' ' || input[pos] == '\t') {
  pos++;
  }
 
- /* Check for digit */
+ // Check for digit
  if (!isdigit((unsigned char)input[pos])) {
  *end_pos = pos;
  return 0;
  }
 
- /* Parse the number */
+ // Parse the number
  while (isdigit((unsigned char)input[pos])) {
  num = num * 10 + (input[pos] - '0');
  pos++;
@@ -114,12 +109,10 @@ static int parse_line_number(const char *input, int *end_pos)
  return num;
 }
 
-/*
- * is_blank_after - Check if the rest of the line is blank.
- *
- * Returns 1 if input[pos..] contains only whitespace, 0 otherwise.
- * Used to detect "line number only" input (delete line).
- */
+ // is_blank_after - Check if the rest of the line is blank.
+ //
+ // Returns 1 if input[pos..] contains only whitespace, 0 otherwise.
+ // Used to detect "line number only" input (delete line).
 static int is_blank_after(const char *input, int pos)
 {
  while (input[pos] != '\0') {
@@ -131,11 +124,9 @@ static int is_blank_after(const char *input, int pos)
  return 1;
 }
 
-/*
- * strip_newline - Remove trailing \n and \r from a string.
- *
- * Modifies the string in place.
- */
+ // strip_newline - Remove trailing \n and \r from a string.
+ //
+ // Modifies the string in place.
 static void strip_newline(char *str)
 {
  int len = (int)strlen(str);
@@ -144,8 +135,7 @@ static void strip_newline(char *str)
  }
 }
 
-/* --- Usage / Help ---
- */
+// --- Usage / Help ---
 static void print_usage(const char *prog)
 {
     printf("Usage: %s [options] [program.bas]\n\n", prog);
@@ -197,8 +187,7 @@ static void print_usage(const char *prog)
 }
 
 
-/* --- Main Entry Point ---
- */
+// --- Main Entry Point ---
 
 int main(int argc, char *argv[])
 {
@@ -206,10 +195,10 @@ int main(int argc, char *argv[])
  static RuntimeState runtime;
  char input_buf[INPUT_BUFFER_SIZE];
 
-    /* --- CLI argument storage --- */
+    // --- CLI argument storage ---
     const char *cli_dialect = NULL;
     const char *cli_security = NULL;
-    int cli_strict = -1;    /* -1 = unset */
+    int cli_strict = -1; // -1 = unset
     int cli_quiet = 0;
     const char *cli_run_file = NULL;
     const char *cli_load_file = NULL;
@@ -227,15 +216,15 @@ int main(int argc, char *argv[])
     const char *cli_mod = NULL;
     const char *cli_func = NULL;
     
-    /* Redirection storage */
+    // Redirection storage
     const char *cli_redirect_in = NULL;
     const char *cli_redirect_out = NULL;
     const char *cli_redirect_append = NULL;
 
-    /* --- Config file --- */
+    // --- Config file ---
     ConfigFile cfg;
 
-    /* --- Effective settings --- */
+    // --- Effective settings ---
     DialectId eff_dialect = BASICPP_DEFAULT_DIALECT;
     SecLevel eff_security = SEC_OPEN;
     int eff_strict = 0;
@@ -243,7 +232,7 @@ int main(int argc, char *argv[])
 
     int i;
 
-    /* ----- Parse command-line arguments ----- */
+    // ----- Parse command-line arguments -----
     for (i = 1; i < argc; i++) {
         if (argv[i][0] == '-') {
             if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
@@ -330,12 +319,12 @@ int main(int argc, char *argv[])
             }
             if (strcmp(argv[i], "--cmd") == 0) {
                 if (i + 1 < argc) {
-                    /* Join remaining arguments for COMMAND$ */
+                    // Join remaining arguments for COMMAND$
                     cli_cmd_str = argv[++i];
                     break;
                 }
             }
-            /* Extract --lib, --mod, --func for module loading */
+            // Extract --lib, --mod, --func for module loading
             if (strcmp(argv[i], "--lib") == 0) {
                 if (i + 1 < argc) cli_lib = argv[++i];
                 continue;
@@ -348,7 +337,7 @@ int main(int argc, char *argv[])
                 if (i + 1 < argc) cli_func = argv[++i];
                 continue;
             }
-            /* Silently accept/ignore environment & hardware switches for now */
+            // Silently accept/ignore environment & hardware switches for now
             if (strcmp(argv[i], "--com") == 0 || strcmp(argv[i], "--files") == 0 ||
                 strcmp(argv[i], "--mem") == 0 || strcmp(argv[i], "--records") == 0 ||
                 strcmp(argv[i], "--break") == 0) {
@@ -378,22 +367,22 @@ int main(int argc, char *argv[])
                 if (*cli_redirect_out == '\0' && i + 1 < argc) cli_redirect_out = argv[++i];
             }
         } else {
-            /* Positional argument: treat as program file */
+            // Positional argument: treat as program file
             cli_program = argv[i];
         }
     }
 
-    /* Process manual file redirection */
+    // Process manual file redirection
     if (cli_redirect_in != NULL) freopen(cli_redirect_in, "r", stdin);
     if (cli_redirect_out != NULL) freopen(cli_redirect_out, "w", stdout);
     if (cli_redirect_append != NULL) freopen(cli_redirect_append, "a", stdout);
 
- /* ----- Early init (needed before config lookups) ----- */
+ // ----- Early init (needed before config lookups) -----
  platform_init();
  dialect_register_all();
  keyword_registry_init();
 
- /* ----- Load config file (lowest priority) ----- */
+ // ----- Load config file (lowest priority) -----
  if (cli_config_file != NULL) {
   if (config_file_load_path(&cfg, cli_config_file) != 0) {
    printf("Error: cannot open config file '%s'\n",
@@ -404,9 +393,9 @@ int main(int argc, char *argv[])
   config_file_load(&cfg, argv[0]);
  }
 
- /* ----- Apply settings: config file first, then CLI overrides ----- */
+ // ----- Apply settings: config file first, then CLI overrides -----
 
- /* Dialect */
+ // Dialect
  if (cfg.found && cfg.dialect[0] != '\0') {
   int did = dialect_find_by_name(cfg.dialect);
   if (did >= 0) eff_dialect = (DialectId)did;
@@ -421,13 +410,13 @@ int main(int argc, char *argv[])
   }
  }
 
- /* Default security depends on context */
+ // Default security depends on context
  eff_security = SEC_OPEN;
  if (cli_run_file != NULL) {
   eff_security = SEC_STANDARD;
  }
  
- /* Piped execution defaults to RESTRICTED */
+ // Piped execution defaults to RESTRICTED
 #ifdef _WIN32
  if (!_isatty(_fileno(stdin))) {
   eff_security = SEC_RESTRICTED;
@@ -438,15 +427,13 @@ int main(int argc, char *argv[])
  }
 #endif
 
- /*
-  * Dialect security recommendation (informational only).
-  * Dialects recommend a security level but do NOT override
-  * the user's effective setting. SEC_OPEN is the default.
-  * Users control security via -s flag, config file, or
-  * SECURITY command at runtime.
-  */
+  // Dialect security recommendation (informational only).
+  // Dialects recommend a security level but do NOT override
+  // the user's effective setting. SEC_OPEN is the default.
+  // Users control security via -s flag, config file, or
+  // SECURITY command at runtime.
  
- /* Security */
+ // Security
  if (cfg.found && cfg.security[0] != '\0') {
   if (strcmp(cfg.security, "OPEN") == 0)
    eff_security = SEC_OPEN;
@@ -477,23 +464,23 @@ int main(int argc, char *argv[])
     cli_security);
  }
 
- /* Strict */
+ // Strict
  if (cfg.found && cfg.strict >= 0)
   eff_strict = cfg.strict;
  if (cli_strict >= 0)
   eff_strict = cli_strict;
 
- /* Quiet */
+ // Quiet
  if (cfg.found && cfg.quiet >= 0)
   eff_quiet = cfg.quiet;
  if (cli_quiet)
   eff_quiet = 1;
 
- /* Run file from positional arg */
+ // Run file from positional arg
  if (cli_program != NULL && cli_run_file == NULL)
   cli_run_file = cli_program;
 
- /* ----- Print startup banner (unless quiet) ----- */
+ // ----- Print startup banner (unless quiet) -----
  if (!eff_quiet) {
   printf("\n");
   printf("%s %s\n", BASICPP_NAME, BASICPP_VERSION);
@@ -505,7 +492,7 @@ int main(int argc, char *argv[])
   printf("\n");
  }
 
- /* ----- Build BootConfig from resolved settings ----- */
+ // ----- Build BootConfig from resolved settings -----
  {
   BootConfig boot_cfg;
   BootStatus boot_result;
@@ -521,13 +508,13 @@ int main(int argc, char *argv[])
   boot_cfg.cli_mod   = cli_mod;
   boot_cfg.cli_func  = cli_func;
 
-  /* Map diagnostic flags to boot verbosity */
+  // Map diagnostic flags to boot verbosity
   boot_cfg.verbosity = BOOT_SILENT;
   if (cli_boot_log) boot_cfg.verbosity = BOOT_LOG;
   if (cli_debug)    boot_cfg.verbosity = BOOT_DEBUG;
   if (cli_verbose)  boot_cfg.verbosity = BOOT_VERBOSE;
 
-  /* ----- Execute formal boot sequence ----- */
+  // ----- Execute formal boot sequence -----
   boot_result = boot_execute(&boot_cfg, &memory, &runtime);
 
   if (boot_result == BOOT_CRITICAL) {
@@ -535,7 +522,7 @@ int main(int argc, char *argv[])
   }
  }
 
- /* ----- Handle -c (batch command) mode ----- */
+ // ----- Handle -c (batch command) mode -----
  if (cli_command != NULL) {
   Lexer lex;
   error_clear();
@@ -547,12 +534,12 @@ int main(int argc, char *argv[])
   return error_occurred() ? 1 : 0;
  }
 
- /* ----- Handle -r (run file) mode ----- */
+ // ----- Handle -r (run file) mode -----
  if (cli_run_file != NULL) {
   char load_cmd[INPUT_BUFFER_SIZE];
   Lexer lex;
 
-  /* Build LOAD command */
+  // Build LOAD command
   sprintf(load_cmd, "LOAD \"%s\"", cli_run_file);
   error_clear();
   mem_pool_reset(&memory.scratch);
@@ -560,7 +547,7 @@ int main(int argc, char *argv[])
   parser_execute_line(&lex, &runtime, 0);
 
   if (!error_occurred()) {
-   /* RUN the loaded program */
+   // RUN the loaded program
    error_clear();
    mem_pool_reset(&memory.scratch);
    lexer_init(&lex, "RUN");
@@ -568,51 +555,49 @@ int main(int argc, char *argv[])
   }
  }
 
- /* ----- Handle --edit (screen editor mode) ----- */
+ // ----- Handle --edit (screen editor mode) -----
  if (cli_edit) {
   printf("Starting BASIC++ Editor (Memo Pad Mode)\n");
   printf("Press Ctrl+Z (Windows) or Ctrl+D (Unix) to exit.\n");
   for (;;) {
    if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
-    break; /* EOF */
+    break; // EOF
    }
-   /* In a true full-screen mode, this would hook into vdev_display.
-      For now, it acts as a simple text buffer that doesn't scroll
-      beyond screen limits (simulated). */
+   // In a true full-screen mode, this would hook into vdev_display.
+      // For now, it acts as a simple text buffer that doesn't scroll
+      //       beyond screen limits (simulated). 
   }
   printf("\nExiting editor.\n");
   mem_shutdown(&memory);
   return 0;
  }
 
- /* ----- REPL loop ----- */
+ // ----- REPL loop -----
  printf("%s\n", BASICPP_READY);
 
  for (;;) {
  int line_num;
  int end_pos;
 
- /* --- AUTO mode prompt --- */
+ // --- AUTO mode prompt ---
  if (runtime.auto_line > 0) {
- /*
- * AUTO mode is active. Print the line number
- * as the prompt. If the user enters text, it
- * becomes the content of that line. If the
- * user enters an empty line or '.', AUTO
- * mode is cancelled.
- */
+ // AUTO mode is active. Print the line number
+ // as the prompt. If the user enters text, it
+ // becomes the content of that line. If the
+ // user enters an empty line or '.', AUTO
+ // mode is cancelled.
  printf("%d ", runtime.auto_line);
  fflush(stdout);
 
  if (fgets(input_buf, INPUT_BUFFER_SIZE,
  stdin) == NULL) {
- /* EOF - exit AUTO and interpreter */
+ // EOF - exit AUTO and interpreter
  printf("\n");
  break;
  }
  strip_newline(input_buf);
 
- /* Cancel on empty line or '.' */
+ // Cancel on empty line or '.'
  if (input_buf[0] == '\0' ||
  (input_buf[0] == '.' &&
  input_buf[1] == '\0')) {
@@ -622,7 +607,7 @@ int main(int argc, char *argv[])
  continue;
  }
 
- /* Build full line: "linenum content" */
+ // Build full line: "linenum content"
  {
  char full_line[INPUT_BUFFER_SIZE + 16];
  sprintf(full_line, "%d %s",
@@ -632,7 +617,7 @@ int main(int argc, char *argv[])
  runtime.auto_line, full_line);
  }
 
- /* Advance to next line */
+ // Advance to next line
  runtime.auto_line += runtime.auto_step;
  if (runtime.auto_line > LINE_NUMBER_MAX) {
  runtime.auto_line = 0;
@@ -643,7 +628,7 @@ int main(int argc, char *argv[])
  continue;
  }
 
- /* Print prompt */
+ // Print prompt
  if (rpn_is_active(&runtime.rpn)) {
   printf("RPN> ");
  } else {
@@ -651,89 +636,85 @@ int main(int argc, char *argv[])
  }
  fflush(stdout);
 
- /* Read input line */
+ // Read input line
  if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
- /* EOF - exit gracefully */
+ // EOF - exit gracefully
  printf("\n");
  break;
  }
 
- /* Strip trailing newline */
+ // Strip trailing newline
  strip_newline(input_buf);
 
- /* Skip empty lines */
+ // Skip empty lines
  if (input_buf[0] == '\0') {
  continue;
  }
 
- /* --- RPN mode: intercept all input --- */
+ // --- RPN mode: intercept all input ---
  if (rpn_is_active(&runtime.rpn)) {
   rpn_eval_line(&runtime.rpn, input_buf);
   continue;
  }
 
- /* Clear any previous error state */
+ // Clear any previous error state
  error_clear();
 
- /* Reset scratch pool for this input cycle */
+ // Reset scratch pool for this input cycle
  mem_pool_reset(&memory.scratch);
 
- /* ----- Classify input ----- */
+ // ----- Classify input -----
  line_num = parse_line_number(input_buf, &end_pos);
 
  if (line_num > 0) {
- /*
- * Input starts with a line number.
- *
- * If the rest of the line is blank, this is a
- * delete command (entering just "10" deletes line 10).
- *
- * Otherwise, store the entire line (including the
- * line number prefix) in the program store.
- */
+ // Input starts with a line number.
+ //
+ // If the rest of the line is blank, this is a
+ // delete command (entering just "10" deletes line 10).
+ //
+ // Otherwise, store the entire line (including the
+ // line number prefix) in the program store.
  if (line_num > LINE_NUMBER_MAX) {
  error_raise(ERR_HOW, 0);
  } else if (is_blank_after(input_buf, end_pos)) {
- /* Delete line */
+ // Delete line
  program_delete(&memory.program, line_num);
  } else {
- /* Store line */
+ // Store line
  lexer_normalize_line(input_buf);
  program_insert(&memory.program, line_num, input_buf);
  }
  } else {
-  /*
-   * Immediate mode - tokenize and execute.
-   *
-   * The input is a command or statement to execute
-   * right now (e.g., "PRINT 2+3" or "RUN" or "LIST").
-   *
-   * NOTE: This is direct user input at the REPL, NOT
-   * dynamic string evaluation. SECOP_EVAL is only meant
-   * to gate programmatic eval (e.g., EXEC "code" from
-   * within a running BASIC program). The interactive
-   * REPL must always be available regardless of security
-   * level - individual commands enforce their own security
-   * checks (e.g., SAVE checks SECOP_FILE_WRITE, COMPILE
-   * checks SECOP_COMPILE, etc.).
-   */
+   // Immediate mode - tokenize and execute.
+   //
+   // The input is a command or statement to execute
+   // right now (e.g., "PRINT 2+3" or "RUN" or "LIST").
+   //
+   // NOTE: This is direct user input at the REPL, NOT
+   // dynamic string evaluation. SECOP_EVAL is only meant
+   // to gate programmatic eval (e.g., EXEC "code" from
+   // within a running BASIC program). The interactive
+   // REPL must always be available regardless of security
+   // level - individual commands enforce their own security
+   // checks (e.g., SAVE checks SECOP_FILE_WRITE, COMPILE
+   // checks SECOP_COMPILE, etc.).
   Lexer lex;
 
   lexer_init(&lex, input_buf);
   parser_execute_line(&lex, &runtime, 0);
  }
 
- /* After any error, print READY again */
+ // After any error, print READY again
  if (error_occurred()) {
  printf("%s\n", BASICPP_READY);
  }
  }
 
- /* ----- Shutdown (reverse phase order) ----- */
+ // ----- Shutdown (reverse phase order) -----
  boot_shutdown(&memory);
 
 #ifdef _WIN32
- /* Prevent console window from closing instantly when launched from Windows Explorer */
+ // Prevent console window from closing instantly when launched from Windows Explorer
  if (cli_run_file == NULL && cli_command == NULL && !cli_edit) {
   printf("Interpreter exited.\nPress Enter to exit...");
   fflush(stdout);

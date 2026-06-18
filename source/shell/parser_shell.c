@@ -1,47 +1,51 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_shell.c
- * ---
- *
- * Shell & external execution commands.
- *
- * SHELL, EXEC, SYS, SYSTEM, ENVIRON.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_shell.c
+ // ---
+ //
+ // Shell & external execution commands.
+ //
+ // SHELL, EXEC, SYS, SYSTEM, ENVIRON.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * pi_parse_shell - Handle SHELL command.
- */
+ // pi_parse_shell - Handle SHELL command.
 void pi_parse_shell(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * SHELL [command$]
- * Execute an OS command via system().
- * Without argument, opens interactive shell.
- * Captures exit code in ERRORLEVEL.
- *
- * SHELL "cmd" > "file" - redirect stdout
- * SHELL "cmd" >> "file" - append stdout
- * SHELL "cmd" | "cmd2" - pipe
- */
+ // SHELL [command$]
+ // Execute an OS command via system().
+ // Without argument, opens interactive shell.
+ // Captures exit code in ERRORLEVEL.
+ //
+ // SHELL "cmd" > "file" - redirect stdout
+ // SHELL "cmd" >> "file" - append stdout
+ // SHELL "cmd" | "cmd2" - pipe
  if (lex->current.type == TOK_EOF ||
  lex->current.type == TOK_COLON ||
  lex->current.type == TOK_CR) {
- /* No argument: interactive shell */
+ // No argument: interactive shell
 #ifdef _WIN32
  rt->last_shell_exitcode = system("cmd");
 #else
  rt->last_shell_exitcode = system("/bin/sh");
 #endif
  } else {
- /*
- * Parse command as a direct string
- * token to avoid the expression parser
- * consuming > >> | as relops.
- */
+ // Parse command as a direct string
+ // token to avoid the expression parser
+ // consuming > >> | as relops.
  if (lex->current.type == TOK_STRING) {
  char cmd[512];
  int cl =
@@ -54,7 +58,7 @@ void pi_parse_shell(Lexer *lex, RuntimeState *rt, int line_num)
  cmd[cl] = '\0';
  lexer_next(lex);
 
- /* Check for > or >> redirect */
+ // Check for > or >> redirect
  if (lex->current.type == TOK_GT ||
  lex->current.type ==
  TOK_APPEND) {
@@ -87,7 +91,7 @@ void pi_parse_shell(Lexer *lex, RuntimeState *rt, int line_num)
  system(full);
  } else if (lex->current.type ==
  TOK_PIPE) {
- /* SHELL "a" | "b" */
+ // SHELL "a" | "b"
  char full[1024];
  int fpos;
  fpos = (int)strlen(cmd);
@@ -136,17 +140,13 @@ void pi_parse_shell(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_exec - Handle EXEC command.
- */
+ // pi_parse_exec - Handle EXEC command.
 void pi_parse_exec(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * EXEC command$
- * Fire-and-forget: launch a command
- * without waiting for it to complete.
- * Uses "start" on Windows, "& " on Unix.
- */
+ // EXEC command$
+ // Fire-and-forget: launch a command
+ // without waiting for it to complete.
+ // Uses "start" on Windows, "& " on Unix.
  {
  BValue ev =
  parse_expression_bval(
@@ -181,32 +181,24 @@ void pi_parse_exec(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_sys - Handle SYS command.
- */
+ // pi_parse_sys - Handle SYS command.
 void pi_parse_sys(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * SYS address
- * Commodore-style: call machine language
-   * at the given address.
-   * No machine code execution; consume the
-   * address argument as a no-op stub.
-   */
+ // SYS address
+ // Commodore-style: call machine language
+   // at the given address.
+   // No machine code execution; consume the
+   // address argument as a no-op stub.
   (void)parse_expression(lex, rt,
    line_num);
  return;
 }
 
-/*
- * pi_parse_system - Handle SYSTEM command.
- */
+ // pi_parse_system - Handle SYSTEM command.
 void pi_parse_system(Lexer *lex, RuntimeState *rt, int line_num)
 {
  if (lex->current.type == TOK_STRING) {
- /*
- * SYSTEM "query" - Specific info query.
- */
+ // SYSTEM "query" - Specific info query.
  char qname[MAX_LINE_LENGTH + 1];
  if (lex->current.str_length >=
  MAX_LINE_LENGTH) {
@@ -247,27 +239,21 @@ void pi_parse_system(Lexer *lex, RuntimeState *rt, int line_num)
  "or WORDSIZE.\n", qname);
  }
  } else {
- /*
- * SYSTEM (no args) - Full summary.
- */
+ // SYSTEM (no args) - Full summary.
  platform_print_info();
  }
  return;
 
- /* ===== Interactive debugger ===== */
+ // ===== Interactive debugger =====
 }
 
-/*
- * pi_parse_environ - Handle ENVIRON command.
- */
+ // pi_parse_environ - Handle ENVIRON command.
 void pi_parse_environ(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * ENVIRON "NAME=VALUE"
-  * Set an environment variable. The string
-  * must contain '=' as NAME=VALUE.
-  * Uses _putenv (MSVC) or putenv (POSIX).
-  */
+  // ENVIRON "NAME=VALUE"
+  // Set an environment variable. The string
+  // must contain '=' as NAME=VALUE.
+  // Uses _putenv (MSVC) or putenv (POSIX).
  {
  BValue ev = parse_expression_bval(
  lex, rt, line_num);
@@ -281,7 +267,7 @@ void pi_parse_environ(Lexer *lex, RuntimeState *rt, int line_num)
  ev.v.sval.data,
  (size_t)el);
  envbuf[el] = '\0';
- /* Validate: must contain '=' */
+ // Validate: must contain '='
  if (strchr(envbuf, '=') == NULL) {
  error_raise(ERR_WHAT,
  line_num);

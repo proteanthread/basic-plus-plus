@@ -1,6 +1,6 @@
 # BASIC++ User's Guide
 
-**Version 1.5.0**
+**Version 4.0.1**
 
 ## Table of Contents
 

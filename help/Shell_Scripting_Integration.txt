@@ -1,6 +1,6 @@
 BASIC++ SHELL SCRIPTING INTEGRATION
 =====================================
-Version 2.0.0
+Version 4.0.1
 
 This guide covers using BASIC++ as a scripting tool within
 bash shell scripts, Windows batch files, and PowerShell
@@ -55,7 +55,7 @@ conditional execution chains.
 ======================
 
 Running BASIC++ from bash
----------------------------
+---------------------------------------------------------------------
 
   #!/bin/bash
 
@@ -67,7 +67,7 @@ Running BASIC++ from bash
   fi
 
 Piping data through BASIC++
-------------------------------
+---------------------------------------------------------------------
 
   # Pipe data into a BASIC++ program via INPUT
   echo "42" | basicpp calculate.bas
@@ -80,7 +80,7 @@ Piping data through BASIC++
   cat data.csv | basicpp transform.bas | sort > output.csv
 
 Inline BASIC++ with heredoc
-------------------------------
+---------------------------------------------------------------------
 
   #!/bin/bash
   # Run inline BASIC++ code using a temp file
@@ -94,7 +94,7 @@ Inline BASIC++ with heredoc
   rm -f "$TMPFILE"
 
 Using BASIC++ output in bash conditionals
---------------------------------------------
+---------------------------------------------------------------------
 
   #!/bin/bash
   # BASIC++ program that exits with SHELL exit code
@@ -105,7 +105,7 @@ Using BASIC++ output in bash conditionals
   fi
 
 Looping with BASIC++
------------------------
+---------------------------------------------------------------------
 
   #!/bin/bash
   # Process multiple files with BASIC++
@@ -122,7 +122,7 @@ Looping with BASIC++
 ========================
 
 Running BASIC++ from a batch file
-------------------------------------
+---------------------------------------------------------------------
 
   @ECHO OFF
   REM Run a BASIC++ program
@@ -133,7 +133,7 @@ Running BASIC++ from a batch file
   )
 
 Capturing output
-------------------
+---------------------------------------------------------------------
 
   @ECHO OFF
   REM Capture BASIC++ output to a file
@@ -144,7 +144,7 @@ Capturing output
   ECHO Result: %RESULT%
 
 Piping data
--------------
+---------------------------------------------------------------------
 
   @ECHO OFF
   REM Pipe data into BASIC++
@@ -154,7 +154,7 @@ Piping data
   TYPE data.csv | basicpp transform.bas | SORT > output.csv
 
 Conditional execution
------------------------
+---------------------------------------------------------------------
 
   @ECHO OFF
   REM Run BASIC++ only if a file exists
@@ -165,7 +165,7 @@ Conditional execution
   )
 
 Processing multiple files
-----------------------------
+---------------------------------------------------------------------
 
   @ECHO OFF
   REM Process all .dat files
@@ -176,7 +176,7 @@ Processing multiple files
   )
 
 Build automation
-------------------
+---------------------------------------------------------------------
 
   @ECHO OFF
   REM Use BASIC++ as a build tool
@@ -199,7 +199,7 @@ Build automation
 =======================
 
 Running BASIC++ from PowerShell
-----------------------------------
+---------------------------------------------------------------------
 
   # Run a BASIC++ program
   & .\basicpp.exe myprog.bas
@@ -209,7 +209,7 @@ Running BASIC++ from PowerShell
   }
 
 Capturing output
-------------------
+---------------------------------------------------------------------
 
   # Capture output as a string
   $result = & .\basicpp.exe compute.bas
@@ -222,7 +222,7 @@ Capturing output
   }
 
 Piping data
--------------
+---------------------------------------------------------------------
 
   # Pipe data into BASIC++
   "42" | & .\basicpp.exe calculate.bas
@@ -234,7 +234,7 @@ Piping data
       Set-Content output.csv
 
 Processing multiple files
-----------------------------
+---------------------------------------------------------------------
 
   # Process all .bas test files
   Get-ChildItem tests\*.bas | ForEach-Object {
@@ -246,7 +246,7 @@ Processing multiple files
   }
 
 PowerShell functions wrapping BASIC++
-----------------------------------------
+---------------------------------------------------------------------
 
   # Create a reusable function
   function Invoke-Basic {
@@ -268,7 +268,7 @@ PowerShell functions wrapping BASIC++
   $exitCode = Invoke-Basic -Program "calc.bas" -Input "42"
 
 Structured error handling
----------------------------
+---------------------------------------------------------------------
 
   try {
       $output = & .\basicpp.exe critical.bas 2>&1
@@ -286,7 +286,7 @@ Structured error handling
   }
 
 Scheduled tasks
------------------
+---------------------------------------------------------------------
 
   # Register a scheduled task that runs BASIC++
   $action = New-ScheduledTaskAction `
@@ -305,7 +305,7 @@ Scheduled tasks
 BASIC++ can call out to any shell from within a program:
 
   SHELL Statement (wait for completion)
-  ----------------------------------------
+---------------------------------------------------------------------
   SHELL "dir"                      ' Run and wait
   SHELL "echo Hello World"         ' Simple command
   SHELL                            ' Interactive shell
@@ -333,12 +333,12 @@ BASIC++ can call out to any shell from within a program:
     IF ERRORLEVEL <> 0 THEN PRINT "Build failed!"
 
   EXEC Statement (fire-and-forget)
-  -----------------------------------
+---------------------------------------------------------------------
   EXEC "notepad readme.txt"        ' Opens, doesn't wait
   EXEC "firefox http://example.com"
 
   Redirection with SHELL
-  -------------------------
+---------------------------------------------------------------------
   SHELL "dir /b" > "filelist.txt"           ' Overwrite
   SHELL "echo entry" >> "log.txt"           ' Append
   SHELL "dir /b" | "sort"                   ' Pipe
@@ -377,12 +377,12 @@ BASIC++ PRINT can redirect output directly to files
 or commands without opening file channels:
 
   File output
-  -------------
+---------------------------------------------------------------------
   PRINT > "output.txt", "Hello World"       ' Overwrite
   PRINT >> "log.txt", "Entry: "; TIME$       ' Append
 
   Pipe output
-  -------------
+---------------------------------------------------------------------
   PRINT | "sort", "cherry"; CHR$(10); "apple"
 
   Example: Generate a CSV report
@@ -405,7 +405,7 @@ or commands without opening file channels:
 ==========================
 
 Reading environment variables from BASIC++
----------------------------------------------
+---------------------------------------------------------------------
 
   PRINT ENVIRON$("PATH")          ' System PATH
   PRINT ENVIRON$("HOME")          ' Home directory
@@ -416,7 +416,7 @@ Reading environment variables from BASIC++
   IF ENVIRON$("DEBUG") = "1" THEN TRON
 
 Setting environment variables for BASIC++
---------------------------------------------
+---------------------------------------------------------------------
 
   From bash:
     export MY_CONFIG="production"
@@ -436,7 +436,7 @@ Setting environment variables for BASIC++
     30 PRINT "Config: "; C$
 
 Setting environment variables FROM BASIC++
----------------------------------------------
+---------------------------------------------------------------------
 
   ENVIRON "MYVAR=hello"
 
@@ -450,7 +450,7 @@ Setting environment variables FROM BASIC++
 Make BASIC++ programs directly executable:
 
   File: daily_check.bas
-  ----------------------
+---------------------------------------------------------------------
   #!/usr/bin/env basicpp
   10 PRINT "=== Daily Check ==="
   20 PRINT "Date: "; DATE$; "  Time: "; TIME$
@@ -480,10 +480,10 @@ The #! line is silently skipped by the BASIC++ file loader.
 =======================
 
 A. Build system (batch + BASIC++)
------------------------------------
+---------------------------------------------------------------------
 
   build.bat:
-  ----------
+---------------------------------------------------------------------
   @ECHO OFF
   ECHO === Pre-build: generating version header ===
   basicpp gen_version.bas
@@ -493,7 +493,7 @@ A. Build system (batch + BASIC++)
   ECHO === Build complete ===
 
   gen_version.bas:
-  ----------------
+---------------------------------------------------------------------
   10 PRINT > "version.c", "const char *version = ""2.0.0"";"
   20 PRINT >> "version.c", "const char *build_date = """;
   30 PRINT >> "version.c", DATE$;
@@ -501,10 +501,10 @@ A. Build system (batch + BASIC++)
   50 END
 
 B. Test runner (PowerShell + BASIC++)
----------------------------------------
+---------------------------------------------------------------------
 
   run_tests.ps1:
-  ---------------
+---------------------------------------------------------------------
   $pass = 0; $fail = 0
   Get-ChildItem tests\*.bas | ForEach-Object {
       $output = & .\basicpp.exe $_.FullName 2>&1
@@ -520,10 +520,10 @@ B. Test runner (PowerShell + BASIC++)
   exit $fail
 
 C. Log monitor (bash + BASIC++)
----------------------------------
+---------------------------------------------------------------------
 
   monitor.sh:
-  ------------
+---------------------------------------------------------------------
   #!/bin/bash
   while true; do
       ERRORS=$(basicpp count_errors.bas)
@@ -535,7 +535,7 @@ C. Log monitor (bash + BASIC++)
   done
 
 D. Data pipeline (bash)
---------------------------
+---------------------------------------------------------------------
 
   #!/bin/bash
   # Extract -> Transform -> Load
@@ -543,7 +543,7 @@ D. Data pipeline (bash)
   basicpp load.bas
 
 E. Deployment script (PowerShell)
-------------------------------------
+---------------------------------------------------------------------
 
   # Deploy with BASIC++ config generator
   & .\basicpp.exe gen_config.bas
@@ -559,10 +559,10 @@ E. Deployment script (PowerShell)
   Write-Host "Deployment successful"
 
 F. File format converter (any shell)
----------------------------------------
+---------------------------------------------------------------------
 
   convert.bas:
-  -------------
+---------------------------------------------------------------------
   10 REM Convert TSV to CSV
   20 OPEN "input.tsv" FOR INPUT AS #1
   30 WHILE NOT EOF(1)

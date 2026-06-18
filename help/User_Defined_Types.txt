@@ -1,6 +1,6 @@
 THE BASIC++ USER-DEFINED TYPE SYSTEM
 =======================================
-Version 1.5.0
+Version 4.0.1
 
 This manual explains how to define and use custom data
 types in BASIC++ — structured records with named fields,
@@ -82,7 +82,7 @@ Part I:  WHY USER-DEFINED TYPES?
 
 
 1.  THE PROBLEM: DATA WITHOUT STRUCTURE
-------------------------------------------
+---------------------------------------------------------------------
 
 In classic BASIC, related data lives in separate
 parallel arrays:
@@ -111,7 +111,7 @@ This approach has serious problems:
 
 
 2.  THE SOLUTION: TYPE...END TYPE
-------------------------------------
+---------------------------------------------------------------------
 
 User-defined types solve all five problems:
 
@@ -145,7 +145,7 @@ impossible to desynchronize.
 
 
 3.  COMPARISON WITH QBASIC
------------------------------
+---------------------------------------------------------------------
 
 BASIC++ user-defined types are modeled after QBasic 4.5
 with some simplifications:
@@ -172,7 +172,7 @@ C89-compatible while covering the most common use cases.
 
 
 4.  DESIGN LIMITS
--------------------
+---------------------------------------------------------------------
 
 From config.h:
 
@@ -204,7 +204,7 @@ Part II:  DEFINING TYPES
 
 
 5.  TYPE STATEMENT
---------------------
+---------------------------------------------------------------------
 
 Syntax:
 
@@ -219,7 +219,7 @@ declaration is on its own line.
 
 
 6.  NUMERIC FIELDS
---------------------
+---------------------------------------------------------------------
 
   TYPE Point
     X AS INTEGER
@@ -240,7 +240,7 @@ other than STRING is treated as numeric:
 
 
 7.  STRING FIELDS
--------------------
+---------------------------------------------------------------------
 
   TYPE Person
     Name AS STRING
@@ -257,7 +257,7 @@ data is allocated from the string pool.
 
 
 8.  MIXED FIELDS
-------------------
+---------------------------------------------------------------------
 
 Types can mix numeric and string fields freely:
 
@@ -279,7 +279,7 @@ field is stored and accessed:
 
 
 9.  END TYPE
---------------
+---------------------------------------------------------------------
 
 Every TYPE block must be closed with END TYPE:
 
@@ -296,7 +296,7 @@ the program, which is almost certainly not what you want.
 
 
 10.  WHERE TYPE DEFINITIONS GO IN YOUR PROGRAM
--------------------------------------------------
+---------------------------------------------------------------------
 
 TYPE definitions should be placed at the beginning of
 your program, before any code that uses them:
@@ -329,7 +329,7 @@ END TYPE line.
 
 
 11.  TYPE NAMING RULES
-------------------------
+---------------------------------------------------------------------
 
 Type names follow the same rules as variable names:
 
@@ -359,7 +359,7 @@ Part III:  USING TYPED VARIABLES
 
 
 12.  DIM ... AS TypeName
---------------------------
+---------------------------------------------------------------------
 
 Once a TYPE is defined, create variables of that type
 using DIM ... AS:
@@ -386,7 +386,7 @@ fields.
 
 
 13.  ACCESSING FIELDS: THE DOT OPERATOR
--------------------------------------------
+---------------------------------------------------------------------
 
 Access individual fields using the dot (.) operator:
 
@@ -409,7 +409,7 @@ Field names are case-insensitive (Pos.X = Pos.x = POS.X).
 
 
 14.  SETTING FIELD VALUES
-----------------------------
+---------------------------------------------------------------------
 
 Assign values to fields using the standard = operator:
 
@@ -434,7 +434,7 @@ You can use expressions:
 
 
 15.  READING FIELD VALUES
-----------------------------
+---------------------------------------------------------------------
 
 Fields can be used anywhere a value is expected:
 
@@ -461,7 +461,7 @@ Fields can be used anywhere a value is expected:
 
 
 16.  PRINTING TYPED VARIABLES
---------------------------------
+---------------------------------------------------------------------
 
 You cannot PRINT an entire typed variable at once.
 Instead, print each field individually:
@@ -482,7 +482,7 @@ fields:
 
 
 17.  COPYING TYPED VARIABLES
--------------------------------
+---------------------------------------------------------------------
 
 Copy all fields from one typed variable to another:
 
@@ -514,7 +514,7 @@ Part IV:  TYPES WITH OTHER FEATURES
 
 
 18.  ARRAYS OF TYPED VARIABLES
----------------------------------
+---------------------------------------------------------------------
 
 The most powerful use of types is with arrays — you get
 a database-like table of records:
@@ -557,7 +557,7 @@ a database-like table of records:
 
 
 19.  TYPED VARIABLES IN SUB/FUNCTION
----------------------------------------
+---------------------------------------------------------------------
 
 Pass typed variables to subroutines and functions:
 
@@ -592,7 +592,7 @@ Pass typed variables to subroutines and functions:
 
 
 20.  TYPED VARIABLES WITH FILE I/O
---------------------------------------
+---------------------------------------------------------------------
 
 Save and load typed records to/from files:
 
@@ -625,7 +625,7 @@ Save and load typed records to/from files:
 
 
 21.  TYPED VARIABLES WITH DATA/READ
----------------------------------------
+---------------------------------------------------------------------
 
 Populate typed variables from DATA statements:
 
@@ -660,7 +660,7 @@ Populate typed variables from DATA statements:
 
 
 22.  TYPED VARIABLES AND SELECT CASE
-----------------------------------------
+---------------------------------------------------------------------
 
 Use fields in SELECT CASE statements:
 
@@ -685,7 +685,7 @@ Use fields in SELECT CASE statements:
 
 
 23.  SORTING ARRAYS OF RECORDS
----------------------------------
+---------------------------------------------------------------------
 
 Sort an array of typed records using bubble sort:
 
@@ -731,7 +731,7 @@ Part V:  HOW IT WORKS INTERNALLY
 
 
 24.  THE USERTYPEDEF STRUCTURE
----------------------------------
+---------------------------------------------------------------------
 
 From runtime.h:
 
@@ -755,7 +755,7 @@ The UserTypeDef array lives in RuntimeState:
 
 
 25.  THE USERTYPEFIELD STRUCTURE
------------------------------------
+---------------------------------------------------------------------
 
 From runtime.h:
 
@@ -773,7 +773,7 @@ Each field knows:
 
 
 26.  THE TYPEDVAR STRUCTURE
-------------------------------
+---------------------------------------------------------------------
 
 From runtime.h:
 
@@ -798,7 +798,7 @@ by scanning the UserTypeDef's fields[] array.
 
 
 27.  STORAGE LAYOUT IN RUNTIMESTATE
----------------------------------------
+---------------------------------------------------------------------
 
 The complete type system state in RuntimeState:
 
@@ -827,7 +827,7 @@ there is no dynamic allocation for types.
 
 
 28.  CAPACITY LIMITS (CONFIG.H)
-----------------------------------
+---------------------------------------------------------------------
 
   Limit                Value   What Happens at Limit
   ───────────────────  ──────  ──────────────────────────
@@ -849,7 +849,7 @@ in RuntimeState.
 
 
 29.  FIELD ACCESS: NAME LOOKUP
----------------------------------
+---------------------------------------------------------------------
 
 When the parser encounters "Player.HP", it:
 
@@ -873,7 +873,7 @@ Part VI:  PRACTICAL EXAMPLES
 
 
 30.  EXAMPLE: ADDRESS BOOK
-----------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Address Book
@@ -971,7 +971,7 @@ Part VI:  PRACTICAL EXAMPLES
 
 
 31.  EXAMPLE: INVENTORY SYSTEM
----------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Shop Inventory Manager
@@ -1004,7 +1004,7 @@ Part VI:  PRACTICAL EXAMPLES
   380   PRINT TAB(22); "$"; Items(I%).Price;
   390   PRINT TAB(30); "Qty:"; Items(I%).Stock;
   400   IF Items(I%).Stock < Items(I%).MinStock THEN
-  410     PRINT " ** LOW **";
+  410     PRINT "  LOW ";
   420   END IF
   430   PRINT
   440 NEXT I%
@@ -1019,7 +1019,7 @@ Part VI:  PRACTICAL EXAMPLES
 
 
 32.  EXAMPLE: STUDENT GRADE TRACKER
----------------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Student Grade Tracker
@@ -1082,7 +1082,7 @@ Part VI:  PRACTICAL EXAMPLES
 
 
 33.  EXAMPLE: GAME ENTITY SYSTEM
------------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Simple RPG Entity System
@@ -1154,7 +1154,7 @@ Part VI:  PRACTICAL EXAMPLES
 
 
 34.  EXAMPLE: CONFIGURATION FILE PARSER
--------------------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Config File Parser
@@ -1202,7 +1202,7 @@ Part VII:  ERROR REFERENCE AND BEST PRACTICES
 
 
 35.  ERROR CODES
-------------------
+---------------------------------------------------------------------
 
   Code  Constant     When It Occurs
   ────  ───────────  ──────────────────────────────────
@@ -1219,7 +1219,7 @@ Part VII:  ERROR REFERENCE AND BEST PRACTICES
 
 
 36.  COMMON MISTAKES
------------------------
+---------------------------------------------------------------------
 
   Mistake 1: Forgetting END TYPE
 
@@ -1264,7 +1264,7 @@ Part VII:  ERROR REFERENCE AND BEST PRACTICES
 
 
 37.  BEST PRACTICES
----------------------
+---------------------------------------------------------------------
 
   1. Define all TYPEs at the top of your program, before
      any executable code.
@@ -1292,7 +1292,7 @@ Part VII:  ERROR REFERENCE AND BEST PRACTICES
 
 
 38.  QUICK REFERENCE
-----------------------
+---------------------------------------------------------------------
 
   Statement/Syntax                 Description
   ───────────────────────────────  ────────────────────────

@@ -1,8 +1,50 @@
 # Building BASIC++ — Makefile Tutorial
 
+
+---
+
+## Table of Contents
+
+- Overview
+- Quick Start
+  - Linux / MinGW (gcc)
+  - Windows 11 (MSVC)
+  - FreeDOS (OpenWatcom 16-bit)
+  - FreeDOS (OpenWatcom 32-bit)
+  - Debug Build (gcc)
+- How the Makefile Works
+  - 1 Source Groups
+  - 2 Header Dependencies
+  - 3 Compiler Flags
+  - 4 Output Location
+- Customizing for Your System
+  - 1 Changing the Compiler
+  - 2 Changing Optimization
+  - 3 Changing the Output Name
+  - 4 Changing the Output Directory
+  - 5 Cross-Compiling (ARM / Raspberry Pi)
+  - 6 Adding Linker Flags
+- Selecting Dialects
+  - Dialect Reference
+- Selecting Modules
+  - Module Reference
+- Memory Tuning
+  - Preset Profiles
+- Adding a New Source File
+- Common Issues
+  - "ldisdbl" pragma warning (MSVC)
+  - "_CRT_SECURE_NO_WARNINGS" (MSVC)
+  - 640K limit (OpenWatcom 16-bit)
+  - Missing advapi32.lib (MSVC)
+  - make vs nmake (Windows)
+- Verification
+- See Also
+
+---
+
 ## Overview
 
-BASIC++ is written in strict ANSI C (C89/C90) with no external dependencies
+BASIC++ is written in portable C17 with no external dependencies
 beyond the C standard library.  A single `Makefile` supports all four target
 platforms:
 
@@ -122,14 +164,14 @@ under 10 seconds on modern hardware.
 
 | Compiler     | Flags                                                      |
 |--------------|------------------------------------------------------------|
-| **gcc**      | `-std=c90 -pedantic -Wall -Wextra -O2 -I.`               |
+| **gcc**      | `-std=c17 -pedantic -Wall -Wextra -O2 -I.`               |
 | **MSVC**     | `/TC /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS`              |
 | **Watcom 16**| `-ml -0 -za -wx -ox -i=.`                                 |
 | **Watcom 32**| `-mf -za -wx -ox -i=.`                                    |
 
 Key flags explained:
 
-- `-std=c90` / `-za` / `/TC` — strict ANSI C for maximum portability
+- `-std=c17` / `-za` / `/TC` — strict ANSI C for maximum portability
 - `-pedantic` — reject non-standard extensions
 - `-ml` — large memory model (16-bit: far code + far data)
 - `-mf` — flat memory model (32-bit: DPMI protected mode)
@@ -167,13 +209,13 @@ Tested compilers: gcc 12+, clang 15+, MSVC 19+, OpenWatcom 2.0.
 
 ```makefile
 # Maximum speed
-CFLAGS = -std=c90 -pedantic -Wall -Wextra -O3 -I.
+CFLAGS = -std=c17 -pedantic -Wall -Wextra -O3 -I.
 
 # Smallest binary
-CFLAGS = -std=c90 -pedantic -Wall -Wextra -Os -I.
+CFLAGS = -std=c17 -pedantic -Wall -Wextra -Os -I.
 
 # Debugging
-CFLAGS = -std=c90 -pedantic -Wall -Wextra -g -O0 -DDEBUG -I.
+CFLAGS = -std=c17 -pedantic -Wall -Wextra -g -O0 -DDEBUG -I.
 ```
 
 ### 3.3 Changing the Output Name

@@ -1,32 +1,40 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_loops.c
- * ---
- *
- * Loop construct handlers: FOR/NEXT, WHILE/WEND, DO/LOOP.
- *
- * Handles all loop types across all dialects, including
- * multi-line and inline FOR variants.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_loops.c
+ // ---
+ //
+ // Loop construct handlers: FOR/NEXT, WHILE/WEND, DO/LOOP.
+ //
+ // Handles all loop types across all dialects, including
+ // multi-line and inline FOR variants.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * parse_for - Parse and execute FOR statement.
- *
- * Syntax:
- * FOR var = start TO limit [STEP step]
- *
- * Behavior:
- * 1. Evaluate start, limit, and optional step (default 1).
- * 2. Set the variable to start.
- * 3. Check initial condition: if step > 0, var must be <= limit;
- * if step < 0, var must be >= limit. If false, skip to NEXT.
- * 4. Push a FRAME_FOR with variable, limit, step, and body index.
- * 5. Continue executing the loop body.
- */
+ // parse_for - Parse and execute FOR statement.
+ //
+ // Syntax:
+ // FOR var = start TO limit [STEP step]
+ //
+ // Behavior:
+ // 1. Evaluate start, limit, and optional step (default 1).
+ // 2. Set the variable to start.
+ // 3. Check initial condition: if step > 0, var must be <= limit;
+ // if step < 0, var must be >= limit. If false, skip to NEXT.
+ // 4. Push a FRAME_FOR with variable, limit, step, and body index.
+ // 5. Continue executing the loop body.
 void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char var_name;
@@ -37,19 +45,19 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
  StackFrame frame;
  int skip_idx;
 
- /* Parse variable name — single-char or multi-char */
+ // Parse variable name -- single-char or multi-char
  if (lex->current.type == TOK_VARIABLE) {
  var_name = lex->current.value.var_name;
- lexer_next(lex); /* consume variable */
+ lexer_next(lex); // consume variable
  } else if (lex->current.type == TOK_NAMED_VAR &&
  dialect_get_config()->has_extended_vars) {
  ext_name = lex->current.str_start;
  ext_len = lex->current.str_length;
- var_name = ext_name[0]; /* fallback first char */
- lexer_next(lex); /* consume named var */
+ var_name = ext_name[0]; // fallback first char
+ lexer_next(lex); // consume named var
  } else if (lex->current.type == TOK_KEYWORD &&
  dialect_get_config()->has_extended_vars) {
- /* GW-BASIC: keywords can be used as variable names */
+ // GW-BASIC: keywords can be used as variable names
  const char *kn = lexer_keyword_name(
   lex->current.value.keyword);
  if (kn != NULL) {
@@ -63,25 +71,23 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Parse = */
+ // Parse =
  if (!lexer_expect(lex, TOK_EQUALS)) return;
 
- /* Parse start expression as floating-point */
+ // Parse start expression as floating-point
  bv = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return;
  start_val = bval_to_float(&bv);
 
- /*
-  * Parse TO or BY.
-  * Standard: FOR I = start TO limit [STEP step]
-  * SUPER BASIC: FOR I = start BY step TO limit
-  */
- step_val = 1.0; /* default step */
+  // Parse TO or BY.
+  // Standard: FOR I = start TO limit [STEP step]
+  // SUPER BASIC: FOR I = start BY step TO limit
+ step_val = 1.0; // default step
 
  if (lexer_match_keyword(lex, KW_BY) ||
   lexer_match_keyword(lex, KW_STEP)) {
-  /* SUPER BASIC ordering: FOR I = start BY step TO limit */
-  lexer_next(lex); /* consume BY or STEP */
+  // SUPER BASIC ordering: FOR I = start BY step TO limit
+  lexer_next(lex); // consume BY or STEP
   bv = parse_expression_bval(lex, rt, line_num);
   if (error_occurred()) return;
   step_val = bval_to_float(&bv);
@@ -89,26 +95,26 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
    error_raise(ERR_HOW, line_num);
    return;
   }
-  /* Now require TO */
+  // Now require TO
   if (!lexer_match_keyword(lex, KW_TO)) {
    error_raise(ERR_WHAT, line_num);
    return;
   }
-  lexer_next(lex); /* consume TO */
+  lexer_next(lex); // consume TO
   bv = parse_expression_bval(lex, rt, line_num);
   if (error_occurred()) return;
   limit_val = bval_to_float(&bv);
  } else if (lexer_match_keyword(lex, KW_TO)) {
-  /* Standard ordering: FOR I = start TO limit [STEP step] */
-  lexer_next(lex); /* consume TO */
+  // Standard ordering: FOR I = start TO limit [STEP step]
+  lexer_next(lex); // consume TO
   bv = parse_expression_bval(lex, rt, line_num);
   if (error_occurred()) return;
   limit_val = bval_to_float(&bv);
 
-  /* Parse optional STEP or BY after TO */
+  // Parse optional STEP or BY after TO
   if (lexer_match_keyword(lex, KW_STEP) ||
    lexer_match_keyword(lex, KW_BY)) {
-   lexer_next(lex); /* consume STEP or BY */
+   lexer_next(lex); // consume STEP or BY
    bv = parse_expression_bval(lex, rt, line_num);
    if (error_occurred()) return;
    step_val = bval_to_float(&bv);
@@ -122,7 +128,7 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  }
 
- /* Set the variable to the start value */
+ // Set the variable to the start value
  if (ext_len > 0) {
  runtime_set_named_var_bval(rt, ext_name, ext_len,
   bval_float(start_val));
@@ -130,24 +136,22 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
  runtime_set_var_bval(rt, var_name, bval_float(start_val));
  }
 
- /*
- * Check initial condition: is the loop body reachable?
- * If step > 0 and start > limit, skip to NEXT.
- * If step < 0 and start < limit, skip to NEXT.
- */
+ // Check initial condition: is the loop body reachable?
+ // If step > 0 and start > limit, skip to NEXT.
+ // If step < 0 and start < limit, skip to NEXT.
  if ((step_val > 0 && start_val > limit_val) ||
  (step_val < 0 && start_val < limit_val)) {
- /* Skip to matching NEXT */
+ // Skip to matching NEXT
  skip_idx = runtime_find_matching(rt, rt->current_index,
  (int)KW_FOR, (int)KW_NEXT,
  line_num);
- if (skip_idx < 0) return; /* ERR_HOW already raised */
- rt->next_index = skip_idx + 1; /* skip past NEXT */
+ if (skip_idx < 0) return; // ERR_HOW already raised
+ rt->next_index = skip_idx + 1; // skip past NEXT
  lexer_skip_to_end(lex);
  return;
  }
 
- /* Push FOR frame */
+ // Push FOR frame
  frame.type = FRAME_FOR;
  frame.data.for_loop.var_name = var_name;
  frame.data.for_loop.var_name_len = ext_len;
@@ -163,62 +167,58 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
  frame.data.for_loop.step = step_val;
  frame.data.for_loop.body_index = rt->current_index + 1;
 
- /*
-  * Check for inline FOR...NEXT (statements on same line after ':').
-  * If the current token is a colon separator, the loop body is inline.
-  * Save the lexer position so NEXT can rewind to re-execute the body.
-  */
+  // Check for inline FOR...NEXT (statements on same line after ':').
+  // If the current token is a colon separator, the loop body is inline.
+  // Save the lexer position so NEXT can rewind to re-execute the body.
  if (lex->current.type == TOK_COLON) {
-  /* Body follows on this line after the colon.
-   * Save pos BEFORE the colon so NEXT can rewind
-   * and let parser_execute_line see the colon separator. */
+  // Body follows on this line after the colon.
+   // Save pos BEFORE the colon so NEXT can rewind
+   // and let parser_execute_line see the colon separator. 
   frame.data.for_loop.inline_body_pos = lex->pos - 1;
   frame.data.for_loop.inline_line_num = line_num;
-  frame.data.for_loop.body_index = rt->current_index; /* same line */
+  frame.data.for_loop.body_index = rt->current_index; // same line
  } else {
-  frame.data.for_loop.inline_body_pos = -1; /* multi-line loop */
+  frame.data.for_loop.inline_body_pos = -1; // multi-line loop
   frame.data.for_loop.inline_line_num = 0;
  }
 
  if (runtime_push(rt, &frame) != 0) {
- return; /* ERR_SORRY already raised */
+ return; // ERR_SORRY already raised
  }
 
- /* Continue to loop body (inline: after colon; multi-line: next line) */
+ // Continue to loop body (inline: after colon; multi-line: next line)
 }
 
-/*
- * parse_next - Parse and execute NEXT statement.
- *
- * Syntax:
- * NEXT var
- * NEXT (some dialects allow omitting the variable)
- *
- * Behavior:
- * 1. Pop the top FRAME_FOR from the stack (peek, don't remove yet).
- * 2. Verify the variable matches (if specified).
- * 3. Increment the variable by step.
- * 4. Check termination: if step > 0 and var > limit, or
- * step < 0 and var < limit, pop the frame and continue.
- * 5. Otherwise, jump back to body_index.
- */
+ // parse_next - Parse and execute NEXT statement.
+ //
+ // Syntax:
+ // NEXT var
+ // NEXT (some dialects allow omitting the variable)
+ //
+ // Behavior:
+ // 1. Pop the top FRAME_FOR from the stack (peek, don't remove yet).
+ // 2. Verify the variable matches (if specified).
+ // 3. Increment the variable by step.
+ // 4. Check termination: if step > 0 and var > limit, or
+ // step < 0 and var < limit, pop the frame and continue.
+ // 5. Otherwise, jump back to body_index.
 void pi_parse_next(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char var_name = '\0';
  StackFrame *top;
  double val;
 
- /* Optional variable name — single-char or multi-char */
+ // Optional variable name -- single-char or multi-char
  if (lex->current.type == TOK_VARIABLE) {
  var_name = lex->current.value.var_name;
- lexer_next(lex); /* consume variable */
+ lexer_next(lex); // consume variable
  } else if (lex->current.type == TOK_NAMED_VAR) {
- /* Multi-char var — just consume and match by first char */
+ // Multi-char var -- just consume and match by first char
  var_name = lex->current.str_start[0];
  lexer_next(lex);
  }
 
- /* Check stack for matching FOR frame */
+ // Check stack for matching FOR frame
  if (rt->stack_top <= 0) {
  error_raise(ERR_HOW, line_num);
  return;
@@ -231,15 +231,15 @@ void pi_parse_next(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Verify variable matches (if specified) */
+ // Verify variable matches (if specified)
  if (var_name != '\0' && var_name != top->data.for_loop.var_name) {
  error_raise(ERR_HOW, line_num);
  return;
  }
 
- /* Increment the loop variable (using double arithmetic) */
+ // Increment the loop variable (using double arithmetic)
  if (top->data.for_loop.var_name_len > 0) {
-  /* Extended variable name */
+  // Extended variable name
   BValue bv = runtime_get_named_var_bval(rt,
    top->data.for_loop.var_name_ext,
    top->data.for_loop.var_name_len);
@@ -254,52 +254,48 @@ void pi_parse_next(Lexer *lex, RuntimeState *rt, int line_num)
   runtime_set_var_bval(rt, top->data.for_loop.var_name, bval_float(val));
  }
 
- /* Check termination condition */
+ // Check termination condition
  if (top->data.for_loop.step > 0) {
  if (val > top->data.for_loop.limit) {
-  /* Loop done - pop frame, continue after NEXT */
+  // Loop done - pop frame, continue after NEXT
   rt->stack_top--;
   return;
  }
  } else {
  if (val < top->data.for_loop.limit) {
-  /* Loop done - pop frame, continue after NEXT */
+  // Loop done - pop frame, continue after NEXT
   rt->stack_top--;
   return;
  }
  }
- /* Loop continues */
+ // Loop continues
  if (top->data.for_loop.inline_body_pos >= 0) {
-  /*
-   * Inline FOR...NEXT: rewind lexer to the saved body
-   * position on the current line and re-execute the
-   * inline body.
-   */
+   // Inline FOR...NEXT: rewind lexer to the saved body
+   // position on the current line and re-execute the
+   // inline body.
   lex->pos = top->data.for_loop.inline_body_pos;
-  lexer_next(lex); /* re-scan to TOK_COLON */
-  /* parser_execute_line will see the colon, consume it,
-   * and dispatch the body statement */
+  lexer_next(lex); // re-scan to TOK_COLON
+  // parser_execute_line will see the colon, consume it,
+   // and dispatch the body statement 
  } else {
-  /* Multi-line loop: jump back to body_index */
+  // Multi-line loop: jump back to body_index
   rt->next_index = top->data.for_loop.body_index;
   lexer_skip_to_end(lex);
  }
 }
 
-/*
- * parse_while - Parse and execute WHILE statement.
- *
- * Syntax:
- * WHILE expression relop expression
- *
- * Behavior:
- * 1. Evaluate the condition (two expressions with relop).
- * 2. If true: push FRAME_WHILE and continue to loop body.
- * 3. If false: skip forward to matching WEND.
- *
- * On subsequent iterations, WEND jumps back to this WHILE line
- * to re-evaluate the condition.
- */
+ // parse_while - Parse and execute WHILE statement.
+ //
+ // Syntax:
+ // WHILE expression relop expression
+ //
+ // Behavior:
+ // 1. Evaluate the condition (two expressions with relop).
+ // 2. If true: push FRAME_WHILE and continue to loop body.
+ // 3. If false: skip forward to matching WEND.
+ //
+ // On subsequent iterations, WEND jumps back to this WHILE line
+ // to re-evaluate the condition.
 void pi_parse_while(Lexer *lex, RuntimeState *rt, int line_num)
 {
  BValue cond;
@@ -307,76 +303,70 @@ void pi_parse_while(Lexer *lex, RuntimeState *rt, int line_num)
  StackFrame frame;
  int wend_idx;
 
- /*
- * Evaluate the WHILE condition as a single BValue expression.
- * parse_expression_bval handles comparisons internally
- * (e.g., K$ <> "END" returns -1 or 0).
- * A non-zero result is true; zero is false.
- */
+ // Evaluate the WHILE condition as a single BValue expression.
+ // parse_expression_bval handles comparisons internally
+ // (e.g., K$ <> "END" returns -1 or 0).
+ // A non-zero result is true; zero is false.
  cond = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return;
 
  condition = (bval_to_int(&cond) != 0);
 
  if (condition) {
- /* Condition true - push frame and enter loop body */
+ // Condition true - push frame and enter loop body
  frame.type = FRAME_WHILE;
  frame.data.while_loop.loop_index = rt->current_index;
 
  if (runtime_push(rt, &frame) != 0) {
- return; /* ERR_SORRY already raised */
+ return; // ERR_SORRY already raised
  }
- /* Continue to next line (loop body) */
+ // Continue to next line (loop body)
  } else {
- /* Condition false - skip to matching WEND + 1 */
+ // Condition false - skip to matching WEND + 1
  wend_idx = runtime_find_matching(rt, rt->current_index,
  (int)KW_WHILE, (int)KW_WEND,
  line_num);
  if (wend_idx < 0) return;
- rt->next_index = wend_idx + 1; /* skip past WEND */
+ rt->next_index = wend_idx + 1; // skip past WEND
  lexer_skip_to_end(lex);
  }
 }
 
-/*
- * parse_wend - Parse and execute WEND statement.
- *
- * Behavior:
- * Pop the FRAME_WHILE from the stack and jump back to the
- * WHILE line to re-evaluate the condition.
- *
- * Note: we pop the frame before jumping so that WHILE can
- * push a fresh frame if the condition is still true. This
- * ensures each iteration gets its own push/pop cycle.
- */
+ // parse_wend - Parse and execute WEND statement.
+ //
+ // Behavior:
+ // Pop the FRAME_WHILE from the stack and jump back to the
+ // WHILE line to re-evaluate the condition.
+ //
+ // Note: we pop the frame before jumping so that WHILE can
+ // push a fresh frame if the condition is still true. This
+ // ensures each iteration gets its own push/pop cycle.
 void pi_parse_wend(Lexer *lex, RuntimeState *rt, int line_num)
 {
  StackFrame frame;
 
  if (runtime_pop(rt, FRAME_WHILE, &frame) != 0) {
- return; /* ERR_HOW: no matching WHILE */
+ return; // ERR_HOW: no matching WHILE
  }
 
- /* Jump back to the WHILE line to re-evaluate condition */
+ // Jump back to the WHILE line to re-evaluate condition
  rt->next_index = frame.data.while_loop.loop_index;
  lexer_skip_to_end(lex);
 
  (void)line_num;
 }
 
-/*
- * parse_do - Parse and execute DO statement.
- *
- * Syntax:
- * DO (unconditional entry, post-check)
- * DO WHILE expr relop expr (pre-check, WHILE condition)
- * DO UNTIL expr relop expr (pre-check, UNTIL condition)
- *
- * The matching LOOP statement closes the loop:
- * LOOP (unconditional repeat if no pre-check)
- * LOOP WHILE expr relop expr (post-check, WHILE condition)
- * LOOP UNTIL expr relop expr (post-check, UNTIL condition)
- */
+ // parse_do - Parse and execute DO statement.
+ //
+ // Syntax:
+ // DO (unconditional entry, post-check)
+ // DO WHILE expr relop expr (pre-check, WHILE condition)
+ // DO UNTIL expr relop expr (pre-check, UNTIL condition)
+ //
+ // The matching LOOP statement closes the loop:
+ // LOOP (unconditional repeat if no pre-check)
+ // LOOP WHILE expr relop expr (post-check, WHILE condition)
+ // LOOP UNTIL expr relop expr (post-check, UNTIL condition)
 void pi_parse_do(Lexer *lex, RuntimeState *rt, int line_num)
 {
  StackFrame frame;
@@ -386,7 +376,7 @@ void pi_parse_do(Lexer *lex, RuntimeState *rt, int line_num)
  frame.type = FRAME_DO;
  frame.data.do_loop.body_index = rt->current_index + 1;
 
- /* Check for optional WHILE or UNTIL keyword */
+ // Check for optional WHILE or UNTIL keyword
  if (lexer_match_keyword(lex, KW_WHILE)) {
  long left, right;
  TokenType relop;
@@ -394,9 +384,9 @@ void pi_parse_do(Lexer *lex, RuntimeState *rt, int line_num)
  int loop_idx;
 
  is_pre = 1;
- lexer_next(lex); /* consume WHILE */
+ lexer_next(lex); // consume WHILE
 
- /* Evaluate condition */
+ // Evaluate condition
  left = parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
@@ -425,7 +415,7 @@ void pi_parse_do(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (!condition) {
- /* Pre-check failed - skip to matching LOOP + 1 */
+ // Pre-check failed - skip to matching LOOP + 1
  loop_idx = runtime_find_matching(rt, rt->current_index,
  (int)KW_DO, (int)KW_LOOP,
  line_num);
@@ -442,9 +432,9 @@ void pi_parse_do(Lexer *lex, RuntimeState *rt, int line_num)
 
  is_pre = 1;
  is_until = 1;
- lexer_next(lex); /* consume UNTIL */
+ lexer_next(lex); // consume UNTIL
 
- /* Evaluate condition */
+ // Evaluate condition
  left = parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
@@ -472,9 +462,9 @@ void pi_parse_do(Lexer *lex, RuntimeState *rt, int line_num)
  default: break;
  }
 
- /* UNTIL: loop while condition is NOT true */
+ // UNTIL: loop while condition is NOT true
  if (condition) {
- /* Condition already true - skip loop entirely */
+ // Condition already true - skip loop entirely
  loop_idx = runtime_find_matching(rt, rt->current_index,
  (int)KW_DO, (int)KW_LOOP,
  line_num);
@@ -484,53 +474,51 @@ void pi_parse_do(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
  }
- /* else: bare DO - unconditional entry, post-check at LOOP */
+ // else: bare DO - unconditional entry, post-check at LOOP
 
  frame.data.do_loop.is_until = is_until;
  frame.data.do_loop.is_pre = is_pre;
 
  if (runtime_push(rt, &frame) != 0) {
- return; /* ERR_SORRY already raised */
+ return; // ERR_SORRY already raised
  }
- /* Continue to loop body (next line) */
+ // Continue to loop body (next line)
 }
 
-/*
- * parse_loop - Parse and execute LOOP statement.
- *
- * Syntax:
- * LOOP (loop back unconditionally if no pre-check)
- * LOOP WHILE expr relop expr (post-check WHILE)
- * LOOP UNTIL expr relop expr (post-check UNTIL)
- *
- * Behavior:
- * Pop the FRAME_DO and evaluate post-condition if present.
- * If continuing, jump back to body_index (the DO line is
- * re-entered - but since we jump to body_index which is
- * DO+1, we re-push the frame by jumping to the DO line).
- *
- * Actually: we jump back to the DO line (body_index - 1)
- * so that pre-check DO WHILE/UNTIL re-evaluates. For bare
- * DO, we just re-push and enter body.
- */
+ // parse_loop - Parse and execute LOOP statement.
+ //
+ // Syntax:
+ // LOOP (loop back unconditionally if no pre-check)
+ // LOOP WHILE expr relop expr (post-check WHILE)
+ // LOOP UNTIL expr relop expr (post-check UNTIL)
+ //
+ // Behavior:
+ // Pop the FRAME_DO and evaluate post-condition if present.
+ // If continuing, jump back to body_index (the DO line is
+ // re-entered - but since we jump to body_index which is
+ // DO+1, we re-push the frame by jumping to the DO line).
+ //
+ // Actually: we jump back to the DO line (body_index - 1)
+ // so that pre-check DO WHILE/UNTIL re-evaluates. For bare
+ // DO, we just re-push and enter body.
 void pi_parse_loop(Lexer *lex, RuntimeState *rt, int line_num)
 {
  StackFrame frame;
  int do_index;
 
  if (runtime_pop(rt, FRAME_DO, &frame) != 0) {
- return; /* ERR_HOW: no matching DO */
+ return; // ERR_HOW: no matching DO
  }
 
  do_index = frame.data.do_loop.body_index - 1;
 
- /* Check for post-check condition */
+ // Check for post-check condition
  if (lexer_match_keyword(lex, KW_WHILE)) {
  long left, right;
  TokenType relop;
  int condition;
 
- lexer_next(lex); /* consume WHILE */
+ lexer_next(lex); // consume WHILE
 
  left = parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
@@ -560,16 +548,16 @@ void pi_parse_loop(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (condition) {
- /* Still true - loop again */
+ // Still true - loop again
  rt->next_index = do_index;
  }
- /* else: done - continue after LOOP */
+ // else: done - continue after LOOP
  } else if (lexer_match_keyword(lex, KW_UNTIL)) {
  long left, right;
  TokenType relop;
  int condition;
 
- lexer_next(lex); /* consume UNTIL */
+ lexer_next(lex); // consume UNTIL
 
  left = parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
@@ -599,12 +587,12 @@ void pi_parse_loop(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (!condition) {
- /* UNTIL condition not yet met - loop again */
+ // UNTIL condition not yet met - loop again
  rt->next_index = do_index;
  }
- /* else: condition met - done, continue after LOOP */
+ // else: condition met - done, continue after LOOP
  } else {
- /* Bare LOOP - loop unconditionally (re-enter DO) */
+ // Bare LOOP - loop unconditionally (re-enter DO)
  rt->next_index = do_index;
  }
 
@@ -615,18 +603,16 @@ void pi_parse_loop(Lexer *lex, RuntimeState *rt, int line_num)
  (void)line_num;
 }
 
-/*
- * parse_repeat - Parse and execute REPeat statement.
- * Syntax: REPeat name
- * SuperBASIC infinite loop.
- */
+ // parse_repeat - Parse and execute REPeat statement.
+ // Syntax: REPeat name
+ // SuperBASIC infinite loop.
 void pi_parse_repeat(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char var_name[MAX_VAR_NAME_LEN + 1];
  int name_len = 0;
  StackFrame frame;
 
- /* Parse variable name */
+ // Parse variable name
  if (lex->current.type == TOK_NAMED_VAR) {
  name_len = lex->current.str_length;
  if (name_len > MAX_VAR_NAME_LEN) name_len = MAX_VAR_NAME_LEN;
@@ -643,27 +629,25 @@ void pi_parse_repeat(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Push REPEAT frame */
+ // Push REPEAT frame
  frame.type = FRAME_REPEAT;
  memcpy(frame.data.repeat_loop.name, var_name, (size_t)(name_len + 1));
  frame.data.repeat_loop.body_index = rt->current_index + 1;
 
  if (runtime_push(rt, &frame) != 0) {
- return; /* ERR_SORRY already raised */
+ return; // ERR_SORRY already raised
  }
 }
 
-/*
- * parse_endrepeat - Parse END REPeat
- * Syntax: END REPeat [name]
- */
+ // parse_endrepeat - Parse END REPeat
+ // Syntax: END REPeat [name]
 void pi_parse_endrepeat(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char var_name[MAX_VAR_NAME_LEN + 1];
  int name_len = 0;
  StackFrame frame;
 
- /* Optional name */
+ // Optional name
  if (lex->current.type == TOK_NAMED_VAR) {
  name_len = lex->current.str_length;
  if (name_len > MAX_VAR_NAME_LEN) name_len = MAX_VAR_NAME_LEN;
@@ -678,10 +662,10 @@ void pi_parse_endrepeat(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (runtime_pop(rt, FRAME_REPEAT, &frame) != 0) {
- return; /* ERR_HOW: no matching REPeat */
+ return; // ERR_HOW: no matching REPeat
  }
 
- /* Verify name matches if provided */
+ // Verify name matches if provided
  if (name_len > 0) {
  if (pi_str_case_equal(var_name, frame.data.repeat_loop.name) == 0) {
  error_raise(ERR_HOW, line_num);
@@ -689,17 +673,15 @@ void pi_parse_endrepeat(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Unconditionally loop back to body */
- rt->next_index = frame.data.repeat_loop.body_index - 1; /* evaluate REPeat again to push frame */
+ // Unconditionally loop back to body
+ rt->next_index = frame.data.repeat_loop.body_index - 1; // evaluate REPeat again to push frame
  lexer_skip_to_end(lex);
  (void)line_num;
 }
 
-/*
- * parse_endfor - Parse END FOR
- * Syntax: END FOR var
- * Handled identically to NEXT var
- */
+ // parse_endfor - Parse END FOR
+ // Syntax: END FOR var
+ // Handled identically to NEXT var
 void pi_parse_endfor(Lexer *lex, RuntimeState *rt, int line_num)
 {
  pi_parse_next(lex, rt, line_num);

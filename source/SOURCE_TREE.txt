@@ -1,6 +1,6 @@
 BASIC++ SOURCE TREE MAP
 ========================
-Version 4.0.0
+Version 4.0.1
 Last Updated: 2026-06-17
 
 This document describes every source file in the BASIC++ interpreter,

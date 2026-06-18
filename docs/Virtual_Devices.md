@@ -1,6 +1,6 @@
 VIRTUAL DEVICES IN BASIC++
 ==========================
-Version 1.5.0
+Version 4.0.1
 
 The Virtual Device (VDev) system is BASIC++'s hardware
 abstraction layer.  All I/O flows through VDevs, enabling
@@ -394,7 +394,7 @@ never knows the difference.
   void vdev_sleep(int duration_ms)
     Pause execution for the given number of milliseconds.
     Windows: Sleep(ms) via kernel32.
-    Linux: (no-op in current C89 implementation).
+    Linux: (no-op in current C17 implementation).
     Used by: SOUND 0,n (silence/pause) and PLAY rests.
 
   int vdev_inkey(void)
@@ -2396,7 +2396,7 @@ Examples:
   PLATFORM:
   - Serial, network, clipboard, audio, shared memory, and
     GPIO devices are platform-specific (Windows/Linux)
-  - No portable C89 implementation exists for these
+  - No portable C17 implementation exists for these
   - They must be compiled conditionally (#if defined)
   - FreeDOS support is limited to stdio-based devices
 

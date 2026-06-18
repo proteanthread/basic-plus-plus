@@ -1,56 +1,53 @@
-/*
- * ---
- * BASIC++ Interpreter - builtins.c
- * ---
- *
- * Built-in function registration table.
- *
- * This file contains ONLY the master registration table that
- * populates the function registry with all standard BASIC++
- * built-in functions.
- *
- * Handler implementations are in separate category files:
- *
- *   builtins_math.c     - ABS, SGN, INT, SQR, SIN, COS, TAN, ATN,
- *                          LOG, EXP, FIX, COMPLEX, REAL, IMAG,
- *                          MIN, MAX, AVG, MED, ROUND, ASIN, ACOS,
- *                          SINH, COSH, TANH, LOG10, LOG2, COMP,
- *                          PDIF, PI, RND
- *   builtins_string.c   - LEN, ASC, VAL, CHR$, STR$, LEFT$, RIGHT$,
- *                          MID$, INSTR, SPACE$, STRING$, HEX$, OCT$,
- *                          BIN$
- *   builtins_fileio.c   - EOF, LOF, CVI, CVS, CVD
- *   builtins_io.c       - CSRLIN
- *   builtins_memory.c   - PEEK, SIZE
- *   builtins_system.c   - ENVIRON$
- *   builtins_graphics.c - POINT
- *
- * DIALECT OVERRIDE POLICY:
- * overridable=0 -> Core Immutable API (cannot be changed)
- * overridable=1 -> Dialect-Overridable API (swappable)
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - builtins.c
+ // ---
+ //
+ // Built-in function registration table.
+ //
+ // This file contains ONLY the master registration table that
+ // populates the function registry with all standard BASIC++
+ // built-in functions.
+ //
+ // Handler implementations are in separate category files:
+ //
+ //   builtins_math.c     - ABS, SGN, INT, SQR, SIN, COS, TAN, ATN,
+ //                          LOG, EXP, FIX, COMPLEX, REAL, IMAG,
+ //                          MIN, MAX, AVG, MED, ROUND, ASIN, ACOS,
+ //                          SINH, COSH, TANH, LOG10, LOG2, COMP,
+ //                          PDIF, PI, RND
+ //   builtins_string.c   - LEN, ASC, VAL, CHR$, STR$, LEFT$, RIGHT$,
+ //                          MID$, INSTR, SPACE$, STRING$, HEX$, OCT$,
+ //                          BIN$
+ //   builtins_fileio.c   - EOF, LOF, CVI, CVS, CVD
+ //   builtins_io.c       - CSRLIN
+ //   builtins_memory.c   - PEEK, SIZE
+ //   builtins_system.c   - ENVIRON$
+ //   builtins_graphics.c - POINT
+ //
+ // DIALECT OVERRIDE POLICY:
+ // overridable=0 -> Core Immutable API (cannot be changed)
+ // overridable=1 -> Dialect-Overridable API (swappable)
+ //
+ // ---
 
 #include "builtins.h"
 #include "funcreg.h"
 #include "lexer.h"
 
-/* --- builtins_register - Register all built-in functions. ---
- *
- * This is the MASTER REGISTRATION TABLE. Every built-in function
- * is listed here with its complete metadata. To add a new function:
- * 1. Write the handler in the appropriate category file.
- * 2. Declare it in builtins.h.
- * 3. Add a row to the appropriate table below.
- *
- * Table columns:
- * name, keyword, category, ret_type, min_args, max_args,
- * safety, overridable, handler, help_text
- */
+// --- builtins_register - Register all built-in functions. ---
+ //
+ // This is the MASTER REGISTRATION TABLE. Every built-in function
+ // is listed here with its complete metadata. To add a new function:
+ // 1. Write the handler in the appropriate category file.
+ // 2. Declare it in builtins.h.
+ // 3. Add a row to the appropriate table below.
+ //
+ // Table columns:
+ // name, keyword, category, ret_type, min_args, max_args,
+ // safety, overridable, handler, help_text
 void builtins_register(void)
 {
- /* --- Arithmetic / Math (builtins_math.c) --- */
+ // --- Arithmetic / Math (builtins_math.c) ---
  static const FunctionEntry math_funcs[] = {
  { "ABS", KW_ABS, FCAT_MATH, FRET_ANY, 1, 1,
  FSAFE_PURE, 0, builtin_abs,
@@ -130,7 +127,7 @@ void builtins_register(void)
   { "ROUND", KW_ROUND_FUNC, FCAT_MATH, FRET_FLOAT,1, 2,
   FSAFE_PURE, 0, builtin_round,
   "Round: ROUND(3.14159,2)=3.14" },
-  /* SUPER BASIC (Tymshare) extended math */
+  // SUPER BASIC (Tymshare) extended math
   { "ASIN", KW_ASIN_FUNC, FCAT_MATH, FRET_FLOAT,1, 1,
   FSAFE_PURE, 0, builtin_asin,
   "Arcsine: ASIN(1)=1.5708" },
@@ -166,7 +163,7 @@ void builtins_register(void)
  "Random number: RND(N) returns 1..N" }
  };
 
- /* --- String Functions (builtins_string.c) --- */
+ // --- String Functions (builtins_string.c) ---
  static const FunctionEntry str_funcs[] = {
  { "LEN", KW_LEN, FCAT_STRING, FRET_INT, 1, 1,
  FSAFE_PURE, 0, builtin_len,
@@ -212,7 +209,7 @@ void builtins_register(void)
  "Binary conversion: BIN$(10)=\"1010\"" }
  };
 
- /* --- File I/O (builtins_fileio.c) --- */
+ // --- File I/O (builtins_fileio.c) ---
  static const FunctionEntry fileio_funcs[] = {
  { "EOF", KW_EOF, FCAT_UTIL, FRET_INT, 1, 1,
  FSAFE_STATE, 0, builtin_eof,
@@ -240,14 +237,14 @@ void builtins_register(void)
  "Modified date: FILEMOD$(\"file\")=\"2026-01-15 10:30:00\"" }
  };
 
- /* --- Input / Output (builtins_io.c) --- */
+ // --- Input / Output (builtins_io.c) ---
  static const FunctionEntry io_funcs[] = {
  { "CSRLIN", KW_CSRLIN, FCAT_UTIL, FRET_INT, 0, 0,
  FSAFE_STATE, 0, builtin_csrlin,
  "Current cursor row: PRINT CSRLIN" }
  };
 
- /* --- Memory (builtins_memory.c) --- */
+ // --- Memory (builtins_memory.c) ---
  static const FunctionEntry mem_funcs[] = {
  { "PEEK", KW_PEEK, FCAT_UTIL, FRET_INT, 1, 1,
  FSAFE_STATE, 0, builtin_peek,
@@ -257,21 +254,21 @@ void builtins_register(void)
  "Free memory bytes: PRINT SIZE" }
  };
 
- /* --- System / Environment (builtins_system.c) --- */
+ // --- System / Environment (builtins_system.c) ---
  static const FunctionEntry sys_funcs[] = {
  { "ENVIRON$", KW_ENVIRON, FCAT_UTIL, FRET_STRING,
  1, 1, FSAFE_STATE, 0, builtin_environ,
  "Environment var: ENVIRON$(\"PATH\")" }
  };
 
- /* --- Graphics (builtins_graphics.c) --- */
+ // --- Graphics (builtins_graphics.c) ---
  static const FunctionEntry gfx_funcs[] = {
  { "POINT", KW_POINT, FCAT_UTIL, FRET_INT, 1, 2,
  FSAFE_STATE, 0, builtin_point,
  "Pixel color: POINT(x, y)" }
  };
 
- /* --- Stream I/O (builtins_sio.c) --- */
+ // --- Stream I/O (builtins_sio.c) ---
  static const FunctionEntry sio_funcs[] = {
  { "SIOREAD$", KW_SIOREAD, FCAT_IO, FRET_STRING, 2, 2,
  FSAFE_IO, 0, builtin_sioread,
@@ -296,7 +293,7 @@ void builtins_register(void)
  "Available: SIOAVAIL(chan) bytes" }
  };
 
- /* --- Block I/O (builtins_bio.c) --- */
+ // --- Block I/O (builtins_bio.c) ---
  static const FunctionEntry bio_funcs[] = {
  { "BIOREAD$", KW_BIOREAD, FCAT_IO, FRET_STRING, 3, 3,
  FSAFE_IO, 0, builtin_bioread,
@@ -324,14 +321,14 @@ void builtins_register(void)
  "Copy block: BIOCOPY(chan, src, dst, len)" }
  };
 
- /* Transaction query functions */
+ // Transaction query functions
  static const FunctionEntry txn_funcs[] = {
  { "TXNSTATUS", KW_TXNSTATUS, FCAT_IO, FRET_INT, 0, 0,
  FSAFE_PURE, 0, builtin_txnstatus,
  "Transaction state: TXNSTATUS()" }
  };
 
- /* Network query functions */
+ // Network query functions
  static const FunctionEntry net_funcs[] = {
  { "NSTATUS", KW_NSTATUS, FCAT_IO, FRET_INT, 1, 1,
  FSAFE_IO, 0, builtin_nstatus,
@@ -372,7 +369,7 @@ void builtins_register(void)
  int txn_count    = (int)(sizeof(txn_funcs)    / sizeof(txn_funcs[0]));
  int net_count    = (int)(sizeof(net_funcs)    / sizeof(net_funcs[0]));
 
- /* Register all categories */
+ // Register all categories
  for (i = 0; i < math_count; i++)
  funcreg_register(&math_funcs[i]);
  for (i = 0; i < str_count; i++)

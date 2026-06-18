@@ -1,16 +1,26 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_mat.c
- * ---
- *
- * Matrix operation handler: MAT statement.
- *
- * Implements ECMA-116 matrix operations: MAT READ, MAT PRINT,
- * MAT assignment, MAT ZER, MAT CON, MAT IDN, MAT TRN,
- * MAT INV, and matrix arithmetic (+, -, *).
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_mat.c
+ // ---
+ //
+ // Matrix operation handler: MAT statement.
+ //
+ // Implements ECMA-116 matrix operations: MAT READ, MAT PRINT,
+ // MAT assignment, MAT ZER, MAT CON, MAT IDN, MAT TRN,
+ // MAT INV, and matrix arithmetic (+, -, *).
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
@@ -35,11 +45,9 @@ int pi_mat_get_array_name(Lexer *lex, char *name, int *name_len)
  return 0;
 }
 
-/*
- * mat_match_ident - Check if current token matches a specific
- * identifier string (case-insensitive). Used for ZER, CON, IDN,
- * TRN, INV which are not keywords but context-specific identifiers.
- */
+ // mat_match_ident - Check if current token matches a specific
+ // identifier string (case-insensitive). Used for ZER, CON, IDN,
+ // TRN, INV which are not keywords but context-specific identifiers.
 int pi_mat_match_ident(Lexer *lex, const char *target)
 {
  const char *src;
@@ -49,7 +57,7 @@ int pi_mat_match_ident(Lexer *lex, const char *target)
  src = lex->current.str_start;
  len = lex->current.str_length;
  } else if (lex->current.type == TOK_VARIABLE) {
- /* Single-letter - only matches single-letter targets */
+ // Single-letter - only matches single-letter targets
  return 0;
  } else {
  return 0;
@@ -69,41 +77,39 @@ int pi_mat_match_ident(Lexer *lex, const char *target)
  return 1;
 }
 
-/*
- * parse_mat_cmd - Parse and execute a MAT statement.
- *
- * This is the main dispatcher for all MAT operations.
- * The MAT keyword has already been consumed by the statement
- * dispatcher.
- */
+ // parse_mat_cmd - Parse and execute a MAT statement.
+ //
+ // This is the main dispatcher for all MAT operations.
+ // The MAT keyword has already been consumed by the statement
+ // dispatcher.
 void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char name_a[MAX_VAR_NAME_LEN + 1];
  int name_a_len;
 
- /* MAT requires a dialect with DIM array support */
+ // MAT requires a dialect with DIM array support
  if (!dialect_get_config()->has_dim_arrays) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
 
- /* MAT PRINT <name> [;|,] or MAT PRINT USING fmt$; <name> */
+ // MAT PRINT <name> [;|,] or MAT PRINT USING fmt$; <name>
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_PRINT) {
  DimArray *arr;
  int r, c;
- int use_tab = 1; /* default: tabbed */
+ int use_tab = 1; // default: tabbed
  int use_compact = 0;
  char fmt_buf[64];
  int has_using = 0;
 
- lexer_next(lex); /* consume PRINT */
+ lexer_next(lex); // consume PRINT
 
- /* Check for USING */
+ // Check for USING
  if (lex->current.type == TOK_KEYWORD &&
   lex->current.value.keyword == KW_USING) {
   BValue fv;
-  lexer_next(lex); /* consume USING */
+  lexer_next(lex); // consume USING
   fv = parse_expression_bval(lex, rt, line_num);
   if (error_occurred()) return;
   {
@@ -114,7 +120,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
    fmt_buf[fl] = '\0';
   }
   has_using = 1;
-  /* Expect semicolon separator */
+  // Expect semicolon separator
   if (lex->current.type == TOK_SEMICOLON)
    lexer_next(lex);
  }
@@ -124,7 +130,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  }
 
- /* Check trailing delimiter: ; = compact, , = tabbed */
+ // Check trailing delimiter: ; = compact, , = tabbed
  if (lex->current.type == TOK_SEMICOLON) {
   use_compact = 1;
   use_tab = 0;
@@ -142,7 +148,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (arr->dims == 1) {
-  /* 1D: print elements on one line */
+  // 1D: print elements on one line
   int base = rt->option_base;
   for (c = base; c < arr->size[0]; c++) {
    BValue v = arr->elements[c - base];
@@ -162,7 +168,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
   }
   printf("\n");
  } else {
-  /* 2D: print as matrix rows */
+  // 2D: print as matrix rows
   for (r = 1; r < arr->size[0]; r++) {
    for (c = 1; c < arr->size[1]; c++) {
     int off = r * arr->size[1] + c;
@@ -187,13 +193,13 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* MAT READ <name> */
+ // MAT READ <name>
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_READ) {
  DimArray *arr;
  int r, c;
 
- lexer_next(lex); /* consume READ */
+ lexer_next(lex); // consume READ
  if (!pi_mat_get_array_name(lex, name_a, &name_a_len)) {
   error_raise(ERR_WHAT, line_num);
   return;
@@ -206,14 +212,14 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (arr->dims == 1) {
-  /* 1D: read into elements */
+  // 1D: read into elements
   for (c = 0; c < arr->total; c++) {
    arr->elements[c] = runtime_read_data_bval(
     rt, line_num);
    if (error_occurred()) return;
   }
  } else {
-  /* 2D: read row-major, 1-based */
+  // 2D: read row-major, 1-based
   for (r = 1; r < arr->size[0]; r++) {
    for (c = 1; c < arr->size[1]; c++) {
     int off = r * arr->size[1] + c;
@@ -226,14 +232,14 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* MAT INPUT <name> */
+ // MAT INPUT <name>
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_INPUT) {
  DimArray *arr;
  int r, c;
  char ibuf[256];
 
- lexer_next(lex); /* consume INPUT */
+ lexer_next(lex); // consume INPUT
  if (!pi_mat_get_array_name(lex, name_a, &name_a_len)) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -245,7 +251,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Input values into matrix, 1-based */
+ // Input values into matrix, 1-based
  for (r = 1; r < arr->size[0]; r++) {
  for (c = 1; c < arr->size[1]; c++) {
  int off = r * arr->size[1] + c;
@@ -272,9 +278,9 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume '=' */
+ lexer_next(lex); // consume '='
 
- /* --- MAT A = ZER / CON / IDN --- */
+ // --- MAT A = ZER / CON / IDN ---
  if (pi_mat_match_ident(lex, "ZER")) {
  DimArray *arr = runtime_find_dim(rt, name_a, name_a_len);
  int i;
@@ -282,7 +288,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
   error_raise(ERR_HOW, line_num);
   return;
  }
- /* Works on 1D, 2D, and 3D arrays */
+ // Works on 1D, 2D, and 3D arrays
  for (i = 0; i < arr->total; i++) {
   arr->elements[i] = bval_int(0);
  }
@@ -297,7 +303,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
   error_raise(ERR_HOW, line_num);
   return;
  }
- /* Works on 1D, 2D, and 3D arrays */
+ // Works on 1D, 2D, and 3D arrays
  for (i = 0; i < arr->total; i++) {
   arr->elements[i] = bval_int(1);
  }
@@ -312,7 +318,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_HOW, line_num);
  return;
  }
- /* rows and cols must match for identity */
+ // rows and cols must match for identity
  if (arr->size[0] != arr->size[1]) {
  error_raise(ERR_HOW, line_num);
  return;
@@ -327,14 +333,14 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* --- MAT A = TRN(B) --- */
+ // --- MAT A = TRN(B) ---
  if (pi_mat_match_ident(lex, "TRN")) {
  char name_b[MAX_VAR_NAME_LEN + 1];
  int name_b_len;
  DimArray *a, *b;
  int r, c;
 
- lexer_next(lex); /* consume TRN */
+ lexer_next(lex); // consume TRN
  if (!lexer_expect(lex, TOK_LPAREN)) return;
  if (!pi_mat_get_array_name(lex, name_b, &name_b_len)) {
  error_raise(ERR_WHAT, line_num);
@@ -348,7 +354,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* A must be DIMmed with transposed dimensions */
+ // A must be DIMmed with transposed dimensions
  a = runtime_find_dim(rt, name_a, name_a_len);
  if (a == NULL || a->dims != 2) {
  error_raise(ERR_HOW, line_num);
@@ -359,7 +365,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* A(r,c) = B(c,r) - using 1-based indexing */
+ // A(r,c) = B(c,r) - using 1-based indexing
  for (r = 1; r < a->size[0]; r++) {
  for (c = 1; c < a->size[1]; c++) {
  int a_off = r * a->size[1] + c;
@@ -370,16 +376,16 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* --- MAT A = INV(B) --- */
+ // --- MAT A = INV(B) ---
  if (pi_mat_match_ident(lex, "INV")) {
  char name_b[MAX_VAR_NAME_LEN + 1];
  int name_b_len;
  DimArray *a, *b;
  int n, r, c, p;
- double work[16][32]; /* max 15x15 matrix for inverse */
+ double work[16][32]; // max 15x15 matrix for inverse
  double pivot, factor;
 
- lexer_next(lex); /* consume INV */
+ lexer_next(lex); // consume INV
  if (!lexer_expect(lex, TOK_LPAREN)) return;
  if (!pi_mat_get_array_name(lex, name_b, &name_b_len)) {
  error_raise(ERR_WHAT, line_num);
@@ -392,14 +398,14 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_HOW, line_num);
  return;
  }
- /* Must be square */
+ // Must be square
  if (b->size[0] != b->size[1]) {
  error_raise(ERR_HOW, line_num);
  return;
  }
- n = b->size[0] - 1; /* 1-based size */
+ n = b->size[0] - 1; // 1-based size
  if (n > 15 || n < 1) {
- error_raise(ERR_SORRY, line_num); /* too large */
+ error_raise(ERR_SORRY, line_num); // too large
  return;
  }
 
@@ -411,7 +417,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Build augmented matrix [B | I] */
+ // Build augmented matrix [B | I]
  for (r = 0; r < n; r++) {
  for (c = 0; c < n; c++) {
  BValue v = b->elements[(r+1) * b->size[1] + (c+1)];
@@ -420,9 +426,9 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Gauss-Jordan elimination */
+ // Gauss-Jordan elimination
  for (p = 0; p < n; p++) {
- /* Find pivot */
+ // Find pivot
  int max_row = p;
  double max_val = work[p][p];
  if (max_val < 0) max_val = -max_val;
@@ -436,7 +442,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Swap rows if needed */
+ // Swap rows if needed
  if (max_row != p) {
  for (c = 0; c < 2 * n; c++) {
  double tmp = work[p][c];
@@ -447,17 +453,17 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 
  pivot = work[p][p];
  if (pivot > -1e-12 && pivot < 1e-12) {
- /* Singular matrix */
+ // Singular matrix
  error_raise(ERR_HOW, line_num);
  return;
  }
 
- /* Scale pivot row */
+ // Scale pivot row
  for (c = 0; c < 2 * n; c++) {
  work[p][c] /= pivot;
  }
 
- /* Eliminate column */
+ // Eliminate column
  for (r = 0; r < n; r++) {
  if (r == p) continue;
  factor = work[r][p];
@@ -467,7 +473,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Extract inverse from right half */
+ // Extract inverse from right half
  for (r = 0; r < n; r++) {
  for (c = 0; c < n; c++) {
  a->elements[(r+1) * a->size[1] + (c+1)] =
@@ -477,7 +483,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* --- MAT A = (k) * B - scalar multiplication --- */
+ // --- MAT A = (k) * B - scalar multiplication ---
  if (lex->current.type == TOK_LPAREN) {
  BValue scalar;
  double k;
@@ -486,18 +492,18 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  DimArray *a, *b;
  int r, c;
 
- lexer_next(lex); /* consume '(' */
+ lexer_next(lex); // consume '('
  scalar = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return;
  k = bval_to_float(&scalar);
  if (!lexer_expect(lex, TOK_RPAREN)) return;
 
- /* Expect '*' */
+ // Expect '*'
  if (lex->current.type != TOK_STAR) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume '*' */
+ lexer_next(lex); // consume '*'
 
  if (!pi_mat_get_array_name(lex, name_b, &name_b_len)) {
  error_raise(ERR_WHAT, line_num);
@@ -529,7 +535,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* --- MAT A = B, MAT A = B + C, MAT A = B - C, MAT A = B * C --- */
+ // --- MAT A = B, MAT A = B + C, MAT A = B - C, MAT A = B * C ---
  {
  char name_b[MAX_VAR_NAME_LEN + 1];
  int name_b_len;
@@ -552,17 +558,17 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Check for operator: +, -, * */
+ // Check for operator: +, -, *
  if (lex->current.type == TOK_PLUS ||
  lex->current.type == TOK_MINUS) {
- /* MAT A = B + C or MAT A = B - C */
+ // MAT A = B + C or MAT A = B - C
  TokenType op = lex->current.type;
  char name_c[MAX_VAR_NAME_LEN + 1];
  int name_c_len;
  DimArray *cc;
  int r, c_idx;
 
- lexer_next(lex); /* consume +/- */
+ lexer_next(lex); // consume +/-
  if (!pi_mat_get_array_name(lex, name_c, &name_c_len)) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -574,7 +580,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Dimensions must match */
+ // Dimensions must match
  if (b->size[0] != cc->size[0] ||
  b->size[1] != cc->size[1]) {
  error_raise(ERR_HOW, line_num);
@@ -606,7 +612,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (lex->current.type == TOK_STAR) {
- /* MAT A = B * C */
+ // MAT A = B * C
  char name_c[MAX_VAR_NAME_LEN + 1];
  int name_c_len;
  DimArray *cc;
@@ -615,7 +621,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  static BValue temp_c[4096];
  BValue *bp, *cp;
 
- lexer_next(lex); /* consume '*' */
+ lexer_next(lex); // consume '*'
  if (!pi_mat_get_array_name(lex, name_c, &name_c_len)) {
   error_raise(ERR_WHAT, line_num);
   return;
@@ -627,19 +633,19 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  }
 
- /* B cols must match C rows */
+ // B cols must match C rows
  if (b->size[1] != cc->size[0]) {
   error_raise(ERR_HOW, line_num);
   return;
  }
- /* A must be B rows x C cols */
+ // A must be B rows x C cols
  if (a->size[0] != b->size[0] ||
      a->size[1] != cc->size[1]) {
   error_raise(ERR_HOW, line_num);
   return;
  }
 
- /* In-place safety: copy source if it overlaps target */
+ // In-place safety: copy source if it overlaps target
  bp = b->elements;
  cp = cc->elements;
  if (a == b) {
@@ -653,7 +659,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
   cp = temp_c;
  }
 
- /* Matrix multiply: A(r,c) = sum B(r,k)*C(k,c) */
+ // Matrix multiply: A(r,c) = sum B(r,k)*C(k,c)
  for (r = 1; r < a->size[0]; r++) {
   for (c_idx = 1; c_idx < a->size[1]; c_idx++) {
    double sum = 0.0;
@@ -671,7 +677,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* MAT A = B (copy) */
+ // MAT A = B (copy)
  if (a->dims != 2 ||
  a->size[0] != b->size[0] ||
  a->size[1] != b->size[1]) {
@@ -687,16 +693,15 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/* --- File I/O - OPEN / CLOSE ---
- *
- * SYNTAX:
- * OPEN "filename" FOR INPUT AS #n
- * OPEN "filename" FOR OUTPUT AS #n
- * OPEN "filename" FOR APPEND AS #n
- * CLOSE #n
- *
- * The FOR keyword is detected as TOK_KEYWORD KW_FOR (reused from
- * loops). INPUT/OUTPUT/APPEND are detected as identifiers.
- */
+// --- File I/O - OPEN / CLOSE ---
+ //
+ // SYNTAX:
+ // OPEN "filename" FOR INPUT AS #n
+ // OPEN "filename" FOR OUTPUT AS #n
+ // OPEN "filename" FOR APPEND AS #n
+ // CLOSE #n
+ //
+ // The FOR keyword is detected as TOK_KEYWORD KW_FOR (reused from
+ // loops). INPUT/OUTPUT/APPEND are detected as identifiers.
 
 

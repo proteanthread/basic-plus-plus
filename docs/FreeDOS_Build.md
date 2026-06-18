@@ -2,6 +2,24 @@
   BASIC++ on FreeDOS -- Build Guide and Memory Reference
 =====================================================================
 
+
+---
+
+## Table of Contents
+
+- WHY A SLIM BUILD?
+- BUILDING FOR FREEDOS
+- MEMORY BUDGET
+- AVAILABLE DIALECTS
+- HOW TO CHANGE THE DEFAULT DIALECT
+- HOW TO CUSTOMIZE MEMORY POOLS
+- HOW TO ADD A DIALECT BACK
+- OPTIONAL MODULES
+- DIFFERENCES FROM WINDOWS/LINUX BUILD
+- TROUBLESHOOTING
+
+---
+
   NOTE: For the COMPLETE build tutorial including custom dialect
   selection, module selection, section stripping, keyword
   customization, and step-by-step instructions, see:

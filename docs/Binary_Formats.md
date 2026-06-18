@@ -1,5 +1,38 @@
 # Binary Formats in BASIC++
 
+
+---
+
+## Table of Contents
+
+- .BPP Format (Programs)
+  - Commands
+  - File Structure
+  - Header (16 bytes)
+  - Line Record (variable length)
+  - Usage
+  - Dialect Auto-Switch
+- .BPL Format (Libraries)
+  - Commands
+  - File Structure
+  - Header (32 bytes)
+  - Extension Types
+  - Symbol Table Entry (variable length)
+  - Source Line Record (variable length)
+  - CRC-16/CCITT Integrity
+  - Usage
+- Custom Detokenizer Hook
+  - Supported Formats (via modules)
+  - C API
+- Round-Trip Workflows
+  - Program Round-Trip
+  - Library Round-Trip
+  - PCode Execution (BRUN)
+- Version Compatibility
+- See Also
+
+---
+
 > **Milestone 27** — Serialization and Portable Execution
 
 BASIC++ provides two binary file formats for portable storage and execution

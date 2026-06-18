@@ -1,6 +1,6 @@
 OVERRIDE: KEYWORD INTERPRETATION OVERRIDES
 ============================================
-Version 1.4.0
+Version 4.0.1
 
 OVERRIDE changes how the interpreter processes a keyword's arguments
 at parse time.  It does NOT modify the user's stored source code
@@ -21,7 +21,7 @@ PREREQUISITE READING:
 
 
 TABLE OF CONTENTS
------------------
+---------------------------------------------------------------------
   1.  What OVERRIDE Does
   2.  Syntax
   3.  How It Works Internally
@@ -328,7 +328,7 @@ differently:
 Key differences:
 
   Feature             OVERRIDE           SCOPE OVERRIDE
-  -----------------------------------------------------------
+---------------------------------------------------------------------
   Keyword executes?   YES (modified)     NO (replaced)
   Mechanism           Parse-time text    GOSUB dispatch
   Needs subroutine?   No                 Yes (GOSUB target)

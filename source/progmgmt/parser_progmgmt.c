@@ -1,14 +1,24 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_progmgmt.c
- * ---
- *
- * Program editing & management commands.
- *
- * RENUM, DELETE, EDIT, AUTO, COMPILE, BSAVE, BLOAD.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_progmgmt.c
+ // ---
+ //
+ // Program editing & management commands.
+ //
+ // RENUM, DELETE, EDIT, AUTO, COMPILE, BSAVE, BLOAD.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #ifdef _WIN32
 #define strcasecmp _stricmp
@@ -18,25 +28,21 @@
 #include "parser_internal_additions.h"
 #include "pcode.h"
 
-/*
- * pi_parse_renum - Handle RENUM command.
- */
+ // pi_parse_renum - Handle RENUM command.
 void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
 {
  {
- /*
- * RENUM [start[,step]]
- * Renumber all program lines and fix
- * GOTO/GOSUB line references.
- * Default: start=10, step=10.
- */
+ // RENUM [start[,step]]
+ // Renumber all program lines and fix
+ // GOTO/GOSUB line references.
+ // Default: start=10, step=10.
  int start_num = 10;
  int step_num = 10;
  int i, count;
  int *old_nums;
  int *new_nums;
 
- /* Parse optional arguments */
+ // Parse optional arguments
  if (lex->current.type == TOK_NUMBER) {
  start_num = (int)lex->current
  .value.num_value;
@@ -57,7 +63,7 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Build old->new mapping */
+ // Build old->new mapping
  old_nums = (int *)malloc(
  (size_t)count * sizeof(int));
  new_nums = (int *)malloc(
@@ -75,12 +81,10 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  new_nums[i] = start_num + i * step_num;
  }
 
- /*
- * Fix GOTO/GOSUB references in each line.
- * Scan line text for GOTO/GOSUB/RESTORE
- * followed by a number - replace the number
- * with the new line number.
- */
+ // Fix GOTO/GOSUB references in each line.
+ // Scan line text for GOTO/GOSUB/RESTORE
+ // followed by a number - replace the number
+ // with the new line number.
  for (i = 0; i < count; i++) {
  char *txt = rt->program->lines[i].text;
  char buf[MAX_LINE_LENGTH + 1];
@@ -88,16 +92,16 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  const char *src = txt;
  int new_line = new_nums[i];
 
- /* Write new line number */
+ // Write new line number
  dst += sprintf(dst, "%d", new_line);
 
- /* Skip old line number */
+ // Skip old line number
  while (*src >= '0' && *src <= '9') src++;
 
- /* Copy rest, fixing GOTO/GOSUB targets */
+ // Copy rest, fixing GOTO/GOSUB targets
  while (*src) {
- /* Check for GOTO/GOSUB/RESTORE/THEN
- * followed by space and number */
+ // Check for GOTO/GOSUB/RESTORE/THEN
+ // followed by space and number 
  int is_jump = 0;
  if (strncmp(src, "GOTO ", 5) == 0) {
  is_jump = 5;
@@ -113,12 +117,12 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (is_jump > 0) {
- /* Copy keyword */
+ // Copy keyword
  memcpy(dst, src, (size_t)is_jump);
  dst += is_jump;
  src += is_jump;
 
- /* Parse old target number */
+ // Parse old target number
  while (*src) {
  int old_target = 0;
  int digits = 0;
@@ -133,7 +137,7 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (digits > 0) {
- /* Look up in mapping */
+ // Look up in mapping
  int j;
  int mapped = old_target;
  for (j = 0; j < count;
@@ -149,8 +153,8 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  mapped);
  src = ns;
 
- /* Handle comma-separated
- * lists (ON...GOTO) */
+ // Handle comma-separated
+ // lists (ON...GOTO) 
  if (*src == ',') {
  *dst++ = *src++;
  continue;
@@ -166,7 +170,7 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  }
  *dst = '\0';
 
- /* Update the line */
+ // Update the line
  rt->program->lines[i].line_number =
  new_line;
  strcpy(rt->program->lines[i].text, buf);
@@ -181,16 +185,12 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * pi_parse_delete - Handle DELETE command.
- */
+ // pi_parse_delete - Handle DELETE command.
 void pi_parse_delete(Lexer *lex, RuntimeState *rt, int line_num)
 {
  {
- /*
- * DELETE from-to
- * Delete all lines in range [from, to].
- */
+ // DELETE from-to
+ // Delete all lines in range [from, to].
  int from_line, to_line;
  int deleted = 0;
  int i;
@@ -215,7 +215,7 @@ void pi_parse_delete(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  }
 
- /* Delete lines in range (reverse order) */
+ // Delete lines in range (reverse order)
  for (i = rt->program->count - 1;
  i >= 0; i--) {
  int ln = rt->program->lines[i]
@@ -233,31 +233,27 @@ void pi_parse_delete(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * pi_parse_edit - Handle EDIT command.
- */
+ // pi_parse_edit - Handle EDIT command.
 void pi_parse_edit(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * EDIT [line_number]
- *
- * Display a program line for editing.
- * The user can then retype the line number
- * followed by new text to replace it, or
- * press Enter to keep it unchanged.
- *
- * EDIT without a number displays the first
- * program line. EDIT n displays line n.
- *
- * This integrates with the REPL's existing
- * line-entry model: typing a numbered line
- * replaces the stored version.
- */
+ // EDIT [line_number]
+ //
+ // Display a program line for editing.
+ // The user can then retype the line number
+ // followed by new text to replace it, or
+ // press Enter to keep it unchanged.
+ //
+ // EDIT without a number displays the first
+ // program line. EDIT n displays line n.
+ //
+ // This integrates with the REPL's existing
+ // line-entry model: typing a numbered line
+ // replaces the stored version.
  {
  int target = -1;
  int i, found = 0;
 
- /* Parse optional line number */
+ // Parse optional line number
  if (lex->current.type == TOK_NUMBER) {
   target = (int)lex->current.value
    .num_value;
@@ -276,9 +272,9 @@ void pi_parse_edit(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  }
 
- /* Find the target line */
+ // Find the target line
  if (target < 0) {
-  /* No argument: show first line */
+  // No argument: show first line
   printf("%s\n",
    rt->program->lines[0].text);
   found = 1;
@@ -303,20 +299,16 @@ void pi_parse_edit(Lexer *lex, RuntimeState *rt, int line_num)
 }
 
 
-/*
- * pi_parse_auto - Handle AUTO command.
- */
+ // pi_parse_auto - Handle AUTO command.
 void pi_parse_auto(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * AUTO [start[,increment]]
- *
- * Enable auto line numbering mode.
- * Default: AUTO 10,10
- * The REPL loop picks up auto_line and
- * auto_step from the runtime state.
- * Empty input or '.' cancels AUTO mode.
- */
+ // AUTO [start[,increment]]
+ //
+ // Enable auto line numbering mode.
+ // Default: AUTO 10,10
+ // The REPL loop picks up auto_line and
+ // auto_step from the runtime state.
+ // Empty input or '.' cancels AUTO mode.
  {
  int start = 10;
  int step = 10;
@@ -344,9 +336,7 @@ void pi_parse_auto(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_compile - Handle COMPILE command.
- */
+ // pi_parse_compile - Handle COMPILE command.
 void pi_parse_compile(Lexer *lex, RuntimeState *rt, int line_num)
 {
  if (security_check(SECOP_COMPILE, line_num))
@@ -394,11 +384,9 @@ void pi_parse_compile(Lexer *lex, RuntimeState *rt, int line_num)
   }
   return;
  }
-}/* ===== Bytecode commands ===== */
+} // ===== Bytecode commands =====
 
-/*
- * pi_parse_bsave - Handle BSAVE command.
- */
+ // pi_parse_bsave - Handle BSAVE command.
 void pi_parse_bsave(Lexer *lex, RuntimeState *rt, int line_num)
 {
  if (security_check(SECOP_FILE_WRITE, line_num))
@@ -422,9 +410,7 @@ void pi_parse_bsave(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * pi_parse_bload - Handle BLOAD command.
- */
+ // pi_parse_bload - Handle BLOAD command.
 void pi_parse_bload(Lexer *lex, RuntimeState *rt, int line_num)
 {
  if (security_check(SECOP_FILE_READ, line_num))
@@ -447,6 +433,6 @@ void pi_parse_bload(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* ===== Module system ===== */
+ // ===== Module system =====
 }
 

@@ -2,10 +2,10 @@ WRITING SAFE AND SECURE BASIC++ CODE
 ======================================
 A Programmer's Guide to Defensive BASIC++
 
-Version 1.5.0
+Version 4.0.1
 
 TABLE OF CONTENTS
------------------
+---------------------------------------------------------------------
   1.  Introduction
   2.  The Threat Model
   3.  Input Validation

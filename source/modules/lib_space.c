@@ -1,26 +1,36 @@
-/*
- * ---
- * BASIC++ Interpreter - lib_space.c
- * ---
- *
- * Library Program Space manager implementation.
- *
- * IMPLEMENTATION:
- * Static array of MAX_LOADED_LIBS LoadedLibrary slots.
- * Libraries are loaded by:
- *   1. Security validation (SECOP_EXT_LOAD, path, pinning)
- *   2. Source parsing OR .BPL deserialization
- *   3. Bytecode compilation (source mode)
- *   4. Symbol registration
- *   5. Variable space initialization
- *
- * Invocation pushes a separate VM execution context,
- * runs library bytecode, and restores the caller's state.
- *
- * C89/C90 COMPLIANT.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - lib_space.c
+ // ---
+ //
+ // Library Program Space manager implementation.
+ //
+ // IMPLEMENTATION:
+ // Static array of MAX_LOADED_LIBS LoadedLibrary slots.
+ // Libraries are loaded by:
+ //   1. Security validation (SECOP_EXT_LOAD, path, pinning)
+ //   2. Source parsing OR .BPL deserialization
+ //   3. Bytecode compilation (source mode)
+ //   4. Symbol registration
+ //   5. Variable space initialization
+ //
+ // Invocation pushes a separate VM execution context,
+ // runs library bytecode, and restores the caller's state.
+ //
+ // C89/C90 COMPLIANT.
+ //
+//
+// HOW TO EXTEND:
+//   To add new functions to this module:
+//   1. Add the function implementation in this file.
+//   2. Register it in the module's init function using
+//      module_register_function().
+//   3. Update the module's header with the new declaration.
+//
+// TROUBLESHOOTING:
+//   - Module not loading: check module_init() registration.
+//   - Function not found: verify registration name matches
+//     the BASIC keyword exactly (case-insensitive).
+ // ---
 
 #include <stdio.h>
 #include <string.h>
@@ -34,21 +44,21 @@
 #include "../scope_stack.h"
 #include "../dialect.h"
 
-/* Interpreter entry point for executing a line */
+// Interpreter entry point for executing a line
 extern void parser_execute_line(Lexer *lex, RuntimeState *rt,
                                 int line_num);
 #include "../security.h"
 #include <stdbool.h>
 
-/* Forward declarations */
+// Forward declarations
 int lib_space_load_bpl(const char *path);
 int bpl_load(const char *filename, LoadedLibrary *lib);
 
-/* --- Library Table --- */
+// --- Library Table ---
 static LoadedLibrary lib_slots[MAX_LOADED_LIBS];
 static int lib_slot_count = 0;
 
-/* --- Case-insensitive string compare (C89) --- */
+// --- Case-insensitive string compare (C89) ---
 static int ls_str_iequal(const char *a, const char *b)
 {
     if (!a || !b) return 0;
@@ -61,7 +71,7 @@ static int ls_str_iequal(const char *a, const char *b)
     return (*a == '\0' && *b == '\0');
 }
 
-/* --- Trim trailing whitespace/newlines --- */
+// --- Trim trailing whitespace/newlines ---
 static void ls_trim(char *s)
 {
     char *end;
@@ -72,19 +82,18 @@ static void ls_trim(char *s)
         *end-- = '\0';
 }
 
-/* --- Parse REM @TAG VALUE from a line ---
- * Returns pointer to value after tag, or NULL.
- */
+// --- Parse REM @TAG VALUE from a line ---
+ // Returns pointer to value after tag, or NULL.
 static const char *ls_parse_rem_tag(const char *line,
                                      const char *tag)
 {
     const char *p = line;
-    /* Skip leading whitespace */
+    // Skip leading whitespace
     while (*p == ' ' || *p == '\t') p++;
-    /* Skip optional line number */
+    // Skip optional line number
     while (*p >= '0' && *p <= '9') p++;
     while (*p == ' ') p++;
-    /* Check for REM */
+    // Check for REM
     if (toupper((unsigned char)p[0]) != 'R' ||
         toupper((unsigned char)p[1]) != 'E' ||
         toupper((unsigned char)p[2]) != 'M') return NULL;
@@ -92,7 +101,7 @@ static const char *ls_parse_rem_tag(const char *line,
     while (*p == ' ') p++;
     if (*p != '@') return NULL;
     p++;
-    /* Check tag name */
+    // Check tag name
     while (*tag) {
         if (toupper((unsigned char)*p) !=
             toupper((unsigned char)*tag)) return NULL;
@@ -102,7 +111,7 @@ static const char *ls_parse_rem_tag(const char *line,
     return p;
 }
 
-/* --- Find a free slot --- */
+// --- Find a free slot ---
 static int ls_find_free_slot(void)
 {
     for (int i = 0; i < lib_slot_count; i++) {
@@ -113,10 +122,9 @@ static int ls_find_free_slot(void)
     return -1;
 }
 
-/* ===================================================================
- * PUBLIC API
- * ===================================================================
- */
+// ===================================================================
+ // PUBLIC API
+ // ===================================================================
 
 void lib_space_init(void)
 {
@@ -128,16 +136,16 @@ void lib_space_shutdown(void)
 {
     for (int i = 0; i < lib_slot_count; i++) {
         if (lib_slots[i].loaded) {
-            /* Free compiled bytecode */
+            // Free compiled bytecode
             if (lib_slots[i].compiled) {
                 pcode_free(&lib_slots[i].pcode);
             }
-            /* Free source line buffer */
+            // Free source line buffer
             if (lib_slots[i].src_lines) {
                 free(lib_slots[i].src_lines);
                 lib_slots[i].src_lines = NULL;
             }
-            /* Free string variables */
+            // Free string variables
             {
                 for (int j = 0; j < 26; j++) {
                     if (lib_slots[i].str_vars[j]) {
@@ -164,11 +172,11 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
 
     (void)rt;
 
-    /* Security gate */
+    // Security gate
     if (security_check(SECOP_EXT_LOAD, 0) != 0) return -1;
     if (security_check_path(path, 0) != 0) return -1;
 
-    /* Find slot */
+    // Find slot
     slot = ls_find_free_slot();
     if (slot < 0) {
         printf("Library space full (max %d).\n",
@@ -176,21 +184,21 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
         return -1;
     }
 
-    /* Initialize slot */
+    // Initialize slot
     lib = &lib_slots[slot];
     memset(lib, 0, sizeof(LoadedLibrary));
     strncpy(lib->path, path, 255);
     lib->ext_type = ext_type;
-    lib->required_level = SEC_COUNT; /* unpinned */
+    lib->required_level = SEC_COUNT; // unpinned
 
-    /* Open source file */
+    // Open source file
     fp = fopen(path, "r");
     if (!fp) {
         printf("Cannot open: %s\n", path);
         return -1;
     }
 
-    /* --- Pass 1: Scan REM @headers (first 20 lines) --- */
+    // --- Pass 1: Scan REM @headers (first 20 lines) ---
     header_lines = 0;
     while (header_lines < 20 && fgets(line, sizeof(line), fp)) {
         header_lines++;
@@ -226,7 +234,7 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
         }
     }
 
-    /* If no name found, derive from filename */
+    // If no name found, derive from filename
     if (lib->name[0] == '\0') {
         const char *base = path;
         const char *p = path;
@@ -236,18 +244,18 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
         }
         strncpy(lib->name, base, MAX_LIB_NAME - 1);
         lib->name[MAX_LIB_NAME - 1] = '\0';
-        /* Remove extension */
+        // Remove extension
         {
             char *dot = strrchr(lib->name, '.');
             if (dot) *dot = '\0';
         }
-        /* Uppercase */
+        // Uppercase
         for (int i = 0; lib->name[i]; i++)
             lib->name[i] = (char)toupper(
                 (unsigned char)lib->name[i]);
     }
 
-    /* Check security pinning */
+    // Check security pinning
     if (!security_check_pinned_level(lib->required_level)) {
         printf("Library '%s' requires security level %s "
                "(current: %s).\n",
@@ -258,7 +266,7 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
         return -1;
     }
 
-    /* Check for duplicate */
+    // Check for duplicate
     {
         for (int i = 0; i < lib_slot_count; i++) {
             if (i != slot && lib_slots[i].loaded &&
@@ -271,23 +279,22 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
         }
     }
 
-    /* --- Pass 2: Parse SUB/FUNCTION/DEF FN blocks ---
-     *
-     * TODO: This is the structured block parser integration
-     * point. When parser_block.c is implemented, it will:
-     *   1. Rewind to start of file
-     *   2. Parse each SUB/FUNCTION/DEF FN block
-     *   3. Compile each block to PCode
-     *   4. Register symbols with entry point offsets
-     *
-     * For now, we register the library metadata and report
-     * that structured parsing is pending.
-     */
+    // --- Pass 2: Parse SUB/FUNCTION/DEF FN blocks ---
+     //
+     // TODO: This is the structured block parser integration
+     // point. When parser_block.c is implemented, it will:
+     //   1. Rewind to start of file
+     //   2. Parse each SUB/FUNCTION/DEF FN block
+     //   3. Compile each block to PCode
+     //   4. Register symbols with entry point offsets
+     //
+     // For now, we register the library metadata and report
+     // that structured parsing is pending.
 
-    /* Rewind for full parse */
+    // Rewind for full parse
     rewind(fp);
 
-    /* Count SUB/FUNCTION definitions for progress */
+    // Count SUB/FUNCTION definitions for progress
     {
         int sub_count = 0;
         int func_count = 0;
@@ -295,16 +302,16 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
         char *p;
 
         while (fgets(line, sizeof(line), fp)) {
-            /* Skip leading whitespace */
+            // Skip leading whitespace
             p = line;
             while (*p == ' ' || *p == '\t') p++;
 
-            /* Check for SUB keyword */
+            // Check for SUB keyword
             if (toupper((unsigned char)p[0]) == 'S' &&
                 toupper((unsigned char)p[1]) == 'U' &&
                 toupper((unsigned char)p[2]) == 'B' &&
                 (p[3] == ' ' || p[3] == '\t')) {
-                /* Extract SUB name */
+                // Extract SUB name
                 if (lib->symbol_count < MAX_LIB_SYMBOLS) {
                     LibSymbol *sym =
                         &lib->symbols[lib->symbol_count];
@@ -323,15 +330,15 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
                     }
                     sym->name[ni] = '\0';
                     sym->type = LIB_SYM_SUB;
-                    sym->entry_offset = -1; /* TBD at compile */
-                    sym->param_count = 0;   /* TBD at compile */
+                    sym->entry_offset = -1; // TBD at compile
+                    sym->param_count = 0; // TBD at compile
                     sym->active = 1;
                     lib->symbol_count++;
                     sub_count++;
                 }
             }
 
-            /* Check for FUNCTION keyword */
+            // Check for FUNCTION keyword
             if (toupper((unsigned char)p[0]) == 'F' &&
                 toupper((unsigned char)p[1]) == 'U' &&
                 toupper((unsigned char)p[2]) == 'N' &&
@@ -367,7 +374,7 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
                 }
             }
 
-            /* Check for DEF FN keyword */
+            // Check for DEF FN keyword
             if (toupper((unsigned char)p[0]) == 'D' &&
                 toupper((unsigned char)p[1]) == 'E' &&
                 toupper((unsigned char)p[2]) == 'F' &&
@@ -382,7 +389,7 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
                     if (lib->symbol_count < MAX_LIB_SYMBOLS) {
                         LibSymbol *sym =
                             &lib->symbols[lib->symbol_count];
-                        /* Skip "FN" and optional space */
+                        // Skip "FN" and optional space
                         char *name_start = dp + 2;
                         int ni = 0;
                         while (*name_start == ' ') name_start++;
@@ -408,7 +415,7 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
             }
         }
 
-        /* Report */
+        // Report
         lib->loaded = 1;
         if (slot >= lib_slot_count) lib_slot_count = slot + 1;
 
@@ -428,7 +435,7 @@ int lib_space_load_source(const char *path, LibExtType ext_type,
 
     fclose(fp);
 
-    /* --- Pass 2: Compile blocks to PCode bytecode --- */
+    // --- Pass 2: Compile blocks to PCode bytecode ---
     {
         BlockParseResult bpr;
         if (parser_block_compile_file(path, lib, &bpr) == 0) {
@@ -452,16 +459,15 @@ int lib_space_load_compiled(const char *path,
 
     (void)rt;
 
-    /* Delegate to lib_space_load_bpl which handles:
-     *   - Duplicate checking
-     *   - Slot allocation
-     *   - bpl_load() (header validation, symbol/line deserialization)
-     */
+    // Delegate to lib_space_load_bpl which handles:
+     //   - Duplicate checking
+     //   - Slot allocation
+     //   - bpl_load() (header validation, symbol/line deserialization)
     slot = lib_space_load_bpl(path);
     if (slot < 0) return -1;
 
-    /* Override the extension type from the caller's context
-     * (the .BPL header may store a different type) */
+    // Override the extension type from the caller's context
+     // (the .BPL header may store a different type) 
     lib_slots[slot].ext_type = ext_type;
 
     return slot;
@@ -473,23 +479,23 @@ int lib_space_unload(const char *name)
     for (int i = 0; i < lib_slot_count; i++) {
         if (lib_slots[i].loaded &&
             ls_str_iequal(lib_slots[i].name, name)) {
-            /* Free bytecode */
+            // Free bytecode
             if (lib_slots[i].compiled) {
                 pcode_free(&lib_slots[i].pcode);
             }
-            /* Free source line buffer */
+            // Free source line buffer
             if (lib_slots[i].src_lines) {
                 free(lib_slots[i].src_lines);
                 lib_slots[i].src_lines = NULL;
             }
-            /* Free string vars */
+            // Free string vars
             for (int j = 0; j < 26; j++) {
                 if (lib_slots[i].str_vars[j]) {
                     free(lib_slots[i].str_vars[j]);
                     lib_slots[i].str_vars[j] = NULL;
                 }
             }
-            /* Clear slot */
+            // Clear slot
             printf("Unloaded: %s\n", lib_slots[i].name);
             memset(&lib_slots[i], 0, sizeof(LoadedLibrary));
             return 0;
@@ -533,7 +539,7 @@ int lib_space_load_bpl(const char *path)
     int slot;
     LoadedLibrary *lib;
 
-    /* Check if already loaded */
+    // Check if already loaded
     {
         const char *base = path;
         const char *p = path;
@@ -545,13 +551,13 @@ int lib_space_load_bpl(const char *path)
         }
         strncpy(name, base, MAX_LIB_NAME - 1);
         name[MAX_LIB_NAME - 1] = '\0';
-        /* Remove extension */
+        // Remove extension
         p = strrchr(name, '.');
         if (p) ((char *)name)[(int)(p - name)] = '\0';
-        /* Uppercase */
+        // Uppercase
         for (int i = 0; name[i]; i++)
             name[i] = (char)toupper((unsigned char)name[i]);
-        /* Check for duplicate */
+        // Check for duplicate
         for (int i = 0; i < lib_slot_count; i++) {
             if (lib_slots[i].loaded &&
                 ls_str_iequal(lib_slots[i].name, name)) {
@@ -562,7 +568,7 @@ int lib_space_load_bpl(const char *path)
         }
     }
 
-    /* Find a free slot */
+    // Find a free slot
     slot = -1;
     {
         for (int i = 0; i < lib_slot_count; i++) {
@@ -599,7 +605,7 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
     int saved_current, saved_next, saved_running;
     int saved_in_sub;
 
-    /* Saved caller variables */
+    // Saved caller variables
     BValue saved_vars[MAX_VARIABLES];
     BValue saved_strvars[MAX_STRING_VARS];
     if (!lib || !sym) return -1;
@@ -616,13 +622,13 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
         return -1;
     }
 
-    /* Save caller's interpreter state */
+    // Save caller's interpreter state
     saved_current = rt->current_index;
     saved_next = rt->next_index;
     saved_running = rt->running;
     saved_in_sub = rt->in_sub_index;
 
-    /* Save caller's variables */
+    // Save caller's variables
     int i;
     for (i = 0; i < MAX_VARIABLES; i++)
         saved_vars[i] = rt->variables[i];
@@ -630,7 +636,7 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
     for (i = 0; i < MAX_STRING_VARS; i++)
         saved_strvars[i] = rt->string_vars[i];
 
-    /* Initialize library's variable space */
+    // Initialize library's variable space
 
     for (i = 0; i < 26; i++) {
         rt->variables[i] = bval_float(lib->num_vars[i]);
@@ -644,33 +650,33 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
         }
     }
 
-    /* Push scope for LOCAL support â€” MUST be before param binding
-     * because SCOPE_FULL clears variables */
+    // Push scope for LOCAL support a" MUST be before param binding
+     // because SCOPE_FULL clears variables 
     {
-        int smode = 1; /* SCOPE_FULL */
+        int smode = 1; // SCOPE_FULL
         scope_stack_push(&rt->scope_stack, rt,
                          smode, -1, -1);
     }
 
-    /* Bind parameters by parsing the declaration line to get
-     * the actual parameter names (e.g., X, Y from FUNCTION F(X,Y)).
-     * Single-letter params map to A-Z vars, multi-letter to named.
-     * This MUST happen AFTER scope push to avoid being zeroed. */
+    // Bind parameters by parsing the declaration line to get
+     // the actual parameter names (e.g., X, Y from FUNCTION F(X,Y)).
+     // Single-letter params map to A-Z vars, multi-letter to named.
+     // This MUST happen AFTER scope push to avoid being zeroed. 
     if (argc > 0 && args && sym->entry_offset < lib->src_line_count) {
         const char *decl = lib->src_lines[sym->entry_offset].text;
         const char *p = decl;
         int pi = 0;
-        /* Skip to opening paren */
+        // Skip to opening paren
         while (*p && *p != '(') p++;
         if (*p == '(') {
-            p++; /* skip ( */
+            p++; // skip (
             while (*p && *p != ')' && pi < argc) {
                 char pname[64];
                 int plen = 0;
-                /* Skip whitespace and commas */
+                // Skip whitespace and commas
                 while (*p == ' ' || *p == ',' || *p == '\t') p++;
                 if (*p == ')' || !*p) break;
-                /* Read parameter name */
+                // Read parameter name
                 while (*p && *p != ',' && *p != ')' &&
                        *p != ' ' && *p != '\t' &&
                        plen < 63) {
@@ -692,9 +698,9 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
         }
     }
 
-    /* Execute source lines from entry_offset+1
-     * (skip the SUB/FUNCTION declaration line itself)
-     * until END SUB / END FUNCTION */
+    // Execute source lines from entry_offset+1
+     // (skip the SUB/FUNCTION declaration line itself)
+     // until END SUB / END FUNCTION 
     start_idx = sym->entry_offset + 1;
     end_found = 0;
 
@@ -705,10 +711,10 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
         const char *p = text;
         Lexer lex;
 
-        /* Skip whitespace */
+        // Skip whitespace
         while (*p == ' ' || *p == '\t') p++;
 
-        /* Check for END SUB / END FUNCTION */
+        // Check for END SUB / END FUNCTION
         if (toupper((unsigned char)p[0]) == 'E' &&
             toupper((unsigned char)p[1]) == 'N' &&
             toupper((unsigned char)p[2]) == 'D') {
@@ -728,23 +734,23 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
             }
         }
 
-        /* Skip REM lines */
+        // Skip REM lines
         if (toupper((unsigned char)p[0]) == 'R' &&
             toupper((unsigned char)p[1]) == 'E' &&
             toupper((unsigned char)p[2]) == 'M') {
             continue;
         }
 
-        /* Execute through the interpreter â€” suppress errors
-         * for library lines that use unsupported flow control
-         * (FOR/NEXT, IF/ELSE blocks). Simple assignments, PRINT,
-         * LOCAL, DIM all work. Complex flow control needs the
-         * full interpreter pipeline and will silently fail. */
+        // Execute through the interpreter a" suppress errors
+         // for library lines that use unsupported flow control
+         // (FOR/NEXT, IF/ELSE blocks). Simple assignments, PRINT,
+         // LOCAL, DIM all work. Complex flow control needs the
+         // full interpreter pipeline and will silently fail. 
         {
             extern void error_set_suppress(int on);
             error_set_suppress(1);
             lexer_init(&lex, text);
-            /* Skip line number if present */
+            // Skip line number if present
             if (lex.current.type == TOK_NUMBER)
                 lexer_next(&lex);
 
@@ -752,23 +758,23 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
             parser_execute_line(&lex, rt, vline);
 
             if (error_occurred()) {
-                /* Clear and continue â€” don't stop on errors
-                 * from flow control constructs */
+                // Clear and continue a" don't stop on errors
+                 // from flow control constructs 
                 error_clear();
             }
             error_set_suppress(0);
         }
     }
 
-    /* Capture return value BEFORE scope pop â€” the pop restores
-     * named_count, which erases named vars set during execution */
+    // Capture return value BEFORE scope pop a" the pop restores
+     // named_count, which erases named vars set during execution 
     if (result) {
         if (sym->type == LIB_SYM_FUNCTION ||
             sym->type == LIB_SYM_DEF_FN) {
-            /* First check fn_return_value (set if in_sub_index
-             * was configured correctly). If zero, fall back
-             * to looking up the function name as a named var
-             * (library code uses FUNCNAME = expr pattern). */
+            // First check fn_return_value (set if in_sub_index
+             // was configured correctly). If zero, fall back
+             // to looking up the function name as a named var
+             // (library code uses FUNCNAME = expr pattern). 
             *result = rt->fn_return_value;
             if (bval_to_float(result) == 0.0 &&
                 !bval_is_string(result)) {
@@ -785,15 +791,15 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
         }
     }
 
-    /* Pop scope (restores LOCALs and named var count) */
+    // Pop scope (restores LOCALs and named var count)
     scope_stack_pop(&rt->scope_stack, rt);
 
-    /* Save library's variables back */
+    // Save library's variables back
 
     for (i = 0; i < 26; i++)
         lib->num_vars[i] = bval_to_float(&rt->variables[i]);
 
-    /* Restore caller's variables */
+    // Restore caller's variables
 
     for (i = 0; i < MAX_VARIABLES; i++)
         rt->variables[i] = saved_vars[i];
@@ -801,7 +807,7 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
     for (i = 0; i < MAX_STRING_VARS; i++)
         rt->string_vars[i] = saved_strvars[i];
 
-    /* Restore interpreter state */
+    // Restore interpreter state
     rt->current_index = saved_current;
     rt->next_index = saved_next;
     rt->running = saved_running;
@@ -818,7 +824,7 @@ int lib_space_try_call(const char *name, int name_len,
     LoadedLibrary *llib = NULL;
     LibSymbol *lsym = NULL;
 
-    /* Uppercase the name for lookup */
+    // Uppercase the name for lookup
     int i;
     for (i = 0; i < name_len && i < MAX_LIB_NAME - 1; i++) {
         ubuf[i] = (char)toupper((unsigned char)name[i]);
@@ -826,10 +832,10 @@ int lib_space_try_call(const char *name, int name_len,
     ubuf[i] = '\0';
 
     lsym = lib_space_find_symbol(ubuf, &llib);
-    if (!lsym || !llib) return 0; /* not found */
+    if (!lsym || !llib) return 0; // not found
 
     lib_space_invoke(llib, lsym, args, argc, result, rt);
-    return 1; /* found and called */
+    return 1; // found and called
 }
 
 void *lib_space_find_by_name(const char *name)
@@ -857,7 +863,7 @@ int lib_space_try_call_func(const char *name, int name_len,
     extern BValue parse_expression_bval(Lexer *,
         RuntimeState *, int);
 
-    /* Uppercase the name for lookup */
+    // Uppercase the name for lookup
     int i;
     for (i = 0; i < name_len && i < MAX_LIB_NAME - 1; i++) {
         ubuf[i] = (char)toupper((unsigned char)name[i]);
@@ -865,12 +871,12 @@ int lib_space_try_call_func(const char *name, int name_len,
     ubuf[i] = '\0';
 
     lsym = lib_space_find_symbol(ubuf, &llib);
-    if (!lsym || !llib) return 0; /* not found */
+    if (!lsym || !llib) return 0; // not found
     if (lsym->type != LIB_SYM_FUNCTION) return 0;
 
-    /* Parse arguments from lexer: (arg1, arg2, ...) */
+    // Parse arguments from lexer: (arg1, arg2, ...)
     argc = 0;
-    lexer_next(lex); /* consume ( */
+    lexer_next(lex); // consume (
     if (lex->current.type != TOK_RPAREN) {
         args[argc] = parse_expression_bval(lex,
             (RuntimeState *)rt_ptr, line_num);
@@ -885,7 +891,7 @@ int lib_space_try_call_func(const char *name, int name_len,
         }
     }
     if (lex->current.type == TOK_RPAREN)
-        lexer_next(lex); /* consume ) */
+        lexer_next(lex); // consume )
 
     result = bval_int(0);
     lib_space_invoke(llib, lsym, args, argc, &result, rt_ptr);
@@ -893,7 +899,7 @@ int lib_space_try_call_func(const char *name, int name_len,
     if (out_result) {
         *(BValue *)out_result = result;
     }
-    return 1; /* found and called */
+    return 1; // found and called
 }
 
 void lib_space_list(void)
@@ -916,7 +922,7 @@ void lib_space_list(void)
                 printf(" (source)");
             printf(" - %d symbols\n",
                    lib_slots[i].symbol_count);
-            /* List symbols */
+            // List symbols
             for (int j = 0; j < lib_slots[i].symbol_count; j++) {
                 if (lib_slots[i].symbols[j].active) {
                     const char *stype = "???";
@@ -950,18 +956,18 @@ BValue *lib_space_get_var(LoadedLibrary *lib, const char *name)
     int i;
     if (!lib || !name) return NULL;
 
-    /* Check single-letter A-Z */
+    // Check single-letter A-Z
     if (name[1] == '\0' || (name[1] == '$' && name[2] == '\0')) {
         int idx = toupper((unsigned char)name[0]) - 'A';
         if (idx >= 0 && idx < 26) {
-            /* Return pointer to the numeric value.
-             * String vars handled separately. */
-            /* TODO: Return proper Value union pointer */
+            // Return pointer to the numeric value.
+             // String vars handled separately. 
+            // TODO: Return proper Value union pointer
             return NULL;
         }
     }
 
-    /* Search named variables */
+    // Search named variables
     for (i = 0; i < lib->named_var_count; i++) {
         if (lib->named_vars[i].active &&
             ls_str_iequal(lib->named_vars[i].name, name)) {
@@ -977,7 +983,7 @@ int lib_space_set_var(LoadedLibrary *lib, const char *name,
     if (!lib || !name) return -1;
     int i;
 
-    /* Search existing named vars */
+    // Search existing named vars
     for (i = 0; i < lib->named_var_count; i++) {
         if (lib->named_vars[i].active &&
             ls_str_iequal(lib->named_vars[i].name, name)) {
@@ -986,7 +992,7 @@ int lib_space_set_var(LoadedLibrary *lib, const char *name,
         }
     }
 
-    /* Create new named var */
+    // Create new named var
     if (lib->named_var_count >= MAX_LIB_NAMED_VARS) {
         printf("Library '%s' named var limit reached.\n",
                lib->name);
@@ -996,7 +1002,7 @@ int lib_space_set_var(LoadedLibrary *lib, const char *name,
     strncpy(lib->named_vars[i].name, name,
             MAX_LIB_NAME - 1);
     lib->named_vars[i].name[MAX_LIB_NAME - 1] = '\0';
-    /* Uppercase */
+    // Uppercase
     {
         char *p = lib->named_vars[i].name;
         while (*p) {
@@ -1012,23 +1018,21 @@ int lib_space_set_var(LoadedLibrary *lib, const char *name,
     return 0;
 }
 
-/*
- * lib_space_invoke_by_name - Convenience wrapper.
- *
- * Finds a symbol matching sym_name within the given library
- * and invokes it with zero arguments. Used by the spec
- * system to dispatch custom statements into their companion
- * .lib files.
- *
- * Returns 0 on success, -1 if symbol not found or error.
- */
+ // lib_space_invoke_by_name - Convenience wrapper.
+ //
+ // Finds a symbol matching sym_name within the given library
+ // and invokes it with zero arguments. Used by the spec
+ // system to dispatch custom statements into their companion
+ // .lib files.
+ //
+ // Returns 0 on success, -1 if symbol not found or error.
 int lib_space_invoke_by_name(void *lib_ptr,
     const char *sym_name, void *rt)
 {
     LoadedLibrary *lib = (LoadedLibrary *)lib_ptr;
     if (!lib || !sym_name) return -1;
 
-    /* Search for matching symbol in this library */
+    // Search for matching symbol in this library
     for (int j = 0; j < lib->symbol_count; j++) {
         if (lib->symbols[j].active &&
             ls_str_iequal(lib->symbols[j].name,

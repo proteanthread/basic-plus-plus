@@ -1,13 +1,19 @@
-/*
- * ---
- * BASIC++ Interpreter - rpn.c
- * ---
- *
- * RPN (Reverse Polish Notation) calculator implementation.
- * Forth-like stack evaluator. Activated by OPTION RPN.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - rpn.c
+ // ---
+ //
+ // RPN (Reverse Polish Notation) calculator implementation.
+ // Forth-like stack evaluator. Activated by OPTION RPN.
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +22,7 @@
 #include <ctype.h>
 #include "rpn.h"
 
-/* --- Stack Operations --- */
+// --- Stack Operations ---
 
 static int rpn_push(RpnState *s, double val)
 {
@@ -48,7 +54,7 @@ static int rpn_peek(RpnState *s, double *val)
  return 1;
 }
 
-/* --- Case-insensitive compare --- */
+// --- Case-insensitive compare ---
 static int rpn_streq(const char *a, const char *b)
 {
  while (*a && *b) {
@@ -61,7 +67,7 @@ static int rpn_streq(const char *a, const char *b)
  return (*a == '\0' && *b == '\0');
 }
 
-/* --- Public API --- */
+// --- Public API ---
 
 void rpn_init(RpnState *s)
 {
@@ -87,9 +93,7 @@ void rpn_set_active(RpnState *s, int on)
  }
 }
 
-/*
- * rpn_print_number - Print a number, integer-style if no fraction.
- */
+ // rpn_print_number - Print a number, integer-style if no fraction.
 static void rpn_print_number(double val)
 {
  if (val == floor(val) && fabs(val) < 1e15) {
@@ -109,12 +113,12 @@ int rpn_eval_line(RpnState *s, const char *line)
   int tlen = 0;
   double a, b;
 
-  /* Skip whitespace */
+  // Skip whitespace
   while (pos < len && (line[pos] == ' ' || line[pos] == '\t'))
    pos++;
   if (pos >= len) break;
 
-  /* Extract token */
+  // Extract token
   while (pos < len && tlen < 63 &&
    line[pos] != ' ' && line[pos] != '\t' &&
    line[pos] != '\r' && line[pos] != '\n') {
@@ -123,9 +127,9 @@ int rpn_eval_line(RpnState *s, const char *line)
   token[tlen] = '\0';
   if (tlen == 0) break;
 
-  /* Check for OPTION RPN OFF */
+  // Check for OPTION RPN OFF
   if (rpn_streq(token, "OPTION")) {
-   /* Check next tokens for "RPN OFF" */
+   // Check next tokens for "RPN OFF"
    char t2[64], t3[64];
    int t2l = 0, t3l = 0;
 
@@ -155,7 +159,7 @@ int rpn_eval_line(RpnState *s, const char *line)
    return 1;
   }
 
-  /* Try number (including negative numbers and hex) */
+  // Try number (including negative numbers and hex)
   if ((token[0] >= '0' && token[0] <= '9') ||
    (token[0] == '-' && tlen > 1 && token[1] >= '0' && token[1] <= '9') ||
    (token[0] == '.' && tlen > 1)) {
@@ -167,7 +171,7 @@ int rpn_eval_line(RpnState *s, const char *line)
    }
   }
 
-  /* Hex literals: &Hnn */
+  // Hex literals: &Hnn
   if (tlen > 2 && token[0] == '&' &&
    (token[1] == 'H' || token[1] == 'h')) {
    long hval = strtol(token + 2, NULL, 16);
@@ -175,7 +179,7 @@ int rpn_eval_line(RpnState *s, const char *line)
    continue;
   }
 
-  /* Single-char operators */
+  // Single-char operators
   if (tlen == 1) {
    switch (token[0]) {
    case '+':
@@ -217,7 +221,7 @@ int rpn_eval_line(RpnState *s, const char *line)
    }
   }
 
-  /* Multi-char operators / words */
+  // Multi-char operators / words
   if (rpn_streq(token, "DUP")) {
    if (!rpn_peek(s, &a)) return 1;
    rpn_push(s, a);

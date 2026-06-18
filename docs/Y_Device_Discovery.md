@@ -1,5 +1,27 @@
 # Device Discovery in BASIC++
 
+
+---
+
+## Table of Contents
+
+- Functions
+  - DEVICECOUNT
+  - DEVICE$(n)
+  - DEVICECLASS$(n)
+  - DEVICEFIND(name$)
+  - DEVICEINFO$(n, key$)
+- Complete Example
+  - Device Inventory
+  - Find Sensor by Class
+- Platform Improvements (Milestone 26)
+  - Linux Sleep
+  - Linux INKEY$
+  - Buffer Safety
+- See Also
+
+---
+
 > **Milestone 26** — Virtual Device Bus
 
 BASIC++ provides five functions for programmatic device enumeration. These

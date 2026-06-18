@@ -1,15 +1,23 @@
-/*
- * ---
- * BASIC++ Interpreter - builtins_string.c
- * ---
- *
- * String function handlers for the built-in function registry.
- *
- * Contains all FCAT_STRING handlers: substring extraction,
- * conversion, search, repetition, and base-encoding functions.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - builtins_string.c
+ // ---
+ //
+ // String function handlers for the built-in function registry.
+ //
+ // Contains all FCAT_STRING handlers: substring extraction,
+ // conversion, search, repetition, and base-encoding functions.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new built-in function:
+//   1. Write a handler: BValue my_func(BValue *args, int argc, void *ctx)
+//   2. Register it in the init function with funcreg_add().
+//   3. Specify min/max argument counts and return type.
+//
+// TROUBLESHOOTING:
+//   - Wrong arg count: check min_args/max_args in registration.
+//   - Type mismatch: use bval_to_float/bval_to_int for conversion.
+ // ---
 
 #include <string.h>
 #include "builtins.h"
@@ -19,40 +27,32 @@
 #include "config.h"
 #include "value.h"
 
-/*
- * LEN(s$) - String length.
- * Category: FCAT_STRING | Safety: FSAFE_PURE
- */
+ // LEN(s$) - String length.
+ // Category: FCAT_STRING | Safety: FSAFE_PURE
 BValue builtin_len(BValue *args, int argc, void *rt)
 {
  (void)argc; (void)rt;
  return bval_len(&args[0], 0);
 }
 
-/*
- * ASC(s$) - ASCII value of first character.
- * Category: FCAT_STRING | Safety: FSAFE_PURE
- */
+ // ASC(s$) - ASCII value of first character.
+ // Category: FCAT_STRING | Safety: FSAFE_PURE
 BValue builtin_asc(BValue *args, int argc, void *rt)
 {
  (void)argc; (void)rt;
  return bval_asc(&args[0], 0);
 }
 
-/*
- * VAL(s$) - Convert string to number.
- * Category: FCAT_STRING | Safety: FSAFE_PURE
- */
+ // VAL(s$) - Convert string to number.
+ // Category: FCAT_STRING | Safety: FSAFE_PURE
 BValue builtin_val(BValue *args, int argc, void *rt)
 {
  (void)argc; (void)rt;
  return bval_val(&args[0], 0);
 }
 
-/*
- * CHR$(n) - Convert number to single-character string.
- * Category: FCAT_STRING | Safety: FSAFE_STATE (uses string pool)
- */
+ // CHR$(n) - Convert number to single-character string.
+ // Category: FCAT_STRING | Safety: FSAFE_STATE (uses string pool)
 BValue builtin_chr(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -60,10 +60,8 @@ BValue builtin_chr(BValue *args, int argc, void *rt)
  return bval_chr(&args[0], 0, &state->strpool);
 }
 
-/*
- * STR$(n) - Convert number to string representation.
- * Category: FCAT_STRING | Safety: FSAFE_STATE (uses string pool)
- */
+ // STR$(n) - Convert number to string representation.
+ // Category: FCAT_STRING | Safety: FSAFE_STATE (uses string pool)
 BValue builtin_str(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -71,10 +69,8 @@ BValue builtin_str(BValue *args, int argc, void *rt)
  return bval_str(&args[0], 0, &state->strpool);
 }
 
-/*
- * LEFT$(s$, n) - Left substring.
- * Category: FCAT_STRING | Safety: FSAFE_STATE (uses string pool)
- */
+ // LEFT$(s$, n) - Left substring.
+ // Category: FCAT_STRING | Safety: FSAFE_STATE (uses string pool)
 BValue builtin_left(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -82,10 +78,8 @@ BValue builtin_left(BValue *args, int argc, void *rt)
  return bval_left(&args[0], &args[1], 0, &state->strpool);
 }
 
-/*
- * RIGHT$(s$, n) - Right substring.
- * Category: FCAT_STRING | Safety: FSAFE_STATE (uses string pool)
- */
+ // RIGHT$(s$, n) - Right substring.
+ // Category: FCAT_STRING | Safety: FSAFE_STATE (uses string pool)
 BValue builtin_right(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -93,19 +87,17 @@ BValue builtin_right(BValue *args, int argc, void *rt)
  return bval_right(&args[0], &args[1], 0, &state->strpool);
 }
 
-/*
- * MID$(s$, start, len) - Middle substring.
- * 2-arg form: MID$(s$, start) returns from start to end.
- * 3-arg form: MID$(s$, start, len) returns len chars.
- * Category: FCAT_STRING | Safety: FSAFE_STATE (uses string pool)
- */
+ // MID$(s$, start, len) - Middle substring.
+ // 2-arg form: MID$(s$, start) returns from start to end.
+ // 3-arg form: MID$(s$, start, len) returns len chars.
+ // Category: FCAT_STRING | Safety: FSAFE_STATE (uses string pool)
 BValue builtin_mid(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
  BValue len_val;
 
  if (argc < 3) {
- /* No length specified: use rest of string */
+ // No length specified: use rest of string
  len_val = bval_int((long)MAX_STRING_LENGTH);
  return bval_mid(&args[0], &args[1], &len_val, 0,
  &state->strpool);
@@ -114,23 +106,19 @@ BValue builtin_mid(BValue *args, int argc, void *rt)
  &state->strpool);
 }
 
-/*
- * INSTR(haystack$, needle$) - Find substring.
- * Returns 1-based position of needle in haystack, or 0 if not found.
- * Category: FCAT_STRING | Safety: FSAFE_PURE
- */
+ // INSTR(haystack$, needle$) - Find substring.
+ // Returns 1-based position of needle in haystack, or 0 if not found.
+ // Category: FCAT_STRING | Safety: FSAFE_PURE
 BValue builtin_instr(BValue *args, int argc, void *rt)
 {
  const char *h, *n;
  int hl, nl, i, start_off;
  (void)rt;
 
- /*
- * 2-arg: INSTR(haystack$, needle$)
- * 3-arg: INSTR(start%, haystack$, needle$)
- */
+ // 2-arg: INSTR(haystack$, needle$)
+ // 3-arg: INSTR(start%, haystack$, needle$)
  if (argc >= 3) {
- /* 3-arg form: first arg is start position */
+ // 3-arg form: first arg is start position
  start_off = (int)bval_to_int(&args[0]) - 1;
  if (!bval_is_string(&args[1]) ||
  !bval_is_string(&args[2]))
@@ -140,7 +128,7 @@ BValue builtin_instr(BValue *args, int argc, void *rt)
  n = args[2].v.sval.data;
  nl = args[2].v.sval.length;
  } else {
- /* 2-arg form */
+ // 2-arg form
  start_off = 0;
  if (argc < 2 || !bval_is_string(&args[0]) ||
  !bval_is_string(&args[1]))
@@ -158,15 +146,13 @@ BValue builtin_instr(BValue *args, int argc, void *rt)
 
  for (i = start_off; i <= hl - nl; i++) {
  if (memcmp(h + i, n, (size_t)nl) == 0)
- return bval_int(i + 1); /* 1-based */
+ return bval_int(i + 1); // 1-based
  }
  return bval_int(0);
 }
 
-/*
- * SPACE$(n) - Return a string of N spaces.
- * Category: FCAT_STRING | Safety: FSAFE_STATE (string pool)
- */
+ // SPACE$(n) - Return a string of N spaces.
+ // Category: FCAT_STRING | Safety: FSAFE_STATE (string pool)
 BValue builtin_space(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -184,11 +170,9 @@ BValue builtin_space(BValue *args, int argc, void *rt)
  return bval_string(buf, n);
 }
 
-/*
- * STRING$(n, char) - Return N copies of a character.
- * char can be a string (first char used) or an ASCII code.
- * Category: FCAT_STRING | Safety: FSAFE_STATE (string pool)
- */
+ // STRING$(n, char) - Return N copies of a character.
+ // char can be a string (first char used) or an ASCII code.
+ // Category: FCAT_STRING | Safety: FSAFE_STATE (string pool)
 BValue builtin_string_func(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -217,10 +201,8 @@ BValue builtin_string_func(BValue *args, int argc, void *rt)
  return bval_string(buf, n);
 }
 
-/*
- * HEX$(n) - Convert number to hexadecimal string.
- * Category: FCAT_STRING | Safety: FSAFE_STATE (string pool)
- */
+ // HEX$(n) - Convert number to hexadecimal string.
+ // Category: FCAT_STRING | Safety: FSAFE_STATE (string pool)
 BValue builtin_hex(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -253,10 +235,8 @@ BValue builtin_hex(BValue *args, int argc, void *rt)
  return bval_string(buf, len);
 }
 
-/*
- * OCT$(n) - Convert number to octal string.
- * Category: FCAT_STRING | Safety: FSAFE_STATE (string pool)
- */
+ // OCT$(n) - Convert number to octal string.
+ // Category: FCAT_STRING | Safety: FSAFE_STATE (string pool)
 BValue builtin_oct(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -287,17 +267,15 @@ BValue builtin_oct(BValue *args, int argc, void *rt)
  return bval_string(buf, len);
 }
 
-/*
- * BIN$(n) - Convert number to binary string.
- * Output is grouped in 8-bit bytes separated by spaces.
- * Category: FCAT_STRING | Safety: FSAFE_STATE (string pool)
- */
+ // BIN$(n) - Convert number to binary string.
+ // Output is grouped in 8-bit bytes separated by spaces.
+ // Category: FCAT_STRING | Safety: FSAFE_STATE (string pool)
 BValue builtin_bin(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
  long val;
- char raw[68];    /* up to 64 bits LSB-first */
- char out[80];    /* formatted output with spaces */
+ char raw[68]; // up to 64 bits LSB-first
+ char out[80]; // formatted output with spaces
  int raw_bits, num_bytes, total_bits;
  int i, o;
  char *buf;
@@ -307,7 +285,7 @@ BValue builtin_bin(BValue *args, int argc, void *rt)
  val = bval_to_int(&args[0]);
  uv = (unsigned long)val;
 
- /* Step 1: Generate raw binary digits (LSB first) */
+ // Step 1: Generate raw binary digits (LSB first)
  if (uv == 0) {
  raw_bits = 1;
  raw[0] = '0';
@@ -319,14 +297,14 @@ BValue builtin_bin(BValue *args, int argc, void *rt)
  }
  }
 
- /* Step 2: Pad to next full 8-bit byte boundary */
+ // Step 2: Pad to next full 8-bit byte boundary
  num_bytes = (raw_bits + 7) / 8;
  total_bits = num_bytes * 8;
  while (raw_bits < total_bits) {
- raw[raw_bits++] = '0';  /* pad high bits with 0 */
+ raw[raw_bits++] = '0'; // pad high bits with 0
  }
 
- /* Step 3: Build output MSB-first with space between bytes */
+ // Step 3: Build output MSB-first with space between bytes
  o = 0;
  for (i = total_bits - 1; i >= 0; i--) {
  out[o++] = raw[i];

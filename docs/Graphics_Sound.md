@@ -1,6 +1,30 @@
 # Graphics and Sound in BASIC++
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- Screen Modes
+- COLOR
+- Drawing Primitives
+  - PSET / PRESET
+  - LINE
+  - CIRCLE
+  - PAINT
+- DRAW Command
+- GET and PUT (Graphics)
+- Screen Management
+- Sound
+  - BEEP
+  - SOUND
+  - PLAY (Music Macro Language)
+- Graphics Buffer
+- Limitations
+
+---
 
 BASIC++ includes a virtual graphics framebuffer and sound system compatible with GW-BASIC/QBasic graphics commands.
 

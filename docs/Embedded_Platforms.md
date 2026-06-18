@@ -28,7 +28,7 @@ TABLE OF CONTENTS
 =====================================================================
 
 BASIC++ can run on embedded microcontrollers and single-board
-computers.  The interpreter is written in portable C89/C90 with
+computers.  The interpreter is written in portable C17 with
 no external dependencies, making it compilable with any standard
 C toolchain including:
 

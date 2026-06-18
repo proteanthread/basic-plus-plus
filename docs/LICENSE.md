@@ -1,5 +1,19 @@
 # BASIC++ License
 
+
+---
+
+## Table of Contents
+
+- Freedom to Use
+- Freedom to Study
+- Freedom to Share
+- Freedom to Improve
+- No Warranty
+- Attribution
+
+---
+
 **@COPYLEFT ALL WRONGS RESERVED**
 
 This software is released under the following terms:

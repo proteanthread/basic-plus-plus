@@ -1,34 +1,40 @@
-/*
- * ---
- * BASIC++ Interpreter - override.c
- * ---
- *
- * Keyword interpretation override implementation.
- *
- * The override table is a static array indexed by KeywordId.
- * Each entry stores a parse-time prefix string. When active,
- * the exec loop prepends this text to the keyword's arguments
- * before parsing. The user's stored source code is never
- * modified -- OVERRIDE affects interpretation only.
- *
- * Protected keywords (SCOPE, ALIAS, KEYWORD, OVERRIDE, REM,
- * SECURITY) cannot be overridden.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - override.c
+ // ---
+ //
+ // Keyword interpretation override implementation.
+ //
+ // The override table is a static array indexed by KeywordId.
+ // Each entry stores a parse-time prefix string. When active,
+ // the exec loop prepends this text to the keyword's arguments
+ // before parsing. The user's stored source code is never
+ // modified -- OVERRIDE affects interpretation only.
+ //
+ // Protected keywords (SCOPE, ALIAS, KEYWORD, OVERRIDE, REM,
+ // SECURITY) cannot be overridden.
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #include <stdio.h>
 #include <string.h>
 #include "override.h"
 #include "lexer.h"
 
-/* --- Override Table --- */
+// --- Override Table ---
 static struct {
  char text[MAX_OVERRIDE_TEXT];
  int  active;
 } override_table[KW_COUNT];
 
-/* --- Protected Keywords --- */
+// --- Protected Keywords ---
 static int is_override_protected(KeywordId kw)
 {
  return (kw == KW_SCOPE || kw == KW_ALIAS ||
@@ -36,7 +42,7 @@ static int is_override_protected(KeywordId kw)
   kw == KW_REM || kw == KW_SECURITY);
 }
 
-/* --- Init / Reset --- */
+// --- Init / Reset ---
 
 void override_init(void)
 {
@@ -53,7 +59,7 @@ void override_reset(void)
  printf("All overrides cleared.\n");
 }
 
-/* --- Set / Get / Clear --- */
+// --- Set / Get / Clear ---
 
 int override_set(KeywordId kw, const char *text)
 {
@@ -102,7 +108,7 @@ void override_clear(KeywordId kw)
  }
 }
 
-/* --- Introspection --- */
+// --- Introspection ---
 
 void override_list(void)
 {

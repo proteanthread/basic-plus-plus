@@ -1,0 +1,661 @@
+# Building BASIC++ for ESP32
+
+**Version 4.0.1**
+
+---
+
+## Table of Contents
+
+- Overview
+- Supported ESP32 Variants
+- Prerequisites
+- Project Setup (ESP-IDF Component)
+- CMakeLists.txt Configuration
+- Build and Flash
+- Serial Console (REPL)
+- Filesystem (LOAD/SAVE)
+- WiFi and Network Considerations
+- Memory Budget by Variant
+- Customizing Pool Sizes
+  - Default BPP_EMBEDDED Profile
+  - ESP32 with PSRAM (WROVER/S3)
+  - Ultra-Minimal (ESP32-C3)
+- Which BASIC Features Work
+- Which BASIC Features Are Excluded
+- Union Mode on ESP32
+- GPIO Access from BASIC
+- I2C, SPI, and Sensor Access
+- FreeRTOS Integration
+- PlatformIO Alternative
+- Over-the-Air (OTA) Updates
+- Troubleshooting
+- See Also
+
+---
+
+## 1. Overview
+
+BASIC++ runs on ESP32 microcontrollers as a firmware component.
+The interpreter is compiled as part of an ESP-IDF project and
+provides a BASIC REPL (interactive prompt) over the UART serial
+console. Programs can be saved to flash (SPIFFS or LittleFS) and
+GPIO pins can be controlled directly from BASIC using the VDev
+virtual device layer.
+
+The `BPP_EMBEDDED` build profile in config.h reduces memory pools
+to fit within the ESP32's limited SRAM. With PSRAM-equipped boards
+(WROVER, S3), pool sizes can be increased significantly.
+
+
+## 2. Supported ESP32 Variants
+
+| Variant | SRAM | PSRAM | Flash | Status |
+|---------|------|-------|-------|--------|
+| ESP32-WROOM-32 | 520 KB | None | 4 MB | Supported |
+| ESP32-WROVER | 520 KB | 4-8 MB | 4-16 MB | Supported (best) |
+| ESP32-S2 | 320 KB | Optional 2-8 MB | 4 MB | Supported |
+| ESP32-S3 | 512 KB | Optional 2-8 MB | 8-16 MB | Supported (best) |
+| ESP32-C3 | 400 KB | None | 4 MB | Supported (tight) |
+| ESP32-C6 | 512 KB | None | 4 MB | Supported |
+| ESP32-H2 | 320 KB | None | 4 MB | Supported (tight) |
+
+**Recommended:** ESP32-WROVER or ESP32-S3 with PSRAM for the best
+experience. PSRAM allows larger programs and string pools.
+
+
+## 3. Prerequisites
+
+1. **ESP-IDF v5.0 or later** (recommended: v5.2+)
+
+   Install following the official guide:
+   https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/
+
+   Quick setup on Linux:
+   ```bash
+   mkdir -p ~/esp
+   cd ~/esp
+   git clone --recursive https://github.com/espressif/esp-idf.git
+   cd esp-idf
+   ./install.sh esp32
+   . ./export.sh
+   ```
+
+   Quick setup on Windows:
+   Download the ESP-IDF Tools Installer from:
+   https://dl.espressif.com/dl/esp-idf/
+
+2. **USB-to-Serial driver** for your ESP32 board (CP210x or CH340)
+
+3. **Serial terminal** (PuTTY, screen, minicom, or idf.py monitor)
+
+
+## 4. Project Setup (ESP-IDF Component)
+
+Create an ESP-IDF project with BASIC++ as a component:
+
+```
+my_basicpp_project/
+  CMakeLists.txt              (top-level project file)
+  sdkconfig.defaults          (ESP-IDF configuration)
+  main/
+    CMakeLists.txt            (main component)
+    main.c                    (entry point -- calls BASIC++)
+  components/
+    basicpp/
+      CMakeLists.txt          (BASIC++ component build file)
+      source/                 (symlink or copy of BASIC++ source/)
+```
+
+**Step 1: Create the project directory**
+```bash
+mkdir -p my_basicpp_project/main
+mkdir -p my_basicpp_project/components/basicpp
+```
+
+**Step 2: Create the top-level CMakeLists.txt**
+```cmake
+# my_basicpp_project/CMakeLists.txt
+cmake_minimum_required(VERSION 3.16)
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(basicpp_esp32)
+```
+
+**Step 3: Create sdkconfig.defaults**
+```
+# Increase main task stack size (BASIC++ needs at least 8 KB)
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
+
+# Enable PSRAM if your board has it
+# CONFIG_ESP32_SPIRAM_SUPPORT=y
+# CONFIG_SPIRAM_USE_CAPS_ALLOC=y
+
+# Enable SPIFFS for LOAD/SAVE support
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+```
+
+**Step 4: Create main/main.c**
+```c
+// main/main.c -- ESP32 entry point for BASIC++
+#include <stdio.h>
+#include "config.h"
+
+// BASIC++ entry point (defined in core/main.c)
+extern int basicpp_main(int argc, char **argv);
+
+void app_main(void)
+{
+    printf("BASIC++ for ESP32 starting...\n");
+
+    // Optional: mount SPIFFS for LOAD/SAVE
+    // (see Filesystem section below)
+
+    char *argv[] = {"basicpp", NULL};
+    basicpp_main(1, argv);
+
+    // If BASIC++ exits (BYE/SYSTEM), restart
+    printf("BASIC++ exited. Restarting in 3 seconds...\n");
+    vTaskDelay(pdMS_TO_TICKS(3000));
+    esp_restart();
+}
+```
+
+**Step 5: Create main/CMakeLists.txt**
+```cmake
+idf_component_register(
+    SRCS "main.c"
+    INCLUDE_DIRS "."
+    REQUIRES basicpp
+)
+```
+
+**Step 6: Link the BASIC++ source**
+```bash
+# Option A: symlink (Linux/macOS)
+ln -s /path/to/basic-plus-plus/source components/basicpp/source
+
+# Option B: copy (Windows or if symlinks don't work)
+xcopy /E /I source components\basicpp\source
+```
+
+
+## 5. CMakeLists.txt Configuration
+
+Create the BASIC++ component build file:
+
+```cmake
+# components/basicpp/CMakeLists.txt
+
+# Collect all .c source files from subdirectories
+file(GLOB_RECURSE BASICPP_SOURCES "source/*.c")
+
+# Remove files not needed for embedded builds
+list(FILTER BASICPP_SOURCES EXCLUDE REGEX "mod_usb\\.c")
+list(FILTER BASICPP_SOURCES EXCLUDE REGEX "mod_fujinet\\.c")
+list(FILTER BASICPP_SOURCES EXCLUDE REGEX "mod_upnp\\.c")
+list(FILTER BASICPP_SOURCES EXCLUDE REGEX "mod_jit\\.c")
+list(FILTER BASICPP_SOURCES EXCLUDE REGEX "vdev_net\\.c")
+list(FILTER BASICPP_SOURCES EXCLUDE REGEX "builtins_net\\.c")
+
+idf_component_register(
+    SRCS ${BASICPP_SOURCES}
+    INCLUDE_DIRS "source"
+    REQUIRES main
+)
+
+# Set the embedded build profile
+target_compile_definitions(${COMPONENT_LIB} PRIVATE
+    BPP_EMBEDDED
+)
+
+# Optional: enable PSRAM pool allocation
+# target_compile_definitions(${COMPONENT_LIB} PRIVATE BPP_PSRAM)
+```
+
+
+## 6. Build and Flash
+
+```bash
+# Set up ESP-IDF environment (if not already done)
+. ~/esp/esp-idf/export.sh
+
+cd my_basicpp_project
+
+# Configure (first time only)
+idf.py set-target esp32        # or esp32s3, esp32c3, etc.
+
+# Build
+idf.py build
+
+# Flash to the ESP32
+idf.py -p /dev/ttyUSB0 flash
+
+# Open serial monitor (BASIC++ REPL)
+idf.py -p /dev/ttyUSB0 monitor
+```
+
+On Windows, replace `/dev/ttyUSB0` with `COM3` (or whichever port
+your board is on -- check Device Manager).
+
+
+## 7. Serial Console (REPL)
+
+The BASIC++ REPL communicates over UART0 (USB-Serial). After
+flashing and connecting a serial terminal at **115200 baud**:
+
+```
+BASIC++ (Stable) Version 4.0.1
+@COPYLEFT ALL WRONGS RESERVED
+Ready.
+> PRINT "Hello from ESP32!"
+Hello from ESP32!
+> 10 FOR I = 1 TO 10
+> 20 PRINT I * I
+> 30 NEXT I
+> RUN
+1
+4
+9
+...
+Ready.
+```
+
+**Terminal settings:**
+- Baud rate: 115200
+- Data bits: 8
+- Parity: None
+- Stop bits: 1
+- Line ending: LF or CR+LF
+
+
+## 8. Filesystem (LOAD/SAVE)
+
+To save and load BASIC programs on the ESP32, mount a SPIFFS or
+LittleFS partition:
+
+**Step 1: Create a partition table** (`partitions.csv`):
+```
+# Name,    Type, SubType,  Offset,   Size
+nvs,       data, nvs,      0x9000,   0x6000,
+phy_init,  data, phy,      0xf000,   0x1000,
+factory,   app,  factory,  0x10000,  1M,
+storage,   data, spiffs,   ,         512K,
+```
+
+**Step 2: Mount in main.c** (before calling basicpp_main):
+```c
+#include "esp_spiffs.h"
+
+esp_vfs_spiffs_conf_t conf = {
+    .base_path = "/spiffs",
+    .partition_label = "storage",
+    .max_files = 5,
+    .format_if_mount_failed = true
+};
+esp_err_t ret = esp_vfs_spiffs_register(&conf);
+if (ret == ESP_OK) {
+    printf("SPIFFS mounted at /spiffs\n");
+}
+```
+
+**Step 3: Use from BASIC:**
+```basic
+SAVE "/spiffs/HELLO.BAS"
+LOAD "/spiffs/HELLO.BAS"
+FILES "/spiffs/*"
+```
+
+
+## 9. WiFi and Network Considerations
+
+The standard BASIC++ embedded build does **not** include network
+I/O (builtins_net.c / vdev_net.c). However, you can:
+
+- Keep WiFi enabled at the ESP-IDF level for OTA updates
+- Write a custom VDev driver that wraps ESP-IDF's TCP/IP functions
+- Add builtins_net.c back (you will need to write ESP32-specific
+  socket wrappers replacing POSIX/Winsock calls)
+
+
+## 10. Memory Budget by Variant
+
+### ESP32-WROOM (no PSRAM)
+
+```
+Total SRAM:                            520 KB
+FreeRTOS kernel + idle tasks:          -40 KB
+WiFi stack (if enabled):               -80 KB
+LWIP TCP/IP stack:                     -40 KB
+Available for application:            ~360 KB
+
+BASIC++ code (.text):                  -120 KB
+BASIC++ pools (BPP_EMBEDDED):           -38 KB
+RuntimeState + C variables:             -30 KB
+FreeRTOS task stack:                    -16 KB
+                                       ------
+Remaining free heap:                   ~156 KB
+```
+
+### ESP32-WROVER / S3 with PSRAM
+
+```
+Internal SRAM:                         520 KB  (used for code + stack)
+External PSRAM:                      4-8 MB   (used for data pools)
+
+BASIC++ pools can be allocated in PSRAM:
+  Program memory:      64 KB  (or more)
+  String pool:         64 KB  (or more)
+  Array pool:          128 KB (or more)
+
+Practical limit: ~1 MB for BASIC++ pools in PSRAM
+```
+
+### ESP32-C3 (tight)
+
+```
+Total SRAM:                            400 KB
+System overhead:                      -100 KB
+Available:                            ~300 KB
+
+BASIC++ needs at least:               ~168 KB
+Remaining:                            ~132 KB (viable but tight)
+```
+
+
+## 11. Customizing Pool Sizes
+
+### Default BPP_EMBEDDED Profile (config.h)
+
+```c
+#define PROGRAM_MEMORY_SIZE   8192L   // 8 KB
+#define VARIABLE_MEMORY_SIZE  4096L   // 4 KB
+#define SCRATCH_MEMORY_SIZE   2048L   // 2 KB
+#define MAX_STRING_POOL       8192L   // 8 KB
+#define MAX_ARRAY_ELEMENTS    1024    // ~16 KB
+// Total pools: ~38 KB
+```
+
+### ESP32 with PSRAM (WROVER/S3)
+
+In config.h, after `#elif defined(BPP_EMBEDDED)`, add a PSRAM section:
+
+```c
+#ifdef BPP_PSRAM
+// Larger pools using PSRAM
+#define PROGRAM_MEMORY_SIZE   65536L  // 64 KB
+#define VARIABLE_MEMORY_SIZE  16384L  // 16 KB
+#define SCRATCH_MEMORY_SIZE   8192L   // 8 KB
+#define MAX_STRING_POOL       65536L  // 64 KB
+#define MAX_ARRAY_ELEMENTS    8192    // ~128 KB
+#define MAX_PROGRAM_LINES     2048
+#define MAX_NAMED_VARS        256
+#define MAX_STACK_DEPTH       128
+#endif
+```
+
+Then enable in the CMakeLists.txt:
+```cmake
+target_compile_definitions(${COMPONENT_LIB} PRIVATE
+    BPP_EMBEDDED
+    BPP_PSRAM
+)
+```
+
+To allocate pools in PSRAM, modify memory.c's pool_init() to use:
+```c
+pool->data = heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+```
+
+### Ultra-Minimal (ESP32-C3, tight memory)
+
+```c
+#define PROGRAM_MEMORY_SIZE   4096L   // 4 KB
+#define VARIABLE_MEMORY_SIZE  2048L   // 2 KB
+#define SCRATCH_MEMORY_SIZE   1024L   // 1 KB
+#define MAX_STRING_POOL       4096L   // 4 KB
+#define MAX_ARRAY_ELEMENTS    512     // ~8 KB
+#define MAX_PROGRAM_LINES     128
+#define MAX_STACK_DEPTH       16
+// Total pools: ~19 KB
+```
+
+
+## 12. Which BASIC Features Work
+
+Everything in the core BASIC language works on ESP32:
+
+- REPL (interactive prompt over serial)
+- PRINT, INPUT, LET, IF/THEN/ELSE, FOR/NEXT, WHILE/WEND, DO/LOOP
+- DEF FN user functions, SUB/FUNCTION blocks (Union Mode)
+- String operations (LEFT$, RIGHT$, MID$, etc.)
+- Math functions (SIN, COS, SQR, LOG, RND, etc.)
+- PEEK/POKE virtual memory (MEMMAP)
+- DIM arrays (up to 3 dimensions)
+- DATA/READ/RESTORE
+- ON ERROR GOTO / RESUME
+- ALIAS keyword remapping
+- Security sandboxing (all 6 levels)
+- TRON/TROFF trace mode
+- HELP command
+- SELFTEST diagnostics
+- File I/O (if SPIFFS/LittleFS is mounted)
+- VDev virtual devices (GPIO, I2C, SPI, sensors)
+
+
+## 13. Which BASIC Features Are Excluded
+
+- SHELL / EXEC (no OS shell on ESP32)
+- Dynamic library loading (no shared libraries)
+- Network built-ins (no BASIC-level sockets by default)
+- JIT compilation (no executable memory mapping)
+- USB device module (different USB stack)
+- FujiNet / UPnP discovery
+- COMPILE (transpiler)
+- Full codegen/AST system
+- SLEEP uses vTaskDelay() instead of OS sleep()
+
+
+## 14. Union Mode on ESP32
+
+Union Mode is the default on ESP32. Even though only PATB (Tiny BASIC)
+is compiled in, Union Mode gives you access to all core BASIC keywords:
+
+```basic
+> FOR I = 1 TO 10
+> PRINT I; " squared = "; I * I
+> NEXT I
+```
+
+This works even in PATB mode because Union Mode does not restrict
+the keyword set. Only `OPTION STRICT` enforces dialect limits.
+
+
+## 15. GPIO Access from BASIC
+
+The VDev system provides GPIO control. Register a GPIO device in
+your main.c before calling basicpp_main():
+
+```c
+#include "driver/gpio.h"
+#include "vdev.h"
+
+static int gpio_write(VDev *d, const char *data, int len) {
+    int pin = (int)(intptr_t)d->user_data;
+    int value = (data[0] == '1' || data[0] == 'H') ? 1 : 0;
+    gpio_set_level(pin, value);
+    return 0;
+}
+
+static int gpio_read(VDev *d, char *buf, int maxlen) {
+    int pin = (int)(intptr_t)d->user_data;
+    int level = gpio_get_level(pin);
+    buf[0] = level ? '1' : '0';
+    buf[1] = '\0';
+    return 1;
+}
+
+void register_gpio_devices(void) {
+    // Register GPIO2 (built-in LED on most boards)
+    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
+
+    VDev led;
+    memset(&led, 0, sizeof(led));
+    led.name = "LED:";
+    led.dev_class = VDCLASS_GPIO;
+    led.dev_caps = VDCAP_READ | VDCAP_WRITE;
+    led.dev_write = gpio_write;
+    led.dev_read = gpio_read;
+    led.user_data = (void *)GPIO_NUM_2;
+    led.dev_description = "Built-in LED (GPIO2)";
+    vdev_register(&led);
+}
+```
+
+Then from BASIC:
+```basic
+OPEN "LED:" FOR OUTPUT AS #1
+PRINT #1, "1"           ' LED ON
+SLEEP 1
+PRINT #1, "0"           ' LED OFF
+CLOSE #1
+```
+
+
+## 16. I2C, SPI, and Sensor Access
+
+Similar VDev drivers can be written for I2C, SPI, and other
+peripherals. The VDev device classes include:
+
+| Class | Value | Use |
+|-------|-------|-----|
+| VDCLASS_GPIO | 7 | Digital I/O pins |
+| VDCLASS_I2C | 8 | I2C bus communication |
+| VDCLASS_SPI | 9 | SPI bus communication |
+| VDCLASS_SENSOR | 10 | Temperature, humidity, etc. |
+| VDCLASS_DISPLAY | 11 | OLED/LCD screens |
+| VDCLASS_STORAGE | 12 | SD card, flash |
+
+Example I2C temperature sensor (BMP280):
+```basic
+OPEN "TEMP:" FOR INPUT AS #1
+INPUT #1, temperature
+PRINT "Temperature: "; temperature; " C"
+CLOSE #1
+```
+
+
+## 17. FreeRTOS Integration
+
+BASIC++ runs as a single FreeRTOS task. Key considerations:
+
+- **Stack size:** At least 8 KB. Recommended 16 KB for the BASIC++
+  task. Set in sdkconfig: `CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384`
+- **SLEEP:** The BASIC SLEEP command calls `vTaskDelay()`, yielding
+  to other FreeRTOS tasks during the sleep period
+- **Watchdog:** Long-running BASIC loops may trigger the watchdog.
+  Add `vTaskDelay(1)` in the main execution loop if needed
+- **Concurrent tasks:** You can run BASIC++ alongside other FreeRTOS
+  tasks (WiFi, Bluetooth, sensor polling) by spawning it in its own task
+
+
+## 18. PlatformIO Alternative
+
+If you prefer PlatformIO over ESP-IDF:
+
+```ini
+; platformio.ini
+[env:esp32]
+platform = espressif32
+board = esp32dev
+framework = espidf
+build_flags =
+    -DBPP_EMBEDDED
+    -I source
+build_src_filter =
+    +<source/core/*.c>
+    +<source/parser/*.c>
+    +<source/lexer/*.c>
+    +<source/flow/*.c>
+    +<source/io/parser_io.c>
+    +<source/io/parser_fileio.c>
+    +<source/io/fileio.c>
+    +<source/io/format_using.c>
+    +<source/io/format_input.c>
+    +<source/io/device_alias.c>
+    +<source/filemgmt/*.c>
+    +<source/graphics/*.c>
+    +<source/variables/*.c>
+    +<source/arrays/*.c>
+    +<source/strings/*.c>
+    +<source/math/*.c>
+    +<source/functions/*.c>
+    +<source/errhand/*.c>
+    +<source/config/*.c>
+    +<source/debug/*.c>
+    +<source/help/*.c>
+    +<source/progmgmt/*.c>
+    +<source/memory/*.c>
+    +<source/system/*.c>
+    +<source/virtual/vdev.c>
+    +<source/dialect/dialect.c>
+    +<source/dialect/dialect_patb.c>
+    +<source/modules/module.c>
+    +<source/modules/mod_stdlib.c>
+    +<source/runtime/*.c>
+    +<source/misc/*.c>
+    +<source/struct/*.c>
+    +<source/shell/*.c>
+    +<main/*.c>
+```
+
+
+## 19. Over-the-Air (OTA) Updates
+
+You can update BASIC++ firmware over WiFi using ESP-IDF's OTA system.
+This is separate from the BASIC++ interpreter itself -- it updates
+the entire firmware including the interpreter binary.
+
+See ESP-IDF's OTA documentation:
+https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/ota.html
+
+
+## 20. Troubleshooting
+
+**Stack overflow / Guru Meditation Error**
+- Increase the main task stack size in sdkconfig:
+  `CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384` (or 32768)
+- Deep BASIC recursion may exhaust the C stack. Reduce MAX_STACK_DEPTH
+  or increase the FreeRTOS task stack
+
+**"SORRY. Cannot allocate memory."**
+- Reduce pool sizes in config.h (see section 11)
+- Check free heap: `ESP_LOGI("BPP", "Free: %d", esp_get_free_heap_size());`
+- Enable PSRAM if your board has it
+
+**REPL not responding over serial**
+- Verify baud rate is 115200
+- Check USB cable (data cable, not charge-only)
+- Try `idf.py -p COM3 monitor` instead of a generic terminal
+- Ensure UART0 is not used by another component
+
+**LOAD/SAVE fails (file not found)**
+- Mount SPIFFS before calling basicpp_main() (see section 8)
+- Use full paths: `LOAD "/spiffs/PROGRAM.BAS"`
+- Check partition table includes a storage partition
+
+**Build error: "undefined reference to vdev_register"**
+- Make sure the BASIC++ component's CMakeLists.txt includes all
+  needed source files and the `source/` include directory
+
+**Watchdog timeout during long loops**
+- Add `CONFIG_ESP_TASK_WDT_TIMEOUT_S=30` in sdkconfig
+- Or disable the task watchdog for the BASIC++ task
+
+
+## 21. See Also
+
+- `Embedded_Platforms.md` -- Overview of all embedded targets
+- `Building_For_Arduino.md` -- Arduino build guide
+- `Building_For_Raspberry_Pi.md` -- Raspberry Pi build guide
+- `Virtual_Devices.md` -- VDev system reference
+- `Memory_Maps.md` -- PEEK/POKE virtual memory

@@ -1,6 +1,6 @@
 EXTERNAL MODULES, FUNCTIONS, AND PLUG-INS
 ==========================================
-Version 1.5.0
+Version 4.0.1
 
 BASIC++ has a module system that enables external code to extend
 the interpreter with new functions, statements, devices, and

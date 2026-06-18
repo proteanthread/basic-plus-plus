@@ -1,51 +1,47 @@
-/*
- * ---
- * BASIC++ Interpreter - builtins.h
- * ---
- *
- * Built-in function handler declarations.
- *
- * All handlers use the uniform FuncHandler signature:
- *
- * BValue handler(BValue *args, int argc, void *rt)
- *
- * The 'rt' parameter is an opaque pointer to RuntimeState.
- * Handlers that need runtime services (RND seed, string pool)
- * cast it to (RuntimeState*) internally.
- *
- * Handler implementations are organized by category across
- * separate source files for modularity:
- *
- *   builtins_math.c     - Arithmetic / Math
- *   builtins_string.c   - String Functions
- *   builtins_fileio.c   - File Input-Output
- *   builtins_io.c       - Input / Output
- *   builtins_memory.c   - Memory
- *   builtins_system.c   - System / Environment
- *   builtins_graphics.c - Graphics
- *   builtins.c          - Registration table only
- *
- * HOW TO ADD A NEW BUILT-IN:
- * 1. Write a handler in the appropriate category file.
- * 2. Declare it in this header.
- * 3. Add a FunctionEntry to the registration table in
- *    builtins_register() in builtins.c.
- * 4. If needed, add a keyword to lexer.h/c and detok.c.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - builtins.h
+ // ---
+ //
+ // Built-in function handler declarations.
+ //
+ // All handlers use the uniform FuncHandler signature:
+ //
+ // BValue handler(BValue *args, int argc, void *rt)
+ //
+ // The 'rt' parameter is an opaque pointer to RuntimeState.
+ // Handlers that need runtime services (RND seed, string pool)
+ // cast it to (RuntimeState*) internally.
+ //
+ // Handler implementations are organized by category across
+ // separate source files for modularity:
+ //
+ //   builtins_math.c     - Arithmetic / Math
+ //   builtins_string.c   - String Functions
+ //   builtins_fileio.c   - File Input-Output
+ //   builtins_io.c       - Input / Output
+ //   builtins_memory.c   - Memory
+ //   builtins_system.c   - System / Environment
+ //   builtins_graphics.c - Graphics
+ //   builtins.c          - Registration table only
+ //
+ // HOW TO ADD A NEW BUILT-IN:
+ // 1. Write a handler in the appropriate category file.
+ // 2. Declare it in this header.
+ // 3. Add a FunctionEntry to the registration table in
+ //    builtins_register() in builtins.c.
+ // 4. If needed, add a keyword to lexer.h/c and detok.c.
+ //
+ // ---
 
 #ifndef BASICPP_BUILTINS_H
 #define BASICPP_BUILTINS_H
 
 #include "value.h"
 
-/* --- Registration Function ---
- */
+// --- Registration Function ---
 void builtins_register(void);
 
-/* --- Arithmetic / Math (builtins_math.c) ---
- */
+// --- Arithmetic / Math (builtins_math.c) ---
 BValue builtin_abs(BValue *args, int argc, void *rt);
 BValue builtin_sgn(BValue *args, int argc, void *rt);
 BValue builtin_int_func(BValue *args, int argc, void *rt);
@@ -84,8 +80,7 @@ BValue builtin_pdif(BValue *args, int argc, void *rt);
 BValue builtin_pi(BValue *args, int argc, void *rt);
 BValue builtin_rnd(BValue *args, int argc, void *rt);
 
-/* --- String Functions (builtins_string.c) ---
- */
+// --- String Functions (builtins_string.c) ---
 BValue builtin_len(BValue *args, int argc, void *rt);
 BValue builtin_asc(BValue *args, int argc, void *rt);
 BValue builtin_val(BValue *args, int argc, void *rt);
@@ -101,8 +96,7 @@ BValue builtin_hex(BValue *args, int argc, void *rt);
 BValue builtin_oct(BValue *args, int argc, void *rt);
 BValue builtin_bin(BValue *args, int argc, void *rt);
 
-/* --- File Input-Output (builtins_fileio.c) ---
- */
+// --- File Input-Output (builtins_fileio.c) ---
 BValue builtin_eof(BValue *args, int argc, void *rt);
 BValue builtin_lof(BValue *args, int argc, void *rt);
 BValue builtin_cvi(BValue *args, int argc, void *rt);
@@ -112,25 +106,20 @@ BValue builtin_exists(BValue *args, int argc, void *rt);
 BValue builtin_filesize(BValue *args, int argc, void *rt);
 BValue builtin_filemod(BValue *args, int argc, void *rt);
 
-/* --- Input / Output (builtins_io.c) ---
- */
+// --- Input / Output (builtins_io.c) ---
 BValue builtin_csrlin(BValue *args, int argc, void *rt);
 
-/* --- Memory (builtins_memory.c) ---
- */
+// --- Memory (builtins_memory.c) ---
 BValue builtin_peek(BValue *args, int argc, void *rt);
 BValue builtin_size(BValue *args, int argc, void *rt);
 
-/* --- System / Environment (builtins_system.c) ---
- */
+// --- System / Environment (builtins_system.c) ---
 BValue builtin_environ(BValue *args, int argc, void *rt);
 
-/* --- Graphics (builtins_graphics.c) ---
- */
+// --- Graphics (builtins_graphics.c) ---
 BValue builtin_point(BValue *args, int argc, void *rt);
 
-/* --- Stream I/O (builtins_sio.c) ---
- */
+// --- Stream I/O (builtins_sio.c) ---
 BValue builtin_sioread(BValue *args, int argc, void *rt);
 BValue builtin_sioreadln(BValue *args, int argc, void *rt);
 BValue builtin_siowrite(BValue *args, int argc, void *rt);
@@ -139,8 +128,7 @@ BValue builtin_sioflush(BValue *args, int argc, void *rt);
 BValue builtin_siostatus(BValue *args, int argc, void *rt);
 BValue builtin_sioavail(BValue *args, int argc, void *rt);
 
-/* --- Block I/O (builtins_bio.c) ---
- */
+// --- Block I/O (builtins_bio.c) ---
 BValue builtin_bioread(BValue *args, int argc, void *rt);
 BValue builtin_biowrite(BValue *args, int argc, void *rt);
 BValue builtin_biostatus(BValue *args, int argc, void *rt);
@@ -150,10 +138,10 @@ BValue builtin_biocompare(BValue *args, int argc, void *rt);
 BValue builtin_biofill(BValue *args, int argc, void *rt);
 BValue builtin_biocopy(BValue *args, int argc, void *rt);
 
-/* Transaction builtins (io/builtins_txn.c) */
+// Transaction builtins (io/builtins_txn.c)
 BValue builtin_txnstatus(BValue *args, int argc, void *rt);
 
-/* Network builtins (io/builtins_net.c) */
+// Network builtins (io/builtins_net.c)
 BValue builtin_nstatus(BValue *args, int argc, void *rt);
 BValue builtin_nhttpstatus(BValue *args, int argc, void *rt);
 BValue builtin_neof(BValue *args, int argc, void *rt);
@@ -163,4 +151,4 @@ BValue builtin_nerror(BValue *args, int argc, void *rt);
 BValue builtin_njsonquery(BValue *args, int argc, void *rt);
 BValue builtin_ninfo(BValue *args, int argc, void *rt);
 
-#endif /* BASICPP_BUILTINS_H */
+#endif // BASICPP_BUILTINS_H

@@ -1,6 +1,31 @@
 # SUPER BASIC (Tymshare SDS-940) Dialect Reference
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+---
+
+## Table of Contents
+
+- History
+- Activation
+- Extended Math Functions
+  - Inverse Trigonometric
+  - Hyperbolic
+  - Logarithms
+  - Comparison & Utility
+  - Constant
+- UNLESS Statement (JOSS-Style Negated IF)
+- BY Keyword (FOR Loop Step Alternative)
+- SCRATCH and UNSAVE Commands
+  - SCRATCH
+  - UNSAVE
+- Complex Numbers
+- Dialect Configuration
+- Complete Function Reference
+- See Also
+
+---
+
 **Dialect Code:** `SBAS`
 
 ---

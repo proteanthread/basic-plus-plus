@@ -53,9 +53,9 @@
 
   IMPORTANT — DO NOT CONFUSE WITH:
   +-----------------------------------------------------------------+
-  |  Virtual Consoles   = I/O stream abstraction (this tutorial)    |
-  |  Virtual Machines   = Execution engine (vm.h)                   |
-  |  Virtual Devices    = The underlying mechanism (vdev.h)         |
+  Virtual Consoles   = I/O stream abstraction (this tutorial)
+  Virtual Machines   = Execution engine (vm.h)
+  Virtual Devices    = The underlying mechanism (vdev.h)
   +-----------------------------------------------------------------+
 
   A Virtual Console IS a VDev of class VDCLASS_CONSOLE.
@@ -72,11 +72,11 @@
   BASIC++ adopts the same model, extended for logging:
 
   +----------+--------+-----+-----------------------------------+
-  | Stream   | VDev   | ID  | Purpose                           |
+  Stream              VDev                ID                  Purpose
   +----------+--------+-----+-----------------------------------+
-  | STDOUT   | CON:   |  0  | Normal program output (PRINT)     |
-  | STDERR   | ERR:   |  1  | Error messages (HOW?, WHAT?)      |
-  | STDLOG   | LOG:   |  3+ | All messages, timestamped (new)   |
+  STDOUT              CON:                0                   Normal program output (PRINT)
+  STDERR              ERR:                1                   Error messages (HOW?, WHAT?)
+  STDLOG              LOG:                3+                  All messages, timestamped (new)
   +----------+--------+-----+-----------------------------------+
 
   WHY THREE STREAMS?
@@ -123,27 +123,27 @@
   The VDev struct provides the function pointers:
 
   +------------------+----------------------------------------------+
-  | Function Pointer | Purpose                                      |
+  Function Pointer    Purpose
   +------------------+----------------------------------------------+
-  | dev_putc(d, ch)  | Write one character                          |
-  | dev_puts(d, s)   | Write a null-terminated string               |
-  | dev_flush(d)     | Flush output buffers                         |
-  | dev_cls(d)       | Clear screen / reset terminal                |
-  | dev_getc(d)      | Read one character (input)                   |
-  | dev_gets(d,b,n)  | Read a line of input                         |
-  | dev_open(d,p,m)  | Open/connect (for network terminals)         |
-  | dev_close(d)     | Close/disconnect                             |
+  dev_putc(d, ch)     Write one character
+  dev_puts(d, s)      Write a null-terminated string
+  dev_flush(d)        Flush output buffers
+  dev_cls(d)          Clear screen / reset terminal
+  dev_getc(d)         Read one character (input)
+  dev_gets(d,b,n)     Read a line of input
+  dev_open(d,p,m)     Open/connect (for network terminals)
+  dev_close(d)        Close/disconnect
   +------------------+----------------------------------------------+
 
   Phase 16 extensions add:
 
   +------------------+----------------------------------------------+
-  | dev_read(d,b,n)  | Binary read (raw bytes)                      |
-  | dev_write(d,b,n) | Binary write (raw bytes)                     |
-  | dev_ioctl(d,c,a) | Terminal control commands (set baud, etc.)    |
-  | dev_status(d)    | Is the terminal connected? (0=yes, -1=no)    |
-  | dev_poll(d)      | Is input available? (1=yes, 0=no)            |
-  | dev_info(d,key)  | Query terminal metadata                      |
+  dev_read(d,b,n)     Binary read (raw bytes)
+  dev_write(d,b,n)    Binary write (raw bytes)
+  dev_ioctl(d,c,a)    Terminal control commands (set baud, etc.)
+  dev_status(d)       Is the terminal connected? (0=yes, -1=no)
+  dev_poll(d)         Is input available? (1=yes, 0=no)
+  dev_info(d,key)     Query terminal metadata
   +------------------+----------------------------------------------+
 
   A Virtual Console is simply a VDev where:
@@ -331,8 +331,8 @@
     /* Tee device: wraps two VDevs, sends output to both */
 
     typedef struct TeeData {
-        VDev *primary;     /* e.g., CON: (screen) */
-        VDev *secondary;   /* e.g., LOG: (file)   */
+        VDev primary;     / e.g., CON: (screen) */
+        VDev secondary;   / e.g., LOG: (file)   */
     } TeeData;
 
     static int tee_putc(VDev *d, int ch)
@@ -441,7 +441,7 @@
     #define RING_LINE_LEN 256
 
     typedef struct RingBuffer {
-        char lines[RING_LINES][RING_LINE_LEN];
+        char linesRING_LINES;
         int  head;       /* next write position */
         int  count;      /* lines currently stored */
         char current[RING_LINE_LEN]; /* partial line */
@@ -456,7 +456,7 @@
             ring.current[ring.cur_pos] = '\0';
             strncpy(ring.lines[ring.head],
                     ring.current, RING_LINE_LEN - 1);
-            ring.lines[ring.head][RING_LINE_LEN - 1] = '\0';
+            ring.linesring.head = '\0';
             ring.head = (ring.head + 1) % RING_LINES;
             if (ring.count < RING_LINES) ring.count++;
             ring.cur_pos = 0;
@@ -496,7 +496,7 @@
   BASIC++ provides two levels of output redirection:
 
   LEVEL 1: File Channels (BASIC level)
-  ------------------------------------
+---------------------------------------------------------------------
   The PRINT # syntax redirects output to a file channel:
 
     10 OPEN #1, "output.txt", "W"
@@ -507,7 +507,7 @@
   This is the standard, safe, BASIC-compatible method.
 
   LEVEL 2: Device-Backed Channels (BASIC level, Phase 16)
-  -------------------------------------------------------
+---------------------------------------------------------------------
   File channels can be backed by VDevs instead of files:
 
     10 REM Open a channel backed by the ERR: device
@@ -519,7 +519,7 @@
   and routes through fileio_open_device() instead of fopen().
 
   LEVEL 3: VDev Replacement (C level only)
-  ----------------------------------------
+---------------------------------------------------------------------
   The CON: device itself can be replaced at the C level.
   This changes WHERE all un-channeled PRINT goes:
 
@@ -562,15 +562,15 @@
   ---- Built-in Device Names ----
 
   +----------+-------------------------------------------+
-  | Name     | Description                               |
+  Name                Description
   +----------+-------------------------------------------+
-  | CON:     | Console (stdout + stdin)                   |
-  | ERR:     | Error output (stderr)                      |
-  | LOG:     | Log console (if registered)                |
-  | NUL:     | Null device (discard output)               |
-  | COM1:    | Serial port 1 (if registered)              |
-  | LPT1:    | Printer port 1 (if registered)             |
-  | NET:     | Network socket (if registered)             |
+  CON:                Console (stdout + stdin)
+  ERR:                Error output (stderr)
+  LOG:                Log console (if registered)
+  NUL:                Null device (discard output)
+  COM1:               Serial port 1 (if registered)
+  LPT1:               Printer port 1 (if registered)
+  NET:                Network socket (if registered)
   +----------+-------------------------------------------+
 
   Device names are case-insensitive and must end with a colon.
@@ -604,19 +604,19 @@
     sets, and input modes.  A VT maintains internal state:
 
     +-------------------------------------------+
-    | Virtual Terminal State                     |
+  Virtual Terminal State
     +-------------------------------------------+
-    | Screen buffer (rows x cols)                |
-    | Cursor position (row, col)                 |
-    | Cursor visibility (on/off)                 |
-    | Current foreground/background color        |
-    | Character attributes (bold, underline)     |
-    | Scroll region (top, bottom)                |
-    | Input mode (cooked, raw, cbreak)           |
-    | Character set (ASCII, Latin-1, UTF-8)      |
-    | Tab stops (array of column positions)       |
-    | Saved cursor position (for ESC 7/8)        |
-    | Alternate screen buffer (for ESC[?1049h)   |
+  Screen buffer (rows x cols)
+  Cursor position (row, col)
+  Cursor visibility (on/off)
+  Current foreground/background color
+  Character attributes (bold, underline)
+  Scroll region (top, bottom)
+  Input mode (cooked, raw, cbreak)
+  Character set (ASCII, Latin-1, UTF-8)
+  Tab stops (array of column positions)
+  Saved cursor position (for ESC 7/8)
+  Alternate screen buffer (for ESC[?1049h)
     +-------------------------------------------+
 
   In BASIC++, the VDev system provides Virtual Consoles.
@@ -671,12 +671,12 @@
   Terminal control varies:
 
   +-------------+------------------------------------+
-  | Platform    | Terminal Control                    |
+  Platform            Terminal Control
   +-------------+------------------------------------+
-  | DOS/FreeDOS | INT 10h / ANSI.SYS / direct video  |
-  | Windows     | Console API / ANSI (Win10+)         |
-  | Linux/macOS | ANSI escape sequences               |
-  | PLATO       | PLATO protocol (irata.online)       |
+  DOS/FreeDOS         INT 10h / ANSI.SYS / direct video
+  Windows             Console API / ANSI (Win10+)
+  Linux/macOS         ANSI escape sequences
+  PLATO               PLATO protocol (irata.online)
   +-------------+------------------------------------+
 
   BASIC++ abstracts this through VDev:
@@ -749,13 +749,13 @@
   ---- Security Levels and Console Access ----
 
   +----------------+------+------+------+------+------+
-  | Operation      | OPEN | STD  | REST | Device|Notes|
+  Operation           OPEN                STD                 REST                Device              Notes
   +----------------+------+------+------+------+------+
-  | PRINT (CON:)   |  ✓   |  ✓   |  ✓   |  —   |     |
-  | PRINT #n       |  ✓   |  ✓   |  ✗   | file | (1) |
-  | OPEN dev:      |  ✓   |  ✓   |  ✗   | dev  | (2) |
-  | OPEN file      |  ✓   |  ✓   |  ✗   | file | (1) |
-  | vdev_register  |  ✓   |  ✓   |  ✓   | C    | (3) |
+  PRINT (CON:)        ✓                 ✓                 ✓                 —
+  PRINT #n            ✓                 ✓                 ✗                 file                (1)
+  OPEN dev:           ✓                 ✓                 ✗                 dev                 (2)
+  OPEN file           ✓                 ✓                 ✗                 file                (1)
+  vdev_register       ✓                 ✓                 ✓                 C                   (3)
   +----------------+------+------+------+------+------+
 
   Notes:

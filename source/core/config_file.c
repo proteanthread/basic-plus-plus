@@ -1,24 +1,30 @@
-/*
- * ---
- * BASIC++ Interpreter - config_file.c
- * ---
- *
- * INI-style configuration file parser.
- *
- * FILE FORMAT:
- * Lines starting with ';' or '#' are comments.
- * Blank lines are ignored.
- * Key=value pairs are parsed case-insensitively.
- * Leading/trailing whitespace around keys and values is stripped.
- *
- * SUPPORTED KEYS:
- *   dialect   = PATB | GWBS | QBAS | EC55 | E116 | TRS1 | TRS2 | ...
- *   security  = OPEN | STANDARD | RESTRICTED
- *   strict    = ON | OFF
- *   quiet     = ON | OFF
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - config_file.c
+ // ---
+ //
+ // INI-style configuration file parser.
+ //
+ // FILE FORMAT:
+ // Lines starting with ';' or '#' are comments.
+ // Blank lines are ignored.
+ // Key=value pairs are parsed case-insensitively.
+ // Leading/trailing whitespace around keys and values is stripped.
+ //
+ // SUPPORTED KEYS:
+ //   dialect   = PATB | GWBS | QBAS | EC55 | E116 | TRS1 | TRS2 | ...
+ //   security  = OPEN | STANDARD | RESTRICTED
+ //   strict    = ON | OFF
+ //   quiet     = ON | OFF
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,15 +38,11 @@
 #include "keyword_props.h"
 #include "override.h"
 
-/* Maximum line length in config file */
+// Maximum line length in config file
 #define CFG_MAX_LINE 256
 
-/*
- * config_file_get_name - Return the platform-specific filename.
- */
-/*
- * config_file_get_name - Return the dynamic filename based on exe.
- */
+ // config_file_get_name - Return the platform-specific filename.
+ // config_file_get_name - Return the dynamic filename based on exe.
 const char *config_file_get_name(const char *exe_path)
 {
     static char cfg_name[256];
@@ -50,14 +52,14 @@ const char *config_file_get_name(const char *exe_path)
 
     if (!exe_path || !*exe_path) return "basicpp.cfg";
 
-    /* Find basename */
+    // Find basename
     for (p = exe_path; *p; p++) {
         if (*p == '/' || *p == '\\') {
             base = p + 1;
         }
     }
 
-    /* Copy up to the dot or end */
+    // Copy up to the dot or end
     len = 0;
     while (base[len] && base[len] != '.' && len < 250) {
         cfg_name[len] = base[len];
@@ -69,11 +71,9 @@ const char *config_file_get_name(const char *exe_path)
     return cfg_name;
 }
 
-/*
- * strip_whitespace - Strip leading/trailing whitespace in place.
- * Returns pointer to first non-whitespace character.
- * Trims trailing whitespace by inserting '\0'.
- */
+ // strip_whitespace - Strip leading/trailing whitespace in place.
+ // Returns pointer to first non-whitespace character.
+ // Trims trailing whitespace by inserting '\0'.
 static char *strip_whitespace(char *s)
 {
     char *end;
@@ -86,9 +86,7 @@ static char *strip_whitespace(char *s)
     return s;
 }
 
-/*
- * ci_equal - Case-insensitive string compare (C89-safe).
- */
+ // ci_equal - Case-insensitive string compare (C89-safe).
 static int ci_equal(const char *a, const char *b)
 {
     while (*a && *b) {
@@ -112,9 +110,7 @@ static int config_get_keyword_id(const char *name) {
     return -1;
 }
 
-/*
- * parse_line - Parse a single key=value line into the config.
- */
+ // parse_line - Parse a single key=value line into the config.
 static void parse_line(ConfigFile *cfg, const char *key,
                        const char *value)
 {
@@ -159,7 +155,7 @@ static void parse_line(ConfigFile *cfg, const char *key,
             else if (ci_equal(value, "title")) lexer_set_keyword_case(KWCASE_TITLE);
             else if (ci_equal(value, "mixed")) lexer_set_keyword_case(KWCASE_MIXED);
         } else {
-            /* parse keyword.PRINT.UPPERCASE = ON */
+            // parse keyword.PRINT.UPPERCASE = ON
             char kw_buf[64];
             char prop_buf[64];
             const char *dot = strchr(key + 8, '.');
@@ -180,39 +176,35 @@ static void parse_line(ConfigFile *cfg, const char *key,
             }
         }
     } else if (strlen(key) > 6 && (strncmp(key, "alias.", 6) == 0 || strncmp(key, "ALIAS.", 6) == 0)) {
-        /* parse alias.SHOW = PRINT */
-        /* Normally we use override_set() or alias_lang_add(), but we need KeywordId for override.
-           Let's use override_set. 
-           Wait, alias.SHOW = PRINT means when they type SHOW, it acts like PRINT.
-           override_set(KW_SHOW, "PRINT"). But SHOW isn't a keyword.
-           alias_lang_add("SHOW", "PRINT"); 
-           Wait, is alias_lang_add exposed? Let's check alias_lang.h.
-           Assuming alias_lang.h exposes alias_add(new_word, target). 
-           We will just document that they can do this in Milestone 5, but maybe I should just use `alias_lang_add` or similar if it exists.
-           Actually, override_set modifies an existing keyword's behavior.
-        */
-        /* Let's just printf for now since I don't have alias_lang.h included here.
-           Wait, I can just use lexer_add_alias if it exists, or just leave it for now.
-           Actually, let's just parse it and store it or handle it.
-        */
+        // parse alias.SHOW = PRINT
+        // Normally we use override_set() or alias_lang_add(), but we need KeywordId for override.
+           // Let's use override_set. 
+           // Wait, alias.SHOW = PRINT means when they type SHOW, it acts like PRINT.
+           // override_set(KW_SHOW, "PRINT"). But SHOW isn't a keyword.
+           // alias_lang_add("SHOW", "PRINT"); 
+           // Wait, is alias_lang_add exposed? Let's check alias_lang.h.
+           // Assuming alias_lang.h exposes alias_add(new_word, target). 
+           // We will just document that they can do this in Milestone 5, but maybe I should just use `alias_lang_add` or similar if it exists.
+           // Actually, override_set modifies an existing keyword's behavior.
+        // Let's just printf for now since I don't have alias_lang.h included here.
+           // Wait, I can just use lexer_add_alias if it exists, or just leave it for now.
+           // Actually, let's just parse it and store it or handle it.
     } else if (ci_equal(key, "lib") || ci_equal(key, "mod")) {
-        /* External module loading requested in config file */
-        /* The main logic will need to handle this after config load, or we store it in a linked list.
-           Since cfg is static, we can print a debug message that it will load. */
+        // External module loading requested in config file
+        // The main logic will need to handle this after config load, or we store it in a linked list.
+           //            Since cfg is static, we can print a debug message that it will load. 
     }
-    /* Unknown keys are silently ignored */
+    // Unknown keys are silently ignored
 }
 
-/*
- * try_open - Try to open a config file at a specific path.
- * Returns FILE* or NULL.
- */
+ // try_open - Try to open a config file at a specific path.
+ // Returns FILE* or NULL.
 static FILE *try_open(const char *dir, const char *filename,
                       char *out_path, int max_path)
 {
     FILE *f;
     if (dir == NULL || dir[0] == '\0') {
-        /* Try current directory */
+        // Try current directory
         strncpy(out_path, filename, (size_t)(max_path - 1));
         out_path[max_path - 1] = '\0';
     } else {
@@ -220,7 +212,7 @@ static FILE *try_open(const char *dir, const char *filename,
         int flen = (int)strlen(filename);
         if (dlen + flen + 2 > max_path) return NULL;
         strcpy(out_path, dir);
-        /* Append separator if needed */
+        // Append separator if needed
 #if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER) || \
     defined(__WATCOMC__) || defined(MSDOS)
         if (out_path[dlen - 1] != '\\' &&
@@ -240,9 +232,7 @@ static FILE *try_open(const char *dir, const char *filename,
     return f;
 }
 
-/*
- * config_file_create_default - Creates a default, heavily-commented config file.
- */
+ // config_file_create_default - Creates a default, heavily-commented config file.
 static void config_file_create_default(const char *filename)
 {
     FILE *f = fopen(filename, "w");
@@ -327,9 +317,7 @@ static void config_file_create_default(const char *filename)
     fclose(f);
 }
 
-/*
- * config_file_load - Load configuration from the INI file.
- */
+ // config_file_load - Load configuration from the INI file.
 int config_file_load(ConfigFile *cfg, const char *exe_path)
 {
     FILE *f = NULL;
@@ -338,7 +326,7 @@ int config_file_load(ConfigFile *cfg, const char *exe_path)
     const char *filename;
     const char *home;
 
-    /* Initialize to defaults (all unset) */
+    // Initialize to defaults (all unset)
     memset(cfg, 0, sizeof(ConfigFile));
     cfg->dialect[0] = '\0';
     cfg->security[0] = '\0';
@@ -349,10 +337,10 @@ int config_file_load(ConfigFile *cfg, const char *exe_path)
 
     filename = config_file_get_name(exe_path);
 
-    /* 1. Try current directory */
+    // 1. Try current directory
     f = try_open("", filename, cfg->filepath, 256);
 
-    /* 2. Try home directory */
+    // 2. Try home directory
     if (f == NULL) {
 #if defined(_WIN32) || defined(_WIN64) || defined(_MSC_VER)
         home = getenv("USERPROFILE");
@@ -366,18 +354,18 @@ int config_file_load(ConfigFile *cfg, const char *exe_path)
     }
 
     if (f == NULL) {
-        /* Auto-create in the current directory */
+        // Auto-create in the current directory
         config_file_create_default(filename);
         f = try_open("", filename, cfg->filepath, 256);
         if (f == NULL) {
             cfg->filepath[0] = '\0';
-            return -1; /* Still no config file found */
+            return -1; // Still no config file found
         }
     }
 
     cfg->found = 1;
 
-    /* Parse the file line by line */
+    // Parse the file line by line
     while (fgets(line, CFG_MAX_LINE, f) != NULL) {
         char *trimmed;
         char *eq;
@@ -386,18 +374,18 @@ int config_file_load(ConfigFile *cfg, const char *exe_path)
 
         trimmed = strip_whitespace(line);
 
-        /* Skip empty lines and comments */
+        // Skip empty lines and comments
         if (trimmed[0] == '\0' ||
             trimmed[0] == ';' ||
             trimmed[0] == '#') {
             continue;
         }
 
-        /* Find the '=' separator */
+        // Find the '=' separator
         eq = strchr(trimmed, '=');
-        if (eq == NULL) continue; /* malformed line */
+        if (eq == NULL) continue; // malformed line
 
-        /* Split into key and value */
+        // Split into key and value
         *eq = '\0';
         key = strip_whitespace(trimmed);
         value = strip_whitespace(eq + 1);
@@ -411,15 +399,13 @@ int config_file_load(ConfigFile *cfg, const char *exe_path)
     return 0;
 }
 
-/*
- * config_file_load_path - Load configuration from a specific file.
- */
+ // config_file_load_path - Load configuration from a specific file.
 int config_file_load_path(ConfigFile *cfg, const char *path)
 {
     FILE *f;
     char line[CFG_MAX_LINE];
 
-    /* Initialize to defaults (all unset) */
+    // Initialize to defaults (all unset)
     memset(cfg, 0, sizeof(ConfigFile));
     cfg->dialect[0] = '\0';
     cfg->security[0] = '\0';
@@ -441,7 +427,7 @@ int config_file_load_path(ConfigFile *cfg, const char *path)
     strncpy(cfg->filepath, path, 255);
     cfg->filepath[255] = '\0';
 
-    /* Parse the file line by line */
+    // Parse the file line by line
     while (fgets(line, CFG_MAX_LINE, f) != NULL) {
         char *trimmed;
         char *eq;
@@ -450,18 +436,18 @@ int config_file_load_path(ConfigFile *cfg, const char *path)
 
         trimmed = strip_whitespace(line);
 
-        /* Skip empty lines and comments */
+        // Skip empty lines and comments
         if (trimmed[0] == '\0' ||
             trimmed[0] == ';' ||
             trimmed[0] == '#') {
             continue;
         }
 
-        /* Find the '=' separator */
+        // Find the '=' separator
         eq = strchr(trimmed, '=');
         if (eq == NULL) continue;
 
-        /* Split into key and value */
+        // Split into key and value
         *eq = '\0';
         key = strip_whitespace(trimmed);
         value = strip_whitespace(eq + 1);

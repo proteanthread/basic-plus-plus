@@ -1,39 +1,43 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_config.c
- * ---
- *
- * Configuration, meta & customization commands.
- *
- * OPTION, ALIAS, SCOPE, KEYWORD, OVERRIDE,
- * SECURITY, MODULE.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_config.c
+ // ---
+ //
+ // Configuration, meta & customization commands.
+ //
+ // OPTION, ALIAS, SCOPE, KEYWORD, OVERRIDE,
+ // SECURITY, MODULE.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * pi_parse_option - Handle OPTION command.
- */
+ // pi_parse_option - Handle OPTION command.
 void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * OPTION BASE 0 | 1
- * Set default array lower bound.
- *
- * OPTION STRICT
- * Enable strict dialect mode: only
- * keywords belonging to the active
- * dialect are allowed.
- *
- * OPTION STRICT OFF
- * Disable strict mode (union mode).
- */
- /*
- * OPTION ANGLE DEGREES | RADIANS
- * Set trig function angle mode.
- */
+ // OPTION BASE 0 | 1
+ // Set default array lower bound.
+ //
+ // OPTION STRICT
+ // Enable strict dialect mode: only
+ // keywords belonging to the active
+ // dialect are allowed.
+ //
+ // OPTION STRICT OFF
+ // Disable strict mode (union mode).
+ // OPTION ANGLE DEGREES | RADIANS
+ // Set trig function angle mode.
  if (lex->current.type == TOK_NAMED_VAR &&
  lex->current.str_length == 5 &&
  lex->current.str_start != NULL) {
@@ -43,7 +47,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  (a[2]=='G'||a[2]=='g') &&
  (a[3]=='L'||a[3]=='l') &&
  (a[4]=='E'||a[4]=='e')) {
- lexer_next(lex); /* consume ANGLE */
+ lexer_next(lex); // consume ANGLE
  if (lex->current.type == TOK_NAMED_VAR &&
  lex->current.str_length >= 3 &&
  lex->current.str_start != NULL) {
@@ -70,15 +74,13 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
  }
- /*
-  * OPTION TAB REAL | SPACES
-  * Set TAB function behavior: REAL emits
-  * HT characters, SPACES (default) emits
-  * space characters to reach the column.
-  */
+  // OPTION TAB REAL | SPACES
+  // Set TAB function behavior: REAL emits
+  // HT characters, SPACES (default) emits
+  // space characters to reach the column.
  if (lex->current.type == TOK_KEYWORD &&
   lex->current.value.keyword == KW_TAB_FUNC) {
-  lexer_next(lex); /* consume TAB */
+  lexer_next(lex); // consume TAB
   if (lex->current.type == TOK_NAMED_VAR &&
    lex->current.str_length >= 4 &&
    lex->current.str_start != NULL) {
@@ -102,18 +104,16 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
     error_raise(ERR_WHAT, line_num);
    }
   } else {
-   /* No argument: show current */
+   // No argument: show current
    printf("TAB mode: %s\n",
     rt->tab_mode ? "REAL (HT)"
     : "SPACES");
   }
   return;
  }
- /*
-  * OPTION ZONE n
-  * Override PRINT zone width for comma
-  * separator. 0 = reset to dialect default.
-  */
+  // OPTION ZONE n
+  // Override PRINT zone width for comma
+  // separator. 0 = reset to dialect default.
  if (lex->current.type == TOK_NAMED_VAR &&
   lex->current.str_length == 4 &&
   lex->current.str_start != NULL) {
@@ -123,7 +123,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
    (z[2]=='N'||z[2]=='n') &&
    (z[3]=='E'||z[3]=='e')) {
    int zw;
-   lexer_next(lex); /* consume ZONE */
+   lexer_next(lex); // consume ZONE
    zw = (int)parse_expression(
     lex, rt, line_num);
    if (error_occurred()) return;
@@ -140,10 +140,8 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
    return;
   }
  }
- /*
-  * OPTION ALIASES n
-  * Show alias capacity.
-  */
+  // OPTION ALIASES n
+  // Show alias capacity.
  if (lex->current.type == TOK_NAMED_VAR &&
   lex->current.str_length == 7 &&
   lex->current.str_start != NULL) {
@@ -155,7 +153,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
    (al[4]=='S'||al[4]=='s') &&
    (al[5]=='E'||al[5]=='e') &&
    (al[6]=='S'||al[6]=='s')) {
-   lexer_next(lex); /* consume ALIASES */
+   lexer_next(lex); // consume ALIASES
    printf("Alias capacity: %d / %d\n",
     lexer_alias_count(),
     MAX_ALIASES);
@@ -165,7 +163,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  if (lex->current.type == TOK_NAMED_VAR &&
  lex->current.str_length == 6 &&
  lex->current.str_start != NULL) {
- /* Check for "STRICT" */
+ // Check for "STRICT"
  const char *s = lex->current.str_start;
  if ((s[0]=='S'||s[0]=='s') &&
  (s[1]=='T'||s[1]=='t') &&
@@ -173,8 +171,8 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  (s[3]=='I'||s[3]=='i') &&
  (s[4]=='C'||s[4]=='c') &&
  (s[5]=='T'||s[5]=='t')) {
- lexer_next(lex); /* consume STRICT */
- /* Check for OFF */
+ lexer_next(lex); // consume STRICT
+ // Check for OFF
  if (lex->current.type == TOK_NAMED_VAR &&
  lex->current.str_length == 3 &&
  lex->current.str_start != NULL &&
@@ -193,13 +191,11 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
  }
- /*
-  * OPTION MIXED "GWBS,QBAS,..."
-  * Enable mixed dialect mode with specified dialects.
-  * Only available in deferred (program) mode.
-  * OPTION MIXED OFF - revert to previous mode.
-  * OPTION MIXED (bare) - show status.
-  */
+  // OPTION MIXED "GWBS,QBAS,..."
+  // Enable mixed dialect mode with specified dialects.
+  // Only available in deferred (program) mode.
+  // OPTION MIXED OFF - revert to previous mode.
+  // OPTION MIXED (bare) - show status.
   if (lex->current.type == TOK_NAMED_VAR &&
   lex->current.str_length == 5 &&
   lex->current.str_start != NULL) {
@@ -209,8 +205,8 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
   (mx[2]=='X'||mx[2]=='x') &&
   (mx[3]=='E'||mx[3]=='e') &&
   (mx[4]=='D'||mx[4]=='d')) {
-  lexer_next(lex); /* consume MIXED */
-  /* OPTION MIXED OFF */
+  lexer_next(lex); // consume MIXED
+  // OPTION MIXED OFF
   if (lex->current.type == TOK_NAMED_VAR &&
   lex->current.str_length == 3 &&
   lex->current.str_start != NULL &&
@@ -221,7 +217,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
   lexer_next(lex);
   return;
   }
-  /* OPTION MIXED "GWBS,QBAS,..." */
+  // OPTION MIXED "GWBS,QBAS,..."
   if (lex->current.type == TOK_STRING &&
   lex->current.str_start != NULL &&
   lex->current.str_length > 0) {
@@ -253,7 +249,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
   " (mask 0x%04X)\n", mask);
   return;
   }
-  /* Bare OPTION MIXED: show status */
+  // Bare OPTION MIXED: show status
   if (dialect_is_mixed()) {
   printf("Mixed mode: ON"
   " (mask 0x%04X)\n",
@@ -264,11 +260,9 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
   return;
   }
   }
- /*
-  * Fallback for dialects without extended vars (e.g., PATB):
-  * "STRICT" tokenizes as single-letter variable 'S' + raw text "TRICT".
-  * Check raw source to handle OPTION STRICT / OPTION STRICT OFF.
-  */
+  // Fallback for dialects without extended vars (e.g., PATB):
+  // "STRICT" tokenizes as single-letter variable 'S' + raw text "TRICT".
+  // Check raw source to handle OPTION STRICT / OPTION STRICT OFF.
  if (lex->current.type == TOK_VARIABLE &&
   lex->current.value.var_name == 'S' &&
   !dialect_get_config()->has_extended_vars) {
@@ -283,13 +277,13 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
     lex->source[p+5]==' ' || lex->source[p+5]=='\t' ||
     lex->source[p+5]=='\0' || lex->source[p+5]=='\r' ||
     lex->source[p+5]=='\n')) {
-   /* Skip past "TRICT" and re-prime lexer */
+   // Skip past "TRICT" and re-prime lexer
    lex->pos = p + 5;
    lexer_next(lex);
-   /* Check for OFF keyword (KW_OFF is not defined, check ON) */
+   // Check for OFF keyword (KW_OFF is not defined, check ON)
    if (lex->current.type == TOK_KEYWORD &&
     lex->current.value.keyword == KW_ON) {
-    /* OPTION STRICT ON */
+    // OPTION STRICT ON
     dialect_set_strict(1);
     printf("Strict mode: ON"
      " (%s only)\n",
@@ -303,7 +297,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
     lex->pos+1 < lex->length &&
     (lex->source[lex->pos+1]=='F'||
      lex->source[lex->pos+1]=='f')) {
-    /* OPTION STRICT OFF (raw parse) */
+    // OPTION STRICT OFF (raw parse)
     lex->pos += 2;
     lexer_next(lex);
     dialect_set_strict(0);
@@ -314,13 +308,13 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
     lex->current.str_start != NULL &&
     (lex->current.str_start[0]=='O'||
      lex->current.str_start[0]=='o')) {
-    /* OFF as named var (extended vars dialect) */
+    // OFF as named var (extended vars dialect)
     dialect_set_strict(0);
     printf("Strict mode: OFF"
      " (union)\n");
     lexer_next(lex);
    } else {
-    /* Bare OPTION STRICT - enable */
+    // Bare OPTION STRICT - enable
     dialect_set_strict(1);
     printf("Strict mode: ON"
      " (%s only)\n",
@@ -329,13 +323,11 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
    return;
   }
  }
- /*
-  * OPTION KEYWORD UPPER | LOWER | TITLE | MIXED
-  * Set keyword display/storage case mode.
-  */
+  // OPTION KEYWORD UPPER | LOWER | TITLE | MIXED
+  // Set keyword display/storage case mode.
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_KEYWORD) {
- lexer_next(lex); /* consume KEYWORD */
+ lexer_next(lex); // consume KEYWORD
  if (lex->current.type == TOK_NAMED_VAR &&
  lex->current.str_length >= 3 &&
  lex->current.str_start != NULL) {
@@ -372,7 +364,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  }
  } else {
- /* No argument: show current mode */
+ // No argument: show current mode
  const char *names[] = {
  "MIXED", "UPPER", "LOWER", "TITLE"
  };
@@ -381,12 +373,10 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  }
  return;
  }
- /*
-  * OPTION RPN [ON | OFF]
-  * Enable or disable Forth-style RPN calculator mode.
-  * When active, the REPL evaluates input as RPN
-  * expressions instead of BASIC statements.
-  */
+  // OPTION RPN [ON | OFF]
+  // Enable or disable Forth-style RPN calculator mode.
+  // When active, the REPL evaluates input as RPN
+  // expressions instead of BASIC statements.
  if (lex->current.type == TOK_NAMED_VAR &&
   lex->current.str_length == 3 &&
   lex->current.str_start != NULL) {
@@ -394,8 +384,8 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
   if ((r[0]=='R'||r[0]=='r') &&
    (r[1]=='P'||r[1]=='p') &&
    (r[2]=='N'||r[2]=='n')) {
-   lexer_next(lex); /* consume RPN */
-   /* Check for OFF */
+   lexer_next(lex); // consume RPN
+   // Check for OFF
    if (lex->current.type == TOK_NAMED_VAR &&
     lex->current.str_length == 3 &&
     lex->current.str_start != NULL &&
@@ -413,12 +403,10 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
    return;
   }
  }
- /*
- * OPTION ARITHMETIC NATIVE | DECIMAL
- * ECMA-116 arithmetic mode. NATIVE uses
- * hardware floating point (our default).
- * DECIMAL would require base-10 math.
- */
+ // OPTION ARITHMETIC NATIVE | DECIMAL
+ // ECMA-116 arithmetic mode. NATIVE uses
+ // hardware floating point (our default).
+ // DECIMAL would require base-10 math.
  if (lex->current.type == TOK_NAMED_VAR &&
  lex->current.str_length == 10 &&
  lex->current.str_start != NULL) {
@@ -433,7 +421,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  (a[7]=='T'||a[7]=='t') &&
  (a[8]=='I'||a[8]=='i') &&
  (a[9]=='C'||a[9]=='c')) {
- lexer_next(lex); /* ARITHMETIC */
+ lexer_next(lex); // ARITHMETIC
  if (lex->current.type == TOK_NAMED_VAR
  && lex->current.str_length >= 3
  && lex->current.str_start
@@ -443,13 +431,13 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  if ((m[0]=='N'||m[0]=='n') &&
  (m[1]=='A'||m[1]=='a') &&
  (m[2]=='T'||m[2]=='t')) {
- /* NATIVE - no-op (default) */
+ // NATIVE - no-op (default)
  lexer_next(lex);
  } else if (
  (m[0]=='D'||m[0]=='d') &&
  (m[1]=='E'||m[1]=='e') &&
  (m[2]=='C'||m[2]=='c')) {
- /* DECIMAL - not supported */
+ // DECIMAL - not supported
  printf("SORRY. Decimal"
  " arithmetic is not"
  " implemented.\n");
@@ -465,19 +453,17 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
  }
- /*
- * Consume BASE (may be keyword, named var,
- * or multiple single-letter variables when
- * extended vars are off). Skip everything
- * until we reach the numeric argument.
- */
+ // Consume BASE (may be keyword, named var,
+ // or multiple single-letter variables when
+ // extended vars are off). Skip everything
+ // until we reach the numeric argument.
  while (lex->current.type != TOK_NUMBER &&
  lex->current.type != TOK_EOF &&
  lex->current.type != TOK_CR &&
  lex->current.type != TOK_COLON) {
  lexer_next(lex);
  }
- /* Consume the 0 or 1 and set option_base */
+ // Consume the 0 or 1 and set option_base
  if (lex->current.type == TOK_NUMBER) {
  int base_val = (int)lex->current.value.num_value;
  if (base_val == 0 || base_val == 1) {
@@ -491,30 +477,26 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_alias - Handle ALIAS command.
- */
+ // pi_parse_alias - Handle ALIAS command.
 void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * ALIAS keyword = "newname"
-  * ALIAS LIST / CLEAR / COUNT
-  * ALIAS REMOVE "name"
-  * ALIAS SAVE "file" / LOAD "file"
-  * ALIAS LANG "code" / LANG LIST / LANG CLEAR
-  * ALIAS OPER LIST
-  * ALIAS "op" = "name" (operator alias, quoted)
-  * ALIAS op = "name" (operator alias, symbolic)
-  */
+  // ALIAS keyword = "newname"
+  // ALIAS LIST / CLEAR / COUNT
+  // ALIAS REMOVE "name"
+  // ALIAS SAVE "file" / LOAD "file"
+  // ALIAS LANG "code" / LANG LIST / LANG CLEAR
+  // ALIAS OPER LIST
+  // ALIAS "op" = "name" (operator alias, quoted)
+  // ALIAS op = "name" (operator alias, symbolic)
  {
  KeywordId target_kw;
  AliasScope scope;
 
- /* Choose scope based on running state */
+ // Choose scope based on running state
  scope = rt->running ? ASCOPE_PROGRAM
  : ASCOPE_GLOBAL;
 
- /* ALIAS LIST */
+ // ALIAS LIST
  if (lexer_match_keyword(lex,
  KW_LIST)) {
  lexer_next(lex);
@@ -522,7 +504,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* ALIAS CLEAR / REMOVE / COUNT / LANG / OPER */
+ // ALIAS CLEAR / REMOVE / COUNT / LANG / OPER
  if (lex->current.type ==
  TOK_NAMED_VAR) {
  const char *nv =
@@ -530,7 +512,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  int nlen =
  lex->current.str_length;
 
- /* CLEAR */
+ // CLEAR
  if (nlen == 5 &&
  (nv[0]=='C'||nv[0]=='c') &&
  (nv[1]=='L'||nv[1]=='l') &&
@@ -543,7 +525,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  printf("All aliases cleared.\n");
  return;
  }
- /* REMOVE */
+ // REMOVE
  if (nlen == 6 &&
  (nv[0]=='R'||nv[0]=='r') &&
  (nv[1]=='E'||nv[1]=='e') &&
@@ -566,7 +548,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  return;
  }
- /* COUNT */
+ // COUNT
  if (nlen == 5 &&
  (nv[0]=='C'||nv[0]=='c') &&
  (nv[1]=='O'||nv[1]=='o') &&
@@ -586,21 +568,21 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  }
  return;
  }
- /* LANG */
+ // LANG
  if (nlen == 4 &&
  (nv[0]=='L'||nv[0]=='l') &&
  (nv[1]=='A'||nv[1]=='a') &&
  (nv[2]=='N'||nv[2]=='n') &&
  (nv[3]=='G'||nv[3]=='g')) {
  lexer_next(lex);
- /* ALIAS LANG LIST */
+ // ALIAS LANG LIST
  if (lexer_match_keyword(lex,
  KW_LIST)) {
  lexer_next(lex);
  alias_lang_list();
  return;
  }
- /* ALIAS LANG CLEAR (named var) */
+ // ALIAS LANG CLEAR (named var)
  if (lex->current.type ==
  TOK_NAMED_VAR &&
  lex->current.str_length == 5) {
@@ -622,7 +604,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  alias_lang_clear();
  return;
  }
- /* ALIAS LANG "code" */
+ // ALIAS LANG "code"
  if (lex->current.type == TOK_STRING) {
  char code[8];
  int clen =
@@ -644,7 +626,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  alias_lang_list();
  return;
  }
- /* OPER */
+ // OPER
  if (nlen == 4 &&
  (nv[0]=='O'||nv[0]=='o') &&
  (nv[1]=='P'||nv[1]=='p') &&
@@ -670,7 +652,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* ALIAS CLEAR (keyword) */
+ // ALIAS CLEAR (keyword)
  if (lexer_match_keyword(lex,
  KW_CLEAR)) {
  lexer_next(lex);
@@ -680,7 +662,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* ALIAS SAVE "file" */
+ // ALIAS SAVE "file"
  if (lexer_match_keyword(lex,
  KW_SAVE)) {
  char fname[256];
@@ -711,7 +693,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* ALIAS LOAD "file" */
+ // ALIAS LOAD "file"
  if (lexer_match_keyword(lex,
  KW_LOAD)) {
  char fname[256];
@@ -744,9 +726,8 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* ALIAS op = "name" (symbolic operator alias)
-  * Accepts bare operator tokens: ALIAS >= = "â‰¥"
-  */
+ // ALIAS op = "name" (symbolic operator alias)
+  // Accepts bare operator tokens: ALIAS >= = "a"
  if (lex->current.type == TOK_GT_EQ ||
   lex->current.type == TOK_LT_EQ ||
   lex->current.type == TOK_NOT_EQ ||
@@ -779,7 +760,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  }
 
- /* ALIAS "op" = "name" (quoted operator alias) */
+ // ALIAS "op" = "name" (quoted operator alias)
  if (lex->current.type == TOK_STRING) {
  const char *opstr =
  lex->current.str_start;
@@ -787,7 +768,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  lex->current.str_length;
  int tok_type = -1;
 
- /* Identify operator */
+ // Identify operator
  if (oplen == 2) {
  if (opstr[0]=='>' && opstr[1]=='=')
  tok_type = TOK_GT_EQ;
@@ -832,12 +813,12 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  return;
  }
- /* Not a recognized operator string */
+ // Not a recognized operator string
  error_raise(ERR_WHAT, line_num);
  return;
  }
 
- /* Expect a keyword to alias */
+ // Expect a keyword to alias
  if (lex->current.type !=
  TOK_KEYWORD) {
  printf(
@@ -858,7 +839,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  lex->current.value.keyword;
  lexer_next(lex);
 
- /* Expect = */
+ // Expect =
  if (lex->current.type !=
  TOK_EQUALS) {
  error_raise(ERR_WHAT, line_num);
@@ -866,7 +847,7 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  }
  lexer_next(lex);
 
- /* Expect string with new name */
+ // Expect string with new name
  if (lex->current.type != TOK_STRING
  || lex->current.str_start == NULL
  || lex->current.str_length < 1) {
@@ -923,38 +904,34 @@ void pi_parse_alias(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_scope - Handle SCOPE command.
- */
+ // pi_parse_scope - Handle SCOPE command.
 void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * SCOPE DISABLE keyword
-  * SCOPE ENABLE keyword
-  * SCOPE BEFORE keyword GOSUB line
-  * SCOPE AFTER keyword GOSUB line
-  * SCOPE OVERRIDE keyword GOSUB line
-  * SCOPE RESTORE keyword
-  * SCOPE LIST / RESET
-  * SCOPE \"preset\"
-  *
-  * Security: blocked at LEVEL 2+ except
-  * for LIST (read-only introspection).
-  */
+  // SCOPE DISABLE keyword
+  // SCOPE ENABLE keyword
+  // SCOPE BEFORE keyword GOSUB line
+  // SCOPE AFTER keyword GOSUB line
+  // SCOPE OVERRIDE keyword GOSUB line
+  // SCOPE RESTORE keyword
+  // SCOPE LIST / RESET
+  // SCOPE \"preset\"
+  //
+  // Security: blocked at LEVEL 2+ except
+  // for LIST (read-only introspection).
  {
- /* SCOPE LIST */
+ // SCOPE LIST
  if (lexer_match_keyword(lex, KW_LIST)) {
  lexer_next(lex);
  scope_list();
  return;
  }
- /* Security check for all SCOPE
-  * sub-commands */
+ // Security check for all SCOPE
+  // sub-commands 
  if (security_check(
   SECOP_SYSTEM, line_num))
   return;
 
- /* SCOPE RESET (keyword form) */
+ // SCOPE RESET (keyword form)
  if (lexer_match_keyword(lex,
   KW_RESET)) {
   lexer_next(lex);
@@ -962,7 +939,7 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  }
 
- /* SCOPE RESTORE keyword (keyword form) */
+ // SCOPE RESTORE keyword (keyword form)
  if (lexer_match_keyword(lex,
  KW_RESTORE)) {
  lexer_next(lex);
@@ -979,7 +956,7 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* SCOPE \"preset\" */
+ // SCOPE \"preset\"
  if (lex->current.type == TOK_STRING) {
  char pname[32];
  int plen = lex->current.str_length;
@@ -997,14 +974,14 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Sub-commands via named vars (GWBS) */
+ // Sub-commands via named vars (GWBS)
  if (lex->current.type ==
  TOK_NAMED_VAR) {
  const char *nv =
  lex->current.str_start;
  int nlen = lex->current.str_length;
 
- /* RESET */
+ // RESET
  if (nlen == 5 &&
  (nv[0]=='R'||nv[0]=='r') &&
  (nv[1]=='E'||nv[1]=='e') &&
@@ -1016,7 +993,7 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* DISABLE */
+ // DISABLE
  if (nlen == 7 &&
  (nv[0]=='D'||nv[0]=='d') &&
  (nv[1]=='I'||nv[1]=='i') &&
@@ -1039,7 +1016,7 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* ENABLE */
+ // ENABLE
  if (nlen == 6 &&
  (nv[0]=='E'||nv[0]=='e') &&
  (nv[1]=='N'||nv[1]=='n') &&
@@ -1061,7 +1038,7 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* BEFORE */
+ // BEFORE
  if (nlen == 6 &&
  (nv[0]=='B'||nv[0]=='b') &&
  (nv[1]=='E'||nv[1]=='e') &&
@@ -1095,7 +1072,7 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* AFTER */
+ // AFTER
  if (nlen == 5 &&
  (nv[0]=='A'||nv[0]=='a') &&
  (nv[1]=='F'||nv[1]=='f') &&
@@ -1128,7 +1105,7 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* OVERRIDE */
+ // OVERRIDE
  if (nlen == 8 &&
  (nv[0]=='O'||nv[0]=='o') &&
  (nv[1]=='V'||nv[1]=='v') &&
@@ -1164,7 +1141,7 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* RESTORE */
+ // RESTORE
  if (nlen == 7 &&
  (nv[0]=='R'||nv[0]=='r') &&
  (nv[1]=='E'||nv[1]=='e') &&
@@ -1188,7 +1165,7 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Fallback usage */
+ // Fallback usage
  printf(
  "Usage:\n"
  " SCOPE DISABLE keyword\n"
@@ -1204,33 +1181,29 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_keyword - Handle KEYWORD command.
- */
+ // pi_parse_keyword - Handle KEYWORD command.
 void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * KEYWORD kw PROP value - set property
-  * KEYWORD kw PROP OFF   - remove property
-  * KEYWORD kw             - show properties
-  * KEYWORD kw DESCRIBE    - show available props
-  * KEYWORD kw RESET       - clear all props
-  * KEYWORD LIST            - show all
-  * KEYWORD RESET           - clear everything
-  *
-  * Security: blocked at LEVEL 2+
-  */
+  // KEYWORD kw PROP value - set property
+  // KEYWORD kw PROP OFF   - remove property
+  // KEYWORD kw             - show properties
+  // KEYWORD kw DESCRIBE    - show available props
+  // KEYWORD kw RESET       - clear all props
+  // KEYWORD LIST            - show all
+  // KEYWORD RESET           - clear everything
+  //
+  // Security: blocked at LEVEL 2+
  {
  if (security_check(SECOP_SYSTEM,
   line_num)) return;
- /* KEYWORD LIST */
+ // KEYWORD LIST
  if (lexer_match_keyword(lex, KW_LIST)) {
  lexer_next(lex);
  keyword_prop_list_all();
  return;
  }
 
- /* KEYWORD RESET (keyword form) */
+ // KEYWORD RESET (keyword form)
  if (lexer_match_keyword(lex,
  KW_RESET)) {
  lexer_next(lex);
@@ -1238,9 +1211,9 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Expect a keyword next */
+ // Expect a keyword next
  if (lex->current.type != TOK_KEYWORD) {
- /* Usage */
+ // Usage
  printf(
  "Usage:\n"
  " KEYWORD kw PROP value\n"
@@ -1257,7 +1230,7 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_keyword_name(tkw);
  lexer_next(lex);
 
- /* KEYWORD kw (no args) */
+ // KEYWORD kw (no args)
  if (lex->current.type == TOK_EOF ||
  lex->current.type == TOK_CR ||
  lex->current.type ==
@@ -1268,7 +1241,7 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* KEYWORD kw RESET (keyword form) */
+ // KEYWORD kw RESET (keyword form)
  if (lexer_match_keyword(lex,
  KW_RESET)) {
  lexer_next(lex);
@@ -1278,7 +1251,7 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Named var sub-commands */
+ // Named var sub-commands
  if (lex->current.type ==
  TOK_NAMED_VAR) {
  const char *nv =
@@ -1286,7 +1259,7 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  int nlen =
  lex->current.str_length;
 
- /* DESCRIBE */
+ // DESCRIBE
  if (nlen == 8 &&
  (nv[0]=='D'||nv[0]=='d') &&
  (nv[1]=='E'||nv[1]=='e') &&
@@ -1301,7 +1274,7 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* RESET (as named var) */
+ // RESET (as named var)
  if (nlen == 5 &&
  (nv[0]=='R'||nv[0]=='r') &&
  (nv[1]=='E'||nv[1]=='e') &&
@@ -1315,10 +1288,8 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /*
-  * Property name is the named var.
-  * Value follows.
-  */
+  // Property name is the named var.
+  // Value follows.
  {
  char pname[MAX_PROP_NAME];
  char pval[MAX_PROP_VALUE];
@@ -1336,8 +1307,8 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  }
  lexer_next(lex);
 
- /* Value: string, number,
-  * keyword (ON/OFF), named var */
+ // Value: string, number,
+  // keyword (ON/OFF), named var 
  if (lex->current.type ==
  TOK_STRING) {
  int slen =
@@ -1356,7 +1327,7 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  } else if (lex->current.type ==
  TOK_KEYWORD) {
- /* ON / OFF keywords */
+ // ON / OFF keywords
  const char *kn =
  lexer_keyword_name(
  lex->current.value.keyword);
@@ -1375,7 +1346,7 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  } else if (lex->current.type ==
  TOK_NAMED_VAR) {
- /* ON, OFF, YES, NO etc */
+ // ON, OFF, YES, NO etc
  int vl =
  lex->current.str_length;
  if (vl > MAX_PROP_VALUE - 1)
@@ -1397,7 +1368,7 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Check for OFF = remove */
+ // Check for OFF = remove
  if (pi_prop_eq_ci(pval, "OFF")) {
  keyword_prop_remove(tkw,
  pname);
@@ -1419,33 +1390,29 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_override - Handle OVERRIDE command.
- */
+ // pi_parse_override - Handle OVERRIDE command.
 void pi_parse_override(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * OVERRIDE keyword "text"  - change interpretation
-  * OVERRIDE keyword CLEAR   - restore default
-  * OVERRIDE LIST             - show active
-  * OVERRIDE RESET            - clear all
-  *
-  * Changes how the parser interprets a keyword
-  * without modifying the user's source code.
-  * Security: blocked at LEVEL 2+
-  */
+  // OVERRIDE keyword "text"  - change interpretation
+  // OVERRIDE keyword CLEAR   - restore default
+  // OVERRIDE LIST             - show active
+  // OVERRIDE RESET            - clear all
+  //
+  // Changes how the parser interprets a keyword
+  // without modifying the user's source code.
+  // Security: blocked at LEVEL 2+
  {
   if (security_check(SECOP_SYSTEM,
    line_num)) return;
 
-  /* OVERRIDE LIST */
+  // OVERRIDE LIST
   if (lexer_match_keyword(lex, KW_LIST)) {
    lexer_next(lex);
    override_list();
    return;
   }
 
-  /* OVERRIDE RESET (keyword form) */
+  // OVERRIDE RESET (keyword form)
   if (lexer_match_keyword(lex,
    KW_RESET)) {
    lexer_next(lex);
@@ -1453,7 +1420,7 @@ void pi_parse_override(Lexer *lex, RuntimeState *rt, int line_num)
    return;
   }
 
-  /* OVERRIDE RESET via named var */
+  // OVERRIDE RESET via named var
   if (lex->current.type ==
    TOK_NAMED_VAR) {
    const char *nv =
@@ -1472,7 +1439,7 @@ void pi_parse_override(Lexer *lex, RuntimeState *rt, int line_num)
    }
   }
 
-  /* Expect a keyword to override */
+  // Expect a keyword to override
   if (lex->current.type !=
    TOK_KEYWORD) {
    printf(
@@ -1491,8 +1458,8 @@ void pi_parse_override(Lexer *lex, RuntimeState *rt, int line_num)
     lexer_keyword_name(tkw);
    lexer_next(lex);
 
-   /* OVERRIDE keyword CLEAR
-    * (via CLEAR keyword) */
+   // OVERRIDE keyword CLEAR
+    // (via CLEAR keyword) 
    if (lexer_match_keyword(lex,
     KW_CLEAR)) {
     lexer_next(lex);
@@ -1502,8 +1469,8 @@ void pi_parse_override(Lexer *lex, RuntimeState *rt, int line_num)
     return;
    }
 
-   /* OVERRIDE keyword CLEAR
-    * (via named var) */
+   // OVERRIDE keyword CLEAR
+    // (via named var) 
    if (lex->current.type ==
     TOK_NAMED_VAR) {
     const char *cv =
@@ -1525,7 +1492,7 @@ void pi_parse_override(Lexer *lex, RuntimeState *rt, int line_num)
     }
    }
 
-   /* OVERRIDE keyword "text" */
+   // OVERRIDE keyword "text"
    if (lex->current.type ==
     TOK_STRING &&
     lex->current.str_start != NULL &&
@@ -1556,24 +1523,20 @@ void pi_parse_override(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_security - Handle SECURITY command.
- */
+ // pi_parse_security - Handle SECURITY command.
 void pi_parse_security(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * SECURITY "level"   - Set by name
-  * SECURITY n         - Set by number (0/1/2)
-  * SECURITY LEVEL n   - Set by number
-  * SECURITY           - Show current level
-  *
-  * One-way ratchet: level can only be raised,
-  * never lowered. Once RESTRICTED, it stays.
-  */
+  // SECURITY "level"   - Set by name
+  // SECURITY n         - Set by number (0/1/2)
+  // SECURITY LEVEL n   - Set by number
+  // SECURITY           - Show current level
+  //
+  // One-way ratchet: level can only be raised,
+  // never lowered. Once RESTRICTED, it stays.
  {
   SecLevel cur = security_get_level();
 
-  /* SECURITY "name" */
+  // SECURITY "name"
   if (lex->current.type == TOK_STRING) {
   char lname[32];
   int si, slen;
@@ -1609,7 +1572,7 @@ void pi_parse_security(Lexer *lex, RuntimeState *rt, int line_num)
   return;
   }
 
-  /* SECURITY n (numeric) */
+  // SECURITY n (numeric)
   if (lex->current.type == TOK_NUMBER) {
   int nlev = (int)lex->current.value.num_value;
   lexer_next(lex);
@@ -1634,7 +1597,7 @@ void pi_parse_security(Lexer *lex, RuntimeState *rt, int line_num)
   return;
   }
 
-  /* SECURITY LEVEL n (named var form) */
+  // SECURITY LEVEL n (named var form)
   if (lex->current.type ==
    TOK_NAMED_VAR) {
   const char *nv =
@@ -1681,7 +1644,7 @@ void pi_parse_security(Lexer *lex, RuntimeState *rt, int line_num)
   }
   }
 
-  /* SECURITY (no args) - show level */
+  // SECURITY (no args) - show level
   printf("Security: %s",
   security_level_name(cur));
   switch (cur) {
@@ -1700,63 +1663,57 @@ void pi_parse_security(Lexer *lex, RuntimeState *rt, int line_num)
  }
  return;
 
- /* ===== Cross-platform ===== */
+ // ===== Cross-platform =====
 }
 
-/*
- * pi_parse_module - Handle MODULE command.
- *
- * Sub-commands:
- *   MODULE                     - List all registered modules
- *   MODULE "name"              - Activate a registered module
- *   MODULE LOAD "path.dll"     - Load an external dynamic module
- *   MODULE UNLOAD "name"       - Deactivate and unload a module
- *   MODULE INFO "name"         - Show detailed info for a module
- *
- * SECURITY:
- *   Loading and activating modules requires SECOP_MODULE permission.
- *   Under RESTRICTED mode, no modules with I/O, file, system, graphics,
- *   sound, network, or USB capabilities can be activated.
- *   Under STANDARD mode, modules with SYSTEM capabilities are blocked.
- *   Under OPEN mode, all modules are permitted.
- *
- *   Dynamic LOAD additionally requires SECOP_SYSTEM because it
- *   executes arbitrary native code from a shared library.
- *
- * HOW TO LOAD EXTERNAL MODULES:
- *   MODULE LOAD "my_extension.dll"    (Windows)
- *   MODULE LOAD "./my_extension.so"   (Linux)
- *
- * HOW TO UNLOAD:
- *   MODULE UNLOAD "MY_EXTENSION"
- *   This calls the module's cleanup callback and marks it inactive.
- *   On dynamic modules, the shared library handle is freed.
- *
- * HOW MODULES AFFECT SECURITY:
- *   Each module declares a capability bitmask (CAP_IO, CAP_FILE, etc.).
- *   The interpreter dynamically checks these against the current security
- *   level. If the module requests capabilities that exceed the security
- *   level, activation is denied and the module is either:
- *   - Blocked entirely (RESTRICTED mode), or
- *   - Downgraded: only safe capabilities are honored (STANDARD mode).
- *   This is dynamic, not absolute â€” changing the security level at
- *   runtime affects which modules can be activated.
- */
+ // pi_parse_module - Handle MODULE command.
+ //
+ // Sub-commands:
+ //   MODULE                     - List all registered modules
+ //   MODULE "name"              - Activate a registered module
+ //   MODULE LOAD "path.dll"     - Load an external dynamic module
+ //   MODULE UNLOAD "name"       - Deactivate and unload a module
+ //   MODULE INFO "name"         - Show detailed info for a module
+ //
+ // SECURITY:
+ //   Loading and activating modules requires SECOP_MODULE permission.
+ //   Under RESTRICTED mode, no modules with I/O, file, system, graphics,
+ //   sound, network, or USB capabilities can be activated.
+ //   Under STANDARD mode, modules with SYSTEM capabilities are blocked.
+ //   Under OPEN mode, all modules are permitted.
+ //
+ //   Dynamic LOAD additionally requires SECOP_SYSTEM because it
+ //   executes arbitrary native code from a shared library.
+ //
+ // HOW TO LOAD EXTERNAL MODULES:
+ //   MODULE LOAD "my_extension.dll"    (Windows)
+ //   MODULE LOAD "./my_extension.so"   (Linux)
+ //
+ // HOW TO UNLOAD:
+ //   MODULE UNLOAD "MY_EXTENSION"
+ //   This calls the module's cleanup callback and marks it inactive.
+ //   On dynamic modules, the shared library handle is freed.
+ //
+ // HOW MODULES AFFECT SECURITY:
+ //   Each module declares a capability bitmask (CAP_IO, CAP_FILE, etc.).
+ //   The interpreter dynamically checks these against the current security
+ //   level. If the module requests capabilities that exceed the security
+ //   level, activation is denied and the module is either:
+ //   - Blocked entirely (RESTRICTED mode), or
+ //   - Downgraded: only safe capabilities are honored (STANDARD mode).
+ //   This is dynamic, not absolute a" changing the security level at
+ //   runtime affects which modules can be activated.
 void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * Check for sub-commands via keywords first.
-  * LOAD is a keyword (KW_LOAD), so we check for it.
-  */
+  // Check for sub-commands via keywords first.
+  // LOAD is a keyword (KW_LOAD), so we check for it.
  if (lexer_match_keyword(lex, KW_LOAD)) {
-  /*
-   * MODULE LOAD "path" - Load an external .dll/.so module.
-   *
-   * Requires both SECOP_MODULE and SECOP_SYSTEM because
-   * loading native code is a system-level operation.
-   */
+   // MODULE LOAD "path" - Load an external .dll/.so module.
+   //
+   // Requires both SECOP_MODULE and SECOP_SYSTEM because
+   // loading native code is a system-level operation.
   char mpath[MAX_LINE_LENGTH + 1];
-  lexer_next(lex); /* consume LOAD */
+  lexer_next(lex); // consume LOAD
 
   if (security_check(SECOP_MODULE, line_num)) return;
   if (security_check(SECOP_SYSTEM, line_num)) return;
@@ -1780,12 +1737,12 @@ void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  }
 
- /* MODULE INFO "name" - via keyword (INFO is a registered keyword) */
+ // MODULE INFO "name" - via keyword (INFO is a registered keyword)
  if (lexer_match_keyword(lex, KW_INFO)) {
   char mname[MAX_LINE_LENGTH + 1];
   const ModuleInfo *m;
   char caps[16];
-  lexer_next(lex); /* consume INFO */
+  lexer_next(lex); // consume INFO
 
   if (lex->current.type != TOK_STRING) {
    error_raise(ERR_WHAT, line_num);
@@ -1825,12 +1782,12 @@ void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  }
 
- /* Check for sub-commands via named variables (UNLOAD) */
+ // Check for sub-commands via named variables (UNLOAD)
  if (lex->current.type == TOK_NAMED_VAR) {
   const char *nv = lex->current.str_start;
   int nlen = lex->current.str_length;
 
-  /* MODULE UNLOAD "name" */
+  // MODULE UNLOAD "name"
   if (nlen == 6 &&
    (nv[0]=='U'||nv[0]=='u') &&
    (nv[1]=='N'||nv[1]=='n') &&
@@ -1839,7 +1796,7 @@ void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
    (nv[4]=='A'||nv[4]=='a') &&
    (nv[5]=='D'||nv[5]=='d')) {
    char mname[MAX_LINE_LENGTH + 1];
-   lexer_next(lex); /* consume UNLOAD */
+   lexer_next(lex); // consume UNLOAD
 
    if (lex->current.type != TOK_STRING) {
     error_raise(ERR_WHAT, line_num);
@@ -1863,7 +1820,7 @@ void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
    return;
   }
 
-  /* MODULE INFO "name" */
+  // MODULE INFO "name"
   if (nlen == 4 &&
    (nv[0]=='I'||nv[0]=='i') &&
    (nv[1]=='N'||nv[1]=='n') &&
@@ -1872,7 +1829,7 @@ void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
    char mname[MAX_LINE_LENGTH + 1];
    const ModuleInfo *m;
    char caps[16];
-   lexer_next(lex); /* consume INFO */
+   lexer_next(lex); // consume INFO
 
    if (lex->current.type != TOK_STRING) {
     error_raise(ERR_WHAT, line_num);
@@ -1913,7 +1870,7 @@ void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
   }
  }
 
- /* MODULE "name" - Activate a registered module */
+ // MODULE "name" - Activate a registered module
  if (lex->current.type == TOK_STRING) {
   char mname[MAX_LINE_LENGTH + 1];
   if (security_check(SECOP_MODULE, line_num))
@@ -1931,15 +1888,13 @@ void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  }
 
- /* MODULE LIST (via keyword) */
+ // MODULE LIST (via keyword)
  if (lexer_match_keyword(lex, KW_LIST)) {
   lexer_next(lex);
-  /* fall through to listing below */
+  // fall through to listing below
  }
 
- /*
-  * MODULE (no args) or MODULE LIST - List all modules.
-  */
+  // MODULE (no args) or MODULE LIST - List all modules.
  {
   int mi, mc;
   mc = module_count();
@@ -1974,6 +1929,6 @@ void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
  }
  return;
 
- /* ===== Security ===== */
+ // ===== Security =====
 }
 

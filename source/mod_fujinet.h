@@ -1,52 +1,50 @@
-/*
- * ---
- * BASIC++ Interpreter - mod_fujinet.h
- * ---
- *
- * FujiNet Virtual Device Module.
- *
- * Registers three virtual devices that expose the FujiNet
- * hardware interface through the VDev2 system:
- *
- *   N:      Network adapter (TCP, UDP, HTTP, TNFS, etc.)
- *   FUJI:   Configuration device (WiFi, host slots, AppKey)
- *   CLOCK:  Network time protocol clock
- *
- * On desktop platforms (Windows, Linux, macOS), the N: device
- * operates through native TCP/UDP sockets and an HTTP client.
- * The FUJI: and CLOCK: devices provide platform-appropriate
- * equivalents (system time, local config storage, etc.).
- *
- * On real FujiNet hardware (Atari 8-bit, Apple II, C64, CoCo),
- * these devices map directly to the FujiNet SIO/SmartPort/IEC
- * interface via fujinet-lib function calls.
- *
- * DEVICESPEC FORMAT:
- *   N:PROTO://host:port/path
- *
- * Supported protocols:
- *   TCP    - Raw TCP stream
- *   UDP    - Datagram socket
- *   HTTP   - HTTP/1.1 GET/POST
- *   HTTPS  - HTTP over TLS (desktop only)
- *   TNFS   - Trivial Network File System
- *   FTP    - File Transfer Protocol (command channel)
- *   TELNET - Telnet with IAC negotiation
- *
- * BASIC USAGE:
- *   MODULE "FUJINET"
- *   OPEN #1, "N:TCP://irata.online:8005/", "RW"
- *   FPRINT #1, "HELLO"
- *   FINPUT #1, A$
- *   CLOSE #1
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - mod_fujinet.h
+ // ---
+ //
+ // FujiNet Virtual Device Module.
+ //
+ // Registers three virtual devices that expose the FujiNet
+ // hardware interface through the VDev2 system:
+ //
+ //   N:      Network adapter (TCP, UDP, HTTP, TNFS, etc.)
+ //   FUJI:   Configuration device (WiFi, host slots, AppKey)
+ //   CLOCK:  Network time protocol clock
+ //
+ // On desktop platforms (Windows, Linux, macOS), the N: device
+ // operates through native TCP/UDP sockets and an HTTP client.
+ // The FUJI: and CLOCK: devices provide platform-appropriate
+ // equivalents (system time, local config storage, etc.).
+ //
+ // On real FujiNet hardware (Atari 8-bit, Apple II, C64, CoCo),
+ // these devices map directly to the FujiNet SIO/SmartPort/IEC
+ // interface via fujinet-lib function calls.
+ //
+ // DEVICESPEC FORMAT:
+ //   N:PROTO://host:port/path
+ //
+ // Supported protocols:
+ //   TCP    - Raw TCP stream
+ //   UDP    - Datagram socket
+ //   HTTP   - HTTP/1.1 GET/POST
+ //   HTTPS  - HTTP over TLS (desktop only)
+ //   TNFS   - Trivial Network File System
+ //   FTP    - File Transfer Protocol (command channel)
+ //   TELNET - Telnet with IAC negotiation
+ //
+ // BASIC USAGE:
+ //   MODULE "FUJINET"
+ //   OPEN #1, "N:TCP://irata.online:8005/", "RW"
+ //   FPRINT #1, "HELLO"
+ //   FINPUT #1, A$
+ //   CLOSE #1
+ //
+ // ---
 
 #ifndef BASICPP_MOD_FUJINET_H
 #define BASICPP_MOD_FUJINET_H
 
-/* ---- Maximum counts and buffer sizes ---- */
+// ---- Maximum counts and buffer sizes ----
 #define FN_MAX_CHANNELS     8
 #define FN_MAX_DEVICESPEC   256
 #define FN_MAX_URL          256
@@ -64,20 +62,20 @@
 #define FN_TNFS_PACKET_MAX  532
 #define FN_DIR_ENTRY_MAX    36
 
-/* ---- Network channel modes ---- */
+// ---- Network channel modes ----
 #define FN_MODE_READ        0x04
 #define FN_MODE_WRITE       0x08
 #define FN_MODE_READWRITE   0x0C
 #define FN_MODE_APPEND      0x09
 
-/* ---- Translation modes ---- */
+// ---- Translation modes ----
 #define FN_TRANS_NONE       0
 #define FN_TRANS_CR         1
 #define FN_TRANS_LF         2
 #define FN_TRANS_CRLF       3
 #define FN_TRANS_PETSCII    4
 
-/* ---- Protocol identifiers ---- */
+// ---- Protocol identifiers ----
 typedef enum FnProto {
     FN_PROTO_UNKNOWN = 0,
     FN_PROTO_TCP,
@@ -90,7 +88,7 @@ typedef enum FnProto {
     FN_PROTO_SSH
 } FnProto;
 
-/* ---- Error codes (match fujinet-lib FN_ERR values) ---- */
+// ---- Error codes (match fujinet-lib FN_ERR values) ----
 #define FN_ERR_OK               0x00
 #define FN_ERR_IO_ERROR         0x01
 #define FN_ERR_BAD_CMD          0x02
@@ -111,12 +109,10 @@ typedef enum FnProto {
 #define FN_ERR_JSON_PARSE       0x10
 #define FN_ERR_INVALID_URL      0x11
 
-/* ---- IOCTL command codes for the N: device ---- */
-/*
- * These map directly to fujinet-lib network operations that
- * go beyond simple read/write. Usage from BASIC:
- *   IOCTL #ch, cmd [, arg$]
- */
+// ---- IOCTL command codes for the N: device ----
+ // These map directly to fujinet-lib network operations that
+ // go beyond simple read/write. Usage from BASIC:
+ //   IOCTL #ch, cmd [, arg$]
 #define FNIO_JSON_PARSE         (256 + 0)
 #define FNIO_JSON_QUERY         (256 + 1)
 #define FNIO_SET_CHANNEL_MODE   (256 + 2)
@@ -132,12 +128,10 @@ typedef enum FnProto {
 #define FNIO_SET_AUX            (256 + 12)
 #define FNIO_PARSE_URL          (256 + 13)
 
-/* ---- IOCTL command codes for the FUJI: device ---- */
-/*
- * These map to fujinet-lib fuji device commands: WiFi
- * configuration, host/device slot management, AppKey
- * storage, directory browsing, and hardware queries.
- */
+// ---- IOCTL command codes for the FUJI: device ----
+ // These map to fujinet-lib fuji device commands: WiFi
+ // configuration, host/device slot management, AppKey
+ // storage, directory browsing, and hardware queries.
 #define FNIO_RESET              (256 + 32)
 #define FNIO_SCAN_NETWORKS      (256 + 33)
 #define FNIO_GET_SCAN_RESULT    (256 + 34)
@@ -179,23 +173,23 @@ typedef enum FnProto {
 #define FNIO_DEVICE_STATUS      (256 + 70)
 #define FNIO_GENERATE_GUID      (256 + 71)
 
-/* ---- IOCTL command codes for the CLOCK: device ---- */
+// ---- IOCTL command codes for the CLOCK: device ----
 #define FNIO_CLOCK_SET_FORMAT   (256 + 80)
 #define FNIO_CLOCK_SET_TZ       (256 + 81)
 
-/* ---- Clock time format constants ---- */
+// ---- Clock time format constants ----
 #define FN_TIME_BINARY_SIMPLE   0
 #define FN_TIME_BINARY_PRODOS   1
 #define FN_TIME_BINARY_APETIME  2
 #define FN_TIME_ISO_STRING      3
 
-/* ---- WiFi status values (match fujinet-lib enum) ---- */
+// ---- WiFi status values (match fujinet-lib enum) ----
 #define FN_WIFI_NO_SSID         1
 #define FN_WIFI_CONNECTED       3
 #define FN_WIFI_CONNECT_FAILED  4
 #define FN_WIFI_CONNECTION_LOST 5
 
-/* ---- Network channel state ---- */
+// ---- Network channel state ----
 typedef struct FnChannel {
     int      in_use;
     int      sock_fd;
@@ -210,30 +204,30 @@ typedef struct FnChannel {
     char     host[128];
     int      port;
     char     path[FN_MAX_URL];
-    /* HTTP state */
+    // HTTP state
     char     http_headers[FN_HTTP_HEADER_MAX];
     char     *http_body;
     int      http_body_len;
     int      http_body_pos;
     int      http_status_code;
-    /* JSON state */
+    // JSON state
     char     *json_data;
     int      json_data_len;
     int      json_parsed;
-    /* TNFS state */
+    // TNFS state
     unsigned char tnfs_session[2];
     unsigned char tnfs_seq;
     int      tnfs_fd;
-    /* Receive buffer */
+    // Receive buffer
     char     recv_buf[FN_RECV_BUF_SIZE];
     int      recv_pos;
     int      recv_len;
-    /* SSH state */
-    char     ssh_version[128]; /* server banner */
-    int      ssh_exchanged;    /* 1 = version exchange done */
+    // SSH state
+    char     ssh_version[128]; // server banner
+    int      ssh_exchanged; // 1 = version exchange done
 } FnChannel;
 
-/* ---- FUJI device state ---- */
+// ---- FUJI device state ----
 typedef struct FnFujiState {
     int      initialized;
     int      wifi_status;
@@ -246,39 +240,37 @@ typedef struct FnFujiState {
     unsigned char mac[6];
     char     fn_version[16];
     char     host_slots[FN_MAX_HOST_SLOTS][FN_HOST_SLOT_LEN];
-    /* AppKey file-backed storage */
+    // AppKey file-backed storage
     unsigned int appkey_creator;
     unsigned int appkey_app;
     unsigned char appkey_mode;
-    /* Device slots (desktop: local path aliases) */
+    // Device slots (desktop: local path aliases)
     char     device_slots[FN_MAX_DEVICE_SLOTS][FN_FILE_MAXLEN];
     int      device_enabled[FN_MAX_DEVICE_SLOTS];
     char     host_prefix[FN_MAX_HOST_SLOTS][FN_HOST_SLOT_LEN];
     char     device_path[FN_MAX_DEVICE_SLOTS][FN_FILE_MAXLEN];
     int      boot_mode;
-    /* Directory browsing state */
-    void    *dir_handle;   /* platform dir handle */
+    // Directory browsing state
+    void    *dir_handle; // platform dir handle
     char     dir_path[256];
     int      dir_position;
     int      dir_open;
 } FnFujiState;
 
-/* ---- Clock device state ---- */
+// ---- Clock device state ----
 typedef struct FnClockState {
     int      format;
     char     timezone[64];
 } FnClockState;
 
-/* ---- Module registration ---- */
+// ---- Module registration ----
 
-/*
- * mod_fujinet_register - Register the FujiNet module.
- *
- * Call during interpreter boot (from main.c) to make the
- * FUJINET module available. The module registers itself but
- * does not activate until the BASIC program issues:
- *   MODULE "FUJINET"
- */
+ // mod_fujinet_register - Register the FujiNet module.
+ //
+ // Call during interpreter boot (from main.c) to make the
+ // FUJINET module available. The module registers itself but
+ // does not activate until the BASIC program issues:
+ //   MODULE "FUJINET"
 void mod_fujinet_register(void);
 
-#endif /* BASICPP_MOD_FUJINET_H */
+#endif // BASICPP_MOD_FUJINET_H

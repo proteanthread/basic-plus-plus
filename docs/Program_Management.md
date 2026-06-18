@@ -1,6 +1,36 @@
 # BASIC++ Program Management
 
-**Version 2.0.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- Entering a Program
+- Listing the Program (LIST / LLIST)
+  - LIST — Display Program Lines
+  - LLIST — List to Printer (STDERR)
+- Running the Program (RUN)
+- Saving and Loading (SAVE / LOAD)
+  - SAVE — Save Program to Disk
+  - LOAD — Load Program from Disk
+- MERGE — Merge Lines from a File
+- NEW — Clear the Program
+- UNSAVE — Delete the Last Saved File
+- Compiled Output (BSAVE / BLOAD / COMPILE)
+  - COMPILE — Transpile BASIC to C Source
+  - BSAVE — Save Compiled Bytecode
+  - BLOAD — Load Compiled Bytecode
+- Program Lifecycle
+  - A typical session
+  - For larger projects
+  - For deployment
+- Direct Mode vs. Program Mode
+  - Direct Mode (Immediate Mode)
+  - Program Mode (Deferred Mode)
+
+---
 
 This guide covers all commands for loading, saving, listing, running, and managing BASIC++ programs.
 

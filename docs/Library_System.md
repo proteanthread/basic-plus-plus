@@ -1,6 +1,24 @@
 Library System
 ==============
 
+---
+
+## Table of Contents
+
+- Loading Libraries
+- Unloading Libraries
+- Calling Library Functions
+- Compiling Libraries
+- .BPL File Format
+- Library File Format (.LIB)
+- Security
+- Variable Isolation
+- Sample Libraries
+- Examples
+- See Also
+
+---
+
 BASIC++ supports loading external libraries (.LIB source files
 and .BPL pre-compiled binary files) that provide reusable
 SUB, FUNCTION, and DEF FN definitions.

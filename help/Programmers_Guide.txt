@@ -1,162 +1,151 @@
-# BASIC++ Programmer's Guide
+BASIC++ Programmer's Guide
 
-**Version 4.0.0**
+Version 4.0.1
 
-## Table of Contents
+Table of Contents
 
-1. [Language Overview](#1-language-overview)
-2. [Data Types](#2-data-types)
-3. [Variables](#3-variables)
-4. [Operators](#4-operators)
-5. [Control Flow](#5-control-flow)
-6. [Loops](#6-loops)
-7. [Subroutines and Functions](#7-subroutines-and-functions)
-8. [String Handling](#8-string-handling)
-9. [Arrays](#9-arrays)
-10. [Input/Output](#10-inputoutput)
-11. [Math Functions](#11-math-functions)
-12. [Type Conversion](#12-type-conversion)
-13. [Miscellaneous Functions](#13-miscellaneous-functions)
-14. [Statement Syntax Reference](#14-statement-syntax-reference)
+1. Language Overview
+2. Data Types
+3. Variables
+4. Operators
+5. Control Flow
+6. Loops
+7. Subroutines and Functions
+8. String Handling
+9. Arrays
+10. Input/Output
+11. Math Functions
+12. Type Conversion
+13. Miscellaneous Functions
+14. Statement Syntax Reference
 
----
+---------------------------------------------------------------------
 
-## 1. Language Overview
+1. Language Overview
 
-BASIC++ follows the BASIC language family syntax. Programs are sequences of numbered lines executed in order. The interpreter supports both direct mode (immediate execution) and program mode (stored execution via `RUN`).
+BASIC++ follows the BASIC language family syntax. Programs are sequences of numbered lines executed in order. The interpreter supports both direct mode (immediate execution) and program mode (stored execution via RUN).
 
-Every statement begins with a keyword (`PRINT`, `LET`, `IF`, `FOR`, etc.). Multiple statements can appear on one line separated by colons:
+Every statement begins with a keyword (PRINT, LET, IF, FOR, etc.). Multiple statements can appear on one line separated by colons:
 
-```basic
 10 A = 5 : B = 10 : PRINT A + B
-```
 
----
+---------------------------------------------------------------------
 
-## 2. Data Types
+2. Data Types
 
-| Type | Size | Range | Examples |
-|------|------|-------|----------|
-| `INTEGER` | 32-bit signed | −2,147,483,648 to 2,147,483,647 | `0`, `-5`, `42`, `&HFF`, `&O77`, `&B1010` |
-| `FLOAT` | 64-bit double | ~5e−324 to ~1.7e+308 | `3.14`, `-0.001`, `1.5E+10`, `2.997E8` |
-| `STRING` | 0–255 bytes | — | `"Hello, World!"` |
+  Type                Size                Range               Examples
+  ----------------------------------------------------------------------
+  INTEGER             32-bit signed       −2,147,483,648 to 2,147,483,6470, -5, 42, &HFF, &O77, &B1010
+  FLOAT               64-bit double       ~5e−324 to ~1.7e+3083.14, -0.001, 1.5E+10, 2.997E8
+  STRING              0–255 bytes       —                 "Hello, World!"
 
 Type is determined by context:
 
-| Suffix | Type | Example |
-|--------|------|---------|
-| `$` | String | `A$`, `NAME$` |
-| `%` | Integer | `A%`, `COUNT%` |
-| `!` | Single-precision | `A!` |
-| `#` | Double-precision | `A#` |
-| *(none)* | Double-precision (default) | `A`, `TOTAL` |
+  Suffix              Type                Example
+  ----------------------------------------------------------------------
+  $                   String              A$, NAME$
+  %                   Integer             A%, COUNT%
+  !                   Single-precision    A!
+  #                   Double-precision    A#
+  (none)              Double-precision (default)A, TOTAL
 
----
+---------------------------------------------------------------------
 
-## 3. Variables
+3. Variables
 
-### Single-letter variables (all dialects)
+Single-letter variables (all dialects)
 
-- `A` through `Z` — Numeric (26 variables)
-- `A$` through `Z$` — String (26 variables)
+- A through Z — Numeric (26 variables)
+- A$ through Z$ — String (26 variables)
 
-### Named variables (extended dialects)
+Named variables (extended dialects)
 
-```basic
 SCORE, PLAYER_NAME$, TOTAL.COUNT
-```
 
 Up to 40 characters, case-insensitive.
 
-### Special variables
+Special variables
 
-| Variable | Description |
-|----------|-------------|
-| `ERR` | Last error number |
-| `ERL` | Line where last error occurred |
-| `ERRORLEVEL` | Exit code of last `SHELL` command |
-| `TIMER` | Seconds since midnight (float) |
-| `DATE$` | Current date `"MM-DD-YYYY"` |
-| `TIME$` | Current time `"HH:MM:SS"` |
-| `INKEY$` | Non-blocking keyboard read |
+  Variable            Description
+  ----------------------------------------------------------------------
+  ERR                 Last error number
+  ERL                 Line where last error occurred
+  ERRORLEVEL          Exit code of last SHELL command
+  TIMER               Seconds since midnight (float)
+  DATE$               Current date "MM-DD-YYYY"
+  TIME$               Current time "HH:MM:SS"
+  INKEY$              Non-blocking keyboard read
 
-### Constants
+Constants
 
-```basic
 CONST PI = 3.14159
 CONST MAX.SIZE = 100
-```
 
----
+---------------------------------------------------------------------
 
-## 4. Operators
+4. Operators
 
-### Arithmetic
+Arithmetic
 
-| Operator | Description |
-|----------|-------------|
-| `+` | Addition / string concatenation |
-| `-` | Subtraction / unary negation |
-| `*` | Multiplication |
-| `/` | Division (float result) |
-| `\` | Integer division |
-| `MOD` | Modulo (remainder) |
-| `^` | Exponentiation |
+  Operator            Description
+  ----------------------------------------------------------------------
+  +                   Addition / string concatenation
+  ----------------------------------------------------------------------
+  *                   Multiplication
+  /                   Division (float result)
+  \                   Integer division
+  MOD                 Modulo (remainder)
+  ^                   Exponentiation
 
-### Relational
+Relational
 
-| Operator | Description |
-|----------|-------------|
-| `=` | Equal |
-| `<>` | Not equal (also `><`) |
-| `<` | Less than |
-| `>` | Greater than |
-| `<=` | Less than or equal (also `=<`) |
-| `>=` | Greater than or equal (also `=>`) |
+  Operator            Description
+  ----------------------------------------------------------------------
+  =                   Equal
+  <>                  Not equal (also ><)
+  <                   Less than
+  >                   Greater than
+  <=                  Less than or equal (also =<)
+  >=                  Greater than or equal (also =>)
 
-### Logical
+Logical
 
-| Operator | Description |
-|----------|-------------|
-| `AND` | Bitwise/logical AND |
-| `OR` | Bitwise/logical OR |
-| `NOT` | Bitwise/logical NOT |
-| `XOR` | Bitwise/logical XOR |
-| `EQV` | Logical equivalence |
-| `IMP` | Logical implication |
+  Operator            Description
+  ----------------------------------------------------------------------
+  AND                 Bitwise/logical AND
+  OR                  Bitwise/logical OR
+  NOT                 Bitwise/logical NOT
+  XOR                 Bitwise/logical XOR
+  EQV                 Logical equivalence
+  IMP                 Logical implication
 
-### String
+String
 
-```basic
 "Hello" + " " + "World"    ' Concatenation
-```
 
-### Precedence (highest to lowest)
+Precedence (highest to lowest)
 
-1. `^`
-2. Unary `-`, `NOT`
-3. `*`, `/`, `\`
-4. `MOD`
-5. `+`, `-`
-6. Relational (`=` `<>` `<` `>` `<=` `>=`)
-7. `AND`
-8. `OR`, `XOR`, `EQV`, `IMP`
+1. ^
+2. Unary -, NOT
+3. *, /, \
+4. MOD
+5. +, -
+6. Relational (= <> < > <= >=)
+7. AND
+8. OR, XOR, EQV, IMP
 
----
+---------------------------------------------------------------------
 
-## 5. Control Flow
+5. Control Flow
 
-### IF/THEN/ELSE
+IF/THEN/ELSE
 
-```basic
 IF condition THEN statement(s) [ELSE statement(s)]
 IF condition THEN line_number [ELSE line_number]
 IF condition GOTO line_number
-```
 
-**Block IF** (QBasic style):
+Block IF (QBasic style):
 
-```basic
 IF condition THEN
   statements
 ELSEIF condition THEN
@@ -164,293 +153,252 @@ ELSEIF condition THEN
 ELSE
   statements
 END IF
-```
 
-### ON GOTO / ON GOSUB
+ON GOTO / ON GOSUB
 
-```basic
 ON expression GOTO line1, line2, line3
 ON expression GOSUB line1, line2, line3
-```
 
 The expression is evaluated as an integer (1-based index).
 
-### GOTO
+GOTO
 
-```basic
 GOTO line_number
-```
 
 Unconditional branch.
 
-### STOP / END / CONT
+STOP / END / CONT
 
-| Command | Description |
-|---------|-------------|
-| `STOP` | Halt and enter direct mode (resume with `CONT`) |
-| `END` | Terminate program |
-| `CONT` | Continue after `STOP` or Ctrl+C |
+  Command             Description
+  ----------------------------------------------------------------------
+  STOP                Halt and enter direct mode (resume with CONT)
+  END                 Terminate program
+  CONT                Continue after STOP or Ctrl+C
 
----
+---------------------------------------------------------------------
 
-## 6. Loops
+6. Loops
 
-### FOR/NEXT
+FOR/NEXT
 
-```basic
 FOR i = start TO end [STEP increment]
   statements
 NEXT [i]
-```
 
 Examples:
 
-```basic
 FOR I = 1 TO 10 : PRINT I : NEXT I
 FOR I = 10 TO 0 STEP -1 : PRINT I : NEXT I
 FOR I = 0 TO 1 STEP 0.1 : PRINT I : NEXT I
-```
 
-### WHILE/WEND
+WHILE/WEND
 
-```basic
 WHILE condition
   statements
 WEND
-```
 
 Example:
 
-```basic
 I = 0
 WHILE I < 10
   PRINT I
   I = I + 1
 WEND
-```
 
-### DO/LOOP (QBasic dialect)
+DO/LOOP (QBasic dialect)
 
-```basic
 DO WHILE condition : statements : LOOP
 DO UNTIL condition : statements : LOOP
 DO : statements : LOOP WHILE condition
 DO : statements : LOOP UNTIL condition
-```
 
----
+---------------------------------------------------------------------
 
-## 7. Subroutines and Functions
+7. Subroutines and Functions
 
-### GOSUB/RETURN
+GOSUB/RETURN
 
-```basic
 GOSUB line_number   ' Jump to subroutine
 RETURN              ' Return to caller
-```
 
 Example:
 
-```basic
 10 GOSUB 1000
 20 END
 1000 PRINT "In subroutine"
 1010 RETURN
-```
 
-### DEF FN
+DEF FN
 
-```basic
 DEF FN SQUARE(X) = X * X
 PRINT FN SQUARE(5)    ' prints 25
-```
 
-### FUNCTION/END FUNCTION (extended dialect)
+FUNCTION/END FUNCTION (extended dialect)
 
-```basic
 FUNCTION name(params)
   statements
   name = return_value
 END FUNCTION
-```
 
-### SUB/END SUB
+SUB/END SUB
 
-```basic
 SUB name(params)
   statements
 END SUB
 
 CALL name(args)     ' Invoke a SUB
-```
 
----
+---------------------------------------------------------------------
 
-## 8. String Handling
+8. String Handling
 
-| Function | Description |
-|----------|-------------|
-| `LEFT$(s$, n)` | First n characters |
-| `RIGHT$(s$, n)` | Last n characters |
-| `MID$(s$, start, n)` | Substring from position start |
-| `LEN(s$)` | Length |
-| `ASC(s$)` | ASCII code of first character |
-| `CHR$(n)` | Character from ASCII code |
-| `STR$(n)` | Number to string |
-| `VAL(s$)` | String to number |
-| `INSTR(h$, n$)` | Find n$ in h$ (1-based, 0=not found) |
-| `UCASE$(s$)` | Convert to uppercase |
-| `LCASE$(s$)` | Convert to lowercase |
-| `LTRIM$(s$)` | Remove leading spaces |
-| `RTRIM$(s$)` | Remove trailing spaces |
-| `SPACE$(n)` | String of n spaces |
-| `STRING$(n, ch)` | String of n copies of character ch |
-| `HEX$(n)` | Hex representation |
-| `OCT$(n)` | Octal representation |
+  Function            Description
+  ----------------------------------------------------------------------
+  LEFT$(s$, n)        First n characters
+  RIGHT$(s$, n)       Last n characters
+  MID$(s$, start, n)  Substring from position start
+  LEN(s$)             Length
+  ASC(s$)             ASCII code of first character
+  CHR$(n)             Character from ASCII code
+  STR$(n)             Number to string
+  VAL(s$)             String to number
+  INSTR(h$, n$)       Find n$ in h$ (1-based, 0=not found)
+  UCASE$(s$)          Convert to uppercase
+  LCASE$(s$)          Convert to lowercase
+  LTRIM$(s$)          Remove leading spaces
+  RTRIM$(s$)          Remove trailing spaces
+  SPACE$(n)           String of n spaces
+  STRING$(n, ch)      String of n copies of character ch
+  HEX$(n)             Hex representation
+  OCT$(n)             Octal representation
 
-**String assignment:**
+String assignment:
 
-```basic
 A$ = "Hello"
 A$ = LEFT$("Hello World", 5)
-```
 
-**MID$ as statement** (replace substring):
+MID$ as statement (replace substring):
 
-```basic
 MID$(A$, 3, 2) = "XX"
-```
 
----
+---------------------------------------------------------------------
 
-## 9. Arrays
+9. Arrays
 
-### Declaration
+Declaration
 
-```basic
 DIM A(10)           ' 1D array, indices 0-10 (or 1-10)
 DIM A(5, 5)         ' 2D array
 DIM A$(20)          ' String array
 OPTION BASE 0       ' Indices start at 0 (default)
 OPTION BASE 1       ' Indices start at 1
-```
 
-### Access
+Access
 
-```basic
 A(5) = 42
 PRINT A(5)
 A$(3) = "Hello"
-```
 
-### ERASE
+ERASE
 
-```basic
 ERASE A             ' Delete array A, reclaim memory
-```
 
-See [Advanced_Matrices](Advanced_Matrices.md) for MAT operations.
+See Advanced_Matrices for MAT operations.
 
----
+---------------------------------------------------------------------
 
-## 10. Input/Output
+10. Input/Output
 
-### PRINT
+PRINT
 
-```basic
 PRINT expression
 PRINT expr1; expr2          ' No space between items
 PRINT expr1, expr2          ' Tab-separated (14-column zones)
 PRINT expr1,, expr2         ' Skip a tab zone (double comma)
 PRINT USING "##.##"; value  ' Formatted output
 PRINT #n, expression        ' Write to file channel
-```
 
-### INPUT
+INPUT
 
-```basic
 INPUT variable
 INPUT "Prompt: "; variable
 INPUT A, B, C               ' Multiple variables
 INPUT #n, variable           ' Read from file channel
 LINE INPUT variable          ' Read entire line (no parsing)
 LINE INPUT #n, variable      ' Read line from file
-```
 
-### WRITE
+WRITE
 
-```basic
 WRITE expression             ' Quoted strings, comma-delimited
 WRITE #n, expression         ' Write to file
-```
 
-See [File_IO](File_IO.md) for complete file operations.
+See File_IO for complete file operations.
 
----
+---------------------------------------------------------------------
 
-## 11. Math Functions
+11. Math Functions
 
-| Function | Description |
-|----------|-------------|
-| `ABS(x)` | Absolute value |
-| `ATN(x)` | Arctangent (radians) |
-| `COS(x)` | Cosine |
-| `EXP(x)` | e raised to x |
-| `FIX(x)` | Truncate toward zero |
-| `INT(x)` | Floor (largest integer ≤ x) |
-| `LOG(x)` | Natural logarithm |
-| `RND[(x)]` | Random number (0 to 1); parens optional |
-| `SGN(x)` | Sign: −1, 0, or 1 |
-| `SIN(x)` | Sine |
-| `SQR(x)` | Square root |
-| `TAN(x)` | Tangent |
-| `CINT(x)` | Round to integer |
-| `CSNG(x)` | Convert to single-precision |
-| `CDBL(x)` | Convert to double-precision |
+  Function            Description
+  ----------------------------------------------------------------------
+  ABS(x)              Absolute value
+  ATN(x)              Arctangent (radians)
+  COS(x)              Cosine
+  EXP(x)              e raised to x
+  FIX(x)              Truncate toward zero
+  INT(x)              Floor (largest integer ≤ x)
+  LOG(x)              Natural logarithm
+  RND[(x)]            Random number (0 to 1); parens optional
+  SGN(x)              Sign: −1, 0, or 1
+  SIN(x)              Sine
+  SQR(x)              Square root
+  TAN(x)              Tangent
+  CINT(x)             Round to integer
+  CSNG(x)             Convert to single-precision
+  CDBL(x)             Convert to double-precision
 
----
+---------------------------------------------------------------------
 
-## 12. Type Conversion
+12. Type Conversion
 
-| Function | Description | Example |
-|----------|-------------|---------|
-| `VAL(s$)` | String to number | `VAL("42") = 42` |
-| `STR$(n)` | Number to string | `STR$(42) = " 42"` |
-| `CHR$(n)` | ASCII code to character | |
-| `ASC(s$)` | Character to ASCII code | |
-| `HEX$(n)` | Number to hex string | |
-| `OCT$(n)` | Number to octal string | |
-| `CINT(x)` | Float to integer (rounded) | |
-| `CVI(s$)` | 2-byte string to integer | |
-| `CVS(s$)` | 4-byte string to single float | |
-| `CVD(s$)` | 8-byte string to double float | |
-| `MKI$(n)` | Integer to 2-byte string | |
-| `MKS$(n)` | Single to 4-byte string | |
-| `MKD$(n)` | Double to 8-byte string | |
+  Function            Description         Example
+  ----------------------------------------------------------------------
+  VAL(s$)             String to number    VAL("42") = 42
+  STR$(n)             Number to string    STR$(42) = " 42"
+  CHR$(n)             ASCII code to character
+  ASC(s$)             Character to ASCII code
+  HEX$(n)             Number to hex string
+  OCT$(n)             Number to octal string
+  CINT(x)             Float to integer (rounded)
+  CVI(s$)             2-byte string to integer
+  CVS(s$)             4-byte string to single float
+  CVD(s$)             8-byte string to double float
+  MKI$(n)             Integer to 2-byte string
+  MKS$(n)             Single to 4-byte string
+  MKD$(n)             Double to 8-byte string
 
----
+---------------------------------------------------------------------
 
-## 13. Miscellaneous Functions
+13. Miscellaneous Functions
 
-| Function | Description |
-|----------|-------------|
-| `FRE(0)` | Free string space |
-| `FRE(-1)` | Free stack space |
-| `FRE(-2)` | Free array space |
-| `PEEK(addr)` | Read byte from virtual memory |
-| `POKE addr, v` | Write byte to virtual memory |
-| `INP(port)` | Read from I/O port (mapped to memory) |
-| `OUT port, v` | Write to I/O port |
-| `ENVIRON$(v$)` | Get environment variable |
-| `TIMER` | Seconds since midnight |
-| `POS(0)` | Current cursor column |
-| `CSRLIN` | Current cursor row |
-| `LPOS(0)` | Printer head position |
-| `SPC(n)` | Print n spaces (in PRINT) |
-| `TAB(n)` | Move to column n (in PRINT) |
+  Function            Description
+  ----------------------------------------------------------------------
+  FRE(0)              Free string space
+  FRE(-1)             Free stack space
+  FRE(-2)             Free array space
+  PEEK(addr)          Read byte from virtual memory
+  POKE addr, v        Write byte to virtual memory
+  INP(port)           Read from I/O port (mapped to memory)
+  OUT port, v         Write to I/O port
+  ENVIRON$(v$)        Get environment variable
+  TIMER               Seconds since midnight
+  POS(0)              Current cursor column
+  CSRLIN              Current cursor row
+  LPOS(0)             Printer head position
+  SPC(n)              Print n spaces (in PRINT)
+  TAB(n)              Move to column n (in PRINT)
 
----
+---------------------------------------------------------------------
 
-## 14. Statement Syntax Reference
+14. Statement Syntax Reference
 
-See [Quick_Reference](Quick_Reference.md) for the complete alphabetical list of every keyword, statement, function, and command.
+See Quick_Reference for the complete alphabetical list of every keyword, statement, function, and command.

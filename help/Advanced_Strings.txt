@@ -1,32 +1,48 @@
-# Advanced String Functions (Milestone 19)
+Advanced String Functions (Milestone 19)
 
-**BASIC++ v3.3.0**
+BASIC++ v3.3.0
 
----
+---------------------------------------------------------------------
 
-## Overview
+
+=====================================================================
+TABLE OF CONTENTS
+=====================================================================
+
+   1.  Overview
+   2.  REPLACE$(source$, old$, new$)
+   3.  REVERSE$(s$)
+   4.  MCASE$(s$)
+   5.  ICASE$(s$)
+   6.  HASH$(s$ [, bits])
+   7.  ONKEY$
+   8.  LIKE Operator
+   9.  Dialect Availability
+  10.  See Also
+
+
+Overview
 
 Milestone 19 adds 7 advanced string functions and operators to the BASIC++
 language, extending the core string library with modern text processing
 capabilities.
 
-| Function | Category | Since |
-|----------|----------|-------|
-| `REPLACE$(s$, old$, new$)` | Transformation | M19 |
-| `REVERSE$(s$)` | Transformation | M19 |
-| `MCASE$(s$)` | Case | M19 |
-| `ICASE$(s$)` | Case | M19 |
-| `HASH$(s$ [, bits])` | Hashing | M19 |
-| `ONKEY$` | Input | M19 |
-| `LIKE` | Pattern Matching | M19 |
+  Function            Category            Since
+  ----------------------------------------------------------------------
+  REPLACE$(s$, old$, new$)Transformation      M19
+  REVERSE$(s$)        Transformation      M19
+  MCASE$(s$)          Case                M19
+  ICASE$(s$)          Case                M19
+  HASH$(s$ [, bits])  Hashing             M19
+  ONKEY$              Input               M19
+  LIKE                Pattern Matching    M19
 
----
+---------------------------------------------------------------------
 
-## REPLACE$(source$, old$, new$)
+REPLACE$(source$, old$, new$)
 
-Replace all non-overlapping occurrences of `old$` in `source$` with `new$`.
+Replace all non-overlapping occurrences of old$ in source$ with new$.
 
-```basic
 PRINT REPLACE$("HELLO WORLD", "O", "0")
 ' Output: HELL0 W0RLD
 
@@ -36,169 +52,154 @@ PRINT REPLACE$("AAA", "A", "XY")
 ' Delete all occurrences
 PRINT REPLACE$("A-B-C", "-", "")
 ' Output: ABC
-```
 
-**Notes:**
+Notes:
 - Empty search string returns source unchanged
 - Replacement is non-recursive (no re-scanning of replaced text)
-- Buffer bounded to `MAX_LINE_LENGTH` (255 chars)
+- Buffer bounded to MAX_LINE_LENGTH (255 chars)
 
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2537–2595
+Source: parser_expr.c, lines 2537–2595
 
----
+---------------------------------------------------------------------
 
-## REVERSE$(s$)
+REVERSE$(s$)
 
 Reverse the order of characters in a string.
 
-```basic
 PRINT REVERSE$("HELLO")
 ' Output: OLLEH
 
 ' Palindrome check
 W$ = "RACECAR"
 IF W$ = REVERSE$(W$) THEN PRINT "Palindrome!"
-```
 
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2600–2635
+Source: parser_expr.c, lines 2600–2635
 
----
+---------------------------------------------------------------------
 
-## MCASE$(s$)
+MCASE$(s$)
 
 Apply random upper/lower case to each character. Uses the runtime RNG
-(`rnd_seed`), so results are deterministic when seeded with `RANDOMIZE`.
+(rnd_seed), so results are deterministic when seeded with RANDOMIZE.
 
-```basic
 RANDOMIZE 42
 PRINT MCASE$("hello world")
 ' Output: hElLo wOrLd  (varies by seed)
-```
 
-**Algorithm:** PCG-derived bit per character. Bit=1 → UPPER, Bit=0 → lower.
+Algorithm: PCG-derived bit per character. Bit=1 → UPPER, Bit=0 → lower.
 
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2637–2675
+Source: parser_expr.c, lines 2637–2675
 
----
+---------------------------------------------------------------------
 
-## ICASE$(s$)
+ICASE$(s$)
 
 Invert the case of every character. Upper becomes lower, lower becomes upper.
 Non-alphabetic characters are unchanged.
 
-```basic
 PRINT ICASE$("Hello World")
 ' Output: hELLO wORLD
 
 PRINT ICASE$("ABC-123-xyz")
 ' Output: abc-123-XYZ
-```
 
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2677–2711
+Source: parser_expr.c, lines 2677–2711
 
----
+---------------------------------------------------------------------
 
-## HASH$(s$ [, bits])
+HASH$(s$ [, bits])
 
 Compute a hash of the input string and return it as a hexadecimal string.
 
-```basic
 PRINT HASH$("hello")           ' 32-bit default
 PRINT HASH$("hello", 8)        ' 8-bit:   2 hex chars
 PRINT HASH$("hello", 16)       ' 16-bit:  4 hex chars
 PRINT HASH$("hello", 64)       ' 64-bit:  16 hex chars
 PRINT HASH$("hello", 128)      ' 128-bit: 32 hex chars
 PRINT HASH$("hello", 256)      ' 256-bit: 64 hex chars
-```
 
-**Algorithm:** FNV-1a.
+Algorithm: FNV-1a.
 - Widths ≤ 64 bits: XOR-fold from full 64-bit hash.
 - Widths > 64 bits: Multiple seeded rounds, concatenated.
 - Invalid width values silently default to 32.
 
-**Valid widths:** 8, 16, 32, 64, 128, 256
+Valid widths: 8, 16, 32, 64, 128, 256
 
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2713–2812
+Source: parser_expr.c, lines 2713–2812
 
----
+---------------------------------------------------------------------
 
-## ONKEY$
+ONKEY$
 
-Event-aware non-blocking keyboard read. Unlike `INKEY$`, `ONKEY$` first
-checks the event system for a key captured by `ON KEY GOSUB` traps
+Event-aware non-blocking keyboard read. Unlike INKEY$, ONKEY$ first
+checks the event system for a key captured by ON KEY GOSUB traps
 (Milestone 18), then falls back to direct keyboard polling.
 
-```basic
 K$ = ONKEY$
 IF K$ <> "" THEN PRINT "Key: "; K$
-```
 
-**Priority order:**
-1. Check `rt->last_key_pressed` (set by event_poll in Milestone 18)
+Priority order:
+1. Check rt->last_key_pressed (set by event_poll in Milestone 18)
 2. If found, return it and clear the field (consumed)
-3. If empty, fall back to `vdev_inkey()` direct poll
+3. If empty, fall back to vdev_inkey() direct poll
 
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2397–2430
+Source: parser_expr.c, lines 2397–2430
 
----
+---------------------------------------------------------------------
 
-## LIKE Operator
+LIKE Operator
 
-Glob-style pattern matching operator. Returns `-1` (true) or `0` (false).
+Glob-style pattern matching operator. Returns -1 (true) or 0 (false).
 
-```basic
 IF "hello.bas" LIKE "*.bas" THEN PRINT "Match!"
 IF "file1.txt" LIKE "file?.txt" THEN PRINT "Match!"
-```
 
-### Pattern Metacharacters
+Pattern Metacharacters
 
-| Symbol | Meaning |
-|--------|---------|
-| `*` | Match zero or more characters |
-| `?` | Match exactly one character |
-| `#` | Match exactly one digit (0-9) |
-| `[abc]` | Match any character in the set |
-| `[!abc]` | Match any character NOT in the set |
+  Symbol              Meaning
+  ----------------------------------------------------------------------
+  *                   Match zero or more characters
+  ?                   Match exactly one character
+  #                   Match exactly one digit (0-9)
+  [abc]               Match any character in the set
+  [!abc]              Match any character NOT in the set
 
-### Examples
+Examples
 
-```basic
 PRINT "ABC" LIKE "A*"        ' -1 (true)
 PRINT "ABC" LIKE "A?C"       ' -1 (true)
 PRINT "A5C" LIKE "A#C"       ' -1 (true)
 PRINT "AXC" LIKE "A[XYZ]C"   ' -1 (true)
 PRINT "ABC" LIKE "A[!XYZ]C"  ' -1 (true)
 PRINT "DOG" LIKE "C*"        '  0 (false)
-```
 
-### Notes
+Notes
 
 - Case-insensitive matching
-- Uses stack-based backtracking for `*` (no recursion)
+- Uses stack-based backtracking for * (no recursion)
 - Both operands must be strings (ERR_HOW if not)
-- Dialect restriction: `DFLAG_GWQB | DFLAG_E116`
-- Works with logical operators: `IF A$ LIKE "*.BAS" AND LEN(A$) > 4 THEN ...`
+- Dialect restriction: DFLAG_GWQB | DFLAG_E116
+- Works with logical operators: IF A$ LIKE "*.BAS" AND LEN(A$) > 4 THEN ...
 
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 3086–3162
+Source: parser_expr.c, lines 3086–3162
 
----
+---------------------------------------------------------------------
 
-## Dialect Availability
+Dialect Availability
 
-| Function | Dialects |
-|----------|----------|
-| REPLACE$ | All (`DFLAG_ALL`) |
-| REVERSE$ | All |
-| MCASE$ | All |
-| ICASE$ | All |
-| HASH$ | All |
-| ONKEY$ | All |
-| LIKE | GW-BASIC, QBasic, ECMA-116 |
+  Function            Dialects
+  ----------------------------------------------------------------------
+  REPLACE$            All (DFLAG_ALL)
+  REVERSE$            All
+  MCASE$              All
+  ICASE$              All
+  HASH$               All
+  ONKEY$              All
+  LIKE                GW-BASIC, QBasic, ECMA-116
 
----
+---------------------------------------------------------------------
 
-## See Also
+See Also
 
-- [String_Handling.txt](../help/String_Handling.txt) — Complete string tutorial
-- [Quick_Reference.txt](../help/Quick_Reference.txt) — Function quick reference
+- String_Handling.txt — Complete string tutorial
+- Quick_Reference.txt — Function quick reference

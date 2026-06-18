@@ -1,23 +1,29 @@
-/*
- * ---
- * BASIC++ Interpreter - vm.c
- * ---
- *
- * Virtual Machine formalization layer.
- *
- * IMPLEMENTATION:
- * - Static dispatch table maps KeywordId -> VMOpcode
- * - Opcode name table for trace/debug output
- * - State machine get/set with VMState enum
- * - Expression evaluation stack (bounded, checked)
- * - Control flow primitives (jump, call, return, halt, stop)
- *
- * The dispatch table is built once at boot by vm_init() and
- * remains constant during execution. Handler registration
- * is through the static table below.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - vm.c
+ // ---
+ //
+ // Virtual Machine formalization layer.
+ //
+ // IMPLEMENTATION:
+ // - Static dispatch table maps KeywordId -> VMOpcode
+ // - Opcode name table for trace/debug output
+ // - State machine get/set with VMState enum
+ // - Expression evaluation stack (bounded, checked)
+ // - Control flow primitives (jump, call, return, halt, stop)
+ //
+ // The dispatch table is built once at boot by vm_init() and
+ // remains constant during execution. Handler registration
+ // is through the static table below.
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #include <string.h>
 #include "vm.h"
@@ -25,10 +31,9 @@
 #include "errors.h"
 #include "dialect.h"
 
-/* --- Opcode Name Table ---
- * Human-readable names for trace output and debug logging.
- * Index matches VMOpcode enum values.
- */
+// --- Opcode Name Table ---
+ // Human-readable names for trace output and debug logging.
+ // Index matches VMOpcode enum values.
 static const char *opcode_names[OP_COUNT] = {
  "NOP",
  "PRINT", "LET", "INPUT",
@@ -63,11 +68,10 @@ static const char *opcode_names[OP_COUNT] = {
  "UNKNOWN"
 };
 
-/* --- Keyword -> Opcode Mapping Table ---
- * Maps each KeywordId to the corresponding VMOpcode. Entries with
- * OP_UNKNOWN indicate keywords that are not statement-level
- * (they are sub-keywords like AS, ERROR, THEN, STEP, TO).
- */
+// --- Keyword -> Opcode Mapping Table ---
+ // Maps each KeywordId to the corresponding VMOpcode. Entries with
+ // OP_UNKNOWN indicate keywords that are not statement-level
+ // (they are sub-keywords like AS, ERROR, THEN, STEP, TO).
 typedef struct KeywordOpcodeMap {
  KeywordId keyword;
  VMOpcode opcode;
@@ -140,7 +144,7 @@ static const KeywordOpcodeMap kw_opcode_map[] = {
  { KW_DELETE, OP_DELETE },
  { KW_VER, OP_VER },
  { KW_BYE, OP_BYE },
- /* Virtual subsystem introspection */
+ // Virtual subsystem introspection
  { KW_VDEV, OP_VDEV },
  { KW_VMEM, OP_VMEM },
  { KW_VNET, OP_VNET },
@@ -153,24 +157,22 @@ static const KeywordOpcodeMap kw_opcode_map[] = {
 #define KW_OPCODE_MAP_SIZE \
  (int)(sizeof(kw_opcode_map) / sizeof(kw_opcode_map[0]))
 
-/* --- Fast Lookup Table: KeywordId -> VMOpcode ---
- * Built by vm_init() for O(1) keyword->opcode resolution.
- */
+// --- Fast Lookup Table: KeywordId -> VMOpcode ---
+ // Built by vm_init() for O(1) keyword->opcode resolution.
 static VMOpcode kw_to_opcode[KW_COUNT];
 static int vm_initialized = 0;
 
-/* --- vm_init - Build the dispatch lookup table. ---
- */
+// --- vm_init - Build the dispatch lookup table. ---
 void vm_init(void)
 {
  int i;
 
- /* Initialize all keywords to OP_UNKNOWN */
+ // Initialize all keywords to OP_UNKNOWN
  for (i = 0; i < KW_COUNT; i++) {
  kw_to_opcode[i] = OP_UNKNOWN;
  }
 
- /* Populate from the mapping table */
+ // Populate from the mapping table
  for (i = 0; i < KW_OPCODE_MAP_SIZE; i++) {
  kw_to_opcode[kw_opcode_map[i].keyword] =
  kw_opcode_map[i].opcode;
@@ -179,8 +181,7 @@ void vm_init(void)
  vm_initialized = 1;
 }
 
-/* --- vm_resolve_opcode - Map KeywordId -> VMOpcode. ---
- */
+// --- vm_resolve_opcode - Map KeywordId -> VMOpcode. ---
 VMOpcode vm_resolve_opcode(KeywordId kw)
 {
  if (kw < 0 || kw >= KW_COUNT) {
@@ -189,19 +190,17 @@ VMOpcode vm_resolve_opcode(KeywordId kw)
  return kw_to_opcode[kw];
 }
 
-/* --- vm_get_handler - Get handler for an opcode. ---
- * infrastructure: returns NULL. Handlers are currently
- * dispatched through parser.c's switch. Future phases will register
- * handlers here for full table-driven dispatch.
- */
+// --- vm_get_handler - Get handler for an opcode. ---
+ // infrastructure: returns NULL. Handlers are currently
+ // dispatched through parser.c's switch. Future phases will register
+ // handlers here for full table-driven dispatch.
 VMHandler vm_get_handler(VMOpcode op)
 {
  (void)op;
- return NULL; /* handlers live in parser.c switch for now */
+ return NULL; // handlers live in parser.c switch for now
 }
 
-/* --- vm_opcode_name - Human-readable opcode name. ---
- */
+// --- vm_opcode_name - Human-readable opcode name. ---
 const char *vm_opcode_name(VMOpcode op)
 {
  if (op < 0 || op >= OP_COUNT) {
@@ -210,10 +209,9 @@ const char *vm_opcode_name(VMOpcode op)
  return opcode_names[op];
 }
 
-/* --- vm_dispatch - Resolve keyword and return opcode. ---
- * resolves the opcode for logging/tracing. Actual handler
- * dispatch is still done by parser.c's switch statement.
- */
+// --- vm_dispatch - Resolve keyword and return opcode. ---
+ // resolves the opcode for logging/tracing. Actual handler
+ // dispatch is still done by parser.c's switch statement.
 VMOpcode vm_dispatch(KeywordId kw, Lexer *lex, void *rt, int line_num)
 {
  VMOpcode op = vm_resolve_opcode(kw);
@@ -222,19 +220,18 @@ VMOpcode vm_dispatch(KeywordId kw, Lexer *lex, void *rt, int line_num)
  if (handler != NULL) {
  handler(lex, rt, line_num);
  }
- /* If no handler registered, caller falls through to parser */
+ // If no handler registered, caller falls through to parser
  return op;
 }
 
-/* --- State Machine ---
- */
+// --- State Machine ---
 
 void vm_set_state(void *rt_ptr, VMState state)
 {
  RuntimeState *rt = (RuntimeState *)rt_ptr;
  rt->vm_state = state;
 
- /* Keep legacy flags in sync for backward compatibility */
+ // Keep legacy flags in sync for backward compatibility
  switch (state) {
  case VM_RUNNING:
  rt->running = 1;
@@ -270,8 +267,7 @@ VMState vm_get_state(void *rt_ptr)
  return rt->vm_state;
 }
 
-/* --- Expression Evaluation Stack ---
- */
+// --- Expression Evaluation Stack ---
 
 void vm_eval_init(VMEvalStack *stk)
 {
@@ -311,17 +307,14 @@ int vm_eval_depth(VMEvalStack *stk)
  return stk->top + 1;
 }
 
-/* --- Control Flow Primitives ---
- * These centralize the line-number->index resolution and stack
- * management that was previously scattered across parser.c.
- */
+// --- Control Flow Primitives ---
+ // These centralize the line-number->index resolution and stack
+ // management that was previously scattered across parser.c.
 
-/*
- * vm_jump - Unconditional jump (GOTO).
- *
- * Resolves the BASIC line number to a program store index and
- * sets rt->next_index. Raises ERR_HOW if line not found.
- */
+ // vm_jump - Unconditional jump (GOTO).
+ //
+ // Resolves the BASIC line number to a program store index and
+ // sets rt->next_index. Raises ERR_HOW if line not found.
 void vm_jump(void *rt_ptr, int target_line, int line_num)
 {
  RuntimeState *rt = (RuntimeState *)rt_ptr;
@@ -334,16 +327,14 @@ void vm_jump(void *rt_ptr, int target_line, int line_num)
  }
  }
 
- /* Line not found */
+ // Line not found
  error_raise(ERR_HOW, line_num);
 }
 
-/*
- * vm_call - Subroutine call (GOSUB).
- *
- * Pushes a FRAME_GOSUB onto the stack with the return address
- * (current_index + 1), then jumps to the target line.
- */
+ // vm_call - Subroutine call (GOSUB).
+ //
+ // Pushes a FRAME_GOSUB onto the stack with the return address
+ // (current_index + 1), then jumps to the target line.
 void vm_call(void *rt_ptr, int target_line, int line_num)
 {
  RuntimeState *rt = (RuntimeState *)rt_ptr;
@@ -353,48 +344,42 @@ void vm_call(void *rt_ptr, int target_line, int line_num)
  frame.data.gosub.return_index = rt->current_index + 1;
 
  if (runtime_push(rt, &frame) != 0) {
- return; /* stack full - runtime_push raised ERR_SORRY */
+ return; // stack full - runtime_push raised ERR_SORRY
  }
 
  vm_jump(rt_ptr, target_line, line_num);
 }
 
-/*
- * vm_return_sub - Return from subroutine (RETURN).
- *
- * Pops the top GOSUB frame and sets next_index to the
- * saved return address.
- */
+ // vm_return_sub - Return from subroutine (RETURN).
+ //
+ // Pops the top GOSUB frame and sets next_index to the
+ // saved return address.
 void vm_return_sub(void *rt_ptr, int line_num)
 {
  RuntimeState *rt = (RuntimeState *)rt_ptr;
  StackFrame frame;
 
  if (runtime_pop(rt, FRAME_GOSUB, &frame) != 0) {
- /* runtime_pop already raised ERR_HOW */
+ // runtime_pop already raised ERR_HOW
  (void)line_num;
  return;
  }
 
  rt->next_index = frame.data.gosub.return_index;
 
- /* If we were inside an event handler, clear the guard
- * so future events can fire */
+ // If we were inside an event handler, clear the guard
+ // so future events can fire 
  if (rt->event_in_handler)
  rt->event_in_handler = 0;
 }
 
-/*
- * vm_halt - Halt execution (END).
- */
+ // vm_halt - Halt execution (END).
 void vm_halt(void *rt_ptr)
 {
  vm_set_state(rt_ptr, VM_HALTED);
 }
 
-/*
- * vm_stop - Pause execution (STOP).
- */
+ // vm_stop - Pause execution (STOP).
 void vm_stop(void *rt_ptr)
 {
  vm_set_state(rt_ptr, VM_PAUSED);

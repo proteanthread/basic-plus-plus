@@ -1,6 +1,28 @@
 # Error Handling in BASIC++
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- Error Trapping
+  - ON ERROR GOTO
+  - ON ERROR GOTO 0
+- Error Variables
+- RESUME Statements
+- ERROR Statement
+- Error Codes
+- BEEP on Error
+- Error Handling Patterns
+  - Simple Guard
+  - Retry with Timeout
+  - Graceful Degradation
+  - Error Logging
+- Notes
+
+---
 
 BASIC++ provides structured error handling compatible with GW-BASIC and QBasic error trapping.
 

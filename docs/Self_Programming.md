@@ -1,6 +1,25 @@
 # Self-Programming with BASIC++
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- Runtime Line Manipulation
+- Data-Driven Programs
+- EVAL-Like Patterns
+  - Using ON GOTO/GOSUB for dispatch tables
+  - Using arrays as lookup tables
+  - Using string functions to build computed values
+- CHAIN and MERGE
+- RENUM and Program Surgery
+- Using SHELL$ for Code Generation
+- Shebang Scripts
+- Program Introspection
+
+---
 
 BASIC++ programs can examine and modify themselves at runtime. This guide covers self-modifying code, meta-programming, and program introspection.
 

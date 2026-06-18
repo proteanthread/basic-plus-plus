@@ -1,7 +1,7 @@
 [![GitGem](https://gitgem.org/api/badge/github/proteanthread/basic-plus-plus.svg)](https://gitgem.org/github/proteanthread/basic-plus-plus)
 
 # BASIC++ (protoBASIC) Interpreter
-**Version 4.0.0 (Stable)**
+**Version 4.0.1 (Stable)**
 
 I don't care what you do with my code, just don't take my code and sell it and/or don't take my code, modify my code, and sell it. This code is not for sale.
 
@@ -11,7 +11,7 @@ I don't care what you do with my code, just don't take my code and sell it and/o
 
 ## Abstract
 
-A portable, multi-dialect BASIC interpreter written in 115 ANSI C89/C90 source files and 60 header files (~90,000 lines of code). Organized into 28 domain subdirectories with a modular, layered architecture. Zero external dependencies — compiles on any platform with a standards-compliant C compiler.
+A portable, multi-dialect BASIC interpreter written in 115 C17 source files and 60 header files (~90,000 lines of code). Organized into 28 domain subdirectories with a modular, layered architecture. Zero external dependencies -- compiles on any platform with a standards-compliant C compiler.
 
 BASIC++ ships with 16 historically accurate dialect profiles, a runtime dialect-switching engine, a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 70 documentation files.
 
@@ -525,7 +525,7 @@ A comprehensive documentation suite of 35 reference manuals and tutorials is inc
 ## Section 13: Example Session
 
 ```
-BASIC++ 0.21.0
+BASIC++ 4.0.1
 @COPYLEFT ALL WRONGS RESERVED
 Jun  8 2026
 
@@ -555,13 +555,13 @@ Goodbye.
 
 | Metric | Value |
 |:-------|:------|
-| Source files | 29 `.c` + 29 `.h` |
-| Lines of code | ~27,000 |
+| Source files | 115 `.c` + 60 `.h` |
+| Lines of code | ~90,000 |
 | Keywords | 223 |
-| Dialect profiles | 12 |
-| Documentation files | 35 |
+| Dialect profiles | 16 |
+| Documentation files | 70 |
 | External dependencies | **Zero** |
-| C standard | ANSI C89/C90 |
+| C standard | C17 |
 | License | @COPYLEFT ALL WRONGS RESERVED |
 
 

@@ -1,130 +1,120 @@
-/*
- * ---
- * BASIC++ Interpreter - format_using.c
- * ---
- *
- * Formatted output engine for PRINT USING / LPRINT USING /
- * PRINT#c USING / IMAGE / TYPE USING / DISPLAY.
- *
- * Standalone module: all output goes to a FILE* stream so
- * callers can direct it to stdout, stderr, or any open file.
- *
- * GW-BASIC compatible PRINT USING format specifiers:
- *   #    digit placeholder (space-padded)
- *   .    decimal point position
- *   ,    comma grouping (every 3 digits)
- *   +    leading/trailing sign (always show +/-)
- *   -    trailing minus (negative only, else space)
- *   $$   floating dollar sign
- *   **   asterisk fill
- *   **$  asterisk fill + dollar
- *   ^^^^ exponential notation
- *   _    literal escape (next char printed as-is)
- *   !    first character of string
- *   \ \  string field (width = chars between + 2)
- *   &    entire string, variable width
- *
- * Extended BASIC++ format specifiers:
- *   0/Z  zero fill (leading zeros instead of spaces)
- *   D    digit placeholder (IMAGE format, alias for #)
- *   I    integer format (truncate to int)
- *   O    octal format
- *   H    hexadecimal format
- *   B    binary format
- *   E    exponential format (alias for ^^^^)
- *   S    single precision (%.7G)
- *   T    text digit (same as A for string chars)
- *   A    string character placeholder
- *   X    space placeholder
- *   F    form feed (clear screen / page break)
- *   Fn   form feed after n lines
- *   L    line feed
- *   Ln   line feed n times
- *   G    ring bell (BEL character)
- *   R    random number (0-9 digit)
- *   %    display sign (+ or -)
- *   %%   percent of value (value * 100)
- *   P    parse text (pass-through)
- *   ''   text literal field (between single quotes)
- *   ;    field delimiter
- *
- * Escape sequences (in format strings, after backslash):
- *   \n   newline       \t   tab          \b   backspace
- *   \r   carriage ret  \a   bell/alert   \f   form feed
- *   \v   vertical tab  \\   backslash    \'   apostrophe
- *   \"   double quote  \?   question     \0   null
- *   \o   octal char    \xh  hex char
- *
- * Conditional output specifiers:
- *   >>   print val2 if val1 > val2
- *   <<   print val2 if val1 < val2
- *   >=   print val2 if val1 >= val2
- *   <=   print val2 if val1 <= val2
- *   ==   print val2 if val1 == val2
- *   <>   print val2 if val1 != val2
- *   ><   print val2 if val1 != val2 (alt)
- *
- * Character attributes (ANSI SGR codes):
- *   A0   reset all       A1   bold
- *   A2   dim             A3   italic
- *   A4   underline       A5   blink
- *   A7   inverse         A9   strikethrough
- *   30A-37A  foreground colors (black..white)
- *   40A-47A  background colors
- *   90A-97A  bright foreground
- *  100A-107A bright background
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - format_using.c
+ // ---
+ //
+ // Formatted output engine for PRINT USING / LPRINT USING /
+ // PRINT#c USING / IMAGE / TYPE USING / DISPLAY.
+ //
+ // Standalone module: all output goes to a FILE* stream so
+ // callers can direct it to stdout, stderr, or any open file.
+ //
+ // GW-BASIC compatible PRINT USING format specifiers:
+ //   #    digit placeholder (space-padded)
+ //   .    decimal point position
+ //   ,    comma grouping (every 3 digits)
+ //   +    leading/trailing sign (always show +/-)
+ //   -    trailing minus (negative only, else space)
+ //   $$   floating dollar sign
+ //   **   asterisk fill
+ //   **$  asterisk fill + dollar
+ //   ^^^^ exponential notation
+ //   _    literal escape (next char printed as-is)
+ //   !    first character of string
+ //   \ \  string field (width = chars between + 2)
+ //   &    entire string, variable width
+ //
+ // Extended BASIC++ format specifiers:
+ //   0/Z  zero fill (leading zeros instead of spaces)
+ //   D    digit placeholder (IMAGE format, alias for #)
+ //   I    integer format (truncate to int)
+ //   O    octal format
+ //   H    hexadecimal format
+ //   B    binary format
+ //   E    exponential format (alias for ^^^^)
+ //   S    single precision (%.7G)
+ //   T    text digit (same as A for string chars)
+ //   A    string character placeholder
+ //   X    space placeholder
+ //   F    form feed (clear screen / page break)
+ //   Fn   form feed after n lines
+ //   L    line feed
+ //   Ln   line feed n times
+ //   G    ring bell (BEL character)
+ //   R    random number (0-9 digit)
+ //   %    display sign (+ or -)
+ //   %%   percent of value (value * 100)
+ //   P    parse text (pass-through)
+ //   ''   text literal field (between single quotes)
+ //   ;    field delimiter
+ //
+ // Escape sequences (in format strings, after backslash):
+ //   \n   newline       \t   tab          \b   backspace
+ //   \r   carriage ret  \a   bell/alert   \f   form feed
+ //   \v   vertical tab  \\   backslash    \'   apostrophe
+ //   \"   double quote  \?   question     \0   null
+ //   \o   octal char    \xh  hex char
+ //
+ // Conditional output specifiers:
+ //   >>   print val2 if val1 > val2
+ //   <<   print val2 if val1 < val2
+ //   >=   print val2 if val1 >= val2
+ //   <=   print val2 if val1 <= val2
+ //   ==   print val2 if val1 == val2
+ //   <>   print val2 if val1 != val2
+ //   ><   print val2 if val1 != val2 (alt)
+ //
+ // Character attributes (ANSI SGR codes):
+ //   A0   reset all       A1   bold
+ //   A2   dim             A3   italic
+ //   A4   underline       A5   blink
+ //   A7   inverse         A9   strikethrough
+ //   30A-37A  foreground colors (black..white)
+ //   40A-47A  background colors
+ //   90A-97A  bright foreground
+ //  100A-107A bright background
+ //
+ // ---
 
 #include "parser_internal.h"
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
 
-/*
- * format_using_emit_char - Write a single character to stream.
- */
+ // format_using_emit_char - Write a single character to stream.
 static void format_using_emit_char(FILE *fp, char ch)
 {
  fputc(ch, fp);
 }
 
-/*
- * format_using_emit_str - Write a string to stream.
- */
+ // format_using_emit_str - Write a string to stream.
 static void format_using_emit_str(FILE *fp, const char *s, int len)
 {
  if (s && len > 0)
   fwrite(s, 1, (size_t)len, fp);
 }
 
-/*
- * format_using_emit_fill - Write n copies of a character.
- */
+ // format_using_emit_fill - Write n copies of a character.
 static void format_using_emit_fill(FILE *fp, char ch, int n)
 {
  while (n-- > 0)
   fputc(ch, fp);
 }
 
-/* ============================================================
- * ESCAPE SEQUENCE PROCESSING
- * ============================================================ */
+// ============================================================
+ // ESCAPE SEQUENCE PROCESSING
+ // ============================================================ 
 
-/*
- * format_using_escape - Process a backslash escape in format.
- *
- * Returns the number of format chars consumed (including the \).
- * Emits the escape character to the stream.
- */
+ // format_using_escape - Process a backslash escape in format.
+ //
+ // Returns the number of format chars consumed (including the \).
+ // Emits the escape character to the stream.
 static int format_using_escape(FILE *fp, const char *fmt,
           int pos, int flen)
 {
  char ch;
 
  if (pos + 1 >= flen) {
-  /* Bare backslash at end */
+  // Bare backslash at end
   format_using_emit_char(fp, '\\');
   return 1;
  }
@@ -135,7 +125,7 @@ static int format_using_escape(FILE *fp, const char *fmt,
  case 't':  format_using_emit_char(fp, '\t'); return 2;
  case 'b':  format_using_emit_char(fp, '\b'); return 2;
  case 'r':  format_using_emit_char(fp, '\r'); return 2;
- case 'c':  /* inhibit CR â€” no-op */          return 2;
+ case 'c':  /* inhibit CR a" no-op */          return 2;
  case 'a':  format_using_emit_char(fp, '\a'); return 2;
  case 'f':  format_using_emit_char(fp, '\f'); return 2;
  case 'v':  format_using_emit_char(fp, '\v'); return 2;
@@ -145,7 +135,7 @@ static int format_using_escape(FILE *fp, const char *fmt,
  case '?':  format_using_emit_char(fp, '?');  return 2;
  case '0':  format_using_emit_char(fp, '\0'); return 2;
  case 'o': {
-  /* Octal character: \oNNN */
+  // Octal character: \oNNN
   int val = 0, i;
   int consumed = 2;
   for (i = 0; i < 3 && pos + 2 + i < flen; i++) {
@@ -159,7 +149,7 @@ static int format_using_escape(FILE *fp, const char *fmt,
   return consumed;
  }
  case 'x': {
-  /* Hex character: \xHH */
+  // Hex character: \xHH
   int val = 0, i;
   int consumed = 2;
   for (i = 0; i < 2 && pos + 2 + i < flen; i++) {
@@ -179,50 +169,48 @@ static int format_using_escape(FILE *fp, const char *fmt,
   return consumed;
  }
  default:
-  /* Unknown escape: print literally */
+  // Unknown escape: print literally
   format_using_emit_char(fp, '\\');
   format_using_emit_char(fp, ch);
   return 2;
  }
 }
 
-/* ============================================================
- * NUMERIC FORMATTING
- * ============================================================ */
+// ============================================================
+ // NUMERIC FORMATTING
+ // ============================================================ 
 
-/*
- * format_insert_commas - Insert commas into a digit string.
- *
- * Takes a right-justified digit string (spaces/zeros + digits),
- * inserts commas every 3 digits from the right. Writes result
- * into outbuf and returns the length.
- */
+ // format_insert_commas - Insert commas into a digit string.
+ //
+ // Takes a right-justified digit string (spaces/zeros + digits),
+ // inserts commas every 3 digits from the right. Writes result
+ // into outbuf and returns the length.
 static int format_insert_commas(const char *digits, int dlen,
     char *outbuf, int outmax)
 {
  int i, j, count, start;
 
- /* Find where digits start (skip spaces/signs) */
+ // Find where digits start (skip spaces/signs)
  start = 0;
  while (start < dlen && (digits[start] == ' ' ||
         digits[start] == '+' || digits[start] == '-' ||
         digits[start] == '$' || digits[start] == '*'))
   start++;
 
- /* Count actual digits */
+ // Count actual digits
  count = dlen - start;
  if (count <= 3 || outmax < dlen + count / 3 + 1) {
-  /* No commas needed or buffer too small */
+  // No commas needed or buffer too small
   memcpy(outbuf, digits, (size_t)dlen);
   return dlen;
  }
 
- /* Copy prefix (spaces/signs) */
+ // Copy prefix (spaces/signs)
  j = 0;
  for (i = 0; i < start && j < outmax - 1; i++)
   outbuf[j++] = digits[i];
 
- /* Insert commas from right: figure out first group size */
+ // Insert commas from right: figure out first group size
  {
   int first_group = count % 3;
   int pos = 0;
@@ -235,7 +223,7 @@ static int format_insert_commas(const char *digits, int dlen,
    if (pos == first_group && i + 1 < dlen &&
        j < outmax - 1) {
     outbuf[j++] = ',';
-    first_group = 999; /* reset */
+    first_group = 999; // reset
     pos = 0;
    } else if (pos > 0 && pos % 3 == 0 &&
        i + 1 < dlen && j < outmax - 1 &&
@@ -249,15 +237,13 @@ static int format_insert_commas(const char *digits, int dlen,
  return j;
 }
 
-/*
- * format_using_numeric - Format a single numeric value.
- *
- * Parses the format specifier starting at fmt[*pos] and
- * formats the double value. Writes output to fp.
- * Advances *pos past the consumed format specifiers.
- *
- * Returns 1 if a value was consumed, 0 if not.
- */
+ // format_using_numeric - Format a single numeric value.
+ //
+ // Parses the format specifier starting at fmt[*pos] and
+ // formats the double value. Writes output to fp.
+ // Advances *pos past the consumed format specifiers.
+ //
+ // Returns 1 if a value was consumed, 0 if not.
 int format_using_numeric(FILE *fp, const char *fmt, int flen,
     int *pos, double value)
 {
@@ -276,33 +262,33 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
  int nlen;
  int is_neg;
 
- /* Check for leading + */
+ // Check for leading +
  if (fi < flen && fmt[fi] == '+') {
   has_leading_plus = 1;
   fi++;
  }
 
- /* Check for ** (asterisk fill) */
+ // Check for ** (asterisk fill)
  if (fi + 1 < flen && fmt[fi] == '*' && fmt[fi + 1] == '*') {
   has_star_fill = 1;
   fill_char = '*';
   whole += 2;
   fi += 2;
-  /* Check for **$ */
+  // Check for **$
   if (fi < flen && fmt[fi] == '$') {
    has_dollar = 1;
    fi++;
   }
  }
- /* Check for $$ (floating dollar) */
+ // Check for $$ (floating dollar)
  else if (fi + 1 < flen && fmt[fi] == '$' && fmt[fi + 1] == '$') {
   has_float_dollar = 1;
   has_dollar = 1;
-  whole += 1; /* $$ gives one digit position */
+  whole += 1; // $$ gives one digit position
   fi += 2;
  }
 
- /* Count # digits before decimal point */
+ // Count # digits before decimal point
  while (fi < flen && (fmt[fi] == '#' || fmt[fi] == 'D' ||
         fmt[fi] == 'd' || fmt[fi] == '0' ||
         fmt[fi] == 'Z' || fmt[fi] == 'z')) {
@@ -312,11 +298,11 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
   fi++;
  }
 
- /* Check for comma (grouping) */
+ // Check for comma (grouping)
  if (fi < flen && fmt[fi] == ',') {
   has_comma = 1;
   fi++;
-  /* Continue counting digits after comma */
+  // Continue counting digits after comma
   while (fi < flen && (fmt[fi] == '#' || fmt[fi] == 'D' ||
          fmt[fi] == 'd' || fmt[fi] == ',' ||
          fmt[fi] == '0' || fmt[fi] == 'Z' ||
@@ -333,11 +319,11 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
   }
  }
 
- /* Check for decimal point */
+ // Check for decimal point
  if (fi < flen && fmt[fi] == '.') {
   has_dot = 1;
   fi++;
-  /* Count fractional digits */
+  // Count fractional digits
   while (fi < flen && (fmt[fi] == '#' || fmt[fi] == 'D' ||
          fmt[fi] == 'd' || fmt[fi] == '0' ||
          fmt[fi] == 'Z' || fmt[fi] == 'z')) {
@@ -346,20 +332,20 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
   }
  }
 
- /* If no digits found at all, not a numeric format */
+ // If no digits found at all, not a numeric format
  if (whole == 0 && frac == 0 && !has_leading_plus &&
      !has_star_fill && !has_float_dollar) {
   return 0;
  }
 
- /* Check for ^^^^ (exponential) */
+ // Check for ^^^^ (exponential)
  if (fi + 3 < flen && fmt[fi] == '^' && fmt[fi + 1] == '^' &&
      fmt[fi + 2] == '^' && fmt[fi + 3] == '^') {
   has_exp = 1;
   fi += 4;
  }
 
- /* Check for trailing sign */
+ // Check for trailing sign
  if (fi < flen && fmt[fi] == '-') {
   has_trailing_minus = 1;
   fi++;
@@ -368,21 +354,21 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
   fi++;
  }
 
- /* Now format the value */
+ // Now format the value
  is_neg = (value < 0.0);
  if (is_neg) value = -value;
 
  if (has_zero_fill) fill_char = '0';
 
  if (has_exp) {
-  /* Exponential format */
+  // Exponential format
   int total_digits = whole + frac;
   if (total_digits < 1) total_digits = 1;
   sprintf(nbuf, "%*.*E",
    whole + (has_dot ? 1 + frac : 0) + 5,
    frac > 0 ? frac : (total_digits - 1),
    is_neg ? -value : value);
-  /* Override sign handling for exp */
+  // Override sign handling for exp
   if (has_leading_plus && !is_neg) {
    fprintf(fp, "+");
   } else if (has_leading_plus && is_neg) {
@@ -395,7 +381,7 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
    fprintf(fp, "%c", is_neg ? '-' : '+');
   }
  } else {
-  /* Fixed-point format */
+  // Fixed-point format
   fw = whole + (has_dot ? 1 + frac : 0);
 
   if (has_dot) {
@@ -406,9 +392,9 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
   }
   nlen = (int)strlen(nbuf);
 
-  /* Check for overflow (value too wide) */
+  // Check for overflow (value too wide)
   if (nlen > fw && fw > 0) {
-   /* GW-BASIC prints % then the overflowed value */
+   // GW-BASIC prints % then the overflowed value
    fprintf(fp, "%%");
    fprintf(fp, "%s", nbuf);
    if (has_trailing_minus)
@@ -416,7 +402,7 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
    else if (has_trailing_plus)
     fprintf(fp, "%c", is_neg ? '-' : '+');
   } else {
-   /* Apply fill character */
+   // Apply fill character
    if (fill_char != ' ') {
     int i;
     for (i = 0; i < nlen; i++) {
@@ -427,9 +413,9 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
     }
    }
 
-   /* Apply comma grouping */
+   // Apply comma grouping
    if (has_comma) {
-    /* Find the integer part */
+    // Find the integer part
     char *dot = strchr(nbuf, '.');
     int int_len = dot ? (int)(dot - nbuf) :
           nlen;
@@ -440,13 +426,13 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
            comma_buf, 126);
     comma_buf[clen] = '\0';
 
-    /* Insert sign */
+    // Insert sign
     if (has_leading_plus) {
      fprintf(fp, "%c",
       is_neg ? '-' : '+');
     } else if (is_neg) {
-     /* Find first space/star and
-      * replace with - */
+     // Find first space/star and
+      // replace with - 
      int placed = 0;
      int i;
      for (i = 0; i < clen; i++) {
@@ -465,9 +451,9 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
       fprintf(fp, "-");
     }
 
-    /* Floating dollar */
+    // Floating dollar
     if (has_dollar) {
-     /* Insert $ before first digit */
+     // Insert $ before first digit
      int i;
      for (i = 0; i < clen; i++) {
       if (comma_buf[i] >= '0' &&
@@ -487,13 +473,13 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
     if (dot)
      fprintf(fp, "%s", dot);
    } else {
-    /* No commas */
-    /* Insert sign */
+    // No commas
+    // Insert sign
     if (has_leading_plus) {
      fprintf(fp, "%c",
       is_neg ? '-' : '+');
     } else if (is_neg) {
-     /* Replace leading space with - */
+     // Replace leading space with -
      int i, placed = 0;
      for (i = 0; i < nlen; i++) {
       if (nbuf[i] == ' ' ||
@@ -511,7 +497,7 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
      }
     }
 
-    /* Floating dollar sign */
+    // Floating dollar sign
     if (has_dollar) {
      int i;
      for (i = 0; i < nlen; i++) {
@@ -531,7 +517,7 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
     fprintf(fp, "%s", nbuf);
    }
 
-   /* Trailing sign */
+   // Trailing sign
    if (has_trailing_minus) {
     fprintf(fp, "%c", is_neg ? '-' : ' ');
    } else if (has_trailing_plus) {
@@ -544,72 +530,70 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
  return 1;
 }
 
-/* ============================================================
- * SPECIAL FORMAT: INTEGER, OCTAL, HEX, BINARY
- * ============================================================ */
+// ============================================================
+ // SPECIAL FORMAT: INTEGER, OCTAL, HEX, BINARY
+ // ============================================================ 
 
-/*
- * format_using_radix - Format value in given radix (I/O/H/B).
- *
- * Returns 1 if format was consumed, 0 otherwise.
- */
+ // format_using_radix - Format value in given radix (I/O/H/B).
+ //
+ // Returns 1 if format was consumed, 0 otherwise.
 static int format_using_radix(FILE *fp, const char *fmt, int flen,
          int *pos, double value, int rep)
 {
  char spec = fmt[*pos];
  long ival = (long)value;
- char buf[68]; /* enough for 64-bit binary */
+ char buf[68]; // enough for 64-bit binary
 
  (*pos)++;
 
  switch (spec) {
  case 'I': case 'i':
-  /* Integer format */
+  // Integer format
   if (rep > 0)
    fprintf(fp, "%*ld", rep, ival);
   else
    fprintf(fp, "%ld", ival);
   return 1;
  case 'O': case 'o':
-  /* Octal format */
+  // Octal format
   if (rep > 0)
    fprintf(fp, "%*lo", rep, (unsigned long)ival);
   else
    fprintf(fp, "%lo", (unsigned long)ival);
   return 1;
  case 'H': case 'h':
-  /* Hexadecimal format */
+  // Hexadecimal format
   if (rep > 0)
    fprintf(fp, "%*lX", rep, (unsigned long)ival);
   else
    fprintf(fp, "%lX", (unsigned long)ival);
   return 1;
  case 'B': case 'b': {
-  /* Binary format */
+  // Binary format
   unsigned long uval = (unsigned long)ival;
   int bi = 0, i;
   if (uval == 0) {
    buf[bi++] = '0';
   } else {
-   /* Build binary string in reverse */
+   // Build binary string in reverse
    while (uval > 0 && bi < 64) {
     buf[bi++] = (char)('0' + (uval & 1));
     uval >>= 1;
    }
   }
-  /* Pad to rep width */
+  // Pad to rep width
   if (rep > 0) {
    int pad = rep - bi;
    while (pad-- > 0)
     fputc('0', fp);
   }
-  /* Print reversed */
+  // Print reversed
   for (i = bi - 1; i >= 0; i--)
    fputc(buf[i], fp);
   return 1;
  }
  case 'E': case 'e':
-  /* Exponential format */
+  // Exponential format
   if (rep > 0)
    fprintf(fp, "%*.*E", rep + 7, rep > 1 ? rep - 1 : 1,
     value);
@@ -617,7 +601,7 @@ static int format_using_radix(FILE *fp, const char *fmt, int flen,
    fprintf(fp, "%E", value);
   return 1;
  case 'S': case 's':
-  /* Single precision */
+  // Single precision
   fprintf(fp, "%.7G", value);
   return 1;
  default:
@@ -625,16 +609,14 @@ static int format_using_radix(FILE *fp, const char *fmt, int flen,
  }
 }
 
-/* ============================================================
- * STRING FORMATTING
- * ============================================================ */
+// ============================================================
+ // STRING FORMATTING
+ // ============================================================ 
 
-/*
- * format_using_string_field - Format a string value.
- *
- * Handles !, \ \, &, A format specifiers.
- * Returns 1 if a string value was consumed, 0 otherwise.
- */
+ // format_using_string_field - Format a string value.
+ //
+ // Handles !, \ \, &, A format specifiers.
+ // Returns 1 if a string value was consumed, 0 otherwise.
 int format_using_string_field(FILE *fp, const char *fmt, int flen,
          int *pos, const char *str, int slen)
 {
@@ -644,7 +626,7 @@ int format_using_string_field(FILE *fp, const char *fmt, int flen,
 
  switch (fmt[fi]) {
  case '!':
-  /* First character of string */
+  // First character of string
   fi++;
   if (str && slen > 0)
    fputc(str[0], fp);
@@ -654,15 +636,15 @@ int format_using_string_field(FILE *fp, const char *fmt, int flen,
   return 1;
 
  case '\\': {
-  /* String field: \ \ = width is distance + 2 */
+  // String field: \ \ = width is distance + 2
   int width = 2;
   int pad;
-  fi++; /* skip first \ */
+  fi++; // skip first backslash
   while (fi < flen && fmt[fi] != '\\') {
    width++;
    fi++;
   }
-  if (fi < flen) fi++; /* skip closing \ */
+  if (fi < flen) fi++; // skip closing backslash
 
   if (str) {
    int plen = (slen > width) ? width : slen;
@@ -677,7 +659,7 @@ int format_using_string_field(FILE *fp, const char *fmt, int flen,
  }
 
  case '&':
-  /* Entire string, variable width */
+  // Entire string, variable width
   fi++;
   if (str && slen > 0)
    format_using_emit_str(fp, str, slen);
@@ -689,24 +671,22 @@ int format_using_string_field(FILE *fp, const char *fmt, int flen,
  }
 }
 
-/* ============================================================
- * MAIN FORMAT PROCESSOR
- * ============================================================ */
+// ============================================================
+ // MAIN FORMAT PROCESSOR
+ // ============================================================ 
 
-/*
- * format_using_process - Process a format string with values.
- *
- * This is the main entry point called by PRINT USING, LPRINT USING,
- * and PRINT#c USING.
- *
- * Parameters:
- *   fp      - output stream (stdout, stderr, or file)
- *   fmt     - format string
- *   flen    - length of format string
- *   lex     - lexer (to parse value expressions)
- *   rt      - runtime state
- *   line_num - current line number (for error reporting)
- */
+ // format_using_process - Process a format string with values.
+ //
+ // This is the main entry point called by PRINT USING, LPRINT USING,
+ // and PRINT#c USING.
+ //
+ // Parameters:
+ //   fp      - output stream (stdout, stderr, or file)
+ //   fmt     - format string
+ //   flen    - length of format string
+ //   lex     - lexer (to parse value expressions)
+ //   rt      - runtime state
+ //   line_num - current line number (for error reporting)
 void format_using_process(FILE *fp, const char *fmt, int flen,
      Lexer *lex, RuntimeState *rt, int line_num)
 {
@@ -716,9 +696,9 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
   int rep = 0;
   char ch;
 
-  /* Parse optional numeric prefix (e.g. 3D, 2X) */
+  // Parse optional numeric prefix (e.g. 3D, 2X)
   while (fi < flen && fmt[fi] >= '0' && fmt[fi] <= '9' &&
-         /* Don't consume if this is a 0-fill digit */
+         // Don't consume if this is a 0-fill digit
          !(fmt[fi] == '0' && fi + 1 < flen &&
     (fmt[fi + 1] == '#' || fmt[fi + 1] == 'D' ||
      fmt[fi + 1] == 'd'))) {
@@ -729,15 +709,15 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
   if (fi >= flen) break;
   ch = fmt[fi];
 
-  /* ---- ESCAPE SEQUENCE ---- */
+  // ---- ESCAPE SEQUENCE ----
   if (ch == '\\' && fi + 1 < flen &&
-      /* Not GW-BASIC \ \ string format */
+      // Not GW-BASIC \ \ string format
       fmt[fi + 1] != ' ' && fmt[fi + 1] != '\\') {
    fi += format_using_escape(fp, fmt, fi, flen);
    continue;
   }
 
-  /* ---- LITERAL ESCAPE (underscore) ---- */
+  // ---- LITERAL ESCAPE (underscore) ----
   if (ch == '_' && fi + 1 < flen) {
    fi++;
    format_using_emit_char(fp, fmt[fi]);
@@ -745,7 +725,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ---- NUMERIC FORMAT (#, D, +, $$, **, 0) ---- */
+  // ---- NUMERIC FORMAT (#, D, +, $$, **, 0) ----
   if (ch == '#' || ch == '+' ||
       (ch == '$' && fi + 1 < flen && fmt[fi + 1] == '$') ||
       (ch == '*' && fi + 1 < flen && fmt[fi + 1] == '*') ||
@@ -762,16 +742,16 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    val = bval_to_float(&v);
 
    if (rep > 0 && (ch == 'D' || ch == 'd')) {
-    /* IMAGE format: 3D.2D = ###.## */
+    // IMAGE format: 3D.2D = ###.##
     int whole = rep, frac2 = 0, has_dot2 = 0;
     int fw2;
     char nb[64];
-    fi++; /* skip D */
+    fi++; // skip D
 
     if (fi < flen && fmt[fi] == '.') {
      has_dot2 = 1;
      fi++;
-     /* Count frac digits */
+     // Count frac digits
      {
       int r2 = 0;
       while (fi < flen &&
@@ -804,7 +784,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
            val);
    }
 
-   /* Consume value separator */
+   // Consume value separator
    if (lex->current.type == TOK_SEMICOLON)
     lexer_next(lex);
    else if (lex->current.type == TOK_COMMA)
@@ -812,7 +792,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ---- STRING FORMAT (!, \ \, &) ---- */
+  // ---- STRING FORMAT (!, \ \, &) ----
   if (ch == '!' || (ch == '\\') || ch == '&') {
    BValue v;
    const char *str = NULL;
@@ -834,9 +814,9 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ---- RADIX FORMATS (I, O, H, B, E, S) ---- */
+  // ---- RADIX FORMATS (I, O, H, B, E, S) ----
   if (ch == 'I' || ch == 'i' ||
-      ch == 'O' || /* 'o' conflicts with octal escape */
+      ch == 'O' || // 'o' conflicts with octal escape
       ch == 'H' || ch == 'h' ||
       ch == 'B' || ch == 'b' ||
       ch == 'E' || ch == 'e' ||
@@ -856,22 +836,22 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ---- STRING CHAR FIELD (A, T) ---- */
-  /* First check if A is a color attribute (31A..107A) */
+  // ---- STRING CHAR FIELD (A, T) ----
+  // First check if A is a color attribute (31A..107A)
   if ((ch == 'A' || ch == 'a') && rep > 9) {
-   fi++; /* skip A */
+   fi++; // skip A
    if (fp == stdout || fp == stderr) {
     fprintf(fp, "\033[%dm", rep);
    }
    continue;
   }
-  /* Then check if A is a style attribute (A0-A9) */
+  // Then check if A is a style attribute (A0-A9)
   if ((ch == 'A' || ch == 'a') && rep == 0 &&
       fi + 1 < flen && fmt[fi + 1] >= '0' &&
       fmt[fi + 1] <= '9') {
-   /* A0-A9 = ANSI text attribute */
+   // A0-A9 = ANSI text attribute
    int attr = fmt[fi + 1] - '0';
-   fi += 2; /* skip A and digit */
+   fi += 2; // skip A and digit
    if (fp == stdout || fp == stderr) {
     fprintf(fp, "\033[%dm", attr);
    }
@@ -881,7 +861,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
       ch == 'T' || ch == 't') {
    int width = (rep > 0) ? rep : 1;
    BValue v;
-   fi++; /* skip A/T */
+   fi++; // skip A/T
 
    v = parse_expression_bval(lex, rt, line_num);
    if (error_occurred()) return;
@@ -905,7 +885,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ---- SPACE FIELD (X) ---- */
+  // ---- SPACE FIELD (X) ----
   if (ch == 'X' || ch == 'x') {
    int spaces = (rep > 0) ? rep : 1;
    fi++;
@@ -913,12 +893,12 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ---- FORM FEED (F) ---- */
+  // ---- FORM FEED (F) ----
   if (ch == 'F' || ch == 'f') {
    int n = (rep > 0) ? rep : 1;
    fi++;
    if (fp == stdout) {
-    /* Clear screen via ANSI */
+    // Clear screen via ANSI
     fprintf(fp, "\033[2J\033[H");
    } else {
     int i;
@@ -928,7 +908,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ---- LINE FEED (L) ---- */
+  // ---- LINE FEED (L) ----
   if (ch == 'L' || ch == 'l') {
    int n = (rep > 0) ? rep : 1;
    int i;
@@ -938,24 +918,24 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ---- BELL (G) ---- */
+  // ---- BELL (G) ----
   if (ch == 'G' || ch == 'g') {
    fi++;
    fputc('\a', fp);
    continue;
   }
 
-  /* ---- RANDOM DIGIT (R) ---- */
+  // ---- RANDOM DIGIT (R) ----
   if (ch == 'R' || ch == 'r') {
    fi++;
    fputc('0' + (rand() % 10), fp);
    continue;
   }
 
-  /* ---- PERCENT / SIGN (%) ---- */
+  // ---- PERCENT / SIGN (%) ----
   if (ch == '%') {
    if (fi + 1 < flen && fmt[fi + 1] == '%') {
-    /* %% = multiply value by 100, print % */
+    // %% = multiply value by 100, print %
     BValue v;
     double val;
     fi += 2;
@@ -970,7 +950,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
     else if (lex->current.type == TOK_COMMA)
      lexer_next(lex);
    } else {
-    /* Single % = display sign */
+    // Single % = display sign
     BValue v;
     double val;
     fi++;
@@ -988,21 +968,21 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ---- TEXT FIELD (single quotes) ---- */
+  // ---- TEXT FIELD (single quotes) ----
   if (ch == '\'') {
-   fi++; /* skip opening quote */
+   fi++; // skip opening quote
    while (fi < flen && fmt[fi] != '\'') {
     format_using_emit_char(fp, fmt[fi]);
     fi++;
    }
-   if (fi < flen) fi++; /* skip closing quote */
+   if (fi < flen) fi++; // skip closing quote
    continue;
   }
 
-  /* ---- DELIMITER (;) ---- */
+  // ---- DELIMITER (;) ----
   if (ch == ';') {
    fi++;
-   /* Consume value separator in expression list */
+   // Consume value separator in expression list
    if (lex->current.type == TOK_SEMICOLON)
     lexer_next(lex);
    else if (lex->current.type == TOK_COMMA)
@@ -1010,7 +990,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ---- COMMA in format (field separator) ---- */
+  // ---- COMMA in format (field separator) ----
   if (ch == ',') {
    fi++;
    if (lex->current.type == TOK_SEMICOLON)
@@ -1020,7 +1000,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ---- COLUMN POSITION (C) ---- */
+  // ---- COLUMN POSITION (C) ----
   if (ch == 'C' || ch == 'c') {
    int col = (rep > 0) ? rep : 1;
    fi++;
@@ -1030,64 +1010,63 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    continue;
   }
 
-  /* ============================================
-   * PHASE 6: CONDITIONAL OUTPUT SPECIFIERS
-   * ============================================
-   *
-   * Syntax: >>  <<  >=  <=  ==  <>  ><
-   *
-   * These consume TWO values from the expression
-   * list. If the condition (val1 op val2) is true,
-   * val2 is printed; otherwise nothing is output.
-   *
-   * Example:
-   *   PRINT USING ">>"; A; B
-   *   Prints B only if A > B
-   *
-   *   PRINT USING "=="; X; Y
-   *   Prints Y only if X == Y
-   */
+  // ============================================
+   // PHASE 6: CONDITIONAL OUTPUT SPECIFIERS
+   // ============================================
+   //
+   // Syntax: >>  <<  >=  <=  ==  <>  ><
+   //
+   // These consume TWO values from the expression
+   // list. If the condition (val1 op val2) is true,
+   // val2 is printed; otherwise nothing is output.
+   //
+   // Example:
+   //   PRINT USING ">>"; A; B
+   //   Prints B only if A > B
+   //
+   //   PRINT USING "=="; X; Y
+   //   Prints Y only if X == Y
   if (ch == '>' || ch == '<' || ch == '=') {
-   int cond_type = 0; /* 0=unknown */
+   int cond_type = 0; // 0=unknown
    int cond_met = 0;
    BValue v1, v2;
    double d1, d2;
 
-   /* Parse two-character operator */
+   // Parse two-character operator
    if (fi + 1 < flen) {
     char c2 = fmt[fi + 1];
     if (ch == '>' && c2 == '>') {
-     cond_type = 1; /* >> : GT */
+     cond_type = 1; // >> : GT
      fi += 2;
     } else if (ch == '<' && c2 == '<') {
-     cond_type = 2; /* << : LT */
+     cond_type = 2; // << : LT
      fi += 2;
     } else if (ch == '>' && c2 == '=') {
-     cond_type = 3; /* >= : GTE */
+     cond_type = 3; // >= : GTE
      fi += 2;
     } else if (ch == '<' && c2 == '=') {
-     cond_type = 4; /* <= : LTE */
+     cond_type = 4; // <= : LTE
      fi += 2;
     } else if (ch == '=' && c2 == '=') {
-     cond_type = 5; /* == : EQ */
+     cond_type = 5; // == : EQ
      fi += 2;
     } else if (ch == '<' && c2 == '>') {
-     cond_type = 6; /* <> : NE */
+     cond_type = 6; // <> : NE
      fi += 2;
     } else if (ch == '>' && c2 == '<') {
-     cond_type = 7; /* >< : NE (alt) */
+     cond_type = 7; // >< : NE (alt)
      fi += 2;
     }
    }
 
    if (cond_type == 0) {
-    /* Not a conditional â€” treat as literal */
+    // Not a conditional a" treat as literal
     format_using_emit_char(fp, ch);
     fi++;
     continue;
    }
 
-   /* Consume two values */
+   // Consume two values
    v1 = parse_expression_bval(lex, rt, line_num);
    if (error_occurred()) return;
    if (lex->current.type == TOK_SEMICOLON)
@@ -1098,10 +1077,10 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
    v2 = parse_expression_bval(lex, rt, line_num);
    if (error_occurred()) return;
 
-   /* Compare */
+   // Compare
    if (bval_is_string(&v1) &&
        bval_is_string(&v2)) {
-    /* String comparison */
+    // String comparison
     int sl1 = v1.v.sval.length;
     int sl2 = v2.v.sval.length;
     int smin = (sl1 < sl2) ? sl1 : sl2;
@@ -1122,7 +1101,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
      cond_met = (cmp != 0); break;
     }
    } else {
-    /* Numeric comparison */
+    // Numeric comparison
     d1 = bval_to_float(&v1);
     d2 = bval_to_float(&v2);
 
@@ -1137,7 +1116,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
     }
    }
 
-   /* Output val2 only if condition met */
+   // Output val2 only if condition met
    if (cond_met) {
     if (bval_is_string(&v2) &&
         v2.v.sval.data) {
@@ -1168,7 +1147,7 @@ void format_using_process(FILE *fp, const char *fmt, int flen,
   }
 
 
-  /* ---- LITERAL CHARACTER ---- */
+  // ---- LITERAL CHARACTER ----
   format_using_emit_char(fp, ch);
   fi++;
  }

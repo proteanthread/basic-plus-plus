@@ -1,6 +1,30 @@
 # Advanced Matrix Functions in BASIC++
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- Declaring Arrays
+- Array Access
+- ERASE
+- MAT Operations (Dartmouth Style)
+  - MAT READ
+  - MAT PRINT
+  - MAT Assignment
+  - MAT Special Matrices
+- Matrix Arithmetic
+- Special Matrices
+- Transpose and Inverse
+- Practical Examples
+  - Grade Averages
+  - Solving Linear Equations (Ax = b)
+- Array Functions
+- Limitations
+
+---
 
 BASIC++ supports `DIM` arrays and classic Dartmouth BASIC `MAT` (matrix) operations for working with tables of data.
 

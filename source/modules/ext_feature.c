@@ -1,20 +1,30 @@
-/*
- * ---
- * BASIC++ Interpreter - ext_feature.c
- * ---
- *
- * External Feature loader implementation.
- *
- * IMPLEMENTATION:
- * Static table of MAX_EXT_FEATURES slots. A feature is
- * a pair: .spec file (keyword definitions) + .lib file
- * (BASIC++ behavior). The spec is loaded via the spec
- * system; the library is loaded via ext_lib.
- *
- * C89/C90 COMPLIANT.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - ext_feature.c
+ // ---
+ //
+ // External Feature loader implementation.
+ //
+ // IMPLEMENTATION:
+ // Static table of MAX_EXT_FEATURES slots. A feature is
+ // a pair: .spec file (keyword definitions) + .lib file
+ // (BASIC++ behavior). The spec is loaded via the spec
+ // system; the library is loaded via ext_lib.
+ //
+ // C89/C90 COMPLIANT.
+ //
+//
+// HOW TO EXTEND:
+//   To add new functions to this module:
+//   1. Add the function implementation in this file.
+//   2. Register it in the module's init function using
+//      module_register_function().
+//   3. Update the module's header with the new declaration.
+//
+// TROUBLESHOOTING:
+//   - Module not loading: check module_init() registration.
+//   - Function not found: verify registration name matches
+//     the BASIC keyword exactly (case-insensitive).
+ // ---
 
 #include <stdio.h>
 #include <string.h>
@@ -24,11 +34,11 @@
 #include "../spec.h"
 #include "../security.h"
 
-/* --- Slot --- */
+// --- Slot ---
 static BppExtFeature feat_table[MAX_EXT_FEATURES];
 static int feat_count = 0;
 
-/* --- Case-insensitive compare (C89) --- */
+// --- Case-insensitive compare (C89) ---
 static int feat_str_iequal(const char *a, const char *b)
 {
     if (!a || !b) return 0;
@@ -41,38 +51,37 @@ static int feat_str_iequal(const char *a, const char *b)
     return (*a == '\0' && *b == '\0');
 }
 
-/* --- ext_feature_init --- */
+// --- ext_feature_init ---
 void ext_feature_init(void)
 {
     memset(feat_table, 0, sizeof(feat_table));
     feat_count = 0;
 }
 
-/* --- ext_feature_load ---
- * Load a feature from a .spec file.
- *
- * Steps:
- *   1. Security check (SECOP_EXT_LOAD)
- *   2. Path validation for .spec
- *   3. Load spec via spec_load_file()
- *   4. Find the loaded spec to get metadata
- *   5. Validate pinned level from spec
- *   6. Load companion .lib via ext_lib_load()
- *   7. Store feature descriptor
- */
+// --- ext_feature_load ---
+ // Load a feature from a .spec file.
+ //
+ // Steps:
+ //   1. Security check (SECOP_EXT_LOAD)
+ //   2. Path validation for .spec
+ //   3. Load spec via spec_load_file()
+ //   4. Find the loaded spec to get metadata
+ //   5. Validate pinned level from spec
+ //   6. Load companion .lib via ext_lib_load()
+ //   7. Store feature descriptor
 int ext_feature_load(const char *spec_path, void *rt)
 {
     int slot = -1;
     SpecObject *spec;
     BppExtFeature temp;
 
-    /* Security gate */
+    // Security gate
     if (security_check(SECOP_EXT_LOAD, 0) != 0)
         return -1;
     if (security_check_path(spec_path, 0) != 0)
         return -1;
 
-    /* Find a free slot */
+    // Find a free slot
     for (int i = 0; i < feat_count; i++) {
         if (!feat_table[i].spec_loaded &&
             !feat_table[i].lib_loaded) {
@@ -88,23 +97,23 @@ int ext_feature_load(const char *spec_path, void *rt)
         slot = feat_count;
     }
 
-    /* Load the spec file */
+    // Load the spec file
     if (spec_load_file(spec_path) != 0) {
         printf("Failed to load spec: %s\n", spec_path);
         return -1;
     }
 
-    /* Initialize temp descriptor */
+    // Initialize temp descriptor
     memset(&temp, 0, sizeof(temp));
     strncpy(temp.spec_path, spec_path, 255);
 
-    /* Find the spec that was just loaded.
-     * We scan for the spec with a matching lib_path
-     * (since spec_load_file may have loaded it). We
-     * look for the most recently added spec. */
+    // Find the spec that was just loaded.
+     // We scan for the spec with a matching lib_path
+     // (since spec_load_file may have loaded it). We
+     // look for the most recently added spec. 
     spec = NULL;
     {
-        /* Try to extract name from filename */
+        // Try to extract name from filename
         const char *base = spec_path;
         const char *p = spec_path;
         char probe_name[64];
@@ -118,7 +127,7 @@ int ext_feature_load(const char *spec_path, void *rt)
             char *dot = strrchr(probe_name, '.');
             if (dot) *dot = '\0';
         }
-        /* Uppercase */
+        // Uppercase
         for (int i = 0; probe_name[i]; i++)
             probe_name[i] = (char)toupper(
                 (unsigned char)probe_name[i]);
@@ -133,7 +142,7 @@ int ext_feature_load(const char *spec_path, void *rt)
         if (spec->lib_path[0])
             strncpy(temp.lib_path, spec->lib_path, 255);
     } else {
-        /* Derive name from filename */
+        // Derive name from filename
         const char *base = spec_path;
         const char *p = spec_path;
         while (*p) {
@@ -152,7 +161,7 @@ int ext_feature_load(const char *spec_path, void *rt)
         temp.required_level = SEC_COUNT;
     }
 
-    /* Check security pinning */
+    // Check security pinning
     if (!security_check_pinned_level(
             temp.required_level)) {
         printf("Feature '%s' requires security level "
@@ -166,7 +175,7 @@ int ext_feature_load(const char *spec_path, void *rt)
 
     temp.spec_loaded = 1;
 
-    /* Load companion library if specified */
+    // Load companion library if specified
     if (temp.lib_path[0]) {
         if (ext_lib_load(temp.lib_path, rt) == 0) {
             temp.lib_loaded = 1;
@@ -174,12 +183,12 @@ int ext_feature_load(const char *spec_path, void *rt)
             printf("Warning: companion library '%s' "
                    "for feature '%s' failed to load.\n",
                    temp.lib_path, temp.name);
-            /* Feature still usable without library
-             * if spec defines all behavior */
+            // Feature still usable without library
+             // if spec defines all behavior 
         }
     }
 
-    /* Store in table */
+    // Store in table
     feat_table[slot] = temp;
     if (slot >= feat_count) feat_count = slot + 1;
 
@@ -194,20 +203,20 @@ int ext_feature_load(const char *spec_path, void *rt)
     return 0;
 }
 
-/* --- ext_feature_unload --- */
+// --- ext_feature_unload ---
 int ext_feature_unload(const char *name)
 {
     for (int i = 0; i < feat_count; i++) {
         if ((feat_table[i].spec_loaded ||
              feat_table[i].lib_loaded) &&
             feat_str_iequal(feat_table[i].name, name)) {
-            /* Unload companion library first */
+            // Unload companion library first
             if (feat_table[i].lib_loaded) {
                 ext_lib_unload(feat_table[i].name);
                 feat_table[i].lib_loaded = 0;
             }
-            /* Spec keywords remain registered but
-             * inactive (no behavior backing) */
+            // Spec keywords remain registered but
+             // inactive (no behavior backing) 
             feat_table[i].spec_loaded = 0;
             printf("Unloaded feature: %s\n", name);
             return 0;
@@ -217,7 +226,7 @@ int ext_feature_unload(const char *name)
     return -1;
 }
 
-/* --- ext_feature_is_loaded --- */
+// --- ext_feature_is_loaded ---
 int ext_feature_is_loaded(const char *name)
 {
     for (int i = 0; i < feat_count; i++) {
@@ -228,7 +237,7 @@ int ext_feature_is_loaded(const char *name)
     return 0;
 }
 
-/* --- ext_feature_find --- */
+// --- ext_feature_find ---
 const BppExtFeature *ext_feature_find(const char *name)
 {
     for (int i = 0; i < feat_count; i++) {
@@ -239,7 +248,7 @@ const BppExtFeature *ext_feature_find(const char *name)
     return NULL;
 }
 
-/* --- ext_feature_list --- */
+// --- ext_feature_list ---
 void ext_feature_list(void)
 {
     int found = 0;
@@ -261,7 +270,7 @@ void ext_feature_list(void)
     if (!found) printf("  (none)\n");
 }
 
-/* --- ext_feature_count --- */
+// --- ext_feature_count ---
 int ext_feature_count(void)
 {
     int n = 0;

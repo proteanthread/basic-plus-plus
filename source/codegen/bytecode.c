@@ -1,25 +1,29 @@
-/*
- * ---
- * BASIC++ Interpreter - bytecode.c
- * ---
- *
- * Bytecode format (.BPP) serializer/deserializer
- *
- * IMPLEMENTATION:
- * The .bpp format stores program lines in a binary container
- * with a 16-byte version-tagged header. Each line is stored as:
- * [2-byte line number LE] [2-byte text length LE] [text bytes]
- *
- * The source text is stored verbatim (not further tokenized),
- * because the interpreter's Lexer re-tokenizes on execution.
- * This keeps the format simple and maximally compatible.
- *
- * Binary I/O uses fread/fwrite with unsigned char buffers and
- * manual byte packing to avoid struct alignment issues across
- * compilers. All multi-byte values are little-endian.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - bytecode.c
+ // ---
+ //
+ // Bytecode format (.BPP) serializer/deserializer
+ //
+ // IMPLEMENTATION:
+ // The .bpp format stores program lines in a binary container
+ // with a 16-byte version-tagged header. Each line is stored as:
+ // [2-byte line number LE] [2-byte text length LE] [text bytes]
+ //
+ // The source text is stored verbatim (not further tokenized),
+ // because the interpreter's Lexer re-tokenizes on execution.
+ // This keeps the format simple and maximally compatible.
+ //
+ // Binary I/O uses fread/fwrite with unsigned char buffers and
+ // manual byte packing to avoid struct alignment issues across
+ // compilers. All multi-byte values are little-endian.
+ //
+//
+// HOW TO EXTEND:
+//   Adding support for a new statement in code generation:
+//   1. Add the AST node type in ast.h.
+//   2. Add the emit case in this file's switch statement.
+//   3. Generate the corresponding C code output.
+ // ---
 
 #include <stdio.h>
 #include <string.h>
@@ -27,9 +31,8 @@
 #include "dialect.h"
 #include "config.h"
 
-/* --- Little-endian helpers ---
- * Manual byte packing avoids endianness and alignment issues.
- */
+// --- Little-endian helpers ---
+ // Manual byte packing avoids endianness and alignment issues.
 static void write_le16(unsigned char *buf, unsigned int val)
 {
  buf[0] = (unsigned char)(val & 0xFF);
@@ -42,7 +45,7 @@ static unsigned int read_le16(const unsigned char *buf)
  ((unsigned int)buf[1] << 8);
 }
 
-/* --- Global Detokenizer Hook --- */
+// --- Global Detokenizer Hook ---
 DetokenizerFn g_custom_detokenizer = NULL;
 
 void bytecode_set_detokenizer(DetokenizerFn fn)
@@ -50,8 +53,7 @@ void bytecode_set_detokenizer(DetokenizerFn fn)
     g_custom_detokenizer = fn;
 }
 
-/* --- bpp_save - Serialize program store to .bpp file. ---
- */
+// --- bpp_save - Serialize program store to .bpp file. ---
 int bpp_save(const ProgramStore *prog, const char *filename)
 {
  FILE *fp;
@@ -74,7 +76,7 @@ int bpp_save(const ProgramStore *prog, const char *filename)
  return -1;
  }
 
- /* Build header */
+ // Build header
  memset(header, 0, BPP_HEADER_SIZE);
  header[0] = (unsigned char)BPP_MAGIC_0;
  header[1] = (unsigned char)BPP_MAGIC_1;
@@ -82,18 +84,18 @@ int bpp_save(const ProgramStore *prog, const char *filename)
  header[3] = (unsigned char)BPP_MAGIC_3;
  header[4] = BPP_FORMAT_VER;
  header[5] = (unsigned char)dialect_get_config()->id;
- /* header[6..7] = flags (0) */
+ // header[6..7] = flags (0)
  write_le16(&header[8], (unsigned int)prog->count);
- /* header[10..15] = reserved (0) */
+ // header[10..15] = reserved (0)
 
- /* Write header */
+ // Write header
  if (fwrite(header, 1, BPP_HEADER_SIZE, fp) != BPP_HEADER_SIZE) {
  printf("Write error on '%s'.\n", filename);
  fclose(fp);
  return -1;
  }
 
- /* Write each line record */
+ // Write each line record
  for (i = 0; i < prog->count; i++) {
  const ProgramLine *pl = &prog->lines[i];
  unsigned char rec[4];
@@ -101,9 +103,9 @@ int bpp_save(const ProgramStore *prog, const char *filename)
 
  text_len = (int)strlen(pl->text);
 
- /* Line number (LE16) */
+ // Line number (LE16)
  write_le16(&rec[0], (unsigned int)pl->line_number);
- /* Text length (LE16) */
+ // Text length (LE16)
  write_le16(&rec[2], (unsigned int)text_len);
 
  if (fwrite(rec, 1, 4, fp) != 4) {
@@ -112,7 +114,7 @@ int bpp_save(const ProgramStore *prog, const char *filename)
  return -1;
  }
 
- /* Text bytes (no NUL terminator) */
+ // Text bytes (no NUL terminator)
  if (text_len > 0) {
  if ((int)fwrite(pl->text, 1, (size_t)text_len, fp)
  != text_len) {
@@ -131,8 +133,7 @@ int bpp_save(const ProgramStore *prog, const char *filename)
  return 0;
 }
 
-/* --- bpp_load - Deserialize .bpp file into program store. ---
- */
+// --- bpp_load - Deserialize .bpp file into program store. ---
 int bpp_load(ProgramStore *prog, const char *filename)
 {
  FILE *fp;
@@ -151,29 +152,29 @@ int bpp_load(ProgramStore *prog, const char *filename)
  return -1;
  }
 
- /* Read header */
+ // Read header
  if (fread(header, 1, BPP_HEADER_SIZE, fp) != BPP_HEADER_SIZE) {
  printf("'%s' is too short - not a .bpp file.\n", filename);
  fclose(fp);
  return -1;
  }
 
- /* Validate magic */
+ // Validate magic
  if (header[0] != (unsigned char)BPP_MAGIC_0 ||
  header[1] != (unsigned char)BPP_MAGIC_1 ||
  header[2] != (unsigned char)BPP_MAGIC_2 ||
  header[3] != (unsigned char)BPP_MAGIC_3) {
      if (g_custom_detokenizer != NULL) {
-         /* Hook to handle proprietary binary formats */
+         // Hook to handle proprietary binary formats
          printf("Checking custom detokenizer for '%s'...\n", filename);
-         /* Note: implementation of full file read and hook invocation goes here */
+         // Note: implementation of full file read and hook invocation goes here
      }
  printf("'%s' is not a .bpp file (bad magic).\n", filename);
  fclose(fp);
  return -1;
  }
 
- /* Validate version */
+ // Validate version
  if (header[4] != BPP_FORMAT_VER) {
  printf("'%s' has unsupported version %d "
  "(expected %d).\n",
@@ -191,10 +192,10 @@ int bpp_load(ProgramStore *prog, const char *filename)
  return -1;
  }
 
- /* Clear existing program */
+ // Clear existing program
  program_clear(prog);
 
- /* Read each line record */
+ // Read each line record
  for (i = 0; i < (int)line_count; i++) {
  unsigned char rec[4];
  unsigned int linenum, textlen;
@@ -228,7 +229,7 @@ int bpp_load(ProgramStore *prog, const char *filename)
  }
  text_buf[textlen] = '\0';
 
- /* Insert into program store */
+ // Insert into program store
  if (program_insert(prog, (int)linenum, text_buf) != 0) {
  printf("Cannot insert line %u - store full.\n",
  linenum);
@@ -240,7 +241,7 @@ int bpp_load(ProgramStore *prog, const char *filename)
  fclose(fp);
  printf("BLOAD: %u lines from '%s'\n", line_count, filename);
 
- /* Optionally switch dialect to match the file */
+ // Optionally switch dialect to match the file
  {
  int file_dialect = (int)header[5];
  int curr_dialect = (int)dialect_get_config()->id;

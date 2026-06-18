@@ -1,27 +1,31 @@
-/*
- * ---
- * BASIC++ Compiler - codegen.c
- * ---
- *
- * C89 code generator.
- *
- * DESIGN RATIONALE:
- * Walks the AST and emits a complete, self-contained ANSI C89
- * program. The generated code includes:
- *
- * 1. A runtime shim - static helper functions for PRINT, INPUT,
- * string operations, GOSUB stack, and DIM arrays.
- *
- * 2. Variable declarations - A-Z integer/float, A$-Z$ strings,
- * @() legacy array, DIM arrays.
- *
- * 3. Program body - each BASIC line becomes a labeled block
- * (L10:, L20:, etc.) using C goto for flow control.
- *
- * The output compiles with any C89 compiler and runs standalone.
- *
- * ---
- */
+ // ---
+ // BASIC++ Compiler - codegen.c
+ // ---
+ //
+ // C89 code generator.
+ //
+ // DESIGN RATIONALE:
+ // Walks the AST and emits a complete, self-contained ANSI C89
+ // program. The generated code includes:
+ //
+ // 1. A runtime shim - static helper functions for PRINT, INPUT,
+ // string operations, GOSUB stack, and DIM arrays.
+ //
+ // 2. Variable declarations - A-Z integer/float, A$-Z$ strings,
+ // @() legacy array, DIM arrays.
+ //
+ // 3. Program body - each BASIC line becomes a labeled block
+ // (L10:, L20:, etc.) using C goto for flow control.
+ //
+ // The output compiles with any C89 compiler and runs standalone.
+ //
+//
+// HOW TO EXTEND:
+//   Adding support for a new statement in code generation:
+//   1. Add the AST node type in ast.h.
+//   2. Add the emit case in this file's switch statement.
+//   3. Generate the corresponding C code output.
+ // ---
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,12 +36,9 @@
 #include "errors.h"
 #include "lexer.h"
 
-/* --- Internal helpers ---
- */
+// --- Internal helpers ---
 
-/*
- * emit_runtime_shim - Write the self-contained runtime support code.
- */
+ // emit_runtime_shim - Write the self-contained runtime support code.
 static void emit_runtime_shim(FILE *out)
 {
  fprintf(out,
@@ -214,9 +215,7 @@ static void emit_runtime_shim(FILE *out)
  );
 }
 
-/*
- * expr_is_string - Check if an expression produces a string value.
- */
+ // expr_is_string - Check if an expression produces a string value.
 static int expr_is_string(AstExpr *e)
 {
  if (!e) return 0;
@@ -251,9 +250,7 @@ static int expr_is_string(AstExpr *e)
  return 0;
 }
 
-/*
- * emit_expr - Recursively emit a C expression from an AST node.
- */
+ // emit_expr - Recursively emit a C expression from an AST node.
 static void emit_expr(FILE *out, AstExpr *e)
 {
  if (!e) { fprintf(out, "0"); return; }
@@ -295,7 +292,7 @@ static void emit_expr(FILE *out, AstExpr *e)
  break;
 
  case EXPR_NAMED_VAR:
- /* Named vars: check for trailing $ for string vars */
+ // Named vars: check for trailing $ for string vars
  {
  int nlen = e->v.named.name_len;
  if (nlen > 0 && e->v.named.name[nlen - 1] == '$') {
@@ -617,9 +614,7 @@ static void emit_expr(FILE *out, AstExpr *e)
  }
 }
 
-/*
- * emit_relop - Emit a C relational operator.
- */
+ // emit_relop - Emit a C relational operator.
 static void emit_relop(FILE *out, TokenType relop)
 {
  switch (relop) {
@@ -634,16 +629,14 @@ static void emit_relop(FILE *out, TokenType relop)
  }
 }
 
-/*
- * emit_stmt - Emit C code for a single statement.
- */
+ // emit_stmt - Emit C code for a single statement.
 static void emit_stmt(FILE *out, AstStmt *s, int indent)
 {
  int i;
 
  if (!s) return;
 
- /* Indentation */
+ // Indentation
  for (i = 0; i < indent; i++) fprintf(out, " ");
 
  switch (s->type) {
@@ -661,7 +654,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  continue;
  }
  if (item->expr) {
- /* Determine if string or numeric */
+ // Determine if string or numeric
  if (expr_is_string(item->expr)) {
  fprintf(out, "printf(\"%%s\", ");
  emit_expr(out, item->expr);
@@ -685,7 +678,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  fprintf(out, " ");
  }
  } else {
- /* NULL expr = tab advance (comma separator) */
+ // NULL expr = tab advance (comma separator)
  fprintf(out,
  "printf(\"%%*s\", bpp_print_width, \"\");\n");
  if (pi < s->v.print.item_count - 1) {
@@ -728,7 +721,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  {
  int is_str = (s->v.let_dim.name[1] == '$');
  if (is_str) {
- /* String array: strncpy into bpp_strdim_ref(...) */
+ // String array: strncpy into bpp_strdim_ref(...)
  char nm[2];
  nm[0] = s->v.let_dim.name[0];
  nm[1] = '\0';
@@ -747,7 +740,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  emit_expr(out, s->v.let_dim.value);
  fprintf(out, ", 255);\n");
  } else {
- /* Numeric array */
+ // Numeric array
  fprintf(out, "*bpp_dim_ref(\"%s\", (int)(",
  s->v.let_dim.name);
  emit_expr(out, s->v.let_dim.idx1);
@@ -776,7 +769,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
 
  case STMT_GOTO:
  fprintf(out, "goto L");
- /* GOTO target must be a constant int for label */
+ // GOTO target must be a constant int for label
  if (s->v.goto_stmt.target &&
  s->v.goto_stmt.target->type == EXPR_INT_LIT) {
  fprintf(out, "%ld", s->v.goto_stmt.target->v.ival);
@@ -802,7 +795,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  fprintf(out,
  "{ int _ra = bpp_gosub_stack[--bpp_gosub_sp];"
  " switch(_ra) {\n");
- /* Return targets are resolved in the main emit loop */
+ // Return targets are resolved in the main emit loop
  fprintf(out,
  " default: goto bpp_end;\n"
  " } }\n");
@@ -816,7 +809,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  break;
 
  case STMT_NEXT:
- /* NEXT is handled by the main loop as a jump-back */
+ // NEXT is handled by the main loop as a jump-back
  fprintf(out, "/* NEXT %c - see loop structure */\n",
  s->v.next.var_name ? s->v.next.var_name : '?');
  break;
@@ -843,7 +836,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  fprintf(out, " ");
 
  if (s->v.input.var_types[vi] == 0) {
- /* Numeric input */
+ // Numeric input
  fprintf(out,
  "{ char _buf[256]; double _v;\n");
  for (i = 0; i < indent; i++)
@@ -857,7 +850,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  " bpp_vars[%d] = _v; }\n",
  (int)(s->v.input.var_names[vi] - 'A'));
  } else {
- /* String input */
+ // String input
  fprintf(out,
  "{ char _buf[256]; int _len;\n");
  for (i = 0; i < indent; i++)
@@ -927,11 +920,11 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  fprintf(out, " ");
  }
  if (s->v.read.var_types[ri] == 0) {
- /* Simple numeric variable */
+ // Simple numeric variable
  fprintf(out, "bpp_vars[%d] = bpp_read_num();\n",
  (int)(s->v.read.var_names[ri] - 'A'));
  } else if (s->v.read.var_types[ri] == 2) {
- /* 1D Array element */
+ // 1D Array element
  const char *dn = s->v.read.dim_names[ri];
  if (dn[0] == '\0') {
  char nm[2];
@@ -944,7 +937,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  emit_expr(out, s->v.read.var_indices[ri]);
  fprintf(out, "), 0) = bpp_read_num();\n");
  } else if (s->v.read.var_types[ri] == 3) {
- /* 2D Array element */
+ // 2D Array element
  const char *dn = s->v.read.dim_names[ri];
  if (dn[0] == '\0') {
  char nm[2];
@@ -959,7 +952,7 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  emit_expr(out, s->v.read.var_indices2[ri]);
  fprintf(out, ")) = bpp_read_num();\n");
  } else {
- /* String variable */
+ // String variable
  fprintf(out,
  "sprintf(bpp_strvars[%d], \"%%g\","
  " bpp_read_num());\n",
@@ -1002,32 +995,29 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  break;
 
  case STMT_DEF_FN:
- /* DEF FNA(X) = expr
- * We emit a static function at the statement location.
- * The function uses bpp_fn_param as the parameter. */
+ // DEF FNA(X) = expr
+ // We emit a static function at the statement location.
+ // The function uses bpp_fn_param as the parameter. 
  fprintf(out, "/* DEF FN%c - defined as inline */\n",
  s->v.def_fn.func_name);
  break;
  }
 }
 
-/* --- GOSUB/RETURN resolution ---
- * We need a two-pass approach:
- * Pass 1: Find all GOSUB sites and assign return IDs
- * Pass 2: Emit code with return dispatch in RETURN statements
- */
+// --- GOSUB/RETURN resolution ---
+ // We need a two-pass approach:
+ // Pass 1: Find all GOSUB sites and assign return IDs
+ // Pass 2: Emit code with return dispatch in RETURN statements
 
 typedef struct GosubSite {
- int line_num; /* line containing the GOSUB */
- int return_id; /* unique return label ID */
- int target_line; /* GOSUB target */
+ int line_num; // line containing the GOSUB
+ int return_id; // unique return label ID
+ int target_line; // GOSUB target
 } GosubSite;
 
 #define MAX_GOSUB_SITES 256
 
-/*
- * find_gosub_sites - Scan AST lines for GOSUB statements.
- */
+ // find_gosub_sites - Scan AST lines for GOSUB statements.
 static int find_gosub_sites(AstLine *lines, int line_count,
  GosubSite *sites, int *site_count)
 {
@@ -1049,7 +1039,7 @@ static int find_gosub_sites(AstLine *lines, int line_count,
  (*site_count)++;
  }
  }
- /* Also check IF-then for nested GOSUB */
+ // Also check IF-then for nested GOSUB
  if (s->type == STMT_IF && s->v.if_stmt.then_stmt &&
  s->v.if_stmt.then_stmt->type == STMT_GOSUB) {
  AstStmt *gs = s->v.if_stmt.then_stmt;
@@ -1071,14 +1061,13 @@ static int find_gosub_sites(AstLine *lines, int line_count,
  return id;
 }
 
-/* --- FOR/NEXT matching ---
- */
+// --- FOR/NEXT matching ---
 typedef struct ForSite {
- int for_line; /* line number of FOR statement */
- char var_name; /* loop variable */
- AstExpr *limit; /* limit expression */
- AstExpr *step; /* step expression (NULL = default 1) */
- int loop_id; /* unique label ID */
+ int for_line; // line number of FOR statement
+ char var_name; // loop variable
+ AstExpr *limit; // limit expression
+ AstExpr *step; // step expression (NULL = default 1)
+ int loop_id; // unique label ID
 } ForSite;
 
 #define MAX_FOR_SITES 64
@@ -1107,14 +1096,14 @@ static int find_for_sites(AstLine *lines, int line_count,
  return id;
 }
 
-/* Find the most recent FOR site for a given variable before line_num */
+// Find the most recent FOR site for a given variable before line_num
 static ForSite *find_for_for_next(ForSite *sites, int count,
  char var, int next_line)
 {
  int i;
  ForSite *best = NULL;
- /* Find the FOR for this variable with the highest line_num
- that is still <= next_line */
+ // Find the FOR for this variable with the highest line_num
+ //  that is still <= next_line 
  for (i = 0; i < count; i++) {
  if (sites[i].var_name == var &&
  sites[i].for_line <= next_line) {
@@ -1124,10 +1113,9 @@ static ForSite *find_for_for_next(ForSite *sites, int count,
  return best;
 }
 
-/* --- Label target collection ---
- * Scan AST for all GOTO/GOSUB/ON GOTO target line numbers
- * so we only emit labels for lines that are actually referenced.
- */
+// --- Label target collection ---
+ // Scan AST for all GOTO/GOSUB/ON GOTO target line numbers
+ // so we only emit labels for lines that are actually referenced.
 #define MAX_GOTO_TARGETS 512
 
 static void add_target(int *targets, int *count, int ln)
@@ -1193,17 +1181,14 @@ static int is_label_target(int *targets, int count, int ln)
  return 0;
 }
 
-/* --- Main emit function ---
- */
+// --- Main emit function ---
 
-/*
- * emit_data_init - Scan raw program lines for DATA statements
- * and emit initialization code for bpp_data_pool[].
- *
- * DATA values are extracted from the original source text by
- * finding lines that contain "DATA" followed by a comma-separated
- * list of numeric values.
- */
+ // emit_data_init - Scan raw program lines for DATA statements
+ // and emit initialization code for bpp_data_pool[].
+ //
+ // DATA values are extracted from the original source text by
+ // finding lines that contain "DATA" followed by a comma-separated
+ // list of numeric values.
 static void emit_data_init(FILE *out, ProgramStore *program)
 {
  int i;
@@ -1216,11 +1201,11 @@ static void emit_data_init(FILE *out, ProgramStore *program)
  const char *p = line;
  int found_data = 0;
 
- /* Skip line number */
+ // Skip line number
  while (*p && isdigit((unsigned char)*p)) p++;
  while (*p == ' ') p++;
 
- /* Check for DATA keyword */
+ // Check for DATA keyword
  if ((p[0]=='D'||p[0]=='d') && (p[1]=='A'||p[1]=='a') &&
  (p[2]=='T'||p[2]=='t') && (p[3]=='A'||p[3]=='a') &&
  (p[4]==' ' || p[4]=='\0' || isdigit((unsigned char)p[4]) ||
@@ -1232,7 +1217,7 @@ static void emit_data_init(FILE *out, ProgramStore *program)
 
  if (!found_data) continue;
 
- /* Parse comma-separated numeric values */
+ // Parse comma-separated numeric values
  while (*p && *p != '\0' && *p != '\r' && *p != '\n') {
  double val;
  char *endp;
@@ -1241,7 +1226,7 @@ static void emit_data_init(FILE *out, ProgramStore *program)
  if (*p == '\0' || *p == '\r' || *p == '\n') break;
 
  val = strtod(p, &endp);
- if (endp == p) break; /* not a number */
+ if (endp == p) break; // not a number
  p = endp;
 
  fprintf(out, " bpp_data_pool[%d] = %.17g;\n",
@@ -1271,13 +1256,13 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count,
  int goto_target_count = 0;
  int has_end_or_stop = 0;
 
- /* Pass 1: Find GOSUB, FOR, and GOTO target sites */
+ // Pass 1: Find GOSUB, FOR, and GOTO target sites
  find_gosub_sites(lines, line_count, gosub_sites, &gosub_count);
  find_for_sites(lines, line_count, for_sites, &for_count);
  collect_goto_targets(lines, line_count,
  goto_targets, &goto_target_count);
 
- /* Check if program uses END or STOP (which need bpp_end) */
+ // Check if program uses END or STOP (which need bpp_end)
  for (i = 0; i < line_count; i++) {
  AstStmt *s = lines[i].stmts;
  while (s) {
@@ -1289,10 +1274,10 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count,
  }
  }
 
- /* Emit runtime shim */
+ // Emit runtime shim
  emit_runtime_shim(out);
 
- /* Emit user-defined functions (DEF FN) as static functions */
+ // Emit user-defined functions (DEF FN) as static functions
  for (i = 0; i < line_count; i++) {
  AstStmt *s = lines[i].stmts;
  while (s) {
@@ -1309,20 +1294,20 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count,
  }
  }
 
- /* Emit main function */
+ // Emit main function
  fprintf(out, "int main(void) {\n");
 
- /* Emit DATA initialization */
+ // Emit DATA initialization
  emit_data_init(out, program);
  fprintf(out, "\n");
 
 
- /* Emit each BASIC line as a labeled block */
+ // Emit each BASIC line as a labeled block
  for (i = 0; i < line_count; i++) {
  AstStmt *s = lines[i].stmts;
  int ln = lines[i].line_number;
 
- /* Only emit label if this line is a GOTO/GOSUB target */
+ // Only emit label if this line is a GOTO/GOSUB target
  if (is_label_target(goto_targets, goto_target_count, ln)) {
  fprintf(out, " L%d: /* Line %d */\n", ln, ln);
  } else {
@@ -1330,7 +1315,7 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count,
  }
 
  while (s) {
- /* Special handling for FOR - emit init + loop label */
+ // Special handling for FOR - emit init + loop label
  if (s->type == STMT_FOR) {
  ForSite *fs = NULL;
  int fi;
@@ -1353,14 +1338,14 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count,
  continue;
  }
 
- /* Special handling for NEXT - emit step + check + goto */
+ // Special handling for NEXT - emit step + check + goto
  if (s->type == STMT_NEXT) {
  char nvar = s->v.next.var_name;
  ForSite *fs = find_for_for_next(
  for_sites, for_count, nvar, ln);
  if (fs) {
  int vi = (int)(nvar - 'A');
- /* Increment */
+ // Increment
  fprintf(out, " bpp_vars[%d] += ", vi);
  if (fs->step) {
  emit_expr(out, fs->step);
@@ -1368,11 +1353,11 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count,
  fprintf(out, "1");
  }
  fprintf(out, ";\n");
- /* Check limit */
+ // Check limit
  if (fs->step) {
- /* Signed step: if step>0, check <= limit;
- if step<0, check >= limit.
- Use runtime check for variable step. */
+ // Signed step: if step>0, check <= limit;
+ // if step<0, check >= limit.
+ //  Use runtime check for variable step. 
  fprintf(out,
  " if ((");
  emit_expr(out, fs->step);
@@ -1400,7 +1385,7 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count,
  continue;
  }
 
- /* Special handling for GOSUB - emit return ID */
+ // Special handling for GOSUB - emit return ID
  if (s->type == STMT_GOSUB &&
  s->v.gosub.target &&
  s->v.gosub.target->type == EXPR_INT_LIT) {
@@ -1422,7 +1407,7 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count,
  continue;
  }
 
- /* Special handling for RETURN - emit dispatch */
+ // Special handling for RETURN - emit dispatch
  if (s->type == STMT_RETURN) {
  fprintf(out,
  " { int _ra ="
@@ -1444,7 +1429,7 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count,
  continue;
  }
 
- /* Special handling for IF-GOSUB */
+ // Special handling for IF-GOSUB
  if (s->type == STMT_IF && s->v.if_stmt.then_stmt &&
  s->v.if_stmt.then_stmt->type == STMT_GOSUB) {
  AstStmt *gs = s->v.if_stmt.then_stmt;
@@ -1479,13 +1464,13 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count,
  }
  }
 
- /* Normal statement */
+ // Normal statement
  emit_stmt(out, s, 1);
  s = s->next;
  }
  }
 
- /* End label and return */
+ // End label and return
  if (has_end_or_stop || gosub_count > 0) {
  fprintf(out, " bpp_end:\n");
  } else {

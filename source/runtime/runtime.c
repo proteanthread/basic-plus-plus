@@ -1,31 +1,37 @@
-/*
- * ---
- * BASIC++ Interpreter - runtime.c
- * ---
- *
- * Runtime state management implementation.
- *
- * DESIGN RATIONALE:
- * The runtime state is a single struct that captures ALL mutable
- * interpreter state. This design:
- *
- * 1. Keeps state off the C call stack - no recursion-dependent state.
- * 2. Makes state inspection trivial (dump the struct).
- * 3. Makes reset trivial (zero the struct, reinitialize).
- * 4. Supports future features like BREAK, CONT, debug stepping.
- *
- * The @() array is allocated from the variable pool after the
- * 26 integer variables. The remaining pool space determines the
- * array size. With a 64K pool and sizeof(long)=4:
- * (65536 - 26*4) / 4 = 16,358 elements
- *
- * The RNG uses a simple LCG (linear congruential generator) with
- * parameters that work well on both 16-bit and 32-bit targets.
- * No <time.h> dependency - the seed starts at 1 and advances
- * with each call.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - runtime.c
+ // ---
+ //
+ // Runtime state management implementation.
+ //
+ // DESIGN RATIONALE:
+ // The runtime state is a single struct that captures ALL mutable
+ // interpreter state. This design:
+ //
+ // 1. Keeps state off the C call stack - no recursion-dependent state.
+ // 2. Makes state inspection trivial (dump the struct).
+ // 3. Makes reset trivial (zero the struct, reinitialize).
+ // 4. Supports future features like BREAK, CONT, debug stepping.
+ //
+ // The @() array is allocated from the variable pool after the
+ // 26 integer variables. The remaining pool space determines the
+ // array size. With a 64K pool and sizeof(long)=4:
+ // (65536 - 26*4) / 4 = 16,358 elements
+ //
+ // The RNG uses a simple LCG (linear congruential generator) with
+ // parameters that work well on both 16-bit and 32-bit targets.
+ // No <time.h> dependency - the seed starts at 1 and advances
+ // with each call.
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,22 +41,19 @@
 #include "dialect.h"
 #include "errors.h"
 
-/* --- Runtime Initialization ---
- */
+// --- Runtime Initialization ---
 
-/*
- * runtime_init - Initialize runtime state.
- *
- * Sets up the @() array from the variable pool. The first
- * (MAX_VARIABLES * sizeof(long)) bytes of the variable pool
- * are reserved for A-Z variables (though we use the variables[]
- * array in the RuntimeState struct, not the pool, for direct
- * access). The remaining pool space is for the @() array.
- *
- * Actually, we keep A-Z in the struct for fast access and use
- * the ENTIRE variable pool for the @() array. This gives maximum
- * array space.
- */
+ // runtime_init - Initialize runtime state.
+ //
+ // Sets up the @() array from the variable pool. The first
+ // (MAX_VARIABLES * sizeof(long)) bytes of the variable pool
+ // are reserved for A-Z variables (though we use the variables[]
+ // array in the RuntimeState struct, not the pool, for direct
+ // access). The remaining pool space is for the @() array.
+ //
+ // Actually, we keep A-Z in the struct for fast access and use
+ // the ENTIRE variable pool for the @() array. This gives maximum
+ // array space.
 void runtime_init(RuntimeState *rt, ProgramStore *program,
  MemorySystem *memory)
 {
@@ -68,32 +71,32 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  rt->stopped = 0;
  rt->rnd_seed = 1;
 
- /* Clear all variables to integer zero */
+ // Clear all variables to integer zero
  for (i = 0; i < MAX_VARIABLES; i++) {
  rt->variables[i] = bval_int(0);
  }
 
- /* Set up @() array using the variable pool */
+ // Set up @() array using the variable pool
  rt->array_base = (long *)memory->variable.base;
  rt->array_size = memory->variable.size / (long)sizeof(long);
  memset(rt->array_base, 0,
  (size_t)(rt->array_size * (long)sizeof(long)));
 
- /* Clear the stack */
+ // Clear the stack
  memset(rt->stack, 0, sizeof(rt->stack));
 
- /* Clear named variables and DATA pool */
+ // Clear named variables and DATA pool
  rt->named_count = 0;
  memset(rt->named_vars, 0, sizeof(rt->named_vars));
  rt->data_count = 0;
  rt->data_ptr = 0;
 
- /* String variables */
+ // String variables
  for (i = 0; i < MAX_STRING_VARS; i++) {
  rt->string_vars[i] = bval_string(NULL, 0);
  }
 
- /* DIM arrays */
+ // DIM arrays
  rt->dim_count = 0;
  rt->dim_elements_used = 0;
  memset(rt->dim_arrays, 0, sizeof(rt->dim_arrays));
@@ -101,34 +104,34 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  rt->dim_elements[i] = bval_int(0);
  }
 
- /* String pool */
+ // String pool
  strpool_init(&rt->strpool);
  strpool_set_runtime(&rt->strpool, rt);
 
- /* Virtual devices */
+ // Virtual devices
  rt->dev_con = vdev_get(VDEV_CON);
  rt->dev_err = vdev_get(VDEV_ERR);
 
- /* Trace and error handler */
+ // Trace and error handler
  rt->trace_on = 0;
  rt->debug_on = 0;
  rt->on_error_line = 0;
 
- /* User-defined functions */
+ // User-defined functions
  rt->user_func_count = 0;
  memset(rt->user_funcs, 0, sizeof(rt->user_funcs));
 
- /* VM state and eval stack */
- rt->vm_state = 0; /* VM_STOPPED */
+ // VM state and eval stack
+ rt->vm_state = 0; // VM_STOPPED
  rt->eval_top = -1;
 
- /* Debugger */
+ // Debugger
  rt->breakpoint_count = 0;
  rt->single_step = 0;
  rt->resume_index = -1;
  memset(rt->breakpoints, 0, sizeof(rt->breakpoints));
 
- /* Self-test framework */
+ // Self-test framework
  rt->test_pass = 0;
  rt->test_fail = 0;
  rt->test_total = 0;
@@ -138,85 +141,85 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  rt->assert_fail_total = 0;
  rt->test_block_count = 0;
 
- /* AUTO mode */
+ // AUTO mode
  rt->auto_line = 0;
  rt->auto_step = 0;
 
- /* Block IF depth */
+ // Block IF depth
  rt->block_if_depth = 0;
 
- /* OPTION ANGLE */
- rt->angle_degrees = 0; /* radians (default) */
- rt->tab_mode = 0; /* spaces (default) */
- rt->zone_override = -1; /* use dialect default */
+ // OPTION ANGLE
+ rt->angle_degrees = 0; // radians (default)
+ rt->tab_mode = 0; // spaces (default)
+ rt->zone_override = -1; // use dialect default
 
- /* SCREEN / DRAW state */
- rt->screen_mode = 0; /* text mode */
- rt->draw_x = 40; /* center of 80-col screen */
- rt->draw_y = 25; /* center of 50-row canvas */
- rt->draw_color = '*'; /* default pen character */
+ // SCREEN / DRAW state
+ rt->screen_mode = 0; // text mode
+ rt->draw_x = 40; // center of 80-col screen
+ rt->draw_y = 25; // center of 50-row canvas
+ rt->draw_color = '*'; // default pen character
 
- /* Cursor tracking */
- rt->cursor_row = 1; /* 1-based */
- rt->cursor_col = 1; /* 1-based */
+ // Cursor tracking
+ rt->cursor_row = 1; // 1-based
+ rt->cursor_col = 1; // 1-based
 
- /* WIDTH state */
- rt->screen_width = 80; /* 80 columns default */
- rt->screen_lines = 25; /* 25 lines default */
+ // WIDTH state
+ rt->screen_width = 80; // 80 columns default
+ rt->screen_lines = 25; // 25 lines default
 
- /* CONST table */
+ // CONST table
  rt->const_count = 0;
 
- /* SUB/FUNCTION table */
+ // SUB/FUNCTION table
  rt->sub_count = 0;
  rt->fn_return_value = bval_int(0);
  rt->in_sub_index = -1;
 
- /* User-Defined Types (Milestone 17) */
+ // User-Defined Types (Milestone 17)
  rt->type_count = 0;
  rt->typed_var_count = 0;
  memset(rt->user_types, 0, sizeof(rt->user_types));
  memset(rt->typed_vars, 0, sizeof(rt->typed_vars));
 
- /* Dynamic scope stack (Milestone 9) */
+ // Dynamic scope stack (Milestone 9)
  scope_stack_init(&rt->scope_stack);
 
- /* Label table */
+ // Label table
  rt->label_count = 0;
 
- /* Function key macros */
+ // Function key macros
  memset(rt->fkey_macros, 0, sizeof(rt->fkey_macros));
  rt->fkey_display = 0;
 
- /* ALARM$ */
+ // ALARM$
  rt->alarm_str[0] = '\0';
 
- /* SCOPE hook state */
+ // SCOPE hook state
  rt->scope_before_done = -1;
  rt->scope_after_kw = -1;
  rt->scope_hook_depth = -1;
 
- /* SCOPE event queue */
+ // SCOPE event queue
  rt->scope_evq_head = 0;
  rt->scope_evq_tail = 0;
  rt->scope_evq_count = 0;
 
 
- /* WINDOW logical coordinate system */
+ // WINDOW logical coordinate system
  rt->win_active = 0;
  rt->win_screen_flag = 0;
  rt->win_x1 = 0.0; rt->win_y1 = 0.0;
  rt->win_x2 = 0.0; rt->win_y2 = 0.0;
 
- /* VIEW PRINT text scroll region */
+ // VIEW PRINT text scroll region
  rt->view_print_top = 1;
  rt->view_print_bottom = 25;
 
- /* Virtual console screen buffer */
+ // Virtual console screen buffer
  memset(rt->vcon_chars, ' ', sizeof(rt->vcon_chars));
  memset(rt->vcon_colors, 7, sizeof(rt->vcon_colors));
 
- /* Event trap handlers */
+ // Event trap handlers
  memset(rt->on_com_line, 0, sizeof(rt->on_com_line));
  memset(rt->on_key_line, 0, sizeof(rt->on_key_line));
  rt->on_pen_line = 0;
@@ -235,43 +238,41 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  memset(rt->strig_event_state, 0,
   sizeof(rt->strig_event_state));
 
- /* Tier 2: Device I/O interrupt handlers */
+ // Tier 2: Device I/O interrupt handlers
  memset(rt->on_device_line, 0,
   sizeof(rt->on_device_line));
  memset(rt->device_event_state, 0,
   sizeof(rt->device_event_state));
 
- /* Tier 3: OS / system interrupt handlers */
+ // Tier 3: OS / system interrupt handlers
  rt->on_break_line = 0;
  rt->break_event_state = EVT_OFF;
  rt->signal_pending = 0;
 
- /* Tier 4: File I/O event handlers */
+ // Tier 4: File I/O event handlers
  rt->on_fileio_line = 0;
  rt->fileio_event_state = EVT_OFF;
  rt->fileio_pending = 0;
 
- /* Event system infrastructure */
+ // Event system infrastructure
  rt->event_in_handler = 0;
  rt->evq_head = 0;
  rt->evq_tail = 0;
  rt->evq_count = 0;
 
- /* DEF USR addresses */
+ // DEF USR addresses
  memset(rt->usr_addresses, 0,
   sizeof(rt->usr_addresses));
 
- /* Default variable type map (all NONE) */
+ // Default variable type map (all NONE)
  memset(rt->deftype_map, DEFTYPE_NONE,
   sizeof(rt->deftype_map));
 }
 
-/*
- * runtime_reset - Reset state for a new RUN.
- *
- * Preserves the program and memory pointers but resets all
- * execution state: variables, stack, array, position.
- */
+ // runtime_reset - Reset state for a new RUN.
+ //
+ // Preserves the program and memory pointers but resets all
+ // execution state: variables, stack, array, position.
 void runtime_reset(RuntimeState *rt)
 {
  int i;
@@ -285,48 +286,48 @@ void runtime_reset(RuntimeState *rt)
  rt->print_col = 1;
  rt->stopped = 0;
 
- /* Clear variables */
+ // Clear variables
  for (i = 0; i < MAX_VARIABLES; i++) {
  rt->variables[i] = bval_int(0);
  }
 
- /* Clear @() array */
+ // Clear @() array
  if (rt->array_base != NULL) {
  memset(rt->array_base, 0,
  (size_t)(rt->array_size * (long)sizeof(long)));
  }
 
- /* Clear named variables and DATA pool */
+ // Clear named variables and DATA pool
  rt->named_count = 0;
  memset(rt->named_vars, 0, sizeof(rt->named_vars));
  rt->data_count = 0;
  rt->data_ptr = 0;
 
- /* Reset string variables */
+ // Reset string variables
  for (i = 0; i < MAX_STRING_VARS; i++) {
  rt->string_vars[i] = bval_string(NULL, 0);
  }
 
- /* Reset DIM arrays */
+ // Reset DIM arrays
  rt->dim_count = 0;
  rt->dim_elements_used = 0;
 
- /* Reset string pool */
+ // Reset string pool
  strpool_reset(&rt->strpool);
 
- /* Reset trace and error handler */
+ // Reset trace and error handler
  rt->trace_on = 0;
  rt->debug_on = 0;
  rt->on_error_line = 0;
 
- /* Reset VM state and eval stack */
- rt->vm_state = 0; /* VM_STOPPED */
+ // Reset VM state and eval stack
+ rt->vm_state = 0; // VM_STOPPED
  rt->eval_top = -1;
 
- /* Reset CONST table */
+ // Reset CONST table
  rt->const_count = 0;
 
- /* Reset SUB/FUNCTION table — free static storage */
+ // Reset SUB/FUNCTION table -- free static storage
  {
   int si;
   for (si = 0; si < rt->sub_count; si++) {
@@ -346,37 +347,37 @@ void runtime_reset(RuntimeState *rt)
  rt->fn_return_value = bval_int(0);
  rt->in_sub_index = -1;
 
- /* Reset dynamic scope stack (Milestone 9) */
+ // Reset dynamic scope stack (Milestone 9)
  scope_stack_free(&rt->scope_stack);
  scope_stack_init(&rt->scope_stack);
 
- /* Reset label table */
+ // Reset label table
  rt->label_count = 0;
 
- /* Reset SCOPE hook state */
+ // Reset SCOPE hook state
  rt->scope_before_done = -1;
  rt->scope_after_kw = -1;
  rt->scope_hook_depth = -1;
 
- /* SCOPE event queue */
+ // SCOPE event queue
  rt->scope_evq_head = 0;
  rt->scope_evq_tail = 0;
  rt->scope_evq_count = 0;
 
 
- /* Reset WINDOW state */
+ // Reset WINDOW state
  rt->win_active = 0;
  rt->win_screen_flag = 0;
 
- /* Reset VIEW PRINT */
+ // Reset VIEW PRINT
  rt->view_print_top = 1;
  rt->view_print_bottom = 25;
 
- /* Reset virtual console */
+ // Reset virtual console
  memset(rt->vcon_chars, ' ', sizeof(rt->vcon_chars));
  memset(rt->vcon_colors, 7, sizeof(rt->vcon_colors));
 
- /* Reset event traps */
+ // Reset event traps
  memset(rt->on_com_line, 0, sizeof(rt->on_com_line));
  memset(rt->on_key_line, 0, sizeof(rt->on_key_line));
  rt->on_pen_line = 0;
@@ -409,24 +410,21 @@ void runtime_reset(RuntimeState *rt)
  rt->evq_tail = 0;
  rt->evq_count = 0;
 
- /* Reset DEF USR */
+ // Reset DEF USR
  memset(rt->usr_addresses, 0,
   sizeof(rt->usr_addresses));
 
- /* Reset deftype map */
+ // Reset deftype map
  memset(rt->deftype_map, DEFTYPE_NONE,
   sizeof(rt->deftype_map));
 }
 
-/* --- Stack Operations ---
- */
+// --- Stack Operations ---
 
-/*
- * runtime_push - Push a frame onto the runtime stack.
- *
- * Used by GOSUB (and future FOR/WHILE/DO). Checks for stack
- * overflow and raises ERR_SORRY if full.
- */
+ // runtime_push - Push a frame onto the runtime stack.
+ //
+ // Used by GOSUB (and future FOR/WHILE/DO). Checks for stack
+ // overflow and raises ERR_SORRY if full.
 int runtime_push(RuntimeState *rt, const StackFrame *frame)
 {
  if (rt->stack_top >= MAX_STACK_DEPTH) {
@@ -439,15 +437,13 @@ int runtime_push(RuntimeState *rt, const StackFrame *frame)
  return 0;
 }
 
-/*
- * runtime_pop - Pop a frame with type checking.
- *
- * Verifies that the top frame matches the expected type. This
- * prevents RETURN from popping a FOR frame, or NEXT from popping
- * a GOSUB frame - both of which would corrupt execution.
- *
- * Raises ERR_HOW on type mismatch or empty stack.
- */
+ // runtime_pop - Pop a frame with type checking.
+ //
+ // Verifies that the top frame matches the expected type. This
+ // prevents RETURN from popping a FOR frame, or NEXT from popping
+ // a GOSUB frame - both of which would corrupt execution.
+ //
+ // Raises ERR_HOW on type mismatch or empty stack.
 int runtime_pop(RuntimeState *rt, FrameType expected, StackFrame *out)
 {
  StackFrame *top;
@@ -472,16 +468,13 @@ int runtime_pop(RuntimeState *rt, FrameType expected, StackFrame *out)
  return 0;
 }
 
-/* --- Variable Access ---
- */
+// --- Variable Access ---
 
-/*
- * runtime_get_var - Get variable A-Z value.
- *
- * Validates the name is A-Z and returns the stored value.
- * Invalid names return 0 (defensive, should not happen if
- * the lexer correctly identifies variables).
- */
+ // runtime_get_var - Get variable A-Z value.
+ //
+ // Validates the name is A-Z and returns the stored value.
+ // Invalid names return 0 (defensive, should not happen if
+ // the lexer correctly identifies variables).
 long runtime_get_var(RuntimeState *rt, char name)
 {
  int index;
@@ -498,7 +491,7 @@ BValue runtime_get_var_bval(RuntimeState *rt, char name)
  if (name < 'A' || name > 'Z') return bval_int(0);
  index = name - 'A';
  v = rt->variables[index];
- /* Coerce on read per deftype_map */
+ // Coerce on read per deftype_map
  dtype = rt->deftype_map[index];
  if (dtype == DEFTYPE_INT) {
   v = bval_int(bval_to_int(&v));
@@ -523,7 +516,7 @@ void runtime_set_var_bval(RuntimeState *rt, char name, BValue value)
  unsigned char dtype;
  if (name < 'A' || name > 'Z') return;
  index = name - 'A';
- /* Enforce deftype_map coercion */
+ // Enforce deftype_map coercion
  dtype = rt->deftype_map[index];
  if (dtype == DEFTYPE_INT) {
   value = bval_int(bval_to_int(&value));
@@ -539,16 +532,13 @@ void runtime_set_var_bval(RuntimeState *rt, char name, BValue value)
  rt->variables[index] = value;
 }
 
-/* --- Array Access ---
- */
+// --- Array Access ---
 
-/*
- * runtime_get_array - Get @(index) value with bounds checking.
- *
- * Raises ERR_HOW for out-of-bounds access. In PATB, the valid
- * index range is 0 to SIZE/2 (approximately). We use 0 to
- * array_size-1.
- */
+ // runtime_get_array - Get @(index) value with bounds checking.
+ //
+ // Raises ERR_HOW for out-of-bounds access. In PATB, the valid
+ // index range is 0 to SIZE/2 (approximately). We use 0 to
+ // array_size-1.
 long runtime_get_array(RuntimeState *rt, long index)
 {
  if (index < 0 || index >= rt->array_size) {
@@ -559,9 +549,7 @@ long runtime_get_array(RuntimeState *rt, long index)
  return rt->array_base[index];
 }
 
-/*
- * runtime_set_array - Set @(index) value with bounds checking.
- */
+ // runtime_set_array - Set @(index) value with bounds checking.
 void runtime_set_array(RuntimeState *rt, long index, long value)
 {
  if (index < 0 || index >= rt->array_size) {
@@ -572,70 +560,66 @@ void runtime_set_array(RuntimeState *rt, long index, long value)
  rt->array_base[index] = value;
 }
 
-/* --- Random Number Generator ---
- * Uses a linear congruential generator (LCG) with parameters from
- * the Numerical Recipes family. These parameters are chosen for:
- *
- * 1. Reasonable distribution without requiring 64-bit types.
- * 2. Portability across 16-bit and 32-bit targets.
- * 3. No dependency on <time.h> or OS-specific APIs.
- *
- * The formula: seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF
- *
- * This is the same LCG used by many C library rand() implementations
- * (POSIX / glibc). Using our own ensures identical behavior across
- * all target platforms.
- *
- * PATB's RND(X) returns a value between 1 and X inclusive.
- * If X <= 0, we return 1 (defensive).
- */
+// --- Random Number Generator ---
+ // Uses a linear congruential generator (LCG) with parameters from
+ // the Numerical Recipes family. These parameters are chosen for:
+ //
+ // 1. Reasonable distribution without requiring 64-bit types.
+ // 2. Portability across 16-bit and 32-bit targets.
+ // 3. No dependency on <time.h> or OS-specific APIs.
+ //
+ // The formula: seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF
+ //
+ // This is the same LCG used by many C library rand() implementations
+ // (POSIX / glibc). Using our own ensures identical behavior across
+ // all target platforms.
+ //
+ // PATB's RND(X) returns a value between 1 and X inclusive.
+ // If X <= 0, we return 1 (defensive).
 long runtime_rnd(RuntimeState *rt, long max)
 {
  long result;
 
- /* Advance the LCG */
+ // Advance the LCG
  rt->rnd_seed = (rt->rnd_seed * 1103515245UL + 12345UL) & 0x7FFFFFFFUL;
 
  if (max <= 0) {
  return 1;
  }
 
- /* Map to range [1, max] */
+ // Map to range [1, max]
  result = (long)(rt->rnd_seed % (unsigned long)max) + 1;
  return result;
 }
 
-/*
- * runtime_size - Return available memory for @() array.
- *
- * Reports the total variable pool size (which determines @() capacity).
- * In PATB, SIZE returns the free memory in bytes. We report the full
- * variable pool size since we don't use it for anything else.
- */
+ // runtime_size - Return available memory for @() array.
+ //
+ // Reports the total variable pool size (which determines @() capacity).
+ // In PATB, SIZE returns the free memory in bytes. We report the full
+ // variable pool size since we don't use it for anything else.
 long runtime_size(RuntimeState *rt)
 {
  return rt->memory->variable.size;
 }
 
-/* --- Forward Scan - Find Matching Loop End ---
- * When a WHILE condition is false or a DO condition fails the
- * pre-check, we need to skip forward to the matching WEND or LOOP.
- * This requires scanning through program lines, tokenizing each
- * one, and tracking nesting depth.
- *
- * Algorithm:
- * 1. Start at start_index + 1.
- * 2. For each line, tokenize and check the first keyword.
- * 3. If it matches open_kw, increment depth (nested loop).
- * 4. If it matches close_kw:
- * a. If depth == 0, this is our match - return this index.
- * b. Otherwise, decrement depth.
- * 5. If we reach the end of the program, raise ERR_HOW.
- *
- * This is an O(n) scan through program lines, which is acceptable
- * because it only happens when a loop condition is false (not on
- * every iteration).
- */
+// --- Forward Scan - Find Matching Loop End ---
+ // When a WHILE condition is false or a DO condition fails the
+ // pre-check, we need to skip forward to the matching WEND or LOOP.
+ // This requires scanning through program lines, tokenizing each
+ // one, and tracking nesting depth.
+ //
+ // Algorithm:
+ // 1. Start at start_index + 1.
+ // 2. For each line, tokenize and check the first keyword.
+ // 3. If it matches open_kw, increment depth (nested loop).
+ // 4. If it matches close_kw:
+ // a. If depth == 0, this is our match - return this index.
+ // b. Otherwise, decrement depth.
+ // 5. If we reach the end of the program, raise ERR_HOW.
+ //
+ // This is an O(n) scan through program lines, which is acceptable
+ // because it only happens when a loop condition is false (not on
+ // every iteration).
 int runtime_find_matching(RuntimeState *rt, int start_index,
  int open_kw, int close_kw, int line_num)
 {
@@ -644,67 +628,60 @@ int runtime_find_matching(RuntimeState *rt, int start_index,
  Lexer scan_lex;
 
  for (i = start_index + 1; i < rt->program->count; i++) {
- /*
- * Tokenize the line to inspect its first keyword.
- * We create a temporary lexer - this does not affect
- * the main execution lexer.
- */
+ // Tokenize the line to inspect its first keyword.
+ // We create a temporary lexer - this does not affect
+ // the main execution lexer.
  lexer_init(&scan_lex, rt->program->lines[i].text);
 
- /* Skip the line number token if present */
+ // Skip the line number token if present
  if (scan_lex.current.type == TOK_NUMBER) {
  lexer_next(&scan_lex);
  }
 
- /* Check for open or close keyword */
+ // Check for open or close keyword
  if (scan_lex.current.type == TOK_KEYWORD) {
  if ((int)scan_lex.current.value.keyword == open_kw) {
  depth++;
  } else if ((int)scan_lex.current.value.keyword == close_kw) {
  if (depth == 0) {
- return i; /* found matching end */
+ return i; // found matching end
  }
  depth--;
  }
  }
  }
 
- /* No matching end found - mismatched loop structure */
+ // No matching end found - mismatched loop structure
  error_raise(ERR_HOW, line_num);
  return -1;
 }
 
-/* --- Named Variable Access ---
- * Named variables use a linear-search table. At MAX_NAMED_VARS=256,
- * linear search is efficient enough. Variables are matched by a
- * case-insensitive comparison of up to MAX_VAR_NAME_LEN characters.
- */
+// --- Named Variable Access ---
+ // Named variables use a linear-search table. At MAX_NAMED_VARS=256,
+ // linear search is efficient enough. Variables are matched by a
+ // case-insensitive comparison of up to MAX_VAR_NAME_LEN characters.
 
-/*
- * str_eq_nocase - Compare two strings case-insensitively.
- *
- * Compares name (with given length, not necessarily null-terminated)
- * against stored (null-terminated). Returns 1 if equal, 0 if not.
- */
+ // str_eq_nocase - Compare two strings case-insensitively.
+ //
+ // Compares name (with given length, not necessarily null-terminated)
+ // against stored (null-terminated). Returns 1 if equal, 0 if not.
 static int str_eq_nocase(const char *name, int len, const char *stored)
 {
  int i;
  for (i = 0; i < len; i++) {
  char a = name[i];
  char b = stored[i];
- if (b == '\0') return 0; /* stored is shorter */
+ if (b == '\0') return 0; // stored is shorter
  if (a >= 'a' && a <= 'z') a = (char)(a - 32);
  if (b >= 'a' && b <= 'z') b = (char)(b - 32);
  if (a != b) return 0;
  }
- return (stored[len] == '\0'); /* stored must end here too */
+ return (stored[len] == '\0'); // stored must end here too
 }
 
-/*
- * runtime_get_named_var - Look up a named variable.
- *
- * Returns its value, or 0 if not yet defined.
- */
+ // runtime_get_named_var - Look up a named variable.
+ //
+ // Returns its value, or 0 if not yet defined.
 long runtime_get_named_var(RuntimeState *rt, const char *name, int len)
 {
  int i;
@@ -725,11 +702,9 @@ BValue runtime_get_named_var_bval(RuntimeState *rt, const char *name,
  return rt->named_vars[i].value;
  }
  }
- /*
- * Variable not found. Return default:
- * String vars (name ends with $) -> empty string
- * Numeric vars -> 0
- */
+ // Variable not found. Return default:
+ // String vars (name ends with $) -> empty string
+ // Numeric vars -> 0
  if (len > 0 && name[len - 1] == '$') {
  return bval_string(NULL, 0);
  }
@@ -748,7 +723,7 @@ int runtime_set_named_var_bval(RuntimeState *rt, const char *name,
  int i;
  int copy_len;
 
- /* Type suffix enforcement */
+ // Type suffix enforcement
  if (len > 0) {
   char last = name[len - 1];
   if (last == '%') {
@@ -767,7 +742,7 @@ int runtime_set_named_var_bval(RuntimeState *rt, const char *name,
   }
  }
 
- /* Look for existing variable */
+ // Look for existing variable
  for (i = 0; i < rt->named_count; i++) {
  if (str_eq_nocase(name, len, rt->named_vars[i].name)) {
  rt->named_vars[i].value = value;
@@ -775,7 +750,7 @@ int runtime_set_named_var_bval(RuntimeState *rt, const char *name,
  }
  }
 
- /* Create new variable */
+ // Create new variable
  if (rt->named_count >= MAX_NAMED_VARS) {
  error_raise(ERR_SORRY, 0);
  return -1;
@@ -788,7 +763,7 @@ int runtime_set_named_var_bval(RuntimeState *rt, const char *name,
  memcpy(rt->named_vars[rt->named_count].name, name, (size_t)copy_len);
  rt->named_vars[rt->named_count].name[copy_len] = '\0';
 
- /* Uppercase the stored name for consistent lookups */
+ // Uppercase the stored name for consistent lookups
  for (i = 0; i < copy_len; i++) {
  char c = rt->named_vars[rt->named_count].name[i];
  if (c >= 'a' && c <= 'z') {
@@ -801,8 +776,7 @@ int runtime_set_named_var_bval(RuntimeState *rt, const char *name,
  return 0;
 }
 
-/* --- String Variable Access ---
- */
+// --- String Variable Access ---
 
 BValue runtime_get_string_var(RuntimeState *rt, char name)
 {
@@ -820,8 +794,7 @@ void runtime_set_string_var(RuntimeState *rt, char name, BValue value)
  rt->string_vars[index] = value;
 }
 
-/* --- DIM Array Support ---
- */
+// --- DIM Array Support ---
 
 DimArray *runtime_find_dim(RuntimeState *rt, const char *name,
  int name_len)
@@ -843,9 +816,9 @@ int runtime_dim(RuntimeState *rt, const char *name, int name_len,
  int copy_len;
  int i;
 
- /* Check if already DIMmed */
+ // Check if already DIMmed
  if (runtime_find_dim(rt, name, name_len) != NULL) {
- error_raise(ERR_HOW, line_num); /* re-DIM error */
+ error_raise(ERR_HOW, line_num); // re-DIM error
  return -1;
  }
 
@@ -854,7 +827,7 @@ int runtime_dim(RuntimeState *rt, const char *name, int name_len,
  return -1;
  }
 
- /* BASIC arrays: DIM A(10) gives elements base..10 */
+ // BASIC arrays: DIM A(10) gives elements base..10
  total = dim1 + 1 - rt->option_base;
  if (dim2 > 0) {
  total *= (dim2 + 1 - rt->option_base);
@@ -874,7 +847,7 @@ int runtime_dim(RuntimeState *rt, const char *name, int name_len,
  if (copy_len > MAX_VAR_NAME_LEN) copy_len = MAX_VAR_NAME_LEN;
  memcpy(arr->name, name, (size_t)copy_len);
  arr->name[copy_len] = '\0';
- /* Uppercase */
+ // Uppercase
  for (i = 0; i < copy_len; i++) {
  if (arr->name[i] >= 'a' && arr->name[i] <= 'z') {
  arr->name[i] = (char)(arr->name[i] - 32);
@@ -893,13 +866,11 @@ int runtime_dim(RuntimeState *rt, const char *name, int name_len,
  arr->size[2] = (dim3 > 0) ? dim3 + 1 - rt->option_base : 0;
  arr->elements = &rt->dim_elements[rt->dim_elements_used];
  arr->total = total;
- arr->type_index = -1; /* normal (non-typed) array */
+ arr->type_index = -1; // normal (non-typed) array
 
- /*
- * Initialize elements.
- * String arrays (name ends with '$') default to empty
- * strings. Numeric arrays default to 0.
- */
+ // Initialize elements.
+ // String arrays (name ends with '$') default to empty
+ // strings. Numeric arrays default to 0.
  {
  int is_string_arr = (copy_len > 0 &&
  arr->name[copy_len - 1] == '$');
@@ -924,7 +895,7 @@ BValue runtime_get_dim(RuntimeState *rt, const char *name, int name_len,
  int offset;
 
  if (arr == NULL) {
- /* GW-BASIC auto-DIM: create array with default size 10 */
+ // GW-BASIC auto-DIM: create array with default size 10
  if (dialect_get_config()->has_dim_arrays) {
   runtime_dim(rt, name, name_len, 10, 0, 0, line_num);
   if (error_occurred()) return bval_int(0);
@@ -954,7 +925,7 @@ BValue runtime_get_dim(RuntimeState *rt, const char *name, int name_len,
  offset = (idx1 - rt->option_base) * arr->size[1]
  + (idx2 - rt->option_base);
  } else {
- /* 3D */
+ // 3D
  if (idx1 - rt->option_base < 0 ||
  idx1 - rt->option_base >= arr->size[0] ||
  idx2 - rt->option_base < 0 ||
@@ -979,7 +950,7 @@ void runtime_set_dim(RuntimeState *rt, const char *name, int name_len,
  int offset;
 
  if (arr == NULL) {
- /* GW-BASIC auto-DIM: create array with default size 10 */
+ // GW-BASIC auto-DIM: create array with default size 10
  if (dialect_get_config()->has_dim_arrays) {
   runtime_dim(rt, name, name_len, 10, 0, 0, line_num);
   if (error_occurred()) return;
@@ -1009,7 +980,7 @@ void runtime_set_dim(RuntimeState *rt, const char *name, int name_len,
  offset = (idx1 - rt->option_base) * arr->size[1]
  + (idx2 - rt->option_base);
  } else {
- /* 3D */
+ // 3D
  if (idx1 - rt->option_base < 0 ||
  idx1 - rt->option_base >= arr->size[0] ||
  idx2 - rt->option_base < 0 ||
@@ -1027,8 +998,7 @@ void runtime_set_dim(RuntimeState *rt, const char *name, int name_len,
  arr->elements[offset] = val;
 }
 
-/* --- DATA Pool (, extended for BValue) ---
- */
+// --- DATA Pool (, extended for BValue) ---
 
 void runtime_collect_data(RuntimeState *rt)
 {
@@ -1040,22 +1010,22 @@ void runtime_collect_data(RuntimeState *rt)
  Lexer scan_lex;
  lexer_init(&scan_lex, rt->program->lines[i].text);
 
- /* Skip line number */
+ // Skip line number
  if (scan_lex.current.type == TOK_NUMBER) {
  lexer_next(&scan_lex);
  }
 
- /* Check for DATA keyword */
+ // Check for DATA keyword
  if (scan_lex.current.type == TOK_KEYWORD &&
  scan_lex.current.value.keyword == KW_DATA) {
- lexer_next(&scan_lex); /* consume DATA */
+ lexer_next(&scan_lex); // consume DATA
 
- /* Parse comma-separated values */
+ // Parse comma-separated values
  while (scan_lex.current.type != TOK_EOF &&
  scan_lex.current.type != TOK_CR) {
  int negate = 0;
 
- /* Handle optional sign */
+ // Handle optional sign
  if (scan_lex.current.type == TOK_MINUS) {
  negate = 1;
  lexer_next(&scan_lex);
@@ -1078,7 +1048,7 @@ void runtime_collect_data(RuntimeState *rt)
  rt->data_pool[rt->data_count++] = bval_float(fval);
  }
  } else if (scan_lex.current.type == TOK_STRING) {
- /* String DATA item */
+ // String DATA item
  int slen = scan_lex.current.str_length;
  char *ptr = strpool_store(&rt->strpool,
  scan_lex.current.str_start,
@@ -1092,7 +1062,7 @@ void runtime_collect_data(RuntimeState *rt)
  break;
  }
 
- /* Skip comma separator */
+ // Skip comma separator
  if (scan_lex.current.type == TOK_COMMA) {
  lexer_next(&scan_lex);
  } else {
@@ -1123,36 +1093,33 @@ void runtime_restore_data(RuntimeState *rt)
  rt->data_ptr = 0;
 }
 
-/* --- User-Defined Functions (DEF FN) ---
- *
- * IMPLEMENTATION NOTES:
- *
- * DEF FN stores function definitions as text. When FN is invoked,
- * the body text is re-lexed and re-parsed as an expression. This
- * approach:
- * 1. Matches historical BASIC behavior (text-based DEF FN)
- * 2. Requires no bytecode or AST storage
- * 3. Is memory-efficient (just a string)
- * 4. Supports all expression features naturally
- *
- * LOCAL SCOPING:
- * Parameter variables are saved before evaluation and restored
- * after. This provides transparent local scoping that matches
- * Dartmouth BASIC, GW-BASIC, and AppleSoft semantics.
- *
- * REDEFINITION:
- * Redefining a function (DEF FNA twice) replaces the previous
- * definition. This matches GW-BASIC and most dialects.
- */
+// --- User-Defined Functions (DEF FN) ---
+ //
+ // IMPLEMENTATION NOTES:
+ //
+ // DEF FN stores function definitions as text. When FN is invoked,
+ // the body text is re-lexed and re-parsed as an expression. This
+ // approach:
+ // 1. Matches historical BASIC behavior (text-based DEF FN)
+ // 2. Requires no bytecode or AST storage
+ // 3. Is memory-efficient (just a string)
+ // 4. Supports all expression features naturally
+ //
+ // LOCAL SCOPING:
+ // Parameter variables are saved before evaluation and restored
+ // after. This provides transparent local scoping that matches
+ // Dartmouth BASIC, GW-BASIC, and AppleSoft semantics.
+ //
+ // REDEFINITION:
+ // Redefining a function (DEF FNA twice) replaces the previous
+ // definition. This matches GW-BASIC and most dialects.
 
-/*
- * runtime_def_fn - Define or redefine a user function.
- *
- * If a function with the same name already exists, it is replaced.
- * Otherwise a new entry is created.
- *
- * Returns 0 on success, -1 if the function table is full.
- */
+ // runtime_def_fn - Define or redefine a user function.
+ //
+ // If a function with the same name already exists, it is replaced.
+ // Otherwise a new entry is created.
+ //
+ // Returns 0 on success, -1 if the function table is full.
 int runtime_def_fn(RuntimeState *rt, const char *name, int name_len,
  const char *params, int param_count,
  const char *body, int body_len)
@@ -1160,17 +1127,17 @@ int runtime_def_fn(RuntimeState *rt, const char *name, int name_len,
  int i;
  UserFunction *fn;
 
- /* Check for existing definition (allow redefinition) */
+ // Check for existing definition (allow redefinition)
  fn = runtime_find_fn(rt, name, name_len);
  if (fn == NULL) {
- /* New definition */
+ // New definition
  if (rt->user_func_count >= MAX_USER_FUNCS) {
- return -1; /* table full */
+ return -1; // table full
  }
  fn = &rt->user_funcs[rt->user_func_count++];
  }
 
- /* Store function name */
+ // Store function name
  if (name_len > MAX_VAR_NAME_LEN) {
  name_len = MAX_VAR_NAME_LEN;
  }
@@ -1180,13 +1147,13 @@ int runtime_def_fn(RuntimeState *rt, const char *name, int name_len,
  fn->name[name_len] = '\0';
  fn->name_len = name_len;
 
- /* Store parameter names */
+ // Store parameter names
  fn->param_count = param_count;
  for (i = 0; i < param_count && i < MAX_FN_PARAMS; i++) {
  fn->params[i] = params[i];
  }
 
- /* Store body expression */
+ // Store body expression
  if (body_len > MAX_FN_BODY) {
  body_len = MAX_FN_BODY;
  }
@@ -1197,12 +1164,10 @@ int runtime_def_fn(RuntimeState *rt, const char *name, int name_len,
  return 0;
 }
 
-/*
- * runtime_find_fn - Look up a user function by name.
- *
- * Case-insensitive comparison. Returns pointer to the UserFunction
- * entry, or NULL if not found.
- */
+ // runtime_find_fn - Look up a user function by name.
+ //
+ // Case-insensitive comparison. Returns pointer to the UserFunction
+ // entry, or NULL if not found.
 UserFunction *runtime_find_fn(RuntimeState *rt, const char *name,
  int name_len)
 {
@@ -1228,21 +1193,18 @@ UserFunction *runtime_find_fn(RuntimeState *rt, const char *name,
  return NULL;
 }
 
-/* --- Breakpoint Management ---
- */
+// --- Breakpoint Management ---
 
-/*
- * runtime_breakpoint_add - Add a breakpoint at line_num.
- * Returns 0 on success, -1 if table full or already set.
- */
+ // runtime_breakpoint_add - Add a breakpoint at line_num.
+ // Returns 0 on success, -1 if table full or already set.
 int runtime_breakpoint_add(RuntimeState *rt, int line_num)
 {
  int i;
 
- /* Check for duplicate */
+ // Check for duplicate
  for (i = 0; i < rt->breakpoint_count; i++) {
  if (rt->breakpoints[i] == line_num) {
- return 0; /* already set */
+ return 0; // already set
  }
  }
 
@@ -1256,17 +1218,15 @@ int runtime_breakpoint_add(RuntimeState *rt, int line_num)
  return 0;
 }
 
-/*
- * runtime_breakpoint_remove - Remove breakpoint at line_num.
- * Returns 0 on success, -1 if not found.
- */
+ // runtime_breakpoint_remove - Remove breakpoint at line_num.
+ // Returns 0 on success, -1 if not found.
 int runtime_breakpoint_remove(RuntimeState *rt, int line_num)
 {
  int i;
 
  for (i = 0; i < rt->breakpoint_count; i++) {
  if (rt->breakpoints[i] == line_num) {
- /* Shift remaining down */
+ // Shift remaining down
  int j;
  for (j = i; j < rt->breakpoint_count - 1; j++) {
  rt->breakpoints[j] = rt->breakpoints[j + 1];
@@ -1279,18 +1239,14 @@ int runtime_breakpoint_remove(RuntimeState *rt, int line_num)
  return -1;
 }
 
-/*
- * runtime_breakpoint_clear - Remove all breakpoints.
- */
+ // runtime_breakpoint_clear - Remove all breakpoints.
 void runtime_breakpoint_clear(RuntimeState *rt)
 {
  rt->breakpoint_count = 0;
 }
 
-/*
- * runtime_is_breakpoint - Check if line_num has a breakpoint.
- * Returns 1 if breakpoint set, 0 otherwise.
- */
+ // runtime_is_breakpoint - Check if line_num has a breakpoint.
+ // Returns 1 if breakpoint set, 0 otherwise.
 int runtime_is_breakpoint(RuntimeState *rt, int line_num)
 {
  int i;
@@ -1304,9 +1260,7 @@ int runtime_is_breakpoint(RuntimeState *rt, int line_num)
  return 0;
 }
 
-/*
- * runtime_breakpoint_list - Print all breakpoints.
- */
+ // runtime_breakpoint_list - Print all breakpoints.
 void runtime_breakpoint_list(RuntimeState *rt)
 {
  int i;
@@ -1323,16 +1277,13 @@ void runtime_breakpoint_list(RuntimeState *rt)
  printf("\n");
 }
 
-/* --- Label Collection and Lookup ---
- * Scan all program lines for labels. A label is an identifier
- * followed by a colon at the start of a line (after optional
- * line number). Labels are stored in a table for GOTO/GOSUB
- * resolution.
- */
+// --- Label Collection and Lookup ---
+ // Scan all program lines for labels. A label is an identifier
+ // followed by a colon at the start of a line (after optional
+ // line number). Labels are stored in a table for GOTO/GOSUB
+ // resolution.
 
-/*
- * runtime_collect_labels - Build the label table from program.
- */
+ // runtime_collect_labels - Build the label table from program.
 void runtime_collect_labels(RuntimeState *rt)
 {
  int i;
@@ -1344,24 +1295,24 @@ void runtime_collect_labels(RuntimeState *rt)
  int tlen = (int)strlen(text);
  int name_start, name_len, j, copy_len;
 
- /* Skip leading whitespace */
+ // Skip leading whitespace
  while (pos < tlen && (text[pos] == ' ' ||
  text[pos] == '\t'))
  pos++;
 
- /* Skip optional line number */
+ // Skip optional line number
  if (pos < tlen && text[pos] >= '0' &&
  text[pos] <= '9') {
  while (pos < tlen && text[pos] >= '0' &&
  text[pos] <= '9')
  pos++;
- /* Skip space after line number */
+ // Skip space after line number
  while (pos < tlen && (text[pos] == ' ' ||
  text[pos] == '\t'))
  pos++;
  }
 
- /* Check for alphabetic identifier */
+ // Check for alphabetic identifier
  if (pos >= tlen) continue;
  if (!((text[pos] >= 'A' && text[pos] <= 'Z') ||
  (text[pos] >= 'a' && text[pos] <= 'z')))
@@ -1376,16 +1327,16 @@ void runtime_collect_labels(RuntimeState *rt)
  pos++;
  name_len = pos - name_start;
 
- /* Skip optional whitespace before colon */
+ // Skip optional whitespace before colon
  while (pos < tlen && text[pos] == ' ')
  pos++;
 
- /* Must be followed by colon */
+ // Must be followed by colon
  if (pos >= tlen || text[pos] != ':')
  continue;
 
- /* Don't treat keywords like REM: as labels */
- /* Simple heuristic: skip common keywords */
+ // Don't treat keywords like REM: as labels
+ // Simple heuristic: skip common keywords
  if (name_len <= 6) {
  char upper[8];
  for (j = 0; j < name_len && j < 7; j++) {
@@ -1401,7 +1352,7 @@ void runtime_collect_labels(RuntimeState *rt)
  continue;
  }
 
- /* Store label */
+ // Store label
  if (rt->label_count >= MAX_LABELS) continue;
 
  copy_len = name_len;
@@ -1410,7 +1361,7 @@ void runtime_collect_labels(RuntimeState *rt)
  memcpy(rt->labels[rt->label_count].name,
  text + name_start, (size_t)copy_len);
  rt->labels[rt->label_count].name[copy_len] = '\0';
- /* Uppercase for consistent lookup */
+ // Uppercase for consistent lookup
  for (j = 0; j < copy_len; j++) {
  char c = rt->labels[rt->label_count].name[j];
  if (c >= 'a' && c <= 'z')
@@ -1422,11 +1373,9 @@ void runtime_collect_labels(RuntimeState *rt)
  }
 }
 
-/*
- * runtime_find_label - Look up a label by name.
- *
- * Returns program index, or -1 if not found.
- */
+ // runtime_find_label - Look up a label by name.
+ //
+ // Returns program index, or -1 if not found.
 int runtime_find_label(RuntimeState *rt, const char *name,
  int len)
 {
@@ -1452,12 +1401,9 @@ int runtime_find_label(RuntimeState *rt, const char *name,
  return -1;
 }
 
-/* --- SUB/FUNCTION Lookup ---
- */
+// --- SUB/FUNCTION Lookup ---
 
-/*
- * runtime_find_sub - Look up a SUB or FUNCTION by name.
- */
+ // runtime_find_sub - Look up a SUB or FUNCTION by name.
 SubDef *runtime_find_sub(RuntimeState *rt, const char *name,
  int len)
 {
@@ -1483,12 +1429,9 @@ SubDef *runtime_find_sub(RuntimeState *rt, const char *name,
  return NULL;
 }
 
-/* --- User-Defined Type Runtime Functions (Milestone 17) ---
- */
+// --- User-Defined Type Runtime Functions (Milestone 17) ---
 
-/*
- * runtime_find_type - Look up a UserTypeDef by name.
- */
+ // runtime_find_type - Look up a UserTypeDef by name.
 UserTypeDef *runtime_find_type(RuntimeState *rt,
                                const char *name, int len)
 {
@@ -1500,9 +1443,7 @@ UserTypeDef *runtime_find_type(RuntimeState *rt,
  return NULL;
 }
 
-/*
- * runtime_find_typed_var - Look up a TypedVar by name.
- */
+ // runtime_find_typed_var - Look up a TypedVar by name.
 TypedVar *runtime_find_typed_var(RuntimeState *rt,
                                  const char *name, int len)
 {
@@ -1514,9 +1455,7 @@ TypedVar *runtime_find_typed_var(RuntimeState *rt,
  return NULL;
 }
 
-/*
- * runtime_find_field - Look up field index in a type.
- */
+ // runtime_find_field - Look up field index in a type.
 int runtime_find_field(UserTypeDef *td,
                        const char *name, int len)
 {
@@ -1529,17 +1468,15 @@ int runtime_find_field(UserTypeDef *td,
  return -1;
 }
 
-/*
- * runtime_create_typed_var - Allocate a new TypedVar.
- *
- * Creates a typed variable with all fields initialized to
- * zero (numeric) or empty string (string fields).
- * For nested type fields (nested_type_index >= 0),
- * recursively allocates child TypedVars and stores
- * the child index as bval_int in the parent field slot.
- * Nesting depth is bounded by pool exhaustion
- * (MAX_TYPED_VARS).
- */
+ // runtime_create_typed_var - Allocate a new TypedVar.
+ //
+ // Creates a typed variable with all fields initialized to
+ // zero (numeric) or empty string (string fields).
+ // For nested type fields (nested_type_index >= 0),
+ // recursively allocates child TypedVars and stores
+ // the child index as bval_int in the parent field slot.
+ // Nesting depth is bounded by pool exhaustion
+ // (MAX_TYPED_VARS).
 int runtime_create_typed_var(RuntimeState *rt,
                              const char *name, int len,
                              int type_index)
@@ -1557,7 +1494,7 @@ int runtime_create_typed_var(RuntimeState *rt,
  tv = &rt->typed_vars[idx];
  td = &rt->user_types[type_index];
 
- /* Store name (uppercase) */
+ // Store name (uppercase)
  copy_len = len;
  if (copy_len > MAX_VAR_NAME_LEN)
   copy_len = MAX_VAR_NAME_LEN;
@@ -1571,17 +1508,17 @@ int runtime_create_typed_var(RuntimeState *rt,
  tv->type_index = type_index;
  rt->typed_var_count++;
 
- /* Initialize fields based on type definition */
+ // Initialize fields based on type definition
  for (i = 0; i < MAX_TYPE_FIELDS; i++) {
   if (i < td->field_count &&
       td->fields[i].nested_type_index >= 0) {
-   /* Nested type: allocate child TypedVar.
-    * Child name = "parent.field" (internal).
-    * Store child index in parent's field. */
+   // Nested type: allocate child TypedVar.
+    // Child name = "parent.field" (internal).
+    // Store child index in parent's field. 
    int child_idx;
    char cname[MAX_VAR_NAME_LEN + 1];
    int clen;
-   /* Build child name: truncated "PARENT.FIELD" */
+   // Build child name: truncated "PARENT.FIELD"
    clen = copy_len;
    if (clen + 1 + (int)strlen(
        td->fields[i].name) <= MAX_VAR_NAME_LEN) {
@@ -1591,7 +1528,7 @@ int runtime_create_typed_var(RuntimeState *rt,
      td->fields[i].name);
     clen = (int)strlen(cname);
    } else {
-    /* Name too long: use field name only */
+    // Name too long: use field name only
     strcpy(cname, td->fields[i].name);
     clen = (int)strlen(cname);
    }
@@ -1599,7 +1536,7 @@ int runtime_create_typed_var(RuntimeState *rt,
     rt, cname, clen,
     td->fields[i].nested_type_index);
    if (child_idx < 0) {
-    /* Pool exhausted: store -1 */
+    // Pool exhausted: store -1
     tv->fields[i] = bval_int(-1);
    } else {
     tv->fields[i] = bval_int(child_idx);
@@ -1615,13 +1552,11 @@ int runtime_create_typed_var(RuntimeState *rt,
  return idx;
 }
 
-/*
- * runtime_get_typed_array_field - Get field BValue from
- * a typed array element.
- *
- * Typed arrays store field_count BValues per element in
- * field-stride layout: element[i * field_count + field_index].
- */
+ // runtime_get_typed_array_field - Get field BValue from
+ // a typed array element.
+ //
+ // Typed arrays store field_count BValues per element in
+ // field-stride layout: element[i * field_count + field_index].
 BValue *runtime_get_typed_array_field(RuntimeState *rt,
     DimArray *arr, int elem_index, int field_index)
 {
@@ -1643,14 +1578,12 @@ BValue *runtime_get_typed_array_field(RuntimeState *rt,
  return &arr->elements[offset];
 }
 
-/*
- * runtime_copy_typed_var - Copy all fields from src to dst.
- *
- * Both must have the same type_index (strict).
- * String fields are re-stored in the string pool.
- * Nested type fields are recursively copied.
- * Returns 0 on success, -1 on error.
- */
+ // runtime_copy_typed_var - Copy all fields from src to dst.
+ //
+ // Both must have the same type_index (strict).
+ // String fields are re-stored in the string pool.
+ // Nested type fields are recursively copied.
+ // Returns 0 on success, -1 on error.
 int runtime_copy_typed_var(RuntimeState *rt,
     TypedVar *dst, TypedVar *src)
 {
@@ -1669,7 +1602,7 @@ int runtime_copy_typed_var(RuntimeState *rt,
 
  for (i = 0; i < td->field_count; i++) {
   if (td->fields[i].nested_type_index >= 0) {
-   /* Nested: recursively copy child TypedVars */
+   // Nested: recursively copy child TypedVars
    int src_ci = (int)bval_to_int(&src->fields[i]);
    int dst_ci = (int)bval_to_int(&dst->fields[i]);
    if (src_ci >= 0 &&
@@ -1681,7 +1614,7 @@ int runtime_copy_typed_var(RuntimeState *rt,
      &rt->typed_vars[src_ci]);
    }
   } else if (td->fields[i].is_string) {
-   /* Re-pool string data */
+   // Re-pool string data
    BValue sv = src->fields[i];
    if (bval_is_string(&sv) &&
        sv.v.sval.data != NULL) {

@@ -1,40 +1,46 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_struct.c
- * ---
- *
- * Structured programming constructs.
- *
- * SELECT, CASE, EXIT, SUB, FUNCTION, DECLARE,
- * CALL, PROCEDURE, DEFINE, ENDDEFINE, LOCAL.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_struct.c
+ // ---
+ //
+ // Structured programming constructs.
+ //
+ // SELECT, CASE, EXIT, SUB, FUNCTION, DECLARE,
+ // CALL, PROCEDURE, DEFINE, ENDDEFINE, LOCAL.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * pi_parse_select - Handle SELECT command.
- */
+ // pi_parse_select - Handle SELECT command.
 void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * SELECT CASE expr
- * CASE value [, value...]
- * CASE value TO value
- * CASE IS relop value
- * CASE ELSE
- * ...
- * END SELECT
- *
- * Supports both numeric and string selectors.
- * String comparisons are lexicographic via
- * bval_compare.
- */
+ // SELECT CASE expr
+ // CASE value [, value...]
+ // CASE value TO value
+ // CASE IS relop value
+ // CASE ELSE
+ // ...
+ // END SELECT
+ //
+ // Supports both numeric and string selectors.
+ // String comparisons are lexicographic via
+ // bval_compare.
  if (lexer_match_keyword(lex, KW_CASE)) {
-  lexer_next(lex); /* consume CASE */
+  lexer_next(lex); // consume CASE
  } else if (lexer_match_keyword(lex, KW_ON)) {
-  lexer_next(lex); /* consume ON */
+  lexer_next(lex); // consume ON
  } else {
   error_raise(ERR_WHAT, line_num);
   return;
@@ -53,7 +59,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  is_str = bval_is_string(&sel_val);
  sel_num = is_str ? 0 : bval_to_int(&sel_val);
 
- /* Scan forward for matching CASE */
+ // Scan forward for matching CASE
  idx = rt->current_index + 1;
  depth = 0;
 
@@ -65,7 +71,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_init(&cl, cline);
  lexer_next(&cl);
 
- /* Skip line number */
+ // Skip line number
  if (cl.current.type == TOK_NUMBER)
  lexer_next(&cl);
 
@@ -89,15 +95,15 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  idx++;
  continue;
  }
- /* END SELECT at our level
- - no match found */
+ // END SELECT at our level
+ //  - no match found 
  rt->next_index = idx + 1;
  return;
  }
  }
  if ((kk == KW_CASE || kk == KW_ON || kk == KW_REMAINDER) && depth == 0){
   lexer_next(&cl);
-  /* CASE ELSE or REMAINDER */
+  // CASE ELSE or REMAINDER
   if (kk == KW_REMAINDER || (cl.current.type ==
   TOK_KEYWORD &&
   cl.current.value.keyword
@@ -107,7 +113,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
   break;
   }
   
-  /* For ON, optionally skip 'var =' */
+  // For ON, optionally skip 'var ='
   if (kk == KW_ON) {
    if (cl.current.type == TOK_NAMED_VAR || cl.current.type == TOK_VARIABLE) {
     Lexer probe = cl;
@@ -119,7 +125,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
    }
   }
 
- /* CASE IS relop value */
+ // CASE IS relop value
  if (cl.current.type ==
  TOK_KEYWORD &&
  cl.current.value.keyword
@@ -130,7 +136,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  TokenType rop = cl.current.type;
  lexer_next(&cl);
  if (is_str) {
- /* String CASE IS comparison */
+ // String CASE IS comparison
  BValue cv = parse_expression_bval(
  &cl, rt, pline);
  int cmp;
@@ -154,7 +160,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  default: break;
  }
  } else {
- /* Numeric CASE IS comparison */
+ // Numeric CASE IS comparison
  long cv = parse_expression(
  &cl, rt, pline);
  if (error_occurred()) return;
@@ -182,10 +188,10 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  idx++;
  continue;
  }
- /* CASE val [TO val] [, val...] */
+ // CASE val [TO val] [, val...]
  for (;;) {
  if (is_str) {
- /* String CASE matching */
+ // String CASE matching
  BValue v1 = parse_expression_bval(
  &cl, rt, pline);
  if (error_occurred()) return;
@@ -193,7 +199,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  TOK_KEYWORD &&
  cl.current.value
  .keyword == KW_TO) {
- /* String range: CASE "A" TO "Z" */
+ // String range: CASE "A" TO "Z"
  BValue v2;
  int cmp1, cmp2;
  lexer_next(&cl);
@@ -210,7 +216,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  rt->next_index = idx + 1;
  }
  } else {
- /* Exact string match */
+ // Exact string match
  int cmp = bval_compare(
  &sel_val, &v1, pline);
  if (error_occurred()) return;
@@ -220,7 +226,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
  } else {
- /* Numeric CASE matching */
+ // Numeric CASE matching
  long v1 = parse_expression(
  &cl, rt, pline);
  if (error_occurred()) return;
@@ -253,23 +259,19 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  idx++;
  }
  if (!found) {
- /* Skip to END SELECT */
+ // Skip to END SELECT
  rt->next_index = idx;
  }
  }
  return;
 }
 
-/*
- * pi_parse_case - Handle CASE command.
- */
+ // pi_parse_case - Handle CASE command.
 void pi_parse_case(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * CASE inside executed SELECT block.
- * We've finished the matched block.
- * Skip to END SELECT.
- */
+ // CASE inside executed SELECT block.
+ // We've finished the matched block.
+ // Skip to END SELECT.
  {
  int idx = rt->current_index + 1;
  int depth = 0;
@@ -311,23 +313,19 @@ void pi_parse_case(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_exit - Handle EXIT command.
- */
+ // pi_parse_exit - Handle EXIT command.
 void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * EXIT FOR - jump past matching NEXT
- * EXIT DO - jump past matching LOOP
- */
+ // EXIT FOR - jump past matching NEXT
+ // EXIT DO - jump past matching LOOP
  if (lexer_match_keyword(lex, KW_FOR)) {
- lexer_next(lex); /* consume FOR */
- /* Pop stack until FOR frame */
+ lexer_next(lex); // consume FOR
+ // Pop stack until FOR frame
  while (rt->stack_top > 0) {
  rt->stack_top--;
  if (rt->stack[rt->stack_top].type ==
  FRAME_FOR) {
- /* Find NEXT line and skip */
+ // Find NEXT line and skip
  int idx=rt->current_index + 1;
  ProgramStore *pgm = rt->program;
  while (idx < pgm->count) {
@@ -354,13 +352,13 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  }
  error_raise(ERR_WHAT, line_num);
  } else if (lexer_match_keyword(lex, KW_DO)) {
- lexer_next(lex); /* consume DO */
- /* Pop stack until DO frame */
+ lexer_next(lex); // consume DO
+ // Pop stack until DO frame
  while (rt->stack_top > 0) {
  rt->stack_top--;
  if (rt->stack[rt->stack_top].type ==
  FRAME_DO) {
- /* Find LOOP line and skip */
+ // Find LOOP line and skip
  int idx=rt->current_index + 1;
  ProgramStore *pgm = rt->program;
  while (idx < pgm->count) {
@@ -387,8 +385,8 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  }
  error_raise(ERR_WHAT, line_num);
  } else if (lexer_match_keyword(lex,KW_SUB)){
- lexer_next(lex); /* consume SUB */
- /* EXIT SUB: pop frame, restore vars */
+ lexer_next(lex); // consume SUB
+ // EXIT SUB: pop frame, restore vars
  {
  StackFrame frame;
  if (runtime_pop(rt, FRAME_SUB,
@@ -397,13 +395,13 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  return;
  }
- /* Pop scope stack (restores named+single-letter vars) */
+ // Pop scope stack (restores named+single-letter vars)
  scope_stack_pop(&rt->scope_stack, rt);
  }
  } else if (lexer_match_keyword(lex,
  KW_FUNCTION)) {
- lexer_next(lex); /* consume FUNCTION */
- /* EXIT FUNCTION: same as EXIT SUB */
+ lexer_next(lex); // consume FUNCTION
+ // EXIT FUNCTION: same as EXIT SUB
  {
  StackFrame frame;
  if (runtime_pop(rt, FRAME_SUB,
@@ -412,7 +410,7 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  return;
  }
- /* Pop scope stack (restores named+single-letter vars) */
+ // Pop scope stack (restores named+single-letter vars)
  scope_stack_pop(&rt->scope_stack, rt);
  }
  } else if (lex->current.type ==
@@ -421,9 +419,9 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  lex->current.str_start != NULL &&
  (lex->current.str_start[0] == 'H' ||
  lex->current.str_start[0] == 'h')) {
- /* EXIT HANDLER */
+ // EXIT HANDLER
  int i;
- lexer_next(lex); /* consume HANDLER */
+ lexer_next(lex); // consume HANDLER
  for (i = rt->stack_top - 1; i >= 0; i--) {
  if (rt->stack[i].type ==
  FRAME_EXCEPTION) {
@@ -437,18 +435,16 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  }
  error_raise(ERR_WHAT, line_num);
  } else if (lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_VARIABLE) {
-  /*
-   * EXIT label - SuperBASIC REPeat exit.
-   * Pop the REPeat frame and scan forward to END REPeat / ENDREPEAT.
-   */
+   // EXIT label - SuperBASIC REPeat exit.
+   // Pop the REPeat frame and scan forward to END REPeat / ENDREPEAT.
   int fi;
-  lexer_next(lex); /* consume label */
-  /* Find and pop the REPeat frame */
+  lexer_next(lex); // consume label
+  // Find and pop the REPeat frame
   for (fi = rt->stack_top - 1; fi >= 0; fi--) {
    if (rt->stack[fi].type == FRAME_REPEAT) {
-    /* Pop down to this frame */
+    // Pop down to this frame
     rt->stack_top = fi;
-    /* Scan forward for ENDREPEAT or END REPEAT */
+    // Scan forward for ENDREPEAT or END REPEAT
     {
      int idx = rt->current_index + 1;
      ProgramStore *pgm = rt->program;
@@ -472,7 +468,7 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
          return;
         }
        } else if (ek == KW_END) {
-        /* Check if it is END REPEAT */
+        // Check if it is END REPEAT
         lexer_next(&cl);
         if (cl.current.type == TOK_KEYWORD && cl.current.value.keyword == KW_REPEAT) {
          if (depth > 0) {
@@ -486,7 +482,7 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
       }
       idx++;
      }
-     /* Past program end */
+     // Past program end
      rt->next_index = pgm->count;
     }
     return;
@@ -499,32 +495,28 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_sub - Handle SUB command.
- */
+ // pi_parse_sub - Handle SUB command.
 void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * SUB Name [(param1, param2, ...)]
- * body...
- * END SUB
- *
- * FUNCTION Name [(param1, param2, ...)]
- * body...
- * END FUNCTION
- *
- * At definition time: store in sub table
- * and skip forward to END SUB/FUNCTION.
- */
+ // SUB Name [(param1, param2, ...)]
+ // body...
+ // END SUB
+ //
+ // FUNCTION Name [(param1, param2, ...)]
+ // body...
+ // END FUNCTION
+ //
+ // At definition time: store in sub table
+ // and skip forward to END SUB/FUNCTION.
  {
- int is_func = 0; /* SUB */
+ int is_func = 0; // SUB
  const char *nm;
  int nlen, ci;
  char namebuf[MAX_VAR_NAME_LEN + 1];
  SubDef *sd;
  KeywordId end_kw;
 
- /* Parse the sub/function name */
+ // Parse the sub/function name
  if (lex->current.type != TOK_NAMED_VAR &&
  lex->current.type != TOK_VARIABLE &&
  lex->current.type != TOK_KEYWORD) {
@@ -545,18 +537,18 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Check for existing entry */
+ // Check for existing entry
  {
  SubDef *existing =
  runtime_find_sub(rt, nm, nlen);
  if (existing != NULL &&
  existing->body_index >= 0) {
- /* Already fully defined - skip
- * body (allows re-run) */
+ // Already fully defined - skip
+ // body (allows re-run) 
  } else if (existing != NULL &&
  existing->body_index < 0) {
- /* Forward-declared by DECLARE:
- * fill in body_index + params */
+ // Forward-declared by DECLARE:
+ // fill in body_index + params 
  sd = existing;
  sd->is_function = is_func;
  sd->param_count = 0;
@@ -564,7 +556,7 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  rt->current_index + 1;
  lexer_next(lex);
 
- /* Parse params for fwd decl */
+ // Parse params for fwd decl
  if (lex->current.type ==
  TOK_LPAREN) {
  lexer_next(lex);
@@ -649,10 +641,10 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  } else {
  lexer_next(lex);
  }
- /* No sub_count++ - already
- * counted by DECLARE */
+ // No sub_count++ - already
+ // counted by DECLARE 
  } else {
- /* Store in sub table */
+ // Store in sub table
  if (rt->sub_count >= MAX_SUBS) {
  error_raise(ERR_SORRY, line_num);
  return;
@@ -663,7 +655,7 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  ci = MAX_VAR_NAME_LEN;
  memcpy(sd->name, nm, (size_t)ci);
  sd->name[ci] = '\0';
- /* Uppercase */
+ // Uppercase
  {
  int j;
  for (j = 0; j < ci; j++) {
@@ -680,11 +672,11 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  sd->body_index =
  rt->current_index + 1;
 
- lexer_next(lex); /* consume name */
+ lexer_next(lex); // consume name
 
- /* Parse optional parameter list */
+ // Parse optional parameter list
  if (lex->current.type == TOK_LPAREN) {
- lexer_next(lex); /* consume ( */
+ lexer_next(lex); // consume (
  while (lex->current.type !=
  TOK_RPAREN &&
  lex->current.type !=
@@ -752,7 +744,7 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  sd->param_is_array[
  sd->param_count] = 0;
  lexer_next(lex);
- /* Check for () = array param */
+ // Check for () = array param
  if (lex->current.type ==
  TOK_LPAREN) {
  lexer_next(lex);
@@ -763,7 +755,7 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  }
  }
- /* Check for AS TypeName */
+ // Check for AS TypeName
  if (lex->current.type ==
  TOK_KEYWORD &&
  lex->current.value
@@ -811,14 +803,14 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  TOK_RPAREN)
  lexer_next(lex);
  } else {
- lexer_next(lex); /* consume name */
+ lexer_next(lex); // consume name
  }
 
  rt->sub_count++;
  }
  }
 
- /* Skip forward to END SUB / END FUNCTION */
+ // Skip forward to END SUB / END FUNCTION
  end_kw = is_func ? KW_FUNCTION : KW_SUB;
  {
  int idx = rt->current_index + 1;
@@ -827,10 +819,10 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  Lexer cl;
  lexer_init(&cl,
  pgm->lines[idx].text);
- /* Skip line number */
+ // Skip line number
  if (cl.current.type == TOK_NUMBER)
  lexer_next(&cl);
- /* Check for END */
+ // Check for END
  if (cl.current.type ==
  TOK_KEYWORD &&
  cl.current.value.keyword ==
@@ -840,7 +832,7 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  TOK_KEYWORD &&
  cl.current.value
  .keyword == end_kw) {
- /* Found matching END */
+ // Found matching END
  rt->next_index = idx + 1;
  return;
  }
@@ -853,32 +845,28 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_function - Handle FUNCTION command.
- */
+ // pi_parse_function - Handle FUNCTION command.
 void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * SUB Name [(param1, param2, ...)]
- * body...
- * END SUB
- *
- * FUNCTION Name [(param1, param2, ...)]
- * body...
- * END FUNCTION
- *
- * At definition time: store in sub table
- * and skip forward to END SUB/FUNCTION.
- */
+ // SUB Name [(param1, param2, ...)]
+ // body...
+ // END SUB
+ //
+ // FUNCTION Name [(param1, param2, ...)]
+ // body...
+ // END FUNCTION
+ //
+ // At definition time: store in sub table
+ // and skip forward to END SUB/FUNCTION.
  {
- int is_func = 1; /* FUNCTION */
+ int is_func = 1; // FUNCTION
  const char *nm;
  int nlen, ci;
  char namebuf[MAX_VAR_NAME_LEN + 1];
  SubDef *sd;
  KeywordId end_kw;
 
- /* Parse the sub/function name */
+ // Parse the sub/function name
  if (lex->current.type != TOK_NAMED_VAR &&
  lex->current.type != TOK_VARIABLE &&
  lex->current.type != TOK_KEYWORD) {
@@ -899,18 +887,18 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Check for existing entry */
+ // Check for existing entry
  {
  SubDef *existing =
  runtime_find_sub(rt, nm, nlen);
  if (existing != NULL &&
  existing->body_index >= 0) {
- /* Already fully defined - skip
- * body (allows re-run) */
+ // Already fully defined - skip
+ // body (allows re-run) 
  } else if (existing != NULL &&
  existing->body_index < 0) {
- /* Forward-declared by DECLARE:
- * fill in body_index + params */
+ // Forward-declared by DECLARE:
+ // fill in body_index + params 
  sd = existing;
  sd->is_function = is_func;
  sd->param_count = 0;
@@ -918,7 +906,7 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  rt->current_index + 1;
  lexer_next(lex);
 
- /* Parse params for fwd decl */
+ // Parse params for fwd decl
  if (lex->current.type ==
  TOK_LPAREN) {
  lexer_next(lex);
@@ -1001,10 +989,10 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  } else {
  lexer_next(lex);
  }
- /* No sub_count++ - already
- * counted by DECLARE */
+ // No sub_count++ - already
+ // counted by DECLARE 
  } else {
- /* Store in sub table */
+ // Store in sub table
  if (rt->sub_count >= MAX_SUBS) {
  error_raise(ERR_SORRY, line_num);
  return;
@@ -1015,7 +1003,7 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  ci = MAX_VAR_NAME_LEN;
  memcpy(sd->name, nm, (size_t)ci);
  sd->name[ci] = '\0';
- /* Uppercase */
+ // Uppercase
  {
  int j;
  for (j = 0; j < ci; j++) {
@@ -1032,11 +1020,11 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  sd->body_index =
  rt->current_index + 1;
 
- lexer_next(lex); /* consume name */
+ lexer_next(lex); // consume name
 
- /* Parse optional parameter list */
+ // Parse optional parameter list
  if (lex->current.type == TOK_LPAREN) {
- lexer_next(lex); /* consume ( */
+ lexer_next(lex); // consume (
  while (lex->current.type !=
  TOK_RPAREN &&
  lex->current.type !=
@@ -1110,14 +1098,14 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  TOK_RPAREN)
  lexer_next(lex);
  } else {
- lexer_next(lex); /* consume name */
+ lexer_next(lex); // consume name
  }
 
  rt->sub_count++;
  }
  }
 
- /* Skip forward to END SUB / END FUNCTION */
+ // Skip forward to END SUB / END FUNCTION
  end_kw = is_func ? KW_FUNCTION : KW_SUB;
  {
  int idx = rt->current_index + 1;
@@ -1126,10 +1114,10 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  Lexer cl;
  lexer_init(&cl,
  pgm->lines[idx].text);
- /* Skip line number */
+ // Skip line number
  if (cl.current.type == TOK_NUMBER)
  lexer_next(&cl);
- /* Check for END */
+ // Check for END
  if (cl.current.type ==
  TOK_KEYWORD &&
  cl.current.value.keyword ==
@@ -1139,7 +1127,7 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  TOK_KEYWORD &&
  cl.current.value
  .keyword == end_kw) {
- /* Found matching END */
+ // Found matching END
  rt->next_index = idx + 1;
  return;
  }
@@ -1152,20 +1140,16 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_declare - Handle DECLARE command.
- */
+ // pi_parse_declare - Handle DECLARE command.
 void pi_parse_declare(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * DECLARE [EXTERNAL] SUB name [(params)]
- * DECLARE [EXTERNAL] FUNCTION name [(params)]
- *
- * ECMA-116 / QBasic: Forward declaration.
- * Pre-registers the SUB/FUNCTION name in the
- * subs table with body_index = -1.
- * The actual definition fills in body_index.
- */
+ // DECLARE [EXTERNAL] SUB name [(params)]
+ // DECLARE [EXTERNAL] FUNCTION name [(params)]
+ //
+ // ECMA-116 / QBasic: Forward declaration.
+ // Pre-registers the SUB/FUNCTION name in the
+ // subs table with body_index = -1.
+ // The actual definition fills in body_index.
  {
  int is_func;
  const char *nm;
@@ -1173,16 +1157,16 @@ void pi_parse_declare(Lexer *lex, RuntimeState *rt, int line_num)
  char namebuf[MAX_VAR_NAME_LEN + 1];
  SubDef *sd;
 
- /* Consume optional EXTERNAL */
+ // Consume optional EXTERNAL
  if (lex->current.type == TOK_NAMED_VAR &&
  lex->current.str_length >= 3 &&
  lex->current.str_start != NULL &&
  (lex->current.str_start[0] == 'E' ||
  lex->current.str_start[0] == 'e')) {
- lexer_next(lex); /* EXTERNAL */
+ lexer_next(lex); // EXTERNAL
  }
 
- /* Expect SUB or FUNCTION */
+ // Expect SUB or FUNCTION
  if (lex->current.type != TOK_KEYWORD) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -1196,9 +1180,9 @@ void pi_parse_declare(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume SUB/FUNCTION */
+ lexer_next(lex); // consume SUB/FUNCTION
 
- /* Parse name */
+ // Parse name
  if (lex->current.type != TOK_NAMED_VAR &&
  lex->current.type != TOK_VARIABLE) {
  error_raise(ERR_WHAT, line_num);
@@ -1214,14 +1198,14 @@ void pi_parse_declare(Lexer *lex, RuntimeState *rt, int line_num)
  nlen = 1;
  }
 
- /* Skip if already declared */
+ // Skip if already declared
  if (runtime_find_sub(rt, nm, nlen)
  != NULL) {
  lexer_skip_to_end(lex);
  return;
  }
 
- /* Pre-register in subs table */
+ // Pre-register in subs table
  if (rt->sub_count >= MAX_SUBS) {
  error_raise(ERR_SORRY, line_num);
  return;
@@ -1247,23 +1231,19 @@ void pi_parse_declare(Lexer *lex, RuntimeState *rt, int line_num)
  sd->body_index = -1;
  rt->sub_count++;
 
- /* Skip rest of line (param list etc) */
+ // Skip rest of line (param list etc)
  lexer_skip_to_end(lex);
  }
  return;
 }
 
-/*
- * pi_parse_call - Handle CALL command.
- */
+ // pi_parse_call - Handle CALL command.
 void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * CALL SubName [(arg1, arg2, ...)]
- *
- * Look up SUB, push FRAME_SUB, save vars,
- * bind params, jump to body.
- */
+ // CALL SubName [(arg1, arg2, ...)]
+ //
+ // Look up SUB, push FRAME_SUB, save vars,
+ // bind params, jump to body.
  {
  const char *nm;
  int nlen;
@@ -1299,9 +1279,9 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- lexer_next(lex); /* consume name */
+ lexer_next(lex); // consume name
 
- /* Push FRAME_SUB with saved variables */
+ // Push FRAME_SUB with saved variables
  frame.type = FRAME_SUB;
  frame.data.sub_call.return_index =
  rt->current_index + 1;
@@ -1319,10 +1299,10 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  if (runtime_push(rt, &frame) != 0)
  return;
 
- /* Push scope stack (includes named vars) */
+ // Push scope stack (includes named vars)
  {
  int smode = SCOPE_FULL;
- /* QBasic dialect uses fresh scope */
+ // QBasic dialect uses fresh scope
  if (dialect_get_config()->id ==
   DIALECT_QBASIC)
   smode = SCOPE_FRESH;
@@ -1331,9 +1311,9 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
   rt->current_index + 1);
  }
 
- /* Parse and bind arguments */
+ // Parse and bind arguments
  if (lex->current.type == TOK_LPAREN) {
- lexer_next(lex); /* consume ( */
+ lexer_next(lex); // consume (
  for (i = 0; i < sd->param_count;
  i++) {
  BValue av;
@@ -1342,7 +1322,7 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  TOK_COMMA) break;
  lexer_next(lex);
  }
-  /* Array param: pass by reference */
+  // Array param: pass by reference
   if (sd->param_is_array[i]) {
    char aname[MAX_VAR_NAME_LEN+1];
    int alen = 0, ai;
@@ -1374,7 +1354,7 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
      aname[ai] =
       (char)(aname[ai] - 32);
    }
-   /* Skip optional () */
+   // Skip optional ()
    if (lex->current.type ==
     TOK_LPAREN) {
     lexer_next(lex);
@@ -1388,8 +1368,8 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
     error_raise(ERR_HOW, line_num);
     return;
    }
-   /* Create alias: copy DimArray
-    * header but share elements */
+   // Create alias: copy DimArray
+    // header but share elements 
    if (rt->dim_count >=
     MAX_DIM_ARRAYS) {
     error_raise(ERR_SORRY,
@@ -1399,7 +1379,7 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
    dst_arr =
     &rt->dim_arrays[rt->dim_count];
    *dst_arr = *src_arr;
-   /* Set param name */
+   // Set param name
    {
     const char *pn = sd->params[i];
     int pnl = (int)strlen(pn);
@@ -1420,16 +1400,16 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
    }
    rt->dim_count++;
   } else
-  /* Typed param: bind a TypedVar copy */
+  // Typed param: bind a TypedVar copy
   if (sd->param_type_index[i] >= 0) {
-  /* Expect a named var that's a typed var */
+  // Expect a named var that's a typed var
   if (lex->current.type == TOK_NAMED_VAR) {
    const char *aname = lex->current.str_start;
    int alen = lex->current.str_length;
    TypedVar *src = runtime_find_typed_var(
    rt, aname, alen);
    if (src != NULL) {
-   /* Create local typed var with param name */
+   // Create local typed var with param name
    int pi = runtime_create_typed_var(rt,
     sd->params[i],
     (int)strlen(sd->params[i]),
@@ -1437,7 +1417,7 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
    if (pi >= 0) {
     int fi;
     TypedVar *dst = &rt->typed_vars[pi];
-    /* Copy fields from source */
+    // Copy fields from source
     for (fi = 0; fi < MAX_TYPE_FIELDS; fi++)
     dst->fields[fi] = src->fields[fi];
    }
@@ -1452,7 +1432,7 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
   av = parse_expression_bval(
   lex, rt, line_num);
   if (error_occurred()) return;
-  /* Set param as named var */
+  // Set param as named var
   pi_set_param_by_name(rt,
   sd->params[i], av);
   }
@@ -1460,7 +1440,7 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  if (lex->current.type == TOK_RPAREN)
  lexer_next(lex);
  } else {
- /* Args without parens */
+ // Args without parens
  for (i = 0; i < sd->param_count;
  i++) {
  BValue av;
@@ -1485,28 +1465,20 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_procedure - Handle PROCEDURE command.
- */
+ // pi_parse_procedure - Handle PROCEDURE command.
 void pi_parse_procedure(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * PROCedure - only valid after DEFine.
-  * If encountered standalone, that's an error.
-  */
+  // PROCedure - only valid after DEFine.
+  // If encountered standalone, that's an error.
  error_raise(ERR_WHAT, line_num);
  return;
 }
 
-/*
- * pi_parse_define - Handle DEFINE command.
- */
+ // pi_parse_define - Handle DEFINE command.
 void pi_parse_define(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * DEFine PROCedure name(params) -> acts like SUB
-  * DEFine FuNction name(params) -> acts like FUNCTION
-  */
+  // DEFine PROCedure name(params) -> acts like SUB
+  // DEFine FuNction name(params) -> acts like FUNCTION
  if (lexer_match_keyword(lex, KW_PROCEDURE)) {
   lexer_next(lex);
   pi_parse_sub(lex, rt, line_num);
@@ -1514,49 +1486,43 @@ void pi_parse_define(Lexer *lex, RuntimeState *rt, int line_num)
   lexer_next(lex);
   pi_parse_function(lex, rt, line_num);
  } else if (lexer_match_keyword(lex, KW_CASE)) {
-  lexer_next(lex); /* consume CASE */
+  lexer_next(lex); // consume CASE
  } else if (lexer_match_keyword(lex, KW_ON)) {
-  lexer_next(lex); /* consume ON */
+  lexer_next(lex); // consume ON
  } else {
   error_raise(ERR_WHAT, line_num);
   return;
  }
 }
 
-/*
- * pi_parse_enddefine - Handle ENDDEFINE command.
- */
+ // pi_parse_enddefine - Handle ENDDEFINE command.
 void pi_parse_enddefine(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /* Acts like END SUB / END FUNCTION return */
+ // Acts like END SUB / END FUNCTION return
  StackFrame frame;
  int i;
  if (runtime_pop(rt, FRAME_SUB, &frame) != 0) {
   error_raise(ERR_HOW, line_num);
   return;
  }
- /* Pop scope stack (restores all vars including named) */
+ // Pop scope stack (restores all vars including named)
  scope_stack_pop(&rt->scope_stack, rt);
 }
 
-/*
- * pi_parse_local - Handle LOCAL command.
- */
+ // pi_parse_local - Handle LOCAL command.
 void pi_parse_local(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * LOCal var [, var ...]
-  *
-  * Save current values of listed variables via
-  * scope_stack_add_local, then zero them. On
-  * scope pop (END SUB / RETurn), the saved values
-  * are automatically restored.
-  */
+  // LOCal var [, var ...]
+  //
+  // Save current values of listed variables via
+  // scope_stack_add_local, then zero them. On
+  // scope pop (END SUB / RETurn), the saved values
+  // are automatically restored.
  while (lex->current.type != TOK_EOF &&
   lex->current.type != TOK_CR &&
   lex->current.type != TOK_COLON) {
   if (lex->current.type == TOK_NAMED_VAR) {
-   /* Named variable */
+   // Named variable
    const char *vn = lex->current.str_start;
    int vn_len = lex->current.str_length;
    scope_stack_add_local(
@@ -1565,14 +1531,14 @@ void pi_parse_local(Lexer *lex, RuntimeState *rt, int line_num)
    lexer_next(lex);
   } else if (lex->current.type ==
    TOK_VARIABLE) {
-   /* Single-letter variable A-Z */
+   // Single-letter variable A-Z
    char vl = lex->current.value.var_name;
    scope_stack_add_local(
     &rt->scope_stack, rt,
     NULL, 0, vl, 0);
    lexer_next(lex);
   } else {
-   lexer_next(lex); /* skip junk */
+   lexer_next(lex); // skip junk
   }
   if (lex->current.type == TOK_COMMA)
    lexer_next(lex);

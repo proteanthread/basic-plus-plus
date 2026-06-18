@@ -1,6 +1,28 @@
 # MBASIC (Microsoft BASIC for CP/M) Dialect Reference
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+---
+
+## Table of Contents
+
+- History
+  - Lineage
+- Activation
+- Key Features
+  - Core Language
+  - String Functions
+  - File I/O
+  - Differences from GW-BASIC
+- Dialect Configuration
+- Example Programs
+  - Classic "Guess the Number" (MBASIC style)
+  - File I/O example
+- Historical Significance
+- See Also
+
+---
+
 **Dialect Code:** `MBAS`
 
 ---

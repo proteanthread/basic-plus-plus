@@ -2,7 +2,7 @@ WRITING SAFE AND SECURE BASIC++ CODE
 ======================================
 A Programmer's Guide to Defensive BASIC++
 
-Version 1.5.0
+Version 4.0.1
 
 TABLE OF CONTENTS
 -----------------

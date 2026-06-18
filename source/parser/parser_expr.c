@@ -1,47 +1,70 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_expr.c
- * ---
- *
- * Expression parsing engine.
- *
- * Implements the recursive-descent expression parser for both
- * integer arithmetic and BValue (string/float/int polymorphic)
- * expressions. All BASIC built-in functions (ABS, RND, LEN,
- * CHR$, STR$, VAL, MID$, etc.) are evaluated here.
- *
- * ---
- */
+// ---
+// BASIC++ Interpreter - parser_expr.c
+// ---
+//
+// Expression parsing engine.
+//
+// PURPOSE:
+//   Implements the recursive-descent expression parser for both
+//   integer arithmetic (long) and BValue (polymorphic) expressions.
+//   All BASIC built-in functions are evaluated here.
+//
+// EXPRESSION GRAMMAR (standard BASIC precedence):
+//   expression = [+|-|NOT] term ((+|-) term)* ((AND|OR|XOR) expr)*
+//   term       = power ((*|/|\|MOD) power)*
+//   power      = factor (^ factor)*
+//   factor     = number | variable | @(expr) | (expr) | function(args)
+//
+// TWO EXPRESSION PATHS:
+//   1. Integer path: parse_expression() -> long
+//      Used by legacy Phase 1-3 code and integer-only dialects.
+//   2. BValue path: parse_expression_bval() -> BValue
+//      Used by modern code; handles int/float/string/complex.
+//
+// HOW TO EXTEND:
+//   Adding a new built-in function:
+//   1. Register it in funcreg.c with funcreg_add().
+//   2. The function handler receives BValue args and returns BValue.
+//   3. No changes needed here -- the registry dispatch handles it.
+//
+//   Adding a new operator:
+//   1. Add the precedence level (new parse_xxx function if needed).
+//   2. Add token recognition in lexer.c.
+//   3. Add the operator case in the appropriate parse level below.
+//
+// TROUBLESHOOTING:
+//   - "HOW?" on expressions: usually divide-by-zero or overflow.
+//   - "WHAT?" on function calls: function not in registry, or
+//     wrong number of arguments, or $ suffix mismatch.
+//
+// ---
 
 #include "parser_internal.h"
 
-/* --- Expression Parsing ---
- *
- * Expression grammar (standard BASIC precedence):
- *
- * expression = [+|-] term ((+|-) term)*
- * term = factor ((*|/) factor)*
- * factor = number
- * | variable
- * | @(expression)
- * | (expression)
- * | ABS(expression)
- * | RND(expression)
- * | SIZE
- *
- * This gives correct precedence: * and / bind tighter than + and -.
- * Parentheses override precedence.
- *
- * Recursion depth: expression -> term -> factor -> expression (via
- * parentheses or function calls). Maximum depth equals the nesting
- * depth of parentheses in the source, which is bounded by line
- * length (255 chars max -> at most ~127 nesting levels, but in
- * practice programs use 3-5 levels).
- */
+// --- Expression Parsing ---
+ //
+ // Expression grammar (standard BASIC precedence):
+ //
+ // expression = [+|-] term ((+|-) term)*
+ // term = factor ((*|/) factor)*
+ // factor = number
+ // | variable
+ // | @(expression)
+ // | (expression)
+ // | ABS(expression)
+ // | RND(expression)
+ // | SIZE
+ //
+ // This gives correct precedence: * and / bind tighter than + and -.
+ // Parentheses override precedence.
+ //
+ // Recursion depth: expression -> term -> factor -> expression (via
+ // parentheses or function calls). Maximum depth equals the nesting
+ // depth of parentheses in the source, which is bounded by line
+ // length (255 chars max -> at most ~127 nesting levels, but in
+ // practice programs use 3-5 levels).
 
-/*
- * parse_factor - Parse an atomic expression (highest precedence).
- */
+ // parse_factor - Parse an atomic expression (highest precedence).
 long pi_parse_factor(Lexer *lex, RuntimeState *rt, int line_num)
 {
  long value = 0;
@@ -58,12 +81,12 @@ long pi_parse_factor(Lexer *lex, RuntimeState *rt, int line_num)
  {
  char vname = lex->current.value.var_name;
  lexer_next(lex);
-  /* Check for DIM array access: A(idx) -- auto-DIMs */
+  // Check for DIM array access: A(idx) -- auto-DIMs
   if (lex->current.type == TOK_LPAREN &&
   dialect_get_config()->has_dim_arrays) {
   int idx1, idx2 = 0, idx3 = 0;
   BValue dval;
-  lexer_next(lex); /* consume ( */
+  lexer_next(lex); // consume (
   idx1 = (int)parse_expression(lex, rt, line_num);
   if (error_occurred()) return 0;
   if (lex->current.type == TOK_COMMA) {
@@ -85,17 +108,17 @@ long pi_parse_factor(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  case TOK_NAMED_VAR:
- /* Extended variable - look up by name */
+ // Extended variable - look up by name
  value = runtime_get_named_var(rt,
  lex->current.str_start, lex->current.str_length);
  lexer_next(lex);
  return value;
 
  case TOK_AT:
- /* @(expression) - array access */
+ // @(expression) - array access
  {
  long index;
- lexer_next(lex); /* consume @ */
+ lexer_next(lex); // consume @
  if (!lexer_expect(lex, TOK_LPAREN)) return 0;
  index = parse_expression(lex, rt, line_num);
  if (error_occurred()) return 0;
@@ -104,33 +127,29 @@ long pi_parse_factor(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  case TOK_LPAREN:
- /* (expression) - parenthesized sub-expression */
- lexer_next(lex); /* consume ( */
+ // (expression) - parenthesized sub-expression
+ lexer_next(lex); // consume (
  value = parse_expression(lex, rt, line_num);
  if (error_occurred()) return 0;
  if (!lexer_expect(lex, TOK_RPAREN)) return 0;
  return value;
 
  case TOK_KEYWORD:
- /*
- * User-defined function dispatch.
- * FN<name>(...) calls are handled before the registry.
- */
+ // User-defined function dispatch.
+ // FN<name>(...) calls are handled before the registry.
  if (lex->current.value.keyword == KW_FN) {
  BValue fnr;
- lexer_next(lex); /* consume FN */
+ lexer_next(lex); // consume FN
  fnr = pi_eval_user_fn(lex, rt, line_num);
  if (error_occurred()) return 0;
  return bval_to_int(&fnr);
  }
 
- /*
- * Registry-based function dispatch.
- *
- * Look up the keyword in the function registry. If found,
- * parse arguments, call the handler, and convert the
- * BValue result to long for the integer expression path.
- */
+ // Registry-based function dispatch.
+ //
+ // Look up the keyword in the function registry. If found,
+ // parse arguments, call the handler, and convert the
+ // BValue result to long for the integer expression path.
  {
  const FunctionEntry *fn;
  fn = funcreg_find_by_keyword(
@@ -140,12 +159,12 @@ long pi_parse_factor(Lexer *lex, RuntimeState *rt, int line_num)
  int argc = 0;
  BValue result;
 
- lexer_next(lex); /* consume function name */
+ lexer_next(lex); // consume function name
 
  if (fn->max_args > 0 &&
   lex->current.type == TOK_LPAREN) {
-  /* Parse (arg1, arg2, ...) */
-  lexer_next(lex); /* consume ( */
+  // Parse (arg1, arg2, ...)
+  lexer_next(lex); // consume (
  args[argc] = bval_int(
  parse_expression(lex, rt, line_num));
  if (error_occurred()) return 0;
@@ -161,14 +180,14 @@ long pi_parse_factor(Lexer *lex, RuntimeState *rt, int line_num)
  }
  if (!lexer_expect(lex, TOK_RPAREN)) return 0;
  }
- /* else: zero-arg function (SIZE) */
+ // else: zero-arg function (SIZE)
 
  result = fn->handler(args, argc, (void *)rt);
  if (error_occurred()) return 0;
  return bval_to_int(&result);
  }
  }
- /* Fall through to error */
+ // Fall through to error
  error_raise(ERR_WHAT, line_num);
  return 0;
 
@@ -178,13 +197,11 @@ long pi_parse_factor(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * parse_power - Parse exponentiation (^).
- *
- * power = factor (^ factor)*
- * Note: ^ is right-associative in QBasic, but we implement
- * left-to-right for simplicity (covers 99% of cases).
- */
+ // parse_power - Parse exponentiation (^).
+ //
+ // power = factor (^ factor)*
+ // Note: ^ is right-associative in QBasic, but we implement
+ // left-to-right for simplicity (covers 99% of cases).
 long pi_parse_power(Lexer *lex, RuntimeState *rt, int line_num)
 {
  long left;
@@ -193,7 +210,7 @@ long pi_parse_power(Lexer *lex, RuntimeState *rt, int line_num)
 
  while (lex->current.type == TOK_CARET) {
  long right;
- lexer_next(lex); /* consume ^ */
+ lexer_next(lex); // consume ^
  right = pi_parse_factor(lex, rt, line_num);
  if (error_occurred()) return 0;
  left = (long)pow((double)left, (double)right);
@@ -202,11 +219,9 @@ long pi_parse_power(Lexer *lex, RuntimeState *rt, int line_num)
  return left;
 }
 
-/*
- * parse_term - Parse a multiplicative expression.
- *
- * term = power ((*|/|\|MOD) power)*
- */
+ // parse_term - Parse a multiplicative expression.
+ //
+ // term = power ((*|/|\|MOD) power)*
 long pi_parse_term(Lexer *lex, RuntimeState *rt, int line_num)
 {
  long left;
@@ -224,16 +239,16 @@ long pi_parse_term(Lexer *lex, RuntimeState *rt, int line_num)
  op = lex->current.type;
  } else if (lex->current.type == TOK_BACKSLASH) {
  is_intdiv = 1;
- op = TOK_SLASH; /* placeholder */
+ op = TOK_SLASH; // placeholder
  } else if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_MOD) {
  is_mod = 1;
- op = TOK_SLASH; /* placeholder */
+ op = TOK_SLASH; // placeholder
  } else {
  break;
  }
 
- lexer_next(lex); /* consume operator */
+ lexer_next(lex); // consume operator
 
  {
  long right;
@@ -255,7 +270,7 @@ long pi_parse_term(Lexer *lex, RuntimeState *rt, int line_num)
  } else if (op == TOK_STAR) {
  left = left * right;
  } else {
- /* Division - check for divide by zero */
+ // Division - check for divide by zero
  if (right == 0) {
  error_raise(ERR_HOW, line_num);
  return 0;
@@ -268,16 +283,14 @@ long pi_parse_term(Lexer *lex, RuntimeState *rt, int line_num)
  return left;
 }
 
-/*
- * parse_expression - Parse an additive expression.
- *
- * expression = [+|-|NOT] term ((+|-) term)*
- * ((AND|OR|XOR|EQV|IMP) expr)*
- *
- * The optional leading +/- handles unary plus/minus.
- * NOT is unary prefix (bitwise complement).
- * AND/OR/XOR/EQV/IMP are lowest-precedence binary.
- */
+ // parse_expression - Parse an additive expression.
+ //
+ // expression = [+|-|NOT] term ((+|-) term)*
+ // ((AND|OR|XOR|EQV|IMP) expr)*
+ //
+ // The optional leading +/- handles unary plus/minus.
+ // NOT is unary prefix (bitwise complement).
+ // AND/OR/XOR/EQV/IMP are lowest-precedence binary.
 long parse_expression(Lexer *lex, RuntimeState *rt, int line_num)
 {
  long left;
@@ -286,7 +299,7 @@ long parse_expression(Lexer *lex, RuntimeState *rt, int line_num)
 
  if (error_occurred()) return 0;
 
- /* Optional leading sign or NOT */
+ // Optional leading sign or NOT
  if (lex->current.type == TOK_PLUS) {
  lexer_next(lex);
  } else if (lex->current.type == TOK_MINUS) {
@@ -296,7 +309,7 @@ long parse_expression(Lexer *lex, RuntimeState *rt, int line_num)
  lex->current.value.keyword == KW_NOT) {
  do_not = 1;
  lexer_next(lex);
- /* Handle sign after NOT: NOT -1, NOT +5 */
+ // Handle sign after NOT: NOT -1, NOT +5
  if (lex->current.type == TOK_MINUS) {
  negate = 1;
  lexer_next(lex);
@@ -312,15 +325,15 @@ long parse_expression(Lexer *lex, RuntimeState *rt, int line_num)
  left = -left;
  }
  if (do_not) {
- left = ~left; /* bitwise NOT */
+ left = ~left; // bitwise NOT
  }
 
- /* Additive: + - */
+ // Additive: + -
  while (lex->current.type == TOK_PLUS ||
  lex->current.type == TOK_MINUS) {
  long right;
  TokenType op = lex->current.type;
- lexer_next(lex); /* consume operator */
+ lexer_next(lex); // consume operator
 
  right = pi_parse_term(lex, rt, line_num);
  if (error_occurred()) return 0;
@@ -332,7 +345,7 @@ long parse_expression(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Logical/bitwise: AND OR XOR EQV IMP */
+ // Logical/bitwise: AND OR XOR EQV IMP
  while (lex->current.type == TOK_KEYWORD) {
  KeywordId kw = lex->current.value.keyword;
  long right;
@@ -341,9 +354,9 @@ long parse_expression(Lexer *lex, RuntimeState *rt, int line_num)
  kw != KW_IMP) {
  break;
  }
- lexer_next(lex); /* consume operator */
+ lexer_next(lex); // consume operator
 
- /* Parse the right side at additive level */
+ // Parse the right side at additive level
  {
  int rn = 0, rn2 = 0;
  if (lex->current.type == TOK_MINUS) {
@@ -359,7 +372,7 @@ long parse_expression(Lexer *lex, RuntimeState *rt, int line_num)
  if (rn) right = -right;
  if (rn2) right = ~right;
 
- /* Inner additive loop */
+ // Inner additive loop
  while (lex->current.type == TOK_PLUS ||
  lex->current.type == TOK_MINUS) {
  long r2;
@@ -389,22 +402,19 @@ long parse_expression(Lexer *lex, RuntimeState *rt, int line_num)
  return left;
 }
 
-/* --- BValue Expression System ---
- * These are the BValue-returning versions of parse_factor, parse_term,
- * and parse_expression. They handle integers, floats, strings, and
- * all functions.
- *
- * The old long-returning versions are preserved for backward
- * compatibility with Phases 1-3 code paths.
- */
+// --- BValue Expression System ---
+ // These are the BValue-returning versions of parse_factor, parse_term,
+ // and parse_expression. They handle integers, floats, strings, and
+ // all functions.
+ //
+ // The old long-returning versions are preserved for backward
+ // compatibility with Phases 1-3 code paths.
 
-/*
- * parse_factor_bval - BValue atom parser.
- *
- * Handles: integers, floats, string literals, variables (A-Z, named),
- * string variables (A$-Z$), @() arrays, DIM array access, parenthesized
- * expressions, and all built-in functions.
- */
+ // parse_factor_bval - BValue atom parser.
+ //
+ // Handles: integers, floats, string literals, variables (A-Z, named),
+ // string variables (A$-Z$), @() arrays, DIM array access, parenthesized
+ // expressions, and all built-in functions.
 BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
 {
  BValue val;
@@ -420,7 +430,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  case TOK_FLOAT_LIT:
  if (!dialect_check_feature("floating point",
  dialect_get_config()->has_float, line_num)) {
- /* Integer-only: truncate to int */
+ // Integer-only: truncate to int
  val = bval_int((long)lex->current.value.fval);
  lexer_next(lex);
  return val;
@@ -430,14 +440,14 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return val;
 
  case TOK_IMAGINARY:
- /* Pure imaginary literal: 2i -> (0+2i) */
+ // Pure imaginary literal: 2i -> (0+2i)
  val = bval_complex(0.0, lex->current.value.fval);
  lexer_next(lex);
  return val;
 
  case TOK_STRING:
  {
- /* String literal - store in pool */
+ // String literal - store in pool
  char *ptr = strpool_store(&rt->strpool,
  lex->current.str_start, lex->current.str_length);
  int slen = lex->current.str_length;
@@ -453,7 +463,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  {
  char vname = lex->current.value.var_name;
  lexer_next(lex);
- /* Check for typed var dot-read: V.field */
+ // Check for typed var dot-read: V.field
  if (lex->current.type == TOK_DOT) {
  TypedVar *tv = runtime_find_typed_var(
   rt, &vname, 1);
@@ -462,7 +472,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   &rt->user_types[tv->type_index];
   const char *fname;
   int flen, fi;
-  lexer_next(lex); /* consume dot */
+  lexer_next(lex); // consume dot
   if (lex->current.type == TOK_NAMED_VAR) {
   fname = lex->current.str_start;
   flen = lex->current.str_length;
@@ -485,8 +495,8 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   error_raise(ERR_WHAT, line_num);
   return bval_int(0);
   }
-  lexer_next(lex); /* consume field */
-  /* Nested type: walk into child */
+  lexer_next(lex); // consume field
+  // Nested type: walk into child
   while (td->fields[fi].nested_type_index >= 0
       && lex->current.type == TOK_DOT) {
    int ci = (int)bval_to_int(&tv->fields[fi]);
@@ -496,7 +506,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
    }
    tv = &rt->typed_vars[ci];
    td = &rt->user_types[tv->type_index];
-   lexer_next(lex); /* consume dot */
+   lexer_next(lex); // consume dot
    if (lex->current.type == TOK_NAMED_VAR) {
     fname = lex->current.str_start;
     flen = lex->current.str_length;
@@ -520,11 +530,11 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   return tv->fields[fi];
  }
  }
-  /* Check if this is a DIM array access: A(...) -- auto-DIMs */
+  // Check if this is a DIM array access: A(...) -- auto-DIMs
   if (lex->current.type == TOK_LPAREN &&
   dialect_get_config()->has_dim_arrays) {
   int idx1, idx2 = 0, idx3 = 0;
-  lexer_next(lex); /* consume ( */
+  lexer_next(lex); // consume (
   val = parse_expression_bval(lex, rt, line_num);
   idx1 = (int)bval_to_subscript(&val);
   if (error_occurred()) return bval_int(0);
@@ -557,11 +567,9 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  dialect_get_config()->has_string_vars, line_num))
  return bval_int(0);
  lexer_next(lex);
- /*
- * Check for DIM string array access: A$(index)
- * The DIM name for single-char string arrays is
- * stored as "A$" (2 chars).
- */
+ // Check for DIM string array access: A$(index)
+ // The DIM name for single-char string arrays is
+ // stored as "A$" (2 chars).
  if (lex->current.type == TOK_LPAREN &&
  dialect_get_config()->has_dim_arrays) {
  char sname[3];
@@ -573,7 +581,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  rt, sname, 2);
  if (arr != NULL) {
  int idx1, idx2 = 0, idx3 = 0;
- lexer_next(lex); /* consume ( */
+ lexer_next(lex); // consume (
  val = parse_expression_bval(
  lex, rt, line_num);
  idx1 = (int)bval_to_subscript(
@@ -621,10 +629,8 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(0);
  lexer_next(lex);
 
- /*
- * Dot-read for scalar TypedVar: Player.HP
- * Must check before FUNCTION/DIM checks.
- */
+ // Dot-read for scalar TypedVar: Player.HP
+ // Must check before FUNCTION/DIM checks.
  if (lex->current.type == TOK_DOT) {
  TypedVar *tv = runtime_find_typed_var(rt, nm, nlen);
  if (tv != NULL) {
@@ -632,7 +638,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   const char *fname;
   int flen, fi;
 
-  lexer_next(lex); /* consume dot */
+  lexer_next(lex); // consume dot
   if (lex->current.type != TOK_NAMED_VAR &&
       lex->current.type != TOK_VARIABLE &&
       lex->current.type != TOK_KEYWORD) {
@@ -654,8 +660,8 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   error_raise(ERR_WHAT, line_num);
   return bval_int(0);
   }
-  lexer_next(lex); /* consume field name */
-  /* Nested type: walk into child */
+  lexer_next(lex); // consume field name
+  // Nested type: walk into child
   while (td->fields[fi].nested_type_index >= 0
       && lex->current.type == TOK_DOT) {
    int ci = (int)bval_to_int(&tv->fields[fi]);
@@ -665,7 +671,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
    }
    tv = &rt->typed_vars[ci];
    td = &rt->user_types[tv->type_index];
-   lexer_next(lex); /* consume dot */
+   lexer_next(lex); // consume dot
    if (lex->current.type == TOK_NAMED_VAR) {
     fname = lex->current.str_start;
     flen = lex->current.str_length;
@@ -690,11 +696,9 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /*
- * Typed array dot-read: Enemies(1).HP
- * Check for array with type_index >= 0, then
- * parse subscript + dot + field.
- */
+ // Typed array dot-read: Enemies(1).HP
+ // Check for array with type_index >= 0, then
+ // parse subscript + dot + field.
  if (lex->current.type == TOK_LPAREN &&
      dialect_get_config()->has_dim_arrays) {
  DimArray *arr = runtime_find_dim(rt, nm, nlen);
@@ -705,7 +709,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   BValue *fval;
   BValue val;
 
-  lexer_next(lex); /* consume ( */
+  lexer_next(lex); // consume (
   val = parse_expression_bval(lex, rt, line_num);
   idx1 = (int)bval_to_subscript(&val);
   if (error_occurred()) return bval_int(0);
@@ -736,7 +740,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   if (lex->current.type == TOK_DOT) {
   const char *fname;
   int flen, fi;
-  lexer_next(lex); /* consume dot */
+  lexer_next(lex); // consume dot
   if (lex->current.type != TOK_NAMED_VAR &&
       lex->current.type != TOK_VARIABLE &&
       lex->current.type != TOK_KEYWORD) {
@@ -758,7 +762,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
    error_raise(ERR_WHAT, line_num);
    return bval_int(0);
   }
-  lexer_next(lex); /* consume field name */
+  lexer_next(lex); // consume field name
   fval = runtime_get_typed_array_field(
    rt, arr, elem_idx, fi);
   if (fval == NULL) {
@@ -767,17 +771,15 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   }
   return *fval;
   }
-  /* No dot: return int of element 0? Error - typed array must use dot */
+  // No dot: return int of element 0? Error - typed array must use dot
   error_raise(ERR_WHAT, line_num);
   return bval_int(0);
  }
  }
 
- /*
- * Check for FUNCTION call.
- * If name(args) matches a FUNCTION def,
- * execute it and return fn_return_value.
- */
+ // Check for FUNCTION call.
+ // If name(args) matches a FUNCTION def,
+ // execute it and return fn_return_value.
  if (lex->current.type == TOK_LPAREN &&
  nm != NULL && nlen > 0) {
  SubDef *sd = runtime_find_sub(
@@ -787,7 +789,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  int i;
  int save_idx, save_next;
 
- /* Push FRAME_SUB */
+ // Push FRAME_SUB
  frame.type = FRAME_SUB;
  frame.data.sub_call.return_index =
  rt->current_index;
@@ -806,7 +808,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (runtime_push(rt, &frame) != 0)
  return bval_int(0);
 
- /* Push scope stack */
+ // Push scope stack
  {
  int smode = SCOPE_FULL;
  if (dialect_get_config()->id ==
@@ -819,8 +821,8 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   rt->current_index);
  }
 
- /* Parse args */
- lexer_next(lex); /* consume ( */
+ // Parse args
+ lexer_next(lex); // consume (
  for (i = 0; i < sd->param_count;
  i++) {
  BValue av;
@@ -839,11 +841,9 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (lex->current.type == TOK_RPAREN)
  lexer_next(lex);
 
- /*
- * Execute FUNCTION body inline.
- * Save/restore execution position and
- * fn_return_value (for recursion).
- */
+ // Execute FUNCTION body inline.
+ // Save/restore execution position and
+ // fn_return_value (for recursion).
  {
  BValue saved_fn_rv =
   rt->fn_return_value;
@@ -883,8 +883,8 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred())
  return bval_int(0);
 
- /* Check if END SUB/FUNCTION
- * popped our frame */
+ // Check if END SUB/FUNCTION
+ // popped our frame 
  if (rt->in_sub_index < 0) {
  break;
  }
@@ -908,15 +908,13 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /*
- * Check for single-line DEF FN
- * called as FNA(x) in extended-vars
- * mode (where FNA is TOK_NAMED_VAR).
- */
+ // Check for single-line DEF FN
+ // called as FNA(x) in extended-vars
+ // mode (where FNA is TOK_NAMED_VAR).
  if (nlen >= 3 &&
  (nm[0] == 'F' || nm[0] == 'f') &&
  (nm[1] == 'N' || nm[1] == 'n')) {
- /* Extract fn letter(s) after FN */
+ // Extract fn letter(s) after FN
  char fn_ch = nm[2];
  char fn_buf[2];
  UserFunction *ufn;
@@ -927,13 +925,13 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  ufn = runtime_find_fn(rt,
  fn_buf, 1);
  if (ufn != NULL) {
- /* Evaluate inline */
+ // Evaluate inline
  BValue args[MAX_FN_PARAMS];
  BValue saved[MAX_FN_PARAMS];
  int ac = 0, pi;
  Lexer bl;
  BValue res;
- lexer_next(lex); /* ( */
+ lexer_next(lex); // (
  if (ufn->param_count > 0) {
  args[ac] =
  parse_expression_bval(
@@ -957,7 +955,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (!lexer_expect(lex,
  TOK_RPAREN))
  return bval_int(0);
- /* Save & bind params */
+ // Save & bind params
  for (pi = 0;
  pi < ufn->param_count;
  pi++) {
@@ -969,11 +967,11 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  rt->variables[vi] =
  args[pi];
  }
- /* Eval body */
+ // Eval body
  lexer_init(&bl, ufn->body);
  res = parse_expression_bval(
  &bl, rt, line_num);
- /* Restore */
+ // Restore
  for (pi = 0;
  pi < ufn->param_count;
  pi++) {
@@ -987,7 +985,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Check for DIM array access */
+ // Check for DIM array access
  if (lex->current.type == TOK_LPAREN &&
  dialect_get_config()->has_dim_arrays) {
  DimArray *arr = runtime_find_dim(rt, nm, nlen);
@@ -1017,13 +1015,13 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  idx1, idx2, idx3, line_num);
  }
  }
- /* Check CONST table before named vars */
+ // Check CONST table before named vars
  {
  int ci;
  for (ci = 0; ci < rt->const_count; ci++){
  int cl = rt->constants[ci].name_len;
  if (cl == nlen) {
- /* Case-insensitive compare */
+ // Case-insensitive compare
  int j, match = 1;
  for (j = 0; j < nlen; j++) {
  char a = nm[j];
@@ -1063,26 +1061,26 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  val = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return bval_int(0);
 
- /* Check for complex literal: (real +/- coeffÂ·i) */
+ // Check for complex literal: (real +/- coeffai)
  if ((lex->current.type == TOK_PLUS ||
       lex->current.type == TOK_MINUS) &&
      bval_is_numeric(&val) &&
      !bval_is_complex(&val)) {
   int neg = (lex->current.type == TOK_MINUS);
-  /* Peek ahead â€” only convert if next is imaginary */
-  lexer_next(lex); /* consume +/- */
+  // Peek ahead a" only convert if next is imaginary
+  lexer_next(lex); // consume +/-
   if (lex->current.type == TOK_IMAGINARY) {
    double real_part = bval_to_float(&val);
    double imag_part = lex->current.value.fval;
    if (neg) imag_part = -imag_part;
-   lexer_next(lex); /* consume imaginary */
+   lexer_next(lex); // consume imaginary
    if (!lexer_expect(lex, TOK_RPAREN))
     return bval_int(0);
    return bval_complex(real_part, imag_part);
   }
-  /* Not imaginary â€” put back the +/- as part of
-   * a normal expression. We can't un-consume the
-   * +/-, so evaluate what follows and combine. */
+  // Not imaginary a" put back the +/- as part of
+   // a normal expression. We can't un-consume the
+   // +/-, so evaluate what follows and combine. 
   {
    BValue rhs = pi_parse_term_bval(lex, rt,
     line_num);
@@ -1091,7 +1089,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
     val = bval_sub(&val, &rhs, line_num);
    else
     val = bval_add(&val, &rhs, line_num);
-   /* Continue with remaining +/- terms */
+   // Continue with remaining +/- terms
    while (lex->current.type == TOK_PLUS ||
           lex->current.type == TOK_MINUS) {
     int s = (lex->current.type == TOK_MINUS);
@@ -1110,19 +1108,15 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return val;
 
  case TOK_KEYWORD:
- /*
- * User-defined function dispatch.
- */
+ // User-defined function dispatch.
  if (lex->current.value.keyword == KW_FN) {
- lexer_next(lex); /* consume FN */
+ lexer_next(lex); // consume FN
  return pi_eval_user_fn(lex, rt, line_num);
  }
- /*
- * LBOUND(arrayname, dim) / UBOUND(arrayname, dim)
- * Array bound query functions. The first arg is an
- * array name (not an expression), so we parse it
- * specially.
- */
+ // LBOUND(arrayname, dim) / UBOUND(arrayname, dim)
+ // Array bound query functions. The first arg is an
+ // array name (not an expression), so we parse it
+ // specially.
  if (lex->current.value.keyword == KW_LBOUND ||
      lex->current.value.keyword == KW_UBOUND) {
   int is_upper = (lex->current.value.keyword
@@ -1131,11 +1125,11 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   int alen = 0, dim_arg = 1, i;
   DimArray *arr;
 
-  lexer_next(lex); /* consume LBOUND/UBOUND */
+  lexer_next(lex); // consume LBOUND/UBOUND
   if (!lexer_expect(lex, TOK_LPAREN))
    return bval_int(0);
 
-  /* Parse array name */
+  // Parse array name
   if (lex->current.type == TOK_VARIABLE) {
    aname[0] = lex->current.value.var_name;
    aname[1] = '\0';
@@ -1153,13 +1147,13 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
    error_raise(ERR_WHAT, line_num);
    return bval_int(0);
   }
-  /* Uppercase */
+  // Uppercase
   for (i = 0; i < alen; i++) {
    if (aname[i] >= 'a' && aname[i] <= 'z')
     aname[i] = (char)(aname[i] - 32);
   }
 
-  /* Optional dimension argument */
+  // Optional dimension argument
    if (lex->current.type == TOK_COMMA) {
     BValue dim_val;
     lexer_next(lex);
@@ -1181,21 +1175,19 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
    return bval_int(0);
   }
   if (is_upper) {
-   /* UBOUND: max valid subscript */
+   // UBOUND: max valid subscript
    return bval_int(
     arr->size[dim_arg - 1] - 1
     + rt->option_base);
   } else {
-   /* LBOUND: OPTION BASE value */
+   // LBOUND: OPTION BASE value
    return bval_int(rt->option_base);
   }
  }
 
- /*
- * DET(arrayname) - Matrix determinant.
- * Computes determinant of a square 2D array
- * using LU decomposition with partial pivoting.
- */
+ // DET(arrayname) - Matrix determinant.
+ // Computes determinant of a square 2D array
+ // using LU decomposition with partial pivoting.
  if (lex->current.value.keyword == KW_DET) {
   char aname[MAX_VAR_NAME_LEN + 1];
   int alen = 0, i, n, p, r;
@@ -1204,11 +1196,11 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   double det_val = 1.0;
   int sign = 1;
 
-  lexer_next(lex); /* consume DET */
+  lexer_next(lex); // consume DET
   if (!lexer_expect(lex, TOK_LPAREN))
    return bval_float(0.0);
 
-  /* Parse array name */
+  // Parse array name
   if (lex->current.type == TOK_VARIABLE) {
    aname[0] = lex->current.value.var_name;
    aname[1] = '\0';
@@ -1242,13 +1234,13 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
    error_raise(ERR_HOW, line_num);
    return bval_float(0.0);
   }
-  n = arr->size[0] - 1; /* 1-based size */
+  n = arr->size[0] - 1; // 1-based size
   if (n > 15 || n < 1) {
    error_raise(ERR_SORRY, line_num);
    return bval_float(0.0);
   }
 
-  /* Copy matrix to work array (1-based) */
+  // Copy matrix to work array (1-based)
   for (r = 0; r < n; r++) {
    int c;
    for (c = 0; c < n; c++) {
@@ -1258,7 +1250,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
    }
   }
 
-  /* LU decomposition with partial pivoting */
+  // LU decomposition with partial pivoting
   for (p = 0; p < n; p++) {
    int max_row = p;
    double max_val = work[p][p];
@@ -1275,7 +1267,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
     }
    }
    if (max_row != p) {
-    /* Swap rows */
+    // Swap rows
     for (c = 0; c < n; c++) {
      double tmp = work[p][c];
      work[p][c] = work[max_row][c];
@@ -1285,10 +1277,10 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
    }
    pivot = work[p][p];
    if (pivot > -1e-12 && pivot < 1e-12) {
-    return bval_float(0.0); /* singular */
+    return bval_float(0.0); // singular
    }
    det_val *= pivot;
-   /* Eliminate below pivot */
+   // Eliminate below pivot
    for (r = p + 1; r < n; r++) {
     double factor = work[r][p] / pivot;
     for (c = p + 1; c < n; c++) {
@@ -1299,14 +1291,12 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   return bval_float(det_val * sign);
  }
 
- /*
- * Registry-based BValue function dispatch.
- *
- * Look up the keyword in the function registry. Parse
- * arguments into BValue array using the BValue expression
- * parser (preserving float/string types). Call the handler
- * and return the BValue result directly.
- */
+ // Registry-based BValue function dispatch.
+ //
+ // Look up the keyword in the function registry. Parse
+ // arguments into BValue array using the BValue expression
+ // parser (preserving float/string types). Call the handler
+ // and return the BValue result directly.
  {
  KeywordId kw = lex->current.value.keyword;
  const FunctionEntry *fn;
@@ -1316,12 +1306,12 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  int argc = 0;
  BValue result;
 
- lexer_next(lex); /* consume function name */
+ lexer_next(lex); // consume function name
 
   if (fn->max_args > 0 &&
   lex->current.type == TOK_LPAREN) {
-  /* Parse (arg1, arg2, ...) */
-  lexer_next(lex); /* consume ( */
+  // Parse (arg1, arg2, ...)
+  lexer_next(lex); // consume (
 
   args[argc] = parse_expression_bval(
  lex, rt, line_num);
@@ -1339,9 +1329,9 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (!lexer_expect(lex, TOK_RPAREN))
  return bval_int(0);
  }
- /* else: zero-arg function (SIZE) */
+ // else: zero-arg function (SIZE)
 
- /* Validate argument count */
+ // Validate argument count
  if (argc < fn->min_args) {
  error_raise(ERR_WHAT, line_num);
  return bval_int(0);
@@ -1351,9 +1341,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return result;
  }
 
- /*
- * TIMER - returns seconds since midnight (float).
- */
+ // TIMER - returns seconds since midnight (float).
  if (kw == KW_TIMER) {
  time_t t;
  struct tm *tm;
@@ -1366,17 +1354,15 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  tm->tm_sec));
  }
 
- /*
- * DATE$ - returns current date as "MM-DD-YYYY".
- * TIME$ - returns current time as "HH:MM:SS".
- */
+ // DATE$ - returns current date as "MM-DD-YYYY".
+ // TIME$ - returns current time as "HH:MM:SS".
  if (kw == KW_DATE_FUNC) {
  char buf[16];
  char *ptr;
  time_t t;
  struct tm *tm;
  lexer_next(lex);
- /* $ already consumed by lexer */
+ // $ already consumed by lexer
  t = time(NULL);
  tm = localtime(&t);
  sprintf(buf, "%02d-%02d-%04d",
@@ -1400,10 +1386,8 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(ptr, 8);
  }
 
- /*
-  * CLOCK$ - returns full timestamp "YYYY-MM-DD HH:MM:SS".
-  * More detailed than DATE$ or TIME$ alone.
-  */
+  // CLOCK$ - returns full timestamp "YYYY-MM-DD HH:MM:SS".
+  // More detailed than DATE$ or TIME$ alone.
  if (kw == KW_CLOCK_FUNC) {
  char buf[64];
  char *ptr;
@@ -1422,16 +1406,14 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(ptr, len);
  }
 
- /*
-  * ALARM$ - get/set the alarm time string.
-  * As a function (expression context), returns the
-  * current alarm time setting. If no alarm is set,
-  * returns empty string.
-  *
-  * Alarm time is stored in rt->alarm_str[].
-  * Setting ALARM$ is done via ALARM$ = "HH:MM:SS"
-  * in the statement handler (not here).
-  */
+  // ALARM$ - get/set the alarm time string.
+  // As a function (expression context), returns the
+  // current alarm time setting. If no alarm is set,
+  // returns empty string.
+  //
+  // Alarm time is stored in rt->alarm_str[].
+  // Setting ALARM$ is done via ALARM$ = "HH:MM:SS"
+  // in the statement handler (not here).
  if (kw == KW_ALARM_FUNC) {
  char *ptr;
  int len;
@@ -1443,12 +1425,10 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  rt->alarm_str, len);
  return bval_string(ptr, len);
  }
- /*
-  * DIALECT$ - returns the current dialect name.
-  * Read-only introspection; does not change dialect.
-  * Example: PRINT DIALECT$  -> "GW-BASIC"
-  *          IF DIALECT$ = "GWBS" THEN ...
-  */
+  // DIALECT$ - returns the current dialect name.
+  // Read-only introspection; does not change dialect.
+  // Example: PRINT DIALECT$  -> "GW-BASIC"
+  //          IF DIALECT$ = "GWBS" THEN ...
  if (kw == KW_DIALECT_FUNC) {
  const char *dname;
  char *ptr;
@@ -1460,11 +1440,9 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(ptr, len);
  }
 
- /*
-  * MEMMAP$ - returns the current memory map name.
-  * Read-only introspection; does not change memmap.
-  * Example: PRINT MEMMAP$  -> "Commodore 64"
-  */
+  // MEMMAP$ - returns the current memory map name.
+  // Read-only introspection; does not change memmap.
+  // Example: PRINT MEMMAP$  -> "Commodore 64"
  if (kw == KW_MEMMAP_FUNC) {
  const char *mname;
  char *ptr;
@@ -1476,13 +1454,11 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  ptr = strpool_store(&rt->strpool, mname, len);
  return bval_string(ptr, len);
  }
- /*
-  * CWD$ - returns the current working directory.
-  * Read-only string pseudo-variable.
-  * CURDIR$ is an alias (mapped to KW_CWD_FUNC).
-  * Example: PRINT CWD$   -> "C:\GAMES"
-  *          A$ = CURDIR$
-  */
+  // CWD$ - returns the current working directory.
+  // Read-only string pseudo-variable.
+  // CURDIR$ is an alias (mapped to KW_CWD_FUNC).
+  // Example: PRINT CWD$   -> "C:\GAMES"
+  //          A$ = CURDIR$
  if (kw == KW_CWD_FUNC) {
  char cwdbuf[512];
  char *ptr;
@@ -1503,12 +1479,10 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  cwdbuf, len);
  return bval_string(ptr, len);
  }
- /*
-  * ALIAS$(name$) - bidirectional alias lookup.
-  * If name$ is an alias, returns the original keyword.
-  * If name$ is a keyword, returns its alias (if any).
-  * Returns empty string if neither found.
-  */
+  // ALIAS$(name$) - bidirectional alias lookup.
+  // If name$ is an alias, returns the original keyword.
+  // If name$ is a keyword, returns its alias (if any).
+  // Returns empty string if neither found.
  if (kw == KW_ALIAS_FUNC) {
  BValue arg;
  const char *result;
@@ -1525,11 +1499,11 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (!bval_is_string(&arg))
  return bval_string(NULL, 0);
 
- /* Try forward: alias name -> keyword */
+ // Try forward: alias name -> keyword
  result = lexer_find_alias_by_name(
  arg.v.sval.data, arg.v.sval.length);
  if (result == NULL) {
- /* Try reverse: keyword name -> alias */
+ // Try reverse: keyword name -> alias
  int ki;
  KeywordId found_kw = KW_COUNT;
  for (ki = 0; ki < (int)KW_COUNT; ki++) {
@@ -1563,9 +1537,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(ptr, len);
  }
 
- /*
- * CINT(x) - round to integer.
- */
+ // CINT(x) - round to integer.
  if (kw == KW_CINT) {
  double v;
  lexer_next(lex);
@@ -1579,11 +1551,9 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int((long)(v >= 0 ? v+0.5 : v-0.5));
  }
 
- /*
- * CSNG(x) - convert to single-precision float.
- * CDBL(x) - convert to double-precision float.
- * Both return double since BASIC++ uses double internally.
- */
+ // CSNG(x) - convert to single-precision float.
+ // CDBL(x) - convert to double-precision float.
+ // Both return double since BASIC++ uses double internally.
  if (kw == KW_CSNG || kw == KW_CDBL) {
  lexer_next(lex);
  if (!lexer_expect(lex, TOK_LPAREN))
@@ -1595,37 +1565,29 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_float(bval_to_float(&val));
  }
 
- /*
- * CSRLIN - return current cursor row.
- * No parentheses needed (variable-like).
- */
+ // CSRLIN - return current cursor row.
+ // No parentheses needed (variable-like).
  if (kw == KW_CSRLIN) {
  lexer_next(lex);
  return bval_int((long)rt->cursor_row);
  }
 
- /*
- * ERL - last error line number.
- * Variable-like (no parentheses).
- */
+ // ERL - last error line number.
+ // Variable-like (no parentheses).
  if (kw == KW_ERL) {
  lexer_next(lex);
  return bval_int((long)rt->last_err_line);
  }
 
- /*
- * ERR - last error code.
- * Variable-like (no parentheses).
- */
+ // ERR - last error code.
+ // Variable-like (no parentheses).
  if (kw == KW_ERR_VAR) {
  lexer_next(lex);
  return bval_int((long)rt->last_err_code);
  }
 
- /*
- * EXTERR(n) - DOS extended error.
- * Returns 0 (not applicable on modern OS).
- */
+ // EXTERR(n) - DOS extended error.
+ // Returns 0 (not applicable on modern OS).
  if (kw == KW_EXTERR) {
  lexer_next(lex);
  if (lex->current.type == TOK_LPAREN) {
@@ -1640,36 +1602,32 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(0);
  }
 
- /*
- * ERDEV - device error code.
- * Returns 0 (not applicable).
- */
+ // ERDEV - device error code.
+ // Returns 0 (not applicable).
  if (kw == KW_ERDEV) {
  lexer_next(lex);
  return bval_int(0);
  }
 
- /*
- * FRE(n) - Free memory query.
- *
- * GW-BASIC compatible:
- * FRE(0) = free string space
- * FRE("") = free string space
- * FRE(x$) = free string space
- * FRE(-1) = free stack space
- * FRE(-2) = free array/variable space
- *
- * BASIC++ extension:
- * FRE(-3) = variable pool free
- * FRE(n) for n>0 = total free (all pools)
- */
+ // FRE(n) - Free memory query.
+ //
+ // GW-BASIC compatible:
+ // FRE(0) = free string space
+ // FRE("") = free string space
+ // FRE(x$) = free string space
+ // FRE(-1) = free stack space
+ // FRE(-2) = free array/variable space
+ //
+ // BASIC++ extension:
+ // FRE(-3) = variable pool free
+ // FRE(n) for n>0 = total free (all pools)
  if (kw == KW_FRE) {
  long arg;
  long result;
  lexer_next(lex);
  if (!lexer_expect(lex, TOK_LPAREN))
  return bval_int(0);
- /* Accept string arg: FRE("") or FRE(x$) */
+ // Accept string arg: FRE("") or FRE(x$)
  if (lex->current.type == TOK_STRING ||
  lex->current.type == TOK_STRING_VAR) {
  lexer_next(lex);
@@ -1684,23 +1642,23 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(0);
 
  if (arg == 0) {
- /* GW-BASIC: free string space */
+ // GW-BASIC: free string space
  result = rt->strpool.size
  - rt->strpool.used;
  } else if (arg == -1) {
- /* GW-BASIC: free stack space */
+ // GW-BASIC: free stack space
  result = mem_pool_available(
  &rt->memory->scratch);
  } else if (arg == -2) {
- /* GW-BASIC: free array/var space */
+ // GW-BASIC: free array/var space
  result = mem_pool_available(
  &rt->memory->variable);
  } else if (arg == -3) {
- /* BASIC++ ext: variable pool */
+ // BASIC++ ext: variable pool
  result = mem_pool_available(
  &rt->memory->variable);
  } else {
- /* Total free (all pools) */
+ // Total free (all pools)
  result = mem_pool_available(
  &rt->memory->variable)
  + (rt->strpool.size
@@ -1711,12 +1669,10 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(result);
  }
 
- /*
- * EXIST("filename") - Check if file exists.
- * Returns 1 if the file can be opened, 0 if not.
- * Pure C89: uses fopen("rb") test.
- * Example: IF EXIST("GAME.BAS") THEN LOAD "GAME.BAS"
- */
+ // EXIST("filename") - Check if file exists.
+ // Returns 1 if the file can be opened, 0 if not.
+ // Pure C89: uses fopen("rb") test.
+ // Example: IF EXIST("GAME.BAS") THEN LOAD "GAME.BAS"
  if (kw == KW_EXIST_FUNC) {
  BValue arg;
  char fname[260];
@@ -1748,14 +1704,12 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(0);
  }
 
- /*
- * FILELEN("filename") - File size in bytes.
- * Opens the file, seeks to end, returns
- * the position (= file size in bytes).
- * Returns -1 if file not found.
- * Pure C89: fopen/fseek/ftell.
- * Example: PRINT FILELEN("DATA.BIN")
- */
+ // FILELEN("filename") - File size in bytes.
+ // Opens the file, seeks to end, returns
+ // the position (= file size in bytes).
+ // Returns -1 if file not found.
+ // Pure C89: fopen/fseek/ftell.
+ // Example: PRINT FILELEN("DATA.BIN")
  if (kw == KW_FILELEN_FUNC) {
  BValue arg;
  char fname[260];
@@ -1789,10 +1743,8 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(sz);
  }
 
- /*
- * INP(port) - Read I/O port.
- * No direct port access; returns 0.
- */
+ // INP(port) - Read I/O port.
+ // No direct port access; returns 0.
  if (kw == KW_INP) {
  long port;
  int paddr;
@@ -1805,16 +1757,14 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(0);
  if (!lexer_expect(lex, TOK_RPAREN))
  return bval_int(0);
- /*
- * Read from virtual memory segment.
- * On memory-mapped platforms (C64,
- * Atari, Apple, etc.) I/O ports live
- * in the address space, so INP and
- * PEEK are equivalent. On x86 (MSDOS)
- * the port space is separate, but we
- * map it into the same 64K array for
- * compatibility.
- */
+ // Read from virtual memory segment.
+ // On memory-mapped platforms (C64,
+ // Atari, Apple, etc.) I/O ports live
+ // in the address space, so INP and
+ // PEEK are equivalent. On x86 (MSDOS)
+ // the port space is separate, but we
+ // map it into the same 64K array for
+ // compatibility.
  paddr = (int)(port & 0xFFFF);
  if (paddr >= 0 &&
  paddr < MAX_MEM_SEGMENT)
@@ -1823,12 +1773,10 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(0);
  }
 
- /*
- * SHELL$(command$) - Capture command output.
- *
- * Runs the command via popen/_ popen and
- * returns stdout as a string. Max 32K.
- */
+ // SHELL$(command$) - Capture command output.
+ //
+ // Runs the command via popen/_ popen and
+ // returns stdout as a string. Max 32K.
  if (kw == KW_SHELL) {
  BValue sv;
  char cmd[512];
@@ -1840,9 +1788,9 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
 
  lexer_next(lex);
 
- /* Expect $( */
+ // Expect $(
  if (lex->current.type != TOK_LPAREN) {
- /* No parens = not SHELL$, error */
+ // No parens = not SHELL$, error
  error_raise(ERR_WHAT, line_num);
  return bval_int(0);
  }
@@ -1868,7 +1816,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  cmd[cl] = '\0';
 
 #if defined(__MSDOS__) || defined(__DOS__) || defined(MSDOS)
- pp = NULL; /* popen not available on DOS */
+ pp = NULL; // popen not available on DOS
 #elif defined(_WIN32)
  pp = _popen(cmd, "r");
 #else
@@ -1892,7 +1840,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  rt->last_shell_exitcode =
  pclose(pp);
 #endif
- /* Strip trailing newline */
+ // Strip trailing newline
  while (outlen > 0 &&
  (outbuf[outlen - 1] == '\n' ||
  outbuf[outlen - 1] == '\r'))
@@ -1906,20 +1854,16 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(poolbuf, outlen);
  }
 
- /*
- * ERRORLEVEL - Return last SHELL exit code.
- * Used as a pseudo-variable in expressions.
- */
+ // ERRORLEVEL - Return last SHELL exit code.
+ // Used as a pseudo-variable in expressions.
  if (kw == KW_ERRORLEVEL) {
  lexer_next(lex);
  return bval_int(
  (long)rt->last_shell_exitcode);
  }
 
- /*
- * LOC(n) - File position.
- * Returns current byte position in file.
- */
+ // LOC(n) - File position.
+ // Returns current byte position in file.
  if (kw == KW_LOC) {
  long chan;
  long result = 0;
@@ -1941,11 +1885,9 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(result);
  }
 
- /*
- * LPOS(n) - Printer head position.
- * Returns column position on printer.
- * No printer support; returns 0.
- */
+ // LPOS(n) - Printer head position.
+ // Returns column position on printer.
+ // No printer support; returns 0.
  if (kw == KW_LPOS) {
  lexer_next(lex);
  if (!lexer_expect(lex, TOK_LPAREN))
@@ -1959,10 +1901,8 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(0);
  }
 
- /*
- * POS(x) - Return current cursor column.
- * Argument is a dummy (GW-BASIC compat).
- */
+ // POS(x) - Return current cursor column.
+ // Argument is a dummy (GW-BASIC compat).
  if (kw == KW_POS_FUNC) {
  lexer_next(lex);
  if (!lexer_expect(lex, TOK_LPAREN))
@@ -1977,11 +1917,9 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  (long)rt->cursor_col);
  }
 
- /*
-  * PMAP(coordinate, function)
-  * Map between physical and view coords.
-  * Stub: returns the input coordinate.
-  */
+  // PMAP(coordinate, function)
+  // Map between physical and view coords.
+  // Stub: returns the input coordinate.
  if (kw == KW_PMAP) {
   long coord, pmap_fn;
   lexer_next(lex);
@@ -2003,11 +1941,9 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   return bval_int(coord);
  }
 
- /*
- * PLAY(n) - Return number of notes in
- * background music buffer.
- * No sound hardware; always returns 0.
- */
+ // PLAY(n) - Return number of notes in
+ // background music buffer.
+ // No sound hardware; always returns 0.
  if (kw == KW_PLAY) {
  lexer_next(lex);
  if (lex->current.type == TOK_LPAREN) {
@@ -2021,17 +1957,15 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(0);
   return bval_int(0);
  }
- /* If no parens, fall through to
- * statement PLAY handling */
+ // If no parens, fall through to
+ // statement PLAY handling 
  return bval_int(0);
  }
 
- /*
-  * STICK(n) - Return joystick position.
-  * n=0: x of joystick A, n=1: y of A
-  * n=2: x of joystick B, n=3: y of B
-  * No joystick hardware; always returns 0.
-  */
+  // STICK(n) - Return joystick position.
+  // n=0: x of joystick A, n=1: y of A
+  // n=2: x of joystick B, n=3: y of B
+  // No joystick hardware; always returns 0.
  if (kw == KW_STICK) {
   lexer_next(lex);
   if (!lexer_expect(lex, TOK_LPAREN))
@@ -2045,13 +1979,11 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   return bval_int(0);
  }
 
- /*
-  * USR(n) - Call machine language routine.
-  * In GW-BASIC, calls a user assembly routine
-  * at the DEF USR address. No machine code
-  * execution in this interpreter; consume
-  * the argument and return 0.
-  */
+  // USR(n) - Call machine language routine.
+  // In GW-BASIC, calls a user assembly routine
+  // at the DEF USR address. No machine code
+  // execution in this interpreter; consume
+  // the argument and return 0.
  if (kw == KW_USR) {
   lexer_next(lex);
   if (!lexer_expect(lex, TOK_LPAREN))
@@ -2065,12 +1997,10 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   return bval_int(0);
  }
 
- /*
- * VARPTR(var) - Return pointer to variable.
- * In GW-BASIC, returns the memory address
- * of a variable. We return a pseudo-index
- * based on the variable name (A=1..Z=26).
- */
+ // VARPTR(var) - Return pointer to variable.
+ // In GW-BASIC, returns the memory address
+ // of a variable. We return a pseudo-index
+ // based on the variable name (A=1..Z=26).
  if (kw == KW_VARPTR) {
  lexer_next(lex);
  if (!lexer_expect(lex, TOK_LPAREN))
@@ -2085,22 +2015,20 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int(0);
  return bval_int(idx);
  }
- /* Named var or string var */
+ // Named var or string var
  lexer_skip_to_end(lex);
  return bval_int(0);
  }
 
- /*
-  * VARPTR$(var) - Return string pointer.
-  * Returns a string representation of
-  * the variable pointer. Stub: returns
-  * empty string.
-  */
+  // VARPTR$(var) - Return string pointer.
+  // Returns a string representation of
+  // the variable pointer. Stub: returns
+  // empty string.
  if (kw == KW_VARPTR_STR) {
   lexer_next(lex);
   if (!lexer_expect(lex, TOK_LPAREN))
    return bval_string("", 0);
-  /* Consume variable argument */
+  // Consume variable argument
   (void)parse_expression(lex, rt,
    line_num);
   if (error_occurred())
@@ -2110,13 +2038,11 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   return bval_string("", 0);
  }
 
- /*
- * SCREEN(row, col [, flag])
- * Read character or attribute at screen pos.
- * flag=0 or omitted: return ASCII code.
- * flag=1: return color attribute.
-  * No screen buffer; returns 32 (space).
- */
+ // SCREEN(row, col [, flag])
+ // Read character or attribute at screen pos.
+ // flag=0 or omitted: return ASCII code.
+ // flag=1: return color attribute.
+  // No screen buffer; returns 32 (space).
  if (kw == KW_SCREEN) {
  lexer_next(lex);
  if (lex->current.type == TOK_LPAREN) {
@@ -2131,7 +2057,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
    line_num);
   if (error_occurred())
    return bval_int(32);
-  /* Optional 3rd arg (flag) */
+  // Optional 3rd arg (flag)
   if (lex->current.type ==
       TOK_COMMA) {
    lexer_next(lex);
@@ -2145,17 +2071,15 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
    return bval_int(32);
   return bval_int(32);
  }
- /* No parens = SCREEN statement,
- * fall through */
+ // No parens = SCREEN statement,
+ // fall through 
  return bval_int(0);
  }
 
- /*
- * MKI$(n) - Pack integer into 2-byte string.
- * MKS$(n) - Pack single into 4-byte string.
- * MKD$(n) - Pack double into 8-byte string.
- * Used with FIELD/PUT for random-access files.
- */
+ // MKI$(n) - Pack integer into 2-byte string.
+ // MKS$(n) - Pack single into 4-byte string.
+ // MKD$(n) - Pack double into 8-byte string.
+ // Used with FIELD/PUT for random-access files.
  if (kw == KW_MKI_FUNC ||
  kw == KW_MKS_FUNC ||
  kw == KW_MKD_FUNC) {
@@ -2179,17 +2103,17 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string("", 0);
 
  if (kw == KW_MKI_FUNC) {
- /* 2-byte integer (little-endian) */
+ // 2-byte integer (little-endian)
  short sv = (short)(long)mkval;
  memcpy(buf, &sv, 2);
  blen = 2;
  } else if (kw == KW_MKS_FUNC) {
- /* 4-byte single float */
+ // 4-byte single float
  float fv = (float)mkval;
  memcpy(buf, &fv, 4);
  blen = 4;
  } else {
- /* 8-byte double */
+ // 8-byte double
  memcpy(buf, &mkval, 8);
  blen = 8;
  }
@@ -2200,12 +2124,10 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string("", 0);
  }
 
- /*
- * INPUT$(n [, #channel])
- * Read n characters from keyboard or file.
- * From keyboard: reads n chars without echo.
- * From file: reads n bytes from channel.
- */
+ // INPUT$(n [, #channel])
+ // Read n characters from keyboard or file.
+ // From keyboard: reads n chars without echo.
+ // From file: reads n bytes from channel.
  if (kw == KW_INPUT_FUNC) {
  long nchars;
  int chan = 0;
@@ -2223,7 +2145,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string("", 0);
  if (nchars < 1) nchars = 1;
  if (nchars > 255) nchars = 255;
- /* Optional channel: , #n */
+ // Optional channel: , #n
  if (lex->current.type == TOK_COMMA) {
  lexer_next(lex);
  if (lex->current.type == TOK_HASH)
@@ -2237,7 +2159,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string("", 0);
 
  if (chan > 0) {
- /* File: read n bytes */
+ // File: read n bytes
  FILE *fp = fileio_get_fp(chan);
  for (i = 0; i < (int)nchars; i++) {
  int ch;
@@ -2247,7 +2169,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  buf[i] = (char)ch;
  }
  } else {
- /* Keyboard: read n chars */
+ // Keyboard: read n chars
  for (i = 0; i < (int)nchars; i++) {
  int ch = getchar();
  if (ch == EOF) break;
@@ -2267,15 +2189,11 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return sv;
  }
 
- /*
- * IOCTL$(#n) - Read device control string.
- * Device-specific; returns empty string.
- */
+ // IOCTL$(#n) - Read device control string.
+ // Device-specific; returns empty string.
  if (kw == KW_IOCTL_FUNC) {
- /*
- * IOCTL$(#n) - Return device status.
- * Returns the channel mode as a string.
- */
+ // IOCTL$(#n) - Return device status.
+ // Returns the channel mode as a string.
  int chan;
  int cmode;
  const char *st;
@@ -2307,9 +2225,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(p, sl);
  }
 
- /*
- * CVI(string$) - 2-byte string to integer.
- */
+ // CVI(string$) - 2-byte string to integer.
  if (kw == KW_CVI) {
  BValue sv;
  int cvi_val;
@@ -2334,9 +2250,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_int((long)cvi_val);
  }
 
- /*
- * CVS(string$) - 4-byte string to float.
- */
+ // CVS(string$) - 4-byte string to float.
  if (kw == KW_CVS) {
  BValue sv;
  float f;
@@ -2358,9 +2272,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_float((double)f);
  }
 
- /*
- * CVD(string$) - 8-byte string to double.
- */
+ // CVD(string$) - 8-byte string to double.
  if (kw == KW_CVD) {
  BValue sv;
  double d;
@@ -2382,10 +2294,8 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_float(d);
  }
 
- /*
- * INKEY$ - non-blocking keyboard read.
- * Returns empty string if no key, or 1-char string.
- */
+ // INKEY$ - non-blocking keyboard read.
+ // Returns empty string if no key, or 1-char string.
  if (kw == KW_INKEY) {
  int ch;
  lexer_next(lex);
@@ -2401,12 +2311,10 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(NULL, 0);
  }
 
- /*
- * ONKEY$ - event-aware keyboard read.
- * Currently behaves like INKEY$ (non-blocking).
- * Returns empty string if no key, or 1-char string.
- * Future: integrate with ON KEY GOSUB event trap.
- */
+ // ONKEY$ - event-aware keyboard read.
+ // Currently behaves like INKEY$ (non-blocking).
+ // Returns empty string if no key, or 1-char string.
+ // Future: integrate with ON KEY GOSUB event trap.
  if (kw == KW_ONKEY) {
  int ch;
  lexer_next(lex);
@@ -2422,10 +2330,8 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(NULL, 0);
  }
 
- /*
- * CONST lookup: check if keyword matches a
- * stored constant name.
- */
+ // CONST lookup: check if keyword matches a
+ // stored constant name.
  {
  const char *knm = lex->current.str_start;
  int knl = lex->current.str_length;
@@ -2444,14 +2350,12 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /*
- * LCASE$(s$) - lowercase.
- * UCASE$(s$) - uppercase.
- * TCASE$(s$) - title case.
- * LTRIM$(s$) - trim left spaces.
- * RTRIM$(s$) - trim right spaces.
- * TRIM$(s$) - trim left and right spaces.
- */
+ // LCASE$(s$) - lowercase.
+ // UCASE$(s$) - uppercase.
+ // TCASE$(s$) - title case.
+ // LTRIM$(s$) - trim left spaces.
+ // RTRIM$(s$) - trim right spaces.
+ // TRIM$(s$) - trim left and right spaces.
  if (kw == KW_LCASE || kw == KW_UCASE ||
  kw == KW_TCASE ||
  kw == KW_LTRIM || kw == KW_RTRIM ||
@@ -2462,7 +2366,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  int slen, i;
 
  lexer_next(lex);
- /* $ already consumed by lexer */
+ // $ already consumed by lexer
  if (!lexer_expect(lex, TOK_LPAREN))
  return bval_int(0);
  val = parse_expression_bval(lex, rt, line_num);
@@ -2536,9 +2440,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /*
- * REPLACE$(source$, old$, new$) - Replace all occurrences.
- */
+ // REPLACE$(source$, old$, new$) - Replace all occurrences.
  if (kw == KW_REPLACE) {
  BValue src, old_v, new_v;
  const char *sd, *od, *nd;
@@ -2572,7 +2474,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  nd = new_v.v.sval.data; nl = new_v.v.sval.length;
  if (!sd) { sd = ""; sl = 0; }
  if (!od || ol == 0) {
- /* Empty search: return source unchanged */
+ // Empty search: return source unchanged
  char *ptr = strpool_store(&rt->strpool, sd, sl);
  return bval_string(ptr, sl);
  }
@@ -2582,7 +2484,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  for (ri = 0; ri < sl && wi < MAX_LINE_LENGTH; ) {
  if (ri + ol <= sl &&
  memcmp(sd + ri, od, (size_t)ol) == 0) {
- /* Match found: copy replacement */
+ // Match found: copy replacement
  int ci;
  for (ci = 0; ci < nl &&
  wi < MAX_LINE_LENGTH; ci++)
@@ -2599,9 +2501,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /*
- * REVERSE$(s$) - Reverse string.
- */
+ // REVERSE$(s$) - Reverse string.
  if (kw == KW_REVERSE) {
  const char *s;
  int slen, i;
@@ -2626,12 +2526,10 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(ptr, slen);
  }
 
- /*
- * MCASE$(s$) - Mixed/random case.
- * Each character is randomly upper or lower case.
- * Uses the runtime's RNG (rnd_seed) for
- * deterministic behavior when seeded.
- */
+ // MCASE$(s$) - Mixed/random case.
+ // Each character is randomly upper or lower case.
+ // Uses the runtime's RNG (rnd_seed) for
+ // deterministic behavior when seeded.
  if (kw == KW_MCASE) {
  const char *s;
  int slen, i;
@@ -2652,7 +2550,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (slen > 255) slen = 255;
  for (i = 0; i < slen; i++) {
  unsigned char c = (unsigned char)s[i];
- /* Use PCG-derived bit for randomness */
+ // Use PCG-derived bit for randomness
  unsigned long r = rt->rnd_seed;
  rt->rnd_seed = r * 6364136223846793005ULL
  + (12345ULL | 1);
@@ -2666,11 +2564,9 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(ptr, slen);
  }
 
- /*
- * ICASE$(s$) - Invert case.
- * Swaps upper to lower and lower to upper
- * for every character. Non-alpha chars unchanged.
- */
+ // ICASE$(s$) - Invert case.
+ // Swaps upper to lower and lower to upper
+ // for every character. Non-alpha chars unchanged.
  if (kw == KW_ICASE) {
  const char *s;
  int slen, i;
@@ -2702,17 +2598,15 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(ptr, slen);
  }
 
- /*
- * HASH$(s$ [, bits]) - Hash string to hex.
- * bits = 8, 16, 32 (default), 64, 128, 256.
- * Uses FNV-1a algorithm. For >64 bits, uses
- * multiple seeded rounds and concatenates.
- */
+ // HASH$(s$ [, bits]) - Hash string to hex.
+ // bits = 8, 16, 32 (default), 64, 128, 256.
+ // Uses FNV-1a algorithm. For >64 bits, uses
+ // multiple seeded rounds and concatenates.
  if (kw == KW_HASH) {
  const char *s;
  int slen, bits, i;
  unsigned long long h;
- char hexbuf[65]; /* max 256 bits = 64 hex chars */
+ char hexbuf[65]; // max 256 bits = 64 hex chars
  int hexlen;
  char *hptr;
 
@@ -2722,7 +2616,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  val = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return bval_int(0);
 
- bits = 32; /* default */
+ bits = 32; // default
  if (lex->current.type == TOK_COMMA) {
  lexer_next(lex);
  bits = (int)parse_expression(
@@ -2736,28 +2630,28 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  slen = val.v.sval.length;
  if (s == NULL) { s = ""; slen = 0; }
 
- /* Validate bit width */
+ // Validate bit width
  if (bits != 8 && bits != 16 && bits != 32 &&
  bits != 64 && bits != 128 && bits != 256)
  bits = 32;
 
  hexlen = 0;
  {
- /* Number of 64-bit rounds needed */
+ // Number of 64-bit rounds needed
  int rounds = (bits + 63) / 64;
  int r;
  if (rounds < 1) rounds = 1;
- if (rounds > 4) rounds = 4; /* 256 max */
+ if (rounds > 4) rounds = 4; // 256 max
 
  for (r = 0; r < rounds; r++) {
- /* FNV-1a with per-round seed */
+ // FNV-1a with per-round seed
  h = 14695981039346656037ULL +
  (unsigned long long)r * 6364136223846793005ULL;
  for (i = 0; i < slen; i++) {
  h ^= (unsigned char)s[i];
  h *= 1099511628211ULL;
  }
- /* Fold to required width on last round */
+ // Fold to required width on last round
  if (bits <= 64 && rounds == 1) {
  if (bits == 8) {
  h = (h ^ (h >> 8) ^ (h >> 16) ^
@@ -2778,21 +2672,21 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  (unsigned)h);
  hexlen = 8;
  } else {
- /* 64-bit */
+ // 64-bit
  sprintf(hexbuf, "%08X%08X",
  (unsigned)(h >> 32),
  (unsigned)(h & 0xFFFFFFFFULL));
  hexlen = 16;
  }
  } else {
- /* Multi-round: append 16 hex per round */
+ // Multi-round: append 16 hex per round
  sprintf(hexbuf + hexlen, "%08X%08X",
  (unsigned)(h >> 32),
  (unsigned)(h & 0xFFFFFFFFULL));
  hexlen += 16;
  }
  }
- /* Truncate to exact bit-width hex chars */
+ // Truncate to exact bit-width hex chars
  {
  int want = bits / 4;
  if (hexlen > want) hexlen = want;
@@ -2803,7 +2697,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return bval_string(hptr, hexlen);
  }
 
- /* Unknown keyword in expression context */
+ // Unknown keyword in expression context
  error_raise(ERR_WHAT, line_num);
  return bval_int(0);
  }
@@ -2814,9 +2708,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * parse_power_bval - BValue exponentiation (^) parser.
- */
+ // parse_power_bval - BValue exponentiation (^) parser.
 BValue pi_parse_power_bval(Lexer *lex, RuntimeState *rt, int line_num)
 {
  BValue left;
@@ -2826,7 +2718,7 @@ BValue pi_parse_power_bval(Lexer *lex, RuntimeState *rt, int line_num)
  while (lex->current.type == TOK_CARET) {
  BValue right;
  double base_d, exp_d;
- lexer_next(lex); /* consume ^ */
+ lexer_next(lex); // consume ^
  right = pi_parse_factor_bval(lex, rt, line_num);
  if (error_occurred()) return bval_int(0);
  base_d = bval_to_float(&left);
@@ -2837,11 +2729,9 @@ BValue pi_parse_power_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return left;
 }
 
-/*
- * parse_term_bval - BValue multiplicative expression parser.
- *
- * term = power ((*|/|\|MOD) power)*
- */
+ // parse_term_bval - BValue multiplicative expression parser.
+ //
+ // term = power ((*|/|\|MOD) power)*
 BValue pi_parse_term_bval(Lexer *lex, RuntimeState *rt, int line_num)
 {
  BValue left;
@@ -2863,7 +2753,7 @@ BValue pi_parse_term_bval(Lexer *lex, RuntimeState *rt, int line_num)
  } else if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_MOD) {
  is_mod = 1;
- op = TOK_SLASH; /* placeholder */
+ op = TOK_SLASH; // placeholder
  } else {
  break;
  }
@@ -2878,7 +2768,7 @@ BValue pi_parse_term_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (is_mod) {
  left = bval_mod(&left, &right, line_num);
  } else if (is_intdiv) {
- /* Integer division: truncate both to int */
+ // Integer division: truncate both to int
  long a = bval_to_int(&left);
  long b = bval_to_int(&right);
  if (b == 0) {
@@ -2898,15 +2788,13 @@ BValue pi_parse_term_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return left;
 }
 
-/*
- * parse_expression_bval - BValue additive expression parser.
- *
- * expression = [+|-|NOT] term ((+|-) term)*
- * ((AND|OR|XOR|EQV|IMP) expr)*
- *
- * String concatenation: when both operands are strings and the
- * operator is +, performs string concatenation instead of addition.
- */
+ // parse_expression_bval - BValue additive expression parser.
+ //
+ // expression = [+|-|NOT] term ((+|-) term)*
+ // ((AND|OR|XOR|EQV|IMP) expr)*
+ //
+ // String concatenation: when both operands are strings and the
+ // operator is +, performs string concatenation instead of addition.
 BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
 {
  BValue left;
@@ -2915,7 +2803,7 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
 
  if (error_occurred()) return bval_int(0);
 
- /* Optional leading sign or NOT */
+ // Optional leading sign or NOT
  if (lex->current.type == TOK_PLUS) {
  lexer_next(lex);
  } else if (lex->current.type == TOK_MINUS) {
@@ -2925,7 +2813,7 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  lex->current.value.keyword == KW_NOT) {
  do_not = 1;
  lexer_next(lex);
- /* Handle sign after NOT: NOT -1, NOT +5 */
+ // Handle sign after NOT: NOT -1, NOT +5
  if (lex->current.type == TOK_MINUS) {
  negate = 1;
  lexer_next(lex);
@@ -2946,7 +2834,7 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  left = bval_int(~v);
  }
 
- /* Additive: + - */
+ // Additive: + -
  while (lex->current.type == TOK_PLUS ||
  lex->current.type == TOK_MINUS) {
  BValue right;
@@ -2957,13 +2845,11 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred()) return bval_int(0);
 
  if (op == TOK_PLUS) {
- /* Check for string concatenation */
+ // Check for string concatenation
  if (bval_is_string(&left) && bval_is_string(&right)) {
- /*
- * ECMA-55 does not support string concatenation.
- * In strict mode, reject it. In union/normal
- * mode, allow it for GW-BASIC/QBasic compat.
- */
+ // ECMA-55 does not support string concatenation.
+ // In strict mode, reject it. In union/normal
+ // mode, allow it for GW-BASIC/QBasic compat.
  if (dialect_is_strict()) {
  error_raise(ERR_WHAT, line_num);
  return bval_int(0);
@@ -2979,11 +2865,9 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred()) return bval_int(0);
  }
 
- /*
- * Comparison operators: = < > <= >= <>
- * These return -1 for true, 0 for false (QBasic convention).
- * Precedence: between additive and logical.
- */
+ // Comparison operators: = < > <= >= <>
+ // These return -1 for true, 0 for false (QBasic convention).
+ // Precedence: between additive and logical.
  if (lex->current.type == TOK_EQUALS ||
  lex->current.type == TOK_LT ||
  lex->current.type == TOK_GT ||
@@ -2994,9 +2878,9 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  BValue right;
  int result = 0;
 
- lexer_next(lex); /* consume comparison operator */
+ lexer_next(lex); // consume comparison operator
 
- /* Parse right side: unary + additive */
+ // Parse right side: unary + additive
  {
  int rn = 0;
  if (lex->current.type == TOK_MINUS) {
@@ -3025,7 +2909,7 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Compare left and right */
+ // Compare left and right
  if (bval_is_string(&left) && bval_is_string(&right)) {
  const char *ld = left.v.sval.data;
  int ll = left.v.sval.length;
@@ -3078,16 +2962,14 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  left = bval_int(result ? -1 : 0);
  }
 
- /*
- * LIKE operator: string LIKE "pattern"
- * Returns -1 for match, 0 for no match.
- * Pattern metacharacters:
- *   * = match any zero or more characters
- *   ? = match any single character
- *   # = match any single digit (0-9)
- *   [abc] = match any char in set
- *   [!abc] = match any char NOT in set
- */
+ // LIKE operator: string LIKE "pattern"
+ // Returns -1 for match, 0 for no match.
+ // Pattern metacharacters:
+ //   * = match any zero or more characters
+ //   ? = match any single character
+ //   # = match any single digit (0-9)
+ //   [abc] = match any char in set
+ //   [!abc] = match any char NOT in set
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_LIKE) {
  BValue right;
@@ -3095,11 +2977,11 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  int sl, pl;
  int match;
 
- lexer_next(lex); /* consume LIKE */
+ lexer_next(lex); // consume LIKE
  right = pi_parse_term_bval(lex, rt, line_num);
  if (error_occurred()) return bval_int(0);
 
- /* Both operands must be strings */
+ // Both operands must be strings
  if (!bval_is_string(&left) ||
  !bval_is_string(&right)) {
  error_raise(ERR_HOW, line_num);
@@ -3112,7 +2994,7 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (!s) { s = ""; sl = 0; }
  if (!p) { p = ""; pl = 0; }
 
- /* Glob match with stack-based backtracking */
+ // Glob match with stack-based backtracking
  {
  int si = 0, pi2 = 0;
  int star_pi = -1, star_si = -1;
@@ -3131,7 +3013,7 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  si = ++star_si;
  } else break;
  } else if (pi2 < pl && p[pi2] == '[') {
- /* Character class */
+ // Character class
  int neg2 = 0, found2 = 0;
  int ci = pi2 + 1;
  if (ci < pl && p[ci] == '!') {
@@ -3141,7 +3023,7 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (p[ci] == s[si]) found2 = 1;
  ci++;
  }
- if (ci < pl) ci++; /* skip ] */
+ if (ci < pl) ci++; // skip ]
  if (found2 != neg2) {
  pi2 = ci; si++;
  } else if (star_pi >= 0) {
@@ -3166,7 +3048,7 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  left = bval_int(match ? -1 : 0);
  }
 
- /* Logical/bitwise: AND OR XOR EQV IMP */
+ // Logical/bitwise: AND OR XOR EQV IMP
  while (lex->current.type == TOK_KEYWORD) {
  KeywordId kw = lex->current.value.keyword;
  long lv, rv;
@@ -3175,9 +3057,9 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  kw != KW_IMP) {
  break;
  }
- lexer_next(lex); /* consume operator */
+ lexer_next(lex); // consume operator
 
- /* Parse right side as full additive expr */
+ // Parse right side as full additive expr
  {
  BValue right;
  int rn = 0, rn2 = 0;
@@ -3200,7 +3082,7 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  right = bval_int(~v);
  }
 
- /* Inner additive loop */
+ // Inner additive loop
  while (lex->current.type == TOK_PLUS ||
  lex->current.type == TOK_MINUS) {
  BValue r2;
@@ -3215,7 +3097,7 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred()) return bval_int(0);
  }
 
- /* Inner comparison check */
+ // Inner comparison check
  if (lex->current.type == TOK_EQUALS ||
  lex->current.type == TOK_LT ||
  lex->current.type == TOK_GT ||
@@ -3280,7 +3162,7 @@ BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
  right = bval_int(cmp_res ? -1 : 0);
  }
 
- /* Inner LIKE check */
+ // Inner LIKE check
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_LIKE) {
  BValue pat;

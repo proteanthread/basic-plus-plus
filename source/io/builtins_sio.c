@@ -1,30 +1,38 @@
-/*
- * ---
- * BASIC++ Interpreter - builtins_sio.c
- * ---
- *
- * Stream I/O (SIO) function handlers for the built-in function
- * registry. These are the Option B "full primitive set" for
- * stream-oriented device I/O.
- *
- * SIO functions operate on open file channels (#1-#8) and VDev
- * devices. They provide a lower-level, more uniform interface
- * than the traditional PRINT#/INPUT# wrappers (Option A).
- *
- * Both approaches (Option A wrapper and Option B primitives)
- * work simultaneously on the same channels.
- *
- * FUNCTIONS:
- *   SIOREAD$(chan, n)     - Read n bytes, return as string
- *   SIOREADLN$(chan)      - Read one line, return as string
- *   SIOWRITE(chan, data$) - Write string to channel, return count
- *   SIOSEEK(chan, pos)    - Seek to position, return new pos
- *   SIOFLUSH(chan)        - Flush channel buffers
- *   SIOSTATUS(chan)       - Channel status flags
- *   SIOAVAIL(chan)        - Bytes available for read
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - builtins_sio.c
+ // ---
+ //
+ // Stream I/O (SIO) function handlers for the built-in function
+ // registry. These are the Option B "full primitive set" for
+ // stream-oriented device I/O.
+ //
+ // SIO functions operate on open file channels (#1-#8) and VDev
+ // devices. They provide a lower-level, more uniform interface
+ // than the traditional PRINT#/INPUT# wrappers (Option A).
+ //
+ // Both approaches (Option A wrapper and Option B primitives)
+ // work simultaneously on the same channels.
+ //
+ // FUNCTIONS:
+ //   SIOREAD$(chan, n)     - Read n bytes, return as string
+ //   SIOREADLN$(chan)      - Read one line, return as string
+ //   SIOWRITE(chan, data$) - Write string to channel, return count
+ //   SIOSEEK(chan, pos)    - Seek to position, return new pos
+ //   SIOFLUSH(chan)        - Flush channel buffers
+ //   SIOSTATUS(chan)       - Channel status flags
+ //   SIOAVAIL(chan)        - Bytes available for read
+ //
+//
+// HOW TO EXTEND:
+//   To add a new built-in function:
+//   1. Write a handler: BValue my_func(BValue *args, int argc, void *ctx)
+//   2. Register it in the init function with funcreg_add().
+//   3. Specify min/max argument counts and return type.
+//
+// TROUBLESHOOTING:
+//   - Wrong arg count: check min_args/max_args in registration.
+//   - Type mismatch: use bval_to_float/bval_to_int for conversion.
+ // ---
 
 #include <stdio.h>
 #include <string.h>
@@ -36,15 +44,13 @@
 #include "vdev.h"
 #include "txn.h"
 
-/*
- * SIOREAD$(chan, n) - Read n bytes from channel.
- *
- * Returns a string of up to n bytes read from the channel.
- * Works with both file-backed and VDev-backed channels.
- * Returns empty string on error or EOF.
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // SIOREAD$(chan, n) - Read n bytes from channel.
+ //
+ // Returns a string of up to n bytes read from the channel.
+ // Works with both file-backed and VDev-backed channels.
+ // Returns empty string on error or EOF.
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_sioread(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -60,13 +66,13 @@ BValue builtin_sioread(BValue *args, int argc, void *rt)
  if (nbytes <= 0) return bval_string(NULL, 0);
  if (nbytes > 1024) nbytes = 1024;
 
- /* Try VDev-backed channel first */
+ // Try VDev-backed channel first
  vd = fileio_get_channel_vdev(chan);
  if (vd != NULL) {
   if (vd->dev_read != NULL) {
    actual = vd->dev_read(vd, tmpbuf, nbytes);
   } else if (vd->dev_getc != NULL) {
-   /* Byte-by-byte fallback */
+   // Byte-by-byte fallback
    int i;
    actual = 0;
    for (i = 0; i < nbytes; i++) {
@@ -85,7 +91,7 @@ BValue builtin_sioread(BValue *args, int argc, void *rt)
   return bval_string(poolbuf, actual);
  }
 
- /* File-backed channel */
+ // File-backed channel
  fp = fileio_get_fp(chan);
  if (fp == NULL) return bval_string(NULL, 0);
  actual = (int)fread(tmpbuf, 1, (size_t)nbytes, fp);
@@ -96,15 +102,13 @@ BValue builtin_sioread(BValue *args, int argc, void *rt)
  return bval_string(poolbuf, actual);
 }
 
-/*
- * SIOREADLN$(chan) - Read one line from channel.
- *
- * Reads until newline, CR, or EOF. The newline is consumed
- * but not included in the returned string.
- * Returns empty string on error or EOF.
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // SIOREADLN$(chan) - Read one line from channel.
+ //
+ // Reads until newline, CR, or EOF. The newline is consumed
+ // but not included in the returned string.
+ // Returns empty string on error or EOF.
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_sioreadln(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -117,7 +121,7 @@ BValue builtin_sioreadln(BValue *args, int argc, void *rt)
  (void)argc;
  chan = (int)bval_to_int(&args[0]);
 
- /* Try VDev-backed channel first */
+ // Try VDev-backed channel first
  vd = fileio_get_channel_vdev(chan);
  if (vd != NULL) {
   if (vd->dev_gets != NULL) {
@@ -136,14 +140,14 @@ BValue builtin_sioreadln(BValue *args, int argc, void *rt)
    return bval_string(NULL, 0);
   }
  } else {
-  /* File-backed */
+  // File-backed
   fp = fileio_get_fp(chan);
   if (fp == NULL) return bval_string(NULL, 0);
   if (fgets(tmpbuf, 1024, fp) == NULL)
    return bval_string(NULL, 0);
  }
 
- /* Strip trailing newline/CR */
+ // Strip trailing newline/CR
  len = (int)strlen(tmpbuf);
  while (len > 0 && (tmpbuf[len-1] == '\n' ||
                      tmpbuf[len-1] == '\r'))
@@ -155,14 +159,12 @@ BValue builtin_sioreadln(BValue *args, int argc, void *rt)
  return bval_string(poolbuf, len);
 }
 
-/*
- * SIOWRITE(chan, data$) - Write string to channel.
- *
- * Writes the string contents to the channel. Returns the
- * number of bytes actually written, or 0 on error.
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // SIOWRITE(chan, data$) - Write string to channel.
+ //
+ // Writes the string contents to the channel. Returns the
+ // number of bytes actually written, or 0 on error.
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_siowrite(BValue *args, int argc, void *rt)
 {
  int chan, written;
@@ -179,13 +181,13 @@ BValue builtin_siowrite(BValue *args, int argc, void *rt)
  dlen = args[1].v.sval.length;
  if (data == NULL || dlen <= 0) return bval_int(0);
 
- /* Try VDev-backed channel */
+ // Try VDev-backed channel
  vd = fileio_get_channel_vdev(chan);
  if (vd != NULL) {
   if (vd->dev_write != NULL) {
    written = vd->dev_write(vd, data, dlen);
   } else if (vd->dev_puts != NULL) {
-   /* String write fallback (null-terminate) */
+   // String write fallback (null-terminate)
    char tmpbuf[1024];
    int sl = dlen > 1023 ? 1023 : dlen;
    memcpy(tmpbuf, data, (size_t)sl);
@@ -198,11 +200,11 @@ BValue builtin_siowrite(BValue *args, int argc, void *rt)
   return bval_int((long)written);
  }
 
- /* File-backed */
+ // File-backed
  fp = fileio_get_fp(chan);
  if (fp == NULL) return bval_int(0);
 
- /* TXN: journal original data before write */
+ // TXN: journal original data before write
  {
   long wpos = ftell(fp);
   if (wpos >= 0)
@@ -213,15 +215,13 @@ BValue builtin_siowrite(BValue *args, int argc, void *rt)
  return bval_int((long)written);
 }
 
-/*
- * SIOSEEK(chan, pos) - Seek to absolute position.
- *
- * Moves the channel read/write pointer to the given byte
- * position. Returns the new position, or -1 on error.
- * Position 0 = beginning of file/stream.
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // SIOSEEK(chan, pos) - Seek to absolute position.
+ //
+ // Moves the channel read/write pointer to the given byte
+ // position. Returns the new position, or -1 on error.
+ // Position 0 = beginning of file/stream.
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_sioseek(BValue *args, int argc, void *rt)
 {
  int chan;
@@ -233,17 +233,17 @@ BValue builtin_sioseek(BValue *args, int argc, void *rt)
  chan = (int)bval_to_int(&args[0]);
  pos = (long)bval_to_int(&args[1]);
 
- /* Try VDev-backed channel */
+ // Try VDev-backed channel
  vd = fileio_get_channel_vdev(chan);
  if (vd != NULL) {
   if (vd->dev_seek != NULL) {
-   long result = vd->dev_seek(vd, pos, 0); /* SEEK_SET */
+   long result = vd->dev_seek(vd, pos, 0); // SEEK_SET
    return bval_int(result);
   }
   return bval_int(-1);
  }
 
- /* File-backed */
+ // File-backed
  fp = fileio_get_fp(chan);
  if (fp == NULL) return bval_int(-1);
  if (fseek(fp, pos, SEEK_SET) != 0)
@@ -251,14 +251,12 @@ BValue builtin_sioseek(BValue *args, int argc, void *rt)
  return bval_int(ftell(fp));
 }
 
-/*
- * SIOFLUSH(chan) - Flush channel buffers.
- *
- * Forces any buffered output to be written to the device.
- * Returns 0 on success, -1 on error.
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // SIOFLUSH(chan) - Flush channel buffers.
+ //
+ // Forces any buffered output to be written to the device.
+ // Returns 0 on success, -1 on error.
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_sioflush(BValue *args, int argc, void *rt)
 {
  int chan;
@@ -281,21 +279,19 @@ BValue builtin_sioflush(BValue *args, int argc, void *rt)
  return bval_int(0);
 }
 
-/*
- * SIOSTATUS(chan) - Channel status flags.
- *
- * Returns a bitmask of channel status:
- *   Bit 0 (1): Channel is open
- *   Bit 1 (2): Channel is at EOF
- *   Bit 2 (4): Channel is file-backed
- *   Bit 3 (8): Channel is VDev-backed
- *   Bit 4 (16): Channel supports read
- *   Bit 5 (32): Channel supports write
- *
- * Returns 0 if channel is not open (no bits set).
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // SIOSTATUS(chan) - Channel status flags.
+ //
+ // Returns a bitmask of channel status:
+ //   Bit 0 (1): Channel is open
+ //   Bit 1 (2): Channel is at EOF
+ //   Bit 2 (4): Channel is file-backed
+ //   Bit 3 (8): Channel is VDev-backed
+ //   Bit 4 (16): Channel supports read
+ //   Bit 5 (32): Channel supports write
+ //
+ // Returns 0 if channel is not open (no bits set).
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_siostatus(BValue *args, int argc, void *rt)
 {
  int chan;
@@ -310,40 +306,38 @@ BValue builtin_siostatus(BValue *args, int argc, void *rt)
  fp = fileio_get_fp(chan);
 
  if (fp == NULL && vd == NULL)
-  return bval_int(0); /* not open */
+  return bval_int(0); // not open
 
- flags |= 1; /* open */
+ flags |= 1; // open
 
  if (fp != NULL) {
-  flags |= 4; /* file-backed */
+  flags |= 4; // file-backed
   if (feof(fp)) flags |= 2;
-  flags |= 16; /* assume read */
-  flags |= 32; /* assume write */
+  flags |= 16; // assume read
+  flags |= 32; // assume write
  }
 
  if (vd != NULL) {
-  flags |= 8; /* VDev-backed */
+  flags |= 8; // VDev-backed
   if (vd->dev_getc != NULL || vd->dev_gets != NULL ||
       vd->dev_read != NULL)
-   flags |= 16; /* read capable */
+   flags |= 16; // read capable
   if (vd->dev_putc != NULL || vd->dev_puts != NULL ||
       vd->dev_write != NULL)
-   flags |= 32; /* write capable */
+   flags |= 32; // write capable
  }
 
  return bval_int((long)flags);
 }
 
-/*
- * SIOAVAIL(chan) - Bytes available for read.
- *
- * For file-backed channels, returns bytes remaining
- * (file_size - current_position). For VDev channels,
- * uses dev_poll() if available, otherwise returns -1
- * (unknown).
- *
- * Category: FCAT_IO | Safety: FSAFE_IO
- */
+ // SIOAVAIL(chan) - Bytes available for read.
+ //
+ // For file-backed channels, returns bytes remaining
+ // (file_size - current_position). For VDev channels,
+ // uses dev_poll() if available, otherwise returns -1
+ // (unknown).
+ //
+ // Category: FCAT_IO | Safety: FSAFE_IO
 BValue builtin_sioavail(BValue *args, int argc, void *rt)
 {
  int chan;
@@ -357,7 +351,7 @@ BValue builtin_sioavail(BValue *args, int argc, void *rt)
  if (vd != NULL) {
   if (vd->dev_poll != NULL)
    return bval_int((long)vd->dev_poll(vd));
-  return bval_int(-1); /* unknown */
+  return bval_int(-1); // unknown
  }
 
  fp = fileio_get_fp(chan);

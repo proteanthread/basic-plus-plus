@@ -1,6 +1,24 @@
 # Using Aliases in BASIC++
 
-**Version 1.5.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- Syntax
+- How It Works
+- Managing Aliases
+- Alias for String Functions
+- Use Cases
+  - Localization
+  - Shorthand
+  - Compatibility
+  - Teaching
+- Limitations
+
+---
 
 The `ALIAS` command lets you redefine keywords, creating custom names for built-in commands and functions.
 

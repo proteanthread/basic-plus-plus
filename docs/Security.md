@@ -1,6 +1,31 @@
 # Security and Sandboxing in BASIC++
 
-**Version 3.3.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- Security Levels
+- Setting Security Level
+- Function Safety Categories
+- Permission Matrix
+- External Extension Security
+  - 1 Extension Loading Gate (SECOP_EXT_LOAD)
+  - 2 Security Pinning (Minimum-Floor Model)
+  - 3 Path Validation
+- Use Cases
+  - Running student homework (EDUCATIONAL)
+  - Online BASIC playground (PARANOID)
+  - Extension development (SAFE)
+  - Batch processing (STANDARD)
+  - Game toolkit (SAFE with extensions)
+- Security Errors
+- Implementation Notes
+- Best Practices
+
+---
 
 BASIC++ includes a 6-level security model that restricts what programs can
 do.  This is essential when running untrusted BASIC code, educational

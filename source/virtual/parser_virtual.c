@@ -1,46 +1,48 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_virtual.c
- * ---
- *
- * Virtual infrastructure introspection.
- *
- * VDEV, VMEM, VNET, VCON, VTERM, VMACH, DEVMAP.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_virtual.c
+ // ---
+ //
+ // Virtual infrastructure introspection.
+ //
+ // VDEV, VMEM, VNET, VCON, VTERM, VMACH, DEVMAP.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * pi_parse_vdev - Handle VDEV command.
- */
+ // pi_parse_vdev - Handle VDEV command.
 void pi_parse_vdev(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
-  * VDEV - List all registered virtual devices.
-  *
-  * Shows slot ID, name, class, capability flags,
-  * version, and description for every device in the
-  * VDev table (CON:, ERR:, FILE:, N:, FUJI:, etc.).
-  */
+  // VDEV - List all registered virtual devices.
+  //
+  // Shows slot ID, name, class, capability flags,
+  // version, and description for every device in the
+  // VDev table (CON:, ERR:, FILE:, N:, FUJI:, etc.).
  vdev_list_all();
  return;
 }
 
-/*
- * pi_parse_vmem - Handle VMEM command.
- */
+ // pi_parse_vmem - Handle VMEM command.
 void pi_parse_vmem(Lexer *lex, RuntimeState *rt, int line_num)
 {
  {
- /*
-  * VMEM - Virtual memory status.
-  *
-  * Displays memory map preset, pool sizes, variable
-  * storage, string pool, stack usage, and program
-  * storage utilization.
-  */
+  // VMEM - Virtual memory status.
+  //
+  // Displays memory map preset, pool sizes, variable
+  // storage, string pool, stack usage, and program
+  // storage utilization.
  int lines;
  int stack_used;
 
@@ -81,20 +83,16 @@ void pi_parse_vmem(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * pi_parse_vnet - Handle VNET command.
- */
+ // pi_parse_vnet - Handle VNET command.
 void pi_parse_vnet(Lexer *lex, RuntimeState *rt, int line_num)
 {
  {
- /*
-  * VNET - Virtual network status.
-  *
-  * Shows FujiNet N: channel table: which channels
-  * are open, protocol, host, port, connection state,
-  * bytes waiting, and error status.
-  * If the FUJINET module is not active, says so.
-  */
+  // VNET - Virtual network status.
+  //
+  // Shows FujiNet N: channel table: which channels
+  // are open, protocol, host, port, connection state,
+  // bytes waiting, and error status.
+  // If the FUJINET module is not active, says so.
  int i;
  int any_open = 0;
 
@@ -112,20 +110,20 @@ void pi_parse_vnet(Lexer *lex, RuntimeState *rt, int line_num)
         "              ----  ------\n");
 
  for (i = 0; i < FN_MAX_CHANNELS; i++) {
-     /* Access via vdev_info on the N: device */
+     // Access via vdev_info on the N: device
      VDev *nd = vdev_get(
          vdev_find_by_name("N:"));
      if (nd == NULL) break;
 
-     /* Check channel via a probe - channel state
-      * is internal to mod_fujinet. We report what
-      * vdev_info exposes. For now show the device
-      * info as summary. */
+     // Check channel via a probe - channel state
+      // is internal to mod_fujinet. We report what
+      // vdev_info exposes. For now show the device
+      // info as summary. 
      (void)i;
      break;
  }
 
- /* Channel summary from N: device info */
+ // Channel summary from N: device info
  {
      VDev *nd = vdev_get(
          vdev_find_by_name("N:"));
@@ -153,7 +151,7 @@ void pi_parse_vnet(Lexer *lex, RuntimeState *rt, int line_num)
  if (!any_open)
      printf(" No active connections.\n");
 
- /* Adapter summary */
+ // Adapter summary
  {
      VDev *fd = vdev_get(
          vdev_find_by_name("FUJI:"));
@@ -181,18 +179,14 @@ void pi_parse_vnet(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * pi_parse_vcon - Handle VCON command.
- */
+ // pi_parse_vcon - Handle VCON command.
 void pi_parse_vcon(Lexer *lex, RuntimeState *rt, int line_num)
 {
  {
- /*
-  * VCON - Virtual console information.
-  *
-  * Shows the console device (CON:) status: device
-  * class, capabilities, and the error output (ERR:).
-  */
+  // VCON - Virtual console information.
+  //
+  // Shows the console device (CON:) status: device
+  // class, capabilities, and the error output (ERR:).
  VDev *con;
  VDev *err_dev;
 
@@ -231,19 +225,15 @@ void pi_parse_vcon(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * pi_parse_vterm - Handle VTERM command.
- */
+ // pi_parse_vterm - Handle VTERM command.
 void pi_parse_vterm(Lexer *lex, RuntimeState *rt, int line_num)
 {
  {
- /*
-  * VTERM - Virtual terminal information.
-  *
-  * Shows terminal type, screen dimensions (when
-  * available), character encoding, and dialect-
-  * specific terminal behavior.
-  */
+  // VTERM - Virtual terminal information.
+  //
+  // Shows terminal type, screen dimensions (when
+  // available), character encoding, and dialect-
+  // specific terminal behavior.
  printf("=== VIRTUAL TERMINAL ===\n\n");
  printf(" Dialect: %s\n",
      dialect_get_name());
@@ -269,19 +259,15 @@ void pi_parse_vterm(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * pi_parse_vmach - Handle VMACH command.
- */
+ // pi_parse_vmach - Handle VMACH command.
 void pi_parse_vmach(Lexer *lex, RuntimeState *rt, int line_num)
 {
  {
- /*
-  * VMACH - Virtual machine state.
-  *
-  * Shows VM execution state, dispatch table stats,
-  * stack frame info, opcode count, and module/
-  * security status.
-  */
+  // VMACH - Virtual machine state.
+  //
+  // Shows VM execution state, dispatch table stats,
+  // stack frame info, opcode count, and module/
+  // security status.
  VMState vstate;
  const char *state_name;
  int mcount;
@@ -306,7 +292,7 @@ void pi_parse_vmach(Lexer *lex, RuntimeState *rt, int line_num)
  printf(" Stack Depth: %d / %d\n",
      rt->stack_top, MAX_STACK_DEPTH);
 
- /* Module summary */
+ // Module summary
  mcount = module_count();
  for (i = 0; i < mcount; i++) {
      if (module_is_loaded(i)) active_mods++;
@@ -335,35 +321,31 @@ void pi_parse_vmach(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * pi_parse_devmap - Handle DEVMAP command.
- */
+ // pi_parse_devmap - Handle DEVMAP command.
 void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
 {
  {
-  /*
-   * DEVMAP - Device slot mapping.
-   *
-   * Shows which VDev slot each BASIC file channel
-   * (#1-#8) is mapped to, including open/closed
-   * status and the device name in each slot. Also
-   * lists all occupied VDev slots and active device
-   * aliases.
-   *
-   * Subcommands:
-   *   DEVMAP         - show full device map + aliases
-   *   DEVMAP ALIAS   - show only device aliases
-   *   DEVMAP ALIAS "E:" "CON:" - create manual alias
-   *   DEVMAP ALIAS RESET - clear all aliases
-   *   DEVMAP ALIAS DIALECT - reload dialect defaults
-   */
+   // DEVMAP - Device slot mapping.
+   //
+   // Shows which VDev slot each BASIC file channel
+   // (#1-#8) is mapped to, including open/closed
+   // status and the device name in each slot. Also
+   // lists all occupied VDev slots and active device
+   // aliases.
+   //
+   // Subcommands:
+   //   DEVMAP         - show full device map + aliases
+   //   DEVMAP ALIAS   - show only device aliases
+   //   DEVMAP ALIAS "E:" "CON:" - create manual alias
+   //   DEVMAP ALIAS RESET - clear all aliases
+   //   DEVMAP ALIAS DIALECT - reload dialect defaults
 
-  /* Check for ALIAS subcommand */
+  // Check for ALIAS subcommand
   if (lex->current.type == TOK_KEYWORD &&
       lex->current.value.keyword == KW_ALIAS) {
    lexer_next(lex);
 
-   /* DEVMAP ALIAS RESET */
+   // DEVMAP ALIAS RESET
    if (lex->current.type == TOK_KEYWORD &&
        lex->current.value.keyword == KW_RESET) {
     lexer_next(lex);
@@ -372,7 +354,7 @@ void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
     return;
    }
 
-   /* DEVMAP ALIAS DIALECT - reload from current dialect */
+   // DEVMAP ALIAS DIALECT - reload from current dialect
    if (lex->current.type == TOK_KEYWORD &&
        lex->current.value.keyword == KW_DIALECT) {
     int n;
@@ -384,7 +366,7 @@ void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
     return;
    }
 
-   /* DEVMAP ALIAS "src" "tgt" - manual alias creation */
+   // DEVMAP ALIAS "src" "tgt" - manual alias creation
    if (lex->current.type == TOK_STRING) {
     char alias_name[16];
     char target_name[16];
@@ -419,13 +401,13 @@ void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
     return;
    }
 
-   /* DEVMAP ALIAS (no args) - list aliases only */
+   // DEVMAP ALIAS (no args) - list aliases only
    printf("=== DEVICE ALIASES ===\n\n");
    device_alias_list();
    return;
   }
 
-  /* Full DEVMAP display */
+  // Full DEVMAP display
   {
   int i;
   int total = 0;
@@ -438,7 +420,7 @@ void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
   printf(" ------- ------ "
       "------\n");
   for (i = 1; i <= 8; i++) {
-      /* File channels are tracked by the FILE: VDev */
+      // File channels are tracked by the FILE: VDev
       printf("  #%-6d FILE:  ---\n", i);
   }
 
@@ -463,7 +445,7 @@ void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
       "%d slots available.\n",
       total, VDEV_MAX - total);
 
-  /* Show active aliases if any */
+  // Show active aliases if any
   {
   int ac = device_alias_count();
   if (ac > 0) {
@@ -476,6 +458,6 @@ void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
   return;
   }
 
-  /* ===== Final polish ===== */
+  // ===== Final polish =====
  }
 }

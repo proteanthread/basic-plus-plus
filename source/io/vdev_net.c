@@ -1,30 +1,36 @@
-/*
- * ---
- * BASIC++ Interpreter - vdev_net.c
- * ---
- *
- * Core network VDev — provides TCP/UDP socket access as a
- * virtual device, always available (no MODULE required).
- *
- * Device prefix:
- *   NET:  — Core virtual network (always available)
- *   N:   — FujiNet only (requires MODULE "FUJINET")
- *
- * Supports three URI formats:
- *   Legacy:   TCP:host:port   /  UDP:host:port
- *   Core:     NET:PROTO://host:port/path
- *   FujiNet:  N:PROTO://host:port/path
- *
- * Supported protocols and default ports:
- *   TCP(0)  UDP(0)  HTTP(80)  HTTPS(443)  FTP(21)
- *   SFTP(22)  SSH(22)  TELNET(23)  IRC(6667)
- *   SMTP(25)  POP3(110)  IMAP(143)  NNTP(119)
- *   SNMP(161)  TNFS(16384)
- *
- * Port access is gated by security_check_port().
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - vdev_net.c
+ // ---
+ //
+ // Core network VDev -- provides TCP/UDP socket access as a
+ // virtual device, always available (no MODULE required).
+ //
+ // Device prefix:
+ //   NET:  -- Core virtual network (always available)
+ //   N:   -- FujiNet only (requires MODULE "FUJINET")
+ //
+ // Supports three URI formats:
+ //   Legacy:   TCP:host:port   /  UDP:host:port
+ //   Core:     NET:PROTO://host:port/path
+ //   FujiNet:  N:PROTO://host:port/path
+ //
+ // Supported protocols and default ports:
+ //   TCP(0)  UDP(0)  HTTP(80)  HTTPS(443)  FTP(21)
+ //   SFTP(22)  SSH(22)  TELNET(23)  IRC(6667)
+ //   SMTP(25)  POP3(110)  IMAP(143)  NNTP(119)
+ //   SNMP(161)  TNFS(16384)
+ //
+ // Port access is gated by security_check_port().
+ //
+//
+// HOW TO EXTEND:
+//   See the preamble comments in related files for
+//   customization and extension instructions.
+//
+// TROUBLESHOOTING:
+//   Check error_occurred() after operations that can fail.
+//   Use error_raise(ERR_xxx, line_num) for error reporting.
+ // ---
 
 #ifndef _WIN32
   #if !defined(_POSIX_C_SOURCE) || (_POSIX_C_SOURCE < 200112L)
@@ -59,14 +65,14 @@ typedef int SOCKET;
 #include "vdev_net.h"
 #include "../security.h"
 
-/* ================================================================
- * Protocol-to-port mapping
- * ================================================================ */
+// ================================================================
+ // Protocol-to-port mapping
+ // ================================================================ 
 
 typedef struct ProtoMap {
     const char *name;
     int default_port;
-    int use_tcp;    /* 1=TCP, 0=UDP */
+    int use_tcp; // 1=TCP, 0=UDP
 } ProtoMap;
 
 static const ProtoMap proto_table[] = {
@@ -88,7 +94,7 @@ static const ProtoMap proto_table[] = {
     { NULL,     0,     0 }
 };
 
-/* Case-insensitive compare for protocol names */
+// Case-insensitive compare for protocol names
 static int proto_eq(const char *a, const char *b)
 {
     while (*a && *b) {
@@ -100,7 +106,7 @@ static int proto_eq(const char *a, const char *b)
     return (*a == '\0' && *b == '\0');
 }
 
-/* Look up a protocol by name */
+// Look up a protocol by name
 static const ProtoMap *proto_lookup(const char *name)
 {
     int i;
@@ -111,13 +117,13 @@ static const ProtoMap *proto_lookup(const char *name)
     return NULL;
 }
 
-/* ================================================================
- * URL PARSER
- *
- * Parses both formats:
- *   TCP:host:port           → proto="TCP", host, port
- *   N:PROTO://host:port/    → proto="PROTO", host, port
- * ================================================================ */
+// ================================================================
+ // URL PARSER
+ //
+ // Parses both formats:
+ //   TCP:host:port           -> proto="TCP", host, port
+ //   N:PROTO://host:port/    -> proto="PROTO", host, port
+ // ================================================================ 
 
 static int parse_net_uri(const char *uri,
     char *proto, int proto_max,
@@ -128,7 +134,7 @@ static int parse_net_uri(const char *uri,
     const char *pp;
     int plen, hlen;
 
-    /* Skip "NET:" or "N:" prefix if present */
+    // Skip "NET:" or "N:" prefix if present
     if ((p[0] == 'N' || p[0] == 'n') &&
         (p[1] == 'E' || p[1] == 'e') &&
         (p[2] == 'T' || p[2] == 't') &&
@@ -137,19 +143,19 @@ static int parse_net_uri(const char *uri,
     else if ((p[0] == 'N' || p[0] == 'n') && p[1] == ':')
         p += 2;
 
-    /* Check for "PROTO://host:port" URL format */
+    // Check for "PROTO://host:port" URL format
     pp = strstr(p, "://");
     if (pp != NULL) {
-        /* Extract protocol */
+        // Extract protocol
         plen = (int)(pp - p);
         if (plen <= 0 || plen >= proto_max) return -1;
         memcpy(proto, p, (size_t)plen);
         proto[plen] = '\0';
 
-        /* Skip "://" */
+        // Skip "://"
         p = pp + 3;
 
-        /* Extract host (up to ':' or '/' or end) */
+        // Extract host (up to ':' or '/' or end)
         pp = p;
         while (*pp && *pp != ':' && *pp != '/')
             pp++;
@@ -158,7 +164,7 @@ static int parse_net_uri(const char *uri,
         memcpy(host, p, (size_t)hlen);
         host[hlen] = '\0';
 
-        /* Extract port (optional) */
+        // Extract port (optional)
         port[0] = '\0';
         if (*pp == ':') {
             int pi = 0;
@@ -173,7 +179,7 @@ static int parse_net_uri(const char *uri,
         return 0;
     }
 
-    /* Legacy format: PROTO:host:port */
+    // Legacy format: PROTO:host:port
     if (sscanf(uri, "%3[^:]:%255[^:]:%31s",
                proto, host, port) == 3) {
         return 0;
@@ -182,9 +188,9 @@ static int parse_net_uri(const char *uri,
     return -1;
 }
 
-/* ================================================================
- * PLATFORM INIT / CLEANUP
- * ================================================================ */
+// ================================================================
+ // PLATFORM INIT / CLEANUP
+ // ================================================================ 
 
 int vdev_net_init(void)
 {
@@ -202,9 +208,9 @@ void vdev_net_cleanup(void)
 #endif
 }
 
-/* ================================================================
- * VDEV CALLBACKS
- * ================================================================ */
+// ================================================================
+ // VDEV CALLBACKS
+ // ================================================================ 
 
 static int net_close(VDev *d)
 {
@@ -283,12 +289,12 @@ static int net_gets(VDev *d, char *buf, int max)
 static int net_status(VDev *d)
 {
     (void)d;
-    return 0;  /* connected */
+    return 0; // connected
 }
 
-/* ================================================================
- * VDEV_NET_OPEN — Main entry point
- * ================================================================ */
+// ================================================================
+ // VDEV_NET_OPEN -- Main entry point
+ // ================================================================ 
 
 VDev *vdev_net_open(const char *uri)
 {
@@ -311,14 +317,14 @@ VDev *vdev_net_open(const char *uri)
         return NULL;
     }
 
-    /* Look up protocol */
+    // Look up protocol
     pm = proto_lookup(proto);
     if (pm == NULL) {
         printf("Unknown network protocol: %s\n", proto);
         return NULL;
     }
 
-    /* Resolve port */
+    // Resolve port
     if (port_str[0] != '\0') {
         port_num = atoi(port_str);
     } else {
@@ -330,17 +336,17 @@ VDev *vdev_net_open(const char *uri)
         return NULL;
     }
 
-    /* Security: check SECOP_NETWORK */
+    // Security: check SECOP_NETWORK
     if (security_check(SECOP_NETWORK, 0) != 0) {
         return NULL;
     }
 
-    /* Security: check port */
+    // Security: check port
     if (security_check_port(port_num, 0) != 0) {
         return NULL;
     }
 
-    /* Format port string for getaddrinfo */
+    // Format port string for getaddrinfo
     sprintf(port_str, "%d", port_num);
 
     memset(&hints, 0, sizeof(hints));
@@ -413,5 +419,5 @@ VDev *vdev_net_open(const char *uri)
     d->dev_status = net_status;
 
     return d;
-#endif /* VNET_NO_NETWORKING */
+#endif // VNET_NO_NETWORKING
 }

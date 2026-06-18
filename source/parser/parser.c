@@ -1,29 +1,51 @@
-/*
- * ---
- * BASIC++ Interpreter - parser.c
- * ---
- *
- * Statement dispatcher and line executor.
- *
- * This file contains:
- *   pi_parse_statement() - The main keyword dispatch switch.
- *   parser_execute_line() - Multi-statement line executor.
- *   Helper functions shared across parser sub-modules.
- *
- * Statement handler implementations are in parser_*.c sub-modules.
- * Expression parsing is in parser_expr.c.
- *
- * ---
- */
+// ---
+// BASIC++ Interpreter - parser.c
+// ---
+//
+// Statement dispatcher and line executor.
+//
+// PURPOSE:
+//   This file contains:
+//     pi_parse_statement() -- The main keyword dispatch switch.
+//     parser_execute_line() -- Multi-statement line executor.
+//     Helper functions shared across parser sub-modules.
+//
+//   Statement handler implementations are in parser_*.c sub-modules.
+//   Expression parsing is in parser_expr.c.
+//
+// HOW IT WORKS:
+//   1. parser_execute_line() tokenizes a line and calls
+//      pi_parse_statement() for each colon-separated statement.
+//   2. pi_parse_statement() reads the keyword token and dispatches
+//      to the appropriate pi_parse_XXX() handler function.
+//   3. Each handler consumes its tokens and calls back into the
+//      expression evaluator (parser_expr.c) as needed.
+//
+// HOW TO EXTEND:
+//   Adding a new statement:
+//   1. Add KW_YOURNAME to the KeywordId enum (lexer.h).
+//   2. Add the keyword to the keyword table (lexer.c).
+//   3. Add a case KW_YOURNAME to the switch below.
+//   4. Implement pi_parse_yourname() in the appropriate
+//      parser_*.c sub-module.
+//   5. Declare it in parser_internal.h.
+//
+// TROUBLESHOOTING:
+//   - "WHAT?" on a valid keyword:
+//     Check dialect_keyword_allowed() -- OPTION STRICT may be
+//     blocking keywords not in the active dialect.
+//   - Missing handler crash:
+//     Every switch case must return. Never fall through.
+//
+// ---
 
 #include "parser_internal.h"
 
-/* --- Forward Declarations ---
- * Internal parsing functions. These are not exposed in the header
- * because they are implementation details of the parse-and-execute
- * architecture.
- */
-/* Case-insensitive string compare (for property values) */
+// --- Forward Declarations ---
+ // Internal parsing functions. These are not exposed in the header
+ // because they are implementation details of the parse-and-execute
+ // architecture.
+// Case-insensitive string compare (for property values)
 int pi_prop_eq_ci(const char *a, const char *b)
 {
  while (*a && *b) {
@@ -37,7 +59,7 @@ int pi_prop_eq_ci(const char *a, const char *b)
 }
 
 
-/* Case-insensitive string comparison (C89-safe) */
+// Case-insensitive string comparison (C89-safe)
 int pi_str_case_equal(const char *a, const char *b)
 {
  if (!a || !b) return 0;
@@ -50,14 +72,12 @@ int pi_str_case_equal(const char *a, const char *b)
  return (*a == '\0' && *b == '\0');
 }
 
-/*
- * set_param_by_name - Set a SUB/FUNCTION parameter.
- *
- * If the name is a single letter A-Z, sets the corresponding
- * single-letter variable (A-Z). Otherwise sets a named variable.
- * This is needed because the lexer treats single letters as
- * TOK_VARIABLE (using rt->variables[]), not named vars.
- */
+ // set_param_by_name - Set a SUB/FUNCTION parameter.
+ //
+ // If the name is a single letter A-Z, sets the corresponding
+ // single-letter variable (A-Z). Otherwise sets a named variable.
+ // This is needed because the lexer treats single letters as
+ // TOK_VARIABLE (using rt->variables[]), not named vars.
 void pi_set_param_by_name(RuntimeState *rt,
  const char *name, BValue val)
 {
@@ -73,16 +93,14 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
 {
  if (error_occurred()) return;
 
- /* Keyword-based dispatch */
+ // Keyword-based dispatch
  if (lex->current.type == TOK_KEYWORD) {
  KeywordId kw = lex->current.value.keyword;
- lexer_next(lex); /* consume keyword */
+ lexer_next(lex); // consume keyword
 
- /*
- * Strict mode gate: reject keywords that don't
- * belong to the active dialect's bitmask.
- * In union mode this always passes.
- */
+ // Strict mode gate: reject keywords that don't
+ // belong to the active dialect's bitmask.
+ // In union mode this always passes.
  if (!dialect_keyword_allowed(kw)) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -205,15 +223,15 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_DIALECT:
  pi_parse_dialect_cmd(lex, rt, line_num);
  return;
- /* DEF FN - user-defined functions */
+ // DEF FN - user-defined functions
  case KW_DEF:
  pi_parse_def_fn(lex, rt, line_num);
  return;
- /* MAT - matrix operations */
+ // MAT - matrix operations
  case KW_MAT:
  pi_parse_mat_cmd(lex, rt, line_num);
  return;
- /* IMAGE - format string (consumed by PRINT USING) */
+ // IMAGE - format string (consumed by PRINT USING)
  case KW_IMAGE:
   pi_parse_image(lex, rt, line_num);
   return;
@@ -225,7 +243,7 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_CLOSE:
  pi_parse_close(lex, rt, line_num);
  return;
- /* ECMA-116 Enhanced Files */
+ // ECMA-116 Enhanced Files
  case KW_SET:
  pi_parse_set_file(lex, rt, line_num);
  return;
@@ -350,18 +368,16 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_ver(lex, rt, line_num);
   return;
  case KW_BYE:
- /*
- * BYE - Exit the interpreter.
- *
- * Prints a farewell message and terminates the
- * process. This is the clean way to exit BASIC++
- * back to the command prompt.
- */
+ // BYE - Exit the interpreter.
+ //
+ // Prints a farewell message and terminates the
+ // process. This is the clean way to exit BASIC++
+ // back to the command prompt.
  printf("Goodbye.\n");
  exit(0);
- return; /* unreachable, but satisfies compilers */
+ return; // unreachable, but satisfies compilers
 
- /* ===== Core commands ===== */
+ // ===== Core commands =====
  case KW_CLS:
    if (!dialect_check_feature("CLS",
     dialect_get_config()->has_cls, line_num))
@@ -468,12 +484,10 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_local(lex, rt, line_num);
   return;
  case KW_REMAINDER:
- /*
-  * REMAINDER - SELect ON default clause.
-  * Only meaningful inside SELect ON parsing.
-  * If encountered standalone, skip to
-  * END SELect.
-  */
+  // REMAINDER - SELect ON default clause.
+  // Only meaningful inside SELect ON parsing.
+  // If encountered standalone, skip to
+  // END SELect.
  error_raise(ERR_WHAT, line_num);
  return;
 
@@ -502,10 +516,10 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_locate(lex, rt, line_num);
   return;
  case KW_LINE:
-  /* LINE INPUT takes priority over LINE graphics */
+  // LINE INPUT takes priority over LINE graphics
   if (lex->current.type == TOK_KEYWORD &&
       lex->current.value.keyword == KW_INPUT) {
-   lexer_next(lex); /* consume INPUT */
+   lexer_next(lex); // consume INPUT
    pi_parse_line_input(lex, rt, line_num);
    return;
   }
@@ -716,11 +730,9 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  case KW_ERDEV:
  case KW_EXTERR:
- /*
- * ERDEV / EXTERR
- * Device and DOS extended error. As
-   * statements these are no-ops.
-   */
+ // ERDEV / EXTERR
+ // Device and DOS extended error. As
+   // statements these are no-ops.
   lexer_skip_to_end(lex);
  return;
 
@@ -778,7 +790,7 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_preset(lex, rt, line_num);
   return;
  case KW_TYPE:
-  /* TYPE USING or TYPE "file" = formatted file output */
+  // TYPE USING or TYPE "file" = formatted file output
   if (lex->current.type == TOK_KEYWORD &&
       lex->current.value.keyword == KW_USING) {
    pi_parse_type_cmd(lex, rt, line_num);
@@ -788,13 +800,13 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
    pi_parse_type_cmd(lex, rt, line_num);
    return;
   }
-  /* Otherwise: user-defined TYPE */
+  // Otherwise: user-defined TYPE
   pi_parse_type(lex, rt, line_num);
   return;
  case KW_ACCESS:
   pi_parse_access(lex, rt, line_num);
   return;
- /* Enhanced debugger commands */
+ // Enhanced debugger commands
  case KW_DEBUG:
   pi_parse_debug(lex, rt, line_num);
   return;
@@ -808,7 +820,7 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_trace(lex, rt, line_num);
   return;
  default:
-  /* Check if it's a dynamically registered specification statement */
+  // Check if it's a dynamically registered specification statement
   if (lex->current.value.keyword >= KW_CUSTOM_START) {
    extern void pi_parse_custom_statement(Lexer *lex, RuntimeState *rt, int line_num, int kw_id);
    pi_parse_custom_statement(lex, rt, line_num, lex->current.value.keyword);
@@ -819,17 +831,15 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /*
- * If the current token is a variable and LET is optional,
- * treat as a bare assignment (e.g., "A=5").
- */
+ // If the current token is a variable and LET is optional,
+ // treat as a bare assignment (e.g., "A=5").
   if (lex->current.type == TOK_VARIABLE &&
  dialect_get_config()->has_let_optional) {
  pi_parse_let(lex, rt, line_num, 0);
  return;
  }
 
- /* Variable without LET in LET-required dialect */
+ // Variable without LET in LET-required dialect
  if (lex->current.type == TOK_VARIABLE &&
  !dialect_get_config()->has_let_optional &&
  dialect_is_strict()) {
@@ -837,51 +847,45 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /*
- * Named variable bare assignment (e.g., "SCORE=100")
- * when both LET-optional and extended vars are active.
- * Also check for label definitions and implicit SUB calls.
- */
+ // Named variable bare assignment (e.g., "SCORE=100")
+ // when both LET-optional and extended vars are active.
+ // Also check for label definitions and implicit SUB calls.
  if (lex->current.type == TOK_NAMED_VAR &&
  dialect_get_config()->has_let_optional) {
  const char *nm = lex->current.str_start;
  int nlen = lex->current.str_length;
 
- /*
- * Check for label definition (identifier:).
- * If the next token after the name is ':', skip
- * the label and continue with any statements
- * after the colon.
- */
+ // Check for label definition (identifier:).
+ // If the next token after the name is ':', skip
+ // the label and continue with any statements
+ // after the colon.
  if (nm != NULL && nlen > 0) {
- /* Peek ahead: save lexer state */
+ // Peek ahead: save lexer state
  Lexer saved = *lex;
  lexer_next(lex);
  if (lex->current.type == TOK_COLON) {
- lexer_next(lex); /* consume colon */
- /* Execute rest of line if any */
+ lexer_next(lex); // consume colon
+ // Execute rest of line if any
  if (lex->current.type != TOK_EOF &&
  lex->current.type != TOK_CR) {
  pi_parse_statement(lex, rt, line_num);
  }
  return;
  }
- /* Not a label - restore and continue */
+ // Not a label - restore and continue
  *lex = saved;
  }
 
- /*
- * Check for implicit SUB call (SubName args).
- * If the name matches a defined SUB, treat as CALL.
- */
+ // Check for implicit SUB call (SubName args).
+ // If the name matches a defined SUB, treat as CALL.
  if (nm != NULL && nlen > 0) {
  SubDef *sd = runtime_find_sub(rt, nm, nlen);
  if (sd != NULL && !sd->is_function) {
  StackFrame frame;
  int i;
- lexer_next(lex); /* consume name */
+ lexer_next(lex); // consume name
 
- /* Push FRAME_SUB */
+ // Push FRAME_SUB
  frame.type = FRAME_SUB;
  frame.data.sub_call.return_index =
  rt->current_index + 1;
@@ -898,7 +902,7 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  if (runtime_push(rt, &frame) != 0)
  return;
 
- /* Push scope stack */
+ // Push scope stack
  {
  int smode = SCOPE_FULL;
  if (dialect_get_config()->id ==
@@ -911,7 +915,7 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   rt->current_index + 1);
  }
 
- /* Parse args (with or without parens) */
+ // Parse args (with or without parens)
  if (lex->current.type == TOK_LPAREN) {
  lexer_next(lex);
  for (i = 0; i < sd->param_count; i++) {
@@ -953,100 +957,91 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Regular assignment */
+ // Regular assignment
  pi_parse_let(lex, rt, line_num, 0);
  return;
  }
 
- /*
- * If the current token is @, treat as array assignment
- * (e.g., "@(0)=5") when LET is optional.
- */
+ // If the current token is @, treat as array assignment
+ // (e.g., "@(0)=5") when LET is optional.
  if (lex->current.type == TOK_AT &&
  dialect_get_config()->has_let_optional) {
  pi_parse_let(lex, rt, line_num, 0);
  return;
  }
 
- /* String variable bare assignment (e.g., "A$=\"HELLO\"") */
+ // String variable bare assignment (e.g., "A$=\"HELLO\"")
  if (lex->current.type == TOK_STRING_VAR &&
  dialect_get_config()->has_let_optional) {
  pi_parse_let(lex, rt, line_num, 0);
  return;
  }
 
- /* If we reach here, it's a syntax error */
+ // If we reach here, it's a syntax error
  if (lex->current.type != TOK_EOF && lex->current.type != TOK_CR) {
  error_raise(ERR_WHAT, line_num);
  }
 }
 
-/* --- Line Execution ---
- * parser_execute_line - Parse and execute a complete BASIC line.
- *
- * Handles multiple statements separated by the dialect's separator
- * character (';' for PATB). Stops on:
- * - End of line (TOK_EOF)
- * - Error
- * - Flow control that changes execution (GOTO, GOSUB, etc.)
- * set rt->next_index, which signals the caller.
- *
- * The lexer should be initialized on the line text, positioned
- * AFTER the line number (if any). The caller is responsible for
- * skipping the line number.
- *
- * SUPER BASIC postfix modifiers:
- * After each statement, checks for postfix IF/UNLESS/FOR.
- * These are JOSS-style modifiers that qualify the preceding
- * statement:
- *   PRINT X IF X>0       - conditional execution
- *   PRINT X UNLESS X<0   - negated conditional
- *   PRINT I FOR I=1 TO 5 - inline loop
- */
+// --- Line Execution ---
+ // parser_execute_line - Parse and execute a complete BASIC line.
+ //
+ // Handles multiple statements separated by the dialect's separator
+ // character (';' for PATB). Stops on:
+ // - End of line (TOK_EOF)
+ // - Error
+ // - Flow control that changes execution (GOTO, GOSUB, etc.)
+ // set rt->next_index, which signals the caller.
+ //
+ // The lexer should be initialized on the line text, positioned
+ // AFTER the line number (if any). The caller is responsible for
+ // skipping the line number.
+ //
+ // SUPER BASIC postfix modifiers:
+ // After each statement, checks for postfix IF/UNLESS/FOR.
+ // These are JOSS-style modifiers that qualify the preceding
+ // statement:
+ //   PRINT X IF X>0       - conditional execution
+ //   PRINT X UNLESS X<0   - negated conditional
+ //   PRINT I FOR I=1 TO 5 - inline loop
 
-/*
- * postfix_scan - Scan for a postfix IF/UNLESS/FOR modifier.
- *
- * Scans forward from the current lexer position through the
- * source text, looking for IF/UNLESS/FOR at paren depth 0.
- * Does not modify the lexer state (saves and restores).
- *
- * Returns:
- *   KW_IF     - found postfix IF
- *   KW_UNLESS - found postfix UNLESS
- *   KW_FOR    - found postfix FOR
- *   KW_COUNT  - no postfix modifier found (sentinel)
- *
- * Sets *mod_pos to the lexer position of the modifier keyword.
- */
+ // postfix_scan - Scan for a postfix IF/UNLESS/FOR modifier.
+ //
+ // Scans forward from the current lexer position through the
+ // source text, looking for IF/UNLESS/FOR at paren depth 0.
+ // Does not modify the lexer state (saves and restores).
+ //
+ // Returns:
+ //   KW_IF     - found postfix IF
+ //   KW_UNLESS - found postfix UNLESS
+ //   KW_FOR    - found postfix FOR
+ //   KW_COUNT  - no postfix modifier found (sentinel)
+ //
+ // Sets *mod_pos to the lexer position of the modifier keyword.
 static KeywordId postfix_scan(Lexer *lex, int *mod_pos)
 {
- /* Save lexer state */
+ // Save lexer state
  int save_pos = lex->pos;
  Token save_tok = lex->current;
  int depth = 0;
  KeywordId result = KW_COUNT;
 
- /*
-  * Save error state. The pre-scan calls lexer_next()
-  * which may raise ERR_WHAT on unrecognized characters
-  * (e.g. '.' in IMAGE format strings). These spurious
-  * errors must not prevent statement execution.
-  * Suppress error output during the scan to avoid
-  * printing stray error messages.
-  */
+  // Save error state. The pre-scan calls lexer_next()
+  // which may raise ERR_WHAT on unrecognized characters
+  // (e.g. '.' in IMAGE format strings). These spurious
+  // errors must not prevent statement execution.
+  // Suppress error output during the scan to avoid
+  // printing stray error messages.
  int had_error = error_occurred();
  int was_suppressed = error_get_suppress();
  error_set_suppress(1);
 
  {
- /*
- * Track previous keyword to detect compound
- * keywords like END IF, END FOR, END SUB.
- * When prev_kw is KW_END, the next IF/FOR
- * is part of the compound keyword, not a
- * postfix modifier.
- */
+ // Track previous keyword to detect compound
+ // keywords like END IF, END FOR, END SUB.
+ // When prev_kw is KW_END, the next IF/FOR
+ // is part of the compound keyword, not a
+ // postfix modifier.
  KeywordId prev_kw = KW_COUNT;
 
  while (lex->current.type != TOK_EOF &&
@@ -1061,30 +1056,28 @@ static KeywordId postfix_scan(Lexer *lex, int *mod_pos)
  KeywordId kw = lex->current.value.keyword;
  if ((kw == KW_IF || kw == KW_UNLESS ||
  kw == KW_FOR) && prev_kw != KW_END) {
- /*
-  * Don't match prefix IF/UNLESS/FOR -
-  * they appear at the START of a statement.
-  * A postfix modifier always has some
-  * tokens before it.
-  */
+  // Don't match prefix IF/UNLESS/FOR -
+  // they appear at the START of a statement.
+  // A postfix modifier always has some
+  // tokens before it.
  if (lex->pos != save_pos ||
  lex->current.type != save_tok.type ||
  (save_tok.type == TOK_KEYWORD &&
   save_tok.value.keyword != kw)) {
  *mod_pos = lex->pos;
  result = kw;
- /* Found - stop scanning */
+ // Found - stop scanning
  break;
  }
  }
- /* Stop scanning at statement separator */
+ // Stop scanning at statement separator
  if (kw == KW_THEN) break;
  prev_kw = kw;
  } else {
- prev_kw = KW_COUNT; /* reset on non-keyword */
+ prev_kw = KW_COUNT; // reset on non-keyword
  }
 
- /* Stop at statement separators */
+ // Stop at statement separators
  if (lex->current.type == TOK_COLON ||
  lex->current.type == TOK_SEMICOLON) {
  break;
@@ -1092,17 +1085,15 @@ static KeywordId postfix_scan(Lexer *lex, int *mod_pos)
 
  lexer_next(lex);
  }
- } /* end prev_kw scope */
+ } // end prev_kw scope
 
- /* Restore lexer state */
+ // Restore lexer state
  lex->pos = save_pos;
  lex->current = save_tok;
 
- /*
-  * Restore error state: always restore suppress flag.
-  * If no error existed before the scan, clear any
-  * error raised during scanning.
-  */
+  // Restore error state: always restore suppress flag.
+  // If no error existed before the scan, clear any
+  // error raised during scanning.
  error_set_suppress(was_suppressed);
  if (!had_error && error_occurred()) {
  error_clear();
@@ -1111,14 +1102,12 @@ static KeywordId postfix_scan(Lexer *lex, int *mod_pos)
  return result;
 }
 
-/*
- * skip_statement_body - Advance the lexer past a statement body
- * up to (but not consuming) a postfix modifier keyword at
- * the given lexer position.
- *
- * After this call, the lexer's current token is the modifier
- * keyword (IF/UNLESS/FOR).
- */
+ // skip_statement_body - Advance the lexer past a statement body
+ // up to (but not consuming) a postfix modifier keyword at
+ // the given lexer position.
+ //
+ // After this call, the lexer's current token is the modifier
+ // keyword (IF/UNLESS/FOR).
 void pi_skip_to_pos(Lexer *lex, int target_pos)
 {
  while (lex->pos < target_pos &&
@@ -1138,46 +1127,42 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
  int mod_pos = 0;
  KeywordId modifier;
 
- /*
-  * Pre-scan for JOSS-style postfix modifiers.
-  * This must be done BEFORE executing the statement
-  * to allow conditional execution.
-  *
-  * SKIP for REM and DATA: these consume the rest
-  * of the line as raw text. Scanning through them
-  * would incorrectly match keywords embedded in
-  * comment text or data literals (e.g., "for" in
-  * "REM look for bugs" triggers false KW_FOR).
-  */
+  // Pre-scan for JOSS-style postfix modifiers.
+  // This must be done BEFORE executing the statement
+  // to allow conditional execution.
+  //
+  // SKIP for REM and DATA: these consume the rest
+  // of the line as raw text. Scanning through them
+  // would incorrectly match keywords embedded in
+  // comment text or data literals (e.g., "for" in
+  // "REM look for bugs" triggers false KW_FOR).
  if (lex->current.type == TOK_KEYWORD &&
   (lex->current.value.keyword == KW_REM ||
    lex->current.value.keyword == KW_DATA)) {
-  modifier = KW_COUNT; /* sentinel: no modifier */
+  modifier = KW_COUNT; // sentinel: no modifier
  } else {
   modifier = postfix_scan(lex, &mod_pos);
  }
 
  if (modifier == KW_IF || modifier == KW_UNLESS) {
- /*
-  * Postfix IF/UNLESS:
-  * <statement> IF <condition>
-  * <statement> UNLESS <condition>
-  *
-  * Save statement start position, skip to the
-  * modifier, evaluate condition, then either
-  * re-parse and execute the statement or skip.
-  */
+  // Postfix IF/UNLESS:
+  // <statement> IF <condition>
+  // <statement> UNLESS <condition>
+  //
+  // Save statement start position, skip to the
+  // modifier, evaluate condition, then either
+  // re-parse and execute the statement or skip.
  int stmt_start_pos = lex->pos;
  Token stmt_start_tok = lex->current;
  BValue cond_val;
  int condition;
 
- /* Skip to the modifier keyword */
+ // Skip to the modifier keyword
  pi_skip_to_pos(lex, mod_pos);
- /* lex->current should now be IF/UNLESS */
- lexer_next(lex); /* consume IF/UNLESS */
+ // lex->current should now be IF/UNLESS
+ lexer_next(lex); // consume IF/UNLESS
 
- /* Evaluate condition */
+ // Evaluate condition
  cond_val = parse_expression_bval(
  lex, rt, line_num);
  if (error_occurred()) return;
@@ -1185,17 +1170,15 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
  if (modifier == KW_IF) {
  condition = (bval_to_int(&cond_val) != 0);
  } else {
- /* UNLESS = negated IF */
+ // UNLESS = negated IF
  condition = (bval_to_int(&cond_val) == 0);
  }
 
  if (condition) {
- /*
-  * Condition is true: re-parse and execute
-  * the statement body. Save current position
-  * (past the condition), restore to statement
-  * start, execute, then skip to saved end.
-  */
+  // Condition is true: re-parse and execute
+  // the statement body. Save current position
+  // (past the condition), restore to statement
+  // start, execute, then skip to saved end.
  int end_pos = lex->pos;
  Token end_tok = lex->current;
 
@@ -1205,22 +1188,20 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
  pi_parse_statement(lex, rt, line_num);
  if (error_occurred()) return;
 
- /* Skip past the postfix modifier we
-  * already evaluated */
+ // Skip past the postfix modifier we
+  // already evaluated 
  lex->pos = end_pos;
  lex->current = end_tok;
  }
- /* else: condition false, skip (already past) */
+ // else: condition false, skip (already past)
 
  } else if (modifier == KW_FOR) {
- /*
-  * Postfix FOR:
-  * <statement> FOR <var>=<start> TO <limit>
-  *              [STEP <n>] [BY <n>]
-  *
-  * Execute the statement body repeatedly for
-  * each iteration of the loop variable.
-  */
+  // Postfix FOR:
+  // <statement> FOR <var>=<start> TO <limit>
+  //              [STEP <n>] [BY <n>]
+  //
+  // Execute the statement body repeatedly for
+  // each iteration of the loop variable.
  int stmt_start_pos = lex->pos;
  Token stmt_start_tok = lex->current;
  char loop_var;
@@ -1229,17 +1210,17 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
  int for_end_pos;
  Token for_end_tok;
 
- /* Skip to the FOR keyword */
+ // Skip to the FOR keyword
  pi_skip_to_pos(lex, mod_pos);
- lexer_next(lex); /* consume FOR */
+ lexer_next(lex); // consume FOR
 
- /* Parse: <var> = <start> TO <limit> [STEP n] */
+ // Parse: <var> = <start> TO <limit> [STEP n]
  if (lex->current.type != TOK_VARIABLE) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
  loop_var = lex->current.value.var_name;
- lexer_next(lex); /* consume variable */
+ lexer_next(lex); // consume variable
 
  if (!lexer_expect(lex, TOK_EQUALS)) return;
 
@@ -1251,7 +1232,7 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume TO */
+ lexer_next(lex); // consume TO
 
  limit_val = parse_expression(
  lex, rt, line_num);
@@ -1261,17 +1242,17 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
  if (lex->current.type == TOK_KEYWORD &&
  (lex->current.value.keyword == KW_STEP ||
   lex->current.value.keyword == KW_BY)) {
- lexer_next(lex); /* consume STEP/BY */
+ lexer_next(lex); // consume STEP/BY
  step_val = parse_expression(
  lex, rt, line_num);
  if (error_occurred()) return;
  }
 
- /* Save position after FOR clause */
+ // Save position after FOR clause
  for_end_pos = lex->pos;
  for_end_tok = lex->current;
 
- /* Execute the loop */
+ // Execute the loop
  if (step_val == 0) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -1282,55 +1263,53 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
  : (loop_i >= limit_val);
  loop_i += step_val) {
 
- /* Set loop variable */
+ // Set loop variable
  runtime_set_var(
  rt, loop_var, loop_i);
 
- /* Re-parse and execute statement body */
+ // Re-parse and execute statement body
  lex->pos = stmt_start_pos;
  lex->current = stmt_start_tok;
 
  pi_parse_statement(lex, rt, line_num);
  if (error_occurred()) return;
 
- /* Check for flow control */
+ // Check for flow control
  if (rt->next_index != old_next) return;
  }
 
- /* Restore to after FOR clause */
+ // Restore to after FOR clause
  lex->pos = for_end_pos;
  lex->current = for_end_tok;
 
  } else {
- /*
-  * No postfix modifier: execute statement
-  * normally.
-  */
+  // No postfix modifier: execute statement
+  // normally.
  pi_parse_statement(lex, rt, line_num);
  }
 
- /* If flow control changed next_index, stop processing
-  * this line - the caller will jump to the new target */
+ // If flow control changed next_index, stop processing
+  // this line - the caller will jump to the new target 
  if (rt->next_index != old_next) {
  return;
  }
 
- /* If program was stopped, don't continue */
+ // If program was stopped, don't continue
  if (!rt->running && rt->stopped) {
  return;
  }
 
- /* Check for statement separator (dialect-specific) */
+ // Check for statement separator (dialect-specific)
  if (lex->current.type == TOK_SEMICOLON && sep == ';') {
- lexer_next(lex); /* consume separator */
+ lexer_next(lex); // consume separator
  continue;
  }
  if (lex->current.type == TOK_COLON && sep == ':') {
- lexer_next(lex); /* consume separator */
+ lexer_next(lex); // consume separator
  continue;
  }
 
- /* Any other token at this point is the end of statements */
+ // Any other token at this point is the end of statements
  break;
  }
 }

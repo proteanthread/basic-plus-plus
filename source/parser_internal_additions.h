@@ -1,6 +1,15 @@
-/* Auto-generated declarations for new parser modules */
+//
+// HOW TO EXTEND:
+//   See the corresponding .c implementation file for
+//   detailed extension and customization instructions.
+//
+// TROUBLESHOOTING:
+//   If you get 'undeclared identifier' errors after adding
+//   new functions, make sure the declaration is added here
+//   AND the definition exists in the .c file.
+// Auto-generated declarations for new parser modules
 
-/* parser_blockio.c */
+// parser_blockio.c
 void pi_parse_field(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_get(Lexer *lex, RuntimeState *rt,
@@ -20,7 +29,7 @@ void pi_parse_unlock(Lexer *lex, RuntimeState *rt,
 void pi_parse_ioctl(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_config.c */
+// parser_config.c
 void pi_parse_option(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_alias(Lexer *lex, RuntimeState *rt,
@@ -36,7 +45,7 @@ void pi_parse_security(Lexer *lex, RuntimeState *rt,
 void pi_parse_module(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_debug.c */
+// parser_debug.c
 void pi_parse_tron(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_troff(Lexer *lex, RuntimeState *rt,
@@ -56,7 +65,7 @@ void pi_parse_selftest(Lexer *lex, RuntimeState *rt,
 void pi_parse_info(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_display.c */
+// parser_display.c
 void pi_parse_cls(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_home(Lexer *lex, RuntimeState *rt,
@@ -80,7 +89,7 @@ void pi_parse_inverse(Lexer *lex, RuntimeState *rt,
 void pi_parse_over(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_errhand.c */
+// parser_errhand.c
 void pi_parse_error(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_cause(Lexer *lex, RuntimeState *rt,
@@ -96,7 +105,7 @@ void pi_parse_retry(Lexer *lex, RuntimeState *rt,
 void pi_parse_continue(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_filemgmt.c */
+// parser_filemgmt.c
 void pi_parse_files(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_dir(Lexer *lex, RuntimeState *rt,
@@ -126,7 +135,7 @@ void pi_parse_rename(Lexer *lex, RuntimeState *rt,
 void pi_parse_erase(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_flow.c */
+// parser_flow.c
 void pi_parse_on(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_else(Lexer *lex, RuntimeState *rt,
@@ -136,7 +145,7 @@ void pi_parse_elseif(Lexer *lex, RuntimeState *rt,
 void pi_parse_endif(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_graphics.c */
+// parser_graphics.c
 void pi_parse_screen(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_color(Lexer *lex, RuntimeState *rt,
@@ -162,7 +171,7 @@ void pi_parse_view(Lexer *lex, RuntimeState *rt,
 void pi_parse_window(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_help.c */
+// parser_help.c
 void pi_parse_help(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_catalog(Lexer *lex, RuntimeState *rt,
@@ -170,7 +179,7 @@ void pi_parse_catalog(Lexer *lex, RuntimeState *rt,
 void pi_parse_ver(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_misc.c */
+// parser_misc.c
 void pi_parse_randomize(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_pause(Lexer *lex, RuntimeState *rt,
@@ -214,7 +223,7 @@ void pi_parse_access(Lexer *lex, RuntimeState *rt,
 void pi_parse_image(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_progmgmt.c */
+// parser_progmgmt.c
 void pi_parse_renum(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_delete(Lexer *lex, RuntimeState *rt,
@@ -230,7 +239,7 @@ void pi_parse_bsave(Lexer *lex, RuntimeState *rt,
 void pi_parse_bload(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_shell.c */
+// parser_shell.c
 void pi_parse_shell(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_exec(Lexer *lex, RuntimeState *rt,
@@ -242,7 +251,7 @@ void pi_parse_system(Lexer *lex, RuntimeState *rt,
 void pi_parse_environ(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_sound.c */
+// parser_sound.c
 void pi_parse_beep(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_sound(Lexer *lex, RuntimeState *rt,
@@ -250,7 +259,7 @@ void pi_parse_sound(Lexer *lex, RuntimeState *rt,
 void pi_parse_play(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_streamio.c */
+// parser_streamio.c
 void pi_parse_lprint(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_llist(Lexer *lex, RuntimeState *rt,
@@ -258,7 +267,7 @@ void pi_parse_llist(Lexer *lex, RuntimeState *rt,
 void pi_parse_write(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_struct.c */
+// parser_struct.c
 void pi_parse_select(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_case(Lexer *lex, RuntimeState *rt,
@@ -282,7 +291,7 @@ void pi_parse_enddefine(Lexer *lex, RuntimeState *rt,
 void pi_parse_local(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_vars.c */
+// parser_vars.c
 void pi_parse_const_stmt(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_swap(Lexer *lex, RuntimeState *rt,
@@ -308,7 +317,7 @@ void pi_parse_defstr(Lexer *lex, RuntimeState *rt,
 void pi_parse_vars(Lexer *lex, RuntimeState *rt,
     int line_num);
 
-/* parser_virtual.c */
+// parser_virtual.c
 void pi_parse_vdev(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_vmem(Lexer *lex, RuntimeState *rt,

@@ -1,26 +1,34 @@
-/*
- * ---
- * BASIC++ Interpreter - builtins_net.c
- * ---
- *
- * Network introspection builtin functions.
- *
- * These functions provide BASIC-level access to network
- * channel state. They work with both core vdev_net channels
- * and FujiNet N: device channels.
- *
- * Functions:
- *   NSTATUS(ch)          - Channel status (0=ok, -1=error)
- *   NHTTPSTATUS(ch)      - HTTP response code (200, 404, etc.)
- *   NEOF(ch)             - EOF flag (1=EOF, 0=data available)
- *   NBYTESWAITING(ch)    - Bytes available to read
- *   NCONNECTED(ch)       - Connection state (1=connected)
- *   NERROR(ch)           - Last error code
- *   NJSONQUERY$(ch, p$)  - JSON path query (FujiNet only)
- *   NINFO$(key$)         - Adapter info (ip, ssid, wifi, etc.)
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - builtins_net.c
+ // ---
+ //
+ // Network introspection builtin functions.
+ //
+ // These functions provide BASIC-level access to network
+ // channel state. They work with both core vdev_net channels
+ // and FujiNet N: device channels.
+ //
+ // Functions:
+ //   NSTATUS(ch)          - Channel status (0=ok, -1=error)
+ //   NHTTPSTATUS(ch)      - HTTP response code (200, 404, etc.)
+ //   NEOF(ch)             - EOF flag (1=EOF, 0=data available)
+ //   NBYTESWAITING(ch)    - Bytes available to read
+ //   NCONNECTED(ch)       - Connection state (1=connected)
+ //   NERROR(ch)           - Last error code
+ //   NJSONQUERY$(ch, p$)  - JSON path query (FujiNet only)
+ //   NINFO$(key$)         - Adapter info (ip, ssid, wifi, etc.)
+ //
+//
+// HOW TO EXTEND:
+//   To add a new built-in function:
+//   1. Write a handler: BValue my_func(BValue *args, int argc, void *ctx)
+//   2. Register it in the init function with funcreg_add().
+//   3. Specify min/max argument counts and return type.
+//
+// TROUBLESHOOTING:
+//   - Wrong arg count: check min_args/max_args in registration.
+//   - Type mismatch: use bval_to_float/bval_to_int for conversion.
+ // ---
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,22 +42,18 @@
 #include "stringpool.h"
 #include "runtime.h"
 
-/*
- * Helper: Get the VDev for a channel, or NULL.
- */
+ // Helper: Get the VDev for a channel, or NULL.
 static VDev *net_get_channel_vdev(int chan)
 {
  VDev *dev = fileio_get_channel_vdev(chan);
  if (dev == NULL) return NULL;
- /* Verify it's a network device */
+ // Verify it's a network device
  if (dev->dev_class != VDCLASS_NETWORK) return NULL;
  return dev;
 }
 
-/*
- * NSTATUS(ch) - Network channel status.
- * Returns 0 if connected/ok, -1 if error or not a network channel.
- */
+ // NSTATUS(ch) - Network channel status.
+ // Returns 0 if connected/ok, -1 if error or not a network channel.
 BValue builtin_nstatus(BValue *args, int argc, void *rt)
 {
  int chan;
@@ -68,11 +72,9 @@ BValue builtin_nstatus(BValue *args, int argc, void *rt)
  return bval_int(0);
 }
 
-/*
- * NHTTPSTATUS(ch) - HTTP response status code.
- * Only meaningful when channel is an HTTP connection
- * through FujiNet. Returns 0 for non-HTTP channels.
- */
+ // NHTTPSTATUS(ch) - HTTP response status code.
+ // Only meaningful when channel is an HTTP connection
+ // through FujiNet. Returns 0 for non-HTTP channels.
 BValue builtin_nhttpstatus(BValue *args, int argc, void *rt)
 {
  int chan;
@@ -94,10 +96,8 @@ BValue builtin_nhttpstatus(BValue *args, int argc, void *rt)
  return bval_int(0);
 }
 
-/*
- * NEOF(ch) - Network EOF flag.
- * Returns 1 if EOF/disconnected, 0 if data may be available.
- */
+ // NEOF(ch) - Network EOF flag.
+ // Returns 1 if EOF/disconnected, 0 if data may be available.
 BValue builtin_neof(BValue *args, int argc, void *rt)
 {
  int chan;
@@ -110,21 +110,19 @@ BValue builtin_neof(BValue *args, int argc, void *rt)
  dev = net_get_channel_vdev(chan);
  if (dev == NULL) return bval_int(1);
 
- /* Check poll if available */
+ // Check poll if available
  if (dev->dev_poll != NULL)
   return bval_int(dev->dev_poll(dev) ? 0 : 1);
 
- /* If connected, assume not EOF */
+ // If connected, assume not EOF
  if (dev->dev_status != NULL)
   return bval_int(dev->dev_status(dev) == 0 ? 0 : 1);
 
  return bval_int(0);
 }
 
-/*
- * NBYTESWAITING(ch) - Bytes available to read.
- * Returns the number of bytes in the receive buffer.
- */
+ // NBYTESWAITING(ch) - Bytes available to read.
+ // Returns the number of bytes in the receive buffer.
 BValue builtin_nbyteswaiting(BValue *args, int argc,
  void *rt)
 {
@@ -147,10 +145,8 @@ BValue builtin_nbyteswaiting(BValue *args, int argc,
  return bval_int(0);
 }
 
-/*
- * NCONNECTED(ch) - Connection state.
- * Returns 1 if connected, 0 if not.
- */
+ // NCONNECTED(ch) - Connection state.
+ // Returns 1 if connected, 0 if not.
 BValue builtin_nconnected(BValue *args, int argc, void *rt)
 {
  int chan;
@@ -170,17 +166,15 @@ BValue builtin_nconnected(BValue *args, int argc, void *rt)
    return bval_int(1);
  }
 
- /* If status is 0, treat as connected */
+ // If status is 0, treat as connected
  if (dev->dev_status != NULL)
   return bval_int(dev->dev_status(dev) == 0 ? 1 : 0);
 
  return bval_int(0);
 }
 
-/*
- * NERROR(ch) - Last network error code.
- * Returns 0 for no error, or a FujiNet FN_ERR_* value.
- */
+ // NERROR(ch) - Last network error code.
+ // Returns 0 for no error, or a FujiNet FN_ERR_* value.
 BValue builtin_nerror(BValue *args, int argc, void *rt)
 {
  int chan;
@@ -202,12 +196,10 @@ BValue builtin_nerror(BValue *args, int argc, void *rt)
  return bval_int(0);
 }
 
-/*
- * NJSONQUERY$(ch, path$) - JSON path query.
- * Requires FujiNet module for JSON parsing.
- * Returns the value at the specified JSON path,
- * or empty string if not available.
- */
+ // NJSONQUERY$(ch, path$) - JSON path query.
+ // Requires FujiNet module for JSON parsing.
+ // Returns the value at the specified JSON path,
+ // or empty string if not available.
 BValue builtin_njsonquery(BValue *args, int argc, void *rt)
 {
  RuntimeState *rs = (RuntimeState *)rt;
@@ -227,14 +219,14 @@ BValue builtin_njsonquery(BValue *args, int argc, void *rt)
  dev = net_get_channel_vdev(chan);
  if (dev == NULL) return bval_string("", 0);
 
- /* JSON query requires FujiNet module */
+ // JSON query requires FujiNet module
  if (!module_is_active("FUJINET")) {
   return bval_string("", 0);
  }
 
  if (dev->dev_info != NULL) {
-  /* Pass query path via dev_info.
-   * FujiNet VDev handles "json_query:path" keys. */
+  // Pass query path via dev_info.
+   // FujiNet VDev handles "json_query:path" keys. 
   {
   char key[280];
   snprintf(key, sizeof(key), "json_query:%s", path);
@@ -251,21 +243,19 @@ BValue builtin_njsonquery(BValue *args, int argc, void *rt)
  return bval_string("", 0);
 }
 
-/*
- * NINFO$(key$) - Network adapter info query.
- * Returns adapter information by key:
- *   "ip"      - local IP address
- *   "ssid"    - WiFi SSID (or "N/A" on wired)
- *   "wifi"    - WiFi status
- *   "version" - firmware/stack version
- *   "mac"     - MAC address
- *   "gateway" - default gateway
- *   "dns"     - DNS server
- *   "netmask" - subnet mask
- *
- * If FUJINET module is active, queries the FUJI: device.
- * Otherwise returns platform defaults.
- */
+ // NINFO$(key$) - Network adapter info query.
+ // Returns adapter information by key:
+ //   "ip"      - local IP address
+ //   "ssid"    - WiFi SSID (or "N/A" on wired)
+ //   "wifi"    - WiFi status
+ //   "version" - firmware/stack version
+ //   "mac"     - MAC address
+ //   "gateway" - default gateway
+ //   "dns"     - DNS server
+ //   "netmask" - subnet mask
+ //
+ // If FUJINET module is active, queries the FUJI: device.
+ // Otherwise returns platform defaults.
 BValue builtin_ninfo(BValue *args, int argc, void *rt)
 {
  RuntimeState *rs = (RuntimeState *)rt;
@@ -277,7 +267,7 @@ BValue builtin_ninfo(BValue *args, int argc, void *rt)
 
  key = args[0].v.sval.data;
 
- /* Try FUJI: device first if active */
+ // Try FUJI: device first if active
  if (module_is_active("FUJINET")) {
   int dev_id = vdev_find_by_name("FUJI:");
   if (dev_id >= 0) {
@@ -288,7 +278,7 @@ BValue builtin_ninfo(BValue *args, int argc, void *rt)
   }
  }
 
- /* Platform defaults for common queries */
+ // Platform defaults for common queries
  if (result == NULL) {
   if (strcmp(key, "ip") == 0)
    result = "127.0.0.1";

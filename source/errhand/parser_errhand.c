@@ -1,60 +1,62 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_errhand.c
- * ---
- *
- * Error handling & exception commands.
- *
- * ERROR, CAUSE, RESUME, WHEN, USE, RETRY,
- * CONTINUE, TRAP.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_errhand.c
+ // ---
+ //
+ // Error handling & exception commands.
+ //
+ // ERROR, CAUSE, RESUME, WHEN, USE, RETRY,
+ // CONTINUE, TRAP.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
-/*
- * pi_parse_error - Handle ERROR command.
- */
+ // pi_parse_error - Handle ERROR command.
 void pi_parse_error(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * ERROR n
- * Trigger a simulated error with code n.
- * Used for testing error handlers.
- */
+ // ERROR n
+ // Trigger a simulated error with code n.
+ // Used for testing error handlers.
  {
  long errcode;
  errcode = parse_expression(lex, rt,
  line_num);
  if (error_occurred()) return;
- /* Map to internal error codes or use
- * ERR_HOW as generic runtime error */
+ // Map to internal error codes or use
+ // ERR_HOW as generic runtime error 
  error_raise(ERR_HOW, line_num);
  (void)errcode;
  }
  return;
 }
 
-/*
- * pi_parse_cause - Handle CAUSE command.
- */
+ // pi_parse_cause - Handle CAUSE command.
 void pi_parse_cause(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * CAUSE EXCEPTION n
- * ECMA-116: Raise a user exception with code n.
- *
- * Sets ERR = n and ERL = current line, then
- * raises a runtime error. Compatible with
- * ON ERROR GOTO error trapping.
- *
- * The word EXCEPTION is consumed as a named
- * variable token (not a keyword).
- */
+ // CAUSE EXCEPTION n
+ // ECMA-116: Raise a user exception with code n.
+ //
+ // Sets ERR = n and ERL = current line, then
+ // raises a runtime error. Compatible with
+ // ON ERROR GOTO error trapping.
+ //
+ // The word EXCEPTION is consumed as a named
+ // variable token (not a keyword).
  {
  long exc_code;
- /* Consume EXCEPTION (optional for compat) */
+ // Consume EXCEPTION (optional for compat)
  if (lex->current.type == TOK_NAMED_VAR &&
  lex->current.str_length >= 3) {
  const char *e =
@@ -75,21 +77,17 @@ void pi_parse_cause(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_resume - Handle RESUME command.
- */
+ // pi_parse_resume - Handle RESUME command.
 void pi_parse_resume(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * RESUME [NEXT | line]
- * Return from ON ERROR GOTO handler.
- * RESUME - retry the failed line.
- * RESUME NEXT - continue at next line after error.
- * RESUME n - jump to line n.
- */
+ // RESUME [NEXT | line]
+ // Return from ON ERROR GOTO handler.
+ // RESUME - retry the failed line.
+ // RESUME NEXT - continue at next line after error.
+ // RESUME n - jump to line n.
  if (lex->current.type == TOK_EOF ||
  lex->current.type == TOK_COLON) {
- /* RESUME - re-execute the error line */
+ // RESUME - re-execute the error line
  if (rt->last_err_line > 0) {
  vm_jump(rt, rt->last_err_line, line_num);
  }
@@ -98,8 +96,8 @@ void pi_parse_resume(Lexer *lex, RuntimeState *rt, int line_num)
  lex->current.value.keyword ==
  KW_NEXT) {
  lexer_next(lex);
- /* RESUME NEXT: find the error line's program
- * index, then advance to the next line after it */
+ // RESUME NEXT: find the error line's program
+ // index, then advance to the next line after it 
  if (rt->last_err_line > 0) {
  int idx;
  ProgramStore *pgm = rt->program;
@@ -112,53 +110,49 @@ void pi_parse_resume(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
  } else {
- /* RESUME linenum */
+ // RESUME linenum
  long target;
  target = parse_expression(lex, rt,
  line_num);
  if (error_occurred()) return;
  vm_jump(rt, (int)target, line_num);
  }
- /* Re-enable error handler after RESUME */
+ // Re-enable error handler after RESUME
  error_clear();
  return;
 }
 
-/*
- * pi_parse_when - Handle WHEN command.
- */
+ // pi_parse_when - Handle WHEN command.
 void pi_parse_when(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * WHEN EXCEPTION IN
- * ECMA-116: Start a structured exception block.
- *
- * Forward-scan to find USE and END WHEN, push
- * a FRAME_EXCEPTION, then continue executing
- * the protected block.
- *
- * The words EXCEPTION and IN are consumed as
- * named variable tokens (not keywords).
- */
+ // WHEN EXCEPTION IN
+ // ECMA-116: Start a structured exception block.
+ //
+ // Forward-scan to find USE and END WHEN, push
+ // a FRAME_EXCEPTION, then continue executing
+ // the protected block.
+ //
+ // The words EXCEPTION and IN are consumed as
+ // named variable tokens (not keywords).
  {
  int use_idx, end_when_idx;
  StackFrame *f;
 
- /* Consume EXCEPTION IN tokens */
+ // Consume EXCEPTION IN tokens
  if (lex->current.type == TOK_NAMED_VAR)
- lexer_next(lex); /* EXCEPTION */
+ lexer_next(lex); // EXCEPTION
  if (lex->current.type == TOK_NAMED_VAR)
- lexer_next(lex); /* IN */
+ lexer_next(lex); // IN
 
- /* Forward-scan for USE and END WHEN */
+ // Forward-scan for USE and END WHEN
  if (!pi_when_exception_scan(
  rt, rt->current_index,
  &use_idx, &end_when_idx,
  line_num)) {
- return; /* error already raised */
+ return; // error already raised
  }
 
- /* Push exception frame */
+ // Push exception frame
  if (rt->stack_top >= MAX_STACK_DEPTH) {
  error_raise(ERR_SORRY, line_num);
  return;
@@ -175,41 +169,35 @@ void pi_parse_when(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_use - Handle USE command.
- */
+ // pi_parse_use - Handle USE command.
 void pi_parse_use(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * USE - ECMA-116 exception handler marker.
- *
- * If reached by fall-through (no error or
- * after CONTINUE), skip to END WHEN.
- * If exception frame exists, pop it first.
- * If frame was already popped (CONTINUE),
- * scan forward for END WHEN.
- */
+ // USE - ECMA-116 exception handler marker.
+ //
+ // If reached by fall-through (no error or
+ // after CONTINUE), skip to END WHEN.
+ // If exception frame exists, pop it first.
+ // If frame was already popped (CONTINUE),
+ // scan forward for END WHEN.
  {
  int i;
- /* Find the innermost exception frame */
+ // Find the innermost exception frame
  for (i = rt->stack_top - 1; i >= 0; i--) {
  if (rt->stack[i].type ==
  FRAME_EXCEPTION) {
  int end_idx = rt->stack[i]
  .data.exception
  .end_when_index;
- /* Pop all frames down to
- * and including this one */
+ // Pop all frames down to
+ // and including this one 
  rt->stack_top = i;
- /* Jump to END WHEN */
+ // Jump to END WHEN
  rt->next_index = end_idx;
  return;
  }
  }
- /*
- * No frame (popped by CONTINUE).
- * Scan forward for END WHEN.
- */
+ // No frame (popped by CONTINUE).
+ // Scan forward for END WHEN.
  {
  int idx = rt->current_index + 1;
  ProgramStore *pgm = rt->program;
@@ -252,19 +240,15 @@ void pi_parse_use(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_retry - Handle RETRY command.
- */
+ // pi_parse_retry - Handle RETRY command.
 void pi_parse_retry(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * RETRY - ECMA-116: Re-enter protected block.
- *
- * Only valid inside a USE handler. Jumps back
- * to WHEN EXCEPTION IN + 1 (first line of the
- * protected block). The exception frame stays
- * on the stack.
- */
+ // RETRY - ECMA-116: Re-enter protected block.
+ //
+ // Only valid inside a USE handler. Jumps back
+ // to WHEN EXCEPTION IN + 1 (first line of the
+ // protected block). The exception frame stays
+ // on the stack.
  {
  int i;
  for (i = rt->stack_top - 1; i >= 0; i--) {
@@ -281,18 +265,14 @@ void pi_parse_retry(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_continue - Handle CONTINUE command.
- */
+ // pi_parse_continue - Handle CONTINUE command.
 void pi_parse_continue(Lexer *lex, RuntimeState *rt, int line_num)
 {
- /*
- * CONTINUE - ECMA-116: Resume after error.
- *
- * Only valid inside a USE handler. Jumps to the
- * line after the one that caused the exception.
- * Pops the exception frame.
- */
+ // CONTINUE - ECMA-116: Resume after error.
+ //
+ // Only valid inside a USE handler. Jumps to the
+ // line after the one that caused the exception.
+ // Pops the exception frame.
  {
  int i;
  for (i = rt->stack_top - 1; i >= 0; i--) {
@@ -305,9 +285,9 @@ void pi_parse_continue(Lexer *lex, RuntimeState *rt, int line_num)
  line_num);
  return;
  }
- /* Pop exception frame */
+ // Pop exception frame
  rt->stack_top = i;
- /* Resume after error line */
+ // Resume after error line
  rt->next_index = err_idx + 1;
  return;
  }
@@ -317,30 +297,28 @@ void pi_parse_continue(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
-/*
- * pi_parse_trap - Handle TRAP command.
- *
- * Three syntax forms:
- *
- * 1. TRAP n
- *    Atari BASIC style. Sets the error handler
- *    to line n. Equivalent to ON ERROR GOTO n.
- *    TRAP 0 disables the handler.
- *
- * 2. TRAP event, source, destination
- *    Explicit event routing. The event identifier
- *    names the event class, source is the event
- *    source (e.g. device number), and destination
- *    is the handler line number.
- *
- * 3. ON TRAP (event) GOSUB / GOTO line
- *    Handled by pi_parse_on via the ON dispatcher.
- */
+ // pi_parse_trap - Handle TRAP command.
+ //
+ // Three syntax forms:
+ //
+ // 1. TRAP n
+ //    Atari BASIC style. Sets the error handler
+ //    to line n. Equivalent to ON ERROR GOTO n.
+ //    TRAP 0 disables the handler.
+ //
+ // 2. TRAP event, source, destination
+ //    Explicit event routing. The event identifier
+ //    names the event class, source is the event
+ //    source (e.g. device number), and destination
+ //    is the handler line number.
+ //
+ // 3. ON TRAP (event) GOSUB / GOTO line
+ //    Handled by pi_parse_on via the ON dispatcher.
 void pi_parse_trap(Lexer *lex, RuntimeState *rt, int line_num)
 {
  long val;
 
- /* If empty (bare TRAP), show current trap status */
+ // If empty (bare TRAP), show current trap status
  if (lex->current.type == TOK_EOF ||
  lex->current.type == TOK_CR) {
  if (rt->on_error_line > 0) {
@@ -352,17 +330,17 @@ void pi_parse_trap(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Parse the first argument */
+ // Parse the first argument
  val = parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
- /* Check for comma: TRAP event, source, dest */
+ // Check for comma: TRAP event, source, dest
  if (lex->current.type == TOK_COMMA) {
  long dest;
- lexer_next(lex); /* consume first comma */
+ lexer_next(lex); // consume first comma
 
- /* Source (consumed but not used - no
-  * hardware events to bind) */
+ // Source (consumed but not used - no
+  // hardware events to bind) 
  (void)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
@@ -370,9 +348,9 @@ void pi_parse_trap(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume second comma */
+ lexer_next(lex); // consume second comma
 
- /* Destination line number */
+ // Destination line number
  dest = parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
@@ -380,10 +358,8 @@ void pi_parse_trap(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /*
-  * Simple form: TRAP n
-  * n = 0 disables, n > 0 sets handler line.
-  */
+  // Simple form: TRAP n
+  // n = 0 disables, n > 0 sets handler line.
  rt->on_error_line = (int)val;
  return;
 }

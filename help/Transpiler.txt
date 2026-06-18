@@ -398,7 +398,7 @@ Python 2 is NOT supported (it reached end-of-life in 2020).
   END                          sys.exit(0)
   STOP                         breakpoint()  # Python 3.7+
   REM comment                  # comment
-  ON X GOTO 10,20,30           state = [10,20,30][int(v[23])-1]; continue
+  ON X GOTO 10,20,30           state = 10,20,30)-1]; continue
 
 --- 8.2 Function Mapping ---
 
@@ -419,9 +419,9 @@ Python 2 is NOT supported (it reached end-of-life in 2020).
   RND(1)           random.random()      0.0 to 1.0
   RND(N)           random.randint(1,N)  1 to N
   LEN(A$)          len(sv[0])           built-in
-  LEFT$(A$,3)      sv[0][:3]            slice
-  RIGHT$(A$,3)     sv[0][-3:]           slice
-  MID$(A$,2,3)     sv[0][1:4]           slice (1-based adj)
+  LEFT$(A$,3)      sv0            slice
+  RIGHT$(A$,3)     sv0           slice
+  MID$(A$,2,3)     sv0           slice (1-based adj)
   INSTR(A$,B$)     sv[0].find(sv[1])+1  0=not found
   CHR$(65)         chr(65)              built-in
   ASC("A")         ord("A")             built-in
@@ -433,7 +433,7 @@ Python 2 is NOT supported (it reached end-of-life in 2020).
   RTRIM$(A$)       sv[0].rstrip()
   TRIM$(A$)        sv[0].strip()
   SPACE$(N)        " " * n
-  STRING$(N,"*")   "*" * n
+  STRING$(N,"")   "" * n
   HEX$(N)          hex(n)[2:].upper()
   OCT$(N)          oct(n)[2:]
   ENVIRON$("PATH") os.environ.get("PATH", "")

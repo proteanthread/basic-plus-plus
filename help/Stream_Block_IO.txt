@@ -1,7 +1,7 @@
 STREAM I/O, BLOCK I/O, AND DEVICE ALIASES
 ==========================================
 BASIC++ Tutorial — Milestone 11 Primitives
-Version 1.6.0
+Version 4.0.1
 
 
 This tutorial covers the three I/O subsystems added in BASIC++

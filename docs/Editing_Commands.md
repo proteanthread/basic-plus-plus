@@ -1,6 +1,32 @@
 # BASIC++ Editing Commands
 
-**Version 2.0.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- Line Editing (AUTO / DELETE / EDIT / RENUM)
+  - AUTO — Automatic Line Numbering
+  - DELETE — Remove Program Lines
+  - EDIT — Edit a Line
+  - RENUM — Renumber Program Lines
+- ALIAS — Keyword Remapping
+  - Setting Aliases
+  - Listing and Managing
+  - Saving and Loading
+  - Language Packs
+- ALIAS$ — Alias Lookup Function
+- KEYWORD — Keyword Properties
+- OVERRIDE — Runtime Keyword Replacement
+- SCOPE — Keyword Access Control
+  - Enabling and Disabling
+  - Execution Hooks
+  - Presets
+  - Listing
+
+---
 
 This guide covers all editing, customization, and keyword management commands in BASIC++.
 

@@ -1,16 +1,26 @@
-/*
- * ---
- * BASIC++ Interpreter - parser_fileio.c
- * ---
- *
- * File I/O statement handlers: OPEN, CLOSE, SET, ASK,
- * REWRITE, ERASE (file channels).
- *
- * Handles ECMA-116 enhanced file operations, GW-BASIC/QBasic
- * file modes, and cross-dialect file channel management.
- *
- * ---
- */
+ // ---
+ // BASIC++ Interpreter - parser_fileio.c
+ // ---
+ //
+ // File I/O statement handlers: OPEN, CLOSE, SET, ASK,
+ // REWRITE, ERASE (file channels).
+ //
+ // Handles ECMA-116 enhanced file operations, GW-BASIC/QBasic
+ // file modes, and cross-dialect file channel management.
+ //
+//
+// HOW TO EXTEND:
+//   To add a new statement or sub-command:
+//   1. Add the keyword to lexer.h (KeywordId enum).
+//   2. Add it to the keyword table in lexer.c.
+//   3. Add a handler function in this file.
+//   4. Wire it into parser.c's dispatch switch.
+//
+// TROUBLESHOOTING:
+//   - 'WHAT?' on valid syntax: check dialect feature flags.
+//   - Crash in expression: ensure error_occurred() is checked
+//     after every parse_expression call.
+ // ---
 
 #include "parser_internal.h"
 
@@ -22,68 +32,62 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
 
  (void)rt;
 
- /*
- * Detect ECMA-116 form vs GW-BASIC form vs Atari form:
- * ECMA-116: OPEN #n: NAME "file", ACCESS mode, ...
- * GW-BASIC: OPEN "file" FOR mode AS #n
- * Atari:    OPEN #n, aux1, aux2, "device:"
- */
+ // Detect ECMA-116 form vs GW-BASIC form vs Atari form:
+ // ECMA-116: OPEN #n: NAME "file", ACCESS mode, ...
+ // GW-BASIC: OPEN "file" FOR mode AS #n
+ // Atari:    OPEN #n, aux1, aux2, "device:"
  if (lex->current.type == TOK_HASH) {
- /*
- * ===== ECMA-116 or Atari/Commodore OPEN form =====
- *
- * ECMA-116: OPEN #expr: NAME "file" [, ACCESS ...]
- * Atari:    OPEN #expr, aux1, aux2, "device:"
- *
- * Disambiguation: after parsing #expr, if the next
- * token is ':' -> ECMA-116 form; if ',' -> Atari form.
- */
+ // ===== ECMA-116 or Atari/Commodore OPEN form =====
+ //
+ // ECMA-116: OPEN #expr: NAME "file" [, ACCESS ...]
+ // Atari:    OPEN #expr, aux1, aux2, "device:"
+ //
+ // Disambiguation: after parsing #expr, if the next
+ // token is ':' -> ECMA-116 form; if ',' -> Atari form.
  int e116_org = FORG_SEQUENTIAL;
  int e116_rec = FREC_DISPLAY;
  int rec_len = 128;
 
- lexer_next(lex); /* consume # */
+ lexer_next(lex); // consume #
  chan = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
- /*
- * ===== Atari/Commodore OPEN form =====
- * OPEN #chan, aux1, aux2, "device:"
- *
- * aux1 is the mode byte:
- *   4 = input, 6 = directory, 8 = output, 12 = read+write
- * aux2 is device-specific (baud rate, density, etc.)
- *   usually 0 for standard operations.
- *
- * The "device:" string is resolved through the device
- * alias system (e.g., Atari "E:" -> CON:) or opened
- * as a file if no alias matches.
- */
+ // ===== Atari/Commodore OPEN form =====
+ // OPEN #chan, aux1, aux2, "device:"
+ //
+ // aux1 is the mode byte:
+ //   4 = input, 6 = directory, 8 = output, 12 = read+write
+ // aux2 is device-specific (baud rate, density, etc.)
+ //   usually 0 for standard operations.
+ //
+ // The "device:" string is resolved through the device
+ // alias system (e.g., Atari "E:" -> CON:) or opened
+ // as a file if no alias matches.
  if (lex->current.type == TOK_COMMA) {
   int aux1, aux2;
   char devname[MAX_LINE_LENGTH + 1];
 
-  lexer_next(lex); /* consume , after chan */
+  lexer_next(lex); // consume , after chan
   aux1 = (int)parse_expression(lex, rt, line_num);
   if (error_occurred()) return;
 
-  /* Expect comma before aux2 */
+  // Expect comma before aux2
   if (lex->current.type != TOK_COMMA) {
    error_raise(ERR_WHAT, line_num);
    return;
   }
-  lexer_next(lex); /* consume , */
+  lexer_next(lex); // consume ,
   aux2 = (int)parse_expression(lex, rt, line_num);
   if (error_occurred()) return;
 
-  /* Expect comma before device/filename string */
+  // Expect comma before device/filename string
   if (lex->current.type != TOK_COMMA) {
    error_raise(ERR_WHAT, line_num);
    return;
   }
-  lexer_next(lex); /* consume , */
+  lexer_next(lex); // consume ,
 
-  /* Parse device/filename string */
+  // Parse device/filename string
   if (lex->current.type != TOK_STRING) {
    error_raise(ERR_WHAT, line_num);
    return;
@@ -97,15 +101,13 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
   devname[lex->current.str_length] = '\0';
   lexer_next(lex);
 
-  /*
-   * Map Atari aux1 mode to internal FCHAN mode.
-   *   4 = FCHAN_INPUT    (read only)
-   *   6 = FCHAN_INPUT    (directory listing)
-   *   8 = FCHAN_OUTPUT   (write only)
-   *   9 = FCHAN_APPEND   (append)
-   *  12 = FCHAN_RANDOM   (read+write)
-   * Default: FCHAN_INPUT
-   */
+   // Map Atari aux1 mode to internal FCHAN mode.
+   //   4 = FCHAN_INPUT    (read only)
+   //   6 = FCHAN_INPUT    (directory listing)
+   //   8 = FCHAN_OUTPUT   (write only)
+   //   9 = FCHAN_APPEND   (append)
+   //  12 = FCHAN_RANDOM   (read+write)
+   // Default: FCHAN_INPUT
   switch (aux1) {
   case 4: case 6:
    mode = FCHAN_INPUT;
@@ -124,14 +126,12 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
    break;
   }
 
-  /* Store aux2 for future device-specific use */
+  // Store aux2 for future device-specific use
   (void)aux2;
 
-  /*
-   * Route through the standard open path which
-   * handles device aliases, direct VDev names,
-   * and regular files.
-   */
+   // Route through the standard open path which
+   // handles device aliases, direct VDev names,
+   // and regular files.
   if (mode == FCHAN_RANDOM) {
    fileio_open_random(chan, devname, 128, line_num);
   } else {
@@ -140,17 +140,17 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
   return;
  }
 
- /* Expect : after channel (ECMA-116 form) */
+ // Expect : after channel (ECMA-116 form)
  if (lex->current.type != TOK_COLON) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume : */
+ lexer_next(lex); // consume :
 
- /* Expect NAME keyword (as named var) */
+ // Expect NAME keyword (as named var)
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_NAME) {
- lexer_next(lex); /* consume NAME */
+ lexer_next(lex); // consume NAME
  } else if (lex->current.type == TOK_NAMED_VAR &&
  lex->current.str_length == 4) {
  const char *s = lex->current.str_start;
@@ -168,7 +168,7 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Parse filename string */
+ // Parse filename string
  if (lex->current.type != TOK_STRING) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -182,20 +182,18 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  filename[lex->current.str_length] = '\0';
  lexer_next(lex);
 
- /* Default mode: INPUT for sequential */
+ // Default mode: INPUT for sequential
  mode = FCHAN_INPUT;
 
- /* Parse optional comma-separated attributes */
+ // Parse optional comma-separated attributes
  while (lex->current.type == TOK_COMMA) {
- lexer_next(lex); /* consume , */
+ lexer_next(lex); // consume ,
 
- /*
- * Check for ACCESS keyword
- */
+ // Check for ACCESS keyword
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_ACCESS) {
- lexer_next(lex); /* consume ACCESS */
- /* Parse INPUT|OUTPUT|OUTIN */
+ lexer_next(lex); // consume ACCESS
+ // Parse INPUT|OUTPUT|OUTIN
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_INPUT) {
  mode = FCHAN_INPUT;
@@ -220,7 +218,7 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  (s[2]=='T'||s[2]=='t') &&
  (s[3]=='I'||s[3]=='i') &&
  (s[4]=='N'||s[4]=='n')) {
- mode = FCHAN_RANDOM; /* OUTIN=r/w */
+ mode = FCHAN_RANDOM; // OUTIN=r/w
  lexer_next(lex);
  } else {
  error_raise(ERR_WHAT, line_num);
@@ -231,15 +229,13 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
  }
- /*
- * Check for ORGANIZATION (named var)
- */
+ // Check for ORGANIZATION (named var)
  else if (lex->current.type == TOK_NAMED_VAR) {
  const char *s =
  lex->current.str_start;
  int sn = lex->current.str_length;
 
- /* ORGANIZATION */
+ // ORGANIZATION
  if (sn == 12 &&
  (s[0]=='O'||s[0]=='o') &&
  (s[1]=='R'||s[1]=='r') &&
@@ -253,8 +249,8 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  (s[9]=='I'||s[9]=='i') &&
  (s[10]=='O'||s[10]=='o') &&
  (s[11]=='N'||s[11]=='n')) {
- lexer_next(lex); /* consume */
- /* Parse org type */
+ lexer_next(lex); // consume
+ // Parse org type
  if (lex->current.type ==
  TOK_NAMED_VAR) {
  const char *t =
@@ -306,7 +302,7 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
  }
- /* RECTYPE */
+ // RECTYPE
  else if (sn == 7 &&
  (s[0]=='R'||s[0]=='r') &&
  (s[1]=='E'||s[1]=='e') &&
@@ -315,8 +311,8 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  (s[4]=='Y'||s[4]=='y') &&
  (s[5]=='P'||s[5]=='p') &&
  (s[6]=='E'||s[6]=='e')) {
- lexer_next(lex); /* consume */
- /* Parse rec type */
+ lexer_next(lex); // consume
+ // Parse rec type
  if (lex->current.type ==
  TOK_NAMED_VAR) {
  const char *t =
@@ -365,7 +361,7 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- /* Open the file using the parsed attributes */
+ // Open the file using the parsed attributes
  if (e116_org == FORG_RELATIVE) {
  fileio_open_random(chan, filename,
  rec_len, line_num);
@@ -376,7 +372,7 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  fileio_open(chan, filename, mode,
  line_num);
  }
- /* Store ECMA-116 metadata if open succeeded */
+ // Store ECMA-116 metadata if open succeeded
  if (!error_occurred()) {
  fileio_set_e116_metadata(chan,
  e116_org, e116_rec);
@@ -384,10 +380,10 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* ===== GW-BASIC OPEN form ===== */
- /* OPEN "filename" FOR mode AS #n */
+ // ===== GW-BASIC OPEN form =====
+ // OPEN "filename" FOR mode AS #n
 
- /* Parse filename string */
+ // Parse filename string
  if (lex->current.type != TOK_STRING) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -401,17 +397,15 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  filename[lex->current.str_length] = '\0';
  lexer_next(lex);
 
- /*
- * ===== Old-style GW-BASIC short OPEN form =====
- * OPEN "R", channel, "filename" [, reclen]
- * OPEN "I", channel, "filename"
- * OPEN "O", channel, "filename"
- * OPEN "A", channel, "filename"
- *
- * Detection: if the first string is exactly 1 char
- * (R/I/O/A) and the next token is a comma, this is
- * the old short-form syntax.
- */
+ // ===== Old-style GW-BASIC short OPEN form =====
+ // OPEN "R", channel, "filename" [, reclen]
+ // OPEN "I", channel, "filename"
+ // OPEN "O", channel, "filename"
+ // OPEN "A", channel, "filename"
+ //
+ // Detection: if the first string is exactly 1 char
+ // (R/I/O/A) and the next token is a comma, this is
+ // the old short-form syntax.
  if (strlen(filename) == 1 &&
  lex->current.type == TOK_COMMA) {
  char mode_ch = filename[0];
@@ -420,7 +414,7 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  if (mode_ch >= 'a' && mode_ch <= 'z')
  mode_ch = (char)(mode_ch - 32);
 
- /* Map mode character */
+ // Map mode character
  if (mode_ch == 'R') {
  mode = FCHAN_RANDOM;
  } else if (mode_ch == 'I') {
@@ -434,20 +428,20 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- lexer_next(lex); /* consume comma after mode */
+ lexer_next(lex); // consume comma after mode
 
- /* Parse channel number (no #) */
+ // Parse channel number (no #)
  chan = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
- /* Expect comma before filename */
+ // Expect comma before filename
  if (lex->current.type != TOK_COMMA) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume comma */
+ lexer_next(lex); // consume comma
 
- /* Parse filename string */
+ // Parse filename string
  if (lex->current.type != TOK_STRING) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -461,15 +455,15 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  filename[lex->current.str_length] = '\0';
  lexer_next(lex);
 
- /* Optional record length: , reclen */
+ // Optional record length: , reclen
  if (lex->current.type == TOK_COMMA) {
- lexer_next(lex); /* consume comma */
+ lexer_next(lex); // consume comma
  rec_len = (int)parse_expression(lex, rt,
  line_num);
  if (error_occurred()) return;
  }
 
- /* Open the file */
+ // Open the file
  if (mode == FCHAN_RANDOM) {
  fileio_open_random(chan, filename,
  rec_len, line_num);
@@ -483,25 +477,23 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Expect FOR keyword */
+ // Expect FOR keyword
  if (lex->current.type != TOK_KEYWORD ||
  lex->current.value.keyword != KW_FOR) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume FOR */
+ lexer_next(lex); // consume FOR
 
- /* Parse mode: INPUT, OUTPUT, APPEND, RANDOM, BINARY */
+ // Parse mode: INPUT, OUTPUT, APPEND, RANDOM, BINARY
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_INPUT) {
  mode = FCHAN_INPUT;
  lexer_next(lex);
  } else if (lex->current.type == TOK_NAMED_VAR ||
  lex->current.type == TOK_VARIABLE) {
- /*
- * OUTPUT, APPEND, RANDOM, BINARY are not keywords
- * - they appear as named variables. Match by text.
- */
+ // OUTPUT, APPEND, RANDOM, BINARY are not keywords
+ // - they appear as named variables. Match by text.
  const char *src;
  int len;
  if (lex->current.type == TOK_NAMED_VAR) {
@@ -552,43 +544,39 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /*
- * Optional ACCESS clause:
- * ACCESS READ | WRITE | READ WRITE
- * Accepted and silently consumed for compatibility.
- */
+ // Optional ACCESS clause:
+ // ACCESS READ | WRITE | READ WRITE
+ // Accepted and silently consumed for compatibility.
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_ACCESS) {
- lexer_next(lex); /* consume ACCESS */
- /* Skip READ/WRITE/READ WRITE */
+ lexer_next(lex); // consume ACCESS
+ // Skip READ/WRITE/READ WRITE
  while (lex->current.type == TOK_NAMED_VAR ||
  lex->current.type == TOK_VARIABLE) {
  lexer_next(lex);
  }
  }
 
- /* Expect AS keyword */
+ // Expect AS keyword
  if (lex->current.type != TOK_KEYWORD ||
  lex->current.value.keyword != KW_AS) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume AS */
+ lexer_next(lex); // consume AS
 
- /* Expect # */
+ // Expect #
  if (lex->current.type != TOK_HASH) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- lexer_next(lex); /* consume # */
+ lexer_next(lex); // consume #
 
- /* Parse channel number */
+ // Parse channel number
  chan = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
- /*
- * Optional LEN = n (record length for RANDOM)
- */
+ // Optional LEN = n (record length for RANDOM)
  {
  int rec_len = 128;
  if (lex->current.type == TOK_NAMED_VAR &&
@@ -597,7 +585,7 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  if ((s[0]=='L'||s[0]=='l') &&
  (s[1]=='E'||s[1]=='e') &&
  (s[2]=='N'||s[2]=='n')) {
- lexer_next(lex); /* consume LEN */
+ lexer_next(lex); // consume LEN
  if (lex->current.type == TOK_EQUALS)
  lexer_next(lex);
  rec_len = (int)parse_expression(
@@ -619,23 +607,19 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
-/*
- * parse_close - Parse CLOSE statement.
- * The CLOSE keyword has already been consumed.
- */
+ // parse_close - Parse CLOSE statement.
+ // The CLOSE keyword has already been consumed.
 void pi_parse_close(Lexer *lex, RuntimeState *rt, int line_num)
 {
  int chan;
 
- /*
- * CLOSE forms:
- * CLOSE - close all files
- * CLOSE #n - close file #n
- * CLOSE n - close file n (old GW-BASIC style)
- * CLOSE #n, #m - close multiple files
- */
+ // CLOSE forms:
+ // CLOSE - close all files
+ // CLOSE #n - close file #n
+ // CLOSE n - close file n (old GW-BASIC style)
+ // CLOSE #n, #m - close multiple files
 
- /* CLOSE with no args = close all open files */
+ // CLOSE with no args = close all open files
  if (lex->current.type == TOK_EOF ||
  lex->current.type == TOK_CR ||
  lex->current.type == TOK_COLON) {
@@ -649,9 +633,9 @@ void pi_parse_close(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  do {
- /* Optional # */
+ // Optional #
  if (lex->current.type == TOK_HASH) {
- lexer_next(lex); /* consume # */
+ lexer_next(lex); // consume #
  }
 
  chan = (int)parse_expression(lex, rt, line_num);
@@ -660,7 +644,7 @@ void pi_parse_close(Lexer *lex, RuntimeState *rt, int line_num)
  fileio_close(chan, line_num);
  if (error_occurred()) return;
 
- /* Check for comma -> more channels */
+ // Check for comma -> more channels
  if (lex->current.type == TOK_COMMA) {
  lexer_next(lex);
  } else {
@@ -669,21 +653,18 @@ void pi_parse_close(Lexer *lex, RuntimeState *rt, int line_num)
  } while (1);
 }
 
-/* --- ECMA-116 Enhanced Files: SET / ASK / REWRITE / ERASE ---
- */
+// --- ECMA-116 Enhanced Files: SET / ASK / REWRITE / ERASE ---
 
-/*
- * parse_set_file - Parse SET # statement.
- * SET #n: POINTER BEGIN | END | expr
- * The SET keyword has already been consumed.
- */
+ // parse_set_file - Parse SET # statement.
+ // SET #n: POINTER BEGIN | END | expr
+ // The SET keyword has already been consumed.
 void pi_parse_set_file(Lexer *lex, RuntimeState *rt,
  int line_num)
 {
  int chan;
  long pos;
 
- /* Expect # */
+ // Expect #
  if (lex->current.type != TOK_HASH) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -693,19 +674,19 @@ void pi_parse_set_file(Lexer *lex, RuntimeState *rt,
  chan = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
- /* Expect : */
+ // Expect :
  if (lex->current.type != TOK_COLON) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
  lexer_next(lex);
 
- /* Expect POINTER keyword */
+ // Expect POINTER keyword
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_POINTER) {
- lexer_next(lex); /* consume POINTER */
+ lexer_next(lex); // consume POINTER
 
- /* Parse BEGIN, END, or expression */
+ // Parse BEGIN, END, or expression
  if (lex->current.type == TOK_NAMED_VAR) {
  const char *s = lex->current.str_start;
  int sn = lex->current.str_length;
@@ -715,17 +696,17 @@ void pi_parse_set_file(Lexer *lex, RuntimeState *rt,
  (s[2]=='G'||s[2]=='g') &&
  (s[3]=='I'||s[3]=='i') &&
  (s[4]=='N'||s[4]=='n')) {
- pos = 0; /* BEGIN */
+ pos = 0; // BEGIN
  lexer_next(lex);
  } else {
- /* Could be END or an expression */
+ // Could be END or an expression
  pos = (long)parse_expression(
  lex, rt, line_num);
  if (error_occurred()) return;
  }
  } else if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_END) {
- pos = -1; /* END */
+ pos = -1; // END
  lexer_next(lex);
  } else {
  pos = (long)parse_expression(
@@ -739,17 +720,15 @@ void pi_parse_set_file(Lexer *lex, RuntimeState *rt,
  }
 }
 
-/*
- * parse_ask_file - Parse ASK # statement.
- * ASK #n: POINTER var | FILESIZE var
- * The ASK keyword has already been consumed.
- */
+ // parse_ask_file - Parse ASK # statement.
+ // ASK #n: POINTER var | FILESIZE var
+ // The ASK keyword has already been consumed.
 void pi_parse_ask_file(Lexer *lex, RuntimeState *rt,
  int line_num)
 {
  int chan;
 
- /* Expect # */
+ // Expect #
  if (lex->current.type != TOK_HASH) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -759,23 +738,23 @@ void pi_parse_ask_file(Lexer *lex, RuntimeState *rt,
  chan = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
- /* Expect : */
+ // Expect :
  if (lex->current.type != TOK_COLON) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
  lexer_next(lex);
 
- /* POINTER or FILESIZE */
+ // POINTER or FILESIZE
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_POINTER) {
  long pos;
- lexer_next(lex); /* consume POINTER */
+ lexer_next(lex); // consume POINTER
 
  pos = fileio_ask_pointer(chan, line_num);
  if (error_occurred()) return;
 
- /* Assign to variable */
+ // Assign to variable
  if (lex->current.type == TOK_VARIABLE) {
  int vi = lex->current.value.var_name - 'A';
  rt->variables[vi] = bval_float((double)pos);
@@ -793,12 +772,12 @@ void pi_parse_ask_file(Lexer *lex, RuntimeState *rt,
  } else if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_FILESIZE) {
  long sz;
- lexer_next(lex); /* consume FILESIZE */
+ lexer_next(lex); // consume FILESIZE
 
  sz = fileio_ask_filesize(chan, line_num);
  if (error_occurred()) return;
 
- /* Assign to variable */
+ // Assign to variable
  if (lex->current.type == TOK_VARIABLE) {
  int vi = lex->current.value.var_name - 'A';
  rt->variables[vi] = bval_float((double)sz);
@@ -818,11 +797,9 @@ void pi_parse_ask_file(Lexer *lex, RuntimeState *rt,
  }
 }
 
-/*
- * parse_rewrite - Parse REWRITE # statement.
- * REWRITE #n: expr [, expr ...]
- * The REWRITE keyword has already been consumed.
- */
+ // parse_rewrite - Parse REWRITE # statement.
+ // REWRITE #n: expr [, expr ...]
+ // The REWRITE keyword has already been consumed.
 void pi_parse_rewrite(Lexer *lex, RuntimeState *rt,
  int line_num)
 {
@@ -830,7 +807,7 @@ void pi_parse_rewrite(Lexer *lex, RuntimeState *rt,
  char buf[MAX_RECORD_LEN];
  int pos = 0;
 
- /* Expect # */
+ // Expect #
  if (lex->current.type != TOK_HASH) {
  error_raise(ERR_WHAT, line_num);
  return;
@@ -840,14 +817,14 @@ void pi_parse_rewrite(Lexer *lex, RuntimeState *rt,
  chan = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
- /* Expect : */
+ // Expect :
  if (lex->current.type != TOK_COLON) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
  lexer_next(lex);
 
- /* Build record from expressions */
+ // Build record from expressions
  memset(buf, ' ', MAX_RECORD_LEN);
  while (lex->current.type != TOK_EOF &&
  lex->current.type != TOK_CR &&
@@ -881,38 +858,33 @@ void pi_parse_rewrite(Lexer *lex, RuntimeState *rt,
  fileio_rewrite_record(chan, buf, pos, line_num);
 }
 
-/*
- * parse_erase_file - Parse ERASE # statement.
- * ERASE #n
- * This is separate from the existing ERASE (clear arrays).
- * The ERASE keyword has already been consumed.
- */
+ // parse_erase_file - Parse ERASE # statement.
+ // ERASE #n
+ // This is separate from the existing ERASE (clear arrays).
+ // The ERASE keyword has already been consumed.
 void pi_parse_erase_file(Lexer *lex, RuntimeState *rt,
  int line_num)
 {
  int chan;
 
- /* # means it's a file ERASE, not array ERASE */
- lexer_next(lex); /* consume # */
+ // # means it's a file ERASE, not array ERASE
+ lexer_next(lex); // consume #
  chan = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
  fileio_erase_channel(chan, line_num);
 }
 
-/* --- Statement Dispatcher ---
- */
+// --- Statement Dispatcher ---
 
-/*
- * parse_statement - Parse and execute a single BASIC statement.
- *
- * Identifies the statement type from the current token and
- * dispatches to the appropriate handler. If the current token
- * is a variable and LET is optional (in PATB), treats it as
- * a bare assignment.
- *
- * This function handles one statement only. The caller
- * (parser_execute_line) handles the ';' separator for
- * multi-statement lines.
- */
+ // parse_statement - Parse and execute a single BASIC statement.
+ //
+ // Identifies the statement type from the current token and
+ // dispatches to the appropriate handler. If the current token
+ // is a variable and LET is optional (in PATB), treats it as
+ // a bare assignment.
+ //
+ // This function handles one statement only. The caller
+ // (parser_execute_line) handles the ';' separator for
+ // multi-statement lines.
 

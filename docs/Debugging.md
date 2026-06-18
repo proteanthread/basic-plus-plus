@@ -1,6 +1,28 @@
 # Debugging and Tracing in BASIC++
 
-**Version 4.0.0**
+**Version 4.0.1**
+
+
+---
+
+## Table of Contents
+
+- TRON / TROFF (Trace Mode)
+- STOP and CONT
+- BREAK (Ctrl+C)
+- Variable Inspection
+- Single-Stepping Pattern
+- Error Debugging
+- LIST for Inspection
+- Debugging with PRINT
+- Debugging File I/O
+- Common Errors and Solutions
+- Tips
+- CHECK and VERIFY (Static Analysis)
+- BACKTRACE
+- ERROR$ (Error Messages)
+
+---
 
 BASIC++ provides several tools for debugging programs: trace mode, breakpoints, single-stepping, and variable inspection.
 

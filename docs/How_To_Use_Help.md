@@ -1,6 +1,6 @@
 # BASIC++ Help System — User & Developer Tutorial
 
-**Version 1.5.0** | ANSI C89/C90 | ECMA-116 Compliant
+**Version 4.0.1** | C17 \| ECMA-116 Compliant
 
 ---
 
@@ -122,7 +122,7 @@ Displays system configuration and build information:
  Stack:       64 levels
  Breakpoints: 16 max
  Build:       Jun 09 2026 22:30:00
- Standard:    ANSI C89/C90
+ Standard:    C17
 ```
 
 ---

@@ -1,5 +1,17 @@
 # Networking in BASIC++
 
+
+---
+
+## Table of Contents
+
+- How to use
+  - Syntax
+  - Examples
+- Supported Protocols
+
+---
+
 BASIC++ supports seamless TCP and UDP networking using the Virtual Device (VDev2) abstraction layer.
 
 ## How to use

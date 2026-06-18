@@ -1,6 +1,6 @@
 THE BASIC++ SCREEN AND CONSOLE SYSTEM
 ========================================
-Version 1.5.0
+Version 4.0.1
 
 This manual explains how BASIC++ programs control the
 text-mode terminal — cursor positioning, colors, screen
@@ -103,7 +103,7 @@ Part I:  THE TEXT CONSOLE MODEL
 
 
 1.  OVERVIEW: TERMINAL AS CANVAS
------------------------------------
+---------------------------------------------------------------------
 
 BASIC++ treats the terminal as a character grid — a
 canvas of rows and columns where each cell holds one
@@ -130,7 +130,7 @@ This model matches GW-BASIC and QBasic exactly.
 
 
 2.  ANSI ESCAPE SEQUENCES UNDER THE HOOD
---------------------------------------------
+---------------------------------------------------------------------
 
 BASIC++ uses ANSI escape sequences for all screen
 control.  Every LOCATE, COLOR, and CLS statement
@@ -158,7 +158,7 @@ ANSI sequences:
 
 
 3.  PLATFORM DIFFERENCES
----------------------------
+---------------------------------------------------------------------
 
   Platform   Terminal         ANSI Support
   ─────────  ───────────────  ──────────────────────
@@ -179,7 +179,7 @@ On FreeDOS, load ANSI.SYS in CONFIG.SYS:
 
 
 4.  CONSOLE STATE IN RUNTIMESTATE
--------------------------------------
+---------------------------------------------------------------------
 
 The runtime tracks these console-related fields:
 
@@ -203,7 +203,7 @@ Part II:  SCREEN CONTROL
 
 
 5.  CLS — CLEAR SCREEN
--------------------------
+---------------------------------------------------------------------
 
   Syntax: CLS
 
@@ -227,7 +227,7 @@ to ensure a clean display:
 
 
 6.  HOME — CURSOR HOME
--------------------------
+---------------------------------------------------------------------
 
   Syntax: HOME
 
@@ -249,7 +249,7 @@ Use HOME to overwrite a status line at the top:
 
 
 7.  LOCATE — POSITION THE CURSOR
-------------------------------------
+---------------------------------------------------------------------
 
   Syntax: LOCATE row, col
 
@@ -290,7 +290,7 @@ Common patterns:
 
 
 8.  CSRLIN — READ CURSOR ROW
--------------------------------
+---------------------------------------------------------------------
 
   Syntax: value = CSRLIN
 
@@ -304,7 +304,7 @@ a variable-like keyword — no parentheses needed:
 
 
 9.  POS(0) — READ CURSOR COLUMN
------------------------------------
+---------------------------------------------------------------------
 
   Syntax: value = POS(0)
 
@@ -330,7 +330,7 @@ cursor position:
 
 
 10.  WIDTH — SET SCREEN DIMENSIONS
---------------------------------------
+---------------------------------------------------------------------
 
   Syntax:
     WIDTH columns [, lines]
@@ -363,7 +363,7 @@ These can be used for formatting:
 
 
 11.  SCREEN — SET SCREEN MODE
---------------------------------
+---------------------------------------------------------------------
 
   Syntax: SCREEN mode [, color_switch]
 
@@ -400,7 +400,7 @@ Part III:  COLOR AND STYLE
 
 
 12.  COLOR — SET TEXT COLORS
--------------------------------
+---------------------------------------------------------------------
 
   Syntax:
     COLOR fg            Set foreground color
@@ -415,7 +415,7 @@ Set the text color for subsequent PRINT output:
 
 
 13.  GW-BASIC COLOR PALETTE (0-15)
---------------------------------------
+---------------------------------------------------------------------
 
   Code  Name            ANSI FG   ANSI BG
   ────  ──────────────  ────────  ────────
@@ -441,7 +441,7 @@ Colors 8-15 are bright/bold versions.
 
 
 14.  FOREGROUND AND BACKGROUND COLORS
------------------------------------------
+---------------------------------------------------------------------
 
 Set both foreground and background:
 
@@ -455,7 +455,7 @@ Set both foreground and background:
 
   300 REM -- Yellow on red (warning!) --
   310 COLOR 14, 4
-  320 PRINT " *** DANGER *** "
+  320 PRINT " * DANGER * "
 
   400 REM -- Create a colored title bar --
   410 COLOR 15, 1          : REM White on blue
@@ -467,7 +467,7 @@ Set both foreground and background:
 
 
 15.  RESETTING COLORS
------------------------
+---------------------------------------------------------------------
 
   COLOR (with no arguments) emits ESC[0m, which resets
   all text attributes to terminal defaults:
@@ -485,7 +485,7 @@ Set both foreground and background:
 
 
 16.  COLOR AND ANSI SGR CODES
---------------------------------
+---------------------------------------------------------------------
 
 Under the hood, COLOR maps GW-BASIC codes to ANSI
 SGR (Select Graphic Rendition) parameters:
@@ -513,7 +513,7 @@ Part IV:  OUTPUT FORMATTING
 
 
 17.  PRINT — THE CORE OUTPUT STATEMENT
------------------------------------------
+---------------------------------------------------------------------
 
 PRINT is the most-used statement in BASIC.  It outputs
 values to the terminal (or to a file channel):
@@ -544,7 +544,7 @@ numeric values:
 
 
 18.  SEMICOLONS AND COMMAS IN PRINT
----------------------------------------
+---------------------------------------------------------------------
 
 Two separators control spacing between PRINT items:
 
@@ -571,7 +571,7 @@ Commas (tabular output):
 
 
 19.  TAB(n) — MOVE TO COLUMN
--------------------------------
+---------------------------------------------------------------------
 
   Syntax: PRINT TAB(n); expression
 
@@ -598,7 +598,7 @@ Classic game example:
 
 
 20.  SPC(n) — PRINT SPACES
------------------------------
+---------------------------------------------------------------------
 
   Syntax: PRINT SPC(n); expression
 
@@ -614,7 +614,7 @@ The difference between TAB and SPC:
 
 
 21.  PRINT USING — FORMATTED OUTPUT
----------------------------------------
+---------------------------------------------------------------------
 
   Syntax: PRINT USING "format"; expr [; expr ...]
 
@@ -691,7 +691,7 @@ Separate multiple values with semicolons:
 
 
 22.  WRITE — DATA OUTPUT WITH DELIMITERS
---------------------------------------------
+---------------------------------------------------------------------
 
   Syntax: WRITE [#n,] expr [, expr ...]
 
@@ -717,7 +717,7 @@ WRITE with no arguments prints a blank line.
 
 
 23.  LPRINT — PRINT TO STDERR
----------------------------------
+---------------------------------------------------------------------
 
   Syntax: LPRINT [expr [; expr ...] [;]]
 
@@ -747,7 +747,7 @@ Part V:  KEYBOARD INPUT
 
 
 24.  INPUT — BLOCKING LINE INPUT
-------------------------------------
+---------------------------------------------------------------------
 
   Syntax: INPUT ["prompt";] var [, var ...]
 
@@ -767,7 +767,7 @@ INPUT blocks execution until the user presses Enter.
 
 
 25.  LINE INPUT — READ ENTIRE LINE
---------------------------------------
+---------------------------------------------------------------------
 
   Syntax: LINE INPUT ["prompt";] var$
 
@@ -791,7 +791,7 @@ LINE INPUT can also read from files:
 
 
 26.  INKEY$ — NON-BLOCKING KEY READ
----------------------------------------
+---------------------------------------------------------------------
 
   Syntax: K$ = INKEY$
 
@@ -816,7 +816,7 @@ programs that need to check for input without stopping.
 
 
 27.  BUILDING A KEY EVENT LOOP
----------------------------------
+---------------------------------------------------------------------
 
 The standard game-loop pattern:
 
@@ -854,7 +854,7 @@ The standard game-loop pattern:
 
 
 28.  SPECIAL KEYS AND KEY CODES
------------------------------------
+---------------------------------------------------------------------
 
 Common ASCII codes returned by INKEY$:
 
@@ -903,7 +903,7 @@ Part VI:  FUNCTION KEY MACROS
 
 
 29.  WHAT ARE FUNCTION KEY MACROS?
--------------------------------------
+---------------------------------------------------------------------
 
 GW-BASIC allowed you to assign text strings to the
 function keys (F1-F12).  Pressing F1 would type the
@@ -921,7 +921,7 @@ Each slot holds up to 15 characters (FKEY_MAX_LEN = 15).
 
 
 30.  KEY n, string$ — ASSIGN A MACRO
-----------------------------------------
+---------------------------------------------------------------------
 
   Syntax: KEY slot, "text"
 
@@ -946,7 +946,7 @@ Custom macros for a game:
 
 
 31.  KEY ON / KEY OFF — DISPLAY BAR
----------------------------------------
+---------------------------------------------------------------------
 
   Syntax:
     KEY ON      Show the function key bar
@@ -971,7 +971,7 @@ KEY OFF hides the bar:
 
 
 32.  KEY LIST — SHOW ALL ASSIGNMENTS
-----------------------------------------
+---------------------------------------------------------------------
 
   Syntax: KEY LIST
 
@@ -992,7 +992,7 @@ Output:
 
 
 33.  SLOT LAYOUT (48 SLOTS)
-------------------------------
+---------------------------------------------------------------------
 
   Slot   Modifier    Function Key
   ─────  ──────────  ────────────
@@ -1012,7 +1012,7 @@ The function key within a group: fn = (slot - 1) % 12 + 1
 
 
 34.  KEY(n) ON/OFF/STOP — EVENT TRAPPING
---------------------------------------------
+---------------------------------------------------------------------
 
   Syntax:
     KEY(n) ON     Enable key event trapping
@@ -1030,7 +1030,7 @@ Part VII:  SOUND AND FEEDBACK
 
 
 35.  BEEP — AUDIBLE ALERT
-----------------------------
+---------------------------------------------------------------------
 
   Syntax: BEEP
 
@@ -1049,7 +1049,7 @@ Platform implementation:
 
 
 36.  BEEP ON / BEEP OFF — ERROR BEEP
-----------------------------------------
+---------------------------------------------------------------------
 
   Syntax:
     BEEP ON      Enable error beep (default)
@@ -1062,7 +1062,7 @@ Control whether errors produce an audible beep:
 
 
 37.  SOUND — PLAY A TONE
----------------------------
+---------------------------------------------------------------------
 
   Syntax: SOUND frequency, duration
 
@@ -1090,7 +1090,7 @@ Common frequencies:
 
 
 38.  PLAY — MUSIC MACRO LANGUAGE (OVERVIEW)
-----------------------------------------------
+---------------------------------------------------------------------
 
   Syntax: PLAY string$
 
@@ -1109,7 +1109,7 @@ PLAY commands:
   # or +    Sharp
   -         Flat
   O0-O6     Set octave (default O4)
-  >         Octave up
+          Octave up
   <         Octave down
   L1-L64    Set note length (1=whole, 4=quarter)
   T32-T255  Set tempo in BPM (default T120)
@@ -1126,7 +1126,7 @@ Part VIII:  COMPLETE EXAMPLES
 
 
 39.  EXAMPLE: FULL-SCREEN MENU SYSTEM
------------------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Full-Screen Menu System
@@ -1190,7 +1190,7 @@ Part VIII:  COMPLETE EXAMPLES
 
 
 40.  EXAMPLE: COLORED STATUS DASHBOARD
-------------------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  System Status Dashboard
@@ -1264,7 +1264,7 @@ Part VIII:  COMPLETE EXAMPLES
 
 
 41.  EXAMPLE: TEXT-MODE ANIMATION
-------------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Text-Mode Bouncing Ball
@@ -1299,7 +1299,7 @@ Part VIII:  COMPLETE EXAMPLES
 
 
 42.  EXAMPLE: INTERACTIVE FORM
----------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Interactive Data Entry Form
@@ -1357,7 +1357,7 @@ Part VIII:  COMPLETE EXAMPLES
 
 
 43.  EXAMPLE: CONSOLE GAME FRAMEWORK
------------------------------------------
+---------------------------------------------------------------------
 
   100 REM ======================================
   110 REM  Console Game Framework
@@ -1447,7 +1447,7 @@ Part IX:  REFERENCE
 
 
 44.  ALL CONSOLE STATEMENTS
-------------------------------
+---------------------------------------------------------------------
 
   Statement              Description
   ───────────────────────────────────────────────────
@@ -1479,7 +1479,7 @@ Part IX:  REFERENCE
 
 
 45.  ALL CONSOLE FUNCTIONS
-------------------------------
+---------------------------------------------------------------------
 
   Function               Returns
   ───────────────────────────────────────────────────
@@ -1493,7 +1493,7 @@ Part IX:  REFERENCE
 
 
 46.  COLOR CODE TABLE
------------------------
+---------------------------------------------------------------------
 
   Code  Color           Foreground   Background
   ────  ──────────────  ───────────  ───────────
@@ -1516,7 +1516,7 @@ Part IX:  REFERENCE
 
 
 47.  ANSI ESCAPE CODE MAP
-----------------------------
+---------------------------------------------------------------------
 
 Complete map of ANSI codes used by BASIC++:
 
@@ -1533,7 +1533,7 @@ Complete map of ANSI codes used by BASIC++:
 
 
 48.  TROUBLESHOOTING
-----------------------
+---------------------------------------------------------------------
 
   Problem: Colors don't display, garbage text appears
   Fix:     Terminal doesn't support ANSI escapes.

@@ -28,7 +28,7 @@ TABLE OF CONTENTS
 =====================================================================
 
 BASIC++ can run on embedded microcontrollers and single-board
-computers.  The interpreter is written in portable C89/C90 with
+computers.  The interpreter is written in portable C17 with
 no external dependencies, making it compilable with any standard
 C toolchain including:
 
@@ -109,10 +109,10 @@ like any Linux system:
 
   sudo apt install build-essential
   cd source
-  gcc -O2 -o basicpp core/*.c parser/*.c io/*.c math/*.c \
-      graphics/*.c strings/*.c arrays/*.c filemgmt/*.c \
-      struct/*.c debug/*.c modules/*.c progmgmt/*.c \
-      virtual/*.c codegen/*.c lexer/*.c dialect/*.c \
+  gcc -O2 -o basicpp core/.c parser/.c io/.c math/.c \
+      graphics/.c strings/.c arrays/.c filemgmt/.c \
+      struct/.c debug/.c modules/.c progmgmt/.c \
+      virtual/.c codegen/.c lexer/.c dialect/.c \
       runtime/*.c -lm
   ./basicpp
 
@@ -295,7 +295,7 @@ ESP32-WROOM (no PSRAM):
   BASIC++ pools (BPP_EMBEDDED):  -38 KB
   RuntimeState (reduced):        -30 KB
   Stack + C overhead:            -10 KB
-  ----------------------------------------
+---------------------------------------------------------------------
   Remaining free:                ~122 KB
 
 ESP32-WROVER (with PSRAM):
@@ -313,7 +313,7 @@ Arduino Due:
   BASIC++ pools (BPP_EMBEDDED):  -38 KB
   RuntimeState (reduced):        -30 KB
   Stack + C overhead:             -8 KB
-  ----------------------------------------
+---------------------------------------------------------------------
   Remaining free:                 ~8 KB (tight but viable)
 
 

@@ -1,6 +1,6 @@
 # BASIC++ Programmer's Guide
 
-**Version 4.0.0**
+**Version 4.0.1**
 
 ## Table of Contents
 
