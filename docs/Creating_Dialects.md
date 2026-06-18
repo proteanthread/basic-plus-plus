@@ -160,7 +160,7 @@ are needed in the parser — it just reads the config.
   10  C64B   Commodore BASIC v2        1982   Yes    Yes      DIM
   11  COCO   Color Computer BASIC      1980   Yes    Yes      DIM
   12  SINC   Sinclair BASIC            1982   Yes    Yes      DIM
-  13  SBLQ   SuperBASIC (Sinclair QL)  1984   Yes    Yes      DIM
+  13  SUPB   SuperBASIC (Sinclair QL)  1984   Yes    Yes      DIM
   14  MBAS   MBASIC (CP/M)             1977   Yes    Yes      DIM
   15  SBAS   SUPER BASIC (Tymshare)    1968   Yes    Yes      DIM
 

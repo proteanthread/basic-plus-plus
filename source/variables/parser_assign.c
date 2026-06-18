@@ -143,8 +143,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
 
  /* Check for DIM array assignment: A(i) = expr */
  if (lex->current.type == TOK_LPAREN &&
- dialect_get_config()->has_dim_arrays &&
- runtime_find_dim(rt, &var_name, 1) != NULL) {
+ dialect_get_config()->has_dim_arrays) {
  int idx1, idx2 = 0, idx3 = 0;
  BValue val;
  lexer_next(lex); /* consume ( */
@@ -622,6 +621,48 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  }
 
  runtime_set_named_var_bval(rt, name, name_len, bv);
+ } else if (lex->current.type == TOK_KEYWORD &&
+ dialect_get_config()->has_extended_vars) {
+ /*
+  * GW-BASIC keyword-as-variable: RUNNING, DELAY, etc.
+  * The lexer split it into a keyword prefix. Reconstruct
+  * the full variable name from keyword + trailing chars.
+  */
+ const char *kn = lexer_keyword_name(
+  lex->current.value.keyword);
+ if (kn != NULL) {
+  char fullname[MAX_VAR_NAME_LEN + 1];
+  int klen = (int)strlen(kn);
+  int flen = klen;
+  int saved_pos;
+  BValue bv;
+
+  if (klen > MAX_VAR_NAME_LEN) klen = MAX_VAR_NAME_LEN;
+  memcpy(fullname, kn, (size_t)klen);
+
+  lexer_next(lex); /* consume keyword */
+
+  /* Absorb trailing alpha/digit characters (NING from RUNNING) */
+  saved_pos = lex->pos;
+  if (lex->current.type == TOK_NAMED_VAR &&
+  lex->current.str_start != NULL) {
+  int tlen = lex->current.str_length;
+  if (flen + tlen <= MAX_VAR_NAME_LEN) {
+   memcpy(fullname + flen, lex->current.str_start,
+   (size_t)tlen);
+   flen += tlen;
+  }
+  lexer_next(lex); /* consume trailing */
+  }
+  fullname[flen] = '\0';
+
+  if (!lexer_expect(lex, TOK_EQUALS)) return;
+  bv = parse_expression_bval(lex, rt, line_num);
+  if (error_occurred()) return;
+  runtime_set_named_var_bval(rt, fullname, flen, bv);
+  return;
+ }
+ error_raise(ERR_WHAT, line_num);
  } else if (lex->current.type == TOK_STRING_VAR) {
  /* String variable or string array assignment */
  char var_name = lex->current.value.var_name;
@@ -639,35 +680,32 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  sname[1] = '$';
  sname[2] = '\0';
  {
- DimArray *arr = runtime_find_dim(rt, sname, 2);
- if (arr != NULL) {
- int idx1, idx2 = 0, idx3 = 0;
- lexer_next(lex); /* consume ( */
- val = parse_expression_bval(lex, rt, line_num);
- idx1 = (int)bval_to_subscript(&val);
- if (error_occurred()) return;
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- val = parse_expression_bval(lex, rt,
- line_num);
- idx2 = (int)bval_to_subscript(&val);
- if (error_occurred()) return;
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- val = parse_expression_bval(lex, rt,
- line_num);
- idx3 = (int)bval_to_subscript(&val);
- if (error_occurred()) return;
- }
- }
- if (!lexer_expect(lex, TOK_RPAREN)) return;
- if (!lexer_expect(lex, TOK_EQUALS)) return;
- val = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return;
- runtime_set_dim(rt, sname, 2, idx1, idx2, idx3,
- val, line_num);
- return;
- }
+  int idx1, idx2 = 0, idx3 = 0;
+  lexer_next(lex); /* consume ( */
+  val = parse_expression_bval(lex, rt, line_num);
+  idx1 = (int)bval_to_subscript(&val);
+  if (error_occurred()) return;
+  if (lex->current.type == TOK_COMMA) {
+  lexer_next(lex);
+  val = parse_expression_bval(lex, rt,
+  line_num);
+  idx2 = (int)bval_to_subscript(&val);
+  if (error_occurred()) return;
+  if (lex->current.type == TOK_COMMA) {
+  lexer_next(lex);
+  val = parse_expression_bval(lex, rt,
+  line_num);
+  idx3 = (int)bval_to_subscript(&val);
+  if (error_occurred()) return;
+  }
+  }
+  if (!lexer_expect(lex, TOK_RPAREN)) return;
+  if (!lexer_expect(lex, TOK_EQUALS)) return;
+  val = parse_expression_bval(lex, rt, line_num);
+  if (error_occurred()) return;
+  runtime_set_dim(rt, sname, 2, idx1, idx2, idx3,
+  val, line_num);
+  return;
  }
  }
 

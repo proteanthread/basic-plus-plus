@@ -186,22 +186,22 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
    return;
   pi_parse_restore(lex, rt, line_num);
   return;
- 	case KW_MERGE:
-	if (!dialect_check_feature("MERGE/CHAIN",
-	dialect_get_config()->has_merge_chain, line_num))
-	return;
-	if (security_check(SECOP_FILE_READ, line_num))
-	return;
-	pi_parse_merge_cmd(lex, rt, line_num);
-	return;
- 	case KW_CHAIN:
-	if (!dialect_check_feature("MERGE/CHAIN",
-	dialect_get_config()->has_merge_chain, line_num))
-	return;
-	if (security_check(SECOP_CHAIN, line_num))
-	return;
-	pi_parse_chain_cmd(lex, rt, line_num);
-	return;
+  case KW_MERGE:
+ if (!dialect_check_feature("MERGE/CHAIN",
+ dialect_get_config()->has_merge_chain, line_num))
+ return;
+ if (security_check(SECOP_FILE_READ, line_num))
+ return;
+ pi_parse_merge_cmd(lex, rt, line_num);
+ return;
+  case KW_CHAIN:
+ if (!dialect_check_feature("MERGE/CHAIN",
+ dialect_get_config()->has_merge_chain, line_num))
+ return;
+ if (security_check(SECOP_CHAIN, line_num))
+ return;
+ pi_parse_chain_cmd(lex, rt, line_num);
+ return;
  case KW_DIALECT:
  pi_parse_dialect_cmd(lex, rt, line_num);
  return;
@@ -719,9 +719,9 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  /*
  * ERDEV / EXTERR
  * Device and DOS extended error. As
-		 * statements these are no-ops.
-		 */
-		lexer_skip_to_end(lex);
+   * statements these are no-ops.
+   */
+  lexer_skip_to_end(lex);
  return;
 
  case KW_ENVIRON:
@@ -823,19 +823,19 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  * If the current token is a variable and LET is optional,
  * treat as a bare assignment (e.g., "A=5").
  */
- 	if (lex->current.type == TOK_VARIABLE &&
-	dialect_get_config()->has_let_optional) {
-	pi_parse_let(lex, rt, line_num, 0);
-	return;
-	}
+  if (lex->current.type == TOK_VARIABLE &&
+ dialect_get_config()->has_let_optional) {
+ pi_parse_let(lex, rt, line_num, 0);
+ return;
+ }
 
-	/* Variable without LET in LET-required dialect */
-	if (lex->current.type == TOK_VARIABLE &&
-	!dialect_get_config()->has_let_optional &&
-	dialect_is_strict()) {
-	printf("SORRY? LET is required in this dialect.\n");
-	return;
-	}
+ /* Variable without LET in LET-required dialect */
+ if (lex->current.type == TOK_VARIABLE &&
+ !dialect_get_config()->has_let_optional &&
+ dialect_is_strict()) {
+ printf("SORRY? LET is required in this dialect.\n");
+ return;
+ }
 
  /*
  * Named variable bare assignment (e.g., "SCORE=100")

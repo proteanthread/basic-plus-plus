@@ -30,42 +30,62 @@
 void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char var_name;
- long start_val, limit_val, step_val;
+ const char *ext_name = NULL;
+ int ext_len = 0;
+ double start_val, limit_val, step_val;
+ BValue bv;
  StackFrame frame;
  int skip_idx;
 
- /* Parse variable name */
- if (lex->current.type != TOK_VARIABLE) {
+ /* Parse variable name — single-char or multi-char */
+ if (lex->current.type == TOK_VARIABLE) {
+ var_name = lex->current.value.var_name;
+ lexer_next(lex); /* consume variable */
+ } else if (lex->current.type == TOK_NAMED_VAR &&
+ dialect_get_config()->has_extended_vars) {
+ ext_name = lex->current.str_start;
+ ext_len = lex->current.str_length;
+ var_name = ext_name[0]; /* fallback first char */
+ lexer_next(lex); /* consume named var */
+ } else if (lex->current.type == TOK_KEYWORD &&
+ dialect_get_config()->has_extended_vars) {
+ /* GW-BASIC: keywords can be used as variable names */
+ const char *kn = lexer_keyword_name(
+  lex->current.value.keyword);
+ if (kn != NULL) {
+  ext_name = kn;
+  ext_len = (int)strlen(kn);
+  var_name = kn[0];
+ }
+ lexer_next(lex);
+ } else {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- var_name = lex->current.value.var_name;
- lexer_next(lex); /* consume variable */
 
  /* Parse = */
  if (!lexer_expect(lex, TOK_EQUALS)) return;
 
- /* Parse start expression */
- start_val = parse_expression(lex, rt, line_num);
+ /* Parse start expression as floating-point */
+ bv = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return;
+ start_val = bval_to_float(&bv);
 
  /*
   * Parse TO or BY.
   * Standard: FOR I = start TO limit [STEP step]
   * SUPER BASIC: FOR I = start BY step TO limit
-  *
-  * If BY/STEP appears before TO, parse step first,
-  * then require TO, then parse limit.
   */
- step_val = 1; /* default step */
+ step_val = 1.0; /* default step */
 
  if (lexer_match_keyword(lex, KW_BY) ||
   lexer_match_keyword(lex, KW_STEP)) {
   /* SUPER BASIC ordering: FOR I = start BY step TO limit */
   lexer_next(lex); /* consume BY or STEP */
-  step_val = parse_expression(lex, rt, line_num);
+  bv = parse_expression_bval(lex, rt, line_num);
   if (error_occurred()) return;
-  if (step_val == 0) {
+  step_val = bval_to_float(&bv);
+  if (step_val == 0.0) {
    error_raise(ERR_HOW, line_num);
    return;
   }
@@ -75,21 +95,24 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
    return;
   }
   lexer_next(lex); /* consume TO */
-  limit_val = parse_expression(lex, rt, line_num);
+  bv = parse_expression_bval(lex, rt, line_num);
   if (error_occurred()) return;
+  limit_val = bval_to_float(&bv);
  } else if (lexer_match_keyword(lex, KW_TO)) {
   /* Standard ordering: FOR I = start TO limit [STEP step] */
   lexer_next(lex); /* consume TO */
-  limit_val = parse_expression(lex, rt, line_num);
+  bv = parse_expression_bval(lex, rt, line_num);
   if (error_occurred()) return;
+  limit_val = bval_to_float(&bv);
 
   /* Parse optional STEP or BY after TO */
   if (lexer_match_keyword(lex, KW_STEP) ||
    lexer_match_keyword(lex, KW_BY)) {
    lexer_next(lex); /* consume STEP or BY */
-   step_val = parse_expression(lex, rt, line_num);
+   bv = parse_expression_bval(lex, rt, line_num);
    if (error_occurred()) return;
-   if (step_val == 0) {
+   step_val = bval_to_float(&bv);
+   if (step_val == 0.0) {
     error_raise(ERR_HOW, line_num);
     return;
    }
@@ -100,7 +123,12 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  /* Set the variable to the start value */
- runtime_set_var(rt, var_name, start_val);
+ if (ext_len > 0) {
+ runtime_set_named_var_bval(rt, ext_name, ext_len,
+  bval_float(start_val));
+ } else {
+ runtime_set_var_bval(rt, var_name, bval_float(start_val));
+ }
 
  /*
  * Check initial condition: is the loop body reachable?
@@ -119,18 +147,44 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Push FOR frame - body starts at the next line */
+ /* Push FOR frame */
  frame.type = FRAME_FOR;
  frame.data.for_loop.var_name = var_name;
+ frame.data.for_loop.var_name_len = ext_len;
+ if (ext_len > 0) {
+ int clen = ext_len;
+ if (clen > MAX_VAR_NAME_LEN) clen = MAX_VAR_NAME_LEN;
+ memcpy(frame.data.for_loop.var_name_ext, ext_name, (size_t)clen);
+ frame.data.for_loop.var_name_ext[clen] = '\0';
+ } else {
+ frame.data.for_loop.var_name_ext[0] = '\0';
+ }
  frame.data.for_loop.limit = limit_val;
  frame.data.for_loop.step = step_val;
  frame.data.for_loop.body_index = rt->current_index + 1;
+
+ /*
+  * Check for inline FOR...NEXT (statements on same line after ':').
+  * If the current token is a colon separator, the loop body is inline.
+  * Save the lexer position so NEXT can rewind to re-execute the body.
+  */
+ if (lex->current.type == TOK_COLON) {
+  /* Body follows on this line after the colon.
+   * Save pos BEFORE the colon so NEXT can rewind
+   * and let parser_execute_line see the colon separator. */
+  frame.data.for_loop.inline_body_pos = lex->pos - 1;
+  frame.data.for_loop.inline_line_num = line_num;
+  frame.data.for_loop.body_index = rt->current_index; /* same line */
+ } else {
+  frame.data.for_loop.inline_body_pos = -1; /* multi-line loop */
+  frame.data.for_loop.inline_line_num = 0;
+ }
 
  if (runtime_push(rt, &frame) != 0) {
  return; /* ERR_SORRY already raised */
  }
 
- /* Continue to loop body (next line) */
+ /* Continue to loop body (inline: after colon; multi-line: next line) */
 }
 
 /*
@@ -152,12 +206,16 @@ void pi_parse_next(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char var_name = '\0';
  StackFrame *top;
- long val;
+ double val;
 
- /* Optional variable name */
+ /* Optional variable name — single-char or multi-char */
  if (lex->current.type == TOK_VARIABLE) {
  var_name = lex->current.value.var_name;
  lexer_next(lex); /* consume variable */
+ } else if (lex->current.type == TOK_NAMED_VAR) {
+ /* Multi-char var — just consume and match by first char */
+ var_name = lex->current.str_start[0];
+ lexer_next(lex);
  }
 
  /* Check stack for matching FOR frame */
@@ -179,29 +237,53 @@ void pi_parse_next(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- /* Increment the loop variable */
- val = runtime_get_var(rt, top->data.for_loop.var_name);
- val += top->data.for_loop.step;
- runtime_set_var(rt, top->data.for_loop.var_name, val);
+ /* Increment the loop variable (using double arithmetic) */
+ if (top->data.for_loop.var_name_len > 0) {
+  /* Extended variable name */
+  BValue bv = runtime_get_named_var_bval(rt,
+   top->data.for_loop.var_name_ext,
+   top->data.for_loop.var_name_len);
+  val = bval_to_float(&bv) + top->data.for_loop.step;
+  runtime_set_named_var_bval(rt,
+   top->data.for_loop.var_name_ext,
+   top->data.for_loop.var_name_len,
+   bval_float(val));
+ } else {
+  BValue bv = runtime_get_var_bval(rt, top->data.for_loop.var_name);
+  val = bval_to_float(&bv) + top->data.for_loop.step;
+  runtime_set_var_bval(rt, top->data.for_loop.var_name, bval_float(val));
+ }
 
  /* Check termination condition */
  if (top->data.for_loop.step > 0) {
  if (val > top->data.for_loop.limit) {
- /* Loop done - pop frame, continue after NEXT */
- rt->stack_top--;
- return;
+  /* Loop done - pop frame, continue after NEXT */
+  rt->stack_top--;
+  return;
  }
  } else {
  if (val < top->data.for_loop.limit) {
- /* Loop done - pop frame, continue after NEXT */
- rt->stack_top--;
- return;
+  /* Loop done - pop frame, continue after NEXT */
+  rt->stack_top--;
+  return;
  }
  }
-
- /* Loop continues - jump back to body */
- rt->next_index = top->data.for_loop.body_index;
- lexer_skip_to_end(lex);
+ /* Loop continues */
+ if (top->data.for_loop.inline_body_pos >= 0) {
+  /*
+   * Inline FOR...NEXT: rewind lexer to the saved body
+   * position on the current line and re-execute the
+   * inline body.
+   */
+  lex->pos = top->data.for_loop.inline_body_pos;
+  lexer_next(lex); /* re-scan to TOK_COLON */
+  /* parser_execute_line will see the colon, consume it,
+   * and dispatch the body statement */
+ } else {
+  /* Multi-line loop: jump back to body_index */
+  rt->next_index = top->data.for_loop.body_index;
+  lexer_skip_to_end(lex);
+ }
 }
 
 /*

@@ -1,6 +1,83 @@
 BASIC++ CHANGELOG
 =================
 
+4.0.0  (2026-06-17) — Stable Release
+--------------------------------------
+  MILESTONE:
+  - Full codebase audit: C89/C90 compliance verified across all
+    115 .c and 60 .h source files
+  - New compat.h shim: portable snprintf/vsnprintf/long long
+    detection for strict C89 targets
+  - Removed all build artifacts (.obj/.o/.err) from version control
+  - Updated .gitignore for current binary names
+  - Docs/help fully synchronized (70 files, bidirectional)
+  - All 3 config files (basicpp.cfg, baspp.cfg, bpp.cfg) validated
+    and version-stamped
+  - Legacy prototypes (ib.c, tb.c, tinybasic.c) audited for C89
+    compliance and now compile on both Windows and Linux
+
+  BUILD:
+  - build.bat updated: portable paths, legacy prototype compilation
+  - build-linux.sh created for WSL/Linux builds
+  - Makefile: added compat.h to HEADERS, improved clean target
+
+  DOCUMENTATION:
+  - CHANGELOG updated with complete version history
+  - SOURCE_TREE.txt updated with accurate file counts
+  - Config files stamped with version 4.0.0
+
+3.3.0  (2026-06-16)
+--------------------
+  ADDED:
+  - TUI Programming: cursor positioning, box drawing, menu system
+  - Timer events and TSR-style background task support
+  - Enhanced INKEY$ with full ANSI escape sequence parsing
+    (arrow keys, F1-F12, Home/End/PgUp/PgDn/Ins/Del)
+  - ONKEY$ event-aware keyboard read
+
+3.0.0  (2026-06-14)
+--------------------
+  ADDED:
+  - Plugin system: YAML manifest, multi-entry plugins
+    (modules + libraries + features + specs per plugin)
+  - External function API (ext_func)
+  - External library system (ext_lib)
+  - External feature loader (ext_feature)
+  - BPL binary library format (bpl_format)
+  - Library namespace isolation (lib_space)
+  - Spec system: runtime keyword/function registration from
+    .spec definition files
+  - Transaction support: BEGIN/COMMIT/ROLLBACK for file I/O
+  - Virtual filesystem (VFS) layer with mount points
+  - Block I/O (BGET/BPUT, stream cursors)
+  - Network device system (vdev_net) with TCP/UDP/HTTP
+  - FujiNet module: N:, FUJI:, CLOCK: virtual devices with
+    full desktop socket implementation and JSON query engine
+  - UPnP/SSDP device discovery module with SOAP control
+  - JIT compiler module (x86-64 machine code emission)
+  - USB device module stub
+  - Boot sequence system (boot.c)
+  - RPN expression evaluator
+  - Scope stack for nested scope management
+  - Error registry with structured error metadata
+  - P-code compiler and emitter (pcode_compiler, pcode_emit)
+  - VM execution engine (vm_exec)
+  - Format USING and Format INPUT engines
+  - Device alias system for I/O routing
+  - Serial I/O builtins (builtins_sio)
+  - Block I/O builtins (builtins_bio)
+  - Transaction builtins (builtins_txn)
+  - Network introspection builtins (builtins_net)
+  - COMPLEX number type (SBASIC dialect)
+  - 16 dialect profiles (PATB, TRS1, TRS2, GWBS, EC55, E116,
+    QBAS, AINT, ASFT, ATAR, C64B, COCO, MBAS, SINC, QLSB, SBAS)
+
+  DOCUMENTATION:
+  - 70 documentation files covering all subsystems
+  - Virtual Devices, Virtual Filesystem, Virtual Network guides
+  - USB Devices, Embedded Platforms guides
+  - Memory Map system with 9 platform profiles
+
 2.0.0  (2026-06-11)
 --------------------
   ADDED:

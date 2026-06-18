@@ -106,11 +106,7 @@ static int config_get_keyword_id(const char *name) {
     for (i = 0; i < (int)KW_COUNT; i++) {
         const char *kw_name = lexer_keyword_name((KeywordId)i);
         if (kw_name && kw_name[0] != '\0') {
-#ifdef _WIN32
-            if (_stricmp(kw_name, name) == 0) return i;
-#else
-            if (strcasecmp(kw_name, name) == 0) return i;
-#endif
+            if (ci_equal(kw_name, name)) return i;
         }
     }
     return -1;

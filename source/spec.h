@@ -2,6 +2,7 @@
 #define BASICPP_SPEC_H
 
 #include "lexer.h"
+#include "security.h"
 
 /* --- Specification Categories --- */
 typedef enum {
@@ -22,6 +23,7 @@ typedef struct SpecObject {
     char depends[256];
     char lib_path[256]; /* Path to the external .LIB file for behavior */
     KeywordId kw_id;    /* If it defines a new statement/function */
+    SecLevel required_level; /* Pinned security level (SEC_COUNT = unpinned) */
 } SpecObject;
 
 /* --- Specification Registry API --- */

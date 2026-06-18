@@ -228,8 +228,8 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  */
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_USING) {
- 	const char *fmt;
-	int flen;
+  const char *fmt;
+ int flen;
  lexer_next(lex); /* consume USING */
 
  /* Parse format: string literal or IMAGE line ref */
@@ -282,27 +282,27 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
-	/* Expect semicolon or comma after format */
-	if (lex->current.type == TOK_SEMICOLON)
-	lexer_next(lex);
-	else if (lex->current.type == TOK_COMMA)
-	lexer_next(lex);
+ /* Expect semicolon or comma after format */
+ if (lex->current.type == TOK_SEMICOLON)
+ lexer_next(lex);
+ else if (lex->current.type == TOK_COMMA)
+ lexer_next(lex);
 
-	/*
-	 * Delegate to the format engine.
-	 * The engine reads values from the lexer as needed,
-	 * outputs formatted text to the target stream.
-	 */
-	{
-	FILE *target = (file_chan > 0)
-	? fileio_get_fp(file_chan) : stdout;
-	if (target == NULL) target = stdout;
-	format_using_process(target, fmt, flen,
-	lex, rt, line_num);
-	}
-	printf("\n");
-	return;
-	}
+ /*
+  * Delegate to the format engine.
+  * The engine reads values from the lexer as needed,
+  * outputs formatted text to the target stream.
+  */
+ {
+ FILE *target = (file_chan > 0)
+ ? fileio_get_fp(file_chan) : stdout;
+ if (target == NULL) target = stdout;
+ format_using_process(target, fmt, flen,
+ lex, rt, line_num);
+ }
+ printf("\n");
+ return;
+ }
 
  /* Handle empty PRINT (just prints a newline) */
  if (lex->current.type == TOK_EOF ||
@@ -315,6 +315,61 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  printf("\n");
  }
  return;
+ }
+
+ /*
+  * Handle leading comma: PRINT ,expr tabs to the next zone.
+  * In GW-BASIC, a comma at the start of PRINT advances to
+  * the second column zone (typically column 15).
+  */
+ while (lex->current.type == TOK_COMMA) {
+  lexer_next(lex); /* consume comma */
+  need_newline = 0; /* trailing comma = no newline */
+  /* ECMA-55: advance to next print zone */
+  if (file_chan == 0) {
+  int zone = dialect_get_config()->print_zone_width;
+  int prop_zone =
+  keyword_prop_get_int(KW_PRINT,
+  "ZONE", -1);
+  if (prop_zone > 0)
+  zone = prop_zone;
+  if (rt->zone_override > 0)
+  zone = rt->zone_override;
+  if (zone < 1) zone = 14;
+  while ((rt->print_col - 1) % zone != 0) {
+  putchar(' ');
+  rt->print_col++;
+  }
+  /* GW-BASIC: consecutive commas (,,) skip extra zones */
+  while (lex->current.type == TOK_COMMA) {
+  lexer_next(lex);
+  while ((rt->print_col - 1) % zone != 0) {
+   putchar(' ');
+   rt->print_col++;
+  }
+  /* GW-BASIC: handle consecutive commas (,,) */
+  while (lex->current.type == TOK_COMMA) {
+  lexer_next(lex);
+  while ((rt->print_col - 1) % zone != 0) {
+   putchar(' ');
+   rt->print_col++;
+  }
+  /* GW-BASIC: consecutive commas skip extra zones */
+  while (lex->current.type == TOK_COMMA) {
+  lexer_next(lex);
+  while ((rt->print_col - 1) % zone != 0) {
+   putchar(' ');
+   rt->print_col++;
+  }
+  }
+  }
+  }
+  }
+  if (lex->current.type == TOK_EOF ||
+   lex->current.type == TOK_CR ||
+   lex->current.type == TOK_COLON) {
+   break;
+   }
  }
 
  while (!error_occurred()) {
@@ -456,7 +511,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  pi_print_margin_check(rt);
  }
  } else if (bval_is_complex(&val)) {
- /* Complex: print as (real+imag·i) */
+ /* Complex: print as (real+imagÂ·i) */
  int nc;
  char cbuf[64];
  bval_to_string_buf(&val, cbuf, 64);
@@ -512,18 +567,28 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  putchar(' ');
  rt->print_col++;
  }
+ /* GW-BASIC: consecutive commas skip zones */
+ while (lex->current.type == TOK_COMMA) {
+ lexer_next(lex);
+ while ((rt->print_col - 1) % zone != 0) {
+ putchar(' ');
+ rt->print_col++;
+ }
+ }
  }
  if (lex->current.type == TOK_EOF ||
- lex->current.type == TOK_CR) {
- break;
- }
+  lex->current.type == TOK_CR ||
+  lex->current.type == TOK_COLON) {
+  break;
+  }
  } else if (lex->current.type == TOK_SEMICOLON) {
- lexer_next(lex); /* consume semicolon */
- need_newline = 0;
- if (lex->current.type == TOK_EOF ||
- lex->current.type == TOK_CR) {
- break;
- }
+  lexer_next(lex); /* consume semicolon */
+  need_newline = 0;
+  if (lex->current.type == TOK_EOF ||
+  lex->current.type == TOK_CR ||
+  (lex->current.type == TOK_COLON && sep == ':')) {
+  break;
+  }
  } else if (lex->current.type == TOK_COLON && sep == ':') {
  break;
  } else {
@@ -663,6 +728,62 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  if (lex->current.type == TOK_VARIABLE) {
  var_name = lex->current.value.var_name;
  lexer_next(lex); /* consume variable */
+
+ /* Check for DIM array element: A(expr) */
+ if (lex->current.type == TOK_LPAREN &&
+  dialect_get_config()->has_dim_arrays) {
+  int idx1, idx2 = 0, idx3 = 0;
+  BValue dval;
+  lexer_next(lex); /* consume ( */
+  idx1 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+  if (lex->current.type == TOK_COMMA) {
+  lexer_next(lex);
+  idx2 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+  if (lex->current.type == TOK_COMMA) {
+   lexer_next(lex);
+   idx3 = (int)parse_expression(lex, rt, line_num);
+   if (error_occurred()) return;
+  }
+  }
+  if (!lexer_expect(lex, TOK_RPAREN)) return;
+
+  /* Read input for array element */
+  if (file_chan > 0) {
+  if (!file_buf_valid) {
+   if (fileio_input_line(file_chan, file_buf,
+   INPUT_BUFFER_SIZE, line_num) != 0) return;
+   file_buf_valid = 1; file_buf_pos = 0;
+  }
+  { int di = 0;
+   while (file_buf[file_buf_pos] != '\0'
+   && file_buf[file_buf_pos] != ','
+   && file_buf[file_buf_pos] != '\n'
+   && file_buf[file_buf_pos] != '\r'
+   && di < INPUT_BUFFER_SIZE - 1)
+   input_buf[di++] = file_buf[file_buf_pos++];
+   input_buf[di] = '\0';
+   if (file_buf[file_buf_pos] == ',') file_buf_pos++;
+  }
+  } else {
+  if (!has_custom_prompt) {
+   const char *kp = keyword_prop_get(KW_INPUT, "PROMPT");
+   printf("%s", kp ? kp : "? ");
+  }
+  fflush(stdout);
+  if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+   error_raise(ERR_HOW, line_num); return;
+  }
+  }
+  { char *endp2;
+  double dv = strtod(input_buf, &endp2);
+  dval = bval_float(dv);
+  }
+  runtime_set_dim(rt, &var_name, 1, idx1, idx2, idx3,
+  dval, line_num);
+  goto check_more_vars;
+ }
  } else if (lex->current.type == TOK_AT) {
  /* @(expr) = input */
  long index;
@@ -733,6 +854,61 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  char *ptr;
  lexer_next(lex);
 
+ /* Check for DIM string array: O$(expr) */
+ if (lex->current.type == TOK_LPAREN &&
+  dialect_get_config()->has_dim_arrays) {
+  char sname[3];
+  int idx1, idx2 = 0, idx3 = 0;
+  BValue dval;
+  sname[0] = svar_name; sname[1] = '$'; sname[2] = '\0';
+  lexer_next(lex); /* consume ( */
+  idx1 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+  if (lex->current.type == TOK_COMMA) {
+  lexer_next(lex);
+  idx2 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+  }
+  if (!lexer_expect(lex, TOK_RPAREN)) return;
+
+  /* Read input */
+  if (file_chan > 0) {
+  if (!file_buf_valid) {
+   if (fileio_input_line(file_chan, file_buf,
+   INPUT_BUFFER_SIZE, line_num) != 0) return;
+   file_buf_valid = 1; file_buf_pos = 0;
+  }
+  { int di = 0;
+   while (file_buf[file_buf_pos] != '\0'
+   && file_buf[file_buf_pos] != ','
+   && file_buf[file_buf_pos] != '\n'
+   && file_buf[file_buf_pos] != '\r'
+   && di < INPUT_BUFFER_SIZE - 1)
+   input_buf[di++] = file_buf[file_buf_pos++];
+   input_buf[di] = '\0';
+   if (file_buf[file_buf_pos] == ',') file_buf_pos++;
+  }
+  } else {
+  if (!has_custom_prompt) {
+   const char *kp = keyword_prop_get(KW_INPUT, "PROMPT");
+   printf("%s", kp ? kp : "? ");
+  }
+  fflush(stdout);
+  if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+   error_raise(ERR_HOW, line_num); return;
+  }
+  }
+  slen = (int)strlen(input_buf);
+  while (slen > 0 && (input_buf[slen-1] == '\n' ||
+  input_buf[slen-1] == '\r')) slen--;
+  ptr = strpool_store(&rt->strpool, input_buf, slen);
+  if (!ptr) { error_raise(ERR_SORRY, line_num); return; }
+  dval = bval_string(ptr, slen);
+  runtime_set_dim(rt, sname, 2, idx1, idx2, 0,
+  dval, line_num);
+  goto check_more_vars;
+ }
+
  if (file_chan > 0) {
  /* Use shared buffer, split on commas */
  if (!file_buf_valid) {
@@ -788,9 +964,171 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  runtime_set_string_var(rt, svar_name,
  bval_string(ptr, slen));
  goto check_more_vars;
+ } else if (lex->current.type == TOK_NAMED_VAR) {
+  /*
+   * Named variable INPUT: B7, T1, Y$, KEYWORD$(n), etc.
+   * Check trailing '$' to determine string vs numeric.
+   */
+  const char *nm = lex->current.str_start;
+  int nlen = lex->current.str_length;
+  int is_str = (nlen > 0 && nm[nlen - 1] == '$');
+  lexer_next(lex); /* consume named var */
+
+  /* Check for DIM array subscript: B$(C) or A(I) */
+  if (lex->current.type == TOK_LPAREN &&
+  dialect_get_config()->has_dim_arrays) {
+  DimArray *arr = runtime_find_dim(rt, nm, nlen);
+  if (arr != NULL) {
+   int idx1, idx2 = 0, idx3 = 0;
+   BValue dval;
+   lexer_next(lex); /* consume ( */
+   idx1 = (int)parse_expression(lex, rt, line_num);
+   if (error_occurred()) return;
+   if (lex->current.type == TOK_COMMA) {
+   lexer_next(lex);
+   idx2 = (int)parse_expression(lex, rt, line_num);
+   if (error_occurred()) return;
+   if (lex->current.type == TOK_COMMA) {
+    lexer_next(lex);
+    idx3 = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+   }
+   }
+   if (!lexer_expect(lex, TOK_RPAREN)) return;
+
+   /* Read input for array element */
+   if (file_chan > 0) {
+   if (!file_buf_valid) {
+    if (fileio_input_line(file_chan, file_buf,
+    INPUT_BUFFER_SIZE, line_num) != 0) return;
+    file_buf_valid = 1; file_buf_pos = 0;
+   }
+   { int di = 0;
+    while (file_buf[file_buf_pos] != '\0'
+    && file_buf[file_buf_pos] != ','
+    && file_buf[file_buf_pos] != '\n'
+    && file_buf[file_buf_pos] != '\r'
+    && di < INPUT_BUFFER_SIZE - 1)
+    input_buf[di++] = file_buf[file_buf_pos++];
+    input_buf[di] = '\0';
+    if (file_buf[file_buf_pos] == ',') file_buf_pos++;
+   }
+   } else {
+   if (!has_custom_prompt) {
+    const char *kp = keyword_prop_get(KW_INPUT, "PROMPT");
+    printf("%s", kp ? kp : "? ");
+   }
+   fflush(stdout);
+   if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+    error_raise(ERR_HOW, line_num); return;
+   }
+   }
+   if (is_str) {
+   int slen = (int)strlen(input_buf);
+   char *ptr;
+   while (slen > 0 && (input_buf[slen-1] == '\n'
+    || input_buf[slen-1] == '\r')) slen--;
+   ptr = strpool_store(&rt->strpool, input_buf, slen);
+   if (!ptr) { error_raise(ERR_SORRY, line_num); return; }
+   dval = bval_string(ptr, slen);
+   } else {
+   char *endp;
+   long v = strtol(input_buf, &endp, 10);
+   if (endp == input_buf)
+    dval = bval_float(strtod(input_buf, NULL));
+   else
+    dval = bval_int(v);
+   }
+   runtime_set_dim(rt, nm, nlen, idx1, idx2, idx3,
+   dval, line_num);
+   goto check_more_vars;
+  }
+  }
+
+  if (is_str) {
+  /* String named variable INPUT */
+  int slen; char *ptr;
+  if (file_chan > 0) {
+   if (!file_buf_valid) {
+   if (fileio_input_line(file_chan, file_buf,
+    INPUT_BUFFER_SIZE, line_num) != 0) return;
+   file_buf_valid = 1; file_buf_pos = 0;
+   }
+   { int di = 0;
+   while (file_buf[file_buf_pos] != '\0'
+    && file_buf[file_buf_pos] != ','
+    && file_buf[file_buf_pos] != '\n'
+    && file_buf[file_buf_pos] != '\r'
+    && di < INPUT_BUFFER_SIZE - 1)
+    input_buf[di++] = file_buf[file_buf_pos++];
+   input_buf[di] = '\0';
+   if (file_buf[file_buf_pos] == ',') file_buf_pos++;
+   }
+  } else {
+   if (!has_custom_prompt) {
+   const char *kp = keyword_prop_get(KW_INPUT, "PROMPT");
+   printf("%s", kp ? kp : "? ");
+   }
+   fflush(stdout);
+   if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+   error_raise(ERR_HOW, line_num); return;
+   }
+  }
+  slen = (int)strlen(input_buf);
+  while (slen > 0 && (input_buf[slen-1] == '\n' ||
+   input_buf[slen-1] == '\r')) slen--;
+  ptr = strpool_store(&rt->strpool, input_buf, slen);
+  if (!ptr) { error_raise(ERR_SORRY, line_num); return; }
+  runtime_set_named_var_bval(rt, nm, nlen,
+   bval_string(ptr, slen));
+  goto check_more_vars;
+  } else {
+  /* Numeric named variable INPUT */
+  if (file_chan > 0) {
+   if (!file_buf_valid) {
+   if (fileio_input_line(file_chan, file_buf,
+    INPUT_BUFFER_SIZE, line_num) != 0) return;
+   file_buf_valid = 1; file_buf_pos = 0;
+   }
+   { int di = 0;
+   while (file_buf[file_buf_pos] != '\0'
+    && file_buf[file_buf_pos] != ','
+    && file_buf[file_buf_pos] != '\n'
+    && file_buf[file_buf_pos] != '\r'
+    && di < INPUT_BUFFER_SIZE - 1)
+    input_buf[di++] = file_buf[file_buf_pos++];
+   input_buf[di] = '\0';
+   if (file_buf[file_buf_pos] == ',') file_buf_pos++;
+   }
+  } else {
+   if (!has_custom_prompt) {
+   const char *kp = keyword_prop_get(KW_INPUT, "PROMPT");
+   printf("%s", kp ? kp : "? ");
+   }
+   fflush(stdout);
+   if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+   error_raise(ERR_HOW, line_num); return;
+   }
+  }
+  { char *endp;
+   double dv = strtod(input_buf, &endp);
+   while (endp == input_buf) {
+   if (file_chan > 0) {
+    error_raise(ERR_WHAT, line_num); return;
+   }
+   printf("?Redo from start\n? "); fflush(stdout);
+   if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+    error_raise(ERR_HOW, line_num); return;
+   }
+   dv = strtod(input_buf, &endp);
+   }
+   runtime_set_named_var_bval(rt, nm, nlen, bval_float(dv));
+  }
+  goto check_more_vars;
+  }
  } else {
- error_raise(ERR_WHAT, line_num);
- return;
+  error_raise(ERR_WHAT, line_num);
+  return;
  }
 
  if (file_chan > 0) {
@@ -918,52 +1256,129 @@ void pi_parse_read(Lexer *lex, RuntimeState *rt, int line_num)
  BValue val;
 
  if (lex->current.type == TOK_VARIABLE) {
- /* Single-letter numeric var: READ A */
- val = runtime_read_data_bval(rt, line_num);
- if (error_occurred()) return;
- runtime_set_var(rt, lex->current.value.var_name,
- bval_to_int(&val));
- lexer_next(lex);
+  /* Single-letter var: READ A or READ A(idx) */
+  char var_name = lex->current.value.var_name;
+  lexer_next(lex); /* consume variable */
+
+  /* Check for DIM array subscript: A(idx) */
+  if (lex->current.type == TOK_LPAREN &&
+  dialect_get_config()->has_dim_arrays) {
+  char sname[2];
+  int idx1, idx2 = 0, idx3 = 0;
+  sname[0] = var_name; sname[1] = '\0';
+  lexer_next(lex); /* consume ( */
+  idx1 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+  if (lex->current.type == TOK_COMMA) {
+   lexer_next(lex);
+   idx2 = (int)parse_expression(lex, rt, line_num);
+   if (error_occurred()) return;
+   if (lex->current.type == TOK_COMMA) {
+   lexer_next(lex);
+   idx3 = (int)parse_expression(lex, rt, line_num);
+   if (error_occurred()) return;
+   }
+  }
+  if (!lexer_expect(lex, TOK_RPAREN)) return;
+  val = runtime_read_data_bval(rt, line_num);
+  if (error_occurred()) return;
+  runtime_set_dim(rt, sname, 1, idx1, idx2, idx3,
+   val, line_num);
+  } else {
+  val = runtime_read_data_bval(rt, line_num);
+  if (error_occurred()) return;
+  runtime_set_var(rt, var_name, bval_to_int(&val));
+  }
  } else if (lex->current.type == TOK_STRING_VAR) {
- /* Single-letter string var: READ A$ */
- char svar = lex->current.value.var_name;
- val = runtime_read_data_bval(rt, line_num);
- if (error_occurred()) return;
- if (bval_is_string(&val)) {
- runtime_set_string_var(rt, svar, val);
- } else {
- /* Numeric DATA into string var - convert */
- char nbuf[32];
- char *ptr;
- int nlen;
- sprintf(nbuf, "%ld", bval_to_int(&val));
- nlen = (int)strlen(nbuf);
- ptr = strpool_store(&rt->strpool,
- nbuf, nlen);
- if (ptr != NULL) {
- runtime_set_string_var(rt, svar,
- bval_string(ptr, nlen));
- }
- }
- lexer_next(lex);
+  /* Single-letter string var: READ A$ or A$(idx) */
+  char svar = lex->current.value.var_name;
+  lexer_next(lex); /* consume string var */
+
+  /* Check for DIM string array: A$(idx) */
+  if (lex->current.type == TOK_LPAREN &&
+  dialect_get_config()->has_dim_arrays) {
+  char sname[3];
+  int idx1, idx2 = 0, idx3 = 0;
+  sname[0] = svar; sname[1] = '$'; sname[2] = '\0';
+  lexer_next(lex); /* consume ( */
+  idx1 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+  if (lex->current.type == TOK_COMMA) {
+   lexer_next(lex);
+   idx2 = (int)parse_expression(lex, rt, line_num);
+   if (error_occurred()) return;
+   if (lex->current.type == TOK_COMMA) {
+   lexer_next(lex);
+   idx3 = (int)parse_expression(lex, rt, line_num);
+   if (error_occurred()) return;
+   }
+  }
+  if (!lexer_expect(lex, TOK_RPAREN)) return;
+  val = runtime_read_data_bval(rt, line_num);
+  if (error_occurred()) return;
+  runtime_set_dim(rt, sname, 2, idx1, idx2, idx3,
+   val, line_num);
+  } else {
+  val = runtime_read_data_bval(rt, line_num);
+  if (error_occurred()) return;
+  if (bval_is_string(&val)) {
+   runtime_set_string_var(rt, svar, val);
+  } else {
+   /* Numeric DATA into string var - convert */
+   char nbuf[32];
+   char *ptr;
+   int nlen;
+   sprintf(nbuf, "%ld", bval_to_int(&val));
+   nlen = (int)strlen(nbuf);
+   ptr = strpool_store(&rt->strpool, nbuf, nlen);
+   if (ptr != NULL) {
+   runtime_set_string_var(rt, svar,
+    bval_string(ptr, nlen));
+   }
+  }
+  }
  } else if (lex->current.type == TOK_NAMED_VAR) {
- /* Named numeric var: READ Score */
- const char *name = lex->current.str_start;
- int name_len = lex->current.str_length;
- val = runtime_read_data_bval(rt, line_num);
- if (error_occurred()) return;
- runtime_set_named_var_bval(rt, name, name_len,
- val);
- lexer_next(lex);
+  /* Named var: READ Score or READ B7 or READ A$(idx) */
+  const char *name = lex->current.str_start;
+  int name_len = lex->current.str_length;
+  lexer_next(lex); /* consume named var */
+
+  /* Check for DIM array subscript */
+  if (lex->current.type == TOK_LPAREN &&
+  dialect_get_config()->has_dim_arrays) {
+  int idx1, idx2 = 0, idx3 = 0;
+  lexer_next(lex); /* consume ( */
+  idx1 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+  if (lex->current.type == TOK_COMMA) {
+   lexer_next(lex);
+   idx2 = (int)parse_expression(lex, rt, line_num);
+   if (error_occurred()) return;
+   if (lex->current.type == TOK_COMMA) {
+   lexer_next(lex);
+   idx3 = (int)parse_expression(lex, rt, line_num);
+   if (error_occurred()) return;
+   }
+  }
+  if (!lexer_expect(lex, TOK_RPAREN)) return;
+  val = runtime_read_data_bval(rt, line_num);
+  if (error_occurred()) return;
+  runtime_set_dim(rt, name, name_len, idx1, idx2,
+   idx3, val, line_num);
+  } else {
+  val = runtime_read_data_bval(rt, line_num);
+  if (error_occurred()) return;
+  runtime_set_named_var_bval(rt, name, name_len, val);
+  }
  } else {
- error_raise(ERR_WHAT, line_num);
- return;
+  error_raise(ERR_WHAT, line_num);
+  return;
  }
 
  if (lex->current.type == TOK_COMMA) {
- lexer_next(lex); /* consume comma */
+  lexer_next(lex); /* consume comma */
  } else {
- break;
+  break;
  }
  }
 }

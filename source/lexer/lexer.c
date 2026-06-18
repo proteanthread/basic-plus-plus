@@ -33,6 +33,13 @@
  * ---
  */
 
+#ifndef _WIN32
+  #if !defined(_POSIX_C_SOURCE) || (_POSIX_C_SOURCE < 200809L)
+    #undef _POSIX_C_SOURCE
+    #define _POSIX_C_SOURCE 200809L
+  #endif
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1174,6 +1181,68 @@ static KeywordId match_keyword(const char *start, int len)
  return KW_COUNT; /* not a keyword */
 }
 
+/*
+ * match_keyword_prefix - Greedy keyword extraction (statement keywords only).
+ *
+ * Try progressively shorter prefixes to find the longest
+ * STATEMENT-STARTING keyword. Only keywords that can begin
+ * a statement are matched: FOR, NEXT, IF, THEN, GOTO, GOSUB,
+ * PRINT, REM, ON, LET, DIM, RETURN, END, STOP, ELSE, etc.
+ *
+ * Function keywords (LEFT, RIGHT, MID, KEY, TAB, etc.) are
+ * NOT matched, so variable names like KEYWORD$ work correctly.
+ *
+ * Returns KW_COUNT if no statement keyword prefix found.
+ */
+/*
+ * is_embeddable_keyword - Keywords commonly embedded in GW-BASIC.
+ *
+ * In GW-BASIC, identifiers can contain keywords without spaces:
+ *   FORI=1TO10   -> FOR I = 1 TO 10
+ *   NEXTI        -> NEXT I
+ *   GOTO100      -> GOTO 100
+ *   GOSUB2000    -> GOSUB 2000
+ *   THENPRINT    -> THEN PRINT
+ *
+ * Only keywords that commonly appear this way should be
+ * extractable as prefixes. Short keywords like GET, PUT, END,
+ * DIM, LET etc. cause false positives in identifiers like
+ * GetCount, PutData, EndLoop, LetterCount, etc.
+ */
+static int is_embeddable_keyword(KeywordId kw)
+{
+ switch (kw) {
+ case KW_FOR: case KW_NEXT: case KW_GOTO: case KW_GOSUB:
+ case KW_THEN: case KW_ELSE: case KW_PRINT: case KW_REM:
+ case KW_RETURN: case KW_STOP: case KW_INPUT: case KW_READ:
+ case KW_RESTORE: case KW_DATA: case KW_POKE: case KW_CALL:
+ case KW_RANDOMIZE: case KW_LOCATE: case KW_COLOR:
+  return 1;
+ default:
+  return 0;
+ }
+}
+
+static KeywordId match_keyword_prefix(const char *start, int len,
+ int *match_len)
+{
+ int try_len;
+
+ /* Try longest prefix first, down to 3 characters.
+  * Minimum of 3 prevents 2-char keywords (DO, IF, ON,
+  * TO) from being extracted from identifiers like
+  * Doubler, IFflag, etc. FOR/NEXT/GOTO etc. (3+ chars)
+  * still work correctly. */
+ for (try_len = len - 1; try_len >= 3; try_len--) {
+  KeywordId kw = match_keyword(start, try_len);
+   if (kw != KW_COUNT && is_embeddable_keyword(kw)) {
+   *match_len = try_len;
+   return kw;
+  }
+ }
+ return KW_COUNT;
+}
+
 /* --- Lexer Public API ---
  */
 
@@ -1364,19 +1433,34 @@ void lexer_next(Lexer *lex)
 
  /* Check for imaginary suffix (i/I) */
  if (lex->pos < lex->length &&
- (lex->source[lex->pos] == 'i' ||
- lex->source[lex->pos] == 'I') &&
- /* Must NOT be followed by alnum (not a var) */
- (lex->pos + 1 >= lex->length ||
- !isalpha((unsigned char)
- lex->source[lex->pos + 1]))) {
- lex->pos++; /* consume 'i' */
- /* Convert to imaginary token */
- if (lex->current.type == TOK_NUMBER) {
- lex->current.value.fval =
- (double)lex->current.value.num_value;
+  (lex->source[lex->pos] == 'i' ||
+  lex->source[lex->pos] == 'I') &&
+  /* Must NOT be followed by alnum (not a var) */
+  (lex->pos + 1 >= lex->length ||
+  !isalpha((unsigned char)
+  lex->source[lex->pos + 1]))) {
+  lex->pos++; /* consume 'i' */
+  /* Convert to imaginary token */
+  if (lex->current.type == TOK_NUMBER) {
+  lex->current.value.fval =
+   (double)lex->current.value.num_value;
+  }
+  lex->current.type = TOK_IMAGINARY;
  }
- lex->current.type = TOK_IMAGINARY;
+
+ /*
+  * GW-BASIC type suffixes on numeric literals:
+  *  ! = single-precision, # = double-precision,
+  *  % = integer, & = long integer.
+  * We consume and discard them since our type
+  * system handles precision internally.
+  */
+ if (lex->pos < lex->length) {
+  char ts = lex->source[lex->pos];
+  if (ts == '!' || ts == '#' || ts == '%' ||
+  ts == '&') {
+  lex->pos++; /* consume type suffix */
+  }
  }
  return;
  }
@@ -1430,31 +1514,79 @@ void lexer_next(Lexer *lex)
  /* Try keyword match with full alphanumeric token */
  kw = match_keyword(lex->source + start, len);
 
- if (kw == KW_COUNT) {
- /* No keyword match — back off trailing digits so
-  * they parse as a separate number token.
-  * e.g. "X1" -> identifier "X" + number "1" */
- int alpha_end = lex->pos;
- while (alpha_end > start &&
- isdigit((unsigned char)
- lex->source[alpha_end - 1])) {
- alpha_end--;
- }
- if (alpha_end > start && alpha_end < lex->pos) {
- lex->pos = alpha_end;
- len = lex->pos - start;
- }
- }
+  if (kw == KW_COUNT) {
+  /* No keyword match - back off trailing digits so
+   * they parse as a separate number token.
+   * e.g. "X1" -> identifier "X" + number "1" */
+  int alpha_end = lex->pos;
+  while (alpha_end > start &&
+  isdigit((unsigned char)
+  lex->source[alpha_end - 1])) {
+  alpha_end--;
+  }
+  if (alpha_end > start && alpha_end < lex->pos) {
+  lex->pos = alpha_end;
+  len = lex->pos - start;
+  /* Re-check after stripping digits */
+  kw = match_keyword(lex->source + start, len);
+  }
+  }
 
- /* NOTE: GW-BASIC greedy keyword extraction is not implemented.
- * Programs with no-space patterns (e.g. IFR1>.98THEN) need
- * source preprocessing to add spaces around keywords. */
+  /*
+  * GW-BASIC greedy keyword extraction:
+  * If still no keyword match, try to find the longest
+  * keyword prefix. E.g., FORI -> FOR, NEXTI -> NEXT.
+  * This is handled in the multi-char fallback below.
+  */
 
  if (kw != KW_COUNT) {
  lex->current.type = TOK_KEYWORD;
  lex->current.value.keyword = kw;
  lex->current.str_start = NULL;
  lex->current.str_length = 0;
+
+  /*
+   * GW-BASIC variable name collision check:
+   * If a keyword is followed by '$' (type suffix) and it's
+   * NOT a known string function keyword, then in extended-var
+   * mode this is actually a variable name (e.g., KEYWORD$,
+   * WORDIN$, WORDOUT$). Reinterpret as TOK_NAMED_VAR.
+   */
+  if (lex->pos < lex->length &&
+  lex->source[lex->pos] == '$' &&
+  dialect_get_config()->has_extended_vars) {
+  /* Check if this is NOT a string function keyword */
+  if (!(kw == KW_LEFT || kw == KW_RIGHT ||
+  kw == KW_MID || kw == KW_CHR ||
+  kw == KW_STR_FUNC || kw == KW_SPACE_FUNC ||
+  kw == KW_STRING_FUNC || kw == KW_HEX_FUNC ||
+  kw == KW_OCT_FUNC || kw == KW_LCASE ||
+  kw == KW_UCASE || kw == KW_TCASE ||
+  kw == KW_LTRIM || kw == KW_RTRIM ||
+  kw == KW_TRIM || kw == KW_DATE_FUNC ||
+  kw == KW_TIME_FUNC || kw == KW_INKEY ||
+  kw == KW_ENVIRON || kw == KW_MKD_FUNC ||
+  kw == KW_MKI_FUNC || kw == KW_MKS_FUNC ||
+  kw == KW_SHELL || kw == KW_BIN_FUNC ||
+  kw == KW_INPUT || kw == KW_IOCTL ||
+  kw == KW_VARPTR || kw == KW_DIALECT ||
+  kw == KW_MEMMAP || kw == KW_ALIAS ||
+  kw == KW_CLOCK_FUNC || kw == KW_ALARM_FUNC ||
+  kw == KW_CWD_FUNC || kw == KW_SIOREAD ||
+  kw == KW_SIOREADLN || kw == KW_BIOREAD ||
+  kw == KW_NJSONQUERY || kw == KW_NINFO ||
+  kw == KW_REPLACE || kw == KW_REVERSE ||
+  kw == KW_MCASE || kw == KW_ICASE ||
+  kw == KW_ONKEY || kw == KW_HASH)) {
+   /* Not a string function — this is a variable name */
+   lex->pos++; /* consume $ */
+   lex->current.type = TOK_NAMED_VAR;
+   lex->current.value.num_value = 0;
+   lex->current.str_start = lex->source + start;
+   lex->current.str_length = len + 1; /* include $ */
+   return;
+  }
+  }
 
  /*
  * String function keywords (LEFT, RIGHT,
@@ -1554,29 +1686,36 @@ void lexer_next(Lexer *lex)
  lex->pos++;
  }
  len = lex->pos - start;
- 			/* Check for trailing type suffix (e.g. X1$, A%, B!) */
-			if (lex->pos < lex->length) {
-				char t = lex->source[lex->pos];
-				if (t == '$' || t == '%' || t == '!' || t == '#' || t == '&' || t == '~') {
-					lex->pos++; /* consume suffix */
-					len++;
-				}
-			}
+    /* Check for trailing type suffix (e.g. X1$, A%, B!) */
+   if (lex->pos < lex->length) {
+    char t = lex->source[lex->pos];
+    if (t == '$' || t == '%' || t == '!' || t == '#' || t == '&' || t == '~') {
+     lex->pos++; /* consume suffix */
+     len++;
+    }
+   }
  lex->current.type = TOK_NAMED_VAR;
  lex->current.value.num_value = 0;
  lex->current.str_start = lex->source + start;
  lex->current.str_length = len;
- 		} else if (lex->pos < lex->length &&
-			(lex->source[lex->pos] == '$' || lex->source[lex->pos] == '%' ||
-			 lex->source[lex->pos] == '!' || lex->source[lex->pos] == '#' ||
-			 lex->source[lex->pos] == '&' || lex->source[lex->pos] == '~')) {
-			/* String or typed variable: A$ through Z$ or A% etc. */
-			/* We treat typed single-char vars as TOK_NAMED_VAR for parser consistency */
-			lex->pos++; /* consume suffix */
-			lex->current.type = TOK_NAMED_VAR;
-			lex->current.value.num_value = 0;
-			lex->current.str_start = lex->source + start;
-			lex->current.str_length = 2;
+   } else if (lex->pos < lex->length &&
+    lex->source[lex->pos] == '$') {
+    /* String variable: A$ through Z$ */
+    lex->pos++; /* consume $ */
+    lex->current.type = TOK_STRING_VAR;
+    lex->current.value.var_name = to_upper(lex->source[start]);
+    lex->current.str_start = NULL;
+    lex->current.str_length = 0;
+  } else if (lex->pos < lex->length &&
+    (lex->source[lex->pos] == '%' ||
+     lex->source[lex->pos] == '!' || lex->source[lex->pos] == '#' ||
+     lex->source[lex->pos] == '&' || lex->source[lex->pos] == '~')) {
+    /* Typed single-char var: A%, B!, C# etc. */
+    lex->pos++; /* consume suffix */
+    lex->current.type = TOK_NAMED_VAR;
+    lex->current.value.num_value = 0;
+    lex->current.str_start = lex->source + start;
+    lex->current.str_length = 2;
  } else {
  /* Standard single-letter variable A-Z */
  lex->current.type = TOK_VARIABLE;
@@ -1585,51 +1724,103 @@ void lexer_next(Lexer *lex)
  lex->current.str_length = 0;
  }
  } else {
- /*
- * Multi-character identifier that's not a keyword.
- *
- * If the active dialect supports extended variables,
- * treat this as a named variable (e.g., SCORE, COUNT).
- * The name is stored in str_start/str_length for the
- * parser to pass to the runtime's named variable table.
- *
- * If the dialect does NOT support extended variables
- * (e.g., PATB), rewind to just after the first character
- * and treat it as a single-letter variable. This matches
- * PATB behavior where only A-Z are valid variable names.
- */
- if (dialect_get_config()->has_extended_vars) {
- /* Also allow digits in the name (e.g., X1, SCORE2) */
- while (lex->pos < lex->length &&
- isdigit((unsigned char)lex->source[lex->pos])) {
- lex->pos++;
- }
- len = lex->pos - start;
+  /*
+   * Multi-character identifier that's not a keyword.
+   *
+   * GW-BASIC greedy extraction: try to find the longest
+   * keyword PREFIX within this identifier. For example:
+   *   FORI     -> FOR (keyword) + I (variable)
+   *   NEXTI    -> NEXT (keyword) + I (variable)
+   *   REMARKABLE -> REM (keyword) + rest (comment)
+   *   THENK3   -> THEN (keyword) + K3 (variable)
+   *
+   * If no keyword prefix is found and the dialect supports
+   * extended variables, treat as a named variable.
+   * Otherwise, rewind to single letter and treat as A-Z.
+   */
+  {
+  int prefix_len = 0;
+  KeywordId prefix_kw = match_keyword_prefix(
+   lex->source + start, len, &prefix_len);
+  if (prefix_kw != KW_COUNT) {
+   /* Found a keyword prefix - rewind to just after it */
+   lex->pos = start + prefix_len;
+   lex->current.type = TOK_KEYWORD;
+   lex->current.value.keyword = prefix_kw;
+   lex->current.str_start = NULL;
+   lex->current.str_length = 0;
 
- 			/*
-			 * Check for trailing type suffix.
-			 * e.g., RM$, FT%, KM! -> TOK_NAMED_VAR
-			 * with "RM$", "FT%", "KM!" as the name.
-			 */
-			if (lex->pos < lex->length) {
-				char t = lex->source[lex->pos];
-				if (t == '$' || t == '%' || t == '!' || t == '#' || t == '&' || t == '~') {
-					lex->pos++; /* consume suffix */
-					len++;
-				}
-			}
+   /* Handle $ suffix for string function keywords */
+   if (lex->pos < lex->length &&
+   lex->source[lex->pos] == '$') {
+   if (prefix_kw == KW_LEFT ||
+    prefix_kw == KW_RIGHT ||
+    prefix_kw == KW_MID ||
+    prefix_kw == KW_CHR ||
+    prefix_kw == KW_STR_FUNC ||
+    prefix_kw == KW_SPACE_FUNC ||
+    prefix_kw == KW_STRING_FUNC ||
+    prefix_kw == KW_HEX_FUNC ||
+    prefix_kw == KW_OCT_FUNC ||
+    prefix_kw == KW_INKEY ||
+    prefix_kw == KW_INPUT) {
+    lex->pos++;
+    if (prefix_kw == KW_INPUT) {
+    lex->current.value.keyword =
+     KW_INPUT_FUNC;
+    }
+   }
+   }
+  } else if (dialect_get_config()->has_extended_vars) {
+    /* No keyword prefix - treat as named variable.
+     * len is already correct from the initial scan +
+     * back-off. Do NOT re-extend with trailing digits
+     * since the initial scan already collected them
+     * and the back-off already stripped them.
+     */
 
- lex->current.type = TOK_NAMED_VAR;
- lex->current.value.num_value = 0;
- lex->current.str_start = lex->source + start;
- lex->current.str_length = len;
- } else {
- lex->pos = start + 1;
- lex->current.type = TOK_VARIABLE;
- lex->current.value.var_name = to_upper(lex->source[start]);
- lex->current.str_start = NULL;
- lex->current.str_length = 0;
- }
+     /*
+      * GW-BASIC keyword suffix check:
+      * If the identifier ends with a statement keyword
+      * (e.g., Z4GOTO, Z5THEN), split: named var + keyword.
+      * Try suffixes from longest to shortest.
+      */
+     {
+     int sfx;
+     for (sfx = len - 2; sfx >= 1; sfx--) {
+      KeywordId skw = match_keyword(
+       lex->source + start + sfx, len - sfx);
+      if (skw != KW_COUNT && is_embeddable_keyword(skw)) {
+       len = sfx;
+       lex->pos = start + sfx;
+       break;
+      }
+     }
+     }
+
+     /* Check for trailing type suffix */
+     if (lex->pos < lex->length) {
+     char t = lex->source[lex->pos];
+     if (t == '$' || t == '%' || t == '!' ||
+      t == '#' || t == '&' || t == '~') {
+      lex->pos++;
+      len++;
+     }
+     }
+
+     lex->current.type = TOK_NAMED_VAR;
+     lex->current.value.num_value = 0;
+     lex->current.str_start = lex->source + start;
+     lex->current.str_length = len;
+  } else {
+   lex->pos = start + 1;
+   lex->current.type = TOK_VARIABLE;
+   lex->current.value.var_name =
+   to_upper(lex->source[start]);
+   lex->current.str_start = NULL;
+   lex->current.str_length = 0;
+  }
+  }
  }
  return;
  }
@@ -1654,29 +1845,49 @@ void lexer_next(Lexer *lex)
  lex->current.type = TOK_EQUALS;
  break;
  case '<':
- /* Check for <= or <> */
- if (peek_char(lex) == '=') {
- advance_char(lex);
- lex->current.type = TOK_LT_EQ;
- } else if (peek_char(lex) == '>') {
- advance_char(lex);
- lex->current.type = TOK_NOT_EQ;
- } else {
- lex->current.type = TOK_LT;
- }
+  /* Check for <= or <> (allow spaces: < = , < >) */
+  {
+  int save_pos = lex->pos;
+  /* Skip spaces after < */
+  while (lex->pos < lex->length &&
+   lex->source[lex->pos] == ' ')
+   lex->pos++;
+  if (lex->pos < lex->length &&
+   lex->source[lex->pos] == '=') {
+   lex->pos++;
+   lex->current.type = TOK_LT_EQ;
+  } else if (lex->pos < lex->length &&
+   lex->source[lex->pos] == '>') {
+   lex->pos++;
+   lex->current.type = TOK_NOT_EQ;
+  } else {
+   lex->pos = save_pos; /* restore */
+   lex->current.type = TOK_LT;
+  }
+  }
  break;
- case '>':
- /* Check for >= then >> */
- if (peek_char(lex) == '=') {
- advance_char(lex);
- lex->current.type = TOK_GT_EQ;
- } else if (peek_char(lex) == '>') {
- advance_char(lex);
- lex->current.type = TOK_APPEND;
- } else {
- lex->current.type = TOK_GT;
- }
- break;
+  case '>':
+  /* Check for >= then >> (allow spaces: > = , > >) */
+  {
+  int save_pos = lex->pos;
+  /* Skip spaces after > */
+  while (lex->pos < lex->length &&
+   lex->source[lex->pos] == ' ')
+   lex->pos++;
+  if (lex->pos < lex->length &&
+   lex->source[lex->pos] == '=') {
+   lex->pos++;
+   lex->current.type = TOK_GT_EQ;
+  } else if (lex->pos < lex->length &&
+   lex->source[lex->pos] == '>') {
+   lex->pos++;
+   lex->current.type = TOK_APPEND;
+  } else {
+   lex->pos = save_pos; /* restore */
+   lex->current.type = TOK_GT;
+  }
+  }
+  break;
  case '|':
  lex->current.type = TOK_PIPE;
  break;

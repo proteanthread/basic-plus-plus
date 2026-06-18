@@ -13,6 +13,7 @@
 #include "funcreg.h"
 #include "runtime.h"
 #include "value.h"
+#include <string.h>
 #include "error_registry.h"
 #include "dialect.h"
 
@@ -35,8 +36,8 @@ BValue stdlib_core_rnd(BValue *args, int argc, void *rt)
 {
     RuntimeState *state = (RuntimeState *)rt;
     long n;
-    (void)argc;
-    n = bval_to_int(&args[0]);
+    /* GW-BASIC: bare RND is equivalent to RND(1) */
+    n = (argc > 0) ? bval_to_int(&args[0]) : 1;
 
     if (dialect_get_config()->has_float) {
         if (n < 0) {

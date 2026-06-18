@@ -82,11 +82,16 @@ TABLE OF CONTENTS
   39. Example: Network HTTP Module (Windows)
   40. Example: SQLite Database Module
 
-  Part VII: Reference
-  41. API Quick Reference
-  42. Module Checklist
-  43. Troubleshooting
-  44. Related Manuals
+  Part VII: Self-Hosting Specifications
+  41. The .BPPSPEC File Format
+  42. LOAD FEATURE Command
+  43. Companion .LIB Dispatch
+
+  Part VIII: Reference
+  44. API Quick Reference
+  45. Module Checklist
+  46. Troubleshooting
+  47. Related Manuals
 
 
 =====================================================================
@@ -239,9 +244,20 @@ functions, devices, or dialect extensions together.
       const char    *description;  /* one-line summary */
       ModuleClass    mod_class;    /* Library/Dialect/Device/Extension */
       unsigned int   capabilities; /* CAP_ bitfield */
+      SecLevel       required_level; /* security pinning */
       int          (*init)(void*); /* init callback */
       void         (*cleanup)(void); /* cleanup callback */
   };
+
+  The required_level field controls security pinning:
+    SEC_COUNT     Unpinned (works at any security level)
+    SEC_OPEN      Only loads when security is OPEN
+    SEC_STANDARD  Only loads when security is STANDARD or lower
+    SEC_SAFE      Only loads when security is SAFE or lower
+
+  Built-in modules should use SEC_COUNT (unpinned).
+  External modules should set the level that matches their
+  actual security requirements.
 
 Module classes:
 
@@ -271,17 +287,29 @@ Maximum 32 modules (configurable in config.h).
 
 Every module declares what system resources it needs:
 
-  Flag          Hex    Letter  Description
-  ----          ---    ------  -----------
-  CAP_NONE      0x00   -       No capabilities needed
-  CAP_MATH      0x01   M       Mathematical operations
-  CAP_STRING    0x02   S       String manipulation
-  CAP_IO        0x04   I       General I/O operations
-  CAP_FILE      0x08   F       File system access
-  CAP_SYSTEM    0x10   Y       System-level operations
-  CAP_GRAPHICS  0x20   G       Graphics device access
-  CAP_SOUND     0x40   A       Audio/sound device
-  CAP_NETWORK   0x80   N       Network access
+  Flag            Hex      Letter  Description
+  ----            ---      ------  -----------
+  CAP_NONE        0x0000   -       No capabilities needed
+  CAP_MATH        0x0001   M       Mathematical operations
+  CAP_STRING      0x0002   S       String manipulation
+  CAP_IO          0x0004   I       General I/O operations
+  CAP_FILE        0x0008   F       File system access
+  CAP_SYSTEM      0x0010   Y       System-level operations
+  CAP_GRAPHICS    0x0020   G       Graphics device access
+  CAP_SOUND       0x0040   A       Audio/sound device
+  CAP_NETWORK     0x0080   N       Network access
+  CAP_GPIO        0x0100   P       GPIO / digital I/O pins
+  CAP_I2C         0x0200   2       I2C bus access
+  CAP_SPI         0x0400   3       SPI bus access
+  CAP_SENSOR      0x0800   R       Sensor hardware (accel, GPS)
+  CAP_CAMERA      0x1000   C       Camera / video capture
+  CAP_BLUETOOTH   0x2000   B       Bluetooth / BLE
+  CAP_USB         0x4000   U       USB device access
+
+  The modern capability flags (GPIO through USB) follow
+  the same enforcement rules as the core flags. At
+  SEC_RESTRICTED, only CAP_MATH and CAP_STRING are
+  permitted; all hardware and I/O flags are denied.
 
 These flags serve two purposes:
 
@@ -430,6 +458,67 @@ A reusable pattern for BASIC libraries:
     20 A$ = "Hello World"
     30 GOSUB 8100
     40 PRINT R$            ' "dlroW olleH"
+
+8.5 LOAD LIBRARY / UNLOAD LIBRARY (NEW)
+=====================================================================
+
+BASIC++ 3.3.0 adds a dedicated library loading system that replaces
+MERGE for reusable code. Libraries use SUB/FUNCTION definitions
+with isolated variable spaces.
+
+LOADING:
+
+  LOAD LIBRARY "filename.lib"     Load source library
+  LOAD LIBRARY "filename.bpl"     Load pre-compiled binary
+
+  The interpreter:
+  1. Reads REM @LIBRARY / @VERSION / @SECURITY headers
+  2. Checks security level compatibility
+  3. Scans for SUB / FUNCTION / DEF FN declarations
+  4. Stores source lines for interpreter-mode execution
+  5. Initializes an isolated variable space (A-Z per library)
+
+UNLOADING:
+
+  UNLOAD LIBRARY "LIBNAME"
+
+  Removes the library from memory and frees all associated
+  symbol table entries and source lines.
+
+CALLING LIBRARY FUNCTIONS:
+
+  CALL LibName_SubName(arg1, arg2, ...)
+  LET result = LibName_FuncName(arg1, arg2)
+
+  Arguments are passed into the library's isolated A-Z variable
+  space. The caller's variables are saved and restored on return.
+
+COMPILING TO .BPL:
+
+  COMPILE LIBRARY "LIBNAME"
+  COMPILE LIBRARY "LIBNAME", "output.bpl"
+
+  Saves a loaded library to the .BPL (BASIC++ Portable Library)
+  binary format. .BPL files are OS-independent and load faster
+  than source .LIB files.
+
+LIBRARY FILE FORMAT:
+
+  REM @LIBRARY LibName
+  REM @VERSION 1.0
+  REM @SECURITY OPEN
+  REM @REQUIRES NONE
+
+  SUB LibName_Init(width, height)
+      LOCAL w, h
+      w = width: h = height
+  END SUB
+
+  FUNCTION LibName_Calculate(x, y)
+      LibName_Calculate = x * y + 1
+  END FUNCTION
+
+SEE ALSO: HELP LIBRARY (for full .BPL format spec and examples)
 
 
 =====================================================================
@@ -754,6 +843,7 @@ TEMPLATE: mod_mymod.c
       "My custom extension module",  /* description */
       MOD_LIBRARY,                   /* class */
       CAP_MATH,                      /* capabilities */
+      SEC_COUNT,                     /* unpinned */
       mymod_init,                    /* init */
       mymod_cleanup                  /* cleanup */
   };
@@ -1972,7 +2062,7 @@ How to choose capability flags for your module:
 
   static const ModuleInfo mathext_info = {
     "MATHEXT","1.0","Extended math functions",
-    MOD_LIBRARY, CAP_MATH, mathext_init, NULL };
+    MOD_LIBRARY, CAP_MATH, SEC_COUNT, mathext_init, NULL };
 
   void mod_mathext_register(void)
   { module_register(&mathext_info); }
@@ -2023,13 +2113,193 @@ How to choose capability flags for your module:
 
 =====================================================================
 
-              PART VII: REFERENCE
+              PART VII: SELF-HOSTING SPECIFICATIONS
+
+=====================================================================
+
+BASIC++ can extend itself at runtime using declarative .BPPSPEC
+specification files.  This is the most powerful and portable
+extension mechanism — no C compilation required.
+
+See also: Self_Hosting_Specs.md for the full architecture document.
+
+
+=====================================================================
+41. THE .BPPSPEC FILE FORMAT
+=====================================================================
+
+Specification files define new statements and functions using a
+declarative block syntax:
+
+  DEFINE SPECIFICATION "TURTLE"
+      CATEGORY "STATEMENT"
+      VERSION "1.0"
+      SECURITY "SAFE"
+      DEPENDS "GRAPHICS"
+      LIB "turtle.lib"
+  END SPECIFICATION
+
+Directives:
+
+  DEFINE SPECIFICATION "name"   Opens a spec block
+  CATEGORY "type"               STATEMENT, FUNCTION, DIALECT,
+                                MODULE, LIBRARY, DEVICE
+  VERSION "x.y"                 Version string
+  LIB "path.lib"                Companion library path
+  SECURITY "level"              Required security level
+  DEPENDS "name1,name2"         Comma-separated dependencies
+  END SPECIFICATION             Closes block, registers keyword
+
+Lines starting with # are comments.  Blank lines are ignored.
+Only STATEMENT and FUNCTION categories trigger dynamic keyword
+registration via keyword_register_custom().
+
+
+=====================================================================
+42. LOAD FEATURE COMMAND
+=====================================================================
+
+From the BASIC prompt or within a program:
+
+  LOAD FEATURE "turtle.spec"
+
+This command:
+  1. Checks SECOP_EXT_LOAD permission
+  2. Parses the .BPPSPEC file via spec_load_file()
+  3. Registers new keywords dynamically (IDs 1000+)
+  4. Loads the companion .LIB into library program space
+  5. Verifies security pinning against current level
+
+After loading, the new keyword is immediately available:
+
+  LOAD FEATURE "turtle.spec"
+  TURTLE FORWARD 100
+  TURTLE TURNLEFT 90
+  TURTLE PENUP
+
+SPEC REGISTRY:
+
+  The spec registry holds up to 128 loaded specifications.
+  Each spec is stored as a SpecObject with:
+    - name (keyword name)
+    - version string
+    - category (SpecCategory enum)
+    - lib_path (companion library)
+    - depends (dependency list)
+    - required_level (security pin)
+    - kw_id (assigned keyword ID)
+
+PLUGIN AUTO-LOADING:
+
+  Plugins can auto-load .spec files during activation.
+  When a plugin directory contains .spec files, they are
+  loaded automatically by ext_plugin.c.
+
+CONFIG FILE ALIASES:
+
+  The config file supports keyword aliasing:
+    alias.MOSTRAR = PRINT
+    alias.ENTRADA = INPUT
+
+  These are registered at startup as global aliases.
+
+
+=====================================================================
+43. COMPANION .LIB DISPATCH
+=====================================================================
+
+The behavior of custom statements is implemented in companion
+.LIB files — pure BASIC++ source files that define SUBs and
+FUNCTIONs.  No native code required.
+
+LIBRARY FORMAT:
+
+  REM @LIBRARY TURTLE
+  REM @VERSION 1.0
+  REM @SECURITY SAFE
+
+  SUB FORWARD(D)
+      REM Move turtle forward D pixels
+  END SUB
+
+  SUB TURNLEFT(A)
+      REM Turn turtle left A degrees
+  END SUB
+
+  SUB PENUP
+      REM Lift the pen
+  END SUB
+
+DISPATCH FLOW:
+
+  When the parser encounters a custom keyword (ID >= 1000),
+  it calls pi_parse_custom_statement(), which:
+
+  1. Looks up the SpecObject by keyword ID
+  2. Checks security pinning (required_level)
+  3. Calls lib_space_find_by_name(spec_name)
+  4. Calls lib_space_invoke_by_name(lib, spec_name, rt)
+  5. The library SUB executes in its isolated variable space
+
+  If no companion library is loaded, the interpreter prints:
+    SORRY? SPEC 'TURTLE' has no loaded companion library
+           (expected: turtle.lib) in line N
+
+SECURITY PINNING:
+
+  Specs can declare a required security level:
+    SECURITY "OPEN"
+    SECURITY "SAFE"
+    SECURITY "STANDARD"
+
+  Checked at both load time and execution time.  If the
+  current level doesn't match:
+    SORRY? SPEC 'name' requires security level X
+           (current: Y) in line N
+
+  Omitting SECURITY makes the spec "unpinned" — it runs
+  at any security level.
+
+COMPLETE EXAMPLE:
+
+  File: counter.spec
+  ----
+  DEFINE SPECIFICATION "COUNTER"
+      CATEGORY "STATEMENT"
+      VERSION "1.0"
+      LIB "counter.lib"
+  END SPECIFICATION
+  ----
+
+  File: counter.lib
+  ----
+  REM @LIBRARY COUNTER
+  REM @VERSION 1.0
+
+  SUB COUNTER(N)
+      DIM I
+      FOR I = 1 TO N
+          PRINT I; " ";
+      NEXT I
+      PRINT
+  END SUB
+  ----
+
+  Usage:
+    LOAD FEATURE "counter.spec"
+    COUNTER 10
+    ' Output: 1  2  3  4  5  6  7  8  9  10
+
+
+=====================================================================
+
+              PART VIII: REFERENCE
 
 =====================================================================
 
 
 =====================================================================
-41. API QUICK REFERENCE
+44. API QUICK REFERENCE
 =====================================================================
 
   FUNCTION REGISTRY:
@@ -2072,7 +2342,7 @@ How to choose capability flags for your module:
 
 
 =====================================================================
-42. MODULE CHECKLIST
+45. MODULE CHECKLIST
 =====================================================================
 
   Before releasing a module, verify:
@@ -2093,7 +2363,7 @@ How to choose capability flags for your module:
 
 
 =====================================================================
-43. TROUBLESHOOTING
+46. TROUBLESHOOTING
 =====================================================================
 
   "Module 'X' not found."
@@ -2121,7 +2391,7 @@ How to choose capability flags for your module:
 
 
 =====================================================================
-44. RELATED MANUALS
+47. RELATED MANUALS
 =====================================================================
 
   B_Programmers_Guide.txt       Language reference
@@ -2130,6 +2400,7 @@ How to choose capability flags for your module:
   Q_Security.txt                Security system reference
   R_Virtual_Devices.txt         VDev device drivers
   W_Virtual_Filesystem.txt      File access architecture
+  Self_Hosting_Specs.md         Specification architecture
 
 
 =====================================================================

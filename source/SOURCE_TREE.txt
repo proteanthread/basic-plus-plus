@@ -1,7 +1,7 @@
 BASIC++ SOURCE TREE MAP
 ========================
-Version 2.0.2
-Last Updated: 2026-06-13
+Version 4.0.0
+Last Updated: 2026-06-17
 
 This document describes every source file in the BASIC++ interpreter,
 its purpose, and which files are required for different build
@@ -102,7 +102,7 @@ source/
   |-- struct/                      Structured programming (1 file)
   |-- errhand/                     Error handling (1 file)
   |-- shell/                       Shell & external exec (1 file)
-  |-- debug/                       Debugging & selftest (2 files)
+  |-- debug/                       Debugging & selftest (3 files)
   |-- help/                        Help system (2 files)
   |-- config/                      Configuration commands (3 files)
   |-- progmgmt/                    Program management (3 files)
@@ -355,13 +355,21 @@ source/
 
   CORE  debug/parser_debug.c
         Debug commands: TRON, TROFF, BREAK, CONT, ASSERT, TEST,
-        ENDTEST, SELFTEST, INFO, DEBUG, DUMP, BACKTRACE, TRACE.
+        ENDTEST, SELFTEST, INFO, DEBUG, DUMP, BACKTRACE, TRACE,
+        CHECK, VERIFY.
 
   CORE  debug/selftest.c
         Built-in self-test suite.  Loads a hardcoded BASIC++ test
         program, runs it, reports results.  79 assertions covering
         arithmetic, comparisons, logic, variables, strings, flow
         control, loops, GOSUB, math, DIM, DATA/READ, SWAP, DEF FN.
+
+  CORE  debug/check.c
+        Static program analysis engine.  Powers CHECK and VERIFY
+        commands.  Scans all stored program lines without executing:
+        detects unmatched FOR/NEXT, invalid GOTO/GOSUB targets,
+        unassigned variables, DATA/READ balance.  Reports program
+        statistics, memory usage, and cyclomatic complexity.
 
 
 --- 3.19  help/ — Help & Introspection ---

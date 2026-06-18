@@ -846,17 +846,17 @@ void pi_parse_pcopy(Lexer *lex, RuntimeState *rt, int line_num)
  /*
  * PCOPY src, dst
  * Copy display page. No-op in single-
-		 * page graphics; consume arguments.
-		 */
-		{
-		(void)parse_expression(
-			lex, rt, line_num);
-		if (error_occurred()) return;
-		if (lex->current.type == TOK_COMMA)
-			lexer_next(lex);
-		(void)parse_expression(
-			lex, rt, line_num);
-		}
+   * page graphics; consume arguments.
+   */
+  {
+  (void)parse_expression(
+   lex, rt, line_num);
+  if (error_occurred()) return;
+  if (lex->current.type == TOK_COMMA)
+   lexer_next(lex);
+  (void)parse_expression(
+   lex, rt, line_num);
+  }
  return;
 }
 
@@ -867,18 +867,18 @@ void pi_parse_view(Lexer *lex, RuntimeState *rt, int line_num)
 {
  /*
  * VIEW [[SCREEN] (x1,y1)-(x2,y2) [,c[,b]]]
-		 * VIEW PRINT [top TO bottom]
-		 *
-		 * VIEW: set graphics viewport.
-		 * VIEW PRINT: set text scroll region.
-		 * Accepted for compatibility; consume args.
-		 */
-		if (lexer_match_keyword(lex,
-			KW_PRINT)) {
-			/* VIEW PRINT [top TO bottom] */
-			lexer_next(lex);
-		}
-		lexer_skip_to_end(lex);
+   * VIEW PRINT [top TO bottom]
+   *
+   * VIEW: set graphics viewport.
+   * VIEW PRINT: set text scroll region.
+   * Accepted for compatibility; consume args.
+   */
+  if (lexer_match_keyword(lex,
+   KW_PRINT)) {
+   /* VIEW PRINT [top TO bottom] */
+   lexer_next(lex);
+  }
+  lexer_skip_to_end(lex);
  return;
 }
 

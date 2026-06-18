@@ -1,0 +1,183 @@
+10 REM =============================================
+20 REM  MISSILE COMMAND - BASIC++ Text Game
+30 REM  Arrow keys move crosshair, SPACE fires
+40 REM  Defend your 6 cities from incoming missiles
+50 REM =============================================
+60 RANDOMIZE TIMER
+70 CURSOR OFF
+80 REM --- Constants ---
+90 CONST MAX.MSL = 8
+100 CONST MAX.EXP = 10
+110 CONST FPS = 100
+120 REM --- Game state ---
+130 DIM MXS(MAX.MSL), MYS(MAX.MSL)
+140 DIM MXE(MAX.MSL), MYE(MAX.MSL)
+150 DIM MXC(MAX.MSL), MYC(MAX.MSL)
+160 DIM MSP(MAX.MSL), MAC(MAX.MSL)
+170 DIM CTY(6)
+180 FOR I = 1 TO 6: CTY(I) = 1: NEXT I
+190 DIM EPX(MAX.EXP), EPY(MAX.EXP), EPR(MAX.EXP)
+200 DIM EPA(MAX.EXP), EPT(MAX.EXP)
+210 CX = 40: CY = 12
+220 SC = 0: LVL = 1: WAVE = 0
+230 AMMO = 30
+240 REM
+250 REM --- Draw screen ---
+260 CLS
+270 COLOR 15, 1
+280 LOCATE 1, 1: PRINT STRING$(80, " ");
+290 LOCATE 1, 2: PRINT "MISSILE COMMAND";
+300 LOCATE 1, 30: PRINT "Score:"; SC;
+310 LOCATE 1, 50: PRINT "Ammo:"; AMMO;
+320 LOCATE 1, 68: PRINT "Level:"; LVL;
+330 REM Draw ground
+340 COLOR 6, 0
+350 LOCATE 24, 1
+360 PRINT STRING$(80, CHR$(220));
+370 REM Draw cities
+380 COLOR 14, 0
+390 FOR I = 1 TO 6
+400   IF CTY(I) = 0 THEN 440
+410   CP = I * 11 + 2
+420   LOCATE 23, CP
+430   PRINT CHR$(219); CHR$(223); CHR$(219);
+440 NEXT I
+450 REM Draw ammo base
+460 COLOR 15, 0
+470 LOCATE 23, 39
+480 PRINT CHR$(30);
+490 REM
+500 REM ========== MAIN GAME LOOP ==========
+510 GFT = TICKS
+520 REM --- Spawn missiles ---
+530 IF RND(1) < 0.04 + LVL * 0.01 THEN GOSUB 1000
+540 REM
+550 REM --- Read input ---
+560 K$ = INKEY$
+570 IF K$ = CHR$(27) THEN 2000
+580 IF LEN(K$) = 2 THEN SK = ASC(MID$(K$, 2, 1)) ELSE SK = 0
+590 IF SK = 72 AND CY > 3 THEN CY = CY - 1
+600 IF SK = 80 AND CY < 22 THEN CY = CY + 1
+610 IF SK = 75 AND CX > 2 THEN CX = CX - 1
+620 IF SK = 77 AND CX < 79 THEN CX = CX + 1
+630 IF K$ = " " AND AMMO > 0 THEN GOSUB 1100
+640 REM
+650 REM --- Move missiles ---
+660 FOR I = 1 TO MAX.MSL
+670   IF MAC(I) = 0 THEN 780
+680   REM Advance missile toward target
+690   DX = MXE(I) - MXC(I)
+700   DY = MYE(I) - MYC(I)
+710   IF ABS(DX) > ABS(DY) THEN
+720     IF DX > 0 THEN MXC(I) = MXC(I) + 1 ELSE MXC(I) = MXC(I) - 1
+730   ELSE
+740     MYC(I) = MYC(I) + 1
+750   END IF
+760   REM Draw missile trail
+770   IF MYC(I) >= 2 AND MYC(I) <= 23 AND MXC(I) >= 1 AND MXC(I) <= 80 THEN
+775     COLOR 12, 0
+776     LOCATE MYC(I), MXC(I)
+777     PRINT ".";
+778   END IF
+780   REM Check if reached ground
+790   IF MYC(I) >= 23 THEN GOSUB 1200: MAC(I) = 0
+800   REM Check if hit by explosion
+810   FOR J = 1 TO MAX.EXP
+820     IF EPA(J) = 0 THEN 850
+830     IF ABS(MXC(I)-EPX(J)) <= EPR(J) AND ABS(MYC(I)-EPY(J)) <= EPR(J) THEN
+840       MAC(I) = 0: SC = SC + 25
+850     END IF
+860   NEXT J
+870 NEXT I
+880 REM
+890 REM --- Update explosions ---
+900 FOR I = 1 TO MAX.EXP
+910   IF EPA(I) = 0 THEN 960
+920   IF TICKS - EPT(I) > 300 THEN
+930     REM Fade explosion
+940     EPA(I) = 0
+950     GOSUB 1300
+960   END IF
+970 NEXT I
+980 REM --- Draw crosshair ---
+990 COLOR 11, 0
+991 LOCATE CY, CX
+992 PRINT "+";
+993 REM --- Update HUD ---
+994 COLOR 15, 1
+995 LOCATE 1, 37: PRINT SC; "   ";
+996 LOCATE 1, 56: PRINT AMMO; " ";
+997 REM --- Check cities ---
+998 CITIES = 0
+999 FOR I = 1 TO 6: IF CTY(I) = 1 THEN CITIES = CITIES + 1: NEXT I
+1000 IF CITIES = 0 THEN 2000
+1001 REM --- Frame wait ---
+1002 GT2 = TICKS
+1003 GT1 = GT2 - GFT
+1004 IF GT1 < FPS THEN DELAY FPS - GT1
+1005 GFT = TICKS
+1006 GOTO 510
+1007 REM
+1000 REM === Spawn a missile ===
+1010 FOR I = 1 TO MAX.MSL
+1020   IF MAC(I) = 1 THEN 1060
+1030   MXS(I) = INT(RND(1) * 78) + 2
+1040   MYS(I) = 2: MYC(I) = 2: MXC(I) = MXS(I)
+1050   MXE(I) = INT(RND(1) * 78) + 2: MYE(I) = 23
+1055   MSP(I) = 1: MAC(I) = 1
+1060   RETURN
+1070 NEXT I
+1080 RETURN
+1090 REM
+1100 REM === Fire counter-missile ===
+1110 AMMO = AMMO - 1
+1120 BEEP
+1130 REM Create explosion at crosshair
+1140 FOR I = 1 TO MAX.EXP
+1150   IF EPA(I) = 1 THEN 1180
+1160   EPX(I) = CX: EPY(I) = CY: EPR(I) = 2
+1170   EPA(I) = 1: EPT(I) = TICKS
+1175   REM Draw explosion
+1176   COLOR 14, 0
+1177   FOR ER = -2 TO 2
+1178     FOR EC = -2 TO 2
+1179       IF CY+ER >= 2 AND CY+ER <= 23 AND CX+EC >= 1 AND CX+EC <= 80 THEN
+1180         LOCATE CY + ER, CX + EC: PRINT "*";
+1181       END IF
+1182     NEXT EC
+1183   NEXT ER
+1185   RETURN
+1190 NEXT I
+1195 RETURN
+1200 REM === Missile hits ground ===
+1210 REM Check if a city is hit
+1220 FOR J = 1 TO 6
+1230   IF CTY(J) = 0 THEN 1260
+1240   CP = J * 11 + 2
+1250   IF ABS(MXC(I) - CP) <= 2 THEN CTY(J) = 0: SOUND 100, 3
+1260 NEXT J
+1270 RETURN
+1300 REM === Clear explosion ===
+1310 COLOR 0, 0
+1320 FOR ER = -(EPR(I)) TO EPR(I)
+1330   FOR EC = -(EPR(I)) TO EPR(I)
+1340     GR = EPY(I) + ER: GC2 = EPX(I) + EC
+1350     IF GR >= 2 AND GR <= 23 AND GC2 >= 1 AND GC2 <= 80 THEN
+1360       LOCATE GR, GC2: PRINT " ";
+1370     END IF
+1380   NEXT EC
+1390 NEXT ER
+1400 RETURN
+2000 REM === GAME OVER ===
+2010 CURSOR ON: CLS
+2020 COLOR 12, 0
+2030 LOCATE 10, 25
+2040 PRINT "T H E   E N D"
+2050 LOCATE 12, 25
+2060 PRINT "Final Score: "; SC
+2070 LOCATE 14, 25
+2080 PRINT "Cities Saved: "; CITIES
+2090 LOCATE 18, 25
+2100 PRINT "Press any key..."
+2110 K$ = "": WHILE K$ = "": K$ = INKEY$: WEND
+2120 CLS: END

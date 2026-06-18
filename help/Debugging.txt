@@ -1,6 +1,6 @@
 # Debugging and Tracing in BASIC++
 
-**Version 1.5.0**
+**Version 4.0.0**
 
 BASIC++ provides several tools for debugging programs: trace mode, breakpoints, single-stepping, and variable inspection.
 
@@ -246,3 +246,53 @@ PRINT EOF(1)           ' At end? (-1 or 0)
 100 REM expect: A=5, B>0
 110 C = A / B
 ```
+
+---
+
+## 12. CHECK and VERIFY (Static Analysis)
+
+Use `CHECK` and `VERIFY` to find problems **before** running your program:
+
+```
+> CHECK                    ' Analyze current program
+> CHECK "mygame.bas"       ' Analyze a file
+> VERIFY "mygame.bas"      ' Deep analysis (CHECK + more)
+```
+
+They report:
+- Missing `NEXT` for `FOR` loops
+- `GOTO`/`GOSUB` targets that don't exist
+- Variables used but never assigned
+- Memory usage and complexity score
+
+This is faster than adding `PRINT` statements — run `CHECK` first to catch obvious issues.
+
+---
+
+## 13. BACKTRACE
+
+After a `STOP` or Ctrl+C, `BACKTRACE` shows how you got here:
+
+```
+> BACKTRACE
+[3] line 500 (GOSUB from 200)
+[2] line 300 (GOSUB from 100)
+[1] line 100 (main)
+```
+
+Essential for debugging deeply nested `GOSUB` chains.
+
+---
+
+## 14. ERROR$ (Error Messages)
+
+`ERROR$(n)` translates error codes to readable messages:
+
+```basic
+100 ON ERROR GOTO 900
+110 X = 1 / 0
+900 PRINT "Error "; ERR; ": "; ERROR$(ERR)
+910 RESUME NEXT
+```
+
+Output: `Error 11: Division by zero`

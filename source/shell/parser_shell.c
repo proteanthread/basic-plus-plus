@@ -189,12 +189,12 @@ void pi_parse_sys(Lexer *lex, RuntimeState *rt, int line_num)
  /*
  * SYS address
  * Commodore-style: call machine language
-		 * at the given address.
-		 * No machine code execution; consume the
-		 * address argument as a no-op stub.
-		 */
-		(void)parse_expression(lex, rt,
-			line_num);
+   * at the given address.
+   * No machine code execution; consume the
+   * address argument as a no-op stub.
+   */
+  (void)parse_expression(lex, rt,
+   line_num);
  return;
 }
 

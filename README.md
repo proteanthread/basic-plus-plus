@@ -1,7 +1,7 @@
 [![GitGem](https://gitgem.org/api/badge/github/proteanthread/basic-plus-plus.svg)](https://gitgem.org/github/proteanthread/basic-plus-plus)
 
 # BASIC++ (protoBASIC) Interpreter
-**Core Implementation**
+**Version 4.0.0 (Stable)**
 
 I don't care what you do with my code, just don't take my code and sell it and/or don't take my code, modify my code, and sell it. This code is not for sale.
 
@@ -11,11 +11,11 @@ I don't care what you do with my code, just don't take my code and sell it and/o
 
 ## Abstract
 
-The subject of this project is a portable, multi-dialect interpreter for the BASIC programming language. The implementation is contained within 29 ANSI C89/C90 source files and 29 corresponding header files, comprising approximately 27,000 lines of code. This architectural partitioning reflects the system's evolution from a monolithic prototype into a modular, layered interpreter engine while retaining the original design philosophy: maximum portability and zero external dependencies. The codebase compiles cleanly on any platform with a standards-compliant C compiler — no third-party libraries, no package managers, no runtime frameworks.
+A portable, multi-dialect BASIC interpreter written in 115 ANSI C89/C90 source files and 60 header files (~90,000 lines of code). Organized into 28 domain subdirectories with a modular, layered architecture. Zero external dependencies — compiles on any platform with a standards-compliant C compiler.
 
-BASIC++ is architected as a foundational framework, explicitly designed not as a monolithic, static entity, but as a core upon which future capabilities are intended to be constructed via a formalized modular architecture. The interpreter ships with 12 historically accurate dialect profiles, a runtime dialect-switching engine, a configurable security sandbox, a virtual device layer, a module system, a native code transpiler, and a comprehensive suite of 35 documentation files.
+BASIC++ ships with 16 historically accurate dialect profiles, a runtime dialect-switching engine, a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 70 documentation files.
 
-Primary design considerations are memory footprint optimization and source code lucidity. The former objective ensures viability for resource-constrained environments, such as embedded systems, legacy hardware emulators, or vintage operating systems (FreeDOS, CP/M) where memory is a severely limited commodity. The latter objective, lucidity, renders the source code suitable for pedagogical review. It serves as a clear, annotated example of foundational interpreter design, illustrating concepts such as tokenization, recursive-descent parsing, virtual machine formalization, and environment management in a comprehensible manner. Execution velocity, while a consideration, is posited as a subordinate objective to these primary goals. This trade-off is deliberate; clarity and portability have been prioritized over complex, platform-specific optimizations, ensuring that the core remains verifiable and maintainable.
+Designed for small memory footprints and readable source code. Runs on Windows 11, Linux, and FreeDOS. Suitable for embedded systems, legacy hardware, and as a teaching tool for interpreter design (tokenization, recursive-descent parsing, virtual machines, and environment management).
 
 
 ---
@@ -23,7 +23,7 @@ Primary design considerations are memory footprint optimization and source code 
 
 ## Section 1: Core Features
 
-The interpreter provides a comprehensive implementation of BASIC with support for 12 distinct dialect profiles, runtime dialect switching, and a union-mode parser that accepts the combined keyword set of all supported dialects by default.
+The interpreter provides a comprehensive implementation of BASIC with support for 16 distinct dialect profiles, runtime dialect switching, and a union-mode parser that accepts the combined keyword set of all supported dialects by default.
 
 ### 1.1. Data Types
 

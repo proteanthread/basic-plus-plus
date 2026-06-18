@@ -1,0 +1,432 @@
+=====================================================================
+
+        BASIC++ EMBEDDED PLATFORM GUIDE
+
+     ESP32  /  Arduino  /  Raspberry Pi
+
+=====================================================================
+
+
+=====================================================================
+TABLE OF CONTENTS
+=====================================================================
+
+  1. Overview
+  2. Supported Platforms
+  3. Build Profiles
+  4. Raspberry Pi (Linux)
+  5. ESP32 (ESP-IDF)
+  6. Arduino (Due / Mega)
+  7. Memory Budget
+  8. VDev Peripheral Access
+  9. Limitations
+ 10. Troubleshooting
+
+
+=====================================================================
+1. OVERVIEW
+=====================================================================
+
+BASIC++ can run on embedded microcontrollers and single-board
+computers.  The interpreter is written in portable C89/C90 with
+no external dependencies, making it compilable with any standard
+C toolchain including:
+
+  - arm-linux-gnueabihf-gcc  (Raspberry Pi)
+  - xtensa-esp32-elf-gcc     (ESP32 via ESP-IDF)
+  - arm-none-eabi-gcc        (Arduino Due / Pico)
+  - avr-gcc                  (Arduino Mega, very constrained)
+
+The BPP_EMBEDDED build profile provides reduced memory pools that
+fit within typical microcontroller SRAM constraints.
+
+
+=====================================================================
+2. SUPPORTED PLATFORMS
+=====================================================================
+
+  Platform             SRAM       Flash      Status
+  --------             ----       -----      ------
+  Raspberry Pi (all)   512MB+     SD card    Fully supported
+  ESP32-WROOM          320 KB     4 MB       Supported
+  ESP32-WROVER (PSRAM) 520KB+8MB  4-16 MB    Supported
+  ESP32-S3             512 KB     8-16 MB    Supported
+  Raspberry Pi Pico    264 KB     2 MB       Supported
+  Arduino Due          96 KB      512 KB     Supported (minimal)
+  Arduino Mega 2560    8 KB       256 KB     Marginal
+  Arduino Uno/Nano     2 KB       32 KB      NOT VIABLE
+
+  Raspberry Pi running Linux is detected as PLAT_LINUX and uses
+  the full modern build profile.  No special embedded support
+  needed -- just compile with GCC and run.
+
+  ESP32, Arduino, and Pico are detected as PLAT_EMBEDDED and
+  use the BPP_EMBEDDED build profile automatically.
+
+
+=====================================================================
+3. BUILD PROFILES
+=====================================================================
+
+BASIC++ has three compile-time build profiles selected by
+preprocessor defines:
+
+  BPP_FREEDOS    FreeDOS (512K conventional memory)
+  BPP_EMBEDDED   Microcontrollers (96K - 520K SRAM)
+  (default)      Modern (Windows 11 / Linux, 4GB+ RAM)
+
+The BPP_EMBEDDED profile sets:
+
+  Resource           Value     Memory
+  --------           -----     ------
+  Program memory     8 KB      8,192 bytes
+  Variable memory    4 KB      4,096 bytes
+  Scratch memory     2 KB      2,048 bytes
+  String pool        8 KB      8,192 bytes
+  Program lines      256       varies
+  Stack depth        32        ~26 KB (32 frames)
+  Named variables    64        ~3 KB
+  DATA items         256       ~4 KB
+  DIM arrays         16        varies
+  Array elements     1,024     ~16 KB
+  User functions     16        ~5 KB
+  Modules            4         varies
+  Memory segment     4 KB      4,096 bytes (vs 64K normal)
+  Graphics buffer    64x32     ~2 KB
+
+  Approximate total:  ~78 KB
+
+For ESP32 with PSRAM, define BPP_PSRAM and increase pool sizes
+in config.h to take advantage of the additional memory.
+
+
+=====================================================================
+4. RASPBERRY PI (LINUX)
+=====================================================================
+
+Raspberry Pi runs Linux, so BASIC++ compiles and runs exactly
+like any Linux system:
+
+  sudo apt install build-essential
+  cd source
+  gcc -O2 -o basicpp core/*.c parser/*.c io/*.c math/*.c \
+      graphics/*.c strings/*.c arrays/*.c filemgmt/*.c \
+      struct/*.c debug/*.c modules/*.c progmgmt/*.c \
+      virtual/*.c codegen/*.c lexer/*.c dialect/*.c \
+      runtime/*.c -lm
+  ./basicpp
+
+Platform detection automatically identifies the Raspberry Pi
+as PLAT_LINUX.  All 16 dialects and all modules are available.
+
+GPIO ACCESS FROM BASIC:
+
+  GPIO pins are accessible via the VDev system.  A GPIO device
+  driver can be written using Linux sysfs or libgpiod:
+
+    OPEN "GPIO17:" FOR OUTPUT AS #1
+    PRINT #1, "1"          ' Set pin HIGH
+    CLOSE #1
+
+  Or via VDev direct registration (see vdev.h for the GPIO
+  example code showing VDCLASS_GPIO with dev_read/dev_write).
+
+I2C ACCESS:
+
+  I2C buses are accessible via /dev/i2c-*:
+
+    OPEN "/dev/i2c-1" FOR BINARY AS #1
+    ' ... read/write I2C register bytes ...
+    CLOSE #1
+
+
+=====================================================================
+5. ESP32 (ESP-IDF)
+=====================================================================
+
+PREREQUISITES:
+
+  1. Install ESP-IDF (v5.0+ recommended)
+  2. Set up the ESP-IDF environment:
+       . ~/esp/esp-idf/export.sh
+
+PROJECT STRUCTURE:
+
+  Create an ESP-IDF component for BASIC++:
+
+    my_project/
+      CMakeLists.txt
+      main/
+        CMakeLists.txt
+        main.c             (calls basicpp entry point)
+      components/
+        basicpp/
+          CMakeLists.txt    (lists all .c source files)
+          include/          (symlink to source headers)
+          source/           (symlink to BASIC++ source)
+
+  The component CMakeLists.txt:
+
+    idf_component_register(
+        SRCS "source/core/main.c"
+             "source/core/boot.c"
+             "source/core/memory.c"
+             ... (all .c files)
+        INCLUDE_DIRS "source"
+        REQUIRES "main"
+    )
+
+  Add to the component's compile flags:
+    target_compile_definitions(${COMPONENT_LIB}
+        PRIVATE BPP_EMBEDDED)
+
+SERIAL CONSOLE:
+
+  ESP-IDF maps UART0 to stdin/stdout by default.  The BASIC++
+  CON: VDev uses putchar/getchar which route through UART0.
+  Connect a serial terminal at 115200 baud to interact with
+  the REPL.
+
+FILESYSTEM:
+
+  For LOAD/SAVE support, mount a SPIFFS or LittleFS partition:
+
+    esp_vfs_spiffs_conf_t conf = {
+        .base_path = "/spiffs",
+        .partition_label = "storage",
+        .max_files = 5
+    };
+    esp_vfs_spiffs_register(&conf);
+
+  BASIC++ file operations (fopen, fgets, etc.) will then work
+  with paths like "/spiffs/PROGRAM.BAS".
+
+SLEEP SUPPORT:
+
+  vdev_sleep() calls vTaskDelay() on ESP32, which yields to
+  the FreeRTOS scheduler.
+
+
+=====================================================================
+6. ARDUINO (DUE / MEGA)
+=====================================================================
+
+Arduino builds require a C++ wrapper because the Arduino
+framework is C++. The BASIC++ C core is called from a thin
+C++ shim:
+
+  // main_arduino.cpp
+  extern "C" {
+    #include "config.h"
+    int basicpp_main(int argc, char **argv);
+  }
+
+  void setup() {
+    Serial.begin(115200);
+    // Redirect stdio to Serial
+    // (platform-specific)
+  }
+
+  void loop() {
+    static int done = 0;
+    if (!done) {
+      char *argv[] = {"basicpp", NULL};
+      basicpp_main(1, argv);
+      done = 1;
+    }
+  }
+
+PLATFORMIO CONFIGURATION:
+
+  [env:due]
+  platform = atmelsam
+  board = due
+  framework = arduino
+  build_flags =
+    -DBPP_EMBEDDED
+    -DARDUINO
+  build_src_filter =
+    +<source/core/*.c>
+    +<source/parser/*.c>
+    ... (essential files only)
+
+SERIAL CONSOLE:
+
+  On Arduino, the CON: VDev uses putchar/getchar from avr-libc
+  or the SAM3 newlib.  For proper Serial integration, a custom
+  CON: driver should replace the default one:
+
+    static int arduino_putc(VDev *d, int ch) {
+        (void)d;
+        Serial.write((char)ch);
+        return 0;
+    }
+
+    static int arduino_getc(VDev *d) {
+        (void)d;
+        while (!Serial.available()) { /* wait */ }
+        return Serial.read();
+    }
+
+ARDUINO MEGA LIMITATIONS:
+
+  With only 8 KB SRAM, the Arduino Mega requires extreme
+  minimization:
+    - Single dialect (PATB only)
+    - MAX_PROGRAM_LINES = 64
+    - MAX_STACK_DEPTH = 16
+    - MAX_STRING_POOL = 1024
+    - No named variables
+    - No DIM arrays
+    - No user types
+    - No modules
+    - No file I/O
+
+
+=====================================================================
+7. MEMORY BUDGET
+=====================================================================
+
+ESP32-WROOM (no PSRAM):
+
+  Total SRAM:                    320 KB
+  FreeRTOS + WiFi stack:        -120 KB
+  Available for application:    ~200 KB
+  BASIC++ pools (BPP_EMBEDDED):  -38 KB
+  RuntimeState (reduced):        -30 KB
+  Stack + C overhead:            -10 KB
+  ----------------------------------------
+  Remaining free:                ~122 KB
+
+ESP32-WROVER (with PSRAM):
+
+  Total SRAM + PSRAM:        520 KB + 4-8 MB
+  Pools can be allocated in PSRAM via:
+    heap_caps_malloc(size, MALLOC_CAP_SPIRAM)
+  Practical limit: ~1 MB for BASIC++ pools
+
+Arduino Due:
+
+  Total SRAM:                     96 KB
+  Arduino framework overhead:    -12 KB
+  Available for application:     ~84 KB
+  BASIC++ pools (BPP_EMBEDDED):  -38 KB
+  RuntimeState (reduced):        -30 KB
+  Stack + C overhead:             -8 KB
+  ----------------------------------------
+  Remaining free:                 ~8 KB (tight but viable)
+
+
+=====================================================================
+8. VDEV PERIPHERAL ACCESS
+=====================================================================
+
+The VDev system provides device classes for embedded peripherals:
+
+  VDCLASS_GPIO       (7)   Digital I/O pins
+  VDCLASS_I2C        (8)   I2C bus
+  VDCLASS_SPI        (9)   SPI bus
+  VDCLASS_SENSOR    (10)   Sensors (accel, GPS, temp)
+  VDCLASS_DISPLAY   (11)   LCD, OLED screens
+  VDCLASS_STORAGE   (12)   SD card, flash
+  VDCLASS_HID       (13)   Touchscreen, joystick
+  VDCLASS_CAMERA    (14)   Camera module
+  VDCLASS_BRIDGE    (15)   External MCU via serial
+  VDCLASS_BLUETOOTH (16)   BLE / Bluetooth Classic
+
+To register a peripheral device:
+
+  VDev gpio_dev;
+  memset(&gpio_dev, 0, sizeof(gpio_dev));
+  gpio_dev.name = "GPIO17:";
+  gpio_dev.dev_class = VDCLASS_GPIO;
+  gpio_dev.dev_caps = VDCAP_READ | VDCAP_WRITE | VDCAP_BINARY;
+  gpio_dev.dev_read = my_gpio_read;
+  gpio_dev.dev_write = my_gpio_write;
+  gpio_dev.dev_ioctl = my_gpio_ioctl;
+  gpio_dev.dev_description = "GPIO pin 17";
+  gpio_dev.user_data = (void *)17;
+  vdev_register(&gpio_dev);
+
+From BASIC:
+
+  DEVICES                     ' List all registered devices
+  OPEN "GPIO17:" AS #3        ' Open by name
+  PRINT #3, "1"               ' Write HIGH
+  CLOSE #3
+
+
+=====================================================================
+9. LIMITATIONS
+=====================================================================
+
+Features excluded from BPP_EMBEDDED builds:
+
+  - Dynamic module loading (no dlopen / LoadLibrary)
+  - JIT compilation (no executable memory mapping)
+  - Optional modules: USB, FujiNet, UPnP
+  - Most dialects (only GW-BASIC + ECMA-116 compiled in)
+  - Full codegen/transpiler (no file I/O for output)
+
+Features with reduced capacity:
+
+  - Virtual memory segment: 4 KB (vs 64 KB normal)
+  - Program lines: 256 (vs 65,536)
+  - Stack depth: 32 (vs 1,024)
+  - String pool: 8 KB (vs 16 MB)
+  - Array elements: 1,024 (vs 4 million)
+
+Features that work identically:
+
+  - REPL (interactive prompt)
+  - All core BASIC statements (PRINT, INPUT, IF, FOR, etc.)
+  - DEF FN user functions
+  - String operations
+  - Mathematical functions
+  - VDev I/O system
+  - Security system
+  - Self-hosting specifications (.bppspec)
+  - BASIC library loading (.lib)
+
+
+=====================================================================
+10. TROUBLESHOOTING
+=====================================================================
+
+"Out of memory" at startup:
+  Reduce pool sizes in config.h BPP_EMBEDDED section.
+  Try halving PROGRAM_MEMORY_SIZE and MAX_STRING_POOL.
+
+"External functions not supported on this platform":
+  Expected on embedded builds. Dynamic .dll/.so loading
+  requires an OS with shared library support.
+
+REPL not responding over serial:
+  Check baud rate (default 115200 on ESP32).
+  Ensure line ending is CR+LF or just LF.
+  Verify UART0 is not used for other purposes.
+
+Build errors with missing headers:
+  Verify BPP_EMBEDDED is defined in your build flags.
+  Check that platform-specific headers (windows.h, dlfcn.h,
+  termios.h) are properly guarded by #ifdef.
+
+Crash on ESP32 with stack overflow:
+  Increase the FreeRTOS task stack size:
+    xTaskCreate(basicpp_task, "bpp", 16384, NULL, 5, NULL);
+  The default 4096 bytes is too small for BASIC++.
+
+
+=====================================================================
+RELATED MANUALS
+=====================================================================
+
+  External_Modules.md           Module and extension system
+  Self_Hosting_Specs.md         Specification architecture
+  B_Programmers_Guide.txt       Language reference
+  R_Virtual_Devices.txt         VDev device drivers
+
+
+=====================================================================
+END OF DOCUMENT
+=====================================================================
