@@ -10,20 +10,20 @@ This diagram shows the structural layers of BASIC++. It maps how a user interact
 
 ```mermaid
 graph TD
-    subgraph User View ("What the User Sees")
+    subgraph user_view ["What the User Sees"]
         A1["CLI Console Banner / Prompt"]
         A2["Interactive REPL Command Line"]
-        A3["Dialect Ready Prompts (Ok, READY, >, ] )"]
+        A3["Dialect Ready Prompts (Ok, READY, >, &#93; )"]
     end
 
-    subgraph Interpreter View ("What the System Sees")
+    subgraph interpreter_view ["What the System Sees"]
         B1["Main Dispatch (core/main.c)"]
         B2["Memory Pools (core/memory.c)"]
         B3["Dialect Configurations (dialect/dialect.c)"]
         B4["Security Sandbox (core/security.c)"]
     end
 
-    subgraph Hardware Virtualization ("Virtual Device Layer")
+    subgraph hardware_virtualization ["Virtual Device Layer"]
         C1["VDev Registry (virtual/vdev.c)"]
         C2["VFS Sandboxed Filesystem (io/vfs.c)"]
         C3["MEMMAP Emulated Layouts (memory/memmap.c)"]
@@ -137,19 +137,19 @@ The Virtual Device Layer (`VDev`) acts as the driver layer of BASIC++. It maps s
 
 ```mermaid
 graph TD
-    subgraph BASIC I/O Commands
+    subgraph basic_io ["BASIC I/O Commands"]
         A1["OPEN 'device:' FOR mode AS #ch"]
         A2["PRINT #ch, 'data'"]
         A3["GET #ch, record"]
         A4["CLOSE #ch"]
     end
 
-    subgraph VDev Slot Management
+    subgraph vdev_slot ["VDev Slot Management"]
         B1["Device File Descriptor Mapping (vdev.c)"]
         B2["Find registered driver by name prefix"]
     end
 
-    subgraph Active Driver Callbacks
+    subgraph active_drivers ["Active Driver Callbacks"]
         C1["dev_con: Console (Standard I/O)"]
         C2["dev_file: Virtual Filesystem (VFS)"]
         C3["dev_net: Sockets (TCP/UDP, NTP)"]
