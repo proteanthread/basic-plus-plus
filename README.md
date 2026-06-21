@@ -482,7 +482,7 @@ This classification defines a specialized subset of Modules. A "Plugin" is a C-c
 
 ## Section 12: Documentation
 
-A comprehensive documentation suite of 36 reference manuals and tutorials is included:
+A comprehensive documentation suite of 37 reference manuals and tutorials is included:
 
 | Document | Subject |
 |:---------|:--------|
@@ -496,6 +496,7 @@ A comprehensive documentation suite of 36 reference manuals and tutorials is inc
 | `Using_Aliases.txt` | Keyword remapping with ALIAS |
 | `Arrays_And_Matrices.txt` | DIM, REDIM, MAT operations, sorting |
 | `File_IO.txt` | Sequential, random-access, binary files |
+| `flowchart.txt` | Visual flowcharts and architecture diagrams |
 | `Older_Dialects.txt` | Emulating classic systems and memory maps |
 | `Creating_Dialects.txt` | Building custom dialect configurations |
 | `Advanced_DEF.txt` | DEF FN, FUNCTION/SUB, closures |

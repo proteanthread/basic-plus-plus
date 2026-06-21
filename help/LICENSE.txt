@@ -1,7 +1,7 @@
-# Modified MIT License
+Modified MIT License
 
 
-### Copyright (c) 2025 BASIC++ Community
+Copyright (c) 2025 BASIC++ Community
 
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,4 +25,4 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-## THIS SOFTWARE IS NOT TO BE SOLD.
+THIS SOFTWARE IS NOT TO BE SOLD.

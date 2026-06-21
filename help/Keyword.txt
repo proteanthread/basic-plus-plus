@@ -450,9 +450,9 @@ Properties are stored in a global array indexed by keyword ID.
 Each keyword can have up to 8 key-value pairs (MAX_KWPROPS).
 
     typedef struct {
-        char key[32];        /* property name */
-        char value[64];      /* property value as string */
-        int  set;            /* 1 = active, 0 = cleared */
+        char key[32];        / property name /
+        char value[64];      / property value as string /
+        int  set;            / 1 = active, 0 = cleared /
     } KwProp;
 
 When a keyword handler executes (e.g., parse_print), it calls
@@ -460,7 +460,7 @@ keyword_prop_get() to check whether a property is set:
 
     const char *val = keyword_prop_get(KW_PRINT, "UPPERCASE");
     if (val && strcmp(val, "ON") == 0) {
-        /* convert output to uppercase */
+        / convert output to uppercase /
     }
 
 This check is done every time the keyword executes, so changing

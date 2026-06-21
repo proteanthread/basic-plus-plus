@@ -3,7 +3,7 @@ Library System
 
 ---
 
-## Table of Contents
+Table of Contents
 
 - Loading Libraries
 - Unloading Libraries

@@ -59,7 +59,7 @@ Running BASIC++ from bash
 
   #!/bin/bash
 
-  # Run a BASIC++ program
+Run a BASIC++ program
   basicpp myprog.bas
   if [ $? -ne 0 ]; then
       echo "BASIC++ program failed!"
@@ -69,21 +69,21 @@ Running BASIC++ from bash
 Piping data through BASIC++
 ------------------------------
 
-  # Pipe data into a BASIC++ program via INPUT
+Pipe data into a BASIC++ program via INPUT
   echo "42" | basicpp calculate.bas
 
-  # Capture BASIC++ output in a variable
+Capture BASIC++ output in a variable
   RESULT=$(basicpp compute.bas)
   echo "Result: $RESULT"
 
-  # Use BASIC++ as a filter in a pipeline
+Use BASIC++ as a filter in a pipeline
   cat data.csv | basicpp transform.bas | sort > output.csv
 
 Inline BASIC++ with heredoc
 ------------------------------
 
   #!/bin/bash
-  # Run inline BASIC++ code using a temp file
+Run inline BASIC++ code using a temp file
   TMPFILE=$(mktemp /tmp/bpp.XXXXXX.bas)
   cat > "$TMPFILE" << 'BASIC'
   10 FOR I = 1 TO 10
@@ -97,7 +97,7 @@ Using BASIC++ output in bash conditionals
 --------------------------------------------
 
   #!/bin/bash
-  # BASIC++ program that exits with SHELL exit code
+BASIC++ program that exits with SHELL exit code
   COUNT=$(basicpp count_records.bas)
   if [ "$COUNT" -gt 100 ]; then
       echo "Too many records: $COUNT"
@@ -108,7 +108,7 @@ Looping with BASIC++
 -----------------------
 
   #!/bin/bash
-  # Process multiple files with BASIC++
+Process multiple files with BASIC++
   for FILE in data/*.csv; do
       echo "Processing $FILE..."
       basicpp process.bas "$FILE"
@@ -201,7 +201,7 @@ Build automation
 Running BASIC++ from PowerShell
 ----------------------------------
 
-  # Run a BASIC++ program
+Run a BASIC++ program
   & .\basicpp.exe myprog.bas
   if ($LASTEXITCODE -ne 0) {
       Write-Error "BASIC++ program failed!"
@@ -211,11 +211,11 @@ Running BASIC++ from PowerShell
 Capturing output
 ------------------
 
-  # Capture output as a string
+Capture output as a string
   $result = & .\basicpp.exe compute.bas
   Write-Host "Result: $result"
 
-  # Capture output as an array of lines
+Capture output as an array of lines
   $lines = & .\basicpp.exe report.bas
   foreach ($line in $lines) {
       Write-Host ">> $line"
@@ -224,10 +224,10 @@ Capturing output
 Piping data
 -------------
 
-  # Pipe data into BASIC++
+Pipe data into BASIC++
   "42" | & .\basicpp.exe calculate.bas
 
-  # Use BASIC++ in a pipeline
+Use BASIC++ in a pipeline
   Get-Content data.csv |
       & .\basicpp.exe transform.bas |
       Sort-Object |
@@ -236,7 +236,7 @@ Piping data
 Processing multiple files
 ----------------------------
 
-  # Process all .bas test files
+Process all .bas test files
   Get-ChildItem tests\*.bas | ForEach-Object {
       Write-Host "Testing $($_.Name)..."
       & .\basicpp.exe $_.FullName
@@ -248,7 +248,7 @@ Processing multiple files
 PowerShell functions wrapping BASIC++
 ----------------------------------------
 
-  # Create a reusable function
+Create a reusable function
   function Invoke-Basic {
       param(
           [Parameter(Mandatory)]
@@ -263,7 +263,7 @@ PowerShell functions wrapping BASIC++
       return $LASTEXITCODE
   }
 
-  # Usage:
+Usage:
   $exitCode = Invoke-Basic -Program "analyze.bas"
   $exitCode = Invoke-Basic -Program "calc.bas" -Input "42"
 
@@ -288,7 +288,7 @@ Structured error handling
 Scheduled tasks
 -----------------
 
-  # Register a scheduled task that runs BASIC++
+Register a scheduled task that runs BASIC++
   $action = New-ScheduledTaskAction `
       -Execute "C:\tools\basicpp.exe" `
       -Argument "C:\scripts\daily_report.bas"
@@ -471,7 +471,7 @@ Make BASIC++ programs directly executable:
     Uptime: 14:30:45 up 42 days, ...
 
   Add to crontab:
-    0 6 * * * /home/user/scripts/daily_check.bas >> /var/log/daily.log
+    0 6   * /home/user/scripts/daily_check.bas >> /var/log/daily.log
 
 The #! line is silently skipped by the BASIC++ file loader.
 
@@ -538,14 +538,14 @@ D. Data pipeline (bash)
 --------------------------
 
   #!/bin/bash
-  # Extract -> Transform -> Load
+Extract -> Transform -> Load
   basicpp extract.bas | basicpp transform.bas > clean_data.csv
   basicpp load.bas
 
 E. Deployment script (PowerShell)
 ------------------------------------
 
-  # Deploy with BASIC++ config generator
+Deploy with BASIC++ config generator
   & .\basicpp.exe gen_config.bas
   if ($LASTEXITCODE -ne 0) { exit 1 }
 

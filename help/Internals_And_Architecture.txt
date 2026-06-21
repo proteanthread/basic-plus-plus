@@ -206,9 +206,9 @@ and safe for embedded or constrained environments.
   Each pool is a flat byte array with bump allocation:
 
     typedef struct MemoryPool {
-        char *base;    /* start of allocated block */
-        long  size;    /* total capacity in bytes  */
-        long  used;    /* current watermark        */
+        char *base;    / start of allocated block /
+        long  size;    / total capacity in bytes  /
+        long  used;    / current watermark        /
     } MemoryPool;
 
   Allocation advances 'used'; there is no individual free().
@@ -270,20 +270,20 @@ Variables, DATA items, expression results, and function return
 values are all BValues.
 
   typedef enum ValueType {
-      VAL_INTEGER = 0,   /* long integer             */
-      VAL_FLOAT,         /* double precision float    */
-      VAL_STRING         /* pointer into string pool  */
+      VAL_INTEGER = 0,   / long integer             /
+      VAL_FLOAT,         / double precision float    /
+      VAL_STRING         / pointer into string pool  /
   } ValueType;
 
   typedef struct BValue {
       ValueType type;
       union {
-          long   ival;         /* VAL_INTEGER */
-          double fval;         /* VAL_FLOAT   */
+          long   ival;         / VAL_INTEGER /
+          double fval;         / VAL_FLOAT   /
           struct {
-              char *data;      /* borrowed pointer */
-              int   length;    /* byte count       */
-          } sval;              /* VAL_STRING  */
+              char *data;      / borrowed pointer /
+              int   length;    / byte count       /
+          } sval;              / VAL_STRING  /
       } v;
   } BValue;
 
@@ -330,9 +330,9 @@ values are all BValues.
 String data is stored in a bump-allocated pool:
 
   typedef struct StringPool {
-      char *buffer;         /* pool base */
-      int   capacity;       /* total bytes */
-      int   used;           /* current watermark */
+      char *buffer;         / pool base /
+      int   capacity;       / total bytes /
+      int   used;           / current watermark /
   } StringPool;
 
   stringpool_alloc(pool, len)   - allocate len bytes, return ptr
@@ -404,11 +404,11 @@ The lexer converts source text into a stream of Token structs.
 
     Lexer lex;
     lexer_init(&lex, source_text);
-    lexer_next(&lex);       /* advance to first token */
+    lexer_next(&lex);       / advance to first token /
 
     while (lex.current.type != TOK_EOF) {
         /* process lex.current */
-        lexer_next(&lex);   /* advance */
+        lexer_next(&lex);   / advance /
     }
 
 
@@ -621,7 +621,7 @@ The stack depth is MAX_STACK_DEPTH (256 frames).
 
 11.1  Pushing
 
-  int runtime_push(RuntimeState *rt, const StackFrame *frame);
+  int runtime_push(RuntimeState rt, const StackFrame frame);
 
   Returns 0 on success.  Returns -1 and raises ERR_SORRY if the
   stack is full.
@@ -740,15 +740,15 @@ ports, network sockets -- flows through the same interface.
   typedef struct VDev {
       char        name[VDEV_MAX_NAME];
       VDevClass   dev_class;
-      unsigned    caps;        /* capability flags */
+      unsigned    caps;        / capability flags /
       int         active;
-      VDevRead    fn_read;     /* function pointers */
+      VDevRead    fn_read;     / function pointers /
       VDevWrite   fn_write;
       VDevOpen    fn_open;
       VDevClose   fn_close;
       VDevStatus  fn_status;
       VDevIoctl   fn_ioctl;
-      void       *user_data;   /* opaque state */
+      void       *user_data;   / opaque state /
   } VDev;
 
 13.2  Device Classes
@@ -821,9 +821,9 @@ built-in functions, statements, and operators.
       FuncType     type;        /* FUNC_NUMERIC, FUNC_STRING, etc. */
       int          min_args;
       int          max_args;
-      FuncHandler  handler;     /* C function pointer */
-      unsigned     flags;       /* dialect, security flags */
-      int          dialect_mask; /* which dialects enable this */
+      FuncHandler  handler;     / C function pointer /
+      unsigned     flags;       / dialect, security flags /
+      int          dialect_mask; / which dialects enable this /
   } FunctionEntry;
 
 14.2  How It Works
@@ -862,7 +862,7 @@ built-in functions, statements, and operators.
 
   The handler function has the signature:
 
-    BValue my_func(RuntimeState *rt, BValue *args, int argc);
+    BValue my_func(RuntimeState rt, BValue args, int argc);
 
 
 =====================================================================
@@ -1035,8 +1035,8 @@ execution engine.
 
   The eval stack is a fixed-size array of BValue items:
 
-    BValue eval_items[VM_EVAL_STACK_SIZE];  /* 128 entries */
-    int    eval_top;                        /* -1 = empty  */
+    BValue eval_items[VM_EVAL_STACK_SIZE];  / 128 entries /
+    int    eval_top;                        / -1 = empty  /
 
   Push/pop operations are used for postfix expression evaluation
   in the compiler path.  The interpreter path uses C function
@@ -1142,7 +1142,7 @@ provides conditional behavior for platform-specific operations.
   Modules use platform queries rather than #ifdef:
 
     if (platform_is_windows()) {
-        /* Windows-specific behavior */
+        / Windows-specific behavior /
     }
 
   This keeps the code portable without scattering preprocessor
@@ -1303,7 +1303,7 @@ This section provides quick recipes for common extension tasks.
 23.2  Adding a New Built-In Function
 
   1. Write the handler in builtins.c:
-     BValue builtin_myfunc(RuntimeState *rt, BValue *args, int n)
+     BValue builtin_myfunc(RuntimeState rt, BValue args, int n)
   2. Register it in funcreg_init() or in a module's init:
      funcreg_register("MYFUNC$", FUNC_STRING, 1, 1,
                       builtin_myfunc, 0)

@@ -317,7 +317,7 @@
       Symbol   Meaning           Example   Result
       ------   -------           -------   ------
         ^      Exponentiation    2 ^ 10    1024
-        *      Multiplication    6 * 7     42
+              Multiplication    6  7     42
         /      Division          22 / 7    3.14286
         MOD    Modulus           17 MOD 5  2
         +      Addition          10 + 5    15
@@ -666,7 +666,7 @@
      numbers (1, 1, 2, 3, 5, 8, 13, 21 ...)
 
   2. Write a program that asks for a number and prints
-     its factorial.  (5! = 5*4*3*2*1 = 120)
+     its factorial.  (5! = 54321 = 120)
 
   3. Write a multiplication drill:  generate random
      problems (e.g., "What is 7 x 8?"), check the
@@ -1482,7 +1482,7 @@
   Here is a complete, well-structured program that
   demonstrates every principle from this book:
 
-  *** STUDENT GRADE MANAGER ***
+   STUDENT GRADE MANAGER 
 
       10 REM ================================
       11 REM  STUDENT GRADE MANAGER

@@ -1,11 +1,11 @@
-# Error Handling in BASIC++
+Error Handling in BASIC++
 
-**Version 4.0.1**
+Version 4.0.1
 
 
 ---
 
-## Table of Contents
+Table of Contents
 
 - Error Trapping
   - ON ERROR GOTO
@@ -28,57 +28,57 @@ BASIC++ provides structured error handling compatible with GW-BASIC and QBasic e
 
 ---
 
-## 1. Error Trapping
+1. Error Trapping
 
-### ON ERROR GOTO
+ON ERROR GOTO
 
-```basic
+
 10 ON ERROR GOTO 1000
 20 PRINT 1/0              ' Division by zero!
 30 PRINT "This won't print"
 40 END
 1000 PRINT "Error"; ERR; "at line"; ERL
 1010 RESUME NEXT
-```
+
 
 When an error occurs, execution jumps to the handler line.
 
-### ON ERROR GOTO 0
+ON ERROR GOTO 0
 
 Disable error trapping (errors halt the program):
 
-```basic
+
 10 ON ERROR GOTO 0       ' Default behavior
-```
+
 
 ---
 
-## 2. Error Variables
+2. Error Variables
 
 | Variable | Description |
 |----------|-------------|
-| `ERR` | The error number of the last error |
-| `ERL` | The line number where the error occurred |
+| ERR | The error number of the last error |
+| ERL | The line number where the error occurred |
 
-```basic
+
 1000 PRINT "Error #"; ERR
 1010 PRINT "At line "; ERL
 1020 IF ERR = 11 THEN PRINT "Division by zero"
 1030 IF ERR = 6  THEN PRINT "Overflow"
 1040 RESUME NEXT
-```
+
 
 ---
 
-## 3. RESUME Statements
+3. RESUME Statements
 
 | Statement | Description |
 |-----------|-------------|
-| `RESUME` | Retry the statement that caused the error |
-| `RESUME NEXT` | Skip the failed statement, continue with the next |
-| `RESUME line` | Jump to a specific line |
+| RESUME | Retry the statement that caused the error |
+| RESUME NEXT | Skip the failed statement, continue with the next |
+| RESUME line | Jump to a specific line |
 
-```basic
+
 ' RESUME — retry after fixing the problem
 1000 A = 1              ' Set a safe value
 1010 RESUME              ' Retry the failed line
@@ -90,18 +90,18 @@ Disable error trapping (errors halt the program):
 ' RESUME line — jump to specific recovery point
 1000 PRINT "Recovering..."
 1010 RESUME 100          ' Continue from line 100
-```
+
 
 ---
 
-## 4. ERROR Statement
+4. ERROR Statement
 
 Trigger an error deliberately:
 
-```basic
+
 ERROR 5                  ' Raise error #5
 ERROR 200                ' User-defined error
-```
+
 
 Useful for:
 - Testing error handlers
@@ -110,7 +110,7 @@ Useful for:
 
 ---
 
-## 5. Error Codes
+5. Error Codes
 
 Standard GW-BASIC/QBasic error codes:
 
@@ -162,26 +162,26 @@ Standard GW-BASIC/QBasic error codes:
 | 75 | Path/file access error |
 | 76 | Path not found |
 
-**User-defined errors:** 200–255 are reserved for applications.
+User-defined errors: 200–255 are reserved for applications.
 
 ---
 
-## 6. BEEP on Error
+6. BEEP on Error
 
-```basic
+
 BEEP ON                  ' Enable error beep (default)
 BEEP OFF                 ' Disable error beep
-```
+
 
 The beep is suppressed during batch execution and redirected output.
 
 ---
 
-## 7. Error Handling Patterns
+7. Error Handling Patterns
 
-### A. Simple Guard
+A. Simple Guard
 
-```basic
+
 10 ON ERROR GOTO 100
 20 OPEN "data.txt" FOR INPUT AS #1
 30 ' Process file...
@@ -190,11 +190,11 @@ The beep is suppressed during batch execution and redirected output.
 60 END
 100 IF ERR = 53 THEN PRINT "File not found!" : END
 110 ON ERROR GOTO 0 : ERROR ERR  ' Re-raise unknown
-```
 
-### B. Retry with Timeout
 
-```basic
+B. Retry with Timeout
+
+
 10 ON ERROR GOTO 100
 20 TRIES = 0
 30 OPEN "lockfile.dat" FOR OUTPUT AS #1
@@ -206,36 +206,36 @@ The beep is suppressed during batch execution and redirected output.
 120 PRINT "Retry #"; TRIES
 130 SHELL "sleep 1"
 140 RESUME
-```
 
-### C. Graceful Degradation
 
-```basic
+C. Graceful Degradation
+
+
 10 ON ERROR GOTO 100
 20 A$ = SHELL$("advanced_command")
 30 GOTO 200
 100 A$ = "default value"    ' Fallback
 110 RESUME 200
 200 PRINT "Result: "; A$
-```
 
-### D. Error Logging
 
-```basic
+D. Error Logging
+
+
 10 ON ERROR GOTO 1000
 20 ' ... program code ...
 999 END
 1000 PRINT >> "error.log", DATE$; " "; TIME$; " Error "; ERR; " at "; ERL
 1010 RESUME NEXT
-```
+
 
 ---
 
-## 8. Notes
+8. Notes
 
-- `ON ERROR GOTO` is global — only one handler at a time
-- `RESUME` clears the error state
+- ON ERROR GOTO is global — only one handler at a time
+- RESUME clears the error state
 - Nested errors (error inside error handler) halt the program
 - In direct mode, errors always print immediately
-- `ERR` and `ERL` are reset by `RESUME` or a successful `RUN`
-- `ON ERROR GOTO 0` disables trapping and re-enables default error reporting (print message and stop)
+- ERR and ERL are reset by RESUME or a successful RUN
+- ON ERROR GOTO 0 disables trapping and re-enables default error reporting (print message and stop)
