@@ -5,7 +5,7 @@ A Technical Guide to the Interpreter's Design
 Version 4.0.1
 
 TABLE OF CONTENTS
----------------------------------------------------------------------
+-----------------
   1.  Introduction
   2.  Source File Map
   3.  Boot Sequence
@@ -73,7 +73,7 @@ Each .h file contains the public interface; the matching .c file
 contains the implementation.
 
   CORE PIPELINE
----------------------------------------------------------------------
+  -------------
   main.c            Entry point, REPL loop, bootstrap sequence
   lexer.h/.c        Tokenizer (source text -> token stream)
   parser.h/.c       Recursive-descent parser (parse-and-execute)
@@ -81,14 +81,14 @@ contains the implementation.
   runtime.h/.c      Interpreter state (variables, stack, position)
 
   DATA & MEMORY
----------------------------------------------------------------------
+  -------------
   config.h          Compile-time constants and limits
   memory.h/.c       Memory pools and program line storage
   value.h/.c        Tagged union value type (int/float/string)
   stringpool.h/.c   Bump-allocated string storage
 
   SUBSYSTEMS
----------------------------------------------------------------------
+  ----------
   errors.h/.c       Three-level error model (WHAT/HOW/SORRY)
   dialect.h/.c      Dialect definitions and runtime switching
   funcreg.h/.c      Central function/keyword registry
@@ -104,20 +104,20 @@ contains the implementation.
   detok.h/.c        Detokenizer (token -> source text)
 
   COMPILER (OPTIONAL)
----------------------------------------------------------------------
+  -------------------
   ast.h/.c          Abstract syntax tree (compiler only)
   compiler.h/.c     Transpiler front-end (BASIC -> C89)
   codegen.h/.c      C89 code generation back-end
   bytecode.h/.c     Bytecode format definitions
 
   MODULES
----------------------------------------------------------------------
+  -------
   mod_stdlib.h/.c   Standard library module
   mod_usb.h/.c      USB device module
   builtins.h/.c     Built-in function implementations
 
   VM
----------------------------------------------------------------------
+  ---
   vm.h/.c           Opcode dispatch table and eval stack
 
 
@@ -195,10 +195,10 @@ and safe for embedded or constrained environments.
   |  (MAX_PROGRAM_LINES entries)  |  Sorted by line number
   +-------------------------------+
   |  Variable Pool (64K)          |  A-Z variables, @() array,
-  ----------------------------------------------------------------------
+  |                               |  named variables, DIM arrays
   +-------------------------------+
   |  Scratch Pool (64K)           |  Temporary buffers, reset
-  ----------------------------------------------------------------------
+  |                               |  after every statement
   +-------------------------------+
 
 4.1  MemoryPool
@@ -206,7 +206,7 @@ and safe for embedded or constrained environments.
   Each pool is a flat byte array with bump allocation:
 
     typedef struct MemoryPool {
-        char base;    / start of allocated block */
+        char *base;    /* start of allocated block */
         long  size;    /* total capacity in bytes  */
         long  used;    /* current watermark        */
     } MemoryPool;
@@ -281,7 +281,7 @@ values are all BValues.
           long   ival;         /* VAL_INTEGER */
           double fval;         /* VAL_FLOAT   */
           struct {
-              char data;      / borrowed pointer */
+              char *data;      /* borrowed pointer */
               int   length;    /* byte count       */
           } sval;              /* VAL_STRING  */
       } v;
@@ -330,7 +330,7 @@ values are all BValues.
 String data is stored in a bump-allocated pool:
 
   typedef struct StringPool {
-      char buffer;         / pool base */
+      char *buffer;         /* pool base */
       int   capacity;       /* total bytes */
       int   used;           /* current watermark */
   } StringPool;
@@ -748,7 +748,7 @@ ports, network sockets -- flows through the same interface.
       VDevClose   fn_close;
       VDevStatus  fn_status;
       VDevIoctl   fn_ioctl;
-      void       user_data;   / opaque state */
+      void       *user_data;   /* opaque state */
   } VDev;
 
 13.2  Device Classes

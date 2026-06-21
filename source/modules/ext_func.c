@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: ext_func.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    C-level modular expansions providing hardware wrappers and runtime libraries.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Modules register customized functions at boot to dynamically extend vocabulary.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Module naming, registered commands list, setup/shutdown details.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Module lifecycle dispatcher, keyword override bindings.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Ensure mod_init does not fail. Verify that linkage matches build profiles.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - ext_func.c
  // ---

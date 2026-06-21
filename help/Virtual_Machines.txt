@@ -98,37 +98,37 @@ The virtualization stack has three distinct layers.  Each layer
 can be used independently or combined for full machine emulation.
 
   +------------------------------------------------------+
-  BASIC++ Program
+  |                  BASIC++ Program                      |
   +------------------------------------------------------+
-  VIRTUAL MACHINE (VM)
-  - Opcode dispatch table
-  - State machine (STOPPED/RUNNING/PAUSED/HALTED)
-  - Expression evaluation stack
-  - Control flow (GOTO/GOSUB/RETURN/FOR-NEXT)
+  |  VIRTUAL MACHINE (VM)                                 |
+  |  - Opcode dispatch table                              |
+  |  - State machine (STOPPED/RUNNING/PAUSED/HALTED)      |
+  |  - Expression evaluation stack                        |
+  |  - Control flow (GOTO/GOSUB/RETURN/FOR-NEXT)          |
   +------------------------------------------------------+
-  VIRTUAL CONSOLE
-  - Screen buffer (text: 80x25, gfx: 320x200)
-  - Cursor position and shape
-  - Color attributes (foreground/background)
-  - Multiple pages (SCREEN 0-7)
-  - Graphics framebuffer (PSET/LINE/CIRCLE)
+  |  VIRTUAL CONSOLE                                      |
+  |  - Screen buffer (text: 80x25, gfx: 320x200)         |
+  |  - Cursor position and shape                          |
+  |  - Color attributes (foreground/background)           |
+  |  - Multiple pages (SCREEN 0-7)                        |
+  |  - Graphics framebuffer (PSET/LINE/CIRCLE)            |
   +------------------------------------------------------+
-  VIRTUAL TERMINAL
-  - ANSI/VT escape code translation
-  - Character set mapping (ASCII/PETSCII/ATASCII)
-  - Keyboard scan code abstraction
-  - Terminal capability detection
+  |  VIRTUAL TERMINAL                                     |
+  |  - ANSI/VT escape code translation                    |
+  |  - Character set mapping (ASCII/PETSCII/ATASCII)      |
+  |  - Keyboard scan code abstraction                     |
+  |  - Terminal capability detection                      |
   +------------------------------------------------------+
-  VDev LAYER (VDev2 - Phase 16)
-  - CON: console device
-  - ERR: error device
-  - FILE: file I/O device (with binary R/W/seek)
-  - User-registered devices (slots 3-63)
-  - Device classes, caps, IOCTL2, discovery
+   |  VDev LAYER (VDev2 - Phase 16)                       |
+   |  - CON: console device                                |
+   |  - ERR: error device                                  |
+   |  - FILE: file I/O device (with binary R/W/seek)       |
+   |  - User-registered devices (slots 3-63)               |
+   |  - Device classes, caps, IOCTL2, discovery             |
   +------------------------------------------------------+
-  HOST OPERATING SYSTEM
-  - stdout/stdin/stderr (Windows, Linux, FreeDOS)
-  - File system, keyboard, speaker
+  |  HOST OPERATING SYSTEM                                |
+  |  - stdout/stdin/stderr (Windows, Linux, FreeDOS)      |
+  |  - File system, keyboard, speaker                     |
   +------------------------------------------------------+
 
 Key principle: the interpreter NEVER calls host OS functions
@@ -237,7 +237,7 @@ Dispatch table entry structure:
       VMOpcode    opcode;     /* OP_PRINT, OP_GOTO, etc.  */
       KeywordId   keyword;    /* KW_PRINT, KW_GOTO, etc.  */
       VMHandler   handler;    /* function pointer          */
-      const char name;       / "PRINT", "GOTO" (for TRON) */
+      const char *name;       /* "PRINT", "GOTO" (for TRON) */
   };
 
 Handler function signature:
@@ -1058,14 +1058,14 @@ Example — full Commodore 64 session:
 
   MACHINE "C64"
   Ready.
-  PRINT PEEK(53280)
+  > PRINT PEEK(53280)
    14
-  POKE 53280, 0
-  PRINT CHR$(147)
+  > POKE 53280, 0
+  > PRINT CHR$(147)
   (screen clears - PETSCII clear screen)
-  10 PRINT "HELLO FROM C64"
-  20 PRINT PEEK(53280)
-  RUN
+  > 10 PRINT "HELLO FROM C64"
+  > 20 PRINT PEEK(53280)
+  > RUN
   HELLO FROM C64
    0
 
@@ -1229,7 +1229,7 @@ you can intercept it at the C level:
 
   /* Save the original CON: putc */
   VDev *con = vdev_get(VDEV_CON);
-  int (orig_putc)(VDev, int) = con->dev_putc;
+  int (*orig_putc)(VDev*, int) = con->dev_putc;
 
   /* Install interceptor */
   static int my_putc(VDev *d, int ch) {
@@ -1365,7 +1365,7 @@ two screen pages at different widths:
   WIDTH 40
   COLOR 14, 6               ' Light blue on blue (C64 colors)
   CLS
-  PRINT "* COMMODORE 64 BASIC V2 *"
+  PRINT "*** COMMODORE 64 BASIC V2 ***"
 
   ' Page 1: 80-column VDC output
   SCREEN , , 1, 0            ' Write to page 1, view page 0
@@ -1488,13 +1488,13 @@ Each handler:
 When TRON (Trace ON) is active, the VM prints the line
 number in brackets before executing each line:
 
-  TRON
-  RUN
+  > TRON
+  > RUN
   [10] [20] [30] [40] [50]
   Hello World
   [60]
 
-  TROFF
+  > TROFF
 
 Trace output goes through vdev_printf(CON, "[%d] ", linenum)
 before each handler call.  This means trace output can be
@@ -1675,7 +1675,7 @@ automatically.
   MACHINE "C64"
   CLS
   PRINT
-  PRINT "    ** COMMODORE 64 BASIC V2 **"
+  PRINT "    **** COMMODORE 64 BASIC V2 ****"
   PRINT
   PRINT " 64K RAM SYSTEM  38911 BASIC BYTES FREE"
   PRINT

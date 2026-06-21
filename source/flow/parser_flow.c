@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: parser_flow.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Program flow control statements including GOTO, GOSUB/RETURN, loops (FOR/NEXT, WHILE/WEND, DO/LOOP), and event/interrupt handlers.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Maintains execution pointers and nested flow stack frames (such as FOR loop frames).
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Maximum loop nesting limits, flow tracing printouts.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    GOSUB stack logic, execution loop frame structure, line number target checking.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Ensure nested flow stacks do not overflow (increase MAX_STACK_DEPTH). Verify return addresses align with target loops.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - parser_flow.c
  // ---

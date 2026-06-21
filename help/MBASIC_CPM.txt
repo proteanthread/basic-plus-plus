@@ -1,37 +1,45 @@
-MBASIC (Microsoft BASIC for CP/M) Dialect Reference
+# MBASIC (Microsoft BASIC for CP/M) Dialect Reference
 
-Version 4.0.1
-Dialect Code: MBAS
+**Version 4.0.1**
 
----------------------------------------------------------------------
+---
 
+## Table of Contents
 
-=====================================================================
-TABLE OF CONTENTS
-=====================================================================
+- History
+  - Lineage
+- Activation
+- Key Features
+  - Core Language
+  - String Functions
+  - File I/O
+  - Differences from GW-BASIC
+- Dialect Configuration
+- Example Programs
+  - Classic "Guess the Number" (MBASIC style)
+  - File I/O example
+- Historical Significance
+- See Also
 
-   1.  History
-   2.  Activation
-   3.  Key Features
-   4.  Dialect Configuration
-   5.  Example Programs
-   6.  Historical Significance
-   7.  See Also
+---
 
+**Dialect Code:** `MBAS`
 
-History
+---
+
+## History
 
 MBASIC was Microsoft's BASIC interpreter for CP/M, the dominant operating system for 8-bit microcomputers running Intel 8080 and Zilog Z80 processors. It was one of the earliest and most important products from Microsoft, founded by Bill Gates and Paul Allen.
 
-Lineage
+### Lineage
 
-  Year                Product
-  ----------------------------------------------------------------------
-  1975                Altair BASIC (first Microsoft product, for MITS Altair 8800)
-  1977                MBASIC 4.51 for CP/M (8080/Z80 systems)
-  1978                MBASIC 5.x with extended features
-  1981                BASICA for IBM PC (ROM-based, required IBM hardware)
-  1983                GW-BASIC (Generic Wonder BASIC, ran on any PC clone)
+| Year | Product |
+|------|---------|
+| 1975 | Altair BASIC (first Microsoft product, for MITS Altair 8800) |
+| 1977 | MBASIC 4.51 for CP/M (8080/Z80 systems) |
+| 1978 | MBASIC 5.x with extended features |
+| 1981 | BASICA for IBM PC (ROM-based, required IBM hardware) |
+| 1983 | GW-BASIC (Generic Wonder BASIC, ran on any PC clone) |
 
 MBASIC is the direct ancestor of GW-BASIC, BASICA, and ultimately QBasic and Visual Basic. Every Microsoft BASIC dialect traces its roots back to the original MBASIC for CP/M.
 
@@ -43,58 +51,61 @@ MBASIC ran on hundreds of CP/M machines including:
 
 It was typically loaded from an 8-inch floppy disk and operated in 48K–64K of RAM, with the interpreter itself using about 20K.
 
----------------------------------------------------------------------
+---
 
-Activation
+## Activation
 
+```basic
 DIALECT "MBAS"
+```
 
 This changes:
-- Statement separator: : (colon)
-- LET is optional
-- THEN is required in IF statements
+- Statement separator: `:` (colon)
+- `LET` is optional
+- `THEN` is required in IF statements
 - Maximum line number: 65529
-- Ready prompt: Ok
+- Ready prompt: `Ok`
 - Print zone width: 14
-- CLS available
-- WHILE/WEND available (added in MBASIC 5.x)
-- No DO/LOOP (came later with GW-BASIC)
+- `CLS` available
+- `WHILE/WEND` available (added in MBASIC 5.x)
+- No `DO/LOOP` (came later with GW-BASIC)
 - Extended variable names
 
----------------------------------------------------------------------
+---
 
-Key Features
+## Key Features
 
-Core Language
+### Core Language
 
 MBASIC established the "Microsoft BASIC standard" that all subsequent Microsoft BASICs would follow:
 
 - Single and double precision floating point
-- String variables with $ suffix
-- DIM arrays (up to 255 dimensions, though 1D and 2D most common)
-- Multi-statement lines with : separator
+- String variables with `$` suffix
+- `DIM` arrays (up to 255 dimensions, though 1D and 2D most common)
+- Multi-statement lines with `:` separator
 - Automatic line numbering (no optional line numbers yet)
-- DEF FN for user-defined functions
-- ON GOTO / ON GOSUB computed branches
-- WHILE/WEND loops (MBASIC 5.x+)
-- Error trapping with ON ERROR GOTO
+- `DEF FN` for user-defined functions
+- `ON GOTO` / `ON GOSUB` computed branches
+- `WHILE/WEND` loops (MBASIC 5.x+)
+- Error trapping with `ON ERROR GOTO`
 
-String Functions
+### String Functions
 
 All the classic Microsoft string functions were present:
 
-  Function            Function            Function
-  ----------------------------------------------------------------------
-  LEFT$(s$, n)        LEN(s$)             MID$(s$, p, n)
-  RIGHT$(s$, n)       ASC(s$)             CHR$(n)
-  STR$(n)             VAL(s$)             INSTR(s$, t$)
-  STRING$(n, c)       SPACE$(n)           HEX$(n)
-  OCT$(n)
+| Function | Function | Function |
+|----------|----------|----------|
+| `LEFT$(s$, n)` | `LEN(s$)` | `MID$(s$, p, n)` |
+| `RIGHT$(s$, n)` | `ASC(s$)` | `CHR$(n)` |
+| `STR$(n)` | `VAL(s$)` | `INSTR(s$, t$)` |
+| `STRING$(n, c)` | `SPACE$(n)` | `HEX$(n)` |
+| `OCT$(n)` | | |
 
-File I/O
+### File I/O
 
 MBASIC supported sequential file I/O through CP/M's BDOS:
 
+```basic
 OPEN "I", #1, "DATA.DAT"     ' Open for input
 OPEN "O", #1, "DATA.DAT"     ' Open for output
 OPEN "R", #1, "DATA.DAT"     ' Open for random access
@@ -102,52 +113,54 @@ CLOSE #1
 PRINT #1, expr
 INPUT #1, var
 LINE INPUT #1, var$
+```
 
-Differences from GW-BASIC
+### Differences from GW-BASIC
 
 MBASIC predates several GW-BASIC features:
-- No SOUND or PLAY (no PC speaker)
-- No SCREEN modes (CP/M terminals were character-only)
-- No PCOPY, PALETTE, VIEW, WINDOW (no graphics)
-- No DO/LOOP (only WHILE/WEND and FOR/NEXT)
-- No KEY ON/OFF/LIST (no function key bar)
-- LOCATE works differently (terminal-dependent via ANSI)
+- No `SOUND` or `PLAY` (no PC speaker)
+- No `SCREEN` modes (CP/M terminals were character-only)
+- No `PCOPY`, `PALETTE`, `VIEW`, `WINDOW` (no graphics)
+- No `DO/LOOP` (only `WHILE/WEND` and `FOR/NEXT`)
+- No `KEY ON/OFF/LIST` (no function key bar)
+- `LOCATE` works differently (terminal-dependent via ANSI)
 
----------------------------------------------------------------------
+---
 
-Dialect Configuration
+## Dialect Configuration
 
-  Property            Value
-  ----------------------------------------------------------------------
-  Dialect ID          DIALECT_MBASIC
-  Short code          "MBAS"
-  Dialect flag        DFLAG_MBAS (bit 14)
-  Separator           : (colon)
-  LET required        No
-  THEN required       Yes
-  Max line number     65529
-  Ready prompt        "Ok"
-  Print zone width    14
-  CLS available       Yes
-  Floating point      Yes
-  Strings             Yes
-  Arrays              Yes (DIM)
-  FOR/NEXT            Yes
-  WHILE/WEND          Yes
-  DO/LOOP             No
-  DATA/READ           Yes
-  DEF FN              Yes
-  Extended variables  Yes
-  ON ERROR            Yes
-  TRON/TROFF          Yes
-  MERGE/CHAIN         No
+| Property | Value |
+|----------|-------|
+| Dialect ID | `DIALECT_MBASIC` |
+| Short code | `"MBAS"` |
+| Dialect flag | `DFLAG_MBAS` (bit 14) |
+| Separator | `:` (colon) |
+| LET required | No |
+| THEN required | Yes |
+| Max line number | 65529 |
+| Ready prompt | `"Ok"` |
+| Print zone width | 14 |
+| CLS available | Yes |
+| Floating point | Yes |
+| Strings | Yes |
+| Arrays | Yes (DIM) |
+| FOR/NEXT | Yes |
+| WHILE/WEND | Yes |
+| DO/LOOP | No |
+| DATA/READ | Yes |
+| DEF FN | Yes |
+| Extended variables | Yes |
+| ON ERROR | Yes |
+| TRON/TROFF | Yes |
+| MERGE/CHAIN | No |
 
----------------------------------------------------------------------
+---
 
-Example Programs
+## Example Programs
 
-Classic "Guess the Number" (MBASIC style)
+### Classic "Guess the Number" (MBASIC style)
 
+```basic
 10 PRINT "GUESS THE NUMBER"
 20 PRINT "I'M THINKING OF A NUMBER BETWEEN 1 AND 100."
 30 RANDOMIZE
@@ -159,9 +172,11 @@ Classic "Guess the Number" (MBASIC style)
 90 IF X > N THEN PRINT "TOO HIGH.": GOTO 60
 100 PRINT "YOU GOT IT IN"; G; "TRIES!"
 110 END
+```
 
-File I/O example
+### File I/O example
 
+```basic
 10 OPEN "O", #1, "TEST.DAT"
 20 FOR I = 1 TO 5
 30   PRINT #1, I; ","; I * I
@@ -175,14 +190,15 @@ File I/O example
 110 WEND
 120 CLOSE #1
 130 END
+```
 
----------------------------------------------------------------------
+---
 
-Historical Significance
+## Historical Significance
 
 MBASIC holds a unique place in computing history:
 
-1. It was Microsoft's first commercial product (Altair BASIC, 1975)
+1. It was Microsoft's **first commercial product** (Altair BASIC, 1975)
 2. It established Microsoft's business model (OEM licensing)
 3. It defined the "Microsoft BASIC standard" syntax
 4. It ran on more different hardware platforms than any other single program in the 1970s–80s
@@ -190,12 +206,12 @@ MBASIC holds a unique place in computing history:
 
 Bill Gates personally wrote much of the original 8080 BASIC on a PDP-10 at Harvard, cross-assembling for the Altair before he had access to the actual hardware.
 
----------------------------------------------------------------------
+---
 
-See Also
+## See Also
 
-- Quick_Reference — Complete keyword listing
-- Specific_Machine_Dialects — All 16 dialects explained
-- Creating_Dialects — Dialect configuration tutorial
+- [Quick_Reference](Quick_Reference.md) — Complete keyword listing
+- [Specific_Machine_Dialects](Specific_Machine_Dialects.md) — All 16 dialects explained
+- [Creating_Dialects](Creating_Dialects.md) — Dialect configuration tutorial
 
-@COPYLEFT ALL WRONGS RESERVED
+*@COPYLEFT ALL WRONGS RESERVED*

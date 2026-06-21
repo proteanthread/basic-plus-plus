@@ -1,10 +1,10 @@
-Building BASIC++ for FreeDOS
+# Building BASIC++ for FreeDOS
 
-Version 4.0.1
+**Version 4.0.1**
 
----------------------------------------------------------------------
+---
 
-Table of Contents
+## Table of Contents
 
 - Why Build for FreeDOS?
 - Prerequisites
@@ -27,9 +27,9 @@ Table of Contents
 - Troubleshooting
 - See Also
 
----------------------------------------------------------------------
+---
 
-1. Why Build for FreeDOS?
+## 1. Why Build for FreeDOS?
 
 FreeDOS runs on real vintage hardware (8086/286/386+ PCs), virtual machines
 (DOSBox, QEMU, VirtualBox), and embedded DOS controllers. BASIC++ can run
@@ -39,108 +39,125 @@ memory limit (16-bit) or uses extended memory via DOS/4GW (32-bit).
 The FreeDOS build strips out features that require a modern OS (dynamic
 library loading, JIT, network sockets) and reduces memory pools to fit
 within tight RAM constraints. The result is a fully functional BASIC
-interpreter in a single bpp.exe file.
+interpreter in a single `bpp.exe` file.
 
 
-2. Prerequisites
+## 2. Prerequisites
 
-You need the OpenWatcom C compiler. It is the only C compiler that
+You need the **OpenWatcom C compiler**. It is the only C compiler that
 produces real-mode 16-bit DOS executables and DOS/4GW 32-bit executables.
 
-Option A: Build natively on FreeDOS
+**Option A: Build natively on FreeDOS**
 
 Install OpenWatcom on FreeDOS itself. Download from:
   https://github.com/open-watcom/open-watcom-v2/releases
 
 Set up the environment:
+```
 SET WATCOM=C:\WATCOM
 SET PATH=%WATCOM%\BINW;%PATH%
 SET INCLUDE=%WATCOM%\H
+```
 
-Option B: Cross-compile from Windows 11
+**Option B: Cross-compile from Windows 11**
 
 Install OpenWatcom v2 for Windows. The Windows-hosted cross-compiler
 produces DOS executables without needing a DOS machine:
+```
 SET WATCOM=C:\WATCOM
 SET PATH=%WATCOM%\BINNT;%PATH%
 SET INCLUDE=%WATCOM%\H
+```
 
-Option C: Cross-compile from Linux
+**Option C: Cross-compile from Linux**
 
 Install OpenWatcom v2 for Linux:
+```bash
 export WATCOM=/opt/watcom
 export PATH=$WATCOM/binl64:$PATH
 export INCLUDE=$WATCOM/h
+```
 
 On Debian/Ubuntu you can also install via package:
+```bash
 # Download from https://github.com/open-watcom/open-watcom-v2/releases
 chmod +x open-watcom-2_0-c-linux-x64
 sudo ./open-watcom-2_0-c-linux-x64
+```
 
 
-3. Quick Build (16-bit Real Mode)
+## 3. Quick Build (16-bit Real Mode)
 
 This produces a 16-bit real-mode executable that runs on any DOS system,
 including original 8086/8088 hardware:
 
+```bash
 cd source
 make watcom
+```
 
 Or manually:
+```
 wcc -ml -0 -bt=dos -za -wx -DBPP_FREEDOS -i=. core\main.c
 wcc -ml -0 -bt=dos -za -wx -DBPP_FREEDOS -i=. core\memory.c
 ... (all source files)
 wlink name ..\bpp.exe system dos file *.obj
+```
 
-Compiler flags explained:
+**Compiler flags explained:**
 
-  Flag                Purpose
-  ----------------------------------------------------------------------
-  -ml                 Large memory model (far pointers, > 64K code + data)
-  -0                  Generate 8086 code (runs on any x86 CPU)
-  -bt=dos             Target DOS platform
-  -za                 Strict ANSI C compliance
-  -wx                 Maximum warnings
-  -DBPP_FREEDOS       Activate the FreeDOS build profile in config.h
-  -i=.                Include current directory for headers
+| Flag | Purpose |
+|------|---------|
+| `-ml` | Large memory model (far pointers, > 64K code + data) |
+| `-0` | Generate 8086 code (runs on any x86 CPU) |
+| `-bt=dos` | Target DOS platform |
+| `-za` | Strict ANSI C compliance |
+| `-wx` | Maximum warnings |
+| `-DBPP_FREEDOS` | Activate the FreeDOS build profile in config.h |
+| `-i=.` | Include current directory for headers |
 
-The output is bpp.exe in the project root.
+The output is `bpp.exe` in the project root.
 
 
-4. Quick Build (32-bit Protected Mode with DOS/4GW)
+## 4. Quick Build (32-bit Protected Mode with DOS/4GW)
 
 This produces a 32-bit executable that uses the DOS/4GW protected-mode
 extender. It can access extended memory beyond 640K, allowing larger
 programs and string pools:
 
+```bash
 cd source
 make watcom386
+```
 
 Or manually:
+```
 wcc386 -bt=dos -za -wx -DBPP_FREEDOS -i=. core\main.c
 wcc386 -bt=dos -za -wx -DBPP_FREEDOS -i=. core\memory.c
 ... (all source files)
 wlink name ..\bpp.exe system dos4g file *.obj
+```
 
-Key differences from 16-bit:
+**Key differences from 16-bit:**
 
-  Feature             16-bit (wcc)        32-bit (wcc386)
-  ----------------------------------------------------------------------
-  CPU required        8086+               386+
-  Memory limit        640K conventional   Extended memory (4 GB theoretical)
-  Pointer size        16-bit far (seg:off)32-bit flat
-  Extender            None                DOS/4GW (bundled with Watcom)
-  Pool sizes          Limited by 640K     Can increase in config.h
+| Feature | 16-bit (`wcc`) | 32-bit (`wcc386`) |
+|---------|---------------|-------------------|
+| CPU required | 8086+ | 386+ |
+| Memory limit | 640K conventional | Extended memory (4 GB theoretical) |
+| Pointer size | 16-bit far (seg:off) | 32-bit flat |
+| Extender | None | DOS/4GW (bundled with Watcom) |
+| Pool sizes | Limited by 640K | Can increase in config.h |
 
-When to use 32-bit: If you have a 386 or better and want larger
+**When to use 32-bit:** If you have a 386 or better and want larger
 programs, more string space, or additional dialects.
 
 
-5. Cross-Compiling from Windows 11
+## 5. Cross-Compiling from Windows 11
 
 You can build the FreeDOS executable on Windows 11 without ever
 booting into DOS:
 
+```batch
 REM Set up Watcom environment
 SET WATCOM=C:\WATCOM
 SET PATH=%WATCOM%\BINNT;%PATH%
@@ -154,18 +171,22 @@ make watcom
 
 REM Or build 32-bit DOS/4GW executable
 make watcom386
+```
 
-The resulting bpp.exe can be copied to a FreeDOS machine, USB drive,
+The resulting `bpp.exe` can be copied to a FreeDOS machine, USB drive,
 floppy disk image, or DOSBox directory.
 
-Testing with DOSBox:
+**Testing with DOSBox:**
+```batch
 REM After building:
 copy ..\bpp.exe C:\DOSBox\BASIC\
 dosbox -c "mount c c:\dosbox\basic" -c "c:" -c "bpp.exe"
+```
 
 
-6. Cross-Compiling from Linux
+## 6. Cross-Compiling from Linux
 
+```bash
 # Set up Watcom environment
 export WATCOM=/opt/watcom
 export PATH=$WATCOM/binl64:$PATH
@@ -178,82 +199,88 @@ make watcom
 
 # Or 32-bit DOS/4GW
 make watcom386
+```
 
-Testing with DOSBox on Linux:
+**Testing with DOSBox on Linux:**
+```bash
 # After building:
 cp ../bpp.exe ~/dosbox/
 dosbox -c "mount c ~/dosbox" -c "c:" -c "bpp.exe"
+```
 
-Testing with QEMU:
+**Testing with QEMU:**
+```bash
 # Create a FreeDOS boot disk image, copy bpp.exe to it
 # Then boot with:
 qemu-system-i386 -m 16 -fda freedos.img
+```
 
 
-7. What Gets Compiled (and What Doesn't)
+## 7. What Gets Compiled (and What Doesn't)
 
-The BPP_FREEDOS preprocessor define controls what is included.
+The `BPP_FREEDOS` preprocessor define controls what is included.
 Here is what the FreeDOS build contains vs. what is excluded:
 
-Included (Core)
+### Included (Core)
 
-  Component           Files               Purpose
-  ----------------------------------------------------------------------
-  Main + Boot         main.c, boot.c      Entry point, REPL loop
-  Memory              memory.c, stringpool.cPool allocator
-  Lexer               lexer.c, keyword_props.cTokenizer
-  Parser              parser.c, parser_expr.cRecursive-descent parser
-  Runtime             runtime.c, exec.c   Execution engine
-  Values              value.c             Tagged union type system
-  Errors              errors.c, error_registry.cError handling
-  Platform            platform.c          OS detection
-  I/O                 fileio.c, parser_io.c, parser_fileio.cFile I/O
-  Variables           parser_vars.c, parser_assign.cVariable handling
-  Control flow        parser_flow.c, parser_loops.cIF/FOR/WHILE/DO
-  Functions           funcreg.c, parser_deffn.c, builtins.cDEF FN, builtins
-  Strings             builtins_string.c   String functions
-  Math                builtins_math.c     Math functions
-  Arrays              parser_mat.c        DIM, MAT operations
-  Errors              parser_errhand.c    ON ERROR handling
-  Security            security.c          Sandbox system
-  Help                help.c, parser_help.cHELP command
-  Debug               parser_debug.c, selftest.cTRON/TROFF, SELFTEST
-  Config              parser_config.c, config_file.cConfig file loading
-  Memory map          memmap.c            PEEK/POKE virtual memory
-  VDev                vdev.c              Virtual device layer
-  Graphics            gfxbuf.c, parser_graphics.cText-mode graphics
-  STDLIB              mod_stdlib.c, stdlib_core.cStandard library
-  Dialect engine      dialect.c           Dialect switching
-  Default dialect     dialect_patb.c      Palo Alto Tiny BASIC
+| Component | Files | Purpose |
+|-----------|-------|---------|
+| Main + Boot | `main.c`, `boot.c` | Entry point, REPL loop |
+| Memory | `memory.c`, `stringpool.c` | Pool allocator |
+| Lexer | `lexer.c`, `keyword_props.c` | Tokenizer |
+| Parser | `parser.c`, `parser_expr.c` | Recursive-descent parser |
+| Runtime | `runtime.c`, `exec.c` | Execution engine |
+| Values | `value.c` | Tagged union type system |
+| Errors | `errors.c`, `error_registry.c` | Error handling |
+| Platform | `platform.c` | OS detection |
+| I/O | `fileio.c`, `parser_io.c`, `parser_fileio.c` | File I/O |
+| Variables | `parser_vars.c`, `parser_assign.c` | Variable handling |
+| Control flow | `parser_flow.c`, `parser_loops.c` | IF/FOR/WHILE/DO |
+| Functions | `funcreg.c`, `parser_deffn.c`, `builtins.c` | DEF FN, builtins |
+| Strings | `builtins_string.c` | String functions |
+| Math | `builtins_math.c` | Math functions |
+| Arrays | `parser_mat.c` | DIM, MAT operations |
+| Errors | `parser_errhand.c` | ON ERROR handling |
+| Security | `security.c` | Sandbox system |
+| Help | `help.c`, `parser_help.c` | HELP command |
+| Debug | `parser_debug.c`, `selftest.c` | TRON/TROFF, SELFTEST |
+| Config | `parser_config.c`, `config_file.c` | Config file loading |
+| Memory map | `memmap.c` | PEEK/POKE virtual memory |
+| VDev | `vdev.c` | Virtual device layer |
+| Graphics | `gfxbuf.c`, `parser_graphics.c` | Text-mode graphics |
+| STDLIB | `mod_stdlib.c`, `stdlib_core.c` | Standard library |
+| Dialect engine | `dialect.c` | Dialect switching |
+| Default dialect | `dialect_patb.c` | Palo Alto Tiny BASIC |
 
-Excluded (to save memory)
+### Excluded (to save memory)
 
-  Component           Files Skipped       Why
-  ----------------------------------------------------------------------
-  14 dialects         dialect_trs1.c through dialect_sbasic.cEach adds ~8-15 KB code
-  USB module          mod_usb.c           Requires USB hardware stack
-  FujiNet module      mod_fujinet.c       Network hardware specific
-  UPnP module         mod_upnp.c          Requires TCP/IP stack
-  JIT compiler        mod_jit.c           Requires MMU + executable memory
-  Network I/O         vdev_net.c, builtins_net.cNo TCP/IP on DOS
-  Transpiler          codegen.c, ast.c, compiler.cOptional, saves ~20 KB
-  Block I/O           parser_blockio.c, builtins_bio.cAdvanced I/O
-  Stream I/O          parser_streamio.c, builtins_sio.cAdvanced I/O
-  Transactions        txn.c, parser_txn.c, builtins_txn.cFile transactions
-  External plugins    ext_lib.c, ext_func.c, ext_plugin.cDynamic loading
-  BPL format          bpl_format.c, lib_space.cLibrary system
-  Virtual machines    vm.c, vm_exec.c     VM subsystem
+| Component | Files Skipped | Why |
+|-----------|--------------|-----|
+| 14 dialects | `dialect_trs1.c` through `dialect_sbasic.c` | Each adds ~8-15 KB code |
+| USB module | `mod_usb.c` | Requires USB hardware stack |
+| FujiNet module | `mod_fujinet.c` | Network hardware specific |
+| UPnP module | `mod_upnp.c` | Requires TCP/IP stack |
+| JIT compiler | `mod_jit.c` | Requires MMU + executable memory |
+| Network I/O | `vdev_net.c`, `builtins_net.c` | No TCP/IP on DOS |
+| Transpiler | `codegen.c`, `ast.c`, `compiler.c` | Optional, saves ~20 KB |
+| Block I/O | `parser_blockio.c`, `builtins_bio.c` | Advanced I/O |
+| Stream I/O | `parser_streamio.c`, `builtins_sio.c` | Advanced I/O |
+| Transactions | `txn.c`, `parser_txn.c`, `builtins_txn.c` | File transactions |
+| External plugins | `ext_lib.c`, `ext_func.c`, `ext_plugin.c` | Dynamic loading |
+| BPL format | `bpl_format.c`, `lib_space.c` | Library system |
+| Virtual machines | `vm.c`, `vm_exec.c` | VM subsystem |
 
-Adding Excluded Components Back
+### Adding Excluded Components Back
 
 You CAN add any excluded component back if your system has enough
 memory.  See "Customizing Your FreeDOS Build" below.
 
 
-8. Memory Budget
+## 8. Memory Budget
 
-16-bit Build (640K conventional memory)
+### 16-bit Build (640K conventional memory)
 
+```
 Total conventional memory:           640 KB
 DOS + drivers (typical):            -100 KB
 Available for applications:         ~540 KB
@@ -263,140 +290,163 @@ BASIC++ data segment:               -160 KB  (memory pools, see below)
 C runtime + stack:                   -20 KB
                                     --------
 Remaining free:                     ~180 KB
+```
 
-Pool breakdown (from config.h BPP_FREEDOS section):
+Pool breakdown (from config.h `BPP_FREEDOS` section):
 
-  Pool                Size                Purpose
-  ----------------------------------------------------------------------
-  Program memory      32 KB               Stored BASIC program text
-  Variable memory     16 KB               Runtime variables
-  Scratch memory      16 KB               Tokenizer/parser workspace
-  String pool         32 KB               String values during RUN
-  Array pool          ~64 KB              4,096 elements x 16 bytes
-  Total pools         ~160 KB
+| Pool | Size | Purpose |
+|------|------|---------|
+| Program memory | 32 KB | Stored BASIC program text |
+| Variable memory | 16 KB | Runtime variables |
+| Scratch memory | 16 KB | Tokenizer/parser workspace |
+| String pool | 32 KB | String values during RUN |
+| Array pool | ~64 KB | 4,096 elements x 16 bytes |
+| **Total pools** | **~160 KB** | |
 
 Additional limits:
 
-  Resource            Limit
-  ----------------------------------------------------------------------
-  Program lines       1,024
-  Stack depth         64
-  Named variables     128
-  DATA items          1,024
-  DIM arrays          32
-  Array elements      4,096
-  User functions      32
-  Modules             8
-  Breakpoints         16
-  User types          8
-  Graphics            160 x 100
+| Resource | Limit |
+|----------|-------|
+| Program lines | 1,024 |
+| Stack depth | 64 |
+| Named variables | 128 |
+| DATA items | 1,024 |
+| DIM arrays | 32 |
+| Array elements | 4,096 |
+| User functions | 32 |
+| Modules | 8 |
+| Breakpoints | 16 |
+| User types | 8 |
+| Graphics | 160 x 100 |
 
-32-bit Build (Extended memory via DOS/4GW)
+### 32-bit Build (Extended memory via DOS/4GW)
 
 With the 32-bit build, you can increase pool sizes in config.h because
 DOS/4GW provides access to extended memory:
 
+```c
 // Example: larger pools for 32-bit FreeDOS build
 #define PROGRAM_MEMORY_SIZE   131072L   // 128 KB
 #define MAX_PROGRAM_LINES     4096
 #define MAX_STRING_POOL       131072L   // 128 KB
 #define MAX_ARRAY_ELEMENTS    16384     // 16K elements
 #define MAX_NAMED_VARS        512
+```
 
 
-9. Customizing Your FreeDOS Build
+## 9. Customizing Your FreeDOS Build
 
-9.1 Changing the Default Dialect
+### 9.1 Changing the Default Dialect
 
 The FreeDOS build defaults to Palo Alto Tiny BASIC (PATB), the
 smallest dialect. To change the default, edit config.h:
 
+```c
 // In the BPP_FREEDOS section:
 #undef BASICPP_DEFAULT_DIALECT
 #define BASICPP_DEFAULT_DIALECT DIALECT_GW_BASIC  // or any other
+```
 
 You must also compile the dialect's source file and register it
 in dialect.c (see "Adding Dialects Back" below).
 
-9.2 Adding Dialects Back
+### 9.2 Adding Dialects Back
 
 Each dialect is a single .c file (~3-15 KB of code). To add GW-BASIC:
 
-Step 1: In dialect.h, ensure the registration function is declared:
+**Step 1:** In `dialect.h`, ensure the registration function is declared:
+```c
 void dialect_register_gwbasic(void);
+```
 
-Step 2: In dialect.c, call the registration function in
-dialect_init() (remove any #ifndef BPP_FREEDOS guard):
+**Step 2:** In `dialect.c`, call the registration function in
+`dialect_init()` (remove any `#ifndef BPP_FREEDOS` guard):
+```c
 dialect_register_gwbasic();
+```
 
-Step 3: Add the file to the Makefile's WATCOM_SOURCES:
+**Step 3:** Add the file to the Makefile's `WATCOM_SOURCES`:
+```makefile
 WATCOM_SOURCES += dialect/dialect_gwbs.c
+```
 
-Step 4: Rebuild:
+**Step 4:** Rebuild:
+```
 make clean
 make watcom
+```
 
-Step 5: Verify:
+**Step 5:** Verify:
+```
 bpp.exe
 > DIALECT "GWBS"
 > DIALECT LIST
+```
 
-Memory cost per dialect (approximate):
+**Memory cost per dialect (approximate):**
 
-  Dialect             Code                Code Size
-  ----------------------------------------------------------------------
-  PATB (Tiny BASIC)   dialect_patb.c      ~3 KB
-  TRS-80 Level I      dialect_trs1.c      ~4 KB
-  TRS-80 Level II     dialect_trs2.c      ~5 KB
-  GW-BASIC            dialect_gwbs.c      ~8 KB
-  ECMA-55             dialect_ecma55.c    ~5 KB
-  ECMA-116            dialect_ecma116.c   ~10 KB
-  QBasic              dialect_qbasic.c    ~12 KB
-  Apple Integer       dialect_aint.c      ~4 KB
-  AppleSoft           dialect_asft.c      ~6 KB
-  Atari BASIC         dialect_atari.c     ~5 KB
-  Commodore 64        dialect_c64.c       ~6 KB
-  Color Computer      dialect_coco.c      ~5 KB
-  MBASIC (CP/M)       dialect_mbasic.c    ~5 KB
-  Sinclair BASIC      dialect_sinclair.c  ~5 KB
-  SuperBASIC (QL)     dialect_superbasic.c~6 KB
-  SUPER BASIC         dialect_sbasic.c    ~8 KB
+| Dialect | Code | Code Size |
+|---------|------|-----------|
+| PATB (Tiny BASIC) | `dialect_patb.c` | ~3 KB |
+| TRS-80 Level I | `dialect_trs1.c` | ~4 KB |
+| TRS-80 Level II | `dialect_trs2.c` | ~5 KB |
+| GW-BASIC | `dialect_gwbs.c` | ~8 KB |
+| ECMA-55 | `dialect_ecma55.c` | ~5 KB |
+| ECMA-116 | `dialect_ecma116.c` | ~10 KB |
+| QBasic | `dialect_qbasic.c` | ~12 KB |
+| Apple Integer | `dialect_aint.c` | ~4 KB |
+| AppleSoft | `dialect_asft.c` | ~6 KB |
+| Atari BASIC | `dialect_atari.c` | ~5 KB |
+| Commodore 64 | `dialect_c64.c` | ~6 KB |
+| Color Computer | `dialect_coco.c` | ~5 KB |
+| MBASIC (CP/M) | `dialect_mbasic.c` | ~5 KB |
+| Sinclair BASIC | `dialect_sinclair.c` | ~5 KB |
+| SuperBASIC (QL) | `dialect_superbasic.c` | ~6 KB |
+| SUPER BASIC | `dialect_sbasic.c` | ~8 KB |
 
-9.3 Adding Modules Back
+### 9.3 Adding Modules Back
 
 To restore a module (e.g., the transpiler):
 
-1. Add its source files to WATCOM_SOURCES in the Makefile
-2. Remove any #ifndef BPP_FREEDOS guard in main.c around
+1. Add its source files to `WATCOM_SOURCES` in the Makefile
+2. Remove any `#ifndef BPP_FREEDOS` guard in `main.c` around
    its registration call
 3. Rebuild
 
-9.4 Adjusting Memory Pool Sizes
+### 9.4 Adjusting Memory Pool Sizes
 
-Edit the BPP_FREEDOS section of config.h:
+Edit the `BPP_FREEDOS` section of config.h:
 
-For more program space (larger BASIC programs):
+**For more program space (larger BASIC programs):**
+```c
 #define PROGRAM_MEMORY_SIZE   65536L    // 64 KB (was 32 KB)
 #define MAX_PROGRAM_LINES     2048      // (was 1,024)
+```
 
-For more string space (string-heavy programs):
+**For more string space (string-heavy programs):**
+```c
 #define MAX_STRING_POOL       65536L    // 64 KB (was 32 KB)
+```
 
-For tiny systems (256K or less):
+**For tiny systems (256K or less):**
+```c
 #define PROGRAM_MEMORY_SIZE   16384L    // 16 KB
 #define MAX_PROGRAM_LINES     512
 #define MAX_STRING_POOL       16384L    // 16 KB
 #define MAX_ARRAY_ELEMENTS    2048
+```
 
 Always rebuild after editing config.h:
+```
 make clean
 make watcom
+```
 
 
-10. Union Mode on FreeDOS
+## 10. Union Mode on FreeDOS
 
 Even though the FreeDOS build only includes one dialect (PATB by
-default), BASIC++ still operates in Union Mode. This means:
+default), BASIC++ still operates in **Union Mode**. This means:
 
 - All core BASIC keywords work regardless of dialect
 - PRINT, INPUT, IF/THEN/ELSE, FOR/NEXT, WHILE/WEND, etc. are always available
@@ -406,11 +456,13 @@ default), BASIC++ still operates in Union Mode. This means:
   when Union Mode is active
 
 To enable strict dialect enforcement:
+```basic
 OPTION STRICT       ' Only allow keywords from the active dialect
 OPTION STRICT OFF   ' Return to Union Mode (default)
+```
 
 
-11. Which BASIC Features Work on FreeDOS
+## 11. Which BASIC Features Work on FreeDOS
 
 These features work identically on FreeDOS and Windows/Linux:
 
@@ -434,7 +486,7 @@ These features work identically on FreeDOS and Windows/Linux:
 - Text-mode graphics (160x100 in FreeDOS, 320x200 on modern)
 
 
-12. Which BASIC Features Are Excluded
+## 12. Which BASIC Features Are Excluded
 
 These features require a modern OS and are not available:
 
@@ -447,27 +499,30 @@ These features require a modern OS and are not available:
 - COMPILE (transpiler, excluded to save code size)
 
 
-13. Makefile Reference
+## 13. Makefile Reference
 
-  Target              Compiler            Output              Description
-  ----------------------------------------------------------------------
-  make watcom         wcc (16-bit)        bpp.exe             Real-mode DOS, 8086+
-  make watcom386      wcc386 (32-bit)     bpp.exe             DOS/4GW, 386+
-  make clean          --                  --                  Remove .obj and .exe
+| Target | Compiler | Output | Description |
+|--------|----------|--------|-------------|
+| `make watcom` | `wcc` (16-bit) | `bpp.exe` | Real-mode DOS, 8086+ |
+| `make watcom386` | `wcc386` (32-bit) | `bpp.exe` | DOS/4GW, 386+ |
+| `make clean` | -- | -- | Remove .obj and .exe |
 
-Key Makefile variables:
+**Key Makefile variables:**
 
+```makefile
 WCC = wcc                    # 16-bit compiler
 WCC386 = wcc386              # 32-bit compiler
 WCFLAGS = -ml -0 -bt=dos -za -wx -DBPP_FREEDOS -i=.
 WC386FLAGS = -bt=dos -za -wx -DBPP_FREEDOS -i=.
+```
 
 
-14. Complete File List (Minimal FreeDOS Build)
+## 14. Complete File List (Minimal FreeDOS Build)
 
 The minimal FreeDOS build compiles approximately 60 source files
 (vs. 115 for the full build). Here is the complete list:
 
+```
 core/main.c           core/memory.c         core/errors.c
 core/value.c          core/stringpool.c     core/platform.c
 core/security.c       core/config_file.c    core/stdlib_core.c
@@ -518,53 +573,54 @@ modules/module.c      modules/mod_stdlib.c
 runtime/runtime.c     runtime/exec.c
 
 misc/parser_misc.c
+```
 
 
-15. Troubleshooting
+## 15. Troubleshooting
 
-"SORRY. Cannot allocate memory."
+**"SORRY. Cannot allocate memory."**
 The interpreter cannot malloc() enough memory at startup.
 - Reduce pool sizes in config.h (see section 9.4)
 - Free conventional memory by unloading TSRs and device drivers
 - Try the 32-bit build (make watcom386) for extended memory access
 
-"Unknown dialect"
+**"Unknown dialect"**
 You tried to switch to a dialect that is not compiled in.
 On FreeDOS, only PATB is available by default.
 - Add the dialect back (see section 9.2)
 
-Linker error: "segment too large"
+**Linker error: "segment too large"**
 The 16-bit build exceeds the 64K segment limit.
 - You have added too many dialect or module files
 - Remove some, or switch to the 32-bit build
 
-"Undefined reference to _mod_usb_register"
+**"Undefined reference to _mod_usb_register"**
 You uncommented the USB module registration in main.c but did not
 add mod_usb.c to the Makefile.
 - Add the .c file to WATCOM_SOURCES, or re-comment the registration
 
-Program runs out of string space
+**Program runs out of string space**
 The 32 KB string pool is exhausted during RUN.
 - Use shorter strings or fewer string concatenations
 - Increase MAX_STRING_POOL in config.h and rebuild
 
-Build fails with "Cannot open include file"
-- Make sure -i=. is in your compile flags
-- Verify that you are running make from the source/ directory
+**Build fails with "Cannot open include file"**
+- Make sure `-i=.` is in your compile flags
+- Verify that you are running make from the `source/` directory
 
-bpp.exe crashes on DOSBox
+**bpp.exe crashes on DOSBox**
 - DOSBox default memory may be too low. Edit dosbox.conf:
-
+  ```
   [dosbox]
   memsize=16
-
+  ```
 - Or use DOSBox-X which has better memory management
 
 
-16. See Also
+## 16. See Also
 
-- FreeDOS_Build.md -- Quick-reference version of this guide
-- FreeDOS_Compilation_Guide.md -- Extended compilation walkthrough
-- Building_BASIC++.md -- General build guide for all platforms
-- Embedded_Platforms.md -- Overview of all embedded targets
-- How_To_Compile.md -- Compiler-specific flag reference
+- `FreeDOS_Build.md` -- Quick-reference version of this guide
+- `FreeDOS_Compilation_Guide.md` -- Extended compilation walkthrough
+- `Building_BASIC++.md` -- General build guide for all platforms
+- `Embedded_Platforms.md` -- Overview of all embedded targets
+- `How_To_Compile.md` -- Compiler-specific flag reference

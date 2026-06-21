@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: parser_assign.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Variables lookup, DIM arrays, User-Defined Types (UDT), matrix operations (MAT), and abstract syntax trees (AST).
+ *
+ * 2. WHAT TO EXPECT:
+ *    Static array bounds mapping. Variable lookup hashes utilize fast string indexing.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Maximum array dimension numbers, matrix operators, UDT array constraints.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Row-major layout logic, variable storage offset rules, AST node type enumerations.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Check array index limits. Ensure REDIM operations do not corrupt memory (verify array bounds rules).
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - parser_assign.c
  // ---

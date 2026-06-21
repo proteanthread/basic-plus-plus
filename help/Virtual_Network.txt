@@ -177,7 +177,7 @@ Part I:  HOW IT WORKS
 
 
 1.  THE JOURNEY OF A PACKET (Architecture)
----------------------------------------------------------------------
+-------------------------------------------
 
 When your BASIC++ program executes a network statement,
 the data passes through six layers before reaching the
@@ -219,7 +219,7 @@ pattern will be familiar.
 
 
 2.  LAYER 1: THE BASIC STATEMENT
----------------------------------------------------------------------
+---------------------------------
 
 All network operations begin with a BASIC statement.
 BASIC++ extends the classic BASIC vocabulary with the NET
@@ -288,7 +288,7 @@ Protocol-specific keywords follow the same pattern:
 
 
 3.  LAYER 2: THE VM DISPATCHER
----------------------------------------------------------------------
+--------------------------------
 
 The VM dispatcher receives the parse node and routes it
 to the appropriate handler function.  Network handlers
@@ -337,7 +337,7 @@ handler can catch:
 
 
 4.  LAYER 3: THE SECURITY GATE
----------------------------------------------------------------------
+--------------------------------
 
 Before any network operation reaches the socket layer, it
 must pass through the Security Gate.  This is the same
@@ -395,7 +395,7 @@ The log records:
 
 
 5.  LAYER 4: THE NETWORK CHANNEL TABLE
----------------------------------------------------------------------
+----------------------------------------
 
 BASIC++ manages network connections through channel
 numbers, just as it manages files.  Network channels and
@@ -414,7 +414,7 @@ structures:
       int           app_proto;    /* APP_TELNET, APP_FTP..  */
       int           state;        /* connection state       */
       int           tls_active;   /* 1 = TLS enabled        */
-      void         tls_ctx;      / TLS context pointer    */
+      void         *tls_ctx;      /* TLS context pointer    */
       char          host[256];    /* remote host name       */
       int           port;         /* remote port number     */
       int           local_port;   /* local port (servers)   */
@@ -457,7 +457,7 @@ Channel States
 
 
 6.  LAYER 5: THE SOCKET ABSTRACTION
----------------------------------------------------------------------
+--------------------------------------
 
 The socket abstraction provides a uniform API across
 operating systems.  BASIC++ uses BSD sockets on Unix/Linux
@@ -500,7 +500,7 @@ through the TLS engine automatically.
 
 
 7.  LAYER 6: THE OPERATING SYSTEM NETWORK STACK
----------------------------------------------------------------------
+-------------------------------------------------
 
 Below the socket abstraction is the operating system's
 TCP/IP stack.  BASIC++ does not interact with this layer
@@ -519,7 +519,7 @@ discovery API (see Section 9).
 
 
 8.  WHY THESE LAYERS EXIST
----------------------------------------------------------------------
+-----------------------------
 
   Layer   Purpose               Without It
   ──────  ────────────────────  ────────────────────────────
@@ -542,7 +542,7 @@ Part II:  NETWORK ADAPTERS
 
 
 9.  ADAPTER DISCOVERY AND SELECTION
----------------------------------------------------------------------
+-------------------------------------
 
 Before making connections, you may want to know what
 network interfaces are available on the machine.  This is
@@ -674,7 +674,7 @@ Events include:
 
 
 10.  WI-FI OPERATIONS
----------------------------------------------------------------------
+-----------------------
 
 BASIC++ provides a full Wi-Fi management API for systems
 where the interpreter has appropriate OS permissions.
@@ -775,7 +775,7 @@ Part III:  CORE NETWORKING
 
 
 11.  TCP CONNECTIONS
----------------------------------------------------------------------
+---------------------
 
 TCP (Transmission Control Protocol) provides reliable,
 ordered, error-checked delivery of a stream of bytes.
@@ -1013,7 +1013,7 @@ prevent your program from hanging:
 
 
 12.  UDP DATAGRAMS
----------------------------------------------------------------------
+--------------------
 
 UDP (User Datagram Protocol) provides connectionless,
 unreliable delivery of individual datagrams.  It is
@@ -1095,7 +1095,7 @@ Join a multicast group:
 
 
 13.  DNS RESOLUTION
----------------------------------------------------------------------
+---------------------
 
 DNS (Domain Name System) converts human-readable host
 names into IP addresses.
@@ -1146,7 +1146,7 @@ the cache:
 
 
 14.  TLS / SSL ENCRYPTION
----------------------------------------------------------------------
+----------------------------
 
 TLS (Transport Layer Security) encrypts network
 connections to prevent eavesdropping and tampering.
@@ -1228,7 +1228,7 @@ NET RECV if you need lower-level control.
 
 
 15.  TELNET
----------------------------------------------------------------------
+------------
 
 Telnet is a simple, unencrypted protocol for interactive
 text communication.  It is used for connecting to legacy
@@ -1427,7 +1427,7 @@ You can create a Telnet server in BASIC++:
 
 
 16.  SSH (SECURE SHELL)
----------------------------------------------------------------------
+-------------------------
 
 SSH provides encrypted remote shell access and secure
 file transfer.  It replaces Telnet for any connection
@@ -1586,7 +1586,7 @@ Transfer files over SSH:
 
 
 17.  FTP (FILE TRANSFER PROTOCOL)
----------------------------------------------------------------------
+------------------------------------
 
 FTP is a classic protocol for transferring files between
 systems.  BASIC++ supports both active and passive mode
@@ -1737,7 +1737,7 @@ raw protocol access when needed.
 
 
 18.  IRC (INTERNET RELAY CHAT)
----------------------------------------------------------------------
+--------------------------------
 
 IRC (RFC 2812) is a real-time text messaging protocol
 used for group chat (channels) and private messages.
@@ -1928,7 +1928,7 @@ For full protocol control, send raw IRC commands:
 
 
 19.  NNTP (USENET / NETWORK NEWS)
----------------------------------------------------------------------
+------------------------------------
 
 NNTP (Network News Transfer Protocol, RFC 3977) provides
 access to Usenet newsgroups — a worldwide distributed
@@ -2116,7 +2116,7 @@ A simple text-mode newsreader:
 
 
 20.  E-MAIL (SMTP, POP3, IMAP)
----------------------------------------------------------------------
+---------------------------------
 
 BASIC++ provides built-in support for the three core
 e-mail protocols: SMTP for sending, POP3 and IMAP for
@@ -2355,7 +2355,7 @@ operations.
 
 
 21.  HTTP REQUESTS
----------------------------------------------------------------------
+--------------------
 
 21.1  NET HTTP GET
 ~~~~~~~~~~~~~~~~~~~~
@@ -2540,7 +2540,7 @@ A complete REST API client:
 
 
 22.  WEBSOCKETS
----------------------------------------------------------------------
+-----------------
 
 WebSockets provide full-duplex communication channels
 over a single TCP connection.  They are used for real-time
@@ -2652,7 +2652,7 @@ terminal client in BASIC++.
 
 
 23.  THE PLATO PROTOCOL
----------------------------------------------------------------------
+--------------------------
 
 PLATO uses a custom binary protocol over TCP.  The
 terminal communicates using a series of command bytes
@@ -2983,7 +2983,7 @@ protect users and systems from network-based attacks.
 
 
 24.  THE SECURITY GATE
----------------------------------------------------------------------
+-------------------------
 
 All network operations pass through the Security Gate
 (introduced in Section 3 of Part I).  This section
@@ -3205,7 +3205,7 @@ Part IX:  ERROR REFERENCE AND COMPLETE EXAMPLE
 
 
 25.  NETWORK ERROR CODES
----------------------------------------------------------------------
+---------------------------
 
 Complete list of network-related error codes:
 
@@ -3250,7 +3250,7 @@ To get a human-readable error message:
 
 
 26.  NETWORK UTILITY FUNCTIONS
----------------------------------------------------------------------
+---------------------------------
 
 BASIC++ provides several utility functions for network
 programming:
@@ -3331,7 +3331,7 @@ programming:
 
 
 27.  COMPLETE EXAMPLE: MULTI-PROTOCOL CLIENT
----------------------------------------------------------------------
+------------------------------------------------
 
 This final example brings together multiple protocols
 into a single program — a "Swiss Army knife" network
@@ -3465,7 +3465,7 @@ tool:
 
 
 28.  KEYWORD QUICK REFERENCE
----------------------------------------------------------------------
+-------------------------------
 
 All NET keywords at a glance:
 
@@ -3568,7 +3568,7 @@ All NET keywords at a glance:
 
 
 29.  SUMMARY
----------------------------------------------------------------------
+--------------
 
 This tutorial has covered the complete BASIC++ network
 programming system, from low-level adapter discovery to

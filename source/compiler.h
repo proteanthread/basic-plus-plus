@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: compiler.h
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Stored program editor commands (RENUM, DELETE), compiler driver pipeline (BASIC-to-C), and bytecode serializers.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Code generator constructs self-contained C89 files. Bytecode serializes code to files.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    C89 codegen shims, editor warnings, target language mapping layout.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    AST translation loops, bytecode file format specs.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Verify target C compiler settings. If transpiled C file has compilation warnings, check codegen expressions mapping.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Compiler - compiler.h
  // ---

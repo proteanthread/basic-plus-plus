@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: memmap.h
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Virtual Device Layer (VDev), Virtual Machine opcode dispatcher, and platform memory mappings.
+ *
+ * 2. WHAT TO EXPECT:
+ *    VDev slots abstract screen, keyboard, files, and GPIO. VM runs bytecode dispatch.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Virtual memory preset maps, new peripheral classes, custom hardware simulation registers.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    VM opcodes, VM stack math, VDev operations interface.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Trace I/O issues in VDev registration calls. Verify memory offsets are within configured segments.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - memmap.h
  // ---

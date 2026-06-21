@@ -482,7 +482,7 @@ This classification defines a specialized subset of Modules. A "Plugin" is a C-c
 
 ## Section 12: Documentation
 
-A comprehensive documentation suite of 35 reference manuals and tutorials is included:
+A comprehensive documentation suite of 36 reference manuals and tutorials is included:
 
 | Document | Subject |
 |:---------|:--------|
@@ -512,6 +512,7 @@ A comprehensive documentation suite of 35 reference manuals and tutorials is inc
 | `USB_Devices.txt` | USB HID and serial device support |
 | `Compiling_BASIC_Programs.txt` | Transpile BASIC to native executables |
 | `Memory_Maps.txt` | Creating and using MEMMAP presets |
+| `Systems_Programming.txt` | Bare-metal execution, drivers, OS design |
 | `User_Defined_Types.txt` | TYPE...END TYPE, records, typed fields |
 | `Screen_And_Console.txt` | LOCATE, COLOR, CLS, WIDTH, PRINT USING |
 | `Subroutines_And_Functions.txt` | GOSUB, SUB/FUNCTION, DEF FN, CALL |

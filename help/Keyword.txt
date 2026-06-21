@@ -21,7 +21,7 @@ PREREQUISITE READING:
 
 
 TABLE OF CONTENTS
----------------------------------------------------------------------
+-----------------
   1.  Syntax Overview
   2.  PRINT Properties
   3.  INPUT Properties

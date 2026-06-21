@@ -290,7 +290,7 @@ security gate checks whether it's allowed.
     SECOP_SYSTEM      1       0          0
     SECOP_MODULE      1       1          0
 
-  The check is a single array access: allowedlevel.
+  The check is a single array access: allowed[level][op].
   Zero overhead when the level is SEC_OPEN (the default),
   because it fast-paths: if (level == SEC_OPEN) return 0.
 
@@ -348,9 +348,9 @@ structures (channels 1-16, stored 0-indexed):
   Each FileChannel contains:
 
     struct FileChannel {
-        FILE fp;           / C file pointer, or NULL if closed */
+        FILE *fp;           /* C file pointer, or NULL if closed */
         int   mode;         /* CLOSED/INPUT/.../BINARY/DEVICE */
-        VDev vdev;         / Phase 16: device pointer (or NULL) */
+        VDev *vdev;         /* Phase 16: device pointer (or NULL) */
         int   record_len;   /* record length for RANDOM (default 128) */
         char  record_buf[256]; /* record buffer */
         FieldMap fields[16]; /* FIELD mappings */
@@ -1120,9 +1120,9 @@ Removing ANY layer creates real problems:
   FIELD maps string variables to slices of the record buffer:
 
     FIELD #1, 20 AS N$, 15 AS CITY$, 10 AS PHONE$, 5 AS ZIP$
-  ----------------------------------------------------------------------
+              |         |            |             |
               v         v            v             v
-    Buffer: 0......1935......44
+    Buffer: [0......19][20......34][35......44][45..49]
              N$ (20)    CITY$ (15)  PHONE$ (10) ZIP$ (5)
                               Total: 50 bytes
 
@@ -1320,7 +1320,7 @@ Removing ANY layer creates real problems:
     ' Parse fields using MID$ and ASC
     MAGIC$ = MID$(H$, 1, 2)       ' Should be "BM"
     FILESIZE = ASC(MID$(H$,3,1)) + ASC(MID$(H$,4,1))*256 + _
-               ASC(MID$(H$,5,1))65536 + ASC(MID$(H$,6,1))16777216
+               ASC(MID$(H$,5,1))*65536 + ASC(MID$(H$,6,1))*16777216
 
     PRINT "Magic: "; MAGIC$
     PRINT "File size: "; FILESIZE; " bytes"
@@ -1464,7 +1464,7 @@ Removing ANY layer creates real problems:
     (MODULE activation)
 
   The matrix is stored as a 2D array in security.c:
-    static const int allowed3 = {
+    static const int allowed[3][6] = {
         { 1, 1, 1, 1, 1, 1 },  /* OPEN       */
         { 1, 1, 0, 0, 0, 1 },  /* STANDARD   */
         { 0, 0, 0, 0, 0, 0 }   /* RESTRICTED */
@@ -1483,7 +1483,7 @@ Removing ANY layer creates real problems:
         /* Fast path: SEC_OPEN permits everything */
         if (current_level == SEC_OPEN) return 0;
 
-        if (allowedcurrent_level) return 0;
+        if (allowed[current_level][op]) return 0;
 
         /* Denied */
         printf("SORRY? Security: %s not permitted "
@@ -2292,7 +2292,7 @@ internally.  The BASIC program uses the abstract device name:
 
 The BASIC program NEVER directly opens /dev/ paths.
 All /dev/ access is mediated through VDev modules which:
-  1. Are compiled with platform-specific code (#ifdef linux)
+  1. Are compiled with platform-specific code (#ifdef __linux__)
   2. Declare appropriate CAP_ flags (CAP_GPIO, CAP_USB, etc.)
   3. Are gated by the security system
 

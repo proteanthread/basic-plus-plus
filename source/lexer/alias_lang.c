@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: alias_lang.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Lexical analysis, zero-copy tokenization scanner, keyword property tables, and natural language keyword alias packs.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Single-pass zero-copy tokenization. Keywords are filtered based on the active dialect configuration at parse time.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    New keywords definitions, keyword property modifiers, and multilingual alias mappings.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Core lexer scan logic, token type enumeration values, zero-copy string indexing.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Verify the keyword list ordering (it must be sorted/indexed correctly). Run self-tests for lexical parsing to locate tokenization boundaries.
+ * ===================================================================== */
+
 // ---
 // BASIC++ Interpreter - alias_lang.c
 // ---

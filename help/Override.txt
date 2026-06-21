@@ -21,7 +21,7 @@ PREREQUISITE READING:
 
 
 TABLE OF CONTENTS
----------------------------------------------------------------------
+-----------------
   1.  What OVERRIDE Does
   2.  Syntax
   3.  How It Works Internally
@@ -328,7 +328,7 @@ differently:
 Key differences:
 
   Feature             OVERRIDE           SCOPE OVERRIDE
----------------------------------------------------------------------
+  -----------------------------------------------------------
   Keyword executes?   YES (modified)     NO (replaced)
   Mechanism           Parse-time text    GOSUB dispatch
   Needs subroutine?   No                 Yes (GOSUB target)

@@ -296,8 +296,8 @@ STEP 6: Update the Makefile.
 
 STEP 7: Rebuild and test.
 
-  cl /nologo /W4 /O2 /Fe:basicpp.exe *.c
-  echo DIALECT "BBCB" | .\basicpp.exe
+    > cl /nologo /W4 /O2 /Fe:basicpp.exe *.c
+    > echo DIALECT "BBCB" | .\basicpp.exe
     Dialect: BBC BASIC [BBCB]
 
 That's it. Your new dialect is live. You can now use

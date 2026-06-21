@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: parser_graphics.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Screen mode setting, line/circle drawing algorithms, palette mappings, and ANSI/Unicode text-mode framebuffer.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Renders coordinate-scaled virtual buffer to terminal using Unicode half-blocks. High execution density.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Default palette colors, screen dimensions limits, drawing layout algorithms.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Framebuffer structure, Unicode screen printing characters mappings.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    If display is garbled, verify terminal supports UTF-8 and ANSI escape codes. Check coordinate math ranges.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - parser_graphics.c
  // ---

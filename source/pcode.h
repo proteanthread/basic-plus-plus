@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: pcode.h
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Utility or helper code for BASIC++ interpreter.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Executes with low overhead, relying on fixed compile-time limits and memory pools.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Internal helper functions, optimization passes, or local naming adjustments.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Public API structures, parameter contracts, or global type definitions.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Check memory pool margins, look for segmentation faults, and trace parameter values via a debugger.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - pcode.h
  // ---
