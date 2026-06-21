@@ -1,14 +1,7 @@
-=====================================================================
+BASIC++ Systems Programming Guide
+Developing System Applications, Drivers, and Operating Systems
 
-        BASIC++ SYSTEMS PROGRAMMING GUIDE
-   Developing System Applications, Drivers, and Operating Systems
-
-=====================================================================
-
-
-=====================================================================
-TABLE OF CONTENTS
-=====================================================================
+Table of Contents
 
   1. Overview: Why Systems Programming in BASIC++?
   2. The Transpilation Engine (C89 Code Generation)
@@ -25,9 +18,7 @@ TABLE OF CONTENTS
  10. Related Documents
 
 
-=====================================================================
-1. OVERVIEW: WHY SYSTEMS PROGRAMMING IN BASIC++?
-=====================================================================
+1. Overview: Why Systems Programming in BASIC++?
 
 Historically, BASIC has been seen as a high-level, interpreted language
 designed primarily for beginners. However, BASIC++ contains architectural
@@ -53,9 +44,7 @@ of the C89 compiler backend, developers can write everything from low-level
 system tools to custom operating system kernels.
 
 
-=====================================================================
-2. THE TRANSPILATION ENGINE (C89 CODE GENERATION)
-=====================================================================
+2. The Transpilation Engine (C89 Code Generation)
 
 Writing systems software requires speed and direct hardware control. Running
 an interpreter in kernel space or on a bare-metal microcontroller has too much
@@ -95,9 +84,7 @@ To build a system binary:
 
 
 
-=====================================================================
-3. DIRECT MEMORY MANIPULATION (PEEK, POKE, DEF SEG, VARPTR)
-=====================================================================
+3. Direct Memory Manipulation (PEEK, POKE, DEF SEG, VARPTR)
 
 To write drivers and low-level code, you must read and write to specific
 memory locations. BASIC++ provides four primary instructions for this.
@@ -126,9 +113,7 @@ developers to pass references to variables or arrays to C modules and system
 APIs.
 
 
-=====================================================================
-4. THE VIRTUAL DEVICE LAYER (VDEV) AS A DRIVER MODEL
-=====================================================================
+4. The Virtual Device Layer (VDev) as a Driver Model
 
 The Virtual Device (VDev) layer (defined in source/vdev.h) is the primary
 abraction boundary for hardware interaction. Instead of hardcoding hardware
@@ -178,9 +163,7 @@ Once a driver is registered, BASIC++ code accesses it using uniform file command
 
 
 
-=====================================================================
-5. WRITING SYSTEM APPLICATIONS & UTILITIES
-=====================================================================
+5. Writing System Applications & Utilities
 
 You can write system utilities, command-line interfaces (CLIs), and background
 daemons using BASIC++.
@@ -214,9 +197,7 @@ The SYSTEM function can be used to query basic platform metrics:
 - SYSTEM "ARCH" returns the processor architecture (e.g. X86_64, ARM64).
 
 
-=====================================================================
-6. DESIGNING AN OPERATING SYSTEM IN BASIC++
-=====================================================================
+6. Designing an Operating System in BASIC++
 
 Creating a complete operating system with BASIC++ involves combining a tiny,
 bare-metal boot assembly/C loader with transpiled BASIC++ applications.
@@ -262,9 +243,7 @@ RUN
 
 
 
-=====================================================================
-7. PRACTICAL CODE EXAMPLES
-=====================================================================
+7. Practical Code Examples
 
 Example A: Register and MMIO Manipulation
 The following code writes directly to the x86 PC serial port (COM1, base
@@ -388,9 +367,7 @@ int main(void) {
 
 
 
-=====================================================================
-8. MEMORY BUDGETS AND CONSTRAINTS
-=====================================================================
+8. Memory Budgets and Constraints
 
 Operating systems and system tools running on constrained target platforms
 (like x86 Real Mode or ARM Cortex chips) must be careful with RAM allocation.
@@ -409,9 +386,7 @@ A complete basic kernel shim and transpiled binary can run comfortably inside
 64 KB to 128 KB of conventional SRAM.
 
 
-=====================================================================
-9. LIMITATIONS AND BEST PRACTICES
-=====================================================================
+9. Limitations and Best Practices
 
   - Pointer Arithmetic: Standard BASIC variables do not support
     traditional C pointers. Use VARPTR to get address offsets and pass
@@ -430,9 +405,7 @@ A complete basic kernel shim and transpiled binary can run comfortably inside
     with typos.
 
 
-=====================================================================
-10. RELATED DOCUMENTS
-=====================================================================
+10. Related Documents
 
   - Transpiler.md              BASIC++ to C89 code generation pipeline
   - Memory_Maps.md             Virtual Address Space and Segment Configuration
@@ -441,6 +414,4 @@ A complete basic kernel shim and transpiled binary can run comfortably inside
   - External_Modules.md        Writing C plugins and runtime modules
 
 
-=====================================================================
-END OF DOCUMENT
-=====================================================================
+End of Document
