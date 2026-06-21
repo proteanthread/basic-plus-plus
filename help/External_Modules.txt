@@ -185,7 +185,7 @@ lives in this table.
 Registry structure:
 
   struct FunctionEntry {
-      const char     name;        / "ABS", "MYFUNC" */
+      const char     *name;        /* "ABS", "MYFUNC" */
       KeywordId       keyword;     /* KW_ABS or KW_COUNT */
       FuncCategory    category;    /* FCAT_MATH, FCAT_USER */
       FuncReturnType  ret_type;    /* FRET_INT, FRET_STRING */
@@ -194,7 +194,7 @@ Registry structure:
       FuncSafety      safety;      /* FSAFE_PURE ... FSAFE_SYSTEM */
       int             overridable; /* 1=dialect can replace */
       FuncHandler     handler;     /* C function pointer */
-      const char     help_text;   / one-line description */
+      const char     *help_text;   /* one-line description */
   };
 
 Registry API:
@@ -239,14 +239,14 @@ A module is a named, versioned unit that groups related
 functions, devices, or dialect extensions together.
 
   struct ModuleInfo {
-      const char    name;         / "STDLIB", "SERIAL" */
-      const char    version;      / "1.0" */
-      const char    description;  / one-line summary */
+      const char    *name;         /* "STDLIB", "SERIAL" */
+      const char    *version;      /* "1.0" */
+      const char    *description;  /* one-line summary */
       ModuleClass    mod_class;    /* Library/Dialect/Device/Extension */
       unsigned int   capabilities; /* CAP_ bitfield */
       SecLevel       required_level; /* security pinning */
-      int          (init)(void); /* init callback */
-      void         (cleanup)(void); / cleanup callback */
+      int          (*init)(void*); /* init callback */
+      void         (*cleanup)(void); /* cleanup callback */
   };
 
   The required_level field controls security pinning:
@@ -345,7 +345,7 @@ a file and merge it into the current program.
 6.1  MERGE (Add code to current program)
 
   File: MATHLIB.BAS
----------------------------------------------------------------------
+  ----
   5000 REM ============= MATH LIBRARY =============
   5010 REM Call: A=x, B=y, GOSUB line -> result in R
   5100 REM --- MAX(A, B) ---
@@ -362,16 +362,16 @@ a file and merge it into the current program.
   5400 REM --- LERP(A=t, B=start, C=end) ---
   5410 R = B + A * (C - B)
   5420 RETURN
----------------------------------------------------------------------
+  ----
 
   Main program:
----------------------------------------------------------------------
+  ----
   10 MERGE "MATHLIB.BAS"
   20 A = 150 : B = 0 : C = 100
   30 GOSUB 5300 : REM CLAMP
   40 PRINT "Clamped: "; R     ' 100
   50 END
----------------------------------------------------------------------
+  ----
 
   Convention: Library subroutines use high line numbers
   (5000+, 8000+, 9000+) to avoid collisions with the
@@ -401,8 +401,8 @@ Define callable functions directly in BASIC:
 
   DEF FN SQUARE(X) = X * X
   DEF FN CUBE(X) = X * X * X
-  DEF FN HYPOTENUSE(A, B) = SQR(AA + BB)
-  DEF FN CLAMP(X, LO, HI) = -(X<LO)LO -(X>HI)HI -(X>=LO AND X<=HI)*X
+  DEF FN HYPOTENUSE(A, B) = SQR(A*A + B*B)
+  DEF FN CLAMP(X, LO, HI) = -(X<LO)*LO -(X>HI)*HI -(X>=LO AND X<=HI)*X
 
   PRINT FN SQUARE(7)         ' 49
   PRINT FN CUBE(3)           ' 27
@@ -425,7 +425,7 @@ Define callable functions directly in BASIC:
 A reusable pattern for BASIC libraries:
 
   File: STRLIB.BAS
----------------------------------------------------------------------
+  ----
   8000 REM ========= STRING LIBRARY =========
   8010 REM
   8020 REM GOSUB 8100: REVERSE$(A$) -> R$
@@ -451,7 +451,7 @@ A reusable pattern for BASIC libraries:
   8400 REM --- TRIM$ ---
   8410 R$ = LTRIM$(RTRIM$(A$))
   8420 RETURN
----------------------------------------------------------------------
+  ----
 
   Usage:
     10 MERGE "STRLIB.BAS"
@@ -1100,17 +1100,17 @@ to ensure the module compiles on all platforms:
     #endif
 
   Linux detection:
-    #if defined(linux)
+    #if defined(__linux__)
     /* Linux-specific code */
     #endif
 
   FreeDOS / DOS detection:
-    #if defined(MSDOS) || defined(DOS) || defined(MSDOS)
+    #if defined(__MSDOS__) || defined(__DOS__) || defined(MSDOS)
     /* DOS-specific code */
     #endif
 
   POSIX (macOS, BSD, Linux):
-    #if defined(unix) || defined(APPLE)
+    #if defined(__unix__) || defined(__APPLE__)
     /* POSIX-specific code */
     #endif
 
@@ -1123,7 +1123,7 @@ PATTERN: Provide a fallback for unsupported platforms:
       /* Windows clipboard access */
       ...
       return bval_string(text, len);
-  #elif defined(linux)
+  #elif defined(__linux__)
       /* Linux: try xclip */
       ...
       return bval_string(text, len);
@@ -1335,7 +1335,7 @@ PATTERN: Return an error on unsupported platforms:
 
   SECURITY: Requires CAP_FILE.
 
-    #if defined(linux) || defined(unix)
+    #if defined(__linux__) || defined(__unix__)
     #include <sys/stat.h>
     #include <unistd.h>
 
@@ -1376,7 +1376,7 @@ PATTERN: Return an error on unsupported platforms:
 
   SECURITY: Requires CAP_SYSTEM.
 
-    #if defined(linux) || defined(unix)
+    #if defined(__linux__) || defined(__unix__)
     #include <stdio.h>
 
     static BValue fn_popen_read(BValue *args, int argc, void *rt)
@@ -1415,7 +1415,7 @@ PATTERN: Return an error on unsupported platforms:
 
   SECURITY: Requires CAP_SYSTEM.
 
-    #if defined(linux)
+    #if defined(__linux__)
     #include <signal.h>
 
     static volatile int signal_caught = 0;
@@ -1450,7 +1450,7 @@ PATTERN: Return an error on unsupported platforms:
 
   SECURITY: Requires CAP_IO.
 
-    #if defined(linux)
+    #if defined(__linux__)
     #include <syslog.h>
 
     static BValue fn_syslog(BValue *args, int argc, void *rt)
@@ -1475,7 +1475,7 @@ PATTERN: Return an error on unsupported platforms:
 
   SECURITY: Requires CAP_SYSTEM | CAP_IO.
 
-    #if defined(linux)
+    #if defined(__linux__)
     static BValue fn_gpio_write(BValue *args, int argc, void *rt)
     {
         int pin, value;
@@ -1524,7 +1524,7 @@ PATTERN: Return an error on unsupported platforms:
 
   On FreeDOS with OpenWatcom, you can call BIOS interrupts:
 
-    #if defined(MSDOS) || defined(DOS)
+    #if defined(__MSDOS__) || defined(__DOS__)
     #include <dos.h>
     #include <i86.h>
 
@@ -1554,7 +1554,7 @@ PATTERN: Return an error on unsupported platforms:
 24.2  Direct Port I/O
 ---------------------------------------------------------------------
 
-    #if defined(MSDOS) || defined(DOS)
+    #if defined(__MSDOS__) || defined(__DOS__)
     #include <conio.h>
 
     static BValue fn_port_in(BValue *args, int argc, void *rt)
@@ -1579,7 +1579,7 @@ PATTERN: Return an error on unsupported platforms:
 24.3  Real-Mode Memory Access
 ---------------------------------------------------------------------
 
-    #if defined(MSDOS) || defined(DOS)
+    #if defined(__MSDOS__) || defined(__DOS__)
     #include <dos.h>
 
     static BValue fn_farpeek(BValue *args, int argc, void *rt)
@@ -1641,7 +1641,7 @@ PATTERN 1: Platform-switching function
           DWORD size = sizeof(name);
           GetComputerNameA(name, &size);
       }
-  #elif defined(linux) || defined(unix)
+  #elif defined(__linux__) || defined(__unix__)
       gethostname(name, sizeof(name));
   #else
       strcpy(name, "UNKNOWN");
@@ -1665,7 +1665,7 @@ PATTERN 2: Feature availability check
       if (strcmp(feature, "CLIPBOARD") == 0) return bval_int(-1);
       if (strcmp(feature, "REGISTRY") == 0)  return bval_int(-1);
       if (strcmp(feature, "PLAYSOUND") == 0) return bval_int(-1);
-  #elif defined(linux)
+  #elif defined(__linux__)
       if (strcmp(feature, "SYSLOG") == 0)    return bval_int(-1);
       if (strcmp(feature, "GPIO") == 0)      return bval_int(-1);
       if (strcmp(feature, "POPEN") == 0)     return bval_int(-1);
@@ -1698,7 +1698,7 @@ PATTERN 3: Unified API with platform backends
 
   #if defined(_WIN32)
       GetTempPathA(sizeof(path), path);
-  #elif defined(linux)
+  #elif defined(__linux__)
       strcpy(path, getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp");
   #else
       strcpy(path, ".");
@@ -2014,7 +2014,7 @@ How to choose capability flags for your module:
 
   static BValue fn_lerp(BValue *a, int c, void *r)
   { (void)c;(void)r; double t=bval_to_float(&a[0]);
-    return bval_float(bval_to_float(&a[1])(1-t)+bval_to_float(&a[2])t); }
+    return bval_float(bval_to_float(&a[1])*(1-t)+bval_to_float(&a[2])*t); }
 
   static BValue fn_deg2rad(BValue *a, int c, void *r)
   { (void)c;(void)r; return bval_float(bval_to_float(&a[0])*3.14159265358979/180.0); }
@@ -2263,16 +2263,16 @@ SECURITY PINNING:
 COMPLETE EXAMPLE:
 
   File: counter.spec
----------------------------------------------------------------------
+  ----
   DEFINE SPECIFICATION "COUNTER"
       CATEGORY "STATEMENT"
       VERSION "1.0"
       LIB "counter.lib"
   END SPECIFICATION
----------------------------------------------------------------------
+  ----
 
   File: counter.lib
----------------------------------------------------------------------
+  ----
   REM @LIBRARY COUNTER
   REM @VERSION 1.0
 
@@ -2283,7 +2283,7 @@ COMPLETE EXAMPLE:
       NEXT I
       PRINT
   END SUB
----------------------------------------------------------------------
+  ----
 
   Usage:
     LOAD FEATURE "counter.spec"

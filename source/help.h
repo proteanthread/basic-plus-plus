@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: help.h
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Self-describing HELP interactive system, OPTION overrides, and security scope permissions.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Help prints keyword usage. Overrides rewrite token attributes at parse time.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Command summaries, help topics, scope presets mappings.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Help databases lookup logic, keyword gating routines.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    If help command fails, ensure help databases are sorted. Check override loop guards.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - help.h
  // ---

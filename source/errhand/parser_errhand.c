@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: parser_errhand.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Error catching, exception handlers, and exception recovery (ON ERROR, RESUME, WHEN/USE).
+ *
+ * 2. WHAT TO EXPECT:
+ *    Enforces execution rollback using nested error handling scopes.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Custom error codes, debug tracking messages.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Exception scope stack traversal logic, error recovery pathways.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    If error handlers loop infinitely, check RESUME target line numbers and error registry states.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - parser_errhand.c
  // ---

@@ -145,7 +145,7 @@ expect to find there.
   RAM: 640K conventional
 
   BIOS DATA AREA ($0400-$04FF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Address       Bytes  Value     Description
   -------       -----  -----     -----------
   $0400-$0401   2      varies    COM1 base port (e.g. $03F8)
@@ -208,7 +208,7 @@ expect to find there.
   $0485-$0486   2      $0010     Character height (16 scan lines)
 
   INTERRUPT VECTOR TABLE ($0000-$03FF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   All 256 entries are zero (stubs).  Key interrupts on a real PC:
 
   INT $00 ($0000): Divide by zero
@@ -222,7 +222,7 @@ expect to find there.
   INT $21 ($0084): DOS services
 
   VIDEO MEMORY:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   On a real PC, video memory is at segment B800:0000 (CGA/EGA/VGA
   color text) or B000:0000 (monochrome).  Use DEF SEG:
 
@@ -241,7 +241,7 @@ expect to find there.
     3 = Cyan     7 = White     11 = Lt Cyan    15 = Bright White
 
   USEFUL PEEKS AND POKES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     PEEK(&H0413)            Read conventional memory (KB)
     PEEK(&H0449)            Read current video mode
     POKE &H0417, flags      Set keyboard flags
@@ -266,7 +266,7 @@ expect to find there.
   RAM: 64K
 
   CPU PORT ($0000-$0001):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Address  Value  Description
   $0000    $2F    Data Direction Register
                     Bit 0: LORAM direction (1=output)
@@ -292,7 +292,7 @@ expect to find there.
     $31 (001): RAM + I/O + RAM
 
   BASIC ZERO-PAGE POINTERS:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Address       Value     Description
   $002B-$002C   $0801     TXTTAB: Start of BASIC program text
   $002D-$002E   $0803     VARTAB: Start of BASIC variables
@@ -306,7 +306,7 @@ expect to find there.
   $0043-$0044   varies    DATA pointer
 
   SYSTEM VARIABLES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $00BA         $08       Current device number
                             0 = Keyboard
                             1 = Cassette
@@ -321,7 +321,7 @@ expect to find there.
   $0277-$0280   ---       Keyboard buffer (10 bytes)
 
   SCREEN MEMORY ($0400-$07E7):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   1000 bytes = 40 columns x 25 rows, filled with $20 (space)
   Screen codes (not PETSCII): $01='A', $02='B', etc.
 
@@ -329,7 +329,7 @@ expect to find there.
     POKE 1024 + R * 40 + C, screencode
 
   COLOR RAM ($D800-$DBE7):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   1000 nybbles, one per screen character.  Default: $0E (lt blue)
   Only the low nybble is significant (0-15).
 
@@ -342,7 +342,7 @@ expect to find there.
     3 = Cyan        7 = Yellow      11 = Dk Gray    15 = Lt Gray
 
   VIC-II REGISTERS ($D000-$D02E):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Address  Value  Register  Description
   $D000    $00    SP0X      Sprite 0 X position
   $D001    $00    SP0Y      Sprite 0 Y position
@@ -385,7 +385,7 @@ expect to find there.
   $D028-$D02E     SP1-SP7   Sprite 1-7 colors
 
   SID REGISTERS ($D400-$D41C):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   All SID registers boot at $00 (silence).  Key registers:
 
   $D400-$D401   Voice 1 frequency (16-bit, lo/hi)
@@ -428,7 +428,7 @@ expect to find there.
   $D41C         Voice 3 envelope (read-only)
 
   CIA 1 ($DC00-$DC0F):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $DC00    $7F    PRA    Port A data (keyboard column output)
   $DC01    $FF    PRB    Port B data (keyboard row input)
   $DC02    $FF    DDRA   Data direction A (output)
@@ -449,7 +449,7 @@ expect to find there.
     Bit 4: Fire button
 
   CIA 2 ($DD00-$DD0F):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $DD00    $97    PRA    Port A data
                            Bits 0-1: VIC bank select
                              00 = Bank 3: $C000-$FFFF
@@ -461,18 +461,18 @@ expect to find there.
                            Bits 6-7: Serial bus input
 
   ROM SIGNATURES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $A004-$A00B   "CBMBASIC"   BASIC ROM signature
   $FF80         $03          KERNAL revision 3
 
   HARDWARE VECTORS:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FFFA-$FFFB   NMI vector   (KERNAL default: $FE43)
   $FFFC-$FFFD   $FCE2        RESET vector (cold start)
   $FFFE-$FFFF   $FF48        IRQ vector
 
   CLASSIC C64 POKES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     POKE 53280, color      Border color (0-15)
     POKE 53281, color      Background color (0-15)
     POKE 53272, 23         Switch to uppercase/graphics
@@ -490,7 +490,7 @@ expect to find there.
     PEEK(653)              Shift/CTRL/Commodore key status
 
   SID SOUND EXAMPLE:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     POKE 54296, 15         ' Master volume max
     POKE 54277, 9          ' Attack=0, Decay=9
     POKE 54278, 0          ' Sustain=0, Release=0
@@ -510,7 +510,7 @@ expect to find there.
   RAM: 128K (two 64K banks)
 
   MMU ($FF00-$FF04):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FF00    $3E    Configuration register
                     Bit 0: I/O block select
                     Bit 1: ROM low select
@@ -524,12 +524,12 @@ expect to find there.
   $FF04    ---    Mode configuration register
 
   ADDITIONAL REGISTERS:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FF80    $07    KERNAL version 7 (BASIC 7.0)
   $0033-$0034     $FF00 (extended string space for 128K)
 
   VDC 80-COLUMN CHIP (accessed via $D600-$D601):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   The VDC is register-indirect: write register number to $D600,
   read/write data at $D601.
 
@@ -554,19 +554,19 @@ expect to find there.
   RAM: 5K unexpanded (max 32K with cartridges)
 
   CPU PORT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $0000    $2F    Data Direction Register
   $0001    $37    Bank configuration
 
   BASIC POINTERS:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $002B-$002C   $1001     Start of BASIC text
   $0037-$0038   $1E00     Top of BASIC memory
   $002D-$002E   varies    Start of variables
   $0033-$0034   varies    Bottom of strings
 
   SCREEN MEMORY ($1E00-$1FF9):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   506 bytes (22 columns x 23 rows), filled with $20 (space)
   Note: VIC-20 screen RAM location depends on memory expansion:
     Unexpanded: $1E00
@@ -574,11 +574,11 @@ expect to find there.
     8K+ expanded: $1000
 
   COLOR MEMORY ($9600-$97F9):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   506 nybbles, default $01 (white)
 
   VIC CHIP REGISTERS ($9000-$900F):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $9000    $0C    Screen origin X (horizontal)
   $9001    $26    Screen origin Y (vertical)
   $9002    $96    Number of video columns
@@ -607,7 +607,7 @@ expect to find there.
                     Bit 3: Inverse mode (1=inverse)
 
   VIA REGISTERS ($9110-$912F):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   VIA 1 ($9110-$911F):
     $9110    Port B (joystick + light pen)
     $9111    Port A (serial bus)
@@ -620,12 +620,12 @@ expect to find there.
     $9121    Port A (keyboard row)
 
   KERNAL:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FF80    $02    KERNAL revision 2
   $FFFC-$FFFD    $FD22    RESET vector
 
   VIC-20 COLOR CODES (same as C64):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     0=Black 1=White 2=Red 3=Cyan 4=Purple 5=Green 6=Blue 7=Yellow
     8-15: Same colors with multi-color flag
 
@@ -640,21 +640,21 @@ expect to find there.
   ROM: BASIC 3.5 (16K) + KERNAL (16K) + built-in software
 
   CPU PORT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $0000    $2F    Data Direction Register
   $0001    $37    Bank configuration
 
   BASIC POINTERS:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $002B-$002C   $1001     Start of BASIC text
   $0037-$0038   $8000     Top of BASIC memory
 
   SCREEN MEMORY ($0C00-$0FE7):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   1000 bytes (40 x 25), filled with $20
 
   TED REGISTERS ($FF00-$FF3E):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FF06    $00    Horizontal position / control
                     Bits 0-2: Fine horizontal scroll
                     Bit 3: Column select (38/40)
@@ -693,7 +693,7 @@ expect to find there.
   $FF3F    ---    RAM select
 
   TED COLOR ENCODING:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   The TED uses a luminance + hue encoding.  121 unique colors:
     High nybble = hue (0-15, 0=black)
     Low nybble  = luminance (0-7)
@@ -714,17 +714,17 @@ expect to find there.
   RAM: 8K-96K depending on model
 
   BASIC POINTERS:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $0028-$0029   $0401     Start of BASIC text
   $0034-$0035   $8000     Top of memory
 
   SCREEN MEMORY ($8000-$83E7):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   1000 bytes (40 x 25), filled with $20 (space)
   8032 model uses $8000-$87CF (2000 bytes, 80x25)
 
   PIA REGISTERS:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $E810    $FF    PIA 1 Port A (keyboard row)
   $E811    $FF    PIA 1 Control Register A
   $E812    $FF    PIA 1 Port B (keyboard column)
@@ -735,17 +735,17 @@ expect to find there.
   $E823    $FF    PIA 2 Control Register B
 
   VIA ($E840-$E84F):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $E840    Port B (cassette, screen blank, speaker)
   $E84B    Auxiliary control (shift register, timers)
 
   ROM:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FF80    $04    BASIC 4.0 marker
   $FFFC-$FFFD    $FD16    RESET vector
 
   PET MEMORY MAP OVERVIEW:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     $0000-$00FF: Zero page
     $0100-$01FF: CPU stack
     $0200-$03FF: System variables
@@ -770,7 +770,7 @@ expect to find there.
   RAM: 16K-128K (320K with upgrades)
 
   ZERO PAGE OS VARIABLES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $0010-$0011     DOSVEC: DOS entry point
   $0012-$0013     DOSINI: DOS init address
   $0040-$0041     WARMST: Warm start flag
@@ -782,7 +782,7 @@ expect to find there.
   $0058-$0059    $9C40   SAVMSC: Screen memory address
 
   BASIC ZERO PAGE:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $0080-$0081    $A000   LOMEM: Lowest address for variables
   $0082-$0083    ---     VNTP: Variable name table pointer
   $0084-$0085    ---     VVTP: Variable value table pointer
@@ -793,7 +793,7 @@ expect to find there.
   $0090-$0091    $BC1F   MEMTOP: Highest address for BASIC
 
   COLOR REGISTER SHADOWS ($02C0-$02C8):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $02C0    PCOLR0: Player 0 color
   $02C1    PCOLR1: Player 1 color
   $02C2    PCOLR2: Player 2 color
@@ -808,7 +808,7 @@ expect to find there.
                          Low nybble = luminance (even: 0,2,4..14)
 
   ANTIC REGISTERS ($D400-$D40F):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $D400    $22     DMACTL: DMA control
                      Bit 0: Narrow playfield (128 color clocks)
                      Bit 1: Normal playfield (160 color clocks)
@@ -829,7 +829,7 @@ expect to find there.
   $D40F    ---     WSYNC: Wait for horizontal sync
 
   ANTIC DISPLAY LIST MODES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     Mode 2:  40 chars, 1.5 color (GR.0 text, default)
     Mode 4:  40 chars, 4 colors (GR.12 multicolor text)
     Mode 6:  20 chars, 5 colors (GR.1 large text)
@@ -844,7 +844,7 @@ expect to find there.
     Mode 15: 320 pixels, 2 colors (GR.8, hi-res)
 
   GTIA REGISTERS ($D000-$D01F):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $D000-$D003     HPOSP0-3: Player horizontal positions
   $D004-$D007     HPOSM0-3: Missile horizontal positions
   $D008-$D00B     SIZEP0-3: Player widths (0,1,2,3 = 1x,2x,1x,4x)
@@ -866,7 +866,7 @@ expect to find there.
   $D01F    $00    CONSOL: Console keys / speaker
 
   POKEY REGISTERS ($D200-$D20F):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $D200    AUDF1: Audio frequency 1
   $D201    AUDC1: Audio control 1
                     Bits 4-7: Volume (or dist control)
@@ -894,7 +894,7 @@ expect to find there.
   $D20F    $03    SKSTAT: Serial port status
 
   PIA ($D300-$D303):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $D300    $FF    PORTA: Joystick port A
                     Bit 0: Stick 0 up    (0=pressed)
                     Bit 1: Stick 0 down
@@ -913,16 +913,16 @@ expect to find there.
   $D303    $3C    PBCTL: Port B control
 
   SCREEN MEMORY ($9C40-$9FFF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   960 bytes (40 x 24), filled with $00 (space in ATASCII)
 
   ROM:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FFF7    $02    OS version (02 = XL/XE)
   $FFFC-$FFFD    $E477  RESET vector
 
   CLASSIC ATARI POKES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     POKE 710, color        Playfield 2 / text background
     POKE 712, color        Background/border
     POKE 559, 0            DMA off (dramatic speed increase)
@@ -946,7 +946,7 @@ expect to find there.
   RAM: 48K-128K (auxiliary bank on IIe)
 
   BASIC ZERO-PAGE POINTERS:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $0067-$0068   $0801     TXTTAB: Start of Applesoft program
   $0069-$006A   $0803     VARTAB: Start of variables
   $006B-$006C   $0803     ARYTAB: Start of arrays
@@ -959,7 +959,7 @@ expect to find there.
   $00AF-$00B0   $9600     MEMSIZ: Top of string space
 
   TEXT PAGE 1 ($0400-$07FF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   1024 bytes, filled with $A0 (space with high bit set)
   Apple II text uses ASCII with high bit set for normal video.
   Screen layout is NOT linear — uses interleaved row addressing:
@@ -989,22 +989,22 @@ expect to find there.
     Row 22: $0750-$0777
     Row 23: $07D0-$07F7
 
-  Formula: base = $0400 + (row%8)$80 + (row/8)$28
+  Formula: base = $0400 + (row%8)*$80 + (row/8)*$28
            address = base + column
 
   TEXT PAGE 2 ($0800-$0BFF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Secondary text page, same interleaved layout.
   Activated by reading $C055 (Page 2).
 
   HGR PAGES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $2000-$3FFF: HGR page 1 (8K)
   $4000-$5FFF: HGR page 2 (8K)
   Also use interleaved row addressing.
 
   SOFT SWITCHES ($C000-$C0FF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Address  Value  Description
   $C000    $00    Keyboard data (read: last key, bit 7 = strobe)
   $C001    ---    80STORE off (IIe)
@@ -1040,13 +1040,13 @@ expect to find there.
   $C070    ---    Trigger paddle timer
 
   SLOT I/O ($C0n0-$C0nF where n = slot 1-7):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $C090-$C09F     Slot 1 (printer)
   $C0A0-$C0AF     Slot 2 (serial)
   $C0E0-$C0EF     Slot 6 (disk controller)
 
   ROM IDENTIFICATION:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FBB3    $06    Apple IIe identifier
   $FBC0    $EA    Apple IIe secondary ID
   $FF69    $4C    Monitor JMP instruction (entry point)
@@ -1060,7 +1060,7 @@ expect to find there.
     $FBC0 = $E0: Enhanced IIe (65C02)
 
   CLASSIC APPLE II PEEKS/POKES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     PEEK(49152)            Last keypress (bit 7 set = valid)
     POKE 49168, 0          Clear keyboard strobe
     PEEK(49200)            Toggle speaker (click)
@@ -1086,7 +1086,7 @@ expect to find there.
   RAM: 16K-48K
 
   ROM ($0000-$2FFF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $0000    $F3    DI instruction (first ROM byte)
   $0001    $AF    XOR A (clear accumulator)
   $0062    $52    'R' for Radio Shack identification
@@ -1095,7 +1095,7 @@ expect to find there.
   Model III ROM is larger (14K) with additional routines.
 
   KEYBOARD MEMORY ($3800-$38FF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   256 bytes, all $00 at boot (all keys released)
   The keyboard is memory-mapped in 8 rows:
 
@@ -1112,7 +1112,7 @@ expect to find there.
   Bit = 1 means key is pressed.
 
   VIDEO RAM ($3C00-$3FFF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   1024 bytes (64 columns x 16 rows), filled with $20 (space)
 
   Position = $3C00 + row * 64 + col
@@ -1130,17 +1130,17 @@ expect to find there.
       Add $80 to the bit pattern to get the character code.
 
   SYSTEM VARIABLES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $4000-$4001   $4200     Start of BASIC text
   $4002-$4003   $7FFF     Top of memory (32K system)
 
   I/O PORTS (via IN/OUT on Z80):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Port $FF: Cassette / memory size
   Port $F8: Printer (TRS-80 Model I)
 
   CLASSIC TRS-80 POKES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     POKE 15360 + pos, char     Screen character
     PEEK(14336 + row * 256)    Keyboard scan row
     POKE 16526, lo : POKE 16527, hi  Set USR() address
@@ -1157,7 +1157,7 @@ expect to find there.
   RAM: 48K (128K in later models)
 
   ROM ($0000-$3FFF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $0000    $F3    DI instruction
   $0001    $AF    XOR A
   $0002    $11    LD DE,...
@@ -1166,7 +1166,7 @@ expect to find there.
   the character set at $3D00-$3FFF.
 
   SCREEN BITMAP ($4000-$57FF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   6144 bytes, cleared to $00 (all black/empty)
 
   The bitmap is organized in a complex interleaved layout:
@@ -1184,7 +1184,7 @@ expect to find there.
     charcol = column / 8     (0-31)
 
   ATTRIBUTE MEMORY ($5800-$5AFF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   768 bytes (32 x 24), filled with $38
 
   Attribute format: FBPPPIII
@@ -1201,7 +1201,7 @@ expect to find there.
   $38 = Paper 7 (white), Ink 0 (black), no flash, no bright
 
   SYSTEM VARIABLES ($5C00-$5CFF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Address       Value     Variable   Description
   $5C00         ---       KSTATE     Keyboard state (8 bytes)
   $5C08         ---       LAST-K     Last key pressed
@@ -1264,7 +1264,7 @@ expect to find there.
   $5C90-$5C91   ---       P_FLAG    Print flag / OVER / INVERSE
 
   I/O PORTS (via Z80 IN/OUT):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Port $FE (ULA):
     Write:
       Bits 0-2: Border color (0-7)
@@ -1285,11 +1285,11 @@ expect to find there.
     $7FFE: Space, Symbol, M, N, B
 
   HARDWARE VECTORS:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FFFC-$FFFD    $0000    RESET vector
 
   CLASSIC SPECTRUM POKES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     POKE 23693, attr       Set permanent attributes
     POKE 23624, 0          Reset frame counter
     POKE 23609, 0          Disable key click
@@ -1307,7 +1307,7 @@ memmap.h and memmap.c.  Follow these five steps exactly.
 
 
 Step 1: Add the Enum (memmap.h)
----------------------------------------------------------------------
+-------------------------------
 
   In memmap.h, add your platform to MemMapType before
   MMAP_COUNT:
@@ -1324,7 +1324,7 @@ Step 1: Add the Enum (memmap.h)
 
 
 Step 2: Write the Init Function (memmap.c)
----------------------------------------------------------------------
+-------------------------------------------
 
   Create a static initialization function in memmap.c:
 
@@ -1353,7 +1353,7 @@ Step 2: Write the Init Function (memmap.c)
 
 
 Step 3: Register in the Switch (memmap.c)
----------------------------------------------------------------------
+------------------------------------------
 
   In memmap_init(), add your case:
 
@@ -1361,7 +1361,7 @@ Step 3: Register in the Switch (memmap.c)
 
 
 Step 4: Add to the Name Table (memmap.c)
----------------------------------------------------------------------
+-----------------------------------------
 
   In the memmap_table[] array:
 
@@ -1369,15 +1369,15 @@ Step 4: Add to the Name Table (memmap.c)
 
 
 Step 5: Rebuild and Test
----------------------------------------------------------------------
+-------------------------
 
   Recompile BASIC++ and test:
 
-  MEMMAP "MSX"
+    > MEMMAP "MSX"
     Memory map: MSX
-  PRINT PEEK(&H002D)
+    > PRINT PEEK(&H002D)
          1
-  MEMMAP LIST
+    > MEMMAP LIST
     Available memory maps:
       NONE       Bare 64K, no presets
       MSDOS      MS-DOS (BIOS Data Area, 640K)
@@ -1416,7 +1416,7 @@ ready-to-paste code skeleton.
     Page 3 ($C000-$FFFF): Slot 3 - RAM
 
   BIOS WORK AREA ($F380-$FFF7):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $F380    HIMEM: Top of free RAM
   $F41F    FORCLR: Foreground color (15 = white)
   $F420    BAKCLR: Background color (4 = dark blue)
@@ -1434,7 +1434,7 @@ ready-to-paste code skeleton.
   $FC4A-$FC4B    HIMEM: Top of BASIC memory ($F380)
 
   VDP I/O (accessed via I/O ports, not memory-mapped):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Port $98: VDP data read/write
   Port $99: VDP register write (+ status read)
 
@@ -1463,7 +1463,7 @@ ready-to-paste code skeleton.
     $3800-$3FFF: Sprite pattern generator
 
   PSG (AY-3-8910, via I/O ports):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Port $A0: Register select
   Port $A1: Data write
   Port $A2: Data read
@@ -1487,7 +1487,7 @@ ready-to-paste code skeleton.
     R15:     Port B data
 
   PPI (8255A):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Port $A8: Primary slot select register
                Bits 0-1: Page 0 slot ($0000-$3FFF)
                Bits 2-3: Page 1 slot ($4000-$7FFF)
@@ -1500,16 +1500,16 @@ ready-to-paste code skeleton.
   $FFFF: Secondary slot select register (if expanded)
 
   SLOT SELECT ($FFFF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FFFF    $00    Read: complement of sub-slot register
                   Write: sub-slot select (if slot is expanded)
 
   MSX VERSION ($002D):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $002D    $00    MSX version: 0=MSX1, 1=MSX2, 2=MSX2+, 3=turboR
 
   RECOMMENDED INIT CODE:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     static void memmap_init_msx(unsigned char *mem)
     {
         /* Slot select */
@@ -1565,7 +1565,7 @@ ready-to-paste code skeleton.
   OS: Acorn MOS (Machine Operating System)
 
   MEMORY LAYOUT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     $0000-$00FF: Zero page (OS + BASIC workspace)
     $0100-$01FF: CPU stack
     $0200-$02FF: OS workspace
@@ -1590,14 +1590,14 @@ ready-to-paste code skeleton.
     Mode 7: Teletext, 40x25, 1K RAM (SAA5050)
 
   KEY ZERO-PAGE VARIABLES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $0018          Current screen mode
   $0028-$0029    BASIC PAGE (start of program, mode-dependent)
   $0002-$0003    HIMEM (top of user memory)
   $0006-$0007    LOMEM (start of variables)
 
   SHEILA: HARDWARE REGISTERS ($FE00-$FEFF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FE00-$FE07    6845 CRTC
                    $FE00: Register select
                    $FE01: Register data
@@ -1628,7 +1628,7 @@ ready-to-paste code skeleton.
   $FEE0-$FEFF    Tube ULA (co-processor interface)
 
   RECOMMENDED INIT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     static void memmap_init_bbc(unsigned char *mem)
     {
         /* Screen mode 7 (Teletext, default) */
@@ -1667,7 +1667,7 @@ ready-to-paste code skeleton.
   OS: AMSDOS + Locomotive BASIC
 
   MEMORY LAYOUT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     $0000-$003F: Restart vectors and interrupt table
     $0040-$00FF: Firmware workspace
     $0100-$0169: Jumpblock: system call entry points
@@ -1681,7 +1681,7 @@ ready-to-paste code skeleton.
     Mode 2: 640x200, 2 colors
 
   GATE ARRAY (I/O port $7Fxx):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Selected by OUT to port $7F:
     Bits 6-7 = function:
       00 = Pen select (bits 0-4 = pen number, 0-15 or 16=border)
@@ -1705,7 +1705,7 @@ ready-to-paste code skeleton.
     8: Bright Magenta 17: Orange        26: Bright Yellow
 
   FIRMWARE JUMPBLOCK ($BB00-$BD5C):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $BB00: KM INITIALISE     Keyboard init
   $BB06: KM WAIT CHAR      Wait for keypress
   $BB09: KM READ CHAR      Read key (no wait)
@@ -1721,7 +1721,7 @@ ready-to-paste code skeleton.
   $BD28: CAS OUT CHAR       Write character
 
   PPI 8255A:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Port $F4xx: Port A (PSG data)
   Port $F5xx: Port B (vsync, tape, printer, brand)
                Bit 0: VSYNC from CRTC
@@ -1733,7 +1733,7 @@ ready-to-paste code skeleton.
   Port $F7xx: PPI control register
 
   RECOMMENDED INIT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     static void memmap_init_cpc(unsigned char *mem)
     {
         /* BASIC workspace */
@@ -1765,7 +1765,7 @@ ready-to-paste code skeleton.
   RAM: 32K / 64K
 
   MEMORY LAYOUT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     $0000-$03FF: Direct page (system variables)
     $0400-$05FF: Screen RAM (text: 32x16 = 512 bytes)
     $0600-$7FFF: User RAM (BASIC program)
@@ -1792,7 +1792,7 @@ ready-to-paste code skeleton.
     RG6: 256x192, 2 colors
 
   SAM REGISTERS ($FFC0-$FFDF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Written in pairs (clear/set for each bit):
     $FFC0/$FFC1: Display offset bit 0
     $FFC2/$FFC3: Display offset bit 1
@@ -1812,7 +1812,7 @@ ready-to-paste code skeleton.
     $FFDE/$FFDF: Map type (0=ROM, 1=RAM at top 32K)
 
   6809 VECTORS ($FFF0-$FFFF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     $FFF0-$FFF1: Reserved
     $FFF2-$FFF3: SWI3
     $FFF4-$FFF5: SWI2
@@ -1823,7 +1823,7 @@ ready-to-paste code skeleton.
     $FFFE-$FFFF: RESET
 
   RECOMMENDED INIT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     static void memmap_init_dragon(unsigned char *mem)
     {
         /* Screen RAM: 32x16 = 512 spaces */
@@ -1863,13 +1863,13 @@ ready-to-paste code skeleton.
   ROM entry points and BASIC pointers.
 
   KEY DIFFERENCES FROM DRAGON:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     PIA 1 at $FF20-$FF23 used for cassette + DAC
     Sound output on PIA 1 Port A bits 2-7 (6-bit DAC)
     ROM identification differs
 
   BASIC POINTERS (DECB):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $0019-$001A    Start of BASIC text
   $001B-$001C    Start of variables
   $001D-$001E    Start of arrays
@@ -1877,11 +1877,11 @@ ready-to-paste code skeleton.
   $0027-$0028    Top of memory string space
 
   SCREEN ($0400-$05FF):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   512 bytes (32 x 16), filled with $60 (space in SG4 mode)
 
   RECOMMENDED INIT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     static void memmap_init_coco(unsigned char *mem)
     {
         mem_fill(mem, 0x0400, 512, 0x60);
@@ -1905,7 +1905,7 @@ ready-to-paste code skeleton.
   RAM: 48K
 
   MEMORY LAYOUT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     $0000-$00FF: Zero page
     $0100-$01FF: Stack
     $0200-$02FF: System variables
@@ -1919,7 +1919,7 @@ ready-to-paste code skeleton.
     $C000-$FFFF: ROM (16K)
 
   TEXT SCREEN ($BB80-$BFE0):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   1120 bytes (40 columns x 28 rows)
   Top 3 rows ($BB80-$BBF7) are status area.
 
@@ -1934,13 +1934,13 @@ ready-to-paste code skeleton.
     $07: Ink white     $17: Paper white
 
   VIA 6522 ($0300-$030F):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $0300: Port B (keyboard column + printer)
   $0301: Port A (PSG data + keyboard row)
   $030F: Port A no-handshake
 
   RECOMMENDED INIT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     static void memmap_init_oric(unsigned char *mem)
     {
         mem_fill(mem, 0xBB80, 1120, 0x20);   /* Screen spaces */
@@ -1962,7 +1962,7 @@ ready-to-paste code skeleton.
   RAM: 256K-512K (paged in 16K banks)
 
   MEMORY LAYOUT (4 x 16K pages):
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     Section A ($0000-$3FFF): Page from bank 0-31
     Section B ($4000-$7FFF): Page from bank 0-31
     Section C ($8000-$BFFF): Page from bank 0-31
@@ -1977,7 +1977,7 @@ ready-to-paste code skeleton.
     Mode 4: 256x192, 16 colors (mode 2 variant)
 
   KEY I/O PORTS:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   Port $FE:     Border color + beeper (Spectrum compatible)
   Port $F8:     Keyboard (extended)
   Port $FC:     LMPR (Low Memory Page Register)
@@ -1989,7 +1989,7 @@ ready-to-paste code skeleton.
   Port $01FF:   SAA1099 address
 
   RECOMMENDED INIT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     static void memmap_init_samcoupe(unsigned char *mem)
     {
         /* Spectrum-compatible screen at $4000 */
@@ -2017,14 +2017,14 @@ ready-to-paste code skeleton.
   Reduced I/O compared to BBC Micro.
 
   KEY ADDRESSES:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
   $FE05: ULA control (display mode, cassette, interrupts)
   $FE06: ULA palette (4-bit data for each ink)
   $FE07: ULA auxiliary
   $FC00-$FCFF: Cartridge slot
 
   RECOMMENDED INIT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     static void memmap_init_electron(unsigned char *mem)
     {
         mem_set(mem, 0x0018, 0x06);          /* Mode 6 */
@@ -2098,7 +2098,7 @@ ready-to-paste code skeleton.
     Default: White on blue
 
   RECOMMENDED INIT:
----------------------------------------------------------------------
+  ---------------------------------------------------------------
     static void memmap_init_aquarius(unsigned char *mem)
     {
         mem_fill(mem, 0x3000, 960, 0x20);    /* Screen: spaces */
@@ -2193,7 +2193,7 @@ ready-to-paste code skeleton.
 =====================================================================
 
 6.1  PEEK and POKE
----------------------------------------------------------------------
+-------------------
   These directly read/write the 64K virtual memory:
 
     POKE address, value     Write byte (0-255)
@@ -2202,7 +2202,7 @@ ready-to-paste code skeleton.
   Addresses are 0-65535 ($0000-$FFFF).
 
 6.2  INP and OUT
----------------------------------------------------------------------
+-----------------
   INP and OUT use the same virtual memory:
 
     OUT port, value         Same as POKE port, value
@@ -2213,7 +2213,7 @@ ready-to-paste code skeleton.
   INP/OUT are simply aliases for PEEK/POKE.
 
 6.3  DEF SEG
----------------------------------------------------------------------
+--------------
   DEF SEG sets a segment base address.  PEEK and POKE then
   use SEGMENT * 16 + OFFSET:
 
@@ -2228,13 +2228,13 @@ ready-to-paste code skeleton.
   effective address is simply (DEF SEG * 16 + offset) MOD 65536.
 
 6.4  MEMMAP Does NOT Clear Variables
----------------------------------------------------------------------
+--------------------------------------
   Switching maps replaces the 64K memory contents but does
   NOT affect BASIC variables, arrays, or program lines.
   Those are stored separately in the interpreter's own memory.
 
 6.5  MEMMAP Does NOT Affect File I/O
----------------------------------------------------------------------
+--------------------------------------
   File channels, screen output, and keyboard input all go
   through the VDev layer, not through virtual memory.
   Files opened with OPEN remain valid after MEMMAP switches.
@@ -2301,7 +2301,7 @@ Mixed example:
 =====================================================================
 
 9.1  Reading ROM Signatures for Platform Detection
----------------------------------------------------------------------
+----------------------------------------------------
   Your BASIC program can detect which map is active:
 
     IF PEEK(&HA004) = ASC("C") THEN
@@ -2313,7 +2313,7 @@ Mixed example:
     END IF
 
 9.2  Cross-Platform Programs
----------------------------------------------------------------------
+------------------------------
   Write programs that adapt to the active memory map:
 
     MAP$ = ""
@@ -2324,7 +2324,7 @@ Mixed example:
     PRINT "Running on: "; MAP$
 
 9.3  Snapshot and Restore
----------------------------------------------------------------------
+---------------------------
   Save the current memory state and restore it later:
 
     ' Save
@@ -2337,7 +2337,7 @@ Mixed example:
     FOR I = 0 TO 65535 : POKE I, SNAP(I) : NEXT
 
 9.4  Partial Memory Dumps
----------------------------------------------------------------------
+---------------------------
   Inspect a range of memory:
 
     DEF FN HX$(N) = RIGHT$("0" + HEX$(N), 2)
@@ -2351,7 +2351,7 @@ Mixed example:
     NEXT ROW
 
 9.5  Using Memory Maps for Regression Testing
----------------------------------------------------------------------
+-----------------------------------------------
   Load a known map and verify values:
 
     MEMMAP "C64"
@@ -2362,7 +2362,7 @@ Mixed example:
     PRINT "C64 memory map: ALL TESTS PASSED"
 
 9.6  Building a Multi-Platform Demo
----------------------------------------------------------------------
+--------------------------------------
     FOR EACH M$ IN ("C64", "APPLE2", "SPECTRUM", "ATARI8")
       MEMMAP M$
       PRINT M$; " - RESET vector: ";

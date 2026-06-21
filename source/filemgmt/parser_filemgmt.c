@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: parser_filemgmt.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    File system directory operations (FILES, DIR, KILL, SCRATCH, COPY, MOVE, PWD, CHDIR, MKDIR, RMDIR).
+ *
+ * 2. WHAT TO EXPECT:
+ *    Translates BASIC system actions into platform-specific directory routines safely.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Default file filter patterns, directory listing layouts.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Path separators validations, file deletion security gates.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Verify that host OS permissions permit write/delete access. Ensure path lengths do not exceed compile constants.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - parser_filemgmt.c
  // ---

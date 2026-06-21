@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: parser.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Statement dispatch and recursive-descent expression parsing.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Highly recursive execution structure. Expression evaluation strictly obeys operator precedence levels.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Syntax parsing details for expressions, parser diagnostic logging, and parsing warnings.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Operator precedence hierarchy, recursive call stack structure, keyword parsing dispatch methods.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Increase stack allocation limit if stack overflow occurs. Ensure expression parentheses evaluate in correct recursion.
+ * ===================================================================== */
+
 // ---
 // BASIC++ Interpreter - parser.c
 // ---

@@ -1,10 +1,10 @@
-Building BASIC++ for Raspberry Pi
+# Building BASIC++ for Raspberry Pi
 
-Version 4.0.1
+**Version 4.0.1**
 
----------------------------------------------------------------------
+---
 
-Table of Contents
+## Table of Contents
 
 - Overview
 - Supported Raspberry Pi Models
@@ -25,42 +25,43 @@ Table of Contents
 - Troubleshooting
 - See Also
 
----------------------------------------------------------------------
+---
 
-1. Overview
+## 1. Overview
 
 Raspberry Pi runs Linux, so BASIC++ compiles and runs exactly like
 any other Linux system. No special embedded profile is needed -- the
 full interpreter with all 16 dialects and all modules is available.
 
 The Raspberry Pi Pico (RP2040) is a different case -- it is a
-microcontroller without an OS, and uses the BPP_EMBEDDED profile.
+microcontroller without an OS, and uses the `BPP_EMBEDDED` profile.
 See section 11 for Pico-specific instructions.
 
 
-2. Supported Raspberry Pi Models
+## 2. Supported Raspberry Pi Models
 
-  Model               CPU                 RAM                 Status
-  ----------------------------------------------------------------------
-  Raspberry Pi 5      BCM2712 (ARM Cortex-A76)4-8 GB              Full build
-  Raspberry Pi 4B     BCM2711 (ARM Cortex-A72)2-8 GB              Full build
-  Raspberry Pi 3B+    BCM2837B0 (ARM Cortex-A53)1 GB                Full build
-  Raspberry Pi 3B     BCM2837 (ARM Cortex-A53)1 GB                Full build
-  Raspberry Pi 2B     BCM2836 (ARM Cortex-A7)1 GB                Full build
-  Raspberry Pi 1B+    BCM2835 (ARM11)     512 MB              Full build
-  Raspberry Pi Zero 2WBCM2710A1 (ARM Cortex-A53)512 MB              Full build
-  Raspberry Pi Zero W BCM2835 (ARM11)     512 MB              Full build
-  Raspberry Pi Pico   RP2040 (ARM Cortex-M0+)264 KB              Embedded build
-  Raspberry Pi Pico W RP2040 (ARM Cortex-M0+)264 KB              Embedded build
+| Model | CPU | RAM | Status |
+|-------|-----|-----|--------|
+| Raspberry Pi 5 | BCM2712 (ARM Cortex-A76) | 4-8 GB | Full build |
+| Raspberry Pi 4B | BCM2711 (ARM Cortex-A72) | 2-8 GB | Full build |
+| Raspberry Pi 3B+ | BCM2837B0 (ARM Cortex-A53) | 1 GB | Full build |
+| Raspberry Pi 3B | BCM2837 (ARM Cortex-A53) | 1 GB | Full build |
+| Raspberry Pi 2B | BCM2836 (ARM Cortex-A7) | 1 GB | Full build |
+| Raspberry Pi 1B+ | BCM2835 (ARM11) | 512 MB | Full build |
+| Raspberry Pi Zero 2W | BCM2710A1 (ARM Cortex-A53) | 512 MB | Full build |
+| Raspberry Pi Zero W | BCM2835 (ARM11) | 512 MB | Full build |
+| Raspberry Pi Pico | RP2040 (ARM Cortex-M0+) | 264 KB | Embedded build |
+| Raspberry Pi Pico W | RP2040 (ARM Cortex-M0+) | 264 KB | Embedded build |
 
 All Raspberry Pi models running Raspberry Pi OS (or any Linux) use
 the full modern build profile with all features.
 
 
-3. Quick Build on the Pi
+## 3. Quick Build on the Pi
 
 Connect to your Pi via SSH or open a terminal, then:
 
+```bash
 # Install build tools (if not already installed)
 sudo apt update
 sudo apt install build-essential git
@@ -75,22 +76,24 @@ make
 # Run
 cd ..
 ./baspp
+```
 
-That is it. The Makefile uses gcc -std=c17 -O2 by default, which
+That is it. The Makefile uses `gcc -std=c17 -O2` by default, which
 is perfect for Raspberry Pi.
 
-Build time:
+**Build time:**
 - Pi 5 (4 cores): ~3 seconds
 - Pi 4 (4 cores): ~5 seconds
 - Pi 3 (4 cores): ~8 seconds
 - Pi Zero (1 core): ~30 seconds
 
 
-4. Cross-Compiling from Linux (x86)
+## 4. Cross-Compiling from Linux (x86)
 
 If you want to build on a fast Linux desktop and copy the binary to
 the Pi:
 
+```bash
 # Install the ARM cross-compiler
 sudo apt install gcc-arm-linux-gnueabihf
 
@@ -113,21 +116,27 @@ scp ../baspp pi@raspberrypi.local:~/baspp
 ssh pi@raspberrypi.local
 chmod +x baspp
 ./baspp
+```
 
-For Raspberry Pi 1 / Zero (ARMv6):
+**For Raspberry Pi 1 / Zero (ARMv6):**
+```bash
 # Use the armhf compiler with explicit architecture
 arm-linux-gnueabihf-gcc -std=c17 -O2 -march=armv6 -mfpu=vfp -mfloat-abi=hard \
     -I. [all source files] -o ../baspp -lm
+```
 
 
-5. Cross-Compiling from Windows 11
+## 5. Cross-Compiling from Windows 11
 
-Using WSL (recommended):
+**Using WSL (recommended):**
 
+```powershell
 # Install WSL if needed
 wsl --install -d Ubuntu
+```
 
 Inside WSL:
+```bash
 sudo apt install gcc-arm-linux-gnueabihf
 cd /mnt/c/Users/YourName/GitHub/basic-plus-plus/source
 
@@ -140,20 +149,23 @@ arm-linux-gnueabihf-gcc -std=c17 -O2 -I. \
     dialect/*.c modules/*.c codegen/*.c runtime/*.c \
     shell/*.c misc/*.c spec.c \
     -o ../baspp_rpi -lm
+```
 
 Copy to the Pi:
+```bash
 scp ../baspp_rpi pi@raspberrypi.local:~/baspp
+```
 
 
-6. Full Build vs. Minimal Build
+## 6. Full Build vs. Minimal Build
 
-On Raspberry Pi (Linux), you almost always want the full build
+On Raspberry Pi (Linux), you almost always want the **full build**
 because you have plenty of RAM and storage.
 
-  Build               Files               Binary Size         RAM Usage           Dialects
-  ----------------------------------------------------------------------
-  Full                115                 ~400 KB             ~90 MB pools        All 16
-  Minimal             36                  ~150 KB             ~20 KB pools        1
+| Build | Files | Binary Size | RAM Usage | Dialects |
+|-------|-------|-------------|-----------|----------|
+| Full | 115 | ~400 KB | ~90 MB pools | All 16 |
+| Minimal | 36 | ~150 KB | ~20 KB pools | 1 |
 
 A minimal build on the Pi would only make sense for:
 - A dedicated single-purpose kiosk
@@ -161,12 +173,13 @@ A minimal build on the Pi would only make sense for:
 - Intentionally limited teaching environment
 
 
-7. Memory Budget
+## 7. Memory Budget
 
 The Raspberry Pi has far more memory than needed:
 
-Pi 4 / Pi 5 (4-8 GB RAM)
+### Pi 4 / Pi 5 (4-8 GB RAM)
 
+```
 Total RAM:                        4,096 MB (or 8,192 MB)
 Linux kernel + services:           -300 MB
 Desktop environment (if used):     -500 MB
@@ -175,33 +188,39 @@ Available for applications:      ~3,200 MB
 BASIC++ total (full build):          -90 MB
                                   ---------
 Remaining free:                  ~3,110 MB
+```
 
 You can safely increase pool sizes for large programs:
 
+```c
 // In config.h (modern section):
 #define PROGRAM_MEMORY_SIZE   16777216L  // 16 MB
 #define MAX_STRING_POOL       67108864L  // 64 MB
 #define MAX_ARRAY_ELEMENTS    16777216   // 16M elements (~256 MB)
+```
 
-Pi Zero / Pi 1 (512 MB RAM)
+### Pi Zero / Pi 1 (512 MB RAM)
 
+```
 Total RAM:                          512 MB
 Linux kernel + services:           -100 MB
 Available:                         ~412 MB
 
 BASIC++ (full build):                -90 MB
 Remaining:                         ~322 MB  (plenty)
+```
 
 Even the smallest Pi has more than enough for BASIC++.
 
 
-8. GPIO Access from BASIC
+## 8. GPIO Access from BASIC
 
 The Raspberry Pi's GPIO pins are accessible via the VDev system.
 BASIC++ can control GPIO through Linux's sysfs or libgpiod:
 
-Method 1: Using /sys/class/gpio (works on all Pi models)
+**Method 1: Using /sys/class/gpio (works on all Pi models)**
 
+```basic
 ' Export GPIO17
 OPEN "/sys/class/gpio/export" FOR OUTPUT AS #1
 PRINT #1, "17"
@@ -221,77 +240,93 @@ CLOSE #1
 OPEN "/sys/class/gpio/gpio17/value" FOR OUTPUT AS #1
 PRINT #1, "0"
 CLOSE #1
+```
 
-Method 2: Register a VDev GPIO driver
+**Method 2: Register a VDev GPIO driver**
 
 For convenience, register a VDev driver (see Virtual_Devices.md)
 so you can use simple device names:
 
+```basic
 OPEN "GPIO17:" FOR OUTPUT AS #1
 PRINT #1, "1"           ' HIGH
 SLEEP 1
 PRINT #1, "0"           ' LOW
 CLOSE #1
+```
 
 
-9. I2C and SPI Access
+## 9. I2C and SPI Access
 
-I2C (Inter-Integrated Circuit):
+**I2C (Inter-Integrated Circuit):**
 
-Enable I2C via raspi-config, then access from BASIC:
+Enable I2C via `raspi-config`, then access from BASIC:
 
+```basic
 ' Read temperature from I2C sensor
 OPEN "/dev/i2c-1" FOR BINARY AS #1
 ' ... send register address, read response ...
 CLOSE #1
+```
 
 For a friendlier interface, register a VDev sensor driver.
 
-SPI (Serial Peripheral Interface):
+**SPI (Serial Peripheral Interface):**
 
-Enable SPI via raspi-config:
+Enable SPI via `raspi-config`:
+```bash
 sudo raspi-config
 # Interface Options > SPI > Enable
+```
 
 Access from BASIC:
+```basic
 OPEN "/dev/spidev0.0" FOR BINARY AS #1
 ' ... SPI read/write operations ...
 CLOSE #1
+```
 
 
-10. Camera and Display
+## 10. Camera and Display
 
-Camera: Use SHELL to capture images:
+**Camera:** Use SHELL to capture images:
+```basic
 SHELL "libcamera-still -o photo.jpg"
 ' or on older Pi OS:
 SHELL "raspistill -o photo.jpg"
+```
 
-HDMI Display: BASIC++ text output goes to the terminal. For
+**HDMI Display:** BASIC++ text output goes to the terminal. For
 graphical output, the text-mode graphics buffer can be displayed
 via the VDev system.
 
 
-11. Raspberry Pi Pico (RP2040)
+## 11. Raspberry Pi Pico (RP2040)
 
 The Pico is a microcontroller, NOT a Linux computer. It uses
-the BPP_EMBEDDED build profile.
+the `BPP_EMBEDDED` build profile.
 
-Prerequisites
+### Prerequisites
 
 Install the Pico SDK:
+```bash
 sudo apt install cmake gcc-arm-none-eabi libnewlib-arm-none-eabi
 git clone https://github.com/raspberrypi/pico-sdk.git
 export PICO_SDK_PATH=~/pico-sdk
+```
 
-Project Structure
+### Project Structure
 
+```
 pico_basicpp/
   CMakeLists.txt
   main.c
   source/              (copy of BASIC++ source/)
+```
 
-CMakeLists.txt
+### CMakeLists.txt
 
+```cmake
 cmake_minimum_required(VERSION 3.13)
 include($ENV{PICO_SDK_PATH}/pico_sdk_init.cmake)
 
@@ -317,9 +352,11 @@ pico_enable_stdio_usb(basicpp_pico 1)
 pico_enable_stdio_uart(basicpp_pico 0)
 
 pico_add_extra_outputs(basicpp_pico)
+```
 
-main.c
+### main.c
 
+```c
 #include "pico/stdlib.h"
 #include <stdio.h>
 #include "config.h"
@@ -334,9 +371,11 @@ int main() {
     basicpp_main(1, argv);
     return 0;
 }
+```
 
-Build and Flash
+### Build and Flash
 
+```bash
 mkdir build && cd build
 cmake ..
 make -j4
@@ -344,9 +383,11 @@ make -j4
 # Copy the .uf2 file to the Pico
 # Hold BOOTSEL button while connecting USB, then:
 cp basicpp_pico.uf2 /media/$USER/RPI-RP2/
+```
 
-Pico Memory Budget
+### Pico Memory Budget
 
+```
 Total SRAM:                        264 KB
 Pico SDK overhead:                  -20 KB
 USB stack:                          -10 KB
@@ -357,11 +398,13 @@ RuntimeState:                       -30 KB
 Stack:                               -8 KB
                                     ------
 Remaining free:                    ~158 KB
+```
 
 
-12. Performance Tuning
+## 12. Performance Tuning
 
-Optimization flags:
+**Optimization flags:**
+```bash
 # Maximum speed (recommended for Pi 4/5)
 gcc -std=c17 -O2 -march=native -I. [files...] -o baspp -lm
 
@@ -370,8 +413,10 @@ gcc -std=c17 -O2 -flto -march=native -I. [files...] -o baspp -lm
 
 # Minimum binary size (for Pi Zero / embedded)
 gcc -std=c17 -Os -I. [files...] -o baspp -lm
+```
 
-Pi-specific flags:
+**Pi-specific flags:**
+```bash
 # Pi 4 / Pi 5 (64-bit)
 gcc -std=c17 -O2 -march=armv8-a -I. [files...] -o baspp -lm
 
@@ -380,13 +425,15 @@ gcc -std=c17 -O2 -march=armv8-a -mtune=cortex-a53 -I. [files...] -o baspp -lm
 
 # Pi Zero / Pi 1 (32-bit)
 gcc -std=c17 -O2 -march=armv6 -mfpu=vfp -I. [files...] -o baspp -lm
+```
 
 
-13. Running as a Service
+## 13. Running as a Service
 
 To start BASIC++ automatically at boot (e.g., for a kiosk):
 
-Create /etc/systemd/system/basicpp.service:
+Create `/etc/systemd/system/basicpp.service`:
+```ini
 [Unit]
 Description=BASIC++ Interpreter
 After=multi-user.target
@@ -401,13 +448,16 @@ User=pi
 
 [Install]
 WantedBy=multi-user.target
+```
 
 Enable and start:
+```bash
 sudo systemctl enable basicpp
 sudo systemctl start basicpp
+```
 
 
-14. Which BASIC Features Work
+## 14. Which BASIC Features Work
 
 Everything -- the full build runs on all Pi models:
 
@@ -427,64 +477,74 @@ Everything -- the full build runs on all Pi models:
 - Transpiler/codegen
 
 
-15. Customizing Pool Sizes for Pi
+## 15. Customizing Pool Sizes for Pi
 
 The default modern profile (~90 MB pools) works fine on all Pi
 models. To adjust for specific use cases:
 
-For Pi Zero (512 MB RAM, conservative):
+**For Pi Zero (512 MB RAM, conservative):**
+```c
 #define MAX_STRING_POOL       1048576L    // 1 MB (was 16 MB)
 #define MAX_ARRAY_ELEMENTS    262144      // 256K (was 4M)
 // Total: ~12 MB pools
+```
 
-For Pi 5 with 8 GB RAM (maximized):
+**For Pi 5 with 8 GB RAM (maximized):**
+```c
 #define PROGRAM_MEMORY_SIZE   16777216L   // 16 MB
 #define MAX_STRING_POOL       67108864L   // 64 MB
 #define MAX_ARRAY_ELEMENTS    16777216    // 16M elements (~256 MB)
 #define MAX_PROGRAM_LINES     262144      // 256K lines
+```
 
 
-16. Union Mode on Raspberry Pi
+## 16. Union Mode on Raspberry Pi
 
 Union Mode is the default on all platforms. On Raspberry Pi, with
 all 16 dialects compiled in, you can switch dialects at runtime:
 
+```basic
 DIALECT "GWBS"     ' Switch to GW-BASIC
 DIALECT "C64B"     ' Switch to Commodore 64 BASIC
 DIALECT "QBAS"     ' Switch to QBasic
 DIALECT LIST       ' Show all available dialects
+```
 
 
-17. Troubleshooting
+## 17. Troubleshooting
 
-"Permission denied" on GPIO
-GPIO access requires root or membership in the gpio group:
+**"Permission denied" on GPIO**
+GPIO access requires root or membership in the `gpio` group:
+```bash
 sudo usermod -aG gpio pi
 # Log out and back in
+```
 
-Build fails with "cc1: error: unrecognized argument"
-Your Pi's GCC version may not support -march=native. Remove
+**Build fails with "cc1: error: unrecognized argument"**
+Your Pi's GCC version may not support `-march=native`. Remove
 that flag or specify the architecture explicitly.
 
-"Cannot allocate memory"
+**"Cannot allocate memory"**
 The Pi has run out of RAM. Close other applications, or reduce
-pool sizes in config.h. Check with free -m.
+pool sizes in config.h. Check with `free -m`.
 
-Slow performance on Pi Zero
-Use -O2 optimization. The Pi Zero's single ARM11 core is slow
+**Slow performance on Pi Zero**
+Use `-O2` optimization. The Pi Zero's single ARM11 core is slow
 but BASIC++ runs fine for interactive use.
 
-Cross-compiled binary does not run
-Check the architecture: file baspp. It should show:
+**Cross-compiled binary does not run**
+Check the architecture: `file baspp`. It should show:
+```
 baspp: ELF 32-bit LSB executable, ARM, EABI5
+```
 If it shows x86, you compiled with the wrong compiler.
 
 
-18. See Also
+## 18. See Also
 
-- Building_A_Minimal_BASIC++.md -- Universal minimal build guide
-- Building_For_ESP32.md -- ESP32 build guide
-- Building_For_Arduino.md -- Arduino build guide
-- Building_For_FreeDOS.md -- FreeDOS build guide
-- Embedded_Platforms.md -- Overview of all embedded targets
-- Virtual_Devices.md -- VDev system reference
+- `Building_A_Minimal_BASIC++.md` -- Universal minimal build guide
+- `Building_For_ESP32.md` -- ESP32 build guide
+- `Building_For_Arduino.md` -- Arduino build guide
+- `Building_For_FreeDOS.md` -- FreeDOS build guide
+- `Embedded_Platforms.md` -- Overview of all embedded targets
+- `Virtual_Devices.md` -- VDev system reference

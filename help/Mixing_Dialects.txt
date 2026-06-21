@@ -745,7 +745,7 @@ Wrap a retro program in a modern BASIC++ shell:
   7 PRINT
   8 DIALECT "C64B"
   9 REM === Original C64 program below ===
-  10 PRINT "    ** COMMODORE 64 BASIC V2 **"
+  10 PRINT "    **** COMMODORE 64 BASIC V2 ****"
   20 PRINT
   30 PRINT " 64K RAM SYSTEM  38911 BASIC BYTES FREE"
   40 PRINT
@@ -927,7 +927,7 @@ modern BASIC++ file saving:
   10 DIALECT "C64B"
   20 REM === Look and feel of a Commodore game ===
   30 CLS
-  40 PRINT "    ** DUNGEON CRAWL **"
+  40 PRINT "    **** DUNGEON CRAWL ****"
   50 PRINT
   60 PRINT " AN ADVENTURE FOR THE COMMODORE 64"
   70 PRINT

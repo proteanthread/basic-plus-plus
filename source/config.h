@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: config.h
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Global compile-time configuration defines for pool memory sizes and limits.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Constant parameters compiled directly into the binary file. Cannot negotiate limits at runtime.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Compile-time limits (e.g. increase MAX_STACK_DEPTH, MAX_STRING_POOL, or dial in BPP_EMBEDDED constants).
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Preprocessor flag rules, feature mappings.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    If compilation size is too big, reduce memory pool sizes. Verify all dependencies rebuild after editing config.h.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - config.h
  // ---

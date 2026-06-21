@@ -24,7 +24,7 @@ PREREQUISITE READING:
 
 
 TABLE OF CONTENTS
----------------------------------------------------------------------
+-----------------
   1.  Disabling and Enabling Keywords
   2.  Safety Presets
   3.  BEFORE Hooks

@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: parser_deffn.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Built-in function master registrations and DEF FN evaluation.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Evaluates functions parameters dynamically via a generic dispatch table.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Custom built-in functions additions, math function parameter limits.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Function registry lookup engine, registration metadata structure.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Ensure function names are unique and match casing rules. Check parameter count validation limits.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - parser_deffn.c
  // ---

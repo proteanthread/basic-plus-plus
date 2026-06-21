@@ -117,7 +117,7 @@ Part I:  STRING FUNDAMENTALS
 
 
 1.  WHAT IS A STRING IN BASIC++?
----------------------------------------------------------------------
+-----------------------------------
 
 A string is a sequence of characters (bytes) with a
 known length.  Strings in BASIC++ are:
@@ -137,7 +137,7 @@ Examples:
 
 
 2.  THE BVALUE STRING REPRESENTATION
----------------------------------------------------------------------
+----------------------------------------
 
 Internally, every string is a BValue with type =
 VAL_STRING:
@@ -146,7 +146,7 @@ VAL_STRING:
       ValueType type;       /* VAL_STRING */
       union {
           struct {
-              char data;   / pointer into string pool */
+              char *data;   /* pointer into string pool */
               int   length; /* length in bytes */
           } sval;
       } v;
@@ -161,13 +161,13 @@ Key properties:
 
 
 3.  THE STRING POOL (BUMP ALLOCATOR)
----------------------------------------------------------------------
+---------------------------------------
 
 All string data lives in a single contiguous memory
 block called the string pool:
 
   typedef struct StringPool {
-      char base;     / start of allocated block */
+      char *base;     /* start of allocated block */
       long  size;     /* total size (32768 default) */
       long  used;     /* current watermark */
   } StringPool;
@@ -199,7 +199,7 @@ exhaust the pool (ERR_SORRY).
 
 
 4.  STRING VARIABLES: A$-Z$ AND NAMED
----------------------------------------------------------------------
+-----------------------------------------
 
 BASIC++ provides two kinds of string variables:
 
@@ -219,7 +219,7 @@ Examples:
 
 
 5.  STRING LITERALS AND ESCAPE CHARACTERS
----------------------------------------------------------------------
+--------------------------------------------
 
 String literals are enclosed in double quotes:
 
@@ -238,7 +238,7 @@ inside strings.  Instead, use CHR$() for special chars:
 
 
 6.  EMPTY STRINGS AND NULL DATA
----------------------------------------------------------------------
+----------------------------------
 
 An empty string has length = 0 and data = NULL:
 
@@ -262,7 +262,7 @@ Part II:  STRING OPERATORS
 
 
 7.  CONCATENATION (+)
----------------------------------------------------------------------
+-----------------------
 
 The + operator joins two strings:
 
@@ -295,7 +295,7 @@ raises ERR_WHAT:
 
 
 8.  STRING COMPARISON (=, <, >, <=, >=, <>)
----------------------------------------------------------------------
+----------------------------------------------
 
 Strings can be compared with all relational operators:
 
@@ -306,7 +306,7 @@ Strings can be compared with all relational operators:
 
 
 9.  COMPARISON RULES: LEXICOGRAPHIC ORDERING
----------------------------------------------------------------------
+------------------------------------------------
 
 String comparison is:
 
@@ -336,7 +336,7 @@ For case-insensitive comparison, use UCASE$ or LCASE$:
 
 
 10.  MIXED TYPE ERRORS (STRING + NUMBER)
----------------------------------------------------------------------
+-------------------------------------------
 
 Arithmetic with strings raises ERR_WHAT:
 
@@ -357,7 +357,7 @@ Part III:  EXTRACTION FUNCTIONS
 
 
 11.  LEN(s$) — STRING LENGTH
----------------------------------------------------------------------
+-------------------------------
 
   Syntax: n = LEN(string$)
   Returns: Integer length in characters
@@ -374,7 +374,7 @@ LEN on a non-string raises ERR_WHAT.
 
 
 12.  LEFT$(s$, n) — LEFT SUBSTRING
----------------------------------------------------------------------
+--------------------------------------
 
   Syntax: result$ = LEFT$(string$, count)
   Returns: First 'count' characters
@@ -390,7 +390,7 @@ If count = 0, returns empty string.
 
 
 13.  RIGHT$(s$, n) — RIGHT SUBSTRING
----------------------------------------------------------------------
+----------------------------------------
 
   Syntax: result$ = RIGHT$(string$, count)
   Returns: Last 'count' characters
@@ -405,7 +405,7 @@ RIGHT$ calculates start = length - count, then copies
 
 
 14.  MID$(s$, start, len) — MIDDLE SUBSTRING
----------------------------------------------------------------------
+------------------------------------------------
 
   Syntax: result$ = MID$(string$, start [, length])
   Returns: Substring starting at position 'start'
@@ -424,7 +424,7 @@ If start + length > string length, returns to end.
 
 
 15.  MID$ STATEMENT — IN-PLACE REPLACEMENT
----------------------------------------------------------------------
+----------------------------------------------
 
   Syntax: MID$(var$, start [, length]) = replacement$
 
@@ -454,7 +454,7 @@ own line).
 
 
 16.  COMBINING EXTRACTION FUNCTIONS
----------------------------------------------------------------------
+---------------------------------------
 
   REM -- Extract filename from path --
   100 PATH$ = "C:\USERS\DATA\REPORT.TXT"
@@ -488,7 +488,7 @@ Part IV:  CONVERSION FUNCTIONS
 
 
 17.  ASC(s$) — CHARACTER TO ASCII CODE
----------------------------------------------------------------------
+------------------------------------------
 
   Syntax: n = ASC(string$)
   Returns: ASCII code of first character (0-255)
@@ -509,7 +509,7 @@ Common codes:
 
 
 17b. ASC() ARRAY UNPACK — STRING TO NUMERIC ARRAY
----------------------------------------------------------------------
+-----------------------------------------------------
 
   Syntax: ArrayName(start) = ASC(string$)
 
@@ -564,7 +564,7 @@ processing without repeated MID$/ASC calls.
 
 
 18.  CHR$(n) — ASCII CODE TO CHARACTER
----------------------------------------------------------------------
+-----------------------------------------
 
   Syntax: s$ = CHR$(code)
   Returns: Single-character string
@@ -590,7 +590,7 @@ Building strings with CHR$:
 
 
 19.  VAL(s$) — STRING TO NUMBER
----------------------------------------------------------------------
+----------------------------------
 
   Syntax: n = VAL(string$)
   Returns: Numeric value parsed from string
@@ -611,7 +611,7 @@ VAL on a non-string raises ERR_WHAT.
 
 
 20.  STR$(n) — NUMBER TO STRING
----------------------------------------------------------------------
+-----------------------------------
 
   Syntax: s$ = STR$(number)
   Returns: String representation of number
@@ -632,7 +632,7 @@ Building display strings:
 
 
 21.  CONVERSION ROUND-TRIPS
----------------------------------------------------------------------
+------------------------------
 
 Convert back and forth between strings and numbers:
 
@@ -655,7 +655,7 @@ Part V:  TRANSFORMATION FUNCTIONS
 
 
 22.  LCASE$(s$) — CONVERT TO LOWERCASE
----------------------------------------------------------------------
+------------------------------------------
 
   Syntax: result$ = LCASE$(string$)
   Returns: Lowercase copy of string
@@ -672,7 +672,7 @@ Uses C tolower() on each byte.  Max input: 255 chars.
 
 
 23.  UCASE$(s$) — CONVERT TO UPPERCASE
----------------------------------------------------------------------
+------------------------------------------
 
   Syntax: result$ = UCASE$(string$)
   Returns: Uppercase copy of string
@@ -693,7 +693,7 @@ Case-insensitive comparison pattern:
 
 
 24.  LTRIM$(s$) — TRIM LEADING SPACES
----------------------------------------------------------------------
+-----------------------------------------
 
   Syntax: result$ = LTRIM$(string$)
   Returns: String with leading spaces removed
@@ -707,7 +707,7 @@ whitespace are NOT trimmed.
 
 
 25.  RTRIM$(s$) — TRIM TRAILING SPACES
----------------------------------------------------------------------
+------------------------------------------
 
   Syntax: result$ = RTRIM$(string$)
   Returns: String with trailing spaces removed
@@ -718,7 +718,7 @@ whitespace are NOT trimmed.
 
 
 26.  COMBINING TRIM FUNCTIONS
----------------------------------------------------------------------
+-------------------------------
 
 Trim both sides:
 
@@ -740,7 +740,7 @@ Part VI:  UTILITY FUNCTIONS
 
 
 27.  STRING$(n, char) — REPEAT CHARACTER
----------------------------------------------------------------------
+--------------------------------------------
 
   Syntax: result$ = STRING$(count, character)
 
@@ -755,7 +755,7 @@ STRING$ is a built-in keyword (KW_STRING_FUNC).
 
 
 28.  SPACE$(n) — GENERATE SPACES
----------------------------------------------------------------------
+------------------------------------
 
   Syntax: result$ = SPACE$(count)
 
@@ -766,7 +766,7 @@ Create a string of n space characters:
 
 
 29.  DATE$ — CURRENT DATE
----------------------------------------------------------------------
+----------------------------
 
   Syntax: d$ = DATE$
   Returns: Date string in "MM-DD-YYYY" format
@@ -781,7 +781,7 @@ No parentheses needed — DATE$ is variable-like.
 
 
 30.  TIME$ — CURRENT TIME
----------------------------------------------------------------------
+----------------------------
 
   Syntax: t$ = TIME$
   Returns: Time string in "HH:MM:SS" format
@@ -801,7 +801,7 @@ Timing a computation:
 
 
 31.  INKEY$ — NON-BLOCKING KEY READ
----------------------------------------------------------------------
+---------------------------------------
 
   Syntax: k$ = INKEY$
   Returns: Empty string or 1-char string
@@ -815,7 +815,7 @@ See Screen_And_Console.txt for detailed INKEY$ coverage.
 
 
 32.  INPUT$(n) — READ N CHARACTERS
----------------------------------------------------------------------
+--------------------------------------
 
   Syntax: s$ = INPUT$(count [, #channel])
 
@@ -839,7 +839,7 @@ From file: reads bytes directly via fgetc().
 
 
 33.  SHELL$(cmd$) — CAPTURE COMMAND OUTPUT
----------------------------------------------------------------------
+----------------------------------------------
 
   Syntax: result$ = SHELL$(command$)
   Returns: stdout of the command as a string
@@ -860,7 +860,7 @@ The exit code is stored in ERRORLEVEL:
 
 
 34.  IOCTL$(#n) — CHANNEL STATUS
----------------------------------------------------------------------
+------------------------------------
 
   Syntax: mode$ = IOCTL$(#channel)
   Returns: Single-character file mode string
@@ -879,7 +879,7 @@ Part VII:  BINARY PACKING FUNCTIONS
 
 
 35.  MKI$(n) — PACK INTEGER (2 BYTES)
----------------------------------------------------------------------
+-----------------------------------------
 
   Syntax: s$ = MKI$(integer_value)
   Returns: 2-byte string (little-endian)
@@ -895,7 +895,7 @@ MKI$ stores the value as two bytes (low byte first):
 
 
 36.  MKS$(n) — PACK SINGLE (4 BYTES)
----------------------------------------------------------------------
+----------------------------------------
 
   Syntax: s$ = MKS$(float_value)
   Returns: 4-byte string (IEEE 754 single precision)
@@ -905,7 +905,7 @@ MKI$ stores the value as two bytes (low byte first):
 
 
 37.  MKD$(n) — PACK DOUBLE (8 BYTES)
----------------------------------------------------------------------
+----------------------------------------
 
   Syntax: s$ = MKD$(float_value)
   Returns: 8-byte string (IEEE 754 double precision)
@@ -915,7 +915,7 @@ MKI$ stores the value as two bytes (low byte first):
 
 
 38.  CVI(s$) — UNPACK INTEGER
----------------------------------------------------------------------
+---------------------------------
 
   Syntax: n = CVI(string$)
   Returns: Integer from 2-byte string
@@ -931,7 +931,7 @@ Values > 32767 are sign-extended (two's complement).
 
 
 39.  CVS(s$) — UNPACK SINGLE
----------------------------------------------------------------------
+---------------------------------
 
   Syntax: n = CVS(string$)
   Returns: Float from 4-byte string
@@ -941,7 +941,7 @@ Values > 32767 are sign-extended (two's complement).
 
 
 40.  CVD(s$) — UNPACK DOUBLE
----------------------------------------------------------------------
+---------------------------------
 
   Syntax: n = CVD(string$)
   Returns: Double from 8-byte string
@@ -951,7 +951,7 @@ Values > 32767 are sign-extended (two's complement).
 
 
 41.  FIELD/LSET/RSET — RANDOM-ACCESS FIELDS
----------------------------------------------------------------------
+-----------------------------------------------
 
 These statements work with random-access files and
 fixed-length string buffers:
@@ -975,7 +975,7 @@ See File_IO.txt for detailed FIELD/LSET/RSET coverage.
 
 
 42.  BINARY FILE PATTERNS
----------------------------------------------------------------------
+----------------------------
 
   REM -- Write binary records --
   100 OPEN "records.dat" FOR RANDOM AS #1 LEN = 32
@@ -1002,7 +1002,7 @@ Part VIII:  STRING VARIABLES IN DEPTH
 
 
 43.  SINGLE-LETTER STRING VARIABLES (A$-Z$)
----------------------------------------------------------------------
+-----------------------------------------------
 
   A$ = "Hello"
   Z$ = "Goodbye"
@@ -1016,7 +1016,7 @@ are saved and restored automatically.
 
 
 44.  NAMED STRING VARIABLES
----------------------------------------------------------------------
+------------------------------
 
 In dialects with extended variables, multi-character
 names ending in $ are string variables:
@@ -1031,7 +1031,7 @@ SUB calls — they act as global state.
 
 
 45.  DIM STRING ARRAYS
----------------------------------------------------------------------
+-------------------------
 
 DIM creates string arrays:
 
@@ -1052,7 +1052,7 @@ DIM creates string arrays:
 
 
 46.  STRING VARIABLES IN SUB/FUNCTION
----------------------------------------------------------------------
+-----------------------------------------
 
 String parameters in SUB/FUNCTION use $ suffix:
 
@@ -1070,7 +1070,7 @@ restored).  Changes to named string variables are global.
 
 
 47.  SWAP — EXCHANGE VARIABLES
----------------------------------------------------------------------
+---------------------------------
 
   Syntax: SWAP A, B
 
@@ -1090,7 +1090,7 @@ Part IX:  INTERNAL ARCHITECTURE
 
 
 48.  BVALUE TAGGED UNION
----------------------------------------------------------------------
+--------------------------
 
 The BValue type is the universal value container:
 
@@ -1106,7 +1106,7 @@ the wrong type is passed, ERR_WHAT is raised.
 
 
 49.  STRING POOL DESIGN
----------------------------------------------------------------------
+--------------------------
 
 Design goals:
 
@@ -1125,7 +1125,7 @@ Tradeoffs:
 
 
 50.  POOL ALLOCATION (STRPOOL_ALLOC)
----------------------------------------------------------------------
+---------------------------------------
 
   char *strpool_alloc(StringPool *pool, int len);
 
@@ -1139,7 +1139,7 @@ No alignment padding.  No headers.  Just bump and go.
 
 
 51.  POOL STORAGE (STRPOOL_STORE)
----------------------------------------------------------------------
+------------------------------------
 
   char *strpool_store(StringPool *pool,
                       const char *src, int len);
@@ -1156,7 +1156,7 @@ LTRIM$, RTRIM$, and all string transformations.
 
 
 52.  POOL RESET
----------------------------------------------------------------------
+-----------------
 
   void strpool_reset(StringPool *pool);
 
@@ -1169,7 +1169,7 @@ is safe because RUN reinitializes all variables.
 
 
 53.  CAPACITY LIMITS
----------------------------------------------------------------------
+----------------------
 
   Constant            Default    Purpose
   ──────────────────  ─────────  ──────────────────────
@@ -1188,7 +1188,7 @@ Part X:  COMPLETE EXAMPLES
 
 
 54.  EXAMPLE: STRING TOKENIZER
----------------------------------------------------------------------
+---------------------------------
 
   100 REM ======================================
   110 REM  Split a string by delimiter
@@ -1229,7 +1229,7 @@ Output:
 
 
 55.  EXAMPLE: CSV PARSER
----------------------------------------------------------------------
+---------------------------
 
   100 REM ======================================
   110 REM  CSV Line Parser
@@ -1279,7 +1279,7 @@ Output:
 
 
 56.  EXAMPLE: TEXT FORMATTER
----------------------------------------------------------------------
+------------------------------
 
   100 REM ======================================
   110 REM  Word-Wrap Text Formatter
@@ -1314,7 +1314,7 @@ Output:
 
 
 57.  EXAMPLE: CAESAR CIPHER
----------------------------------------------------------------------
+------------------------------
 
   100 REM ======================================
   110 REM  Caesar Cipher (Encrypt/Decrypt)
@@ -1344,7 +1344,7 @@ Output:
 
 
 58.  EXAMPLE: PATTERN MATCHING
----------------------------------------------------------------------
+---------------------------------
 
   100 REM ======================================
   110 REM  Simple Pattern Matcher
@@ -1408,7 +1408,7 @@ Part XI:  REFERENCE
 
 
 59.  ALL STRING FUNCTIONS
----------------------------------------------------------------------
+---------------------------
 
   Function               Returns   Description
   ─────────────────────  ────────  ──────────────────────
@@ -1442,7 +1442,7 @@ Part XI:  REFERENCE
 
 
 60.  ALL STRING STATEMENTS
----------------------------------------------------------------------
+----------------------------
 
   Statement                    Description
   ─────────────────────────────────────────────────────
@@ -1455,7 +1455,7 @@ Part XI:  REFERENCE
 
 
 61.  ASCII CODE TABLE (PARTIAL)
----------------------------------------------------------------------
+---------------------------------
 
   Code  Char    Code  Char    Code  Char    Code  Char
   ────  ──────  ────  ──────  ────  ──────  ────  ──────
@@ -1475,7 +1475,7 @@ Part XI:  REFERENCE
 
 
 62.  ERROR CODES FOR STRINGS
----------------------------------------------------------------------
+-------------------------------
 
   Error       When It Occurs
   ──────────  ────────────────────────────────────────
@@ -1488,7 +1488,7 @@ Part XI:  REFERENCE
 
 
 63.  LIMITS TABLE
----------------------------------------------------------------------
+-------------------
 
   Limit                     Value    What Happens
   ────────────────────────  ───────  ──────────────────

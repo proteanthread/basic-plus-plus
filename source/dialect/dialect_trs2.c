@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: dialect_trs2.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    BASIC historical dialect configuration profiles and strict execution filters.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Dialect configurations switch prompt layouts, printing zone widths, statement separators, and active parsing tokens.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Dialect parameters (READY prompt, separator char), addition of custom dialects.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Dialect lookup logic, strict-mode keyword mask validation.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Check dialect switches. If syntax is rejected, check if STRICT mode is enabled or keyword is filtered out.
+ * ===================================================================== */
+
  // dialect_trs2.c -- TRS-80 Level II BASIC (Microsoft, 1978)
  //
  // 12KB ROM upgrade. Full Microsoft BASIC with float, DEF FN,

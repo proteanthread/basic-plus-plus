@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: parser_sound.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Console attributes (CLS, LOCATE, WIDTH, colors) and sound/music statements (BEEP, SOUND, PLAY).
+ *
+ * 2. WHAT TO EXPECT:
+ *    Uses ANSI escape sequences for text styling. Enforces console bounds checking.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Styling escape sequences, default frequencies, music tempo constraints.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Coordinate range checks, pitch calculation formulas.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Ensure terminal color settings are correct. Verify sound timer routines correspond to system sleep functions.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - parser_sound.c
  // ---

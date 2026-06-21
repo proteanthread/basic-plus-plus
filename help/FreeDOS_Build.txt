@@ -3,28 +3,22 @@
 =====================================================================
 
 
-=====================================================================
-TABLE OF CONTENTS
-=====================================================================
+---
 
-  1. WHY A SLIM BUILD?
-  2. BUILDING FOR FREEDOS
-  3. MEMORY BUDGET
-  4. AVAILABLE DIALECTS
-  5. HOW TO CHANGE THE DEFAULT DIALECT
-  6. HOW TO CUSTOMIZE MEMORY POOLS
-  7. HOW TO ADD A DIALECT BACK
-  8. OPTIONAL MODULES
-  1. They add significant code size
-  2. FreeDOS systems rarely have the hardware they support
-  3. They are not needed for GW-BASIC/ECMA-116 programs
-  1. Remove its #ifndef BPP_FREEDOS guard in main.c
-  2. Add its .obj to WATCOM_OBJS in the Makefile
-  3. Add its compile line to the watcom target
-  4. Rebuild and verify memory usage
-  10. DIFFERENCES FROM WINDOWS/LINUX BUILD
-  11. TROUBLESHOOTING
+## Table of Contents
 
+- WHY A SLIM BUILD?
+- BUILDING FOR FREEDOS
+- MEMORY BUDGET
+- AVAILABLE DIALECTS
+- HOW TO CHANGE THE DEFAULT DIALECT
+- HOW TO CUSTOMIZE MEMORY POOLS
+- HOW TO ADD A DIALECT BACK
+- OPTIONAL MODULES
+- DIFFERENCES FROM WINDOWS/LINUX BUILD
+- TROUBLESHOOTING
+
+---
 
   NOTE: For the COMPLETE build tutorial including custom dialect
   selection, module selection, section stripping, keyword

@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: exec.c
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Runtime state container (RuntimeState) and statement execution dispatch loops.
+ *
+ * 2. WHAT TO EXPECT:
+ *    RuntimeState encapsulates all interpreter variables, stack frames, heap pools, and execution context.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Diagnostic trace outputs, signal trapping overrides.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    RuntimeState struct layout, statement execution sequence logic.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    Verify execution pointer updates correctly. Trace memory crashes back to pool margins.
+ * ===================================================================== */
+
  // ---
  // BASIC++ Interpreter - exec.c
  // ---

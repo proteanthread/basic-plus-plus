@@ -1,3 +1,23 @@
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * File: selftest.h
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Shell command execution, debugging tools (TRON/TROFF, breakpoints), self-test diagnostics, and static analysis verification.
+ *
+ * 2. WHAT TO EXPECT:
+ *    Interactions with the host OS shell are capability-gated. Self-test runs isolated test codes.
+ *
+ * 3. WHAT CAN BE CHANGED:
+ *    Self-test test cases, diagnostic log prints, static analyzer syntax warnings.
+ *
+ * 4. WHAT CANNOT BE CHANGED:
+ *    Breakpoints registry, self-test verification formulas.
+ *
+ * 5. TROUBLESHOOTING & FAILURE MODES:
+ *    If shell fails, check host environment permissions. If self-test fails, check recent syntax changes.
+ * ===================================================================== */
+
 // ---
 // BASIC++ Interpreter - selftest.h
 // ---
