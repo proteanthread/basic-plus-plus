@@ -2,8 +2,11 @@ import os
 import re
 
 def strip_markdown(md_text):
+    # 0. Replace Mermaid code blocks with placeholders
+    text = re.sub(r'```mermaid[\s\S]*?```', '[Diagram: Visual flowchart omitted in text help mode - see docs/flowchart.md]', md_text)
+
     # 1. Strip fenced code block markers (e.g. ```basic ... ```)
-    text = re.sub(r'^[ \t]*```\w*[ \t]*$', '', md_text, flags=re.MULTILINE)
+    text = re.sub(r'^[ \t]*```\w*[ \t]*$', '', text, flags=re.MULTILINE)
     
     # 2. Strip headers prefix (# Title -> Title)
     text = re.sub(r'^[ \t]*#+\s+(.*)$', r'\1', text, flags=re.MULTILINE)
