@@ -87,12 +87,12 @@ Here's the simplest possible dialect file:
     #include "dialect.h"
 
     static const DialectConfig my_config = {
-        DIALECT_MY_BASIC,       /* id from enum */
-        "My Custom BASIC",      /* display name */
-        ':',                    /* statement separator */
+        DIALECT_MY_BASIC,       / id from enum /
+        "My Custom BASIC",      / display name /
+        ':',                    / statement separator /
         /* ... feature flags ... */
-        "MYBAS",                /* short name */
-        DFLAG_MYBAS             /* bitmask flag */
+        "MYBAS",                / short name /
+        DFLAG_MYBAS             / bitmask flag /
     };
 
     void dialect_register_mybas(void)
@@ -208,8 +208,8 @@ feature needed for 100% compatibility, with Fix: suggestions.
 STEP 3: Modify the DialectConfig struct. For example, if you
 implement RND(0) repeat behavior:
 
-    Before: 1,  /* has_rnd_function */
-    After:  1,  /* has_rnd_function + rnd_zero_repeat */
+    Before: 1,  / has_rnd_function /
+    After:  1,  / has_rnd_function + rnd_zero_repeat /
 
     (You'd also add has_rnd_zero_repeat to DialectConfig in
     dialect.h first.)
@@ -250,11 +250,11 @@ STEP 2: Add the dialect ID to dialect.h.
     Open dialect.h and add to the DialectId enum (before
     DIALECT_COUNT):
 
-        DIALECT_BBC_MICRO,    /* BBC BASIC (Acorn) */
+        DIALECT_BBC_MICRO,    / BBC BASIC (Acorn) /
 
     Add a DFLAG bitmask (use next available bit):
 
-        #define DFLAG_BBCB  (1U << 12)  /* BBC BASIC */
+        #define DFLAG_BBCB  (1U << 12)  / BBC BASIC /
 
     Add the registration function prototype:
 
@@ -443,7 +443,7 @@ EXAMPLE: Adding Atari GRAPHICS command
 
   1. ADD THE KEYWORD to lexer.h:
 
-     KW_GRAPHICS,  /* Atari GRAPHICS mode switch */
+     KW_GRAPHICS,  / Atari GRAPHICS mode switch /
 
   2. ADD TO KEYWORD TABLE in lexer.c:
 
@@ -458,15 +458,15 @@ EXAMPLE: Adding Atari GRAPHICS command
      static void parse_atari_graphics(Lexer *lex,
          RuntimeState *rt, int line_num)
      {
-         /* Parse: GRAPHICS n  (n = 0-8) */
+         / Parse: GRAPHICS n  (n = 0-8) /
          long mode = parse_expression(lex, rt);
          if (mode < 0 || mode > 8) {
              error_raise(ERR_HOW, line_num);
              return;
          }
-         /* Map Atari modes to gfxbuf resolutions */
+         / Map Atari modes to gfxbuf resolutions /
          switch ((int)mode) {
-             case 0: /* text 40x24 */ break;
+             case 0: / text 40x24 / break;
              case 3: gfxbuf_set_mode(40, 24, 4); break;
              case 7: gfxbuf_set_mode(160, 96, 4); break;
              case 8: gfxbuf_set_mode(320, 192, 2); break;

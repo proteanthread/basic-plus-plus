@@ -105,35 +105,35 @@ only the configuration changes.
 Every dialect is defined by a single C structure:
 
   typedef struct DialectConfig {
-      DialectId   id;                 /* enum index */
-      const char *name;               /* "GW-BASIC" */
-      char        stmt_separator;     /* ':' or ';' */
-      int         has_then_keyword;   /* IF requires THEN? */
-      int         has_let_optional;   /* Can omit LET? */
+      DialectId   id;                 / enum index /
+      const char *name;               / "GW-BASIC" /
+      char        stmt_separator;     / ':' or ';' /
+      int         has_then_keyword;   / IF requires THEN? /
+      int         has_let_optional;   / Can omit LET? /
       int         has_for_next;       /* FOR/NEXT loops? */
-      int         has_string_vars;    /* String variables (A$)? */
-      int         has_print_hash;     /* PRINT #n formatting? */
-      int         has_array_at;       /* @(i) array syntax? */
-      int         has_rnd_function;   /* RND() available? */
-      int         has_abs_function;   /* ABS() available? */
-      int         has_size_function;  /* SIZE available? */
-      int         max_line_number;    /* 32767, 65529, 99999 */
-      int         not_eq_is_hash;     /* # means <> ? */
+      int         has_string_vars;    / String variables (A$)? /
+      int         has_print_hash;     / PRINT #n formatting? /
+      int         has_array_at;       / @(i) array syntax? /
+      int         has_rnd_function;   / RND() available? /
+      int         has_abs_function;   / ABS() available? /
+      int         has_size_function;  / SIZE available? /
+      int         max_line_number;    / 32767, 65529, 99999 /
+      int         not_eq_is_hash;     / # means <> ? /
       int         has_data_read;      /* DATA/READ/RESTORE? */
       int         has_while_wend;     /* WHILE/WEND loops? */
       int         has_do_loop;        /* DO/LOOP loops? */
-      int         has_extended_vars;  /* Long variable names? */
+      int         has_extended_vars;  / Long variable names? /
       int         has_merge_chain;    /* MERGE/CHAIN commands? */
-      int         has_float;          /* Floating-point? */
-      int         has_dim_arrays;     /* DIM arrays? */
-      int         has_string_functions; /* String funcs? */
+      int         has_float;          / Floating-point? /
+      int         has_dim_arrays;     / DIM arrays? /
+      int         has_string_functions; / String funcs? /
       const char *ready_prompt;       /* "Ok", "READY", etc. */
-      int         print_zone_width;   /* 8, 10, 14, 16 */
-      int         has_on_error;       /* ON ERROR GOTO? */
-      int         has_cls;            /* CLS command? */
+      int         print_zone_width;   / 8, 10, 14, 16 /
+      int         has_on_error;       / ON ERROR GOTO? /
+      int         has_cls;            / CLS command? /
       int         has_tron_troff;     /* TRON/TROFF debug? */
-      const char *short_name;         /* "GWBS", 4 chars */
-      unsigned int dialect_flag;      /* DFLAG_GWBS bitmask */
+      const char *short_name;         / "GWBS", 4 chars /
+      unsigned int dialect_flag;      / DFLAG_GWBS bitmask /
   } DialectConfig;
 
 Each field is a simple flag or value.  The parser and runtime
@@ -166,7 +166,7 @@ are needed in the parser — it just reads the config.
 
   ID  Separator  THEN   LET opt  Prompt     Zone  WHILE  DO/LOOP
   --  ---------  ----   -------  ------     ----  -----  -------
-   0  ;          No     Yes      READY        8    Yes*   Yes*
+   0  ;          No     Yes      READY        8    Yes   Yes
    1  :          Yes    Yes      READY       16    No     No
    2  :          Yes    Yes      READY       14    Yes    No
    3  :          Yes    Yes      Ok          14    Yes    Yes
@@ -250,9 +250,9 @@ which dialects support it.  The bitmask is a 16-bit unsigned:
   The check happens in dialect_keyword_allowed():
     int dialect_keyword_allowed(KeywordId kw)
     {
-        if (!strict_mode) return 1;       /* union: allow all */
+        if (!strict_mode) return 1;       / union: allow all /
         kw_flags = lexer_get_keyword_flags(kw);
-        if (kw_flags == DFLAG_ALL) return 1;  /* native: always OK */
+        if (kw_flags == DFLAG_ALL) return 1;  / native: always OK /
         return (kw_flags & active_dialect->dialect_flag) ? 1 : 0;
     }
 
@@ -265,34 +265,34 @@ The parser queries the active DialectConfig at key points:
 
   IF statement:
     if (dialect->has_then_keyword) {
-        /* expect THEN token after condition */
+        / expect THEN token after condition /
     } else {
-        /* PATB: IF condition statement (no THEN) */
+        / PATB: IF condition statement (no THEN) /
     }
 
   Variable assignment:
     if (dialect->has_let_optional) {
-        /* A = 5 is valid without LET */
+        / A = 5 is valid without LET /
     } else {
-        /* ECMA-55: LET A = 5 required */
+        / ECMA-55: LET A = 5 required /
     }
 
   Statement separator:
     if (ch == dialect->stmt_separator) {
-        /* start next statement on same line */
+        / start next statement on same line /
     }
     /* PATB: ; separates.  All others: : separates. */
 
   Not-equal operator:
     if (dialect->not_eq_is_hash) {
-        /* PATB: # means <> */
+        / PATB: # means <> /
     } else {
-        /* all others: <> means not-equal */
+        / all others: <> means not-equal /
     }
 
   Line numbers:
     if (line_num > dialect->max_line_number) {
-        /* error: line number too large for this dialect */
+        / error: line number too large for this dialect /
     }
 
 
@@ -311,13 +311,13 @@ The runtime queries dialect config for behavior:
 
   Feature gating:
     if (!dialect->has_float) {
-        /* integer-only arithmetic mode */
+        / integer-only arithmetic mode /
     }
     if (!dialect->has_string_vars) {
-        /* reject A$ = "hello" */
+        / reject A$ = "hello" /
     }
     if (!dialect->has_dim_arrays) {
-        /* reject DIM A(10) */
+        / reject DIM A(10) /
     }
 
 
@@ -343,40 +343,40 @@ Only core constructs, no advanced features, clear error messages.
 STEP 1: Define the configuration
 
   In dialect.h, add to DialectId enum:
-    DIALECT_TEACH,        /* Teaching BASIC */
+    DIALECT_TEACH,        / Teaching BASIC /
 
   In dialect.c, add the config:
 
   {
       DIALECT_TEACH,
       "Teach BASIC",
-      ':',    /* stmt_separator */
-      1,      /* has_then_keyword: YES */
-      1,      /* has_let_optional: YES (simpler for beginners) */
-      1,      /* has_for_next: YES */
-      1,      /* has_string_vars: YES (A$) */
-      0,      /* has_print_hash: NO (too confusing) */
-      0,      /* has_array_at: NO */
-      1,      /* has_rnd: YES (for games) */
-      1,      /* has_abs: YES */
-      0,      /* has_size: NO */
-      9999,   /* max_line_number (4 digits, simpler) */
-      0,      /* not_eq_is_hash: NO (use <>) */
-      1,      /* has_data_read: YES */
-      1,      /* has_while_wend: YES (structured!) */
-      0,      /* has_do_loop: NO (WHILE is enough) */
-      0,      /* has_extended_vars: NO (A-Z only) */
-      0,      /* has_merge_chain: NO (single-file only) */
-      1,      /* has_float: YES */
-      1,      /* has_dim_arrays: YES */
-      1,      /* has_string_functions: YES */
-      "READY> ",  /* ready_prompt (clear, inviting) */
-      14,     /* print_zone_width */
-      0,      /* has_on_error: NO (let errors show) */
-      1,      /* has_cls: YES */
-      0,      /* has_tron_troff: NO */
-      "TEBA", /* short_name */
-      (1u << 12)  /* dialect_flag: bit 12 (first user bit) */
+      ':',    / stmt_separator /
+      1,      / has_then_keyword: YES /
+      1,      / has_let_optional: YES (simpler for beginners) /
+      1,      / has_for_next: YES /
+      1,      / has_string_vars: YES (A$) /
+      0,      / has_print_hash: NO (too confusing) /
+      0,      / has_array_at: NO /
+      1,      / has_rnd: YES (for games) /
+      1,      / has_abs: YES /
+      0,      / has_size: NO /
+      9999,   / max_line_number (4 digits, simpler) /
+      0,      / not_eq_is_hash: NO (use <>) /
+      1,      / has_data_read: YES /
+      1,      / has_while_wend: YES (structured!) /
+      0,      / has_do_loop: NO (WHILE is enough) /
+      0,      / has_extended_vars: NO (A-Z only) /
+      0,      / has_merge_chain: NO (single-file only) /
+      1,      / has_float: YES /
+      1,      / has_dim_arrays: YES /
+      1,      / has_string_functions: YES /
+      "READY> ",  / ready_prompt (clear, inviting) /
+      14,     / print_zone_width /
+      0,      / has_on_error: NO (let errors show) /
+      1,      / has_cls: YES /
+      0,      / has_tron_troff: NO /
+      "TEBA", / short_name /
+      (1u << 12)  / dialect_flag: bit 12 (first user bit) /
   },
 
 STEP 2: Set keyword bitmask on allowed keywords
@@ -448,7 +448,7 @@ STEP 2: Register a companion module
 
   static int scibasic_init(void *rt)
   {
-      /* Register extended math functions */
+      / Register extended math functions /
       static const FunctionEntry sci_funcs[] = {
           {"LOG10", KW_COUNT, FCAT_MATH, FRET_FLOAT,
            1,1, FSAFE_PURE, 0, fn_log10, "Log base 10"},
@@ -521,18 +521,18 @@ interactive fiction, with simplified I/O and narrative flow.
 
   Companion module adds game-specific functions:
 
-  BValue fn_roll(BValue *args, int argc, void *rt)
+  BValue fn_roll(BValue args, int argc, void rt)
   {
-      /* ROLL(6) = random 1-6 (dice roll) */
+      / ROLL(6) = random 1-6 (dice roll) /
       int sides = (int)bval_to_int(&args[0]);
       (void)argc; (void)rt;
       if (sides < 1) sides = 6;
       return bval_int((rand() % sides) + 1);
   }
 
-  BValue fn_pause(BValue *args, int argc, void *rt)
+  BValue fn_pause(BValue args, int argc, void rt)
   {
-      /* PAUSE 2 = wait 2 seconds */
+      / PAUSE 2 = wait 2 seconds /
       int ms = (int)(bval_to_float(&args[0]) * 1000.0);
       (void)argc; (void)rt;
       vdev_sleep(ms);
@@ -678,12 +678,12 @@ EXAMPLE: RND() behavior varies:
 
   To override RND for Commodore behavior:
 
-    static BValue c64_rnd(BValue *args, int argc, void *rt)
+    static BValue c64_rnd(BValue args, int argc, void rt)
     {
         double x = bval_to_float(&args[0]);
         (void)argc; (void)rt;
         if (x == 0.0) {
-            /* Use time-based seed */
+            / Use time-based seed /
             srand((unsigned)time(NULL));
         } else if (x < 0.0) {
             srand((unsigned)(x * 1000.0));
@@ -691,7 +691,7 @@ EXAMPLE: RND() behavior varies:
         return bval_float((double)rand() / (double)RAND_MAX);
     }
 
-    /* In dialect_apply() for Commodore: */
+    / In dialect_apply() for Commodore: /
     funcreg_override(KW_RND, c64_rnd);
 
   Rules for overriding:
@@ -712,22 +712,22 @@ Package your dialect as a proper module:
   #include "dialect.h"
   #include "funcreg.h"
 
-  /* Custom functions for Spectrum BASIC */
-  static BValue fn_ink(BValue *a, int c, void *r)
+  / Custom functions for Spectrum BASIC /
+  static BValue fn_ink(BValue a, int c, void r)
   { (void)c;(void)r;
-    /* Set foreground color (stubbed) */
+    / Set foreground color (stubbed) /
     printf("\033[3%ldm", bval_to_int(&a[0]) % 8);
     return bval_int(0); }
 
-  static BValue fn_paper(BValue *a, int c, void *r)
+  static BValue fn_paper(BValue a, int c, void r)
   { (void)c;(void)r;
-    /* Set background color (stubbed) */
+    / Set background color (stubbed) /
     printf("\033[4%ldm", bval_to_int(&a[0]) % 8);
     return bval_int(0); }
 
-  static BValue fn_border(BValue *a, int c, void *r)
+  static BValue fn_border(BValue a, int c, void r)
   { (void)c;(void)r;
-    /* Set border color (no-op on modern terminals) */
+    / Set border color (no-op on modern terminals) /
     return bval_int(0); }
 
   static const FunctionEntry spectrum_funcs[] = {
@@ -743,10 +743,10 @@ Package your dialect as a proper module:
   {
       int i;
       (void)rt;
-      /* Switch to Spectrum dialect */
+      / Switch to Spectrum dialect /
       dialect_init(DIALECT_SPECTRUM);
       dialect_apply();
-      /* Register Spectrum-specific functions */
+      / Register Spectrum-specific functions /
       for (i = 0; i < 3; i++)
           funcreg_register(&spectrum_funcs[i]);
       return 0;
@@ -961,14 +961,14 @@ lexer.  This requires modifying the C source.
 
 Step 1: Add to KeywordId enum in lexer.h:
 
-  KW_DISPLAY,       /* DISPLAY = PRINT alias */
-  KW_SPAWN,         /* SPAWN = new keyword */
-  KW_AWAIT,         /* AWAIT = new keyword */
+  KW_DISPLAY,       / DISPLAY = PRINT alias /
+  KW_SPAWN,         / SPAWN = new keyword /
+  KW_AWAIT,         / AWAIT = new keyword /
 
 Step 2: Add to the keyword table in lexer.c:
 
   {"DISPLAY",  KW_DISPLAY,  DFLAG_ALL},
-  {"SPAWN",    KW_SPAWN,    (1u << 12)},  /* your dialect only */
+  {"SPAWN",    KW_SPAWN,    (1u << 12)},  / your dialect only /
   {"AWAIT",    KW_AWAIT,    (1u << 12)},
 
 Step 3: The lexer will now recognize these keywords.
@@ -984,9 +984,9 @@ Once a keyword exists in the lexer, add a handler:
 
 Step 1: Write the handler function:
 
-  static void parse_spawn(Lexer *lex, void *rt, int line_num)
+  static void parse_spawn(Lexer lex, void rt, int line_num)
   {
-      /* SPAWN subroutine_line */
+      / SPAWN subroutine_line /
       BValue val = expr_evaluate(lex, rt, line_num);
       int target = (int)bval_to_int(&val);
       (void)line_num;

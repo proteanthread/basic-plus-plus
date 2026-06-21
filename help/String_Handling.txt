@@ -143,11 +143,11 @@ Internally, every string is a BValue with type =
 VAL_STRING:
 
   typedef struct BValue {
-      ValueType type;       /* VAL_STRING */
+      ValueType type;       / VAL_STRING /
       union {
           struct {
-              char *data;   /* pointer into string pool */
-              int   length; /* length in bytes */
+              char *data;   / pointer into string pool /
+              int   length; / length in bytes /
           } sval;
       } v;
   } BValue;
@@ -167,9 +167,9 @@ All string data lives in a single contiguous memory
 block called the string pool:
 
   typedef struct StringPool {
-      char *base;     /* start of allocated block */
-      long  size;     /* total size (32768 default) */
-      long  used;     /* current watermark */
+      char *base;     / start of allocated block /
+      long  size;     / total size (32768 default) /
+      long  used;     / current watermark /
   } StringPool;
 
 How it works:
@@ -1127,7 +1127,7 @@ Tradeoffs:
 50.  POOL ALLOCATION (STRPOOL_ALLOC)
 ---------------------------------------
 
-  char *strpool_alloc(StringPool *pool, int len);
+  char strpool_alloc(StringPool pool, int len);
 
   1. Check: used + len <= size
   2. If not: return NULL (caller raises ERR_SORRY)
@@ -1141,7 +1141,7 @@ No alignment padding.  No headers.  Just bump and go.
 51.  POOL STORAGE (STRPOOL_STORE)
 ------------------------------------
 
-  char *strpool_store(StringPool *pool,
+  char strpool_store(StringPool pool,
                       const char *src, int len);
 
 Convenience function:

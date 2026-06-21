@@ -264,7 +264,7 @@ SERIAL CONSOLE:
 
     static int arduino_getc(VDev *d) {
         (void)d;
-        while (!Serial.available()) { /* wait */ }
+        while (!Serial.available()) { / wait / }
         return Serial.read();
     }
 

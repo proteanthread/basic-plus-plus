@@ -1,10 +1,10 @@
-# Sinclair BASIC (ZX Spectrum) Dialect Reference
+Sinclair BASIC (ZX Spectrum) Dialect Reference
 
-**Version 4.0.1**
+Version 4.0.1
 
 ---
 
-## Table of Contents
+Table of Contents
 
 - History
 - Activation
@@ -21,65 +21,65 @@
 
 ---
 
-**Dialect Code:** `SINC`
+Dialect Code: SINC
 
 ---
 
-## History
+History
 
 Sinclair BASIC was the built-in programming language of the ZX Spectrum, released by Sinclair Research in April 1982. The Spectrum used a Zilog Z80A CPU running at 3.5 MHz with 16K or 48K of RAM.
 
 The BASIC was developed by Nine Tiles Networks (Steve Vickers and John Grant), building on the earlier ZX80 and ZX81 BASICs. It was stored in a 16K ROM alongside the operating system.
 
-The ZX Spectrum sold over **5 million units** and was the dominant home computer in the United Kingdom throughout the 1980s. Its BASIC had several unique characteristics:
+The ZX Spectrum sold over 5 million units and was the dominant home computer in the United Kingdom throughout the 1980s. Its BASIC had several unique characteristics:
 
 - Keyword entry via single keypress (each key mapped to a keyword)
-- `LET` is mandatory for all assignments
-- No `CLS` command (BASIC++ provides CLS for convenience)
-- `GO TO` and `GO SUB` as two-word forms (mapped to `GOTO`/`GOSUB`)
-- `BORDER`, `INK`, `PAPER` for color control
-- `BEEP duration, pitch` (note reversed parameter order)
-- `RANDOMIZE USR` for machine code calls
-- `VAL$` function (evaluate string as expression)
+- LET is mandatory for all assignments
+- No CLS command (BASIC++ provides CLS for convenience)
+- GO TO and GO SUB as two-word forms (mapped to GOTO/GOSUB)
+- BORDER, INK, PAPER for color control
+- BEEP duration, pitch (note reversed parameter order)
+- RANDOMIZE USR for machine code calls
+- VAL$ function (evaluate string as expression)
 
 The Spectrum was famous for its rubber-keyboard model, color attribute clashing (only 2 colors per 8×8 cell), and an enormous library of games — over 24,000 commercial titles were released.
 
 ---
 
-## Activation
+Activation
 
-```basic
+
 DIALECT "SINC"
-```
+
 
 This changes:
-- Statement separator: `:` (colon)
-- `LET` is optional (relaxed from original for usability)
-- `THEN` is required in IF statements
+- Statement separator: : (colon)
+- LET is optional (relaxed from original for usability)
+- THEN is required in IF statements
 - Maximum line number: 9999
-- Ready prompt: `0 OK, 0:1`
+- Ready prompt: 0 OK, 0:1
 - Print zone width: 14
-- `CLS` is not available in strict mode
-- No `WHILE`/`WEND` or `DO`/`LOOP` (original had none)
+- CLS is not available in strict mode
+- No WHILE/WEND or DO/LOOP (original had none)
 
 To combine with the ZX Spectrum memory map:
 
-```basic
+
 DIALECT "SINC"
 MEMMAP "SPECTRUM"
-```
+
 
 ---
 
-## Spectrum-Specific Features
+Spectrum-Specific Features
 
-### Color Control
+Color Control
 
-```basic
+
 BORDER n    ' Set border color (0-7)
 INK n       ' Set foreground ink color (0-7)
 PAPER n     ' Set background paper color (0-7)
-```
+
 
 | Value | Color |
 |-------|-------|
@@ -92,37 +92,37 @@ PAPER n     ' Set background paper color (0-7)
 | 6 | Yellow |
 | 7 | White |
 
-In BASIC++, `BORDER`/`INK`/`PAPER` map to ANSI escape codes for terminal color emulation.
+In BASIC++, BORDER/INK/PAPER map to ANSI escape codes for terminal color emulation.
 
-### Sound
+Sound
 
-```basic
+
 BEEP duration, pitch
-```
 
-On the real Spectrum, `BEEP` takes duration in seconds and pitch in semitones relative to middle C. In BASIC++, the `BEEP` statement is available but uses the platform speaker.
 
-### Memory Access
+On the real Spectrum, BEEP takes duration in seconds and pitch in semitones relative to middle C. In BASIC++, the BEEP statement is available but uses the platform speaker.
 
-The ZX Spectrum had important `PEEK`/`POKE` addresses:
+Memory Access
+
+The ZX Spectrum had important PEEK/POKE addresses:
 
 | Address | Description |
 |---------|-------------|
-| `PEEK(23672)` | Frame counter (50 Hz clock) |
-| `PEEK(23560)` | Last key pressed |
-| `POKE 23693, attr` | Set permanent screen attributes |
-| `PEEK(23659)` | PPC (current line number) |
+| PEEK(23672) | Frame counter (50 Hz clock) |
+| PEEK(23560) | Last key pressed |
+| POKE 23693, attr | Set permanent screen attributes |
+| PEEK(23659) | PPC (current line number) |
 
-Use `MEMMAP "SPECTRUM"` to access the virtual memory map with correct Spectrum addresses.
+Use MEMMAP "SPECTRUM" to access the virtual memory map with correct Spectrum addresses.
 
-### Screen Memory
+Screen Memory
 
 | Address Range | Description |
 |---------------|-------------|
-| `$4000–$57FF` | Bitmap (6144 bytes, 256×192 pixels) |
-| `$5800–$5AFF` | Attributes (768 bytes, 32×24 cells) |
+| $4000–$57FF | Bitmap (6144 bytes, 256×192 pixels) |
+| $5800–$5AFF | Attributes (768 bytes, 32×24 cells) |
 
-Each attribute byte: `FBPPPIII`
+Each attribute byte: FBPPPIII
 
 | Bits | Meaning |
 |------|---------|
@@ -133,18 +133,18 @@ Each attribute byte: `FBPPPIII`
 
 ---
 
-## Dialect Configuration
+Dialect Configuration
 
 | Property | Value |
 |----------|-------|
-| Dialect ID | `DIALECT_SINCLAIR` |
-| Short code | `"SINC"` |
-| Dialect flag | `DFLAG_SINC` (bit 12) |
-| Separator | `:` (colon) |
+| Dialect ID | DIALECT_SINCLAIR |
+| Short code | "SINC" |
+| Dialect flag | DFLAG_SINC (bit 12) |
+| Separator | : (colon) |
 | LET required | No (relaxed from original) |
 | THEN required | Yes |
 | Max line number | 9999 |
-| Ready prompt | `"0 OK, 0:1"` |
+| Ready prompt | "0 OK, 0:1" |
 | Print zone width | 14 |
 | CLS available | No (strict mode) |
 | Floating point | Yes |
@@ -162,21 +162,21 @@ Each attribute byte: `FBPPPIII`
 
 ---
 
-## Example Programs
+Example Programs
 
-### Simple color demo
+Simple color demo
 
-```basic
+
 10 DIALECT "SINC"
 20 FOR I = 0 TO 7
 30   PRINT "Color "; I
 40 NEXT I
 50 END
-```
 
-### Number guessing game (Spectrum style)
 
-```basic
+Number guessing game (Spectrum style)
+
+
 10 DIALECT "SINC"
 20 RANDOMIZE
 30 LET T = INT(RND * 100) + 1
@@ -188,15 +188,15 @@ Each attribute byte: `FBPPPIII`
 90 IF N > T THEN PRINT "Too high!": GOTO 60
 100 PRINT "Correct! You got it in "; G; " guesses."
 110 END
-```
+
 
 ---
 
-## See Also
+See Also
 
-- [Quick_Reference](Quick_Reference.md) — Complete keyword listing
-- [Specific_Machine_Dialects](Specific_Machine_Dialects.md) — All 16 dialects explained
-- [Older_Dialects](Older_Dialects.md) — MEMMAP "SPECTRUM" details
-- [Memory_Maps](Memory_Maps.md) — All 12 memory map presets
+- Quick_Reference — Complete keyword listing
+- Specific_Machine_Dialects — All 16 dialects explained
+- Older_Dialects — MEMMAP "SPECTRUM" details
+- Memory_Maps — All 12 memory map presets
 
-*@COPYLEFT ALL WRONGS RESERVED*
+@COPYLEFT ALL WRONGS RESERVED

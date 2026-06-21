@@ -455,7 +455,7 @@ Set both foreground and background:
 
   300 REM -- Yellow on red (warning!) --
   310 COLOR 14, 4
-  320 PRINT " *** DANGER *** "
+  320 PRINT "  DANGER  "
 
   400 REM -- Create a colored title bar --
   410 COLOR 15, 1          : REM White on blue
@@ -623,7 +623,7 @@ using a format string.
 
 21.1  Numeric Format: # and .
 
-  # = digit placeholder
+= digit placeholder
   . = decimal point
 
   Examples:
@@ -1106,7 +1106,7 @@ PLAY commands:
   Command   Description
   ────────  ─────────────────────────────
   C-B       Play note (C, D, E, F, G, A, B)
-  # or +    Sharp
+or +    Sharp
   -         Flat
   O0-O6     Set octave (default O4)
   >         Octave up

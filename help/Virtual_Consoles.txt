@@ -251,7 +251,7 @@
         return 0;
     }
 
-    static int log_puts(VDev *d, const char *s)
+    static int log_puts(VDev d, const char s)
     {
         (void)d;
         if (log_fp == NULL) return -1;
@@ -261,7 +261,7 @@
         return 0;
     }
 
-    static int log_open(VDev *d, const char *path,
+    static int log_open(VDev d, const char path,
                         const char *mode)
     {
         (void)d;
@@ -277,7 +277,7 @@
         return 0;
     }
 
-    /* Registration */
+    / Registration /
     void log_console_init(const char *logfile)
     {
         VDev log_dev;
@@ -294,7 +294,7 @@
         log_dev.dev_version     = "1.0";
 
         vdev_register(&log_dev);
-        log_open(NULL, logfile, "a");  /* append mode */
+        log_open(NULL, logfile, "a");  / append mode /
     }
 
   ---- Using from BASIC++ (once registered) ----
@@ -311,7 +311,7 @@
   To capture EVERYTHING (see Section 7 for the tee pattern):
 
     log_console_init("session.log");
-    /* Now set up tee: every CON: write also goes to LOG: */
+    / Now set up tee: every CON: write also goes to LOG: /
 
 
 =====================================================================
@@ -328,7 +328,7 @@
 
   ---- C Implementation ----
 
-    /* Tee device: wraps two VDevs, sends output to both */
+    / Tee device: wraps two VDevs, sends output to both /
 
     typedef struct TeeData {
         VDev *primary;     /* e.g., CON: (screen) */
@@ -337,15 +337,15 @@
 
     static int tee_putc(VDev *d, int ch)
     {
-        TeeData *td = (TeeData *)d->user_data;
+        TeeData td = (TeeData )d->user_data;
         vdev_putc(td->primary, ch);
         vdev_putc(td->secondary, ch);
         return 0;
     }
 
-    static int tee_puts(VDev *d, const char *s)
+    static int tee_puts(VDev d, const char s)
     {
-        TeeData *td = (TeeData *)d->user_data;
+        TeeData td = (TeeData )d->user_data;
         vdev_puts(td->primary, s);
         vdev_puts(td->secondary, s);
         return 0;
@@ -353,20 +353,20 @@
 
     static int tee_getc(VDev *d)
     {
-        /* Input comes from primary only */
-        TeeData *td = (TeeData *)d->user_data;
+        / Input comes from primary only /
+        TeeData td = (TeeData )d->user_data;
         return vdev_getc(td->primary);
     }
 
-    static int tee_gets(VDev *d, char *buf, int max)
+    static int tee_gets(VDev d, char buf, int max)
     {
-        TeeData *td = (TeeData *)d->user_data;
+        TeeData td = (TeeData )d->user_data;
         return vdev_gets(td->primary, buf, max);
     }
 
     static int tee_flush(VDev *d)
     {
-        TeeData *td = (TeeData *)d->user_data;
+        TeeData td = (TeeData )d->user_data;
         vdev_flush(td->primary);
         vdev_flush(td->secondary);
         return 0;
@@ -401,7 +401,7 @@
     /* Save original CON: for tee.primary */
     VDev saved_con = *vdev_get(VDEV_CON);
     my_tee.primary = &saved_con;
-    /* Replace CON: with the tee */
+    / Replace CON: with the tee /
     memcpy(vdev_get(VDEV_CON), &tee_dev, sizeof(VDev));
 
   WARNING: This is a C-level operation.  BASIC programs cannot
@@ -442,10 +442,10 @@
 
     typedef struct RingBuffer {
         char lines[RING_LINES][RING_LINE_LEN];
-        int  head;       /* next write position */
-        int  count;      /* lines currently stored */
-        char current[RING_LINE_LEN]; /* partial line */
-        int  cur_pos;    /* position in current line */
+        int  head;       / next write position /
+        int  count;      / lines currently stored /
+        char current[RING_LINE_LEN]; / partial line /
+        int  cur_pos;    / position in current line /
     } RingBuffer;
 
     static RingBuffer ring;
@@ -523,7 +523,7 @@
   The CON: device itself can be replaced at the C level.
   This changes WHERE all un-channeled PRINT goes:
 
-    /* Route all output to a network socket */
+    / Route all output to a network socket /
     VDev *con = vdev_get(VDEV_CON);
     con->dev_putc = socket_putc;
     con->dev_puts = socket_puts;
@@ -772,7 +772,7 @@
 
   Example:
 
-    /* Network device requires CAP_NET */
+    / Network device requires CAP_NET /
     net_dev.dev_req_caps = CAP_NET;
 
     /* BASIC program must activate the network module first:
@@ -791,7 +791,7 @@
 
   ---- Generated C Runtime ----
 
-    /* The compiled runtime includes: */
+    / The compiled runtime includes: /
     static void bpp_print(const char *s)
     {
         fputs(s, stdout);
@@ -804,7 +804,7 @@
 
     static void bpp_log(const char *fmt, ...)
     {
-        /* Only if LOG: was configured at compile time */
+        / Only if LOG: was configured at compile time /
         #ifdef BPP_LOG_FILE
         {
             va_list ap;
@@ -895,7 +895,7 @@
   For a multi-player server (like irata.online), each
   connected player gets their own Virtual Console:
 
-    /* C-level: create a VDev for each connection */
+    / C-level: create a VDev for each connection /
     for (i = 0; i < num_players; i++) {
         VDev player_dev;
         memset(&player_dev, 0, sizeof(player_dev));
@@ -924,11 +924,11 @@
   that share the same physical terminal, but write to
   different screen regions:
 
-    /* Top half: main output */
-    top_dev.dev_putc  = top_half_putc;  /* ESC[1;12r region */
+    / Top half: main output /
+    top_dev.dev_putc  = top_half_putc;  / ESC[1;12r region /
 
-    /* Bottom half: status bar */
-    bot_dev.dev_putc  = bot_half_putc;  /* ESC[13;24r region */
+    / Bottom half: status bar /
+    bot_dev.dev_putc  = bot_half_putc;  / ESC[13;24r region /
 
   Each VDev handles scroll regions and cursor save/restore
   internally.  The BASIC program just does:
@@ -997,7 +997,7 @@
       static int nul_putc(VDev *d, int ch) {
           (void)d; (void)ch; return 0;
       }
-      static int nul_puts(VDev *d, const char *s) {
+      static int nul_puts(VDev d, const char s) {
           (void)d; (void)s; return 0;
       }
 

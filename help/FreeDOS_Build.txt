@@ -5,7 +5,7 @@
 
 ---
 
-## Table of Contents
+Table of Contents
 
 - WHY A SLIM BUILD?
 - BUILDING FOR FREEDOS
@@ -166,16 +166,16 @@
   If you have more conventional memory available (e.g., UMBs loaded,
   or a 32-bit DOS/4GW build with extended memory):
 
-    #define PROGRAM_MEMORY_SIZE   65536L    /* 64 KB */
+    #define PROGRAM_MEMORY_SIZE   65536L    / 64 KB /
     #define MAX_PROGRAM_LINES     2048
-    #define MAX_STRING_POOL       65536L    /* 64 KB */
+    #define MAX_STRING_POOL       65536L    / 64 KB /
     #define MAX_ARRAY_ELEMENTS    8192
 
   If you are extremely memory-constrained (256K system):
 
-    #define PROGRAM_MEMORY_SIZE   16384L    /* 16 KB */
+    #define PROGRAM_MEMORY_SIZE   16384L    / 16 KB /
     #define MAX_PROGRAM_LINES     512
-    #define MAX_STRING_POOL       16384L    /* 16 KB */
+    #define MAX_STRING_POOL       16384L    / 16 KB /
     #define MAX_ARRAY_ELEMENTS    2048
 
   After editing config.h, rebuild:

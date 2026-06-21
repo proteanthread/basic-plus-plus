@@ -185,16 +185,16 @@ lives in this table.
 Registry structure:
 
   struct FunctionEntry {
-      const char     *name;        /* "ABS", "MYFUNC" */
-      KeywordId       keyword;     /* KW_ABS or KW_COUNT */
-      FuncCategory    category;    /* FCAT_MATH, FCAT_USER */
-      FuncReturnType  ret_type;    /* FRET_INT, FRET_STRING */
-      int             min_args;    /* minimum arguments */
-      int             max_args;    /* maximum arguments */
+      const char     *name;        / "ABS", "MYFUNC" /
+      KeywordId       keyword;     / KW_ABS or KW_COUNT /
+      FuncCategory    category;    / FCAT_MATH, FCAT_USER /
+      FuncReturnType  ret_type;    / FRET_INT, FRET_STRING /
+      int             min_args;    / minimum arguments /
+      int             max_args;    / maximum arguments /
       FuncSafety      safety;      /* FSAFE_PURE ... FSAFE_SYSTEM */
-      int             overridable; /* 1=dialect can replace */
-      FuncHandler     handler;     /* C function pointer */
-      const char     *help_text;   /* one-line description */
+      int             overridable; / 1=dialect can replace /
+      FuncHandler     handler;     / C function pointer /
+      const char     *help_text;   / one-line description /
   };
 
 Registry API:
@@ -239,14 +239,14 @@ A module is a named, versioned unit that groups related
 functions, devices, or dialect extensions together.
 
   struct ModuleInfo {
-      const char    *name;         /* "STDLIB", "SERIAL" */
+      const char    *name;         / "STDLIB", "SERIAL" /
       const char    *version;      /* "1.0" */
-      const char    *description;  /* one-line summary */
+      const char    *description;  / one-line summary /
       ModuleClass    mod_class;    /* Library/Dialect/Device/Extension */
-      unsigned int   capabilities; /* CAP_ bitfield */
-      SecLevel       required_level; /* security pinning */
-      int          (*init)(void*); /* init callback */
-      void         (*cleanup)(void); /* cleanup callback */
+      unsigned int   capabilities; / CAP_ bitfield /
+      SecLevel       required_level; / security pinning /
+      int          (init)(void); / init callback /
+      void         (*cleanup)(void); / cleanup callback /
   };
 
   The required_level field controls security pinning:
@@ -400,9 +400,9 @@ a file and merge it into the current program.
 Define callable functions directly in BASIC:
 
   DEF FN SQUARE(X) = X * X
-  DEF FN CUBE(X) = X * X * X
-  DEF FN HYPOTENUSE(A, B) = SQR(A*A + B*B)
-  DEF FN CLAMP(X, LO, HI) = -(X<LO)*LO -(X>HI)*HI -(X>=LO AND X<=HI)*X
+  DEF FN CUBE(X) = X  X  X
+  DEF FN HYPOTENUSE(A, B) = SQR(AA + BB)
+  DEF FN CLAMP(X, LO, HI) = -(X<LO)LO -(X>HI)HI -(X>=LO AND X<=HI)*X
 
   PRINT FN SQUARE(7)         ' 49
   PRINT FN CUBE(3)           ' 27
@@ -567,21 +567,21 @@ STEP 1: Write the handler function
 
   The handler must follow the FuncHandler signature:
 
-    BValue handler(BValue *args, int argc, void *rt);
+    BValue handler(BValue args, int argc, void rt);
 
   Complete handler:
 
     #include "value.h"
     #include "funcreg.h"
 
-    BValue fn_cube(BValue *args, int argc, void *rt)
+    BValue fn_cube(BValue args, int argc, void rt)
     {
         double x;
-        (void)argc;  /* already validated by registry */
-        (void)rt;    /* not needed for pure math */
+        (void)argc;  / already validated by registry /
+        (void)rt;    / not needed for pure math /
 
         x = bval_to_float(&args[0]);
-        return bval_float(x * x * x);
+        return bval_float(x  x  x);
     }
 
   That's it.  The function receives one argument (args[0]),
@@ -593,12 +593,12 @@ STEP 2: Create the FunctionEntry
     FunctionEntry cube_entry;
     memset(&cube_entry, 0, sizeof(cube_entry));
     cube_entry.name       = "CUBE";
-    cube_entry.keyword    = KW_COUNT;     /* no keyword - name-based */
+    cube_entry.keyword    = KW_COUNT;     / no keyword - name-based /
     cube_entry.category   = FCAT_MATH;
     cube_entry.ret_type   = FRET_FLOAT;
     cube_entry.min_args   = 1;
     cube_entry.max_args   = 1;
-    cube_entry.safety     = FSAFE_PURE;   /* no side effects */
+    cube_entry.safety     = FSAFE_PURE;   / no side effects /
     cube_entry.overridable = 0;
     cube_entry.handler    = fn_cube;
     cube_entry.help_text  = "Return x cubed";
@@ -632,7 +632,7 @@ READING VALUES FROM ARGUMENTS:
   long   n = bval_to_int(&args[0]);     Convert arg to integer
   double x = bval_to_float(&args[0]);   Convert arg to float
 
-  /* For string arguments: */
+  / For string arguments: /
   if (bval_is_string(&args[0])) {
       char *s = args[0].v.sval.data;
       int   l = args[0].v.sval.length;
@@ -658,8 +658,8 @@ RETURNING VALUES:
   return bval_int(42);           Return an integer
   return bval_float(3.14);       Return a float
 
-  /* Returning a string requires the string pool: */
-  RuntimeState *state = (RuntimeState *)rt;
+  / Returning a string requires the string pool: /
+  RuntimeState state = (RuntimeState )rt;
   char *buf = stringpool_alloc(&state->strpool, 5);
   memcpy(buf, "Hello", 5);
   return bval_string(buf, 5);
@@ -679,7 +679,7 @@ STRING POOL RULE:
 12. THE FUNCHANDLER SIGNATURE
 =====================================================================
 
-  BValue handler(BValue *args, int argc, void *rt)
+  BValue handler(BValue args, int argc, void rt)
 
   Parameters:
     args  - Array of pre-evaluated argument values.
@@ -705,12 +705,12 @@ STRING POOL RULE:
 
   OPTIONAL ARGUMENT PATTERN:
 
-    /* MYFUNC(x) or MYFUNC(x, y) */
-    /* min_args=1, max_args=2 */
-    BValue fn_myfunc(BValue *args, int argc, void *rt)
+    / MYFUNC(x) or MYFUNC(x, y) /
+    / min_args=1, max_args=2 /
+    BValue fn_myfunc(BValue args, int argc, void rt)
     {
         double x = bval_to_float(&args[0]);
-        double y = 1.0;  /* default value */
+        double y = 1.0;  / default value /
         (void)rt;
 
         if (argc >= 2) {
@@ -730,7 +730,7 @@ SINGLE FUNCTION REGISTRATION:
   FunctionEntry entry;
   memset(&entry, 0, sizeof(entry));
   entry.name     = "MYFUNC";
-  entry.keyword  = KW_COUNT;     /* no lexer keyword */
+  entry.keyword  = KW_COUNT;     / no lexer keyword /
   entry.category = FCAT_USER;
   entry.ret_type = FRET_FLOAT;
   entry.min_args = 1;
@@ -784,25 +784,25 @@ TEMPLATE: mod_mymod.c
   #include "funcreg.h"
   #include "value.h"
 
-  /* ======================== */
-  /*  Function Handlers       */
-  /* ======================== */
+  / ======================== /
+  /  Function Handlers       /
+  / ======================== /
 
-  static BValue fn_myfunc1(BValue *args, int argc, void *rt)
+  static BValue fn_myfunc1(BValue args, int argc, void rt)
   {
       (void)argc; (void)rt;
       return bval_float(bval_to_float(&args[0]) * 2.0);
   }
 
-  static BValue fn_myfunc2(BValue *args, int argc, void *rt)
+  static BValue fn_myfunc2(BValue args, int argc, void rt)
   {
       (void)argc; (void)rt;
       return bval_int(bval_to_int(&args[0]) + bval_to_int(&args[1]));
   }
 
-  /* ======================== */
-  /*  Registration Tables     */
-  /* ======================== */
+  / ======================== /
+  /  Registration Tables     /
+  / ======================== /
 
   static const FunctionEntry mymod_functions[] = {
       { "MYFUNC1", KW_COUNT, FCAT_USER, FRET_FLOAT,
@@ -815,9 +815,9 @@ TEMPLATE: mod_mymod.c
 
   #define MYMOD_FUNC_COUNT 2
 
-  /* ======================== */
+  / ======================== /
   /*  Module Init/Cleanup     */
-  /* ======================== */
+  / ======================== /
 
   static int mymod_init(void *rt)
   {
@@ -830,22 +830,22 @@ TEMPLATE: mod_mymod.c
 
   static void mymod_cleanup(void)
   {
-      /* Release resources if any */
+      / Release resources if any /
   }
 
-  /* ======================== */
-  /*  Module Descriptor       */
-  /* ======================== */
+  / ======================== /
+  /  Module Descriptor       /
+  / ======================== /
 
   static const ModuleInfo mymod_info = {
-      "MYMOD",                       /* name */
-      "1.0",                         /* version */
-      "My custom extension module",  /* description */
-      MOD_LIBRARY,                   /* class */
-      CAP_MATH,                      /* capabilities */
-      SEC_COUNT,                     /* unpinned */
-      mymod_init,                    /* init */
-      mymod_cleanup                  /* cleanup */
+      "MYMOD",                       / name /
+      "1.0",                         / version /
+      "My custom extension module",  / description /
+      MOD_LIBRARY,                   / class /
+      CAP_MATH,                      / capabilities /
+      SEC_COUNT,                     / unpinned /
+      mymod_init,                    / init /
+      mymod_cleanup                  / cleanup /
   };
 
   void mod_mymod_register(void)
@@ -857,7 +857,7 @@ INTEGRATION IN main.c:
 
   #include "mod_mymod.h"
 
-  /* In main(), after module_system_init(): */
+  / In main(), after module_system_init(): /
   mod_mymod_register();
   module_activate("MYMOD", rt);
 
@@ -877,20 +877,20 @@ new statements (which perform actions):
 
   Statement handler signature:
 
-    void handler(Lexer *lex, void *rt, int line_num);
+    void handler(Lexer lex, void rt, int line_num);
 
   Example: Add a BEEPN statement that beeps N times:
 
     #include "lexer.h"
     #include "vdev.h"
 
-    static void parse_beepn(Lexer *lex, void *rt, int line_num)
+    static void parse_beepn(Lexer lex, void rt, int line_num)
     {
         int n, i;
         BValue val;
         (void)rt;
 
-        /* Parse the argument */
+        / Parse the argument /
         val = expr_evaluate(lex, rt, line_num);
         n = (int)bval_to_int(&val);
         if (n < 1) n = 1;
@@ -947,8 +947,8 @@ See R_Virtual_Devices.txt for complete VDev tutorials.
 Some functions behave differently across BASIC dialects.
 The registry supports this via the overridable flag:
 
-  entry.overridable = 1;   /* Dialects CAN replace this */
-  entry.overridable = 0;   /* Core function - cannot replace */
+  entry.overridable = 1;   / Dialects CAN replace this /
+  entry.overridable = 0;   / Core function - cannot replace /
 
 A dialect module can replace a function's handler:
 
@@ -972,7 +972,7 @@ To add a new module to the build:
 
 1. Add the source file to the Makefile:
 
-  # In the SOURCES variable:
+In the SOURCES variable:
   SOURCES = main.c lexer.c parser.c ... mod_mymod.c
 
 2. Add the object file:
@@ -1075,7 +1075,7 @@ The gate logic (from security.c):
                       CAP_GRAPHICS | CAP_SOUND |
                       CAP_NETWORK))
               return 0;
-          return 1;  /* only CAP_MATH | CAP_STRING */
+          return 1;  / only CAP_MATH | CAP_STRING /
       }
 
       if (current_level == SEC_STANDARD) {
@@ -1096,39 +1096,39 @@ to ensure the module compiles on all platforms:
 
   Windows detection:
     #if defined(_WIN32) || defined(_WIN64)
-    /* Windows-specific code */
+    / Windows-specific code /
     #endif
 
   Linux detection:
     #if defined(__linux__)
-    /* Linux-specific code */
+    / Linux-specific code /
     #endif
 
   FreeDOS / DOS detection:
     #if defined(__MSDOS__) || defined(__DOS__) || defined(MSDOS)
-    /* DOS-specific code */
+    / DOS-specific code /
     #endif
 
   POSIX (macOS, BSD, Linux):
     #if defined(__unix__) || defined(__APPLE__)
-    /* POSIX-specific code */
+    / POSIX-specific code /
     #endif
 
 PATTERN: Provide a fallback for unsupported platforms:
 
-  static BValue fn_clipboard_get(BValue *args, int argc, void *rt)
+  static BValue fn_clipboard_get(BValue args, int argc, void rt)
   {
       (void)args; (void)argc; (void)rt;
   #if defined(_WIN32)
-      /* Windows clipboard access */
+      / Windows clipboard access /
       ...
       return bval_string(text, len);
   #elif defined(__linux__)
-      /* Linux: try xclip */
+      / Linux: try xclip /
       ...
       return bval_string(text, len);
   #else
-      /* Unsupported platform */
+      / Unsupported platform /
       return bval_string("", 0);
   #endif
   }
@@ -1139,13 +1139,13 @@ PATTERN: Return an error on unsupported platforms:
   {
       (void)rt;
   #if defined(_WIN32)
-      /* Register Windows-specific functions */
+      / Register Windows-specific functions /
       register_win32_functions();
       return 0;
   #else
-      /* Not available on this platform */
+      / Not available on this platform /
       printf("Module WINAPI requires Windows.\n");
-      return -1;  /* init failure */
+      return -1;  / init failure /
   #endif
   }
 
@@ -1166,16 +1166,16 @@ PATTERN: Return an error on unsupported platforms:
     #if defined(_WIN32)
     #include <windows.h>
 
-    static BValue fn_regread(BValue *args, int argc, void *rt)
+    static BValue fn_regread(BValue args, int argc, void rt)
     {
         char key_path[512], value_name[256], result[1024];
         HKEY hKey;
         DWORD type, size = sizeof(result);
-        RuntimeState *state = (RuntimeState *)rt;
+        RuntimeState state = (RuntimeState )rt;
         char *buf;
         (void)argc;
 
-        /* args[0] = key path, args[1] = value name */
+        / args[0] = key path, args[1] = value name /
         bval_to_string_buf(&args[0], key_path, sizeof(key_path));
         bval_to_string_buf(&args[1], value_name, sizeof(value_name));
 
@@ -1191,7 +1191,7 @@ PATTERN: Return an error on unsupported platforms:
         }
         RegCloseKey(hKey);
 
-        /* Allocate in string pool and return */
+        / Allocate in string pool and return /
         buf = stringpool_alloc(&state->strpool, (int)size);
         if (buf) memcpy(buf, result, size);
         return bval_string(buf ? buf : "", buf ? (int)size : 0);
@@ -1211,12 +1211,12 @@ PATTERN: Return an error on unsupported platforms:
     #if defined(_WIN32)
     #include <windows.h>
 
-    static BValue fn_clipget(BValue *args, int argc, void *rt)
+    static BValue fn_clipget(BValue args, int argc, void rt)
     {
         HANDLE hData;
         char *text;
         int len;
-        RuntimeState *state = (RuntimeState *)rt;
+        RuntimeState state = (RuntimeState )rt;
         char *buf;
         (void)args; (void)argc;
 
@@ -1235,7 +1235,7 @@ PATTERN: Return an error on unsupported platforms:
         return bval_string(buf ? buf : "", buf ? len : 0);
     }
 
-    static BValue fn_clipset(BValue *args, int argc, void *rt)
+    static BValue fn_clipset(BValue args, int argc, void rt)
     {
         HGLOBAL hMem;
         char *mem;
@@ -1255,7 +1255,7 @@ PATTERN: Return an error on unsupported platforms:
         GlobalUnlock(hMem);
         SetClipboardData(CF_TEXT, hMem);
         CloseClipboard();
-        return bval_int(-1);  /* success = TRUE */
+        return bval_int(-1);  / success = TRUE /
     }
     #endif
 
@@ -1267,7 +1267,7 @@ PATTERN: Return an error on unsupported platforms:
   SECURITY: Requires CAP_SYSTEM.
 
     #if defined(_WIN32)
-    static BValue fn_shellexec(BValue *args, int argc, void *rt)
+    static BValue fn_shellexec(BValue args, int argc, void rt)
     {
         char cmd[1024];
         (void)argc; (void)rt;
@@ -1275,7 +1275,7 @@ PATTERN: Return an error on unsupported platforms:
         return bval_int(system(cmd));
     }
 
-    static BValue fn_getpid(BValue *args, int argc, void *rt)
+    static BValue fn_getpid(BValue args, int argc, void rt)
     {
         (void)args; (void)argc; (void)rt;
         return bval_int((long)GetCurrentProcessId());
@@ -1293,7 +1293,7 @@ PATTERN: Return an error on unsupported platforms:
     #include <mmsystem.h>
     #pragma comment(lib, "winmm.lib")
 
-    static BValue fn_playsound(BValue *args, int argc, void *rt)
+    static BValue fn_playsound(BValue args, int argc, void rt)
     {
         char path[512];
         (void)argc; (void)rt;
@@ -1302,7 +1302,7 @@ PATTERN: Return an error on unsupported platforms:
         return bval_int(-1);
     }
 
-    static BValue fn_stopsound(BValue *args, int argc, void *rt)
+    static BValue fn_stopsound(BValue args, int argc, void rt)
     {
         (void)args; (void)argc; (void)rt;
         PlaySoundA(NULL, NULL, 0);
@@ -1339,7 +1339,7 @@ PATTERN: Return an error on unsupported platforms:
     #include <sys/stat.h>
     #include <unistd.h>
 
-    static BValue fn_fileexists(BValue *args, int argc, void *rt)
+    static BValue fn_fileexists(BValue args, int argc, void rt)
     {
         char path[512];
         struct stat st;
@@ -1348,7 +1348,7 @@ PATTERN: Return an error on unsupported platforms:
         return bval_int(stat(path, &st) == 0 ? -1 : 0);
     }
 
-    static BValue fn_filesize(BValue *args, int argc, void *rt)
+    static BValue fn_filesize(BValue args, int argc, void rt)
     {
         char path[512];
         struct stat st;
@@ -1358,7 +1358,7 @@ PATTERN: Return an error on unsupported platforms:
         return bval_int((long)st.st_size);
     }
 
-    static BValue fn_chmod(BValue *args, int argc, void *rt)
+    static BValue fn_chmod(BValue args, int argc, void rt)
     {
         char path[512];
         int mode;
@@ -1379,12 +1379,12 @@ PATTERN: Return an error on unsupported platforms:
     #if defined(__linux__) || defined(__unix__)
     #include <stdio.h>
 
-    static BValue fn_popen_read(BValue *args, int argc, void *rt)
+    static BValue fn_popen_read(BValue args, int argc, void rt)
     {
         char cmd[1024], result[4096];
         FILE *pp;
         int total = 0;
-        RuntimeState *state = (RuntimeState *)rt;
+        RuntimeState state = (RuntimeState )rt;
         char *buf;
         (void)argc;
 
@@ -1425,7 +1425,7 @@ PATTERN: Return an error on unsupported platforms:
         signal_caught = sig;
     }
 
-    static BValue fn_trap_signal(BValue *args, int argc, void *rt)
+    static BValue fn_trap_signal(BValue args, int argc, void rt)
     {
         int sig = (int)bval_to_int(&args[0]);
         (void)argc; (void)rt;
@@ -1433,7 +1433,7 @@ PATTERN: Return an error on unsupported platforms:
         return bval_int(-1);
     }
 
-    static BValue fn_check_signal(BValue *args, int argc, void *rt)
+    static BValue fn_check_signal(BValue args, int argc, void rt)
     {
         int result;
         (void)args; (void)argc; (void)rt;
@@ -1453,7 +1453,7 @@ PATTERN: Return an error on unsupported platforms:
     #if defined(__linux__)
     #include <syslog.h>
 
-    static BValue fn_syslog(BValue *args, int argc, void *rt)
+    static BValue fn_syslog(BValue args, int argc, void rt)
     {
         char msg[1024];
         int priority = LOG_INFO;
@@ -1476,7 +1476,7 @@ PATTERN: Return an error on unsupported platforms:
   SECURITY: Requires CAP_SYSTEM | CAP_IO.
 
     #if defined(__linux__)
-    static BValue fn_gpio_write(BValue *args, int argc, void *rt)
+    static BValue fn_gpio_write(BValue args, int argc, void rt)
     {
         int pin, value;
         char path[256];
@@ -1486,16 +1486,16 @@ PATTERN: Return an error on unsupported platforms:
         pin   = (int)bval_to_int(&args[0]);
         value = (int)bval_to_int(&args[1]);
 
-        /* Export pin */
+        / Export pin /
         fp = fopen("/sys/class/gpio/export", "w");
         if (fp) { fprintf(fp, "%d", pin); fclose(fp); }
 
-        /* Set direction */
+        / Set direction /
         sprintf(path, "/sys/class/gpio/gpio%d/direction", pin);
         fp = fopen(path, "w");
         if (fp) { fputs("out", fp); fclose(fp); }
 
-        /* Write value */
+        / Write value /
         sprintf(path, "/sys/class/gpio/gpio%d/value", pin);
         fp = fopen(path, "w");
         if (fp) {
@@ -1528,22 +1528,22 @@ PATTERN: Return an error on unsupported platforms:
     #include <dos.h>
     #include <i86.h>
 
-    static BValue fn_bios_vidmode(BValue *args, int argc, void *rt)
+    static BValue fn_bios_vidmode(BValue args, int argc, void rt)
     {
         union REGS regs;
         (void)args; (void)argc; (void)rt;
-        regs.h.ah = 0x0F;       /* Get video mode */
+        regs.h.ah = 0x0F;       / Get video mode /
         int86(0x10, &regs, &regs);
         return bval_int(regs.h.al);
     }
 
-    static BValue fn_bios_keyscan(BValue *args, int argc, void *rt)
+    static BValue fn_bios_keyscan(BValue args, int argc, void rt)
     {
         union REGS regs;
         (void)args; (void)argc; (void)rt;
-        regs.h.ah = 0x01;       /* Check keystroke */
+        regs.h.ah = 0x01;       / Check keystroke /
         int86(0x16, &regs, &regs);
-        if (regs.x.flags & 0x40)  /* ZF set = no key */
+        if (regs.x.flags & 0x40)  / ZF set = no key /
             return bval_int(0);
         return bval_int(regs.x.ax);
     }
@@ -1557,14 +1557,14 @@ PATTERN: Return an error on unsupported platforms:
     #if defined(__MSDOS__) || defined(__DOS__)
     #include <conio.h>
 
-    static BValue fn_port_in(BValue *args, int argc, void *rt)
+    static BValue fn_port_in(BValue args, int argc, void rt)
     {
         int port = (int)bval_to_int(&args[0]);
         (void)argc; (void)rt;
         return bval_int(inp(port));
     }
 
-    static BValue fn_port_out(BValue *args, int argc, void *rt)
+    static BValue fn_port_out(BValue args, int argc, void rt)
     {
         int port  = (int)bval_to_int(&args[0]);
         int value = (int)bval_to_int(&args[1]);
@@ -1582,7 +1582,7 @@ PATTERN: Return an error on unsupported platforms:
     #if defined(__MSDOS__) || defined(__DOS__)
     #include <dos.h>
 
-    static BValue fn_farpeek(BValue *args, int argc, void *rt)
+    static BValue fn_farpeek(BValue args, int argc, void rt)
     {
         unsigned int seg, ofs;
         unsigned char far *ptr;
@@ -1593,7 +1593,7 @@ PATTERN: Return an error on unsupported platforms:
         return bval_int(*ptr);
     }
 
-    static BValue fn_farpoke(BValue *args, int argc, void *rt)
+    static BValue fn_farpoke(BValue args, int argc, void rt)
     {
         unsigned int seg, ofs;
         unsigned char far *ptr;
@@ -1628,10 +1628,10 @@ PATTERN: Return an error on unsupported platforms:
 
 PATTERN 1: Platform-switching function
 
-  static BValue fn_hostname(BValue *args, int argc, void *rt)
+  static BValue fn_hostname(BValue args, int argc, void rt)
   {
       char name[256] = "";
-      RuntimeState *state = (RuntimeState *)rt;
+      RuntimeState state = (RuntimeState )rt;
       char *buf;
       int len;
       (void)args; (void)argc;
@@ -1655,7 +1655,7 @@ PATTERN 1: Platform-switching function
 
 PATTERN 2: Feature availability check
 
-  static BValue fn_has_feature(BValue *args, int argc, void *rt)
+  static BValue fn_has_feature(BValue args, int argc, void rt)
   {
       char feature[64];
       (void)argc; (void)rt;
@@ -1670,7 +1670,7 @@ PATTERN 2: Feature availability check
       if (strcmp(feature, "GPIO") == 0)      return bval_int(-1);
       if (strcmp(feature, "POPEN") == 0)     return bval_int(-1);
   #endif
-      return bval_int(0);  /* feature not available */
+      return bval_int(0);  / feature not available /
   }
 
   BASIC usage:
@@ -1682,16 +1682,16 @@ PATTERN 2: Feature availability check
 
 PATTERN 3: Unified API with platform backends
 
-  /* Public API - same on all platforms */
-  BValue fn_get_temp_dir(BValue *args, int argc, void *rt);
-  BValue fn_get_home_dir(BValue *args, int argc, void *rt);
-  BValue fn_get_username(BValue *args, int argc, void *rt);
+  / Public API - same on all platforms /
+  BValue fn_get_temp_dir(BValue args, int argc, void rt);
+  BValue fn_get_home_dir(BValue args, int argc, void rt);
+  BValue fn_get_username(BValue args, int argc, void rt);
 
-  /* Implementation switches by platform internally */
-  static BValue fn_get_temp_dir(BValue *args, int argc, void *rt)
+  / Implementation switches by platform internally /
+  static BValue fn_get_temp_dir(BValue args, int argc, void rt)
   {
       char path[512] = "";
-      RuntimeState *state = (RuntimeState *)rt;
+      RuntimeState state = (RuntimeState )rt;
       char *buf;
       int len;
       (void)args; (void)argc;
@@ -1839,17 +1839,17 @@ How to choose capability flags for your module:
 
        char buf[256];
        bval_to_string_buf(&args[0], buf, sizeof(buf));
-       /* buf is now guaranteed null-terminated and <=255 chars */
+       / buf is now guaranteed null-terminated and <=255 chars /
 
   3. USE SAFE BUFFER SIZES
      Never use unbounded sprintf.  Always use snprintf
      or fixed-size buffers:
 
-       /* WRONG: buffer overflow risk */
+       / WRONG: buffer overflow risk /
        char buf[64];
        sprintf(buf, "Long string: %s", user_input);
 
-       /* RIGHT: bounded */
+       / RIGHT: bounded /
        char buf[64];
        snprintf(buf, sizeof(buf), "Long string: %s", user_input);
 
@@ -1887,7 +1887,7 @@ How to choose capability flags for your module:
      rather than crashing or returning garbage:
 
        if (fopen(...) == NULL)
-           return bval_string("", 0);  /* safe default */
+           return bval_string("", 0);  / safe default /
 
 
 =====================================================================
@@ -1901,13 +1901,13 @@ How to choose capability flags for your module:
     char path[256];
     bval_to_string_buf(&args[0], path, sizeof(path));
 
-    /* Reject path traversal */
+    / Reject path traversal /
     if (strstr(path, "..")) {
         error_raise(ERR_HOW, line_num);
         return bval_int(0);
     }
 
-    /* Reject absolute paths (if you want relative only) */
+    / Reject absolute paths (if you want relative only) /
     if (path[0] == '/' || path[0] == '\\' ||
         (path[1] == ':' && path[2] == '\\')) {
         error_raise(ERR_HOW, line_num);
@@ -1959,16 +1959,16 @@ How to choose capability flags for your module:
 
   For sensitive operations, log what happened:
 
-    static BValue fn_delete_file(BValue *args, int argc, void *rt)
+    static BValue fn_delete_file(BValue args, int argc, void rt)
     {
         char path[256];
         (void)argc; (void)rt;
         bval_to_string_buf(&args[0], path, sizeof(path));
 
-        /* LOG the operation */
+        / LOG the operation /
         fprintf(stderr, "[AUDIT] DELETE FILE: %s\n", path);
 
-        /* Perform the operation */
+        / Perform the operation /
         if (remove(path) != 0) return bval_int(0);
         return bval_int(-1);
     }
@@ -1998,46 +1998,46 @@ How to choose capability flags for your module:
   #include "funcreg.h"
   #include "value.h"
 
-  static BValue fn_cube(BValue *a, int c, void *r)
-  { (void)c;(void)r; double x=bval_to_float(&a[0]); return bval_float(x*x*x); }
+  static BValue fn_cube(BValue a, int c, void r)
+  { (void)c;(void)r; double x=bval_to_float(&a[0]); return bval_float(xxx); }
 
-  static BValue fn_hypot(BValue *a, int c, void *r)
+  static BValue fn_hypot(BValue a, int c, void r)
   { (void)c;(void)r; return bval_float(sqrt(
       bval_to_float(&a[0])*bval_to_float(&a[0]) +
       bval_to_float(&a[1])*bval_to_float(&a[1]))); }
 
-  static BValue fn_clamp(BValue *a, int c, void *r)
+  static BValue fn_clamp(BValue a, int c, void r)
   { double x,lo,hi; (void)c;(void)r;
     x=bval_to_float(&a[0]); lo=bval_to_float(&a[1]); hi=bval_to_float(&a[2]);
     if(x<lo)return bval_float(lo); if(x>hi)return bval_float(hi);
     return bval_float(x); }
 
-  static BValue fn_lerp(BValue *a, int c, void *r)
+  static BValue fn_lerp(BValue a, int c, void r)
   { (void)c;(void)r; double t=bval_to_float(&a[0]);
-    return bval_float(bval_to_float(&a[1])*(1-t)+bval_to_float(&a[2])*t); }
+    return bval_float(bval_to_float(&a[1])(1-t)+bval_to_float(&a[2])t); }
 
-  static BValue fn_deg2rad(BValue *a, int c, void *r)
+  static BValue fn_deg2rad(BValue a, int c, void r)
   { (void)c;(void)r; return bval_float(bval_to_float(&a[0])*3.14159265358979/180.0); }
 
-  static BValue fn_rad2deg(BValue *a, int c, void *r)
+  static BValue fn_rad2deg(BValue a, int c, void r)
   { (void)c;(void)r; return bval_float(bval_to_float(&a[0])*180.0/3.14159265358979); }
 
-  static BValue fn_log10(BValue *a, int c, void *r)
+  static BValue fn_log10(BValue a, int c, void r)
   { (void)c;(void)r; return bval_float(log10(bval_to_float(&a[0]))); }
 
-  static BValue fn_log2(BValue *a, int c, void *r)
+  static BValue fn_log2(BValue a, int c, void r)
   { (void)c;(void)r; return bval_float(log(bval_to_float(&a[0]))/log(2.0)); }
 
-  static BValue fn_pow(BValue *a, int c, void *r)
+  static BValue fn_pow(BValue a, int c, void r)
   { (void)c;(void)r; return bval_float(pow(bval_to_float(&a[0]),bval_to_float(&a[1]))); }
 
-  static BValue fn_ceil(BValue *a, int c, void *r)
+  static BValue fn_ceil(BValue a, int c, void r)
   { (void)c;(void)r; return bval_float(ceil(bval_to_float(&a[0]))); }
 
-  static BValue fn_floor(BValue *a, int c, void *r)
+  static BValue fn_floor(BValue a, int c, void r)
   { (void)c;(void)r; return bval_float(floor(bval_to_float(&a[0]))); }
 
-  static BValue fn_round(BValue *a, int c, void *r)
+  static BValue fn_round(BValue a, int c, void r)
   { (void)c;(void)r; return bval_float(floor(bval_to_float(&a[0])+0.5)); }
 
   static const FunctionEntry mathext_funcs[] = {

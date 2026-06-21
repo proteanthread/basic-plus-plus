@@ -236,13 +236,13 @@ Dispatch table entry structure:
   struct VMDispatchEntry {
       VMOpcode    opcode;     /* OP_PRINT, OP_GOTO, etc.  */
       KeywordId   keyword;    /* KW_PRINT, KW_GOTO, etc.  */
-      VMHandler   handler;    /* function pointer          */
-      const char *name;       /* "PRINT", "GOTO" (for TRON) */
+      VMHandler   handler;    / function pointer          /
+      const char *name;       / "PRINT", "GOTO" (for TRON) /
   };
 
 Handler function signature:
 
-  void handler(Lexer *lex, void *rt, int line_num);
+  void handler(Lexer lex, void rt, int line_num);
 
 This uniform signature means:
   - The lexer is positioned just after the statement keyword
@@ -276,8 +276,8 @@ Execution path:
 The VM provides a bounded evaluation stack for expressions:
 
   struct VMEvalStack {
-      BValue items[VM_EVAL_STACK_SIZE];  /* 64 slots */
-      int    top;   /* -1 = empty */
+      BValue items[VM_EVAL_STACK_SIZE];  / 64 slots /
+      int    top;   / -1 = empty /
   };
 
 Operations:
@@ -1227,16 +1227,16 @@ And an INPUT statement:
 Because all output flows through VDev function pointers,
 you can intercept it at the C level:
 
-  /* Save the original CON: putc */
+  / Save the original CON: putc /
   VDev *con = vdev_get(VDEV_CON);
-  int (*orig_putc)(VDev*, int) = con->dev_putc;
+  int (orig_putc)(VDev, int) = con->dev_putc;
 
-  /* Install interceptor */
+  / Install interceptor /
   static int my_putc(VDev *d, int ch) {
-      /* Log to file */
+      / Log to file /
       FILE *log = fopen("output.log", "a");
       if (log) { fputc(ch, log); fclose(log); }
-      /* Call original */
+      / Call original /
       return orig_putc(d, ch);
   }
   con->dev_putc = my_putc;
@@ -1253,7 +1253,7 @@ This is used internally for:
 
 Input can be redirected by replacing CON:'s getc/gets:
 
-  /* Feed input from a script file */
+  / Feed input from a script file /
   static FILE *script = NULL;
 
   static int script_getc(VDev *d) {
@@ -1365,7 +1365,7 @@ two screen pages at different widths:
   WIDTH 40
   COLOR 14, 6               ' Light blue on blue (C64 colors)
   CLS
-  PRINT "*** COMMODORE 64 BASIC V2 ***"
+  PRINT " COMMODORE 64 BASIC V2 "
 
   ' Page 1: 80-column VDC output
   SCREEN , , 1, 0            ' Write to page 1, view page 0
@@ -1472,7 +1472,7 @@ Handlers are registered during vm_init():
 
 The handler function signature is uniform:
 
-  void parse_print(Lexer *lex, void *rt, int line_num);
+  void parse_print(Lexer lex, void rt, int line_num);
 
 Each handler:
   1. Receives the lexer positioned AFTER the keyword
@@ -1675,7 +1675,7 @@ automatically.
   MACHINE "C64"
   CLS
   PRINT
-  PRINT "    **** COMMODORE 64 BASIC V2 ****"
+  PRINT "    * COMMODORE 64 BASIC V2 *"
   PRINT
   PRINT " 64K RAM SYSTEM  38911 BASIC BYTES FREE"
   PRINT

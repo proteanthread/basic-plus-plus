@@ -244,25 +244,25 @@ never knows the difference.
   Every device is described by a single C structure:
 
     struct VDev {
-        const char *name;                          /* "CON:" */
+        const char *name;                          / "CON:" /
 
-        /* Output operations */
-        int  (*dev_putc)(VDev *d, int ch);         /* write char */
-        int  (*dev_puts)(VDev *d, const char *s);  /* write string */
-        int  (*dev_flush)(VDev *d);                /* flush buffers */
-        int  (*dev_cls)(VDev *d);                  /* clear/reset */
+        / Output operations /
+        int  (dev_putc)(VDev d, int ch);         / write char /
+        int  (dev_puts)(VDev d, const char *s);  / write string /
+        int  (dev_flush)(VDev d);                / flush buffers /
+        int  (dev_cls)(VDev d);                  /* clear/reset */
 
-        /* Input operations */
-        int  (*dev_getc)(VDev *d);                 /* read char */
-        int  (*dev_gets)(VDev *d, char *buf, int max); /* read line */
+        / Input operations /
+        int  (dev_getc)(VDev d);                 / read char /
+        int  (dev_gets)(VDev d, char *buf, int max); / read line /
 
-        /* File operations */
-        int  (*dev_open)(VDev *d, const char *path,
-                         const char *mode);        /* open resource */
-        int  (*dev_close)(VDev *d);                /* close */
+        / File operations /
+        int  (dev_open)(VDev d, const char *path,
+                         const char *mode);        / open resource /
+        int  (dev_close)(VDev d);                / close /
 
-        /* State */
-        void *user_data;                           /* opaque state */
+        / State /
+        void *user_data;                           / opaque state /
     };
 
   KEY RULES:
@@ -292,7 +292,7 @@ never knows the difference.
     Returns 0 on success, -1 on error.
     The character is an unsigned byte (0-255).
 
-  int dev_puts(VDev *d, const char *s)
+  int dev_puts(VDev d, const char s)
     Write a null-terminated string to the device.
     Returns 0 on success, -1 on error.
     Does NOT automatically append a newline.
@@ -313,13 +313,13 @@ never knows the difference.
     Blocking — waits until a character is available.
     Returns the character (0-255), or -1 on EOF/error.
 
-  int dev_gets(VDev *d, char *buf, int max)
+  int dev_gets(VDev d, char buf, int max)
     Read a line of text into buf (max-1 chars + null).
     Blocking — waits for a complete line (terminated by
     newline or EOF).
     Returns 0 on success, -1 on EOF/error.
 
-  int dev_open(VDev *d, const char *path, const char *mode)
+  int dev_open(VDev d, const char path, const char *mode)
     Open a resource.  'path' and 'mode' are device-dependent.
     For files: path = filename, mode = "r"/"w"/"a"/"rb"/etc.
     For serial: path = "COM3" or "/dev/ttyS0", mode = "9600,8,N,1"
@@ -343,10 +343,10 @@ never knows the difference.
   int vdev_putc(VDev *d, int ch)
     Safe wrapper: returns -1 if d is NULL or dev_putc is NULL.
 
-  int vdev_puts(VDev *d, const char *s)
+  int vdev_puts(VDev d, const char s)
     Safe wrapper for string output.
 
-  int vdev_printf(VDev *d, const char *fmt, ...)
+  int vdev_printf(VDev d, const char fmt, ...)
     Formatted output.  Internally calls vsprintf into a 1024-byte
     buffer, then routes through dev_puts.  Maximum 1023 chars per
     call.
@@ -354,7 +354,7 @@ never knows the difference.
   int vdev_getc(VDev *d)
     Safe wrapper for character input.
 
-  int vdev_gets(VDev *d, char *buf, int max)
+  int vdev_gets(VDev d, char buf, int max)
     Safe wrapper for line input.
 
   int vdev_flush(VDev *d)
@@ -439,7 +439,7 @@ Registration:
 
   You can also access by the known slot number:
 
-  VDev *dev = vdev_get(VDEV_USER);   /* slot 3 */
+  VDev *dev = vdev_get(VDEV_USER);   / slot 3 /
 
 Slot lifetime:
   - Slots are allocated at registration and never freed.
@@ -471,7 +471,7 @@ Slot lifetime:
 
     static FILE *log_fp = NULL;
 
-    /* Open the log file on first use */
+    / Open the log file on first use /
     static void log_ensure_open(void)
     {
         if (log_fp == NULL) {
@@ -488,12 +488,12 @@ Slot lifetime:
             fputc(ch, log_fp);
             fflush(log_fp);
         }
-        /* Pass through to real console */
+        / Pass through to real console /
         con = vdev_get(VDEV_CON);
         return (con && con->dev_putc) ? con->dev_putc(con, ch) : -1;
     }
 
-    static int log_puts(VDev *d, const char *s)
+    static int log_puts(VDev d, const char s)
     {
         VDev *con;
         (void)d;
@@ -502,7 +502,7 @@ Slot lifetime:
             fputs(s, log_fp);
             fflush(log_fp);
         }
-        /* Pass through to real console */
+        / Pass through to real console /
         con = vdev_get(VDEV_CON);
         return (con && con->dev_puts) ? con->dev_puts(con, s) : -1;
     }
@@ -536,7 +536,7 @@ Slot lifetime:
   USAGE IN MAIN.C:
 
     extern void vdev_log_register(void);
-    /* After vdev_init() */
+    / After vdev_init() /
     vdev_log_register();
 
   Now all output through the LOG: device goes to both
@@ -548,12 +548,12 @@ Slot lifetime:
     replace CON:'s function pointers directly:
 
     VDev *con = vdev_get(VDEV_CON);
-    /* Save originals */
-    static int (*orig_putc)(VDev*, int);
-    static int (*orig_puts)(VDev*, const char*);
+    / Save originals /
+    static int (orig_putc)(VDev, int);
+    static int (orig_puts)(VDev, const char*);
     orig_putc = con->dev_putc;
     orig_puts = con->dev_puts;
-    /* Install interceptors */
+    / Install interceptors /
     con->dev_putc = log_putc;
     con->dev_puts = log_puts;
 
@@ -569,25 +569,25 @@ Slot lifetime:
     static int null_putc(VDev *d, int ch)
     {
         (void)d; (void)ch;
-        return 0;  /* success, but discarded */
+        return 0;  / success, but discarded /
     }
 
-    static int null_puts(VDev *d, const char *s)
+    static int null_puts(VDev d, const char s)
     {
         (void)d; (void)s;
-        return 0;  /* success, but discarded */
+        return 0;  / success, but discarded /
     }
 
     static int null_getc(VDev *d)
     {
         (void)d;
-        return -1;  /* always EOF */
+        return -1;  / always EOF /
     }
 
-    static int null_gets(VDev *d, char *buf, int max)
+    static int null_gets(VDev d, char buf, int max)
     {
         (void)d; (void)buf; (void)max;
-        return -1;  /* always EOF */
+        return -1;  / always EOF /
     }
 
     void vdev_null_register(void)
@@ -611,15 +611,15 @@ Slot lifetime:
   Uses user_data to store the second device's slot ID.
 
     typedef struct {
-        int primary_slot;    /* first target device slot */
-        int secondary_slot;  /* second target device slot */
+        int primary_slot;    / first target device slot /
+        int secondary_slot;  / second target device slot /
     } TeeState;
 
     static TeeState tee_state = { VDEV_CON, -1 };
 
     static int tee_putc(VDev *d, int ch)
     {
-        TeeState *ts = (TeeState *)d->user_data;
+        TeeState ts = (TeeState )d->user_data;
         VDev *a = vdev_get(ts->primary_slot);
         VDev *b = vdev_get(ts->secondary_slot);
         if (a && a->dev_putc) a->dev_putc(a, ch);
@@ -627,9 +627,9 @@ Slot lifetime:
         return 0;
     }
 
-    static int tee_puts(VDev *d, const char *s)
+    static int tee_puts(VDev d, const char s)
     {
-        TeeState *ts = (TeeState *)d->user_data;
+        TeeState ts = (TeeState )d->user_data;
         VDev *a = vdev_get(ts->primary_slot);
         VDev *b = vdev_get(ts->secondary_slot);
         if (a && a->dev_puts) a->dev_puts(a, s);
@@ -637,7 +637,7 @@ Slot lifetime:
         return 0;
     }
 
-    /* Register: output to CON and ERR simultaneously */
+    / Register: output to CON and ERR simultaneously /
     void vdev_tee_register(void)
     {
         VDev dev;
@@ -664,15 +664,15 @@ Slot lifetime:
 
     typedef struct {
         char  buf[MEMBUF_SIZE];
-        int   pos;    /* current write position */
-        int   rpos;   /* current read position */
+        int   pos;    / current write position /
+        int   rpos;   / current read position /
     } MemBufState;
 
     static MemBufState membuf = { {0}, 0, 0 };
 
     static int membuf_putc(VDev *d, int ch)
     {
-        MemBufState *s = (MemBufState *)d->user_data;
+        MemBufState s = (MemBufState )d->user_data;
         if (s->pos < MEMBUF_SIZE - 1) {
             s->buf[s->pos++] = (char)ch;
             s->buf[s->pos]   = '\0';
@@ -680,9 +680,9 @@ Slot lifetime:
         return 0;
     }
 
-    static int membuf_puts(VDev *d, const char *str)
+    static int membuf_puts(VDev d, const char str)
     {
-        MemBufState *s = (MemBufState *)d->user_data;
+        MemBufState s = (MemBufState )d->user_data;
         while (*str && s->pos < MEMBUF_SIZE - 1) {
             s->buf[s->pos++] = *str++;
         }
@@ -692,7 +692,7 @@ Slot lifetime:
 
     static int membuf_cls(VDev *d)
     {
-        MemBufState *s = (MemBufState *)d->user_data;
+        MemBufState s = (MemBufState )d->user_data;
         s->pos  = 0;
         s->rpos = 0;
         s->buf[0] = '\0';
@@ -701,7 +701,7 @@ Slot lifetime:
 
     static int membuf_getc(VDev *d)
     {
-        MemBufState *s = (MemBufState *)d->user_data;
+        MemBufState s = (MemBufState )d->user_data;
         if (s->rpos >= s->pos) return -1;
         return (unsigned char)s->buf[s->rpos++];
     }
@@ -719,7 +719,7 @@ Slot lifetime:
         vdev_register(&dev);
     }
 
-    /* Utility: access captured output from C code */
+    / Utility: access captured output from C code /
     const char *vdev_membuf_contents(void) { return membuf.buf; }
     int         vdev_membuf_length(void)   { return membuf.pos;  }
     void        vdev_membuf_clear(void)    { membuf.pos = 0; membuf.rpos = 0; membuf.buf[0] = '\0'; }
@@ -742,11 +742,11 @@ Slot lifetime:
 
     static ScriptState script = { {NULL}, 0, 0 };
 
-    static int script_gets(VDev *d, char *buf, int max)
+    static int script_gets(VDev d, char buf, int max)
     {
-        ScriptState *s = (ScriptState *)d->user_data;
+        ScriptState s = (ScriptState )d->user_data;
         int len, i;
-        if (s->current >= s->count) return -1;  /* EOF */
+        if (s->current >= s->count) return -1;  / EOF /
         len = (int)strlen(s->lines[s->current]);
         if (len >= max) len = max - 1;
         for (i = 0; i < len; i++) buf[i] = s->lines[s->current][i];
@@ -758,7 +758,7 @@ Slot lifetime:
     static int script_getc(VDev *d)
     {
         static int line_pos = 0;
-        ScriptState *s = (ScriptState *)d->user_data;
+        ScriptState s = (ScriptState )d->user_data;
         if (s->current >= s->count) return -1;
         if (s->lines[s->current][line_pos] == '\0') {
             line_pos = 0;
@@ -768,7 +768,7 @@ Slot lifetime:
         return (unsigned char)s->lines[s->current][line_pos++];
     }
 
-    /* Load script: call before running the BASIC program */
+    / Load script: call before running the BASIC program /
     void vdev_script_load(const char **lines, int count)
     {
         int i;
@@ -793,16 +793,16 @@ Slot lifetime:
   USAGE:
 
     const char *test_input[] = {
-        "John Smith",          /* response to first INPUT */
-        "42",                  /* response to second INPUT */
-        "Y"                    /* response to third INPUT */
+        "John Smith",          / response to first INPUT /
+        "42",                  / response to second INPUT /
+        "Y"                    / response to third INPUT /
     };
     vdev_script_load(test_input, 3);
     vdev_script_register();
 
-    /* Replace CON:'s input to use the script */
+    / Replace CON:'s input to use the script /
     VDev *con = vdev_get(VDEV_CON);
-    VDev *scr = vdev_get(VDEV_USER);  /* script device */
+    VDev *scr = vdev_get(VDEV_USER);  / script device /
     con->dev_getc = scr->dev_getc;
     con->dev_gets = scr->dev_gets;
 
@@ -830,13 +830,13 @@ Slot lifetime:
   Each channel is a FileChannel structure:
 
     struct FileChannel {
-        FILE *fp;            /* C file pointer */
+        FILE *fp;            / C file pointer /
         int   mode;          /* CLOSED/INPUT/OUTPUT/APPEND/RANDOM/BINARY */
-        int   record_len;    /* for RANDOM mode (default 128) */
-        char  record_buf[];  /* record buffer (256 bytes) */
-        FieldMap fields[];   /* FIELD mappings (up to 16) */
+        int   record_len;    / for RANDOM mode (default 128) /
+        char  record_buf[];  / record buffer (256 bytes) /
+        FieldMap fields[];   / FIELD mappings (up to 16) /
         int   field_count;
-        long  current_rec;   /* current record number */
+        long  current_rec;   / current record number /
     };
 
 
@@ -1002,32 +1002,32 @@ Slot lifetime:
     #include <stdio.h>
     #include <string.h>
     #include "vdev.h"
-    /* Hypothetical ZIP library */
+    / Hypothetical ZIP library /
     #include "minizip.h"
 
     typedef struct {
-        void  *zip_handle;       /* ZIP archive handle */
-        void  *entry_handle;     /* current file entry */
-        char   entry_name[256];  /* current file name */
+        void  *zip_handle;       / ZIP archive handle /
+        void  *entry_handle;     / current file entry /
+        char   entry_name[256];  / current file name /
     } ZipDevState;
 
     static ZipDevState zstate;
 
-    static int zip_open(VDev *d, const char *path,
+    static int zip_open(VDev d, const char path,
                         const char *mode)
     {
-        ZipDevState *z = (ZipDevState *)d->user_data;
+        ZipDevState z = (ZipDevState )d->user_data;
         /* path format: "archive.zip/filename.txt" */
         char *slash = strchr(path, '/');
         if (!slash) return -1;
 
-        /* Open archive */
+        / Open archive /
         *slash = '\0';
         z->zip_handle = zip_open_file(path);
         *slash = '/';
         if (!z->zip_handle) return -1;
 
-        /* Open entry within archive */
+        / Open entry within archive /
         strncpy(z->entry_name, slash + 1,
                 sizeof(z->entry_name) - 1);
         z->entry_handle = zip_open_entry(
@@ -1042,7 +1042,7 @@ Slot lifetime:
 
     static int zip_getc(VDev *d)
     {
-        ZipDevState *z = (ZipDevState *)d->user_data;
+        ZipDevState z = (ZipDevState )d->user_data;
         unsigned char ch;
         if (!z->entry_handle) return -1;
         if (zip_read_entry(z->entry_handle, &ch, 1) != 1)
@@ -1052,7 +1052,7 @@ Slot lifetime:
 
     static int zip_close(VDev *d)
     {
-        ZipDevState *z = (ZipDevState *)d->user_data;
+        ZipDevState z = (ZipDevState )d->user_data;
         if (z->entry_handle) zip_close_entry(z->entry_handle);
         if (z->zip_handle) zip_close_file(z->zip_handle);
         z->entry_handle = NULL;
@@ -1085,7 +1085,7 @@ Slot lifetime:
     #include <string.h>
     #include "vdev.h"
 
-    /* Platform-specific directory reading */
+    / Platform-specific directory reading /
     #if defined(_WIN32) || defined(_WIN64)
     #include <windows.h>
     typedef struct {
@@ -1094,10 +1094,10 @@ Slot lifetime:
         int              first;
     } DirState;
 
-    static int dir_open(VDev *d, const char *path,
+    static int dir_open(VDev d, const char path,
                         const char *mode)
     {
-        DirState *s = (DirState *)d->user_data;
+        DirState s = (DirState )d->user_data;
         char pattern[260];
         (void)mode;
         sprintf(pattern, "%s\\*", path);
@@ -1106,9 +1106,9 @@ Slot lifetime:
         return (s->hFind == INVALID_HANDLE_VALUE) ? -1 : 0;
     }
 
-    static int dir_gets(VDev *d, char *buf, int max)
+    static int dir_gets(VDev d, char buf, int max)
     {
-        DirState *s = (DirState *)d->user_data;
+        DirState s = (DirState )d->user_data;
         if (s->hFind == INVALID_HANDLE_VALUE) return -1;
         if (!s->first) {
             if (!FindNextFileA(s->hFind, &s->fdata))
@@ -1122,7 +1122,7 @@ Slot lifetime:
 
     static int dir_close(VDev *d)
     {
-        DirState *s = (DirState *)d->user_data;
+        DirState s = (DirState )d->user_data;
         if (s->hFind != INVALID_HANDLE_VALUE) {
             FindClose(s->hFind);
             s->hFind = INVALID_HANDLE_VALUE;
@@ -1130,24 +1130,24 @@ Slot lifetime:
         return 0;
     }
 
-    #else  /* POSIX */
+    #else  / POSIX /
     #include <dirent.h>
     typedef struct {
         DIR *dp;
     } DirState;
 
-    static int dir_open(VDev *d, const char *path,
+    static int dir_open(VDev d, const char path,
                         const char *mode)
     {
-        DirState *s = (DirState *)d->user_data;
+        DirState s = (DirState )d->user_data;
         (void)mode;
         s->dp = opendir(path);
         return (s->dp == NULL) ? -1 : 0;
     }
 
-    static int dir_gets(VDev *d, char *buf, int max)
+    static int dir_gets(VDev d, char buf, int max)
     {
-        DirState *s = (DirState *)d->user_data;
+        DirState s = (DirState )d->user_data;
         struct dirent *ent;
         if (!s->dp) return -1;
         ent = readdir(s->dp);
@@ -1159,7 +1159,7 @@ Slot lifetime:
 
     static int dir_close(VDev *d)
     {
-        DirState *s = (DirState *)d->user_data;
+        DirState s = (DirState )d->user_data;
         if (s->dp) { closedir(s->dp); s->dp = NULL; }
         return 0;
     }
@@ -1194,10 +1194,10 @@ Slot lifetime:
 
     static TailState tail_state = { NULL, 0 };
 
-    static int tail_open(VDev *d, const char *path,
+    static int tail_open(VDev d, const char path,
                          const char *mode)
     {
-        TailState *s = (TailState *)d->user_data;
+        TailState s = (TailState )d->user_data;
         (void)mode;
         s->fp = fopen(path, "r");
         if (!s->fp) return -1;
@@ -1206,13 +1206,13 @@ Slot lifetime:
         return 0;
     }
 
-    static int tail_gets(VDev *d, char *buf, int max)
+    static int tail_gets(VDev d, char buf, int max)
     {
-        TailState *s = (TailState *)d->user_data;
+        TailState s = (TailState )d->user_data;
         long current_size;
         if (!s->fp) return -1;
 
-        /* Check for new data */
+        / Check for new data /
         fseek(s->fp, 0, SEEK_END);
         current_size = ftell(s->fp);
         if (current_size <= s->last_pos) return -1;
@@ -1225,7 +1225,7 @@ Slot lifetime:
 
     static int tail_close(VDev *d)
     {
-        TailState *s = (TailState *)d->user_data;
+        TailState s = (TailState )d->user_data;
         if (s->fp) { fclose(s->fp); s->fp = NULL; }
         return 0;
     }
@@ -1261,10 +1261,10 @@ Slot lifetime:
 
     static SerialState ser_state = { INVALID_HANDLE_VALUE };
 
-    static int ser_open(VDev *d, const char *path,
+    static int ser_open(VDev d, const char path,
                         const char *mode)
     {
-        SerialState *s = (SerialState *)d->user_data;
+        SerialState s = (SerialState )d->user_data;
         DCB dcb;
         COMMTIMEOUTS timeouts;
 
@@ -1274,23 +1274,23 @@ Slot lifetime:
             FILE_ATTRIBUTE_NORMAL, NULL);
         if (s->hPort == INVALID_HANDLE_VALUE) return -1;
 
-        /* Parse mode: "9600,8,N,1" */
+        / Parse mode: "9600,8,N,1" /
         memset(&dcb, 0, sizeof(dcb));
         dcb.DCBlength = sizeof(dcb);
         GetCommState(s->hPort, &dcb);
-        dcb.BaudRate  = 9600;     /* default */
+        dcb.BaudRate  = 9600;     / default /
         dcb.ByteSize  = 8;
         dcb.Parity    = NOPARITY;
         dcb.StopBits  = ONESTOPBIT;
 
-        /* Parse baud rate from mode string */
+        / Parse baud rate from mode string /
         if (mode && mode[0]) {
             dcb.BaudRate = (DWORD)atol(mode);
         }
 
         SetCommState(s->hPort, &dcb);
 
-        /* Set timeouts: 1 second read timeout */
+        / Set timeouts: 1 second read timeout /
         timeouts.ReadIntervalTimeout = 100;
         timeouts.ReadTotalTimeoutMultiplier = 10;
         timeouts.ReadTotalTimeoutConstant = 1000;
@@ -1302,7 +1302,7 @@ Slot lifetime:
 
     static int ser_putc(VDev *d, int ch)
     {
-        SerialState *s = (SerialState *)d->user_data;
+        SerialState s = (SerialState )d->user_data;
         DWORD written;
         unsigned char c = (unsigned char)ch;
         if (s->hPort == INVALID_HANDLE_VALUE) return -1;
@@ -1310,9 +1310,9 @@ Slot lifetime:
         return (written == 1) ? 0 : -1;
     }
 
-    static int ser_puts(VDev *d, const char *str)
+    static int ser_puts(VDev d, const char str)
     {
-        SerialState *s = (SerialState *)d->user_data;
+        SerialState s = (SerialState )d->user_data;
         DWORD written;
         DWORD len = (DWORD)strlen(str);
         if (s->hPort == INVALID_HANDLE_VALUE) return -1;
@@ -1322,7 +1322,7 @@ Slot lifetime:
 
     static int ser_getc(VDev *d)
     {
-        SerialState *s = (SerialState *)d->user_data;
+        SerialState s = (SerialState )d->user_data;
         DWORD bytesRead;
         unsigned char c;
         if (s->hPort == INVALID_HANDLE_VALUE) return -1;
@@ -1332,7 +1332,7 @@ Slot lifetime:
         return c;
     }
 
-    static int ser_gets(VDev *d, char *buf, int max)
+    static int ser_gets(VDev d, char buf, int max)
     {
         int i = 0;
         int ch;
@@ -1348,7 +1348,7 @@ Slot lifetime:
 
     static int ser_close(VDev *d)
     {
-        SerialState *s = (SerialState *)d->user_data;
+        SerialState s = (SerialState )d->user_data;
         if (s->hPort != INVALID_HANDLE_VALUE) {
             CloseHandle(s->hPort);
             s->hPort = INVALID_HANDLE_VALUE;
@@ -1376,9 +1376,9 @@ Slot lifetime:
 
     VDev *ser = vdev_get(VDEV_USER);
     ser->dev_open(ser, "COM3", "9600");
-    vdev_puts(ser, "AT\r\n");          /* Send AT command */
+    vdev_puts(ser, "AT\r\n");          / Send AT command /
     char buf[256];
-    vdev_gets(ser, buf, 256);          /* Read response */
+    vdev_gets(ser, buf, 256);          / Read response /
     printf("Modem says: %s\n", buf);
     ser->dev_close(ser);
 
@@ -1413,11 +1413,11 @@ Slot lifetime:
         }
     }
 
-    static int net_open(VDev *d, const char *path,
+    static int net_open(VDev d, const char path,
                         const char *mode)
     {
-        /* path = "host:port" */
-        NetState *s = (NetState *)d->user_data;
+        / path = "host:port" /
+        NetState s = (NetState )d->user_data;
         struct addrinfo hints, *res;
         char host[256], port[16];
         char *colon;
@@ -1457,15 +1457,15 @@ Slot lifetime:
 
     static int net_putc(VDev *d, int ch)
     {
-        NetState *s = (NetState *)d->user_data;
+        NetState s = (NetState )d->user_data;
         char c = (char)ch;
         if (s->sock == INVALID_SOCKET) return -1;
         return (send(s->sock, &c, 1, 0) == 1) ? 0 : -1;
     }
 
-    static int net_puts(VDev *d, const char *str)
+    static int net_puts(VDev d, const char str)
     {
-        NetState *s = (NetState *)d->user_data;
+        NetState s = (NetState )d->user_data;
         int len = (int)strlen(str);
         if (s->sock == INVALID_SOCKET) return -1;
         return (send(s->sock, str, len, 0) == len) ? 0 : -1;
@@ -1473,14 +1473,14 @@ Slot lifetime:
 
     static int net_getc(VDev *d)
     {
-        NetState *s = (NetState *)d->user_data;
+        NetState s = (NetState )d->user_data;
         char c;
         if (s->sock == INVALID_SOCKET) return -1;
         if (recv(s->sock, &c, 1, 0) != 1) return -1;
         return (unsigned char)c;
     }
 
-    static int net_gets(VDev *d, char *buf, int max)
+    static int net_gets(VDev d, char buf, int max)
     {
         int i = 0, ch;
         while (i < max - 1) {
@@ -1495,7 +1495,7 @@ Slot lifetime:
 
     static int net_close(VDev *d)
     {
-        NetState *s = (NetState *)d->user_data;
+        NetState s = (NetState )d->user_data;
         if (s->sock != INVALID_SOCKET) {
             closesocket(s->sock);
             s->sock = INVALID_SOCKET;
@@ -1543,16 +1543,16 @@ Slot lifetime:
   then sending that file to the print spooler.
 
     typedef struct {
-        FILE *spool;       /* spool file */
+        FILE *spool;       / spool file /
         char  spool_name[256];
     } PrinterState;
 
     static PrinterState prn_state;
 
-    static int prn_open(VDev *d, const char *path,
+    static int prn_open(VDev d, const char path,
                         const char *mode)
     {
-        PrinterState *s = (PrinterState *)d->user_data;
+        PrinterState s = (PrinterState )d->user_data;
         (void)mode;
         strncpy(s->spool_name, path, sizeof(s->spool_name) - 1);
         s->spool = fopen(path, "w");
@@ -1561,26 +1561,26 @@ Slot lifetime:
 
     static int prn_putc(VDev *d, int ch)
     {
-        PrinterState *s = (PrinterState *)d->user_data;
+        PrinterState s = (PrinterState )d->user_data;
         if (!s->spool) return -1;
         return (fputc(ch, s->spool) != EOF) ? 0 : -1;
     }
 
-    static int prn_puts(VDev *d, const char *str)
+    static int prn_puts(VDev d, const char str)
     {
-        PrinterState *s = (PrinterState *)d->user_data;
+        PrinterState s = (PrinterState )d->user_data;
         if (!s->spool) return -1;
         return (fputs(str, s->spool) != EOF) ? 0 : -1;
     }
 
     static int prn_close(VDev *d)
     {
-        PrinterState *s = (PrinterState *)d->user_data;
+        PrinterState s = (PrinterState )d->user_data;
         char cmd[512];
         if (s->spool) {
             fclose(s->spool);
             s->spool = NULL;
-            /* Send to spooler */
+            / Send to spooler /
             #if defined(_WIN32)
             sprintf(cmd, "print /d:LPT1 \"%s\"",
                     s->spool_name);
@@ -1594,13 +1594,13 @@ Slot lifetime:
 
   DIRECT DEVICE ACCESS (Windows):
 
-    /* Write directly to LPT1 */
-    static int prn_win_open(VDev *d, const char *path,
+    / Write directly to LPT1 /
+    static int prn_win_open(VDev d, const char path,
                             const char *mode)
     {
-        PrinterState *s = (PrinterState *)d->user_data;
+        PrinterState s = (PrinterState )d->user_data;
         (void)mode;
-        s->spool = fopen(path, "w");  /* "LPT1" on Windows */
+        s->spool = fopen(path, "w");  / "LPT1" on Windows /
         return (s->spool) ? 0 : -1;
     }
 
@@ -1616,7 +1616,7 @@ Slot lifetime:
     #if defined(_WIN32)
     #include <windows.h>
 
-    static int clip_puts(VDev *d, const char *s)
+    static int clip_puts(VDev d, const char s)
     {
         HGLOBAL hMem;
         char *mem;
@@ -1635,7 +1635,7 @@ Slot lifetime:
         return 0;
     }
 
-    static int clip_gets(VDev *d, char *buf, int max)
+    static int clip_gets(VDev d, char buf, int max)
     {
         HANDLE hData;
         char *text;
@@ -1672,11 +1672,11 @@ Slot lifetime:
     #include <mmsystem.h>
     #pragma comment(lib, "winmm.lib")
 
-    static int audio_open(VDev *d, const char *path,
+    static int audio_open(VDev d, const char path,
                           const char *mode)
     {
         (void)d; (void)mode;
-        /* Play a WAV file asynchronously */
+        / Play a WAV file asynchronously /
         PlaySoundA(path, NULL,
                    SND_FILENAME | SND_ASYNC);
         return 0;
@@ -1685,7 +1685,7 @@ Slot lifetime:
     static int audio_cls(VDev *d)
     {
         (void)d;
-        PlaySoundA(NULL, NULL, 0);  /* Stop playback */
+        PlaySoundA(NULL, NULL, 0);  / Stop playback /
         return 0;
     }
     #endif
@@ -1695,7 +1695,7 @@ Slot lifetime:
     VDev *audio = vdev_get(VDEV_USER + n);
     audio->dev_open(audio, "explosion.wav", "play");
     /* ... later ... */
-    audio->dev_cls(audio);  /* stop */
+    audio->dev_cls(audio);  / stop /
 
 
 ---------------------------------------------------------------------
@@ -1712,10 +1712,10 @@ Slot lifetime:
 
     static PipeState pipe_state = { NULL };
 
-    static int pipe_open(VDev *d, const char *cmd,
+    static int pipe_open(VDev d, const char cmd,
                          const char *mode)
     {
-        PipeState *s = (PipeState *)d->user_data;
+        PipeState s = (PipeState )d->user_data;
         if (s->pipe) { pclose(s->pipe); s->pipe = NULL; }
         #if defined(_WIN32)
         s->pipe = _popen(cmd, mode);
@@ -1727,28 +1727,28 @@ Slot lifetime:
 
     static int pipe_getc(VDev *d)
     {
-        PipeState *s = (PipeState *)d->user_data;
+        PipeState s = (PipeState )d->user_data;
         if (!s->pipe) return -1;
         return fgetc(s->pipe);
     }
 
-    static int pipe_gets(VDev *d, char *buf, int max)
+    static int pipe_gets(VDev d, char buf, int max)
     {
-        PipeState *s = (PipeState *)d->user_data;
+        PipeState s = (PipeState )d->user_data;
         if (!s->pipe) return -1;
         return (fgets(buf, max, s->pipe)) ? 0 : -1;
     }
 
-    static int pipe_puts(VDev *d, const char *str)
+    static int pipe_puts(VDev d, const char str)
     {
-        PipeState *s = (PipeState *)d->user_data;
+        PipeState s = (PipeState )d->user_data;
         if (!s->pipe) return -1;
         return (fputs(str, s->pipe) != EOF) ? 0 : -1;
     }
 
     static int pipe_close(VDev *d)
     {
-        PipeState *s = (PipeState *)d->user_data;
+        PipeState s = (PipeState )d->user_data;
         if (s->pipe) {
             #if defined(_WIN32)
             _pclose(s->pipe);
@@ -1792,10 +1792,10 @@ Slot lifetime:
 
     static ShmState shm_state;
 
-    static int shm_open(VDev *d, const char *name,
+    static int shm_open(VDev d, const char name,
                         const char *mode)
     {
-        ShmState *s = (ShmState *)d->user_data;
+        ShmState s = (ShmState )d->user_data;
         int size = 4096;
         (void)mode;
 
@@ -1816,7 +1816,7 @@ Slot lifetime:
 
     static int shm_putc(VDev *d, int ch)
     {
-        ShmState *s = (ShmState *)d->user_data;
+        ShmState s = (ShmState )d->user_data;
         if (!s->view || s->pos >= s->size - 1) return -1;
         s->view[s->pos++] = (char)ch;
         return 0;
@@ -1824,14 +1824,14 @@ Slot lifetime:
 
     static int shm_getc(VDev *d)
     {
-        ShmState *s = (ShmState *)d->user_data;
+        ShmState s = (ShmState )d->user_data;
         if (!s->view || s->pos >= s->size) return -1;
         return (unsigned char)s->view[s->pos++];
     }
 
     static int shm_close(VDev *d)
     {
-        ShmState *s = (ShmState *)d->user_data;
+        ShmState s = (ShmState )d->user_data;
         if (s->view) UnmapViewOfFile(s->view);
         if (s->hMap) CloseHandle(s->hMap);
         s->view = NULL;
@@ -1848,7 +1848,7 @@ Slot lifetime:
   Access GPIO pins on a Raspberry Pi or embedded Linux
   system through the sysfs interface.
 
-    /* Linux sysfs GPIO implementation */
+    / Linux sysfs GPIO implementation /
     #if defined(__linux__)
 
     typedef struct {
@@ -1858,20 +1858,20 @@ Slot lifetime:
 
     static GpioState gpio_state;
 
-    static int gpio_open(VDev *d, const char *path,
+    static int gpio_open(VDev d, const char path,
                          const char *mode)
     {
-        GpioState *s = (GpioState *)d->user_data;
+        GpioState s = (GpioState )d->user_data;
         FILE *fp;
         char filename[256];
 
         s->pin = atoi(path);
 
-        /* Export the pin */
+        / Export the pin /
         fp = fopen("/sys/class/gpio/export", "w");
         if (fp) { fprintf(fp, "%d", s->pin); fclose(fp); }
 
-        /* Set direction */
+        / Set direction /
         sprintf(filename, "/sys/class/gpio/gpio%d/direction",
                 s->pin);
         fp = fopen(filename, "w");
@@ -1880,7 +1880,7 @@ Slot lifetime:
             fclose(fp);
         }
 
-        /* Open value file */
+        / Open value file /
         sprintf(filename, "/sys/class/gpio/gpio%d/value",
                 s->pin);
         s->value_fp = fopen(filename,
@@ -1890,7 +1890,7 @@ Slot lifetime:
 
     static int gpio_putc(VDev *d, int ch)
     {
-        GpioState *s = (GpioState *)d->user_data;
+        GpioState s = (GpioState )d->user_data;
         if (!s->value_fp) return -1;
         fputc((ch ? '1' : '0'), s->value_fp);
         fflush(s->value_fp);
@@ -1899,7 +1899,7 @@ Slot lifetime:
 
     static int gpio_getc(VDev *d)
     {
-        GpioState *s = (GpioState *)d->user_data;
+        GpioState s = (GpioState )d->user_data;
         char buf[4];
         if (!s->value_fp) return -1;
         rewind(s->value_fp);
@@ -1909,7 +1909,7 @@ Slot lifetime:
 
     static int gpio_close(VDev *d)
     {
-        GpioState *s = (GpioState *)d->user_data;
+        GpioState s = (GpioState )d->user_data;
         FILE *fp;
         if (s->value_fp) {
             fclose(s->value_fp);
@@ -1993,9 +1993,9 @@ Examples:
 
   EXAMPLE — Add timestamps to all console output:
 
-    static int (*original_puts)(VDev*, const char*) = NULL;
+    static int (original_puts)(VDev, const char*) = NULL;
 
-    static int timestamped_puts(VDev *d, const char *s)
+    static int timestamped_puts(VDev d, const char s)
     {
         char timestamp[32];
         time_t now = time(NULL);
@@ -2003,9 +2003,9 @@ Examples:
         sprintf(timestamp, "[%02d:%02d:%02d] ",
                 tm->tm_hour, tm->tm_min, tm->tm_sec);
 
-        /* Write timestamp first (bypass to original) */
+        / Write timestamp first (bypass to original) /
         original_puts(d, timestamp);
-        /* Then write the actual string */
+        / Then write the actual string /
         return original_puts(d, s);
     }
 
@@ -2018,7 +2018,7 @@ Examples:
 
   EXAMPLE — Convert all output to uppercase:
 
-    static int (*orig_putc)(VDev*, int) = NULL;
+    static int (orig_putc)(VDev, int) = NULL;
 
     static int upper_putc(VDev *d, int ch)
     {
@@ -2046,7 +2046,7 @@ Examples:
 
     static FILE *input_file = NULL;
 
-    static int file_input_gets(VDev *d, char *buf, int max)
+    static int file_input_gets(VDev d, char buf, int max)
     {
         (void)d;
         if (!input_file) return -1;
@@ -2075,21 +2075,21 @@ Examples:
   You can swap device function pointers at any time during
   program execution.  This enables dynamic routing:
 
-    /* During program execution, swap output destination */
+    / During program execution, swap output destination /
     VDev *con = vdev_get(VDEV_CON);
 
-    /* Save original handlers */
-    int (*saved_putc)(VDev*, int)        = con->dev_putc;
-    int (*saved_puts)(VDev*, const char*) = con->dev_puts;
+    / Save original handlers /
+    int (saved_putc)(VDev, int)        = con->dev_putc;
+    int (saved_puts)(VDev, const char*) = con->dev_puts;
 
-    /* Redirect output to ERR: temporarily */
+    / Redirect output to ERR: temporarily /
     VDev *err = vdev_get(VDEV_ERR);
     con->dev_putc = err->dev_putc;
     con->dev_puts = err->dev_puts;
 
     /* ... all PRINT output now goes to stderr ... */
 
-    /* Restore original */
+    / Restore original /
     con->dev_putc = saved_putc;
     con->dev_puts = saved_puts;
 
@@ -2116,34 +2116,34 @@ Examples:
     #include "module.h"
     #include "vdev.h"
 
-    /* Forward declaration of device registration */
+    / Forward declaration of device registration /
     extern void vdev_serial_register(void);
 
     static int serial_init(void *rt)
     {
         (void)rt;
         vdev_serial_register();
-        return 0;  /* success */
+        return 0;  / success /
     }
 
     static void serial_cleanup(void)
     {
-        /* Close any open serial port */
+        / Close any open serial port /
         VDev *ser = vdev_get(VDEV_USER);
         if (ser && ser->dev_close) ser->dev_close(ser);
     }
 
     static const ModuleInfo serial_module = {
-        "SERIAL",                      /* name */
-        "1.0",                         /* version */
-        "RS-232 serial port driver",   /* description */
-        MOD_DEVICE,                    /* class */
-        CAP_IO | CAP_SYSTEM,           /* capabilities */
-        serial_init,                   /* init callback */
-        serial_cleanup                 /* cleanup callback */
+        "SERIAL",                      / name /
+        "1.0",                         / version /
+        "RS-232 serial port driver",   / description /
+        MOD_DEVICE,                    / class /
+        CAP_IO | CAP_SYSTEM,           / capabilities /
+        serial_init,                   / init callback /
+        serial_cleanup                 / cleanup callback /
     };
 
-    /* Call during boot to make module available */
+    / Call during boot to make module available /
     void serial_module_register(void)
     {
         module_register(&serial_module);
@@ -2214,7 +2214,7 @@ Examples:
         vdev_serial_register();
         return 0;
         #else
-        /* Not supported on this platform */
+        / Not supported on this platform /
         return -1;
         #endif
     }
@@ -2225,7 +2225,7 @@ Examples:
         MOD_DEVICE,
         CAP_IO | CAP_SYSTEM,
         serial_mod_init,
-        NULL  /* no cleanup needed */
+        NULL  / no cleanup needed /
     };
 
     void mod_serial_register(void)
@@ -2253,20 +2253,20 @@ Examples:
   excellent test harness.  Replace CON: with a memory
   buffer to capture all PRINT output, then verify it.
 
-    /* Set up test harness */
+    / Set up test harness /
     vdev_membuf_register();
 
     VDev *con = vdev_get(VDEV_CON);
-    VDev *mem = vdev_get(VDEV_USER); /* MEM: device */
+    VDev *mem = vdev_get(VDEV_USER); / MEM: device /
 
-    /* Redirect console output to memory */
+    / Redirect console output to memory /
     con->dev_putc = mem->dev_putc;
     con->dev_puts = mem->dev_puts;
 
-    /* Run the BASIC program */
+    / Run the BASIC program /
     /* ... */
 
-    /* Verify output */
+    / Verify output /
     const char *output = vdev_membuf_contents();
     assert(strstr(output, "Hello") != NULL);
     assert(strstr(output, "Error") == NULL);
@@ -2330,13 +2330,13 @@ Examples:
         return rand() % 256;
     }
 
-    static int fuzz_gets(VDev *d, char *buf, int max)
+    static int fuzz_gets(VDev d, char buf, int max)
     {
         int len = rand() % (max - 1) + 1;
         int i;
         (void)d;
         for (i = 0; i < len; i++) {
-            buf[i] = (char)(rand() % 95 + 32);  /* printable */
+            buf[i] = (char)(rand() % 95 + 32);  / printable /
         }
         buf[len] = '\0';
         return 0;
@@ -2556,8 +2556,8 @@ handles raw bytes — essential for:
   - Audio samples (16-bit PCM data)
 
   SIGNATURES:
-    int  dev_read(VDev *d, void *buf, int len);
-    int  dev_write(VDev *d, const void *buf, int len);
+    int  dev_read(VDev d, void buf, int len);
+    int  dev_write(VDev d, const void buf, int len);
     long dev_seek(VDev *d, long offset, int whence);
 
   dev_read returns bytes actually read (may be < len).
@@ -2567,7 +2567,7 @@ handles raw bytes — essential for:
 
   IMPLEMENTATION EXAMPLE — binary sensor read:
 
-    static int sensor_read(VDev *d, void *buf, int len)
+    static int sensor_read(VDev d, void buf, int len)
     {
         float temp;
         if (len < (int)sizeof(float)) return -1;
@@ -2592,7 +2592,7 @@ The original IOCTL sent a string command.  IOCTL2 uses
 standardized integer codes for structured device control:
 
   SIGNATURE:
-    int dev_ioctl(VDev *d, int cmd, void *arg);
+    int dev_ioctl(VDev d, int cmd, void arg);
 
   STANDARD COMMANDS:
     VDIO_RESET        0    Reset device to defaults
@@ -2608,19 +2608,19 @@ standardized integer codes for structured device control:
 
   IMPLEMENTATION EXAMPLE — serial port config:
 
-    static int serial_ioctl(VDev *d, int cmd, void *arg)
+    static int serial_ioctl(VDev d, int cmd, void arg)
     {
-        SerialState *ss = (SerialState *)d->user_data;
+        SerialState ss = (SerialState )d->user_data;
         switch (cmd) {
         case VDIO_SET_BAUD:
-            ss->baud = *(int *)arg;
+            ss->baud = (int )arg;
             configure_uart(ss);
             return 0;
         case VDIO_SET_TIMEOUT:
-            ss->timeout_ms = *(int *)arg;
+            ss->timeout_ms = (int )arg;
             return 0;
         case VDIO_GET_STATUS:
-            *(int *)arg = ss->connected ? 0 : -1;
+            (int )arg = ss->connected ? 0 : -1;
             return 0;
         default:
             return -1;
@@ -2666,7 +2666,7 @@ standardized integer codes for structured device control:
 =====================================================================
 
   SIGNATURE:
-    const char *dev_info(VDev *d, const char *key);
+    const char dev_info(VDev d, const char *key);
 
   The vdev_info() wrapper handles built-in keys automatically:
     "name"         Returns d->name
@@ -2758,17 +2758,17 @@ Devices with VDCAP_HOTPLUG can appear or disappear at runtime
 
   typedef struct GPIOPin {
       int  pin_number;
-      int  direction;    /* 0=input, 1=output */
-      int  value;        /* 0 or 1 */
-      int  pwm_duty;     /* 0-100 for PWM */
+      int  direction;    / 0=input, 1=output /
+      int  value;        / 0 or 1 /
+      int  pwm_duty;     / 0-100 for PWM /
   } GPIOPin;
 
-  static GPIOPin pins[28];  /* RPi has up to 28 GPIO pins */
+  static GPIOPin pins[28];  / RPi has up to 28 GPIO pins /
 
-  static int gpio_write(VDev *d, const void *buf, int len)
+  static int gpio_write(VDev d, const void buf, int len)
   {
-      GPIOPin *pin = (GPIOPin *)d->user_data;
-      int val = *(const int *)buf;
+      GPIOPin pin = (GPIOPin )d->user_data;
+      int val = (const int )buf;
       (void)len;
 
       /* Write to /sys/class/gpio/gpioN/value */
@@ -2789,9 +2789,9 @@ Devices with VDCAP_HOTPLUG can appear or disappear at runtime
       return sizeof(int);
   }
 
-  static int gpio_read(VDev *d, void *buf, int len)
+  static int gpio_read(VDev d, void buf, int len)
   {
-      GPIOPin *pin = (GPIOPin *)d->user_data;
+      GPIOPin pin = (GPIOPin )d->user_data;
       (void)len;
 
   #ifdef __linux__
@@ -2808,26 +2808,26 @@ Devices with VDCAP_HOTPLUG can appear or disappear at runtime
           }
       }
   #endif
-      *(int *)buf = pin->value;
+      (int )buf = pin->value;
       return sizeof(int);
   }
 
-  static int gpio_ioctl(VDev *d, int cmd, void *arg)
+  static int gpio_ioctl(VDev d, int cmd, void arg)
   {
-      GPIOPin *pin = (GPIOPin *)d->user_data;
+      GPIOPin pin = (GPIOPin )d->user_data;
       switch (cmd) {
-      case VDIO_SET_PIN:  /* Set direction */
-          pin->direction = *(int *)arg;
+      case VDIO_SET_PIN:  / Set direction /
+          pin->direction = (int )arg;
           return 0;
-      case VDIO_GET_PIN:  /* Get current value */
-          *(int *)arg = pin->value;
+      case VDIO_GET_PIN:  / Get current value /
+          (int )arg = pin->value;
           return 0;
       default:
           return -1;
       }
   }
 
-  /* Registration: */
+  / Registration: /
   static int gpio_module_init(void *rt)
   {
       int i;
@@ -2838,7 +2838,7 @@ Devices with VDCAP_HOTPLUG can appear or disappear at runtime
           memset(&dev, 0, sizeof(dev));
           sprintf(name, "GPIO%d:", i);
           pins[i].pin_number = i;
-          dev.name = name;  /* NOTE: must be static or strdup'd */
+          dev.name = name;  / NOTE: must be static or strdup'd /
           dev.dev_class = VDCLASS_GPIO;
           dev.dev_caps = VDCAP_RW | VDCAP_BINARY | VDCAP_CONTROL;
           dev.dev_description = "Raspberry Pi GPIO pin";
@@ -2871,16 +2871,16 @@ Devices with VDCAP_HOTPLUG can appear or disappear at runtime
 
   typedef struct I2CDevice {
       int fd;              /* /dev/i2c-N file descriptor */
-      int address;         /* 7-bit I2C address */
-      int bus;             /* bus number (0 or 1) */
+      int address;         / 7-bit I2C address /
+      int bus;             / bus number (0 or 1) /
   } I2CDevice;
 
-  static int i2c_open(VDev *d, const char *path,
+  static int i2c_open(VDev d, const char path,
                       const char *mode)
   {
-      I2CDevice *dev = (I2CDevice *)d->user_data;
+      I2CDevice dev = (I2CDevice )d->user_data;
       (void)mode;
-      /* Parse "I2C:0x48" -> address 0x48 */
+      / Parse "I2C:0x48" -> address 0x48 /
       if (path) sscanf(path, "I2C:0x%x", &dev->address);
   #ifdef __linux__
       dev->fd = open("/dev/i2c-1", O_RDWR);
@@ -2890,14 +2890,14 @@ Devices with VDCAP_HOTPLUG can appear or disappear at runtime
       return 0;
   }
 
-  static int i2c_read(VDev *d, void *buf, int len)
+  static int i2c_read(VDev d, void buf, int len)
   {
-      I2CDevice *dev = (I2CDevice *)d->user_data;
+      I2CDevice dev = (I2CDevice )d->user_data;
   #ifdef __linux__
       return read(dev->fd, buf, len);
   #else
       (void)dev; (void)buf; (void)len;
-      return -1;  /* Not available on this platform */
+      return -1;  / Not available on this platform /
   #endif
   }
 
@@ -2919,9 +2919,9 @@ Devices with VDCAP_HOTPLUG can appear or disappear at runtime
     dev_seek for sector positioning
     dev_ioctl for chip-select and clock configuration
 
-  static int spi_read(VDev *d, void *buf, int len)
+  static int spi_read(VDev d, void buf, int len)
   {
-      SPIDevice *spi = (SPIDevice *)d->user_data;
+      SPIDevice spi = (SPIDevice )d->user_data;
   #ifdef __linux__
       struct spi_ioc_transfer tr;
       memset(&tr, 0, sizeof(tr));

@@ -750,8 +750,8 @@ stores:
 
 The UserTypeDef array lives in RuntimeState:
 
-  UserTypeDef user_types[MAX_USER_TYPES];  /* 16 slots */
-  int         type_count;                  /* how many defined */
+  UserTypeDef user_types[MAX_USER_TYPES];  / 16 slots /
+  int         type_count;                  / how many defined /
 
 
 25.  THE USERTYPEFIELD STRUCTURE
@@ -761,7 +761,7 @@ From runtime.h:
 
   typedef struct UserTypeField {
       char name[MAX_VAR_NAME_LEN + 1];
-      int  is_string;  /* 0=numeric, 1=string */
+      int  is_string;  / 0=numeric, 1=string /
   } UserTypeField;
 
 Each field knows:
@@ -779,7 +779,7 @@ From runtime.h:
 
   typedef struct TypedVar {
       char name[MAX_VAR_NAME_LEN + 1];
-      int  type_index;  /* index into user_types[] */
+      int  type_index;  / index into user_types[] /
       BValue fields[MAX_TYPE_FIELDS];
   } TypedVar;
 
@@ -803,12 +803,12 @@ by scanning the UserTypeDef's fields[] array.
 The complete type system state in RuntimeState:
 
   /* User-defined types (TYPE...END TYPE) */
-  UserTypeDef user_types[MAX_USER_TYPES];  /* 16 defs */
-  int         type_count;                  /* # defined */
+  UserTypeDef user_types[MAX_USER_TYPES];  / 16 defs /
+  int         type_count;                  / # defined /
 
-  /* Typed variable instances */
-  TypedVar    typed_vars[MAX_TYPED_VARS];  /* 64 vars */
-  int         typed_var_count;             /* # created */
+  / Typed variable instances /
+  TypedVar    typed_vars[MAX_TYPED_VARS];  / 64 vars /
+  int         typed_var_count;             / # created /
 
 Memory layout (approximate):
 
@@ -840,9 +840,9 @@ there is no dynamic allocation for types.
 
 To increase these limits, edit config.h:
 
-  #define MAX_USER_TYPES   32   /* was 16 */
-  #define MAX_TYPE_FIELDS  32   /* was 16 */
-  #define MAX_TYPED_VARS   128  /* was 64 */
+  #define MAX_USER_TYPES   32   / was 16 /
+  #define MAX_TYPE_FIELDS  32   / was 16 /
+  #define MAX_TYPED_VARS   128  / was 64 /
 
 Then recompile.  The tradeoff is increased memory usage
 in RuntimeState.
@@ -1004,7 +1004,7 @@ Part VI:  PRACTICAL EXAMPLES
   380   PRINT TAB(22); "$"; Items(I%).Price;
   390   PRINT TAB(30); "Qty:"; Items(I%).Stock;
   400   IF Items(I%).Stock < Items(I%).MinStock THEN
-  410     PRINT " ** LOW **";
+  410     PRINT "  LOW ";
   420   END IF
   430   PRINT
   440 NEXT I%

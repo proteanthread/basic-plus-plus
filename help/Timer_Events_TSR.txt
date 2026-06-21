@@ -1,9 +1,9 @@
-# BASIC++ Timer & I/O Event Programming
-# TSR-Style Background Processing Tutorial
+BASIC++ Timer & I/O Event Programming
+TSR-Style Background Processing Tutorial
 
 ---
 
-## Table of Contents
+Table of Contents
 
 - Timer-based events (screensavers, clocks, auto-save)
 - Keyboard interrupt handlers (hotkeys, function keys)
@@ -29,7 +29,7 @@
 ---
 
 
-## Overview
+Overview
 
 BASIC++ provides a software interrupt system inspired by the
 DOS TSR (Terminate and Stay Resident) model. Instead of hooking
@@ -50,10 +50,10 @@ This tutorial covers:
   8. Integration with TUI desktops
 
 ------------------------------------------------------------
-## 1. How Events Work (The Virtual ISR Model)
+1. How Events Work (The Virtual ISR Model)
 ------------------------------------------------------------
 
-### 1.1 The Event Polling Loop
+1.1 The Event Polling Loop
 
 Between every BASIC statement, the interpreter calls event_poll().
 This function checks all registered event sources in priority
@@ -82,7 +82,7 @@ When an event fires:
 This is equivalent to a DOS TSR that chains INT 1Ch and performs
 work in the background — but safely within the BASIC runtime.
 
-### 1.2 Three-State Event Control
+1.2 Three-State Event Control
 
 Every event source has three states, matching the GW-BASIC model:
 
@@ -102,7 +102,7 @@ without losing them:
   40 CLOSE #1
   50 TIMER ON          ' Resume; queued timer events fire now
 
-### 1.3 Event Nesting and Reentrancy
+1.3 Event Nesting and Reentrancy
 
 While an event handler is running, the same event will NOT fire
 again (reentrancy guard via event_in_handler flag). This prevents
@@ -110,10 +110,10 @@ stack overflow from recursive timer ticks. Other event types CAN
 still fire during a handler, giving you prioritized processing.
 
 ------------------------------------------------------------
-## 2. Timer Events (ON TIMER)
+2. Timer Events (ON TIMER)
 ------------------------------------------------------------
 
-### 2.1 Basic Syntax
+2.1 Basic Syntax
 
   ON TIMER(interval) GOSUB handler_line
   TIMER ON | OFF | STOP
@@ -125,7 +125,7 @@ The interval is in SECONDS and supports fractions:
   ON TIMER(0.05) GOSUB 5000  ' every 50 ms (20 FPS)
   ON TIMER(300) GOSUB 5000   ' every 5 minutes
 
-### 2.2 Clock Precision
+2.2 Clock Precision
 
 BASIC++ uses clock() / CLOCKS_PER_SEC for timer resolution,
 giving millisecond precision on most platforms. This is much
@@ -137,7 +137,7 @@ better than GW-BASIC's 18.2 Hz timer tick (55ms resolution).
   Typical screensaver:         0.05 - 0.1 seconds
   Typical auto-save:           300 seconds (5 minutes)
 
-### 2.3 Example: Background Clock
+2.3 Example: Background Clock
 
   10 REM Background clock in corner of screen
   20 ON TIMER(1) GOSUB 100
@@ -164,7 +164,7 @@ Key points:
   - Restore cursor position after drawing
   - RETURN continues the main program seamlessly
 
-### 2.4 Example: Auto-Save TSR
+2.4 Example: Auto-Save TSR
 
   10 ON TIMER(120) GOSUB 900     ' auto-save every 2 min
   20 TIMER ON
@@ -179,7 +179,7 @@ Key points:
   970 TIMER ON                    ' re-enable
   980 RETURN
 
-### 2.5 The TICKS Function for Manual Timing
+2.5 The TICKS Function for Manual Timing
 
 For situations where event-driven timing is too coarse or you
 need elapsed-time measurement in your game loop:
@@ -202,10 +202,10 @@ Frame rate limiter pattern:
   240 GOTO 100
 
 ------------------------------------------------------------
-## 3. Keyboard Events (ON KEY)
+3. Keyboard Events (ON KEY)
 ------------------------------------------------------------
 
-### 3.1 Function Key Traps
+3.1 Function Key Traps
 
   ON KEY(n) GOSUB handler_line
   KEY(n) ON | OFF | STOP
@@ -239,7 +239,7 @@ Example: F1 help overlay
   940 SCREENRESTORE SAVEBUF()
   950 RETURN
 
-### 3.2 Reading Extended Keys with INKEY$
+3.2 Reading Extended Keys with INKEY$
 
 INKEY$ returns:
   ""           — no key pressed (non-blocking)
@@ -281,10 +281,10 @@ Scan code reference:
   Delete     83           F10         68
 
 ------------------------------------------------------------
-## 4. Device I/O Events (VDev Tier 2)
+4. Device I/O Events (VDev Tier 2)
 ------------------------------------------------------------
 
-### 4.1 How Device Events Work
+4.1 How Device Events Work
 
 Virtual devices (VDev) with the VDCAP_EVENT capability are
 polled by event_poll() on every statement. When a device's
@@ -293,7 +293,7 @@ dev_poll() function returns > 0, the registered handler fires.
 This is equivalent to IRQ-driven I/O in hardware — the device
 signals "data available" and the handler processes it.
 
-### 4.2 COM Port Events
+4.2 COM Port Events
 
   ON COM(1) GOSUB 700
   COM(1) ON
@@ -301,7 +301,7 @@ signals "data available" and the handler processes it.
 When serial data arrives on COM1, line 700 fires.
 Read the data with INPUT #n or GET #n.
 
-### 4.3 USB Events
+4.3 USB Events
 
   MODULE "USB"
   ON STRIG(0) GOSUB 800     ' joystick/gamepad button
@@ -311,7 +311,7 @@ USB HID devices (keyboards, mice, gamepads) generate events
 through the STRIG mechanism when connected via the USB module.
 
 ------------------------------------------------------------
-## 5. Mouse Events
+5. Mouse Events
 ------------------------------------------------------------
 
   ON MOUSE GOSUB handler_line
@@ -336,7 +336,7 @@ Example: Mouse click handler
   550 RETURN
 
 ------------------------------------------------------------
-## 6. Signal/Break Events
+6. Signal/Break Events
 ------------------------------------------------------------
 
   ON BREAK GOSUB handler_line
@@ -356,7 +356,7 @@ Intercept OS signals (Ctrl+C, SIGINT, SIGTERM):
   950 RETURN
 
 ------------------------------------------------------------
-## 7. Combining Events: The TSR Desktop Model
+7. Combining Events: The TSR Desktop Model
 ------------------------------------------------------------
 
 A TUI desktop combines multiple event sources simultaneously,
@@ -395,7 +395,7 @@ exactly like a DOS TSR that hooks multiple interrupt vectors:
   5330 WHILE INKEY$ <> "Y": WEND
   5340 END
 
-### 7.1 The Idle Loop Pattern
+7.1 The Idle Loop Pattern
 
   100 K$ = INKEY$
   110 IF K$ <> "" THEN GOSUB HandleKey
@@ -408,7 +408,7 @@ This is the heart of every event-driven program:
   - Between GOTO, DELAY, and INKEY$, all timer/key/device
     events get checked by event_poll()
 
-### 7.2 Event Priority and Starvation
+7.2 Event Priority and Starvation
 
 If your timer handler takes longer than the timer interval,
 the next timer event is deferred until the handler returns.
@@ -421,10 +421,10 @@ To avoid starvation:
   - Check TICKS in handlers to skip frames if behind
 
 ------------------------------------------------------------
-## 8. Building a Text-Based Screensaver
+8. Building a Text-Based Screensaver
 ------------------------------------------------------------
 
-### 8.1 Architecture
+8.1 Architecture
 
 A screensaver is a TIMER-driven animation that:
   1. Saves the current screen
@@ -443,7 +443,7 @@ Inside the screensaver:
   TIMER OFF
   RestoreScreen
 
-### 8.2 Screen Save/Restore
+8.2 Screen Save/Restore
 
 Use SCREENSAVE / SCREENRESTORE to capture and restore the
 entire screen (or a region):
@@ -453,7 +453,7 @@ entire screen (or a region):
   ' ... screensaver runs ...
   SCREENRESTORE SCRBUF()
 
-### 8.3 Integrating with a TUI Desktop
+8.3 Integrating with a TUI Desktop
 
 For a TUI desktop, the screensaver is an idle-timeout TSR:
 
@@ -477,7 +477,7 @@ For a TUI desktop, the screensaver is an idle-timeout TSR:
   7010 ' ... process key ...
   7020 RETURN
 
-### 8.4 The TRAP Three-Argument Form for TSRs
+8.4 The TRAP Three-Argument Form for TSRs
 
 For DOS TSR-style direct event routing:
 
@@ -490,10 +490,10 @@ For DOS TSR-style direct event routing:
 This is equivalent to hooking specific interrupt vectors.
 
 ------------------------------------------------------------
-## 9. Complete Examples
+9. Complete Examples
 ------------------------------------------------------------
 
-### 9.1 Clock TSR
+9.1 Clock TSR
 
   10 ON TIMER(1) GOSUB 100
   20 TIMER ON
@@ -509,7 +509,7 @@ This is equivalent to hooking specific interrupt vectors.
   140 LOCATE OC, OP
   150 RETURN
 
-### 9.2 Activity Monitor TSR
+9.2 Activity Monitor TSR
 
   10 ON TIMER(0.5) GOSUB 100
   20 TIMER ON
@@ -526,7 +526,7 @@ This is equivalent to hooking specific interrupt vectors.
   150 COLOR 7, 0
   160 RETURN
 
-### 9.3 Keyboard Macro TSR
+9.3 Keyboard Macro TSR
 
   10 ON KEY(1) GOSUB 100    ' F1 = insert date
   20 ON KEY(2) GOSUB 200    ' F2 = insert signature
@@ -542,17 +542,17 @@ This is equivalent to hooking specific interrupt vectors.
   220 RETURN
 
 ------------------------------------------------------------
-## 10. Advanced: Custom Event Sources
+10. Advanced: Custom Event Sources
 ------------------------------------------------------------
 
-### 10.1 User-Defined Events via CAUSE
+10.1 User-Defined Events via CAUSE
 
   CAUSE EXCEPTION n    ' fires ON ERROR / ON TRAP(0) handler
 
 This is the BASIC equivalent of a software interrupt (INT n).
 Your program can define custom event codes and trigger them.
 
-### 10.2 VDev Custom Devices
+10.2 VDev Custom Devices
 
 Register a custom VDev with VDCAP_EVENT capability, and its
 dev_poll() function will be called by event_poll() automatically.
@@ -562,7 +562,7 @@ This is the extensibility point for adding new hardware or
 software event sources to BASIC++.
 
 ------------------------------------------------------------
-## Quick Reference
+Quick Reference
 ------------------------------------------------------------
 
   Keyword / Function        Purpose

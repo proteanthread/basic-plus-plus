@@ -499,8 +499,8 @@ the most dangerous functions in BASIC++.
     10 INPUT "Filename to list: "; F$
     20 SHELL "dir " + F$
 
-  If the user types:    *.* & del *.*
-  The SHELL executes:   dir *.* & del *.*
+  If the user types:    *. & del .*
+  The SHELL executes:   dir *. & del .*
 
   GOOD -- validate first, or avoid SHELL entirely:
 

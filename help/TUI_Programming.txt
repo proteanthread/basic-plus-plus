@@ -5,7 +5,7 @@
 
 ---
 
-## Table of Contents
+Table of Contents
 
 - Introduction
 - The VCON Buffer

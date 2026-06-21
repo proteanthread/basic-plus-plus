@@ -318,9 +318,9 @@ security gate checks whether it's allowed.
   The security check happens at the TOP of every file
   operation handler.  Example from the OPEN handler:
 
-    /* Check security before ANY file operation */
+    / Check security before ANY file operation /
     if (security_check(SECOP_FILE_WRITE, line_num) != 0)
-        return;  /* denied - error already reported */
+        return;  / denied - error already reported /
 
   If denied, security_check() prints:
     SORRY? Security: file write not permitted at level
@@ -348,14 +348,14 @@ structures (channels 1-16, stored 0-indexed):
   Each FileChannel contains:
 
     struct FileChannel {
-        FILE *fp;           /* C file pointer, or NULL if closed */
+        FILE *fp;           / C file pointer, or NULL if closed /
         int   mode;         /* CLOSED/INPUT/.../BINARY/DEVICE */
-        VDev *vdev;         /* Phase 16: device pointer (or NULL) */
-        int   record_len;   /* record length for RANDOM (default 128) */
-        char  record_buf[256]; /* record buffer */
-        FieldMap fields[16]; /* FIELD mappings */
-        int   field_count;  /* number of active FIELD mappings */
-        long  current_rec;  /* current record number (1-based) */
+        VDev *vdev;         / Phase 16: device pointer (or NULL) /
+        int   record_len;   / record length for RANDOM (default 128) /
+        char  record_buf[256]; / record buffer /
+        FieldMap fields[16]; / FIELD mappings /
+        int   field_count;  / number of active FIELD mappings /
+        long  current_rec;  / current record number (1-based) /
     };
 
   LIFECYCLE OF A CHANNEL:
@@ -865,7 +865,7 @@ Removing ANY layer creates real problems:
 
   Writes formatted output to a file.  Format characters:
 
-    #     Digit position
+Digit position
     .     Decimal point
     ,     Thousands separator
     +     Print sign (+ or -)
@@ -880,7 +880,7 @@ Removing ANY layer creates real problems:
   Example:
     OPEN "report.txt" FOR OUTPUT AS #1
     FOR I = 1 TO 5
-      PRINT #1, USING "Item ##: $###.## ****"; I; I * 9.99
+      PRINT #1, USING "Item ##: $###.## ***"; I; I  9.99
     NEXT
     CLOSE #1
 
@@ -1320,7 +1320,7 @@ Removing ANY layer creates real problems:
     ' Parse fields using MID$ and ASC
     MAGIC$ = MID$(H$, 1, 2)       ' Should be "BM"
     FILESIZE = ASC(MID$(H$,3,1)) + ASC(MID$(H$,4,1))*256 + _
-               ASC(MID$(H$,5,1))*65536 + ASC(MID$(H$,6,1))*16777216
+               ASC(MID$(H$,5,1))65536 + ASC(MID$(H$,6,1))16777216
 
     PRINT "Magic: "; MAGIC$
     PRINT "File size: "; FILESIZE; " bytes"
@@ -1465,9 +1465,9 @@ Removing ANY layer creates real problems:
 
   The matrix is stored as a 2D array in security.c:
     static const int allowed[3][6] = {
-        { 1, 1, 1, 1, 1, 1 },  /* OPEN       */
-        { 1, 1, 0, 0, 0, 1 },  /* STANDARD   */
-        { 0, 0, 0, 0, 0, 0 }   /* RESTRICTED */
+        { 1, 1, 1, 1, 1, 1 },  / OPEN       /
+        { 1, 1, 0, 0, 0, 1 },  / STANDARD   /
+        { 0, 0, 0, 0, 0, 0 }   / RESTRICTED /
     };
 
 
@@ -1480,12 +1480,12 @@ Removing ANY layer creates real problems:
 
     int security_check(SecOperation op, int line_num)
     {
-        /* Fast path: SEC_OPEN permits everything */
+        / Fast path: SEC_OPEN permits everything /
         if (current_level == SEC_OPEN) return 0;
 
         if (allowed[current_level][op]) return 0;
 
-        /* Denied */
+        / Denied /
         printf("SORRY? Security: %s not permitted "
                "at level %s", op_names[op],
                level_names[current_level]);

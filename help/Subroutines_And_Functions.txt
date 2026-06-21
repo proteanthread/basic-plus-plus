@@ -687,7 +687,7 @@ Functions are called from expressions using their name
 followed by parenthesized arguments:
 
   100 FUNCTION Hypotenuse(A, B)
-  110   Hypotenuse = SQR(A*A + B*B)
+  110   Hypotenuse = SQR(AA + BB)
   120 END FUNCTION
   130 REM
   200 PRINT Hypotenuse(3, 4)           : REM 5
@@ -836,15 +836,15 @@ The function name is FN followed by a single letter
 DEF FN supports 1 to 4 parameters (MAX_FN_PARAMS = 4):
 
   100 DEF FNA(X) = ABS(X)
-  110 DEF FNB(X,Y) = SQR(X*X + Y*Y)
-  120 DEF FNC(A,B,C) = (-B + SQR(B*B - 4*A*C)) / (2*A)
+  110 DEF FNB(X,Y) = SQR(XX + YY)
+  120 DEF FNC(A,B,C) = (-B + SQR(BB - 4A*C)) / (2*A)
 
 The body is a single expression — everything after the
 = sign to the end of the line.  It can use any function
 or operator available in BASIC++:
 
-  200 DEF FND(X) = SIN(X) * COS(X) * 2
-  210 DEF FNE(R) = 3.14159 * R * R
+  200 DEF FND(X) = SIN(X)  COS(X)  2
+  210 DEF FNE(R) = 3.14159  R  R
   220 DEF FNF(C) = C * 9 / 5 + 32
 
 The body is stored as text and re-parsed each time the
@@ -950,7 +950,7 @@ separately before looking for FN.
   PRINT "212°F = "; FNC(212); "°C"
 
   REM -- Distance formula --
-  DEF FND(X,Y) = SQR(X*X + Y*Y)
+  DEF FND(X,Y) = SQR(XX + YY)
   PRINT "Distance: "; FND(3, 4)
 
   REM -- Percentage --
@@ -958,7 +958,7 @@ separately before looking for FN.
   PRINT FNP(75, 100); "%"
 
   REM -- Clamping --
-  DEF FNL(V,L,H) = -(V>H)*H - (V<L)*L - (V>=L)*(V<=H)*V
+  DEF FNL(V,L,H) = -(V>H)H - (V<L)L - (V>=L)(V<=H)V
 
 
 ======================================================================
@@ -973,8 +973,8 @@ Every GOSUB, SUB call, FOR loop, WHILE loop, and DO
 loop pushes a StackFrame onto the runtime stack.  The
 stack is a fixed-size array:
 
-  StackFrame stack[MAX_STACK_DEPTH];  /* 256 frames */
-  int        stack_top;               /* 0 = empty */
+  StackFrame stack[MAX_STACK_DEPTH];  / 256 frames /
+  int        stack_top;               / 0 = empty /
 
 Push adds a frame at stack[stack_top++].
 Pop removes a frame at stack[--stack_top].
@@ -1065,11 +1065,11 @@ Call stack for Factorial(4):
   Frame 1: Factorial(3) → saved vars, N=3
   Frame 2: Factorial(2) → saved vars, N=2
   Frame 3: Factorial(1) → returns 1
-  Unwind:  2*1=2 → 3*2=6 → 4*6=24
+  Unwind:  21=2 → 32=6 → 4*6=24
 
 DEF FN also supports recursion (with care):
 
-  100 DEF FNA(N) = -(N<=1) + -(N>1) * N * FNA(N-1)
+  100 DEF FNA(N) = -(N<=1) + -(N>1)  N  FNA(N-1)
 
 
 42.  MUTUAL RECURSION
@@ -1157,14 +1157,14 @@ From runtime.h:
   #define MAX_SUB_PARAMS 8
 
   typedef struct SubDef {
-      char name[MAX_VAR_NAME_LEN + 1];   /* 32 bytes */
+      char name[MAX_VAR_NAME_LEN + 1];   / 32 bytes /
       int  name_len;
-      int  body_index;     /* first line of body */
+      int  body_index;     / first line of body /
       char params[MAX_SUB_PARAMS]
-                 [MAX_VAR_NAME_LEN + 1]; /* 8 × 32 */
+                 [MAX_VAR_NAME_LEN + 1]; / 8 × 32 /
       int  param_is_string[MAX_SUB_PARAMS];
       int  param_count;
-      int  is_function;    /* 0=SUB, 1=FUNCTION */
+      int  is_function;    / 0=SUB, 1=FUNCTION /
   } SubDef;
 
 Each SubDef stores:
@@ -1193,9 +1193,9 @@ From runtime.h (for DEF FN):
   typedef struct UserFunction {
       char name[MAX_VAR_NAME_LEN + 1];
       int  name_len;
-      char params[MAX_FN_PARAMS];  /* single letters */
+      char params[MAX_FN_PARAMS];  / single letters /
       int  param_count;
-      char body[MAX_FN_BODY + 1];  /* expression text */
+      char body[MAX_FN_BODY + 1];  / expression text /
       int  body_len;
   } UserFunction;
 
@@ -1225,8 +1225,8 @@ From runtime.h:
           struct {
               int  return_index;
               int  sub_index;
-              BValue saved_vars[MAX_VARIABLES];     /* 26 */
-              BValue saved_strvars[MAX_STRING_VARS]; /* 26 */
+              BValue saved_vars[MAX_VARIABLES];     / 26 /
+              BValue saved_strvars[MAX_STRING_VARS]; / 26 /
           } sub_call;
           /* ... FOR, WHILE, DO frames ... */
       } data;
@@ -1249,17 +1249,17 @@ Approximate size per FRAME_SUB:
 -------------------------------
 
   /* SUB/FUNCTION table */
-  SubDef   subs[MAX_SUBS];        /* 64 slots */
-  int      sub_count;             /* # defined */
-  BValue   fn_return_value;       /* FUNCTION result */
-  int      in_sub_index;          /* -1 = not in SUB */
+  SubDef   subs[MAX_SUBS];        / 64 slots /
+  int      sub_count;             / # defined /
+  BValue   fn_return_value;       / FUNCTION result /
+  int      in_sub_index;          / -1 = not in SUB /
 
-  /* DEF FN table */
-  UserFunction user_funcs[MAX_USER_FUNCS];  /* 64 slots */
+  / DEF FN table /
+  UserFunction user_funcs[MAX_USER_FUNCS];  / 64 slots /
   int          user_func_count;
 
-  /* Call stack */
-  StackFrame stack[MAX_STACK_DEPTH];  /* 256 frames */
+  / Call stack /
+  StackFrame stack[MAX_STACK_DEPTH];  / 256 frames /
   int        stack_top;
 
 
@@ -1282,7 +1282,7 @@ Approximate size per FRAME_SUB:
 
 When CALL SubName or SubName(args) is encountered:
 
-  SubDef *runtime_find_sub(RuntimeState *rt,
+  SubDef runtime_find_sub(RuntimeState rt,
                            const char *name,
                            int name_len);
 
@@ -1310,9 +1310,9 @@ Part VIII:  COMPLETE EXAMPLES
   120 REM ======================================
   130 REM
   140 REM -- DEF FN: simple formulas --
-  150 DEF FNA(R) = 3.14159 * R * R       : REM area of circle
+  150 DEF FNA(R) = 3.14159  R  R       : REM area of circle
   160 DEF FNP(R) = 2 * 3.14159 * R       : REM perimeter
-  170 DEF FNH(A,B) = SQR(A*A + B*B)      : REM hypotenuse
+  170 DEF FNH(A,B) = SQR(AA + BB)      : REM hypotenuse
   180 DEF FND(X1,Y1,X2,Y2) = SQR((X2-X1)*(X2-X1) + _
                                   (Y2-Y1)*(Y2-Y1))
   190 REM

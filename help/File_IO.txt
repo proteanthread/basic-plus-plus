@@ -299,7 +299,7 @@ Binary files provide raw byte-level access.
   PRINT #1, USING "###.##"; value
 
   Format characters:
-    #     Digit position         .     Decimal point
+Digit position         .     Decimal point
     ,     Insert comma           +     Print sign
     -     Trailing minus         **    Fill with asterisks
     $$    Dollar sign            ^^^^  Scientific notation
@@ -598,15 +598,15 @@ uniform interface for ALL I/O:
 
   struct VDev {
       const char *name;          /* "CON:", "SER:", etc. */
-      int  (*dev_putc)(VDev*, int);     /* write char */
-      int  (*dev_puts)(VDev*, const char*); /* write string */
-      int  (*dev_getc)(VDev*);          /* read char */
-      int  (*dev_gets)(VDev*, char*, int); /* read line */
-      int  (*dev_flush)(VDev*);         /* flush buffer */
-      int  (*dev_cls)(VDev*);           /* clear/reset */
-      int  (*dev_open)(VDev*, const char*, const char*);
-      int  (*dev_close)(VDev*);         /* close */
-      void *user_data;                  /* device state */
+      int  (dev_putc)(VDev, int);     / write char /
+      int  (dev_puts)(VDev, const char*); / write string /
+      int  (dev_getc)(VDev);          / read char /
+      int  (dev_gets)(VDev, char*, int); / read line /
+      int  (dev_flush)(VDev);         / flush buffer /
+      int  (dev_cls)(VDev);           /* clear/reset */
+      int  (dev_open)(VDev, const char, const char);
+      int  (dev_close)(VDev);         / close /
+      void *user_data;                  / device state /
   };
 
 16 device slots:
@@ -800,25 +800,25 @@ BASIC++ routes printer access through a VDev.  You can:
 
   static FILE *printer_fp = NULL;
 
-  static int printer_open(VDev *d, const char *path,
+  static int printer_open(VDev d, const char path,
                            const char *mode)
   {
       (void)d; (void)mode;
   #if defined(_WIN32)
-      /* Windows: open the default printer spool file */
+      / Windows: open the default printer spool file /
       printer_fp = fopen("PRNTOUT.TXT", "a");
   #elif defined(__linux__)
-      /* Linux: pipe to lp command */
+      / Linux: pipe to lp command /
       printer_fp = popen("lp", "w");
   #else
-      /* FreeDOS: open LPT1 directly */
+      / FreeDOS: open LPT1 directly /
       printer_fp = fopen("PRN", "w");
   #endif
       (void)path;
       return printer_fp ? 0 : -1;
   }
 
-  static int printer_puts(VDev *d, const char *s)
+  static int printer_puts(VDev d, const char s)
   {
       (void)d;
       if (!printer_fp) return -1;
@@ -902,16 +902,16 @@ BASIC++ routes printer access through a VDev.  You can:
   #include <windows.h>
   static HANDLE serial_handle = INVALID_HANDLE_VALUE;
 
-  static int serial_open(VDev *d, const char *path,
+  static int serial_open(VDev d, const char path,
                           const char *mode)
   {
-      /* Parse "COM1:9600,N,8,1" */
+      / Parse "COM1:9600,N,8,1" /
       DCB dcb;
       char port[16] = "\\\\.\\COM1";
       int baud = 9600;
       (void)d; (void)mode;
 
-      /* Extract port and baud from path string */
+      / Extract port and baud from path string /
       sscanf(path, "COM%*d:%d", &baud);
 
       serial_handle = CreateFileA(port,
@@ -928,7 +928,7 @@ BASIC++ routes printer access through a VDev.  You can:
       return 0;
   }
 
-  static int serial_puts(VDev *d, const char *s)
+  static int serial_puts(VDev d, const char s)
   {
       DWORD written;
       (void)d;
@@ -1026,10 +1026,10 @@ BASIC++ routes printer access through a VDev.  You can:
   - Add realistic "load time" delays (for authenticity)
   - Play audio tones through the speaker (fun!)
 
-  static int tape_open(VDev *d, const char *path,
+  static int tape_open(VDev d, const char path,
                        const char *mode)
   {
-      /* Open the tape image file */
+      / Open the tape image file /
       d->user_data = fopen("tape.cas", mode[0] == 'r' ? "rb" : "wb");
       (void)path;
       return d->user_data ? 0 : -1;
@@ -1109,10 +1109,10 @@ BASIC++ routes printer access through a VDev.  You can:
   #pragma comment(lib, "ws2_32.lib")
   static SOCKET net_socket = INVALID_SOCKET;
 
-  static int net_open(VDev *d, const char *path,
+  static int net_open(VDev d, const char path,
                        const char *mode)
   {
-      /* path = "NET:hostname:port" */
+      / path = "NET:hostname:port" /
       WSADATA wsa;
       struct sockaddr_in server;
       char host[256];
@@ -1120,7 +1120,7 @@ BASIC++ routes printer access through a VDev.  You can:
       (void)d; (void)mode;
 
       if (security_check(SECOP_SYSTEM, 0) != 0)
-          return -1;  /* Security denied */
+          return -1;  / Security denied /
 
       WSAStartup(MAKEWORD(2,2), &wsa);
       sscanf(path, "NET:%255[^:]:%d", host, &port);
@@ -1325,10 +1325,10 @@ Example: Route GW-BASIC's LPT1: to a PDF file:
 
   Register a VDev named "LPT1:" that writes to a PDF:
 
-  static int pdf_puts(VDev *d, const char *s)
+  static int pdf_puts(VDev d, const char s)
   {
-      FILE *fp = (FILE *)d->user_data;
-      if (fp) fputs(s, fp);    /* Write to PDF staging file */
+      FILE fp = (FILE )d->user_data;
+      if (fp) fputs(s, fp);    / Write to PDF staging file /
       return 0;
   }
 

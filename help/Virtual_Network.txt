@@ -407,24 +407,24 @@ The Network Channel Table is an array of NetChannel
 structures:
 
   typedef struct {
-      int           in_use;       /* 0 = free, 1 = active  */
-      int           channel_num;  /* BASIC channel number   */
-      int           socket_fd;    /* OS socket descriptor   */
+      int           in_use;       / 0 = free, 1 = active  /
+      int           channel_num;  / BASIC channel number   /
+      int           socket_fd;    / OS socket descriptor   /
       int           protocol;     /* PROTO_RAW, PROTO_TCP.. */
       int           app_proto;    /* APP_TELNET, APP_FTP..  */
-      int           state;        /* connection state       */
-      int           tls_active;   /* 1 = TLS enabled        */
-      void         *tls_ctx;      /* TLS context pointer    */
-      char          host[256];    /* remote host name       */
-      int           port;         /* remote port number     */
-      int           local_port;   /* local port (servers)   */
-      unsigned long bytes_sent;   /* total bytes sent       */
-      unsigned long bytes_recv;   /* total bytes received   */
+      int           state;        / connection state       /
+      int           tls_active;   / 1 = TLS enabled        /
+      void         *tls_ctx;      / TLS context pointer    /
+      char          host[256];    / remote host name       /
+      int           port;         / remote port number     /
+      int           local_port;   / local port (servers)   /
+      unsigned long bytes_sent;   / total bytes sent       /
+      unsigned long bytes_recv;   / total bytes received   /
       int           timeout_ms;   /* I/O timeout in ms      */
-      int           blocking;     /* 1=blocking, 0=async    */
-      char          recv_buf[65536]; /* receive buffer      */
-      int           recv_len;     /* bytes in recv buffer   */
-      int           last_error;   /* last error code        */
+      int           blocking;     / 1=blocking, 0=async    /
+      char          recv_buf[65536]; / receive buffer      /
+      int           recv_len;     / bytes in recv buffer   /
+      int           last_error;   / last error code        /
   } NetChannel;
 
 When you write:
@@ -1827,17 +1827,17 @@ Process incoming IRC messages in a loop:
   270       CASE 2  : REM NOTICE
   280         PRINT "[Notice] "; FROM$; ": "; MSG$
   290       CASE 3  : REM JOIN
-  300         PRINT "*** "; FROM$; " joined "; TARGET$
+  300         PRINT "* "; FROM$; " joined "; TARGET$
   310       CASE 4  : REM PART
-  320         PRINT "*** "; FROM$; " left "; TARGET$
+  320         PRINT "* "; FROM$; " left "; TARGET$
   330       CASE 5  : REM QUIT
-  340         PRINT "*** "; FROM$; " quit ("; MSG$; ")"
+  340         PRINT "* "; FROM$; " quit ("; MSG$; ")"
   350       CASE 6  : REM NICK change
-  360         PRINT "*** "; FROM$; " is now "; MSG$
+  360         PRINT "* "; FROM$; " is now "; MSG$
   370       CASE 7  : REM KICK
-  380         PRINT "*** "; FROM$; " kicked from "; TARGET$
+  380         PRINT "* "; FROM$; " kicked from "; TARGET$
   390       CASE 8  : REM MODE change
-  400         PRINT "*** Mode "; TARGET$; " "; MSG$
+  400         PRINT "* Mode "; TARGET$; " "; MSG$
   410       CASE 9  : REM TOPIC change
   420         PRINT "*** Topic: "; MSG$
   430     END SELECT
@@ -3055,26 +3055,26 @@ hosts and ports programs can connect to:
 
   Configuration file: ~/.basicpp/net_policy.conf
 
-  # Allow all HTTPS connections
+Allow all HTTPS connections
   ALLOW TCP * 443
 
-  # Allow IRATA.ONLINE
+Allow IRATA.ONLINE
   ALLOW TCP irata.online 8005
 
-  # Allow IRC (Libera.Chat)
+Allow IRC (Libera.Chat)
   ALLOW TCP irc.libera.chat 6667
   ALLOW TCP irc.libera.chat 6697
 
-  # Allow SMTP (sending email)
+Allow SMTP (sending email)
   ALLOW TCP smtp.gmail.com 587
 
-  # Allow local network
-  ALLOW TCP 192.168.*.* *
-  ALLOW UDP 192.168.*.* *
+Allow local network
+  ALLOW TCP 192.168.*. 
+  ALLOW UDP 192.168.*. 
 
-  # Block everything else (implicit)
-  DENY TCP * *
-  DENY UDP * *
+Block everything else (implicit)
+  DENY TCP  
+  DENY UDP  
 
 Programmatic firewall control:
 
@@ -3137,7 +3137,7 @@ Adjust limits programmatically:
 
 Or in the configuration file:
 
-  # ~/.basicpp/net_policy.conf
+~/.basicpp/net_policy.conf
   RATELIMIT CONN_PER_SEC 20
   RATELIMIT MAX_CHANNELS 128
 

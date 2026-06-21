@@ -185,8 +185,8 @@ languages share many structural similarities.
   PRINT A;                     Write(A:1);
   INPUT A                      ReadLn(A);
   IF A>5 THEN PRINT A          if A>5 then WriteLn(A);
-  GOTO 100                     goto L100;  (* native! *)
-  GOSUB 500                    (* push return, goto L500 *)
+  GOTO 100                     goto L100;  ( native! )
+  GOSUB 500                    ( push return, goto L500 )
   FOR I=1 TO 10                for I:=1 to 10 do begin
   NEXT I                       end;
   WHILE A>0                    while A>0 do begin
@@ -203,8 +203,8 @@ languages share many structural similarities.
   MID$(A$,2,3)                 Copy(A_str, 2, 3)
   CHR$(65)                     Chr(65)
   ASC("A")                     Ord('A')
-  STR$(42)                     (* IntToStr or Str() *)
-  VAL("42")                    (* StrToInt or Val() *)
+  STR$(42)                     ( IntToStr or Str() )
+  VAL("42")                    ( StrToInt or Val() )
 
 Pascal advantages:
   - GOTO is a native statement (labels must be declared)
@@ -255,7 +255,7 @@ and mathematical library.
   DIM A(10)                    REAL :: A(0:10)
   REM comment                  ! comment
   END                          STOP
-  ON X GOTO 10,20,30           GO TO (10,20,30), X  (* native! *)
+  ON X GOTO 10,20,30           GO TO (10,20,30), X  ( native! )
   ABS(X)                       ABS(X)
   SIN(X)                       SIN(X)
   SQR(X)                       SQRT(X)
@@ -433,7 +433,7 @@ Python 2 is NOT supported (it reached end-of-life in 2020).
   RTRIM$(A$)       sv[0].rstrip()
   TRIM$(A$)        sv[0].strip()
   SPACE$(N)        " " * n
-  STRING$(N,"*")   "*" * n
+  STRING$(N,"")   "" * n
   HEX$(N)          hex(n)[2:].upper()
   OCT$(N)          oct(n)[2:]
   ENVIRON$("PATH") os.environ.get("PATH", "")
@@ -451,9 +451,9 @@ Approach 1 — Inline (when body has no GOTO):
   If the loop body contains no GOTO or GOSUB, emit a normal
   Python for loop:
 
-    # 20 FOR I=1 TO 10 STEP 2
-    # 30 PRINT I
-    # 40 NEXT I
+20 FOR I=1 TO 10 STEP 2
+30 PRINT I
+40 NEXT I
     for v[8] in range(1, 11, 2):   # I = vars[8]
         print(int(v[8]))
 
@@ -487,15 +487,15 @@ A complete Python 3 translation looks like this:
   import time
   from datetime import date, datetime
 
-  # === Runtime Variables ===
+=== Runtime Variables ===
   v = [0.0] * 26           # A-Z numeric variables
   sv = [""] * 26           # A$-Z$ string variables
   gosub_stack: list[int] = []
 
-  # === Legacy array @() ===
+=== Legacy array @() ===
   at_array = [0.0] * 4096
 
-  # === DIM arrays ===
+=== DIM arrays ===
   dim_arrays: dict[str, list] = {}
 
   def dim_alloc(name: str, d1: int, d2: int = 0) -> None:
@@ -511,7 +511,7 @@ A complete Python 3 translation looks like this:
           raise IndexError(f"Array not found: {name}")
       return i1  # simplified; 2D: i1*(d2+1)+i2
 
-  # === DATA/READ ===
+=== DATA/READ ===
   _data: list = []  # populated from DATA statements
   _data_ptr: int = 0
 
@@ -524,13 +524,13 @@ A complete Python 3 translation looks like this:
       _data_ptr += 1
       return float(val)
 
-  # === DEF FN ===
+=== DEF FN ===
   user_fns: dict[str, callable] = {}
 
-  # === PRINT width ===
+=== PRINT width ===
   pw = 14
 
-  # === Main Program ===
+=== Main Program ===
   state = 10  # first line number
   while True:
       if state == 10:
@@ -681,9 +681,9 @@ For languages without GOTO, every program becomes:
   state = first_line_number
   while (true) {
     switch (state) {
-      case 10:  /* line 10 code */  state = 20; break;
-      case 20:  /* line 20 code */  state = 30; break;
-      case 100: /* GOTO 100 */      state = 100; break;
+      case 10:  / line 10 code /  state = 20; break;
+      case 20:  / line 20 code /  state = 30; break;
+      case 100: / GOTO 100 /      state = 100; break;
     }
   }
 

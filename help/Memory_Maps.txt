@@ -1174,7 +1174,7 @@ expect to find there.
   Within each third, lines are interleaved.
 
   Address formula:
-    addr = $4000 + (third * 2048) + (charrow * 256) +
+    addr = $4000 + (third  2048) + (charrow  256) +
            (pixline * 32) + charcol
 
   Where:
@@ -1318,7 +1318,7 @@ Step 1: Add the Enum (memmap.h)
         MMAP_C64,
         /* ... existing entries ... */
         MMAP_SPECTRUM,
-        MMAP_MSX,         /* <-- NEW */
+        MMAP_MSX,         / <-- NEW /
         MMAP_COUNT
     } MemMapType;
 
@@ -1330,13 +1330,13 @@ Step 2: Write the Init Function (memmap.c)
 
     static void memmap_init_msx(unsigned char *mem)
     {
-        /* Pre-fill MSX memory layout */
-        mem_set(mem, 0xFFFF, 0x00);        /* Slot select */
-        mem_fill(mem, 0x1800, 768, 0x20);  /* Name table */
-        mem_fill(mem, 0x2000, 32, 0xF1);   /* Color table */
-        mem_set16(mem, 0xF676, 0x8001);    /* TXTTAB */
-        mem_set16(mem, 0xFC4A, 0xF380);    /* HIMEM */
-        mem_set(mem, 0x002D, 0x01);        /* MSX version */
+        / Pre-fill MSX memory layout /
+        mem_set(mem, 0xFFFF, 0x00);        / Slot select /
+        mem_fill(mem, 0x1800, 768, 0x20);  / Name table /
+        mem_fill(mem, 0x2000, 32, 0xF1);   / Color table /
+        mem_set16(mem, 0xF676, 0x8001);    / TXTTAB /
+        mem_set16(mem, 0xFC4A, 0xF380);    / HIMEM /
+        mem_set(mem, 0x002D, 0x01);        / MSX version /
     }
 
   Helper functions available:
@@ -1512,44 +1512,44 @@ ready-to-paste code skeleton.
   ---------------------------------------------------------------
     static void memmap_init_msx(unsigned char *mem)
     {
-        /* Slot select */
+        / Slot select /
         mem_set(mem, 0xFFFF, 0x00);
 
-        /* MSX BIOS hook addresses (RST vectors) */
-        mem_set(mem, 0x0000, 0xC3);  /* JP RESET */
-        mem_set(mem, 0x0008, 0xC3);  /* JP SYNCHR */
-        mem_set(mem, 0x0010, 0xC3);  /* JP RDSLT */
-        mem_set(mem, 0x0018, 0xC3);  /* JP CALLF */
-        mem_set(mem, 0x0020, 0xC3);  /* JP DCOMPR */
-        mem_set(mem, 0x0030, 0xC3);  /* JP CALLF */
+        / MSX BIOS hook addresses (RST vectors) /
+        mem_set(mem, 0x0000, 0xC3);  / JP RESET /
+        mem_set(mem, 0x0008, 0xC3);  / JP SYNCHR /
+        mem_set(mem, 0x0010, 0xC3);  / JP RDSLT /
+        mem_set(mem, 0x0018, 0xC3);  / JP CALLF /
+        mem_set(mem, 0x0020, 0xC3);  / JP DCOMPR /
+        mem_set(mem, 0x0030, 0xC3);  / JP CALLF /
 
-        /* BIOS identification */
-        mem_set(mem, 0x002B, 0x00);  /* MSX BIOS flag */
-        mem_set(mem, 0x002D, 0x00);  /* MSX1 version */
+        / BIOS identification /
+        mem_set(mem, 0x002B, 0x00);  / MSX BIOS flag /
+        mem_set(mem, 0x002D, 0x00);  / MSX1 version /
 
-        /* VDP data port addresses */
-        mem_set(mem, 0x0006, 0x98);  /* VDP data port */
-        mem_set(mem, 0x0007, 0x99);  /* VDP register port */
+        / VDP data port addresses /
+        mem_set(mem, 0x0006, 0x98);  / VDP data port /
+        mem_set(mem, 0x0007, 0x99);  / VDP register port /
 
-        /* VRAM: Name table spaces (SCREEN 1) */
+        / VRAM: Name table spaces (SCREEN 1) /
         mem_fill(mem, 0x1800, 768, 0x20);
 
-        /* VRAM: Color table - white on dark blue */
+        / VRAM: Color table - white on dark blue /
         mem_fill(mem, 0x2000, 32, 0xF4);
 
-        /* BASIC work area */
-        mem_set16(mem, 0xF676, 0x8001);  /* TXTTAB */
-        mem_set16(mem, 0xFC4A, 0xF380);  /* HIMEM */
+        / BASIC work area /
+        mem_set16(mem, 0xF676, 0x8001);  / TXTTAB /
+        mem_set16(mem, 0xFC4A, 0xF380);  / HIMEM /
 
-        /* Screen settings */
-        mem_set(mem, 0xF3AE, 39);        /* LINL40 */
-        mem_set(mem, 0xF3AF, 29);        /* LINL32 */
-        mem_set(mem, 0xF3B0, 39);        /* LINLEN */
-        mem_set(mem, 0xF3B1, 24);        /* CRTCNT */
-        mem_set(mem, 0xF41F, 15);        /* FORCLR white */
-        mem_set(mem, 0xF420, 4);         /* BAKCLR dark blue */
-        mem_set(mem, 0xF421, 4);         /* BDRCLR dark blue */
-        mem_set(mem, 0xF3DC, 1);         /* CLIKSW key click */
+        / Screen settings /
+        mem_set(mem, 0xF3AE, 39);        / LINL40 /
+        mem_set(mem, 0xF3AF, 29);        / LINL32 /
+        mem_set(mem, 0xF3B0, 39);        / LINLEN /
+        mem_set(mem, 0xF3B1, 24);        / CRTCNT /
+        mem_set(mem, 0xF41F, 15);        / FORCLR white /
+        mem_set(mem, 0xF420, 4);         / BAKCLR dark blue /
+        mem_set(mem, 0xF421, 4);         / BDRCLR dark blue /
+        mem_set(mem, 0xF3DC, 1);         / CLIKSW key click /
     }
 
 
@@ -1631,26 +1631,26 @@ ready-to-paste code skeleton.
   ---------------------------------------------------------------
     static void memmap_init_bbc(unsigned char *mem)
     {
-        /* Screen mode 7 (Teletext, default) */
+        / Screen mode 7 (Teletext, default) /
         mem_set(mem, 0x0018, 0x07);
 
-        /* PAGE: start of BASIC program */
-        mem_set16(mem, 0x0028, 0x1900);  /* Mode 7 PAGE */
+        / PAGE: start of BASIC program /
+        mem_set16(mem, 0x0028, 0x1900);  / Mode 7 PAGE /
 
-        /* HIMEM */
+        / HIMEM /
         mem_set16(mem, 0x0002, 0x7C00);
 
-        /* Screen memory: Mode 7 at $7C00 */
+        / Screen memory: Mode 7 at $7C00 /
         mem_fill(mem, 0x7C00, 1000, 0x20);
 
-        /* OS identification */
+        / OS identification /
         mem_set(mem, 0xFFF7, 0x01);  /* MOS 1.20 */
 
-        /* System VIA defaults */
-        mem_set(mem, 0xFE40, 0x00);  /* Port B */
-        mem_set(mem, 0xFE42, 0x00);  /* DDR B */
+        / System VIA defaults /
+        mem_set(mem, 0xFE40, 0x00);  / Port B /
+        mem_set(mem, 0xFE42, 0x00);  / DDR B /
 
-        /* RESET vector */
+        / RESET vector /
         mem_set16(mem, 0xFFFC, 0xD9CD);
     }
 
@@ -1736,21 +1736,21 @@ ready-to-paste code skeleton.
   ---------------------------------------------------------------
     static void memmap_init_cpc(unsigned char *mem)
     {
-        /* BASIC workspace */
-        mem_set16(mem, 0x0040, 0x0170);  /* BASIC start */
+        / BASIC workspace /
+        mem_set16(mem, 0x0040, 0x0170);  / BASIC start /
 
-        /* Screen memory: Mode 1 default at $C000 */
+        / Screen memory: Mode 1 default at $C000 /
         mem_fill(mem, 0xC000, 16384, 0x00);
 
-        /* Firmware jumpblock - first byte = JP (C3) */
+        / Firmware jumpblock - first byte = JP (C3) /
         mem_set(mem, 0xBB00, 0xC3);
         mem_set(mem, 0xBB5A, 0xC3);
 
-        /* PPI defaults */
-        mem_set(mem, 0xF500, 0x1E);  /* Port B: brand + vsync */
+        / PPI defaults /
+        mem_set(mem, 0xF500, 0x1E);  / Port B: brand + vsync /
 
-        /* ROM identification */
-        mem_set(mem, 0x0006, 0x01);  /* CPC 464 marker */
+        / ROM identification /
+        mem_set(mem, 0x0006, 0x01);  / CPC 464 marker /
     }
 
 
@@ -1826,24 +1826,24 @@ ready-to-paste code skeleton.
   ---------------------------------------------------------------
     static void memmap_init_dragon(unsigned char *mem)
     {
-        /* Screen RAM: 32x16 = 512 spaces */
-        mem_fill(mem, 0x0400, 512, 0x60);  /* $60 = space */
+        / Screen RAM: 32x16 = 512 spaces /
+        mem_fill(mem, 0x0400, 512, 0x60);  / $60 = space /
 
-        /* BASIC pointers */
-        mem_set16(mem, 0x0019, 0x0600);  /* TXTTAB */
-        mem_set16(mem, 0x0027, 0x7FFF);  /* MEMSIZ */
+        / BASIC pointers /
+        mem_set16(mem, 0x0019, 0x0600);  / TXTTAB /
+        mem_set16(mem, 0x0027, 0x7FFF);  / MEMSIZ /
 
-        /* PIA defaults */
-        mem_set(mem, 0xFF00, 0xFF);  /* PIA 0 Port A */
-        mem_set(mem, 0xFF01, 0x34);  /* PIA 0 CRA */
-        mem_set(mem, 0xFF02, 0xFF);  /* PIA 0 Port B */
-        mem_set(mem, 0xFF03, 0x34);  /* PIA 0 CRB */
-        mem_set(mem, 0xFF20, 0x00);  /* PIA 1 Port A */
-        mem_set(mem, 0xFF21, 0x34);  /* PIA 1 CRA */
-        mem_set(mem, 0xFF22, 0x00);  /* PIA 1 Port B */
-        mem_set(mem, 0xFF23, 0x3C);  /* PIA 1 CRB */
+        / PIA defaults /
+        mem_set(mem, 0xFF00, 0xFF);  / PIA 0 Port A /
+        mem_set(mem, 0xFF01, 0x34);  / PIA 0 CRA /
+        mem_set(mem, 0xFF02, 0xFF);  / PIA 0 Port B /
+        mem_set(mem, 0xFF03, 0x34);  / PIA 0 CRB /
+        mem_set(mem, 0xFF20, 0x00);  / PIA 1 Port A /
+        mem_set(mem, 0xFF21, 0x34);  / PIA 1 CRA /
+        mem_set(mem, 0xFF22, 0x00);  / PIA 1 Port B /
+        mem_set(mem, 0xFF23, 0x3C);  / PIA 1 CRB /
 
-        /* RESET vector */
+        / RESET vector /
         mem_set16(mem, 0xFFFE, 0xB3B4);
     }
 
@@ -1885,12 +1885,12 @@ ready-to-paste code skeleton.
     static void memmap_init_coco(unsigned char *mem)
     {
         mem_fill(mem, 0x0400, 512, 0x60);
-        mem_set16(mem, 0x0019, 0x2601);  /* TXTTAB */
-        mem_set16(mem, 0x0027, 0x7FFF);  /* MEMSIZ */
-        mem_set(mem, 0xFF00, 0xFF);      /* PIA 0A */
-        mem_set(mem, 0xFF02, 0xFF);      /* PIA 0B */
-        mem_set(mem, 0xFF22, 0x00);      /* PIA 1B: VDG mode */
-        mem_set16(mem, 0xFFFE, 0xA027);  /* RESET */
+        mem_set16(mem, 0x0019, 0x2601);  / TXTTAB /
+        mem_set16(mem, 0x0027, 0x7FFF);  / MEMSIZ /
+        mem_set(mem, 0xFF00, 0xFF);      / PIA 0A /
+        mem_set(mem, 0xFF02, 0xFF);      / PIA 0B /
+        mem_set(mem, 0xFF22, 0x00);      / PIA 1B: VDG mode /
+        mem_set16(mem, 0xFFFE, 0xA027);  / RESET /
     }
 
 
@@ -1943,11 +1943,11 @@ ready-to-paste code skeleton.
   ---------------------------------------------------------------
     static void memmap_init_oric(unsigned char *mem)
     {
-        mem_fill(mem, 0xBB80, 1120, 0x20);   /* Screen spaces */
-        mem_set16(mem, 0x009A, 0x0501);       /* TXTTAB */
-        mem_set16(mem, 0x009C, 0x97FF);       /* HIMEM */
-        mem_set(mem, 0x0300, 0xFF);           /* VIA Port B */
-        mem_set16(mem, 0xFFFC, 0xF88F);       /* RESET */
+        mem_fill(mem, 0xBB80, 1120, 0x20);   / Screen spaces /
+        mem_set16(mem, 0x009A, 0x0501);       / TXTTAB /
+        mem_set16(mem, 0x009C, 0x97FF);       / HIMEM /
+        mem_set(mem, 0x0300, 0xFF);           / VIA Port B /
+        mem_set16(mem, 0xFFFC, 0xF88F);       / RESET /
     }
 
 
@@ -1992,15 +1992,15 @@ ready-to-paste code skeleton.
   ---------------------------------------------------------------
     static void memmap_init_samcoupe(unsigned char *mem)
     {
-        /* Spectrum-compatible screen at $4000 */
+        / Spectrum-compatible screen at $4000 /
         mem_fill(mem, 0x4000, 6144, 0x00);
         mem_fill(mem, 0x5800, 768, 0x38);
 
-        /* SAM-specific system vars */
-        mem_set(mem, 0x5C48, 0x01);  /* BORDCR */
-        mem_set(mem, 0x5C8D, 0x07);  /* ATTR_P */
+        / SAM-specific system vars /
+        mem_set(mem, 0x5C48, 0x01);  / BORDCR /
+        mem_set(mem, 0x5C8D, 0x07);  / ATTR_P /
 
-        mem_set16(mem, 0xFFFC, 0x0000);  /* RESET */
+        mem_set16(mem, 0xFFFC, 0x0000);  / RESET /
     }
 
 
@@ -2027,11 +2027,11 @@ ready-to-paste code skeleton.
   ---------------------------------------------------------------
     static void memmap_init_electron(unsigned char *mem)
     {
-        mem_set(mem, 0x0018, 0x06);          /* Mode 6 */
-        mem_set16(mem, 0x0028, 0x1900);      /* PAGE */
-        mem_set16(mem, 0x0002, 0x7C00);      /* HIMEM */
-        mem_fill(mem, 0x7C00, 1000, 0x20);   /* Screen */
-        mem_set16(mem, 0xFFFC, 0xD9CD);      /* RESET */
+        mem_set(mem, 0x0018, 0x06);          / Mode 6 /
+        mem_set16(mem, 0x0028, 0x1900);      / PAGE /
+        mem_set16(mem, 0x0002, 0x7C00);      / HIMEM /
+        mem_fill(mem, 0x7C00, 1000, 0x20);   / Screen /
+        mem_set16(mem, 0xFFFC, 0xD9CD);      / RESET /
     }
 
 
@@ -2101,10 +2101,10 @@ ready-to-paste code skeleton.
   ---------------------------------------------------------------
     static void memmap_init_aquarius(unsigned char *mem)
     {
-        mem_fill(mem, 0x3000, 960, 0x20);    /* Screen: spaces */
+        mem_fill(mem, 0x3000, 960, 0x20);    / Screen: spaces /
         mem_fill(mem, 0x3400, 960, 0x17);    /* Color: white/blue */
-        mem_set16(mem, 0x3800, 0x3900);      /* TXTTAB */
-        mem_set16(mem, 0x3802, 0xFFFF);      /* MEMSIZ */
+        mem_set16(mem, 0x3800, 0x3900);      / TXTTAB /
+        mem_set16(mem, 0x3802, 0xFFFF);      / MEMSIZ /
     }
 
 
