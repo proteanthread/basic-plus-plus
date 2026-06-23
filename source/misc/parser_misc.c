@@ -44,6 +44,8 @@
  // ---
 
 #include "parser_internal.h"
+#include "gw_memory.h"
+extern struct GW_Memory *g_gw_mem;
 
 static int event_parse_on_off_stop(Lexer *lex);
 
@@ -307,11 +309,15 @@ void pi_parse_poke(Lexer *lex, RuntimeState *rt, int line_num)
  val = (int)parse_expression(
  lex, rt, line_num);
  if (error_occurred()) return;
- offset = rt->mem_seg_base + addr;
- if (offset >= 0 &&
- offset < MAX_MEM_SEGMENT) {
- rt->mem_segment[offset] =
- (unsigned char)(val & 0xFF);
+ if (g_gw_mem != NULL) {
+     gw_mem_poke(g_gw_mem, (uint16_t)addr, (uint8_t)(val & 0xFF));
+ } else {
+     offset = rt->mem_seg_base + addr;
+     if (offset >= 0 &&
+     offset < MAX_MEM_SEGMENT) {
+     rt->mem_segment[offset] =
+     (unsigned char)(val & 0xFF);
+     }
  }
  }
  return;

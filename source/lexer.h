@@ -515,6 +515,7 @@ enum {
  KW_LIKE, // LIKE - glob pattern matching operator
  KW_HASH, // HASH$ - string hash (8/16/32/64/128/256 bit)
 
+ KW_CONSOLE, // CONSOLE - scroll regions and text window options (N88-BASIC)
  KW_COUNT // sentinel - must be last
 };
 

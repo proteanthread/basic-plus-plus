@@ -60,6 +60,8 @@
 // ---
 
 #include "parser_internal.h"
+#include "dialect.h"
+#include "gw_math_mbf.h"
 
 // --- Expression Parsing ---
  //
@@ -2122,21 +2124,29 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  if (!lexer_expect(lex, TOK_RPAREN))
  return bval_string("", 0);
 
- if (kw == KW_MKI_FUNC) {
- // 2-byte integer (little-endian)
- short sv = (short)(long)mkval;
- memcpy(buf, &sv, 2);
- blen = 2;
- } else if (kw == KW_MKS_FUNC) {
- // 4-byte single float
- float fv = (float)mkval;
- memcpy(buf, &fv, 4);
- blen = 4;
- } else {
- // 8-byte double
- memcpy(buf, &mkval, 8);
- blen = 8;
- }
+  if (kw == KW_MKI_FUNC) {
+  // 2-byte integer (little-endian)
+  short sv = (short)(long)mkval;
+  memcpy(buf, &sv, 2);
+  blen = 2;
+  } else if (kw == KW_MKS_FUNC) {
+  if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+      gw_double_to_mbf32(mkval, (uint8_t *)buf);
+  } else {
+      // 4-byte single float
+      float fv = (float)mkval;
+      memcpy(buf, &fv, 4);
+  }
+  blen = 4;
+  } else {
+  if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+      gw_double_to_mbf64(mkval, (uint8_t *)buf);
+  } else {
+      // 8-byte double
+      memcpy(buf, &mkval, 8);
+  }
+  blen = 8;
+  }
  ptr = strpool_store(
  &rt->strpool, buf, blen);
  if (ptr)
@@ -2287,6 +2297,10 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  sv.v.sval.length < 4) {
  return bval_int(0);
  }
+ if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+     double val = gw_mbf32_to_double((const uint8_t *)sv.v.sval.data);
+     return bval_float(val);
+ }
  memcpy(&f, sv.v.sval.data,
  sizeof(float));
  return bval_float((double)f);
@@ -2308,6 +2322,10 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  sv.v.sval.data == NULL ||
  sv.v.sval.length < 8) {
  return bval_int(0);
+ }
+ if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+     double val = gw_mbf64_to_double((const uint8_t *)sv.v.sval.data);
+     return bval_float(val);
  }
  memcpy(&d, sv.v.sval.data,
  sizeof(double));

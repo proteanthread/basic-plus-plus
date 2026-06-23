@@ -48,6 +48,8 @@
 #include "value.h"
 #include "runtime.h"
 #include "stringpool.h"
+#include "dialect.h"
+#include "gw_math_mbf.h"
 
  // EOF(n) - End-of-file check.
  //
@@ -130,6 +132,10 @@ BValue builtin_cvs(BValue *args, int argc, void *rt)
  if (s == NULL || len < 4) {
  return bval_int(0);
  }
+ if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+     double val = gw_mbf32_to_double((const uint8_t *)s);
+     return bval_float(val);
+ }
  memcpy(&f, s, sizeof(float));
  return bval_float((double)f);
 }
@@ -150,6 +156,10 @@ BValue builtin_cvd(BValue *args, int argc, void *rt)
  len = args[0].v.sval.length;
  if (s == NULL || len < 8) {
  return bval_int(0);
+ }
+ if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+     double val = gw_mbf64_to_double((const uint8_t *)s);
+     return bval_float(val);
  }
  memcpy(&d, s, sizeof(double));
  return bval_float(d);

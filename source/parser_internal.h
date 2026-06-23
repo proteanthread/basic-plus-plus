@@ -274,6 +274,8 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt,
 // parser_graphics.c - Graphics & drawing
 void pi_parse_screen(Lexer *lex, RuntimeState *rt,
     int line_num);
+void pi_parse_console(Lexer *lex, RuntimeState *rt,
+    int line_num);
 void pi_parse_color(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_draw(Lexer *lex, RuntimeState *rt,

@@ -523,6 +523,9 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_SCREEN:
   pi_parse_screen(lex, rt, line_num);
   return;
+ case KW_CONSOLE:
+  pi_parse_console(lex, rt, line_num);
+  return;
  case KW_WIDTH:
   pi_parse_width(lex, rt, line_num);
   return;

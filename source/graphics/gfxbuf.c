@@ -53,6 +53,11 @@
 #include <stdio.h>
 #include <string.h>
 #include "gfxbuf.h"
+#include "gw_memory.h"
+#include "gw_sdl2.h"
+#include "dialect.h"
+
+extern struct GW_Memory *g_gw_mem;
 
 // Multi-page pixel buffers: each byte is a color index 0-15
 static unsigned char framepages[GFX_MAX_PAGES]
@@ -120,6 +125,15 @@ void gfxbuf_clear(int color)
 
 void gfxbuf_pset(int x, int y, int color)
 {
+ if (g_gw_mem != NULL) {
+     int w = gw_sdl2_get_width();
+     int h = gw_sdl2_get_height();
+     if (x < 0 || x >= w || y < 0 || y >= h) return;
+     if (color < 0) color = 0;
+     uint32_t argb = GW_PALETTE[color % 16];
+     gw_sdl2_set_pixel(x, y, argb);
+     return;
+ }
  // Clip against viewport bounds
  if (x < vp_x1 || x > vp_x2 ||
  y < vp_y1 || y > vp_y2)
@@ -134,6 +148,16 @@ void gfxbuf_pset(int x, int y, int color)
 
 int gfxbuf_point(int x, int y)
 {
+ if (g_gw_mem != NULL) {
+     int w = gw_sdl2_get_width();
+     int h = gw_sdl2_get_height();
+     if (x < 0 || x >= w || y < 0 || y >= h) return 0;
+     uint32_t argb = gw_sdl2_get_pixel(x, y);
+     for (int i = 0; i < 16; i++) {
+         if (GW_PALETTE[i] == argb) return i;
+     }
+     return 0;
+ }
  if (x < 0 || x >= GFX_WIDTH ||
  y < 0 || y >= GFX_HEIGHT)
  return 0;
@@ -282,6 +306,13 @@ void gfxbuf_palette(int attr, int color)
  // On Windows, the UTF-8 sequence for U+2580 is E2 96 80.
 void gfxbuf_render(void)
 {
+ if (g_gw_mem != NULL) {
+#ifndef NO_SDL2
+     gw_sdl2_present();
+     gw_sdl2_poll_events();
+#endif
+     return;
+ }
  int row, col;
  int term_cols = GFX_WIDTH / 4; // 320/4 = 80 columns
  int term_rows = GFX_HEIGHT / 2; // 200/2 = 100 rows

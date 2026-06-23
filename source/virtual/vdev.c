@@ -47,6 +47,10 @@
 #include <string.h>
 #include <stdarg.h>
 #include "vdev.h"
+#include "gw_sdl2.h"
+
+struct GW_Memory;
+extern struct GW_Memory *g_gw_mem;
 
  // Platform-specific headers for beep support.
 #if defined(_WIN32) || defined(_WIN64)
@@ -516,6 +520,12 @@ const char *vdev_info(VDev *d, const char *key)
 
 void vdev_beep(void)
 {
+    if (g_gw_mem != NULL) {
+#ifndef NO_SDL2
+        gw_sdl2_beep();
+        return;
+#endif
+    }
 #if defined(_WIN32) || defined(_WIN64)
  Beep(800, 200);
 #else
@@ -526,6 +536,12 @@ void vdev_beep(void)
 
 void vdev_sound(int freq_hz, int duration_ms)
 {
+    if (g_gw_mem != NULL) {
+#ifndef NO_SDL2
+        gw_sdl2_play_tone((float)freq_hz, duration_ms, 1);
+        return;
+#endif
+    }
  if (freq_hz < 37) freq_hz = 37;
  if (freq_hz > 32767) freq_hz = 32767;
  if (duration_ms < 1) duration_ms = 1;
@@ -561,6 +577,12 @@ void vdev_sleep(int duration_ms)
 
 int vdev_inkey(void)
 {
+    if (g_gw_mem != NULL) {
+#ifndef NO_SDL2
+        gw_sdl2_poll_events();
+        return gw_sdl2_get_key();
+#endif
+    }
 #if defined(_WIN32) || defined(_WIN64)
  if (_kbhit()) {
  return _getch();
