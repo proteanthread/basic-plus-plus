@@ -583,7 +583,7 @@ BValue builtin_rnd(BValue *args, int argc, void *rt)
  // RND(0) = return last value (don't advance)
  // RND(n<0) = seed with |n|, advance, return 0..1
  if (n < 0) {
- state->rnd_seed = (unsigned long)(-n);
+ state->rnd_seed = (uint64_t)(-n);
  }
  if (n != 0) {
  state->rnd_seed =
