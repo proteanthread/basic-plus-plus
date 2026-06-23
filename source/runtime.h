@@ -314,7 +314,7 @@ typedef struct RuntimeState {
  int option_base; // OPTION BASE 0 or 1
  int print_col; // current column in PRINT
  int stopped;
- unsigned long rnd_seed;
+ uint64_t rnd_seed;
  // named variables
  NamedVariable named_vars[MAX_NAMED_VARS];
  int named_count;

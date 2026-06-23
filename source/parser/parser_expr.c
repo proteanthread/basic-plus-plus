@@ -2589,7 +2589,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  for (i = 0; i < slen; i++) {
  unsigned char c = (unsigned char)s[i];
  // Use PCG-derived bit for randomness
- unsigned long r = rt->rnd_seed;
+ uint64_t r = rt->rnd_seed;
  rt->rnd_seed = r * 6364136223846793005ULL
  + (12345ULL | 1);
  if ((r >> 17) & 1) {

@@ -46,13 +46,13 @@
  // PCG32 Pseudo-Random Number Generator
  // Deterministic, cross-platform, massive period, non-repeating
  // relative to simple LCGs.
-static unsigned long pcg32_random(RuntimeState *state) {
-    unsigned long oldstate = state->rnd_seed;
-    // Advance internal state
-    state->rnd_seed = oldstate * 6364136223846793005ULL + (12345ULL | 1);
-    // Calculate output function (XSH RR)
-    unsigned long xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
-    unsigned long rot = oldstate >> 59u;
+static uint32_t pcg32_random(RuntimeState *state) {
+    // Advance internal state first
+    state->rnd_seed = state->rnd_seed * 6364136223846793005ULL + (12345ULL | 1);
+    uint64_t val = state->rnd_seed;
+    // Calculate output function (XSH RR) on the new state
+    uint32_t xorshifted = (uint32_t)(((val >> 18u) ^ val) >> 27u);
+    uint32_t rot = (uint32_t)(val >> 59u);
     return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
 }
 
@@ -65,26 +65,26 @@ BValue stdlib_core_rnd(BValue *args, int argc, void *rt)
 
     if (dialect_get_config()->has_float) {
         if (n < 0) {
-            state->rnd_seed = (unsigned long)(-n);
+            state->rnd_seed = (uint64_t)(-n);
         }
         if (n != 0) {
             // Generate next random 32-bit int
-            unsigned long r = pcg32_random(state);
+            uint32_t r = pcg32_random(state);
             // Return as float in [0, 1)
             return bval_float((double)r / 4294967296.0);
         }
         // n == 0 returns the last generated float, which is tricky to extract
-         // from PCG state without advancing. So we just re-evaluate it based on seed.
-        unsigned long oldstate = state->rnd_seed;
-        unsigned long xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
-        unsigned long rot = oldstate >> 59u;
-        unsigned long r = (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+        // from PCG state without advancing. So we just re-evaluate it based on seed.
+        uint64_t oldstate = state->rnd_seed;
+        uint32_t xorshifted = (uint32_t)(((oldstate >> 18u) ^ oldstate) >> 27u);
+        uint32_t rot = (uint32_t)(oldstate >> 59u);
+        uint32_t r = (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
         return bval_float((double)r / 4294967296.0);
     }
     
     // PATB mode: return integer 1..n
     if (n <= 0) return bval_int(1);
-    return bval_int((pcg32_random(state) % (unsigned long)n) + 1);
+    return bval_int((pcg32_random(state) % (uint32_t)n) + 1);
 }
 
 BValue stdlib_core_len(BValue *args, int argc, void *rt)

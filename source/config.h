@@ -169,7 +169,7 @@
  // To add a dialect back to the FreeDOS build, you must also add
  // its source file to makefd and register it in dialect.c.
 #undef BASICPP_DEFAULT_DIALECT
-#define BASICPP_DEFAULT_DIALECT DIALECT_TINY_BASIC
+#define BASICPP_DEFAULT_DIALECT DIALECT_GW_BASIC
 
 #define PROGRAM_MEMORY_SIZE   32768L
 #define VARIABLE_MEMORY_SIZE  16384L
@@ -235,7 +235,7 @@
  //   --------------------------
  //   Approximate total: ~78 KB  (fits in ESP32 ~200 KB)
 #undef BASICPP_DEFAULT_DIALECT
-#define BASICPP_DEFAULT_DIALECT DIALECT_TINY_BASIC
+#define BASICPP_DEFAULT_DIALECT DIALECT_GW_BASIC
 
 #define PROGRAM_MEMORY_SIZE   8192L // 8 KB
 #define VARIABLE_MEMORY_SIZE  4096L // 4 KB
@@ -339,9 +339,9 @@
 // Line length: 255 chars matches classic BASIC convention
 #define MAX_LINE_LENGTH 255
 
-// Line number range: 1-32767 (classic BASIC, fits in 16-bit signed)
+// Line number range: 1-65529 (matches GW-BASIC, fits in 32-bit signed or 16-bit unsigned)
 #define LINE_NUMBER_MIN 1
-#define LINE_NUMBER_MAX 32767
+#define LINE_NUMBER_MAX 65529
 
 // Single-letter variables: A-Z = 26 (always available)
 #define MAX_VARIABLES 26
