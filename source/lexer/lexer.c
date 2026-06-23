@@ -519,6 +519,7 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "NERROR", KW_NERROR, DFLAG_ALL },
  { "NJSONQUERY", KW_NJSONQUERY, DFLAG_ALL },
  { "NINFO", KW_NINFO, DFLAG_ALL },
+ { "CONSOLE", KW_CONSOLE, DFLAG_ALL },
  { NULL, 0, 0 } // sentinel
 };
 

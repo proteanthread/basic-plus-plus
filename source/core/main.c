@@ -92,6 +92,7 @@
 #include "override.h"
 #include "config_file.h"
 #include "boot.h"
+#include "mod_gwbasic.h"
 
 // --- Input Classification ---
 
@@ -320,6 +321,34 @@ int main(int argc, char *argv[])
             if (strcmp(argv[i], "-d") == 0) {
                 if (i + 1 < argc) cli_dialect = argv[++i];
                 else { printf("Error: -d requires a dialect name\n"); return 1; }
+                continue;
+            }
+            if (strcmp(argv[i], "-herc") == 0 || strcmp(argv[i], "-hercules") == 0) {
+                g_gw_machine_type = 1;
+                continue;
+            }
+            if (strcmp(argv[i], "-tandy") == 0) {
+                g_gw_machine_type = 2;
+                continue;
+            }
+            if (strcmp(argv[i], "-pcjr") == 0) {
+                g_gw_machine_type = 3;
+                continue;
+            }
+            if (strcmp(argv[i], "-plantronics") == 0) {
+                g_gw_machine_type = 4;
+                continue;
+            }
+            if (strcmp(argv[i], "-att") == 0) {
+                g_gw_machine_type = 5;
+                continue;
+            }
+            if (strcmp(argv[i], "-amstrad") == 0) {
+                g_gw_machine_type = 6;
+                continue;
+            }
+            if (strcmp(argv[i], "-pc98") == 0) {
+                g_gw_machine_type = 7;
                 continue;
             }
             if (strcmp(argv[i], "-s") == 0) {

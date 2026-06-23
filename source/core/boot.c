@@ -160,6 +160,7 @@
 #include "mod_usb.h"
 #include "mod_fujinet.h"
 #include "mod_upnp.h"
+#include "mod_gwbasic.h"
 #endif
 #include "dialect.h"
 #include "device_alias.h"
@@ -452,10 +453,19 @@ static BootStatus boot_phase5_modules(
 
     mod_upnp_register();
     boot_log(BOOT_DEBUG, "  Registered: UPNP");
+
+    mod_gwbasic_register();
+    boot_log(BOOT_DEBUG, "  Registered: GWBASIC");
 #endif
 
     // Activate STDLIB (always -- provides core math/string functions)
     module_activate("STDLIB", runtime);
+
+#ifndef BPP_FREEDOS
+    if (config->dialect == DIALECT_GW_BASIC) {
+        module_activate("GWBASIC", runtime);
+    }
+#endif
 
     // Load external modules from CLI flags
     if (config->cli_lib != NULL) {

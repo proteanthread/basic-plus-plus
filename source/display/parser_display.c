@@ -42,6 +42,10 @@
  // ---
 
 #include "parser_internal.h"
+#include "gw_sdl2.h"
+
+struct GW_Memory;
+extern struct GW_Memory *g_gw_mem;
 
  // pi_parse_cls - Handle CLS command.
 void pi_parse_cls(Lexer *lex, RuntimeState *rt, int line_num)
@@ -126,18 +130,32 @@ void pi_parse_width(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- w = (int)parse_expression(
- lex, rt, line_num);
- if (error_occurred()) return;
+  w = (int)parse_expression(
+  lex, rt, line_num);
+  if (error_occurred()) return;
 
- if (w == 40 || w == 80) {
- rt->screen_width = w;
- } else if (w >= 1 && w <= 255) {
- rt->screen_width = w;
- } else {
- error_raise(ERR_WHAT, line_num);
- return;
- }
+  if (g_gw_mem != NULL) {
+#ifndef NO_SDL2
+      if (w == 40 || w == 80) {
+          gw_sdl2_set_mode(rt->screen_mode, w);
+          printf("\033[2J\033[H"); // ANSI clear screen
+          fflush(stdout);
+          rt->screen_width = w;
+      } else {
+          error_raise(ERR_WHAT, line_num);
+          return;
+      }
+#endif
+  } else {
+      if (w == 40 || w == 80) {
+          rt->screen_width = w;
+      } else if (w >= 1 && w <= 255) {
+          rt->screen_width = w;
+      } else {
+          error_raise(ERR_WHAT, line_num);
+          return;
+      }
+  }
 
  // Optional ,lines
  lines = rt->screen_lines;

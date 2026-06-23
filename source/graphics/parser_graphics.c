@@ -42,6 +42,10 @@
  // ---
 
 #include "parser_internal.h"
+#include "gw_memory.h"
+#include "gw_sdl2.h"
+extern struct GW_Memory *g_gw_mem;
+extern int g_gw_machine_type;
 
  // pi_parse_screen - Handle SCREEN command.
 void pi_parse_screen(Lexer *lex, RuntimeState *rt, int line_num)
@@ -86,14 +90,110 @@ void pi_parse_screen(Lexer *lex, RuntimeState *rt, int line_num)
  parse_expression(lex, rt, line_num);
  }
 
- // Activate/deactivate gfx buffer
- if (mode > 0) {
- gfxbuf_set_active(1);
- } else {
- gfxbuf_set_active(0);
- }
- }
- return;
+   // Activate/deactivate gfx buffer
+   if (mode > 0) {
+       if (g_gw_mem != NULL) {
+#ifndef NO_SDL2
+           int cols = 80;
+           if (mode == 3) {
+               if (g_gw_machine_type == 1) { // MACHINE_HERCULES
+                   cols = 90;
+               } else if (g_gw_machine_type == 2 || g_gw_machine_type == 3) { // MACHINE_TANDY || MACHINE_PCJR
+                   cols = 20;
+               } else {
+                   cols = 80;
+               }
+           } else if (mode == 14) {
+               if (g_gw_machine_type == 4) { // MACHINE_PLANTRONICS
+                   cols = 40;
+               } else {
+                   cols = 80;
+               }
+           } else if (mode == 15) {
+               cols = 80;
+           } else if (mode == 1 || mode == 7 || mode == 13 || mode == 4 || mode == 5) {
+               cols = 40;
+           } else {
+               cols = 80;
+           }
+           gw_sdl2_init(640, 400, "GW-BASIC Emulation", 0);
+           gw_sdl2_set_mode(mode, cols);
+           rt->screen_width = cols;
+           printf("[SCREEN: Graphics Mode %d]\n", mode);
+#endif
+       }
+       gfxbuf_set_active(1);
+   } else {
+       if (g_gw_mem != NULL) {
+#ifndef NO_SDL2
+           gw_sdl2_cleanup();
+           printf("[SCREEN: Text mode 80x25]\n");
+#endif
+       }
+        gfxbuf_set_active(0);
+    }
+  }
+  return;
+}
+
+ // pi_parse_console - Handle CONSOLE command.
+void pi_parse_console(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    // CONSOLE [scroll_start][, [scroll_lines][, [fn_keys][, [mono]]]]
+    int start = -1;
+    int lines = -1;
+    int fn_keys = -1;
+    int mono = -1;
+
+    // 1. scroll_start
+    if (lex->current.type != TOK_EOF &&
+        lex->current.type != TOK_CR &&
+        lex->current.type != TOK_COLON &&
+        lex->current.type != TOK_COMMA) {
+        start = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+    }
+
+    // 2. scroll_lines
+    if (lex->current.type == TOK_COMMA) {
+        lexer_next(lex); // consume comma
+        if (lex->current.type != TOK_EOF &&
+            lex->current.type != TOK_CR &&
+            lex->current.type != TOK_COLON &&
+            lex->current.type != TOK_COMMA) {
+            lines = (int)parse_expression(lex, rt, line_num);
+            if (error_occurred()) return;
+        }
+    }
+
+    // 3. fn_keys
+    if (lex->current.type == TOK_COMMA) {
+        lexer_next(lex); // consume comma
+        if (lex->current.type != TOK_EOF &&
+            lex->current.type != TOK_CR &&
+            lex->current.type != TOK_COLON &&
+            lex->current.type != TOK_COMMA) {
+            fn_keys = (int)parse_expression(lex, rt, line_num);
+            if (error_occurred()) return;
+        }
+    }
+
+    // 4. mono
+    if (lex->current.type == TOK_COMMA) {
+        lexer_next(lex); // consume comma
+        if (lex->current.type != TOK_EOF &&
+            lex->current.type != TOK_CR &&
+            lex->current.type != TOK_COLON) {
+            mono = (int)parse_expression(lex, rt, line_num);
+            if (error_occurred()) return;
+        }
+    }
+
+#ifndef NO_SDL2
+    if (g_gw_mem != NULL) {
+        gw_sdl2_set_console(start, lines, fn_keys, mono);
+    }
+#endif
 }
 
  // pi_parse_color - Handle COLOR command.

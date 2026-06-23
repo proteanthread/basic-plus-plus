@@ -27,7 +27,7 @@
 
 # Compiler and flags (gcc default)
 CC = gcc
-CFLAGS = -std=c17 -Wall -Wextra -O2 -I. -D_POSIX_C_SOURCE=200809L
+CFLAGS = -std=c17 -Wall -Wextra -O2 -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
 LDFLAGS =
 
 # Output directory — project root (parent of source/)
@@ -172,7 +172,10 @@ MODULES_SOURCES = \
     modules/ext_lib.c modules/ext_func.c \
     modules/ext_feature.c modules/ext_plugin.c \
     modules/lib_space.c modules/bpl_format.c \
-    modules/parser_block.c
+    modules/parser_block.c \
+    modules/gw_math_mbf.c modules/gw_memory.c \
+    modules/gw_sdl2.c modules/gw_plugin.c \
+    modules/gw_serial.c modules/mod_gwbasic.c
 
 # Runtime state & execution
 RUNTIME_SOURCES = \
@@ -210,7 +213,9 @@ HEADERS = config.h memory.h lexer.h parser.h parser_internal.h \
           keyword_props.h alias_lang.h override.h scope.h scope_stack.h \
           config_file.h boot.h rpn.h check.h device_alias.h txn.h \
           mod_stdlib.h mod_usb.h mod_fujinet.h mod_upnp.h mod_jit.h \
-          io/vfs.h compat.h
+          io/vfs.h compat.h \
+          gw_math_mbf.h gw_memory.h gw_sdl2.h gw_plugin.h gw_serial.h \
+          mod_gwbasic.h
 
 # =====================================================================
 # Default target: gcc release build
@@ -239,8 +244,8 @@ debug:
 #   (from Visual Studio Developer Command Prompt)
 #
 msvc:
-	cl /TC /std:c17 /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS /c $(SOURCES)
-	link /OUT:basicpp.exe /SUBSYSTEM:CONSOLE *.obj advapi32.lib ws2_32.lib
+	cl /TC /std:c17 /W3 /O2 /I. /I../sdl2/include /D_CRT_SECURE_NO_WARNINGS /c $(SOURCES)
+	link /OUT:basicpp.exe /SUBSYSTEM:CONSOLE *.obj advapi32.lib ws2_32.lib /LIBPATH:../sdl2/lib/x64 SDL2.lib SDL2main.lib Shell32.lib User32.lib Gdi32.lib Winmm.lib
 	@if exist basicpp.exe move /Y basicpp.exe $(OUTDIR)\basicpp.exe >nul
 	@del /q *.obj 2>nul
 
