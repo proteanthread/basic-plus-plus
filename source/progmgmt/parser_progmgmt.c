@@ -469,17 +469,19 @@ void pi_parse_bsave(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  {
  char fname[MAX_LINE_LENGTH + 1];
+ int flen;
  if (lex->current.type != TOK_STRING) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- if (lex->current.str_length >= MAX_LINE_LENGTH) {
+ flen = lex->current.str_length;
+ if (flen >= MAX_LINE_LENGTH) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- memcpy(fname, lex->current.str_start,
- (size_t)lex->current.str_length);
- fname[lex->current.str_length] = '\0';
+ memcpy(fname, lex->current.str_start, (size_t)flen);
+ fname[flen] = '\0';
+ pi_ensure_bpp_ext(fname, flen, MAX_LINE_LENGTH);
  lexer_next(lex);
  bpp_save(rt->program, fname);
  return;
@@ -493,22 +495,45 @@ void pi_parse_bload(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  {
  char fname[MAX_LINE_LENGTH + 1];
+ int flen;
  if (lex->current.type != TOK_STRING) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- if (lex->current.str_length >= MAX_LINE_LENGTH) {
+ flen = lex->current.str_length;
+ if (flen >= MAX_LINE_LENGTH) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- memcpy(fname, lex->current.str_start,
- (size_t)lex->current.str_length);
- fname[lex->current.str_length] = '\0';
+ memcpy(fname, lex->current.str_start, (size_t)flen);
+ fname[flen] = '\0';
+ pi_ensure_bpp_ext(fname, flen, MAX_LINE_LENGTH);
  lexer_next(lex);
  bpp_load(&rt->memory->program, fname);
  return;
  }
-
- // ===== Module system =====
 }
 
+ // pi_parse_brun - Handle BRUN command.
+void pi_parse_brun(Lexer *lex, RuntimeState *rt, int line_num)
+{
+ if (lex->current.type == TOK_STRING) {
+ char fname[MAX_LINE_LENGTH + 1];
+ int flen = lex->current.str_length;
+ if (flen >= MAX_LINE_LENGTH) {
+ error_raise(ERR_WHAT, line_num);
+ return;
+ }
+ memcpy(fname, lex->current.str_start, (size_t)flen);
+ fname[flen] = '\0';
+ pi_ensure_bpp_ext(fname, flen, MAX_LINE_LENGTH);
+ lexer_next(lex);
+ 
+ if (security_check(SECOP_FILE_READ, line_num))
+ return;
+ bpp_load(&rt->memory->program, fname);
+ if (error_occurred()) return;
+ }
+ exec_brun(rt);
+}
+ // ===== Module system =====
