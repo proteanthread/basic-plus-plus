@@ -62,9 +62,9 @@
  // These strings are printed at startup and embedded in SAVE file
  // headers (if applicable in future versions).
 #define BASICPP_VERSION_MAJOR 4
-#define BASICPP_VERSION_MINOR 0
+#define BASICPP_VERSION_MINOR 1
 #define BASICPP_VERSION_PATCH 1
-#define BASICPP_VERSION "4.0.1"
+#define BASICPP_VERSION "4.1.1"
 #define BASICPP_NAME "BASIC++ (Stable)"
 #define BASICPP_COPYRIGHT "@COPYLEFT ALL WRONGS RESERVED"
 #define BASICPP_PROMPT "> "

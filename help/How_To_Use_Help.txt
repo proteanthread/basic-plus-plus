@@ -1,6 +1,6 @@
 BASIC++ Help System — User & Developer Tutorial
 
-Version 4.0.1 | C17 \| ECMA-116 Compliant
+Version 4.1.1 | C17 \| ECMA-116 Compliant
 
 ---
 

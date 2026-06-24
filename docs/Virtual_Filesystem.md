@@ -1,6 +1,6 @@
 THE BASIC++ VIRTUAL FILESYSTEM
 ================================
-Version 4.0.1
+Version 4.1.1
 
 This manual explains how BASIC++ programs access files on the
 local file system — how it works internally, why every layer

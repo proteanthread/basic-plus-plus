@@ -1,6 +1,6 @@
 CREATING AND USING MEMORY MAPS
 ==============================
-Version 4.0.1
+Version 4.1.1
 
 BASIC++ includes a pluggable memory map system that emulates
 the 64 KB address space of classic 8-bit and 16-bit computers.

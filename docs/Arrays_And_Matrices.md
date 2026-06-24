@@ -3,7 +3,7 @@ ARRAYS AND MATRICES IN BASIC++
 A Complete Tutorial on DIM Arrays, MAT Operations,
 String Arrays, and Advanced Techniques
 
-Version 4.0.1
+Version 4.1.1
 
 TABLE OF CONTENTS
 -----------------

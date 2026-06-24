@@ -1,6 +1,6 @@
 Building BASIC++ for ESP32
 
-Version 4.0.1
+Version 4.1.1
 
 ---
 
@@ -244,7 +244,7 @@ The BASIC++ REPL communicates over UART0 (USB-Serial). After
 flashing and connecting a serial terminal at 115200 baud:
 
 
-BASIC++ (Stable) Version 4.0.1
+BASIC++ (Stable) Version 4.1.1
 @COPYLEFT ALL WRONGS RESERVED
 Ready.
 > PRINT "Hello from ESP32!"

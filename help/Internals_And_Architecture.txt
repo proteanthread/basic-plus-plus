@@ -2,7 +2,7 @@ BASIC++ Internals and Architecture
 ====================================
 A Technical Guide to the Interpreter's Design
 
-Version 4.0.1
+Version 4.1.1
 
 TABLE OF CONTENTS
 -----------------

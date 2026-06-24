@@ -1,6 +1,6 @@
 Building BASIC++ for Arduino
 
-Version 4.0.1
+Version 4.1.1
 
 ---
 
@@ -261,7 +261,7 @@ Monitor in Arduino IDE at 115200 baud, line ending "Newline" or
 "Both NL & CR":
 
 
-BASIC++ (Stable) Version 4.0.1
+BASIC++ (Stable) Version 4.1.1
 @COPYLEFT ALL WRONGS RESERVED
 Ready.
 > PRINT "Hello from Arduino!"

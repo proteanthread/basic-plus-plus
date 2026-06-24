@@ -1,6 +1,6 @@
 #!/bin/bash
 # ========================================================
-# BASIC++ 4.0.0 (Stable) — Linux Build (gcc)
+# BASIC++ 4.1.1 (Stable) — Linux Build (gcc)
 # ========================================================
 
 set -e
@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR/source"
 
 echo "========================================================"
-echo "BASIC++ 4.0.0 (Stable) — Linux Build (gcc)"
+echo "BASIC++ 4.1.1 (Stable) — Linux Build (gcc)"
 echo "========================================================"
 
 echo "[INFO] Cleaning previous build..."
