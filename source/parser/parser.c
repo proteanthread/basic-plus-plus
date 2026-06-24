@@ -162,22 +162,26 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_REM:
  pi_parse_rem(lex, rt, line_num);
  return;
- case KW_LIST:
- pi_parse_list_cmd(lex, rt, line_num);
- return;
+  case KW_LIST:
+  if (security_check(SECOP_PROG_MGMT, line_num))
+  return;
+  pi_parse_list_cmd(lex, rt, line_num);
+  return;
  case KW_RUN:
  pi_parse_run_cmd(lex, rt, line_num);
  return;
  case KW_NEW:
  pi_parse_new_cmd(lex, rt, line_num);
  return;
- case KW_SAVE:
- if (security_check(SECOP_FILE_WRITE, line_num))
- return;
- pi_parse_save_cmd(lex, rt, line_num);
- return;
+  case KW_SAVE:
+  if (security_check(SECOP_PROG_MGMT, line_num))
+  return;
+  if (security_check(SECOP_FILE_WRITE, line_num))
+  return;
+  pi_parse_save_cmd(lex, rt, line_num);
+  return;
   case KW_LOAD:
-  if (security_check(SECOP_FILE_READ, line_num))
+  if (security_check(SECOP_PROG_MGMT, line_num))
   return;
   pi_parse_load_cmd(lex, rt, line_num);
   return;
@@ -325,7 +329,7 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
   pi_parse_bload(lex, rt, line_num);
   return;
  case KW_BRUN:
-  exec_brun(rt);
+  pi_parse_brun(lex, rt, line_num);
   return;
  case KW_MODULE:
   pi_parse_module(lex, rt, line_num);

@@ -169,10 +169,10 @@ void pi_parse_run_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  char filename[MAX_LINE_LENGTH + 1];
  int flen = lex->current.str_length;
 
- if (security_check(SECOP_FILE_READ, line_num))
-  return;
+  if (security_check(SECOP_PROG_MGMT, line_num))
+   return;
 
- if (flen >= MAX_LINE_LENGTH) {
+  if (flen >= MAX_LINE_LENGTH) {
   error_raise(ERR_WHAT, line_num);
   return;
  }
@@ -546,6 +546,28 @@ int pi_ensure_bas_ext(char *fname, int len, int maxlen)
  fname[len+1] = 'B';
  fname[len+2] = 'A';
  fname[len+3] = 'S';
+ fname[len+4] = '\0';
+ len += 4;
+ }
+ return len;
+}
+
+int pi_ensure_bpp_ext(char *fname, int len, int maxlen)
+{
+ int i;
+ int has_dot = 0;
+
+ // Scan backward from end for '.' or path separator
+ for (i = len - 1; i >= 0; i--) {
+ if (fname[i] == '.') { has_dot = 1; break; }
+ if (fname[i] == '/' || fname[i] == '\\') break;
+ }
+
+ if (!has_dot && len + 4 < maxlen) {
+ fname[len]   = '.';
+ fname[len+1] = 'B';
+ fname[len+2] = 'P';
+ fname[len+3] = 'P';
  fname[len+4] = '\0';
  len += 4;
  }
