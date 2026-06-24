@@ -47,6 +47,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include "vdev.h"
+#include "io/vfs.h"
 #include "gw_sdl2.h"
 
 struct GW_Memory;
@@ -141,11 +142,18 @@ static int err_flush(VDev *d)
 static int file_open(VDev *d, const char *path, const char *mode)
 {
  FILE *f;
+ char resolved[512];
+ int for_write = (strchr(mode, 'w') != NULL || strchr(mode, 'a') != NULL || strchr(mode, '+') != NULL) ? 1 : 0;
+
+ if (vfs_resolve(path, resolved, sizeof(resolved), for_write) != 0) {
+  return -1;
+ }
+
  if (d->user_data != NULL) {
  fclose((FILE *)d->user_data);
  d->user_data = NULL;
  }
- f = fopen(path, mode);
+ f = fopen(resolved, mode);
  if (f == NULL) return -1;
  d->user_data = (void *)f;
  return 0;

@@ -62,6 +62,7 @@
 #include "parser_internal.h"
 #include "dialect.h"
 #include "gw_math_mbf.h"
+#include "gw_sdl2.h"
 
 // --- Expression Parsing ---
  //
@@ -928,7 +929,15 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  return rv;
  }
  }
- }
+ } else {
+      extern int lib_space_try_call_func(const char *name, int name_len,
+                                         void *lex_ptr, void *rt_ptr,
+                                         int line_num, void *out_result);
+      BValue res;
+      if (lib_space_try_call_func(nm, nlen, lex, rt, line_num, &res)) {
+          return res;
+      }
+  }
 
  // Check for single-line DEF FN
  // called as FNA(x) in extended-vars
@@ -1328,7 +1337,7 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  int argc = 0;
  BValue result;
 
- lexer_next(lex); // consume function name
+  lexer_next(lex); // consume function name
 
   if (fn->max_args > 0 &&
   lex->current.type == TOK_LPAREN) {
@@ -1476,6 +1485,16 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
  ptr = strpool_store(&rt->strpool, mname, len);
  return bval_string(ptr, len);
  }
+  if (kw == KW_VPATH_FUNC) {
+      const char *vpath = vfs_get_vpath();
+      char *ptr;
+      int len;
+      lexer_next(lex);
+      if (vpath == NULL) vpath = "";
+      len = (int)strlen(vpath);
+      ptr = strpool_store(&rt->strpool, vpath, len);
+      return bval_string(ptr, len);
+  }
   // CWD$ - returns the current working directory.
   // Read-only string pseudo-variable.
   // CURDIR$ is an alias (mapped to KW_CWD_FUNC).
@@ -2019,80 +2038,279 @@ BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
   return bval_int(0);
  }
 
- // VARPTR(var) - Return pointer to variable.
- // In GW-BASIC, returns the memory address
- // of a variable. We return a pseudo-index
- // based on the variable name (A=1..Z=26).
- if (kw == KW_VARPTR) {
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- if (lex->current.type == TOK_VARIABLE) {
- long idx = lex->current
- .value.var_name
- - 'A' + 1;
- lexer_next(lex);
- if (!lexer_expect(lex,
- TOK_RPAREN))
- return bval_int(0);
- return bval_int(idx);
- }
- // Named var or string var
- lexer_skip_to_end(lex);
- return bval_int(0);
- }
+  // VARPTR(var) - Return pointer to variable.
+  // In GW-BASIC, returns the memory address
+  // of a variable in the emulated segmented memory space.
+  if (kw == KW_VARPTR) {
+      lexer_next(lex);
+      if (!lexer_expect(lex, TOK_LPAREN))
+          return bval_int(0);
+      
+      TokenType vt = lex->current.type;
+      if (vt == TOK_VARIABLE || vt == TOK_STRING_VAR || vt == TOK_NAMED_VAR) {
+          char name[MAX_VAR_NAME_LEN + 1];
+          int len = 0;
+          if (vt == TOK_VARIABLE || vt == TOK_STRING_VAR) {
+              name[0] = lex->current.value.var_name;
+              if (vt == TOK_STRING_VAR) {
+                  name[1] = '$';
+                  name[2] = '\0';
+                  len = 2;
+              } else {
+                  name[1] = '\0';
+                  len = 1;
+              }
+          } else {
+              len = lex->current.str_length;
+              if (len > MAX_VAR_NAME_LEN) len = MAX_VAR_NAME_LEN;
+              memcpy(name, lex->current.str_start, len);
+              name[len] = '\0';
+          }
+          
+          lexer_next(lex); // consume var name
+          
+          int is_array = 0;
+          int idx1 = 0, idx2 = 0, idx3 = 0;
+          if (lex->current.type == TOK_LPAREN) {
+              lexer_next(lex); // consume '('
+              BValue t1 = parse_expression_bval(lex, rt, line_num);
+              idx1 = (int)bval_to_int(&t1);
+              if (lex->current.type == TOK_COMMA) {
+                  lexer_next(lex); // consume ','
+                  BValue t2 = parse_expression_bval(lex, rt, line_num);
+                  idx2 = (int)bval_to_int(&t2);
+                  if (lex->current.type == TOK_COMMA) {
+                      lexer_next(lex); // consume ','
+                      BValue t3 = parse_expression_bval(lex, rt, line_num);
+                      idx3 = (int)bval_to_int(&t3);
+                  }
+              }
+              if (!lexer_expect(lex, TOK_RPAREN))
+                  return bval_int(0);
+              is_array = 1;
+          }
+          
+          if (!lexer_expect(lex, TOK_RPAREN))
+              return bval_int(0);
+          
+          if (is_array) {
+              int i;
+              DimArray *arr = NULL;
+              for (i = 0; i < rt->dim_count; i++) {
+                  if (pi_str_case_equal(name, rt->dim_arrays[i].name)) {
+                      arr = &rt->dim_arrays[i];
+                      break;
+                  }
+              }
+              if (arr != NULL) {
+                  int flat_idx = 0;
+                  if (arr->dims == 1) {
+                      flat_idx = idx1 - rt->option_base;
+                  } else if (arr->dims == 2) {
+                      flat_idx = (idx1 - rt->option_base) * arr->size[1] + (idx2 - rt->option_base);
+                  } else if (arr->dims == 3) {
+                      flat_idx = ((idx1 - rt->option_base) * arr->size[1] + (idx2 - rt->option_base)) * arr->size[2] + (idx3 - rt->option_base);
+                  }
+                  
+                  if (flat_idx >= 0 && flat_idx < arr->total) {
+                      int element_offset = (int)(arr->elements - rt->dim_elements) + flat_idx;
+                      return bval_int(0x10000 + element_offset * 8);
+                  }
+              }
+              return bval_int(0);
+          } else {
+              if (len == 1 && name[0] >= 'A' && name[0] <= 'Z') {
+                  return bval_int(0x7000 + (name[0] - 'A') * 8);
+              } else if (len == 2 && name[0] >= 'A' && name[0] <= 'Z' && name[1] == '$') {
+                  return bval_int(0x7000 + (26 + (name[0] - 'A')) * 8);
+              } else {
+                  int named_idx = -1;
+                  int i;
+                  for (i = 0; i < rt->named_count; i++) {
+                      if (pi_str_case_equal(name, rt->named_vars[i].name)) {
+                          named_idx = i;
+                          break;
+                      }
+                  }
+                  if (named_idx != -1) {
+                      return bval_int(0x7000 + (52 + named_idx) * 8);
+                  }
+              }
+              return bval_int(0);
+          }
+      }
+      lexer_skip_to_end(lex);
+      return bval_int(0);
+  }
 
-  // VARPTR$(var) - Return string pointer.
-  // Returns a string representation of
-  // the variable pointer. Stub: returns
-  // empty string.
- if (kw == KW_VARPTR_STR) {
-  lexer_next(lex);
-  if (!lexer_expect(lex, TOK_LPAREN))
-   return bval_string("", 0);
-  // Consume variable argument
-  (void)parse_expression(lex, rt,
-   line_num);
-  if (error_occurred())
-   return bval_string("", 0);
-  if (!lexer_expect(lex, TOK_RPAREN))
-   return bval_string("", 0);
-  return bval_string("", 0);
- }
+  // VARPTR$(var) - Return 3-byte string descriptor representation of the variable pointer.
+  if (kw == KW_VARPTR_STR) {
+      lexer_next(lex);
+      if (!lexer_expect(lex, TOK_LPAREN))
+          return bval_string("", 0);
+      
+      TokenType vt = lex->current.type;
+      if (vt == TOK_VARIABLE || vt == TOK_STRING_VAR || vt == TOK_NAMED_VAR) {
+          char name[MAX_VAR_NAME_LEN + 1];
+          int len = 0;
+          if (vt == TOK_VARIABLE || vt == TOK_STRING_VAR) {
+              name[0] = lex->current.value.var_name;
+              if (vt == TOK_STRING_VAR) {
+                  name[1] = '$';
+                  name[2] = '\0';
+                  len = 2;
+              } else {
+                  name[1] = '\0';
+                  len = 1;
+              }
+          } else {
+              len = lex->current.str_length;
+              if (len > MAX_VAR_NAME_LEN) len = MAX_VAR_NAME_LEN;
+              memcpy(name, lex->current.str_start, len);
+              name[len] = '\0';
+          }
+          
+          lexer_next(lex); // consume var name
+          
+          int is_array = 0;
+          int idx1 = 0, idx2 = 0, idx3 = 0;
+          if (lex->current.type == TOK_LPAREN) {
+              lexer_next(lex); // consume '('
+              BValue t1 = parse_expression_bval(lex, rt, line_num);
+              idx1 = (int)bval_to_int(&t1);
+              if (lex->current.type == TOK_COMMA) {
+                  lexer_next(lex); // consume ','
+                  BValue t2 = parse_expression_bval(lex, rt, line_num);
+                  idx2 = (int)bval_to_int(&t2);
+                  if (lex->current.type == TOK_COMMA) {
+                      lexer_next(lex); // consume ','
+                      BValue t3 = parse_expression_bval(lex, rt, line_num);
+                      idx3 = (int)bval_to_int(&t3);
+                  }
+              }
+              if (!lexer_expect(lex, TOK_RPAREN))
+                  return bval_string("", 0);
+              is_array = 1;
+          }
+          
+          if (!lexer_expect(lex, TOK_RPAREN))
+              return bval_string("", 0);
+          
+          uint16_t addr = 0;
+          uint8_t type_byte = 2; // default integer
+          
+          if (is_array) {
+              int i;
+              DimArray *arr = NULL;
+              for (i = 0; i < rt->dim_count; i++) {
+                  if (pi_str_case_equal(name, rt->dim_arrays[i].name)) {
+                      arr = &rt->dim_arrays[i];
+                      break;
+                  }
+              }
+              if (arr != NULL) {
+                  int flat_idx = 0;
+                  if (arr->dims == 1) {
+                      flat_idx = idx1 - rt->option_base;
+                  } else if (arr->dims == 2) {
+                      flat_idx = (idx1 - rt->option_base) * arr->size[1] + (idx2 - rt->option_base);
+                  } else if (arr->dims == 3) {
+                      flat_idx = ((idx1 - rt->option_base) * arr->size[1] + (idx2 - rt->option_base)) * arr->size[2] + (idx3 - rt->option_base);
+                  }
+                  
+                  if (flat_idx >= 0 && flat_idx < arr->total) {
+                      int element_offset = (int)(arr->elements - rt->dim_elements) + flat_idx;
+                      addr = (uint16_t)(0x10000 + element_offset * 8);
+                  }
+                  
+                  int suffix = (len > 0) ? name[len - 1] : 0;
+                  if (suffix == '%') type_byte = 2;
+                  else if (suffix == '!') type_byte = 4;
+                  else if (suffix == '#') type_byte = 8;
+                  else if (suffix == '$') type_byte = 3;
+              }
+          } else {
+              if (len == 1 && name[0] >= 'A' && name[0] <= 'Z') {
+                  addr = (uint16_t)(0x7000 + (name[0] - 'A') * 8);
+                  unsigned char dtype = rt->deftype_map[name[0] - 'A'];
+                  if (dtype == DEFTYPE_INT) type_byte = 2;
+                  else if (dtype == DEFTYPE_SNG) type_byte = 4;
+                  else if (dtype == DEFTYPE_DBL) type_byte = 8;
+                  else if (dtype == DEFTYPE_STR) type_byte = 3;
+              } else if (len == 2 && name[0] >= 'A' && name[0] <= 'Z' && name[1] == '$') {
+                  addr = (uint16_t)(0x7000 + (26 + (name[0] - 'A')) * 8);
+                  type_byte = 3;
+              } else {
+                  int named_idx = -1;
+                  int i;
+                  for (i = 0; i < rt->named_count; i++) {
+                      if (pi_str_case_equal(name, rt->named_vars[i].name)) {
+                          named_idx = i;
+                          break;
+                      }
+                  }
+                  if (named_idx != -1) {
+                      addr = (uint16_t)(0x7000 + (52 + named_idx) * 8);
+                      char last = name[len - 1];
+                      if (last == '%') type_byte = 2;
+                      else if (last == '!') type_byte = 4;
+                      else if (last == '#') type_byte = 8;
+                      else if (last == '$') type_byte = 3;
+                  }
+              }
+          }
+          
+          char desc[4];
+          desc[0] = (char)type_byte;
+          desc[1] = (char)(addr & 0xFF);
+          desc[2] = (char)((addr >> 8) & 0xFF);
+          desc[3] = '\0';
+          
+          char *pool_str = strpool_store(&rt->strpool, desc, 3);
+          return bval_string(pool_str, 3);
+      }
+      
+      lexer_skip_to_end(lex);
+      return bval_string("", 0);
+  }
 
  // SCREEN(row, col [, flag])
  // Read character or attribute at screen pos.
  // flag=0 or omitted: return ASCII code.
  // flag=1: return color attribute.
-  // No screen buffer; returns 32 (space).
- if (kw == KW_SCREEN) {
- lexer_next(lex);
- if (lex->current.type == TOK_LPAREN) {
-  lexer_next(lex);
-  (void)parse_expression(lex, rt,
-   line_num);
-  if (error_occurred())
-   return bval_int(32);
-  if (lex->current.type == TOK_COMMA)
-   lexer_next(lex);
-  (void)parse_expression(lex, rt,
-   line_num);
-  if (error_occurred())
-   return bval_int(32);
-  // Optional 3rd arg (flag)
-  if (lex->current.type ==
-      TOK_COMMA) {
-   lexer_next(lex);
-   (void)parse_expression(
-    lex, rt, line_num);
-   if (error_occurred())
-    return bval_int(0);
-  }
-  if (!lexer_expect(lex,
-      TOK_RPAREN))
-   return bval_int(32);
-  return bval_int(32);
- }
+  if (kw == KW_SCREEN) {
+      lexer_next(lex);
+      if (lex->current.type == TOK_LPAREN) {
+          lexer_next(lex);
+          BValue t1 = parse_expression_bval(lex, rt, line_num);
+          int row = (int)bval_to_int(&t1);
+          if (error_occurred()) return bval_int(32);
+          if (lex->current.type == TOK_COMMA)
+              lexer_next(lex);
+          BValue t2 = parse_expression_bval(lex, rt, line_num);
+          int col = (int)bval_to_int(&t2);
+          if (error_occurred()) return bval_int(32);
+          
+          int flag = 0;
+          if (lex->current.type == TOK_COMMA) {
+              lexer_next(lex);
+              BValue t3 = parse_expression_bval(lex, rt, line_num);
+              flag = (int)bval_to_int(&t3);
+              if (error_occurred()) return bval_int(0);
+          }
+          if (!lexer_expect(lex, TOK_RPAREN))
+              return bval_int(32);
+          
+#ifndef NO_SDL2
+          char ch = gw_sdl2_get_char(col - 1, row - 1);
+          if (flag == 1) {
+              return bval_int(7); // normal white attribute
+          }
+          return bval_int((unsigned char)ch);
+#else
+          return bval_int(32);
+#endif
+      }
  // No parens = SCREEN statement,
  // fall through 
  return bval_int(0);

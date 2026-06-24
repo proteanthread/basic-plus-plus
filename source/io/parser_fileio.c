@@ -46,11 +46,11 @@
 
 void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
 {
- char filename[MAX_LINE_LENGTH + 1];
- int mode = 0;
- int chan;
+  char filename[MAX_LINE_LENGTH + 1];
+  int mode = 0;
+  int chan;
 
- (void)rt;
+  (void)rt;
 
  // Detect ECMA-116 form vs GW-BASIC form vs Atari form:
  // ECMA-116: OPEN #n: NAME "file", ACCESS mode, ...
@@ -450,7 +450,10 @@ void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
 
  lexer_next(lex); // consume comma after mode
 
- // Parse channel number (no #)
+ // Parse channel number (optional #)
+ if (lex->current.type == TOK_HASH) {
+ lexer_next(lex); // consume #
+ }
  chan = (int)parse_expression(lex, rt, line_num);
  if (error_occurred()) return;
 
@@ -893,6 +896,101 @@ void pi_parse_erase_file(Lexer *lex, RuntimeState *rt,
  if (error_occurred()) return;
 
  fileio_erase_channel(chan, line_num);
+}
+
+void pi_parse_mount(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    BValue prefix_val, target_val;
+    char prefix[VFS_MAX_PREFIX];
+    char target[VFS_MAX_TARGET];
+
+    // Parse prefix string expression
+    prefix_val = parse_expression_bval(lex, rt, line_num);
+    if (error_occurred()) return;
+    if (!bval_is_string(&prefix_val) || prefix_val.v.sval.data == NULL) {
+        error_raise(ERR_WHAT, line_num);
+        return;
+    }
+
+    // Expect TO keyword
+    if (!lexer_match_keyword(lex, KW_TO)) {
+        error_raise(ERR_WHAT, line_num);
+        return;
+    }
+    lexer_next(lex); // consume TO
+
+    // Parse target string expression
+    target_val = parse_expression_bval(lex, rt, line_num);
+    if (error_occurred()) return;
+    if (!bval_is_string(&target_val) || target_val.v.sval.data == NULL) {
+        error_raise(ERR_WHAT, line_num);
+        return;
+    }
+
+    // Copy to buffers
+    int plen = prefix_val.v.sval.length;
+    if (plen >= VFS_MAX_PREFIX) plen = VFS_MAX_PREFIX - 1;
+    memcpy(prefix, prefix_val.v.sval.data, (size_t)plen);
+    prefix[plen] = '\0';
+
+    int tlen = target_val.v.sval.length;
+    if (tlen >= VFS_MAX_TARGET) tlen = VFS_MAX_TARGET - 1;
+    memcpy(target, target_val.v.sval.data, (size_t)tlen);
+    target[tlen] = '\0';
+
+    vfs_mount(prefix, target, line_num);
+}
+
+void pi_parse_umount(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    BValue prefix_val;
+    char prefix[VFS_MAX_PREFIX];
+
+    // Parse prefix string expression
+    prefix_val = parse_expression_bval(lex, rt, line_num);
+    if (error_occurred()) return;
+    if (!bval_is_string(&prefix_val) || prefix_val.v.sval.data == NULL) {
+        error_raise(ERR_WHAT, line_num);
+        return;
+    }
+
+    int plen = prefix_val.v.sval.length;
+    if (plen >= VFS_MAX_PREFIX) plen = VFS_MAX_PREFIX - 1;
+    memcpy(prefix, prefix_val.v.sval.data, (size_t)plen);
+    prefix[plen] = '\0';
+
+    vfs_umount(prefix, line_num);
+}
+
+void pi_parse_mounts(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    (void)lex; (void)rt; (void)line_num;
+    vfs_list_mounts();
+}
+
+void pi_parse_vpath(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    if (lex->current.type == TOK_EOF ||
+        lex->current.type == TOK_CR ||
+        lex->current.type == TOK_COLON) {
+        vfs_set_vpath(NULL);
+        return;
+    }
+
+    BValue path_val = parse_expression_bval(lex, rt, line_num);
+    if (error_occurred()) return;
+    if (!bval_is_string(&path_val) || path_val.v.sval.data == NULL) {
+        error_raise(ERR_WHAT, line_num);
+        return;
+    }
+
+    char path[VFS_MAX_VPATH];
+    int plen = path_val.v.sval.length;
+    if (plen >= VFS_MAX_VPATH) plen = VFS_MAX_VPATH - 1;
+    memcpy(path, path_val.v.sval.data, (size_t)plen);
+    path[plen] = '\0';
+
+    vfs_set_vpath(path);
 }
 
 // --- Statement Dispatcher ---

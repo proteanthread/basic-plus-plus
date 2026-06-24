@@ -121,6 +121,7 @@ enum {
  KW_NEW,
  KW_SAVE,
  KW_LOAD,
+ KW_UNLOAD,
  KW_MERGE,
  KW_CHAIN,
  KW_FOR,
@@ -516,6 +517,11 @@ enum {
  KW_HASH, // HASH$ - string hash (8/16/32/64/128/256 bit)
 
  KW_CONSOLE, // CONSOLE - scroll regions and text window options (N88-BASIC)
+ KW_MOUNT, // MOUNT - mount prefix
+ KW_UMOUNT, // UMOUNT - unmount prefix
+ KW_MOUNTS, // MOUNTS - list mounts
+ KW_VPATH, // VPATH - set VPATH
+ KW_VPATH_FUNC, // VPATH$ - get VPATH
  KW_COUNT // sentinel - must be last
 };
 

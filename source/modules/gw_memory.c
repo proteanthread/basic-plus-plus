@@ -87,12 +87,12 @@ void gw_mem_def_seg(GW_Memory *mem, uint16_t segment) {
     }
 }
 
-uint32_t gw_mem_resolve(GW_Memory *mem, uint16_t offset) {
+uint32_t gw_mem_resolve(GW_Memory *mem, uint32_t offset) {
     if (!mem) return 0;
     return ((uint32_t)mem->def_seg * 16) + offset;
 }
 
-uint8_t gw_mem_peek(GW_Memory *mem, uint16_t offset) {
+uint8_t gw_mem_peek(GW_Memory *mem, uint32_t offset) {
     if (!mem) return 0;
     
     uint32_t addr = gw_mem_resolve(mem, offset);
@@ -107,7 +107,7 @@ uint8_t gw_mem_peek(GW_Memory *mem, uint16_t offset) {
     return mem->buffer[addr % mem->size];
 }
 
-void gw_mem_poke(GW_Memory *mem, uint16_t offset, uint8_t val) {
+void gw_mem_poke(GW_Memory *mem, uint32_t offset, uint8_t val) {
     if (!mem) return;
     
     uint32_t addr = gw_mem_resolve(mem, offset);
@@ -141,4 +141,11 @@ void gw_mem_register_write_hook(GW_Memory *mem, uint32_t start, uint32_t end, GW
     mem->write_hooks[mem->write_hook_count].hook = hook;
     mem->write_hooks[mem->write_hook_count].ctx = ctx;
     mem->write_hook_count++;
+}
+
+void gw_mem_clear_hooks(GW_Memory *mem) {
+    if (mem) {
+        mem->read_hook_count = 0;
+        mem->write_hook_count = 0;
+    }
 }

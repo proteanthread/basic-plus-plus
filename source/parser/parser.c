@@ -116,7 +116,9 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  // Keyword-based dispatch
  if (lex->current.type == TOK_KEYWORD) {
  KeywordId kw = lex->current.value.keyword;
- lexer_next(lex); // consume keyword
+ if (kw != KW_REM) {
+  lexer_next(lex); // consume keyword
+ }
 
  // Strict mode gate: reject keywords that don't
  // belong to the active dialect's bitmask.
@@ -174,11 +176,16 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  pi_parse_save_cmd(lex, rt, line_num);
  return;
- case KW_LOAD:
- if (security_check(SECOP_FILE_READ, line_num))
- return;
- pi_parse_load_cmd(lex, rt, line_num);
- return;
+  case KW_LOAD:
+  if (security_check(SECOP_FILE_READ, line_num))
+  return;
+  pi_parse_load_cmd(lex, rt, line_num);
+  return;
+  case KW_UNLOAD:
+  if (security_check(SECOP_FILE_READ, line_num))
+  return;
+  pi_parse_unload_cmd(lex, rt, line_num);
+  return;
  case KW_FOR:
   if (!dialect_check_feature("FOR/NEXT",
    dialect_get_config()->has_for_next, line_num))
@@ -255,14 +262,34 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_IMAGE:
   pi_parse_image(lex, rt, line_num);
   return;
- case KW_OPEN:
- if (security_check(SECOP_FILE_WRITE, line_num))
- return;
- pi_parse_open(lex, rt, line_num);
- return;
- case KW_CLOSE:
- pi_parse_close(lex, rt, line_num);
- return;
+  case KW_OPEN:
+  if (security_check(SECOP_FILE_WRITE, line_num))
+  return;
+  pi_parse_open(lex, rt, line_num);
+  return;
+  case KW_CLOSE:
+  pi_parse_close(lex, rt, line_num);
+  return;
+  case KW_MOUNT:
+  if (security_check(SECOP_FILE_MGMT, line_num))
+  return;
+  pi_parse_mount(lex, rt, line_num);
+  return;
+  case KW_UMOUNT:
+  if (security_check(SECOP_FILE_MGMT, line_num))
+  return;
+  pi_parse_umount(lex, rt, line_num);
+  return;
+  case KW_MOUNTS:
+  if (security_check(SECOP_FILE_MGMT, line_num))
+  return;
+  pi_parse_mounts(lex, rt, line_num);
+  return;
+  case KW_VPATH:
+  if (security_check(SECOP_FILE_MGMT, line_num))
+  return;
+  pi_parse_vpath(lex, rt, line_num);
+  return;
  // ECMA-116 Enhanced Files
  case KW_SET:
  pi_parse_set_file(lex, rt, line_num);
@@ -1077,22 +1104,22 @@ static KeywordId postfix_scan(Lexer *lex, int *mod_pos)
  } else if (depth == 0 &&
  lex->current.type == TOK_KEYWORD) {
  KeywordId kw = lex->current.value.keyword;
- if ((kw == KW_IF || kw == KW_UNLESS ||
- kw == KW_FOR) && prev_kw != KW_END) {
-  // Don't match prefix IF/UNLESS/FOR -
-  // they appear at the START of a statement.
-  // A postfix modifier always has some
-  // tokens before it.
- if (lex->pos != save_pos ||
- lex->current.type != save_tok.type ||
- (save_tok.type == TOK_KEYWORD &&
-  save_tok.value.keyword != kw)) {
- *mod_pos = lex->pos;
- result = kw;
- // Found - stop scanning
- break;
- }
- }
+  if ((kw == KW_IF || kw == KW_UNLESS ||
+  (kw == KW_FOR && !(save_tok.type == TOK_KEYWORD && save_tok.value.keyword == KW_OPEN))) && prev_kw != KW_END) {
+   // Don't match prefix IF/UNLESS/FOR -
+   // they appear at the START of a statement.
+   // A postfix modifier always has some
+   // tokens before it.
+  if (lex->pos != save_pos ||
+  lex->current.type != save_tok.type ||
+  (save_tok.type == TOK_KEYWORD &&
+   save_tok.value.keyword != kw)) {
+  *mod_pos = lex->pos;
+  result = kw;
+  // Found - stop scanning
+  break;
+  }
+  }
  // Stop scanning at statement separator
  if (kw == KW_THEN) break;
  prev_kw = kw;

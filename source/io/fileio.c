@@ -60,6 +60,7 @@
 #include <sys/locking.h>
 #endif
 #include "fileio.h"
+#include "vfs.h"
 #include "errors.h"
 #include "config.h"
 #include "vdev.h"
@@ -75,8 +76,14 @@ int fileio_save(ProgramStore *store, const char *filename)
 {
  FILE *fp;
  int i;
+ char resolved[512];
 
- fp = fopen(filename, "w");
+ if (vfs_resolve(filename, resolved, sizeof(resolved), 1) != 0) {
+  error_raise(ERR_HOW, 0);
+  return -1;
+ }
+
+ fp = fopen(resolved, "w");
  if (fp == NULL) {
  error_raise(ERR_HOW, 0);
  return -1;
@@ -104,8 +111,14 @@ int fileio_load(ProgramStore *store, const char *filename)
 {
  FILE *fp;
  char buf[INPUT_BUFFER_SIZE];
+ char resolved[512];
 
- fp = fopen(filename, "r");
+ if (vfs_resolve(filename, resolved, sizeof(resolved), 0) != 0) {
+  error_raise(ERR_HOW, 0);
+  return -1;
+ }
+
+ fp = fopen(resolved, "r");
  if (fp == NULL) {
  error_raise(ERR_HOW, 0);
  return -1;
@@ -176,8 +189,14 @@ int fileio_merge(ProgramStore *store, const char *filename)
 {
  FILE *fp;
  char buf[INPUT_BUFFER_SIZE];
+ char resolved[512];
 
- fp = fopen(filename, "r");
+ if (vfs_resolve(filename, resolved, sizeof(resolved), 0) != 0) {
+  error_raise(ERR_HOW, 0);
+  return -1;
+ }
+
+ fp = fopen(resolved, "r");
  if (fp == NULL) {
  error_raise(ERR_HOW, 0);
  return -1;
@@ -441,16 +460,23 @@ int fileio_open(int chan, const char *filename,
   }
  }
 
- switch (mode) {
- case FCHAN_INPUT: fmode = "r"; break;
- case FCHAN_OUTPUT: fmode = "w"; break;
- case FCHAN_APPEND: fmode = "a"; break;
- default:
- error_raise(ERR_HOW, line_num);
- return -1;
- }
+  switch (mode) {
+  case FCHAN_INPUT: fmode = "r"; break;
+  case FCHAN_OUTPUT: fmode = "w"; break;
+  case FCHAN_APPEND: fmode = "a"; break;
+  default:
+  error_raise(ERR_HOW, line_num);
+  return -1;
+  }
 
- channels[idx].fp = fopen(filename, fmode);
+  {
+   char resolved[512];
+   if (vfs_resolve(filename, resolved, sizeof(resolved), (mode == FCHAN_OUTPUT || mode == FCHAN_APPEND) ? 1 : 0) != 0) {
+    error_raise(ERR_HOW, line_num);
+    return -1;
+   }
+   channels[idx].fp = fopen(resolved, fmode);
+  }
  if (channels[idx].fp == NULL) {
  error_raise(ERR_HOW, line_num);
  return -1;
@@ -644,10 +670,17 @@ int fileio_open_random(int chan, const char *filename,
 
  // Random-access: "r+b" if file exists, else create
  // with "w+b" so both read and write work.
- fp = fopen(filename, "r+b");
- if (fp == NULL) {
- fp = fopen(filename, "w+b");
- }
+  {
+   char resolved[512];
+   if (vfs_resolve(filename, resolved, sizeof(resolved), 1) != 0) {
+    error_raise(ERR_HOW, line_num);
+    return -1;
+   }
+   fp = fopen(resolved, "r+b");
+   if (fp == NULL) {
+    fp = fopen(resolved, "w+b");
+   }
+  }
  if (fp == NULL) {
  error_raise(ERR_HOW, line_num);
  return -1;
@@ -681,9 +714,16 @@ int fileio_open_binary(int chan, const char *filename,
  return -1;
  }
 
- fp = fopen(filename, "r+b");
- if (fp == NULL)
- fp = fopen(filename, "w+b");
+  {
+   char resolved[512];
+   if (vfs_resolve(filename, resolved, sizeof(resolved), 1) != 0) {
+    error_raise(ERR_HOW, line_num);
+    return -1;
+   }
+   fp = fopen(resolved, "r+b");
+   if (fp == NULL)
+    fp = fopen(resolved, "w+b");
+  }
  if (fp == NULL) {
  error_raise(ERR_HOW, line_num);
  return -1;

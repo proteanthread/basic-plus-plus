@@ -135,6 +135,7 @@ BValue builtin_size(BValue *args, int argc, void *rt);
 
 // --- System / Environment (builtins_system.c) ---
 BValue builtin_environ(BValue *args, int argc, void *rt);
+BValue builtin_err_str(BValue *args, int argc, void *rt);
 
 // --- Graphics (builtins_graphics.c) ---
 BValue builtin_point(BValue *args, int argc, void *rt);

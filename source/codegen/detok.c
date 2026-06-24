@@ -65,6 +65,7 @@ static const char *keyword_names[] = {
  "NEW", // KW_NEW
  "SAVE", // KW_SAVE
  "LOAD", // KW_LOAD
+ "UNLOAD", // KW_UNLOAD
  "MERGE", // KW_MERGE
  "CHAIN", // KW_CHAIN
  "FOR", // KW_FOR
@@ -435,7 +436,13 @@ static const char *keyword_names[] = {
  "ICASE$", // KW_ICASE
  "ONKEY$", // KW_ONKEY
  "LIKE", // KW_LIKE
- "HASH$" // KW_HASH
+ "HASH$", // KW_HASH
+ "CONSOLE", // KW_CONSOLE
+ "MOUNT", // KW_MOUNT
+ "UMOUNT", // KW_UMOUNT
+ "MOUNTS", // KW_MOUNTS
+ "VPATH", // KW_VPATH
+ "VPATH$" // KW_VPATH_FUNC
 };
 
 // --- Token Type Names (for diagnostic output) ---
