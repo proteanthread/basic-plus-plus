@@ -42,6 +42,8 @@
  // ---
 
 #include "parser_internal.h"
+#include "gw_memory.h"
+extern struct GW_Memory *g_gw_mem;
 
  // parse_def_fn - Parse a DEF FN statement.
  //
@@ -70,8 +72,14 @@ void pi_parse_def_fn(Lexer *lex, RuntimeState *rt, int line_num)
  rt->mem_seg_base = 0;
  if (rt->mem_seg_base >= MAX_MEM_SEGMENT)
  rt->mem_seg_base = 0;
+ if (g_gw_mem != NULL) {
+     gw_mem_def_seg(g_gw_mem, (uint16_t)rt->mem_seg_base);
+ }
  } else {
  rt->mem_seg_base = 0; // DEF SEG alone resets
+ if (g_gw_mem != NULL) {
+     gw_mem_def_seg(g_gw_mem, 0);
+ }
  }
  return;
  }

@@ -278,7 +278,10 @@ void builtins_register(void)
  static const FunctionEntry sys_funcs[] = {
  { "ENVIRON$", KW_ENVIRON, FCAT_UTIL, FRET_STRING,
  1, 1, FSAFE_STATE, 0, builtin_environ,
- "Environment var: ENVIRON$(\"PATH\")" }
+ "Environment var: ENVIRON$(\"PATH\")" },
+ { "ERR$", KW_ERR_STR, FCAT_UTIL, FRET_STRING,
+ 0, 1, FSAFE_STATE, 1, builtin_err_str,
+ "Last error string or lookup: ERR$(code)" }
  };
 
  // --- Graphics (builtins_graphics.c) ---

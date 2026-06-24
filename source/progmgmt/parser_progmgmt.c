@@ -47,6 +47,7 @@
 #include "parser_internal.h"
 #include "parser_internal_additions.h"
 #include "pcode.h"
+#include "modules/bpl_format.h"
 
  // pi_parse_renum - Handle RENUM command.
 void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
@@ -362,6 +363,61 @@ void pi_parse_compile(Lexer *lex, RuntimeState *rt, int line_num)
  if (security_check(SECOP_COMPILE, line_num))
  return;
  {
+    if (lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_VARIABLE) {
+        const char *nv = (lex->current.type == TOK_NAMED_VAR) ? lex->current.str_start : NULL;
+        int nlen = (lex->current.type == TOK_NAMED_VAR) ? lex->current.str_length : 0;
+        char name[32] = "";
+        
+        if (lex->current.type == TOK_VARIABLE) {
+            name[0] = (char)toupper(lex->current.value.var_name);
+            name[1] = '\0';
+            nlen = 1;
+        } else if (nv && nlen < 31) {
+            int k;
+            for (k = 0; k < nlen; k++) {
+                name[k] = (char)toupper(nv[k]);
+            }
+            name[nlen] = '\0';
+        }
+        
+        if (strcmp(name, "LIBRARY") == 0) {
+            lexer_next(lex); // consume "LIBRARY"
+            if (lex->current.type != TOK_STRING) {
+                error_raise(ERR_WHAT, line_num);
+                return;
+            }
+            char libname[MAX_LINE_LENGTH + 1];
+            int lilen = lex->current.str_length;
+            if (lilen >= MAX_LINE_LENGTH) {
+                error_raise(ERR_WHAT, line_num);
+                return;
+            }
+            memcpy(libname, lex->current.str_start, (size_t)lilen);
+            libname[lilen] = '\0';
+            lexer_next(lex);
+
+            LoadedLibrary *lib = lib_space_find(libname);
+            if (!lib) {
+                printf("Library %s not loaded.\n", libname);
+                error_raise(ERR_HOW, line_num);
+                return;
+            }
+
+            // Create target filename <libname>.bpl
+            char outname[MAX_LINE_LENGTH + 1];
+            sprintf(outname, "%s.bpl", libname);
+
+            // Save bytecode to the .bpl file
+            if (bpl_save(lib, outname) != 0) {
+                printf("Failed to compile and save library %s.\n", libname);
+                error_raise(ERR_HOW, line_num);
+            } else {
+                printf("Compiled library %s saved to %s\n", libname, outname);
+            }
+            return;
+        }
+    }
+
  char fname[MAX_LINE_LENGTH + 1];
  char target[MAX_LINE_LENGTH + 1] = "";
  if (lex->current.type != TOK_STRING) {

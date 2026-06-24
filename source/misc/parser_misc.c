@@ -301,16 +301,19 @@ void pi_parse_poke(Lexer *lex, RuntimeState *rt, int line_num)
  // Write a byte to virtual memory.
  {
  int addr, val, offset;
- addr = (int)parse_expression(
- lex, rt, line_num);
+ BValue addr_bval = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return;
+ addr = (int)bval_to_int(&addr_bval);
+ 
  if (lex->current.type == TOK_COMMA)
  lexer_next(lex);
- val = (int)parse_expression(
- lex, rt, line_num);
+ 
+ BValue val_bval = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return;
+ val = (int)bval_to_int(&val_bval);
+ 
  if (g_gw_mem != NULL) {
-     gw_mem_poke(g_gw_mem, (uint16_t)addr, (uint8_t)(val & 0xFF));
+     gw_mem_poke(g_gw_mem, (uint32_t)addr, (uint8_t)(val & 0xFF));
  } else {
      offset = rt->mem_seg_base + addr;
      if (offset >= 0 &&
@@ -348,12 +351,15 @@ void pi_parse_memmap(Lexer *lex, RuntimeState *rt, int line_num)
  printf("Unknown memory map."
  " Use MEMMAP LIST.\n");
  } else {
- memmap_init(rt->mem_segment,
- mtype);
- rt->memmap_type = (int)mtype;
- rt->mem_seg_base = 0;
- printf("Memory map: %s\n",
- memmap_get_name(mtype));
+  memmap_init(rt->mem_segment,
+  mtype);
+  rt->memmap_type = (int)mtype;
+  rt->mem_seg_base = 0;
+  if (g_gw_mem != NULL) {
+      gw_mem_def_seg(g_gw_mem, 0);
+  }
+  printf("Memory map: %s\n",
+  memmap_get_name(mtype));
  }
  } else {
  // Show current map

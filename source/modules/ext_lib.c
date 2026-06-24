@@ -341,13 +341,12 @@ int ext_lib_unload(const char *name)
         }
     }
     // Fallback: try lib_space directly (BPL-loaded libs
-     // bypass lib_table and go straight to lib_space) 
+    // bypass lib_table and go straight to lib_space) 
     if (lib_space_unload(name) == 0) {
         printf("Unloaded library: %s\n", name);
         return 0;
     }
-    printf("Library '%s' not found.\n", name);
-    return -1;
+    return 0;
 }
 
 // --- ext_lib_is_loaded ---

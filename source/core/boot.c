@@ -150,6 +150,7 @@
 #include "vdev.h"
 #include "io/vdev_net.h"
 #include "fileio.h"
+#include "io/vfs.h"
 #include "gfxbuf.h"
 #include "funcreg.h"
 #include "error_registry.h"
@@ -361,6 +362,10 @@ static BootStatus boot_phase3_devices(void)
     // File I/O channels
     fileio_channels_init();
     boot_log(BOOT_DEBUG, "  File channels initialized");
+
+    // Virtual Filesystem Layer
+    vfs_init();
+    boot_log(BOOT_DEBUG, "  Virtual Filesystem initialized");
 
     // Device alias table (for cross-dialect device mapping)
     device_alias_init();

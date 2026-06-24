@@ -224,6 +224,7 @@ void pi_parse_loop(Lexer *lex, RuntimeState *rt,
     int line_num);
 
 // parser_fileio.c - File I/O
+#include "io/vfs.h"
 void pi_parse_open(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_close(Lexer *lex, RuntimeState *rt,
@@ -235,6 +236,14 @@ void pi_parse_ask_file(Lexer *lex, RuntimeState *rt,
 void pi_parse_rewrite(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_erase_file(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_mount(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_umount(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_mounts(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_vpath(Lexer *lex, RuntimeState *rt,
     int line_num);
 
 // parser_deffn.c - User-defined functions
@@ -257,6 +266,8 @@ void pi_parse_new_cmd(Lexer *lex, RuntimeState *rt,
 void pi_parse_save_cmd(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_load_cmd(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_unload_cmd(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_merge_cmd(Lexer *lex, RuntimeState *rt,
     int line_num);

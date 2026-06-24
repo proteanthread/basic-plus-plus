@@ -607,52 +607,203 @@ void pi_parse_save_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  // If filename has no extension, ".BAS" is appended.
 void pi_parse_load_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
- char filename[MAX_LINE_LENGTH + 1];
+    if (lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_VARIABLE) {
+        const char *nv = (lex->current.type == TOK_NAMED_VAR) ? lex->current.str_start : NULL;
+        int nlen = (lex->current.type == TOK_NAMED_VAR) ? lex->current.str_length : 0;
+        char name[32] = "";
+        
+        if (lex->current.type == TOK_VARIABLE) {
+            name[0] = (char)toupper(lex->current.value.var_name);
+            name[1] = '\0';
+            nlen = 1;
+        } else if (nv && nlen < 31) {
+            int k;
+            for (k = 0; k < nlen; k++) {
+                name[k] = (char)toupper(nv[k]);
+            }
+            name[nlen] = '\0';
+        }
+        
+        int type_lib = 0, type_func = 0, type_mod = 0, type_feat = 0, type_plug = 0;
+        int handled = 0;
+        
+        if (strcmp(name, "LIBRARY") == 0) { type_lib = 1; handled = 1; }
+        else if (strcmp(name, "FUNCTION") == 0) { type_func = 1; handled = 1; }
+        else if (strcmp(name, "MODULE") == 0) { type_mod = 1; handled = 1; }
+        else if (strcmp(name, "FEATURE") == 0) { type_feat = 1; handled = 1; }
+        else if (strcmp(name, "PLUGIN") == 0) { type_plug = 1; handled = 1; }
+        
+        if (handled) {
+            char path[MAX_LINE_LENGTH + 1];
+            lexer_next(lex); // consume subcommand (e.g. LIBRARY)
+            
+            if (lex->current.type != TOK_STRING) {
+                error_raise(ERR_WHAT, line_num);
+                return;
+            }
+            int plen = lex->current.str_length;
+            if (plen >= MAX_LINE_LENGTH) {
+                error_raise(ERR_WHAT, line_num);
+                return;
+            }
+            memcpy(path, lex->current.str_start, (size_t)plen);
+            path[plen] = '\0';
+            lexer_next(lex);
+            
+            if (security_check(SECOP_EXT_LOAD, line_num)) return;
+            
+            if (type_lib) {
+                extern int ext_lib_load(const char *path, void *rt);
+                if (ext_lib_load(path, rt) != 0) {
+                    error_raise(ERR_HOW, line_num);
+                }
+            } else if (type_func) {
+                extern int ext_func_load(const char *path, void *rt);
+                if (ext_func_load(path, rt) != 0) {
+                    error_raise(ERR_HOW, line_num);
+                }
+            } else if (type_mod) {
+                extern int module_load_dynamic(const char *path);
+                if (module_load_dynamic(path) != 0) {
+                    error_raise(ERR_HOW, line_num);
+                }
+            } else if (type_feat) {
+                extern int ext_feature_load(const char *spec_path, void *rt);
+                if (ext_feature_load(path, rt) != 0) {
+                    error_raise(ERR_HOW, line_num);
+                }
+            } else if (type_plug) {
+                extern int ext_plugin_load(const char *path, void *rt);
+                if (ext_plugin_load(path, rt) != 0) {
+                    error_raise(ERR_HOW, line_num);
+                }
+            }
+            return;
+        }
+    }
 
- if (lex->current.type == TOK_STRING) {
- // LOAD "filename"
- int flen = lex->current.str_length;
- if (flen >= MAX_LINE_LENGTH) {
-  error_raise(ERR_WHAT, line_num);
-  return;
- }
- memcpy(filename, lex->current.str_start,
-  (size_t)flen);
- filename[flen] = '\0';
- lexer_next(lex);
+    char filename[MAX_LINE_LENGTH + 1];
 
- // Auto-append .BAS if no extension
- pi_ensure_bas_ext(filename, flen,
-  MAX_LINE_LENGTH);
- } else {
-  // Bare LOAD - try common startup filenames.
- static const char *try_names[] = {
-  "MENU.BAS", "HELLO.BAS", "RUNME.BAS",
-  "MAIN.BAS", "AUTORUN.BAS", NULL
- };
- int found = 0;
- int ti;
- for (ti = 0; try_names[ti] != NULL; ti++) {
-  FILE *fp = fopen(try_names[ti], "r");
-  if (fp != NULL) {
-  fclose(fp);
-  strcpy(filename, try_names[ti]);
-  found = 1;
-  break;
-  }
- }
- if (!found) {
-  printf("No program file found.\n");
-  return;
- }
- printf("Loading %s\n", filename);
- }
+    if (lex->current.type == TOK_STRING) {
+        // LOAD "filename"
+        int flen = lex->current.str_length;
+        if (flen >= MAX_LINE_LENGTH) {
+            error_raise(ERR_WHAT, line_num);
+            return;
+        }
+        memcpy(filename, lex->current.str_start, (size_t)flen);
+        filename[flen] = '\0';
+        lexer_next(lex);
 
- // LOAD clears the current program first
- program_clear(&rt->memory->program);
- runtime_reset(rt);
+        // Auto-append .BAS if no extension
+        pi_ensure_bas_ext(filename, flen, MAX_LINE_LENGTH);
+    } else {
+        // Bare LOAD - try common startup filenames.
+        static const char *try_names[] = {
+            "MENU.BAS", "HELLO.BAS", "RUNME.BAS",
+            "MAIN.BAS", "AUTORUN.BAS", NULL
+        };
+        int found = 0;
+        int ti;
+        for (ti = 0; try_names[ti] != NULL; ti++) {
+            FILE *fp = fopen(try_names[ti], "r");
+            if (fp != NULL) {
+                fclose(fp);
+                strcpy(filename, try_names[ti]);
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            printf("No program file found.\n");
+            return;
+        }
+        printf("Loading %s\n", filename);
+    }
 
- fileio_load(&rt->memory->program, filename);
+    // LOAD clears the current program first
+    program_clear(&rt->memory->program);
+    runtime_reset(rt);
+
+    fileio_load(&rt->memory->program, filename);
 }
 
-
+void pi_parse_unload_cmd(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    (void)rt;
+    if (lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_VARIABLE) {
+        const char *nv = (lex->current.type == TOK_NAMED_VAR) ? lex->current.str_start : NULL;
+        int nlen = (lex->current.type == TOK_NAMED_VAR) ? lex->current.str_length : 0;
+        char name[32] = "";
+        
+        if (lex->current.type == TOK_VARIABLE) {
+            name[0] = (char)toupper(lex->current.value.var_name);
+            name[1] = '\0';
+            nlen = 1;
+        } else if (nv && nlen < 31) {
+            int k;
+            for (k = 0; k < nlen; k++) {
+                name[k] = (char)toupper(nv[k]);
+            }
+            name[nlen] = '\0';
+        }
+        
+        int type_lib = 0, type_func = 0, type_mod = 0, type_feat = 0, type_plug = 0;
+        int handled = 0;
+        
+        if (strcmp(name, "LIBRARY") == 0) { type_lib = 1; handled = 1; }
+        else if (strcmp(name, "FUNCTION") == 0) { type_func = 1; handled = 1; }
+        else if (strcmp(name, "MODULE") == 0) { type_mod = 1; handled = 1; }
+        else if (strcmp(name, "FEATURE") == 0) { type_feat = 1; handled = 1; }
+        else if (strcmp(name, "PLUGIN") == 0) { type_plug = 1; handled = 1; }
+        
+        if (handled) {
+            char target_name[MAX_LINE_LENGTH + 1];
+            lexer_next(lex); // consume subcommand (e.g. LIBRARY)
+            
+            if (lex->current.type != TOK_STRING) {
+                error_raise(ERR_WHAT, line_num);
+                return;
+            }
+            int tlen = lex->current.str_length;
+            if (tlen >= MAX_LINE_LENGTH) {
+                error_raise(ERR_WHAT, line_num);
+                return;
+            }
+            memcpy(target_name, lex->current.str_start, (size_t)tlen);
+            target_name[tlen] = '\0';
+            lexer_next(lex);
+            
+            if (security_check(SECOP_EXT_LOAD, line_num)) return;
+            
+            if (type_lib) {
+                extern int ext_lib_unload(const char *name);
+                if (ext_lib_unload(target_name) != 0) {
+                    error_raise(ERR_HOW, line_num);
+                }
+            } else if (type_func) {
+                extern int ext_func_unload(const char *name);
+                if (ext_func_unload(target_name) != 0) {
+                    error_raise(ERR_HOW, line_num);
+                }
+            } else if (type_mod) {
+                extern int module_deactivate(const char *name);
+                if (module_deactivate(target_name) != 0) {
+                    error_raise(ERR_HOW, line_num);
+                }
+            } else if (type_feat) {
+                extern int ext_feature_unload(const char *name);
+                if (ext_feature_unload(target_name) != 0) {
+                    error_raise(ERR_HOW, line_num);
+                }
+            } else if (type_plug) {
+                extern int ext_plugin_unload(const char *name);
+                if (ext_plugin_unload(target_name) != 0) {
+                    error_raise(ERR_HOW, line_num);
+                }
+            }
+            return;
+        }
+    }
+    error_raise(ERR_WHAT, line_num);
+}

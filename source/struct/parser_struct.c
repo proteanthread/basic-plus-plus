@@ -1295,9 +1295,50 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
 
  sd = runtime_find_sub(rt, nm, nlen);
  if (sd == NULL) {
- error_raise(ERR_HOW, line_num);
- return;
- }
+      extern int lib_space_try_call(const char *name, int name_len,
+                                    BValue *args, int argc,
+                                    BValue *result, void *rt);
+      BValue args[8];
+      int argc = 0;
+      lexer_next(lex); // consume name
+
+      if (lex->current.type == TOK_LPAREN) {
+          lexer_next(lex); // consume (
+          while (lex->current.type != TOK_RPAREN &&
+                 lex->current.type != TOK_EOF && argc < 8) {
+              if (argc > 0) {
+                  if (lex->current.type != TOK_COMMA) break;
+                  lexer_next(lex);
+              }
+              args[argc] = parse_expression_bval(lex, rt, line_num);
+              if (error_occurred()) return;
+              argc++;
+          }
+          if (lex->current.type == TOK_RPAREN)
+              lexer_next(lex); // consume )
+      } else {
+          // Args without parens
+          while (lex->current.type != TOK_EOF &&
+                 lex->current.type != TOK_CR &&
+                 lex->current.type != TOK_COLON && argc < 8) {
+              if (argc > 0) {
+                  if (lex->current.type != TOK_COMMA) break;
+                  lexer_next(lex);
+              }
+              args[argc] = parse_expression_bval(lex, rt, line_num);
+              if (error_occurred()) return;
+              argc++;
+          }
+      }
+      
+      if (lib_space_try_call(nm, nlen, args, argc, NULL, rt)) {
+          lexer_skip_to_end(lex);
+          return;
+      }
+
+      error_raise(ERR_HOW, line_num);
+      return;
+  }
 
  lexer_next(lex); // consume name
 

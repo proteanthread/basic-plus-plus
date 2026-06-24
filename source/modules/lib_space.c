@@ -778,7 +778,7 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
             parser_execute_line(&lex, rt, vline);
 
             if (error_occurred()) {
-                // Clear and continue a" don't stop on errors
+                // Clear and continue — don't stop on errors
                  // from flow control constructs 
                 error_clear();
             }

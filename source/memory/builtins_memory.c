@@ -58,7 +58,7 @@ BValue builtin_peek(BValue *args, int argc, void *rt)
 
  addr = bval_to_int(&args[0]);
  if (g_gw_mem != NULL) {
-     return bval_int((long)gw_mem_peek(g_gw_mem, (uint16_t)addr));
+     return bval_int((long)gw_mem_peek(g_gw_mem, (uint32_t)addr));
  }
  offset = state->mem_seg_base + (int)addr;
  if (offset < 0 || offset >= MAX_MEM_SEGMENT)

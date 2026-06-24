@@ -41,14 +41,17 @@ void gw_mem_destroy(GW_Memory *mem);
 
 // Segment Management
 void gw_mem_def_seg(GW_Memory *mem, uint16_t segment);
-uint32_t gw_mem_resolve(GW_Memory *mem, uint16_t offset); // returns segment*16 + offset
+uint32_t gw_mem_resolve(GW_Memory *mem, uint32_t offset); // returns segment*16 + offset
 
 // Direct Operations
-uint8_t gw_mem_peek(GW_Memory *mem, uint16_t offset);
-void gw_mem_poke(GW_Memory *mem, uint16_t offset, uint8_t val);
+uint8_t gw_mem_peek(GW_Memory *mem, uint32_t offset);
+void gw_mem_poke(GW_Memory *mem, uint32_t offset, uint8_t val);
 
 // Register address range hooks
 void gw_mem_register_read_hook(GW_Memory *mem, uint32_t start, uint32_t end, GW_MemReadHook hook, void *ctx);
 void gw_mem_register_write_hook(GW_Memory *mem, uint32_t start, uint32_t end, GW_MemWriteHook hook, void *ctx);
+
+// Reset all hooks
+void gw_mem_clear_hooks(GW_Memory *mem);
 
 #endif // GW_MEMORY_H

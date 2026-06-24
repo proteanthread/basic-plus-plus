@@ -135,6 +135,7 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "NEW", KW_NEW, DFLAG_ALL },
  { "SAVE", KW_SAVE, DFLAG_ALL },
  { "LOAD", KW_LOAD, DFLAG_ALL },
+ { "UNLOAD", KW_UNLOAD, DFLAG_ALL },
  { "STOP", KW_STOP, DFLAG_ALL },
  { "THEN", KW_THEN, DFLAG_ALL },
  { "FOR", KW_FOR, DFLAG_ALL },
@@ -520,6 +521,10 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "NJSONQUERY", KW_NJSONQUERY, DFLAG_ALL },
  { "NINFO", KW_NINFO, DFLAG_ALL },
  { "CONSOLE", KW_CONSOLE, DFLAG_ALL },
+ { "MOUNT", KW_MOUNT, DFLAG_ALL },
+ { "UMOUNT", KW_UMOUNT, DFLAG_ALL },
+ { "MOUNTS", KW_MOUNTS, DFLAG_ALL },
+ { "VPATH", KW_VPATH, DFLAG_ALL },
  { NULL, 0, 0 } // sentinel
 };
 
@@ -848,7 +853,9 @@ int lexer_keyword_needs_dollar(KeywordId kw)
     kw == KW_MCASE ||
     kw == KW_ICASE ||
     kw == KW_ONKEY ||
-    kw == KW_HASH);
+    kw == KW_VPATH_FUNC ||
+    kw == KW_HASH ||
+    kw == KW_ERR_STR);
 }
 
  // lexer_find_alias_by_name - Given an alias name,
@@ -1491,16 +1498,17 @@ void lexer_next(Lexer *lex)
  }
 
  // ----- Identifiers and keywords -----
- if (isalpha((unsigned char)c)) {
- int start = lex->pos;
- int len;
- KeywordId kw;
+ if (isalpha((unsigned char)c) || c == '_') {
+  int start = lex->pos;
+  int len;
+  KeywordId kw;
 
- while (lex->pos < lex->length &&
- (isalpha((unsigned char)lex->source[lex->pos]) ||
- isdigit((unsigned char)lex->source[lex->pos]))) {
- lex->pos++;
- }
+  while (lex->pos < lex->length &&
+  (isalpha((unsigned char)lex->source[lex->pos]) ||
+  isdigit((unsigned char)lex->source[lex->pos]) ||
+  lex->source[lex->pos] == '_')) {
+  lex->pos++;
+  }
  len = lex->pos - start;
 
   // If the identifier doesn't match a keyword, and it
@@ -1562,17 +1570,18 @@ void lexer_next(Lexer *lex)
   kw == KW_TIME_FUNC || kw == KW_INKEY ||
   kw == KW_ENVIRON || kw == KW_MKD_FUNC ||
   kw == KW_MKI_FUNC || kw == KW_MKS_FUNC ||
-  kw == KW_SHELL || kw == KW_BIN_FUNC ||
-  kw == KW_INPUT || kw == KW_IOCTL ||
-  kw == KW_VARPTR || kw == KW_DIALECT ||
-  kw == KW_MEMMAP || kw == KW_ALIAS ||
+   kw == KW_SHELL || kw == KW_BIN_FUNC ||
+   kw == KW_INPUT || kw == KW_IOCTL ||
+   kw == KW_VARPTR || kw == KW_ERR_VAR || kw == KW_DIALECT ||
+   kw == KW_MEMMAP || kw == KW_ALIAS ||
   kw == KW_CLOCK_FUNC || kw == KW_ALARM_FUNC ||
   kw == KW_CWD_FUNC || kw == KW_SIOREAD ||
   kw == KW_SIOREADLN || kw == KW_BIOREAD ||
   kw == KW_NJSONQUERY || kw == KW_NINFO ||
   kw == KW_REPLACE || kw == KW_REVERSE ||
   kw == KW_MCASE || kw == KW_ICASE ||
-  kw == KW_ONKEY || kw == KW_HASH)) {
+  kw == KW_ONKEY || kw == KW_VPATH || kw == KW_VPATH_FUNC ||
+  kw == KW_HASH)) {
    // Not a string function -- this is a variable name
    lex->pos++; // consume $
    lex->current.type = TOK_NAMED_VAR;
@@ -1609,11 +1618,12 @@ void lexer_next(Lexer *lex)
  kw == KW_ENVIRON ||
  kw == KW_MKD_FUNC ||
  kw == KW_MKI_FUNC ||
- kw == KW_MKS_FUNC ||
- kw == KW_SHELL ||
- kw == KW_BIN_FUNC ||
- kw == KW_CLOCK_FUNC ||
- kw == KW_ALARM_FUNC ||
+  kw == KW_MKS_FUNC ||
+  kw == KW_SHELL ||
+  kw == KW_BIN_FUNC ||
+  kw == KW_ERR_VAR ||
+  kw == KW_CLOCK_FUNC ||
+  kw == KW_ALARM_FUNC ||
  kw == KW_CWD_FUNC ||
  kw == KW_SIOREAD ||
  kw == KW_SIOREADLN ||
@@ -1625,6 +1635,8 @@ void lexer_next(Lexer *lex)
  kw == KW_MCASE ||
  kw == KW_ICASE ||
  kw == KW_ONKEY ||
+ kw == KW_VPATH ||
+ kw == KW_VPATH_FUNC ||
  kw == KW_HASH) {
  lex->pos++; // consume '$'
  }
@@ -1664,7 +1676,18 @@ void lexer_next(Lexer *lex)
  kw = KW_ALIAS_FUNC;
  lex->current.value.keyword = kw;
  }
+ // VPATH$ -> KW_VPATH_FUNC
+ if (kw == KW_VPATH) {
+ lex->pos++;
+ kw = KW_VPATH_FUNC;
+ lex->current.value.keyword = kw;
  }
+  // ERR$ -> KW_ERR_STR
+  if (kw == KW_ERR_VAR) {
+  kw = KW_ERR_STR;
+  lex->current.value.keyword = kw;
+  }
+  }
  } else if (len == 1) {
  // Single letter that's not a keyword.
  // In extended-vars mode, check if digits follow (e.g., X1).
@@ -1926,9 +1949,10 @@ void lexer_next(Lexer *lex)
  break;
  }
 
- lex->current.value.num_value = 0;
- lex->current.str_start = NULL;
- lex->current.str_length = 0;
+  lex->current.value.num_value = 0;
+  lex->current.str_start = NULL;
+  lex->current.str_length = 0;
+
 }
 
  // lexer_peek_type - Return the type of the current token.
