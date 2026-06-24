@@ -1,7 +1,7 @@
 [![GitGem](https://gitgem.org/api/badge/github/proteanthread/basic-plus-plus.svg)](https://gitgem.org/github/proteanthread/basic-plus-plus)
 
 # BASIC++ (protoBASIC) Interpreter
-**Version 4.0.1 (Stable)**
+**Version 4.1.1 (Stable)**
 
 
 ---
@@ -581,7 +581,7 @@ A comprehensive documentation suite of 36 reference manuals and tutorials is inc
 ## Section 13: Example Session
 
 ```
-BASIC++ 4.0.1
+BASIC++ 4.1.1
 @COPYLEFT ALL WRONGS RESERVED
 Jun  8 2026
 

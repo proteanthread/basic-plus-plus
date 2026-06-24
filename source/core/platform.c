@@ -296,7 +296,7 @@ int platform_word_size(void)
 //   Platform: Windows x64 (WIN)
 //   Compiler: MSVC 19.50
 //   Word size: 64-bit (ptr=8 int=4 long=4)
-//   BASIC++ 4.0.1
+//   BASIC++ 4.1.1
 //   Security: STANDARD
 //   Modules: 6 registered
 //

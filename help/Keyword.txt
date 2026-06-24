@@ -1,6 +1,6 @@
 KEYWORD: MODIFYING BUILT-IN KEYWORD BEHAVIOR
 ===============================================
-Version 4.0.1
+Version 4.1.1
 
 The KEYWORD statement lets you change HOW a built-in keyword works
 by setting named properties.  Unlike SCOPE (which controls access

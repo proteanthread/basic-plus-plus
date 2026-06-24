@@ -1,6 +1,6 @@
 # Graphics and Sound in BASIC++
 
-**Version 4.0.1**
+**Version 4.1.1**
 
 
 ---

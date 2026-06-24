@@ -1,6 +1,6 @@
 THE BASIC++ VIRTUAL NETWORK
 =============================
-Version 4.0.1
+Version 4.1.1
 
 This manual explains how BASIC++ programs access networks —
 local area networks, the Internet, and every protocol from

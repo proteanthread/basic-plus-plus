@@ -1,7 +1,7 @@
 BASIC++ CHANGELOG
 =================
 
-4.0.1  (2026-06-18) -- Documentation & Code Quality
+4.1.1  (2026-06-18) -- Documentation & Code Quality
 --------------------------------------
   DOCUMENTATION:
   - Complete source code documentation overhaul (176 files)

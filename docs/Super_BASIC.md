@@ -1,6 +1,6 @@
 # SUPER BASIC (Tymshare SDS-940) Dialect Reference
 
-**Version 4.0.1**
+**Version 4.1.1**
 
 ---
 

@@ -1,6 +1,6 @@
 SCOPE: KEYWORD ACCESS CONTROL AND BEHAVIOR HOOKS
 ==================================================
-Version 4.0.1
+Version 4.1.1
 
 SCOPE is a metaprogramming statement that controls how built-in
 keywords behave at runtime.  With SCOPE you can:

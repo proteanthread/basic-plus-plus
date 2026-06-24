@@ -1,6 +1,6 @@
 THE BASIC++ SCREEN AND CONSOLE SYSTEM
 ========================================
-Version 4.0.1
+Version 4.1.1
 
 This manual explains how BASIC++ programs control the
 text-mode terminal — cursor positioning, colors, screen

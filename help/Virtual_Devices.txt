@@ -1,6 +1,6 @@
 VIRTUAL DEVICES IN BASIC++
 ==========================
-Version 4.0.1
+Version 4.1.1
 
 The Virtual Device (VDev) system is BASIC++'s hardware
 abstraction layer.  All I/O flows through VDevs, enabling
