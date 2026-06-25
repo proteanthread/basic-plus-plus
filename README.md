@@ -11,6 +11,8 @@ I don't care what you do with my code, just don't take my code and sell it and/o
 
 ## Abstract
 
+Build your own dialect.
+
 A portable, multi-dialect BASIC interpreter written in 115 C17 source files and 60 header files (~90,000 lines of code). Organized into 28 domain subdirectories with a modular, layered architecture. Zero external dependencies -- compiles on any platform with a standards-compliant C compiler.
 
 BASIC++ ships with 16 historically accurate dialect profiles, a runtime dialect-switching engine, a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 70 documentation files.
