@@ -1,9 +1,26 @@
-5 REM === VIC FORTH for BASIC++ ===
+5 REM === VIC FORTH MINI for BASIC++ ===
 10 REM =============================================
-11 REM  VIC FORTH -- A Forth Interpreter
-12 REM  Written in BASIC++ (GWBS dialect)
+11 REM  VIC FORTH (mini) -- A Forth Interpreter Stub
+12 REM  Written in BASIC++ v4.4 (GWBS dialect)
 13 REM  Inspired by HES VIC Forth / Fig-Forth
 14 REM =============================================
+15 REM
+16 REM  WHAT CAN BE CHANGED:
+17 REM   - Stack sizes, dictionary sizes
+18 REM   - This is a skeleton; add main loop below
+19 REM
+20 REM  WHAT CANNOT BE CHANGED:
+21 REM   - DW$() must be DIMmed for dictionary names
+22 REM   - Variable naming conventions (SP, RP, DP)
+23 REM
+24 REM  WHAT TO EXPECT:
+25 REM   - Data structure initialization only
+26 REM   - No main loop yet (stub/skeleton)
+27 REM
+28 REM  TROUBLESHOOTING:
+29 REM   - WHAT? on DW$: ensure DIM DW$(256) exists
+30 REM   - Incomplete: add main loop for REPL
+31 REM =============================================
 15 REM
 16 REM  Implements a Fig-Forth-style interpreter with:
 17 REM    - Data stack and return stack
@@ -32,6 +49,7 @@
 130 REM --- Dictionary ---
 131 REM  DW$(i)=name DL(i)=link DT(i)=type DA(i)=body
 132 REM  Type: 0=prim 1=colon 2=var 3=const 4=immed
+133 DIM DW$(256)
 139 DIM DL(256)
 140 DIM DT(256)
 141 DIM DA(256)

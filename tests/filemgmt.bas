@@ -53,14 +53,14 @@
 400 REM === FILE EXISTENCE ===
 410 REM --- EXISTS() returns 1 if file exists, 0 if not ---
 420 REM  First test: known file should exist.
-430 IF EXISTS("tests\filemgmt.bas") = 1 THEN P = P + 1 : PRINT "PASS: EXISTS = 1" ELSE F = F + 1 : PRINT "FAIL: EXISTS"
+430 IF EXISTS("tests/filemgmt.bas") = 1 THEN P = P + 1 : PRINT "PASS: EXISTS = 1" ELSE F = F + 1 : PRINT "FAIL: EXISTS"
 440 REM  Second test: nonsense filename should not exist.
 450 IF EXISTS("nonexistent_xyz.abc") = 0 THEN P = P + 1 : PRINT "PASS: EXISTS = 0" ELSE F = F + 1 : PRINT "FAIL: EXISTS missing"
 460 REM
 500 REM === FILESIZE ===
 510 REM --- FILESIZE() returns file size in bytes ---
 520 REM  Should return a positive number for an existing file.
-530 S = FILESIZE("tests\filemgmt.bas")
+530 S = FILESIZE("tests/filemgmt.bas")
 540 IF S > 0 THEN P = P + 1 : PRINT "PASS: FILESIZE = "; S ELSE F = F + 1 : PRINT "FAIL: FILESIZE"
 550 REM
 600 REM === NESTED DIRECTORIES ===

@@ -131,6 +131,7 @@ BValue builtin_csrlin(BValue *args, int argc, void *rt);
 
 // --- Memory (builtins_memory.c) ---
 BValue builtin_peek(BValue *args, int argc, void *rt);
+BValue builtin_peekb(BValue *args, int argc, void *rt);
 BValue builtin_size(BValue *args, int argc, void *rt);
 
 // --- System / Environment (builtins_system.c) ---

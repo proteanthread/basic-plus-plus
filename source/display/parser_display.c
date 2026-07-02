@@ -42,6 +42,7 @@
  // ---
 
 #include "parser_internal.h"
+#include "console.h"
 #include "gw_sdl2.h"
 
 struct GW_Memory;
@@ -50,11 +51,10 @@ extern struct GW_Memory *g_gw_mem;
  // pi_parse_cls - Handle CLS command.
 void pi_parse_cls(Lexer *lex, RuntimeState *rt, int line_num)
 {
- // CLS - Clear screen.
- //
- // Routes through the virtual console device's cls
- // operation. If the device doesn't support cls,
- // this is a no-op.
+ (void)lex;
+ (void)line_num;
+ rt->cursor_row = 1;
+ rt->cursor_col = 1;
  vdev_cls(rt->dev_con);
  return;
 }

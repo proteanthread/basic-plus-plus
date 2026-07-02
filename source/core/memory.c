@@ -436,6 +436,10 @@
 #include <string.h>
 #include "memory.h"
 #include "errors.h"
+#include "task.h"
+#include "../console.h"
+
+#include "platform.h"
 
 // -----------------------------------------------------------------
 // Pool Management -- Internal Helpers
@@ -535,6 +539,59 @@ static void free_pool(MemoryPool *pool)
 //
 int mem_init(MemorySystem *mem)
 {
+    long var_size;
+    long scr_size;
+    long gfx_size = 0;
+    int max_lines;
+
+#ifdef BPP_LITE_BUILD
+    {
+        long long avail = platform_get_available_ram();
+        long long budget = avail / 100; // exactly 1%
+        if (budget < 262144L) { // 256 KB safety guard
+            budget = 262144L;
+        }
+
+        var_size = (long)(budget * 20L / 100L); // 20%
+        scr_size = (long)(budget * 5L / 100L);   // 5%
+        gfx_size = 0;
+        
+        long long prg_budget = budget * 50L / 100L;
+        max_lines = (int)(prg_budget / sizeof(ProgramLine));
+        if (max_lines < 128) max_lines = 128;
+        if (max_lines > MAX_PROGRAM_LINES) max_lines = MAX_PROGRAM_LINES;
+    }
+#else
+    {
+        extern int g_cli_lite;
+        long long avail = platform_get_available_ram();
+        long long budget;
+        if (g_cli_lite) {
+            budget = avail * 5L / 100L; // exactly 5% of available RAM
+        } else {
+            budget = avail * 10L / 100L; // exactly 10% of available RAM
+        }
+        long long min_budget = avail / 100L;  // 1% min limit
+        if (budget < min_budget) {
+            budget = min_budget;
+        }
+        // Standard floor of 5 MB (or 2.5 MB under --lite)
+        long long floor_limit = g_cli_lite ? 2621440L : 5242880L;
+        if (budget < floor_limit) {
+            budget = floor_limit;
+        }
+
+        var_size = (long)(budget * 15L / 100L); // 15%
+        scr_size = (long)(budget * 5L / 100L);   // 5%
+        gfx_size = (long)(budget * 15L / 100L); // 15%
+        
+        long long prg_budget = budget * 50L / 100L;
+        max_lines = (int)(prg_budget / sizeof(ProgramLine));
+        if (max_lines < 128) max_lines = 128;
+        if (max_lines > MAX_PROGRAM_LINES) max_lines = MAX_PROGRAM_LINES;
+    }
+#endif
+
     // Initialize all fields to safe defaults before any malloc.
     // This ensures mem_shutdown() is safe even if we fail early.
     mem->variable.base = NULL;
@@ -543,20 +600,34 @@ int mem_init(MemorySystem *mem)
     mem->scratch.base = NULL;
     mem->scratch.size = 0;
     mem->scratch.used = 0;
+    mem->graphics.base = NULL;
+    mem->graphics.size = 0;
+    mem->graphics.used = 0;
     mem->program.lines = NULL;
     mem->program.count = 0;
     mem->program.capacity = 0;
+    mem->program.bulk_buffer = NULL;
+    mem->program.bulk_size = 0;
 
     // Allocate variable pool
-    if (init_pool(&mem->variable, VARIABLE_MEMORY_SIZE) != 0) {
+    if (init_pool(&mem->variable, var_size) != 0) {
         return -1;
     }
 
     // Allocate scratch pool
-    if (init_pool(&mem->scratch, SCRATCH_MEMORY_SIZE) != 0) {
+    if (init_pool(&mem->scratch, scr_size) != 0) {
         free_pool(&mem->variable);
         return -1;
     }
+
+#ifdef BPP_SUPPORT_GRAPHICS
+    // Allocate graphics pool (15% of budget)
+    if (init_pool(&mem->graphics, gfx_size) != 0) {
+        free_pool(&mem->scratch);
+        free_pool(&mem->variable);
+        return -1;
+    }
+#endif
 
     // Allocate program line array.
     //
@@ -565,21 +636,28 @@ int mem_init(MemorySystem *mem)
     // relatively large (~260 bytes each) and the array needs
     // to be contiguous for memmove operations during insert/delete.
     mem->program.lines = (ProgramLine *)malloc(
-        (size_t)MAX_PROGRAM_LINES * sizeof(ProgramLine)
+        (size_t)max_lines * sizeof(ProgramLine)
     );
     if (mem->program.lines == NULL) {
+#ifdef BPP_SUPPORT_GRAPHICS
+        free_pool(&mem->graphics);
+#endif
         free_pool(&mem->scratch);
         free_pool(&mem->variable);
         return -1;
     }
     mem->program.count = 0;
-    mem->program.capacity = MAX_PROGRAM_LINES;
+    mem->program.capacity = max_lines;
+    mem->program.bulk_buffer = NULL;
+    mem->program.bulk_size = 0;
 
     // Zero the line array for clean initial state.
     // All line_number fields start at 0 and all text buffers
     // start as empty strings.
     memset(mem->program.lines, 0,
-        (size_t)MAX_PROGRAM_LINES * sizeof(ProgramLine));
+        (size_t)max_lines * sizeof(ProgramLine));
+
+    rambank_init(mem);
 
     return 0;
 }
@@ -596,13 +674,34 @@ void mem_shutdown(MemorySystem *mem)
 {
     free_pool(&mem->variable);
     free_pool(&mem->scratch);
+#ifdef BPP_SUPPORT_GRAPHICS
+    free_pool(&mem->graphics);
+#endif
 
     if (mem->program.lines != NULL) {
+        int i;
+        for (i = 0; i < mem->program.count; i++) {
+            char *txt = mem->program.lines[i].text;
+            if (txt != NULL) {
+                if (mem->program.bulk_buffer == NULL ||
+                    txt < mem->program.bulk_buffer ||
+                    txt >= mem->program.bulk_buffer + mem->program.bulk_size) {
+                    free(txt);
+                }
+            }
+        }
         free(mem->program.lines);
         mem->program.lines = NULL;
     }
+    if (mem->program.bulk_buffer != NULL) {
+        free(mem->program.bulk_buffer);
+        mem->program.bulk_buffer = NULL;
+    }
+    mem->program.bulk_size = 0;
     mem->program.count = 0;
     mem->program.capacity = 0;
+
+    rambank_shutdown(mem);
 }
 
 // mem_pool_alloc - Bump-allocate bytes from a pool.
@@ -638,17 +737,21 @@ void mem_shutdown(MemorySystem *mem)
 void *mem_pool_alloc(MemoryPool *pool, long nbytes)
 {
     char *ptr;
+    long aligned_nbytes;
 
     if (nbytes <= 0) {
         return NULL;
     }
 
-    if (pool->used + nbytes > pool->size) {
+    // Align to 8-byte boundary
+    aligned_nbytes = (nbytes + 7L) & ~7L;
+
+    if (pool->used + aligned_nbytes > pool->size) {
         return NULL;  // insufficient space
     }
 
     ptr = pool->base + pool->used;
-    pool->used += nbytes;
+    pool->used += aligned_nbytes;
     return (void *)ptr;
 }
 
@@ -787,6 +890,7 @@ int program_insert(ProgramStore *store, int line_number,
 {
     int pos;
     int i;
+    char *new_str;
 
     pos = find_insert_pos(store, line_number);
 
@@ -794,8 +898,72 @@ int program_insert(ProgramStore *store, int line_number,
     if (pos < store->count &&
         store->lines[pos].line_number == line_number) {
         // Replace existing line text
-        strncpy(store->lines[pos].text, full_text, MAX_LINE_LENGTH);
-        store->lines[pos].text[MAX_LINE_LENGTH] = '\0';
+        char *old_txt = store->lines[pos].text;
+        new_str = (char *)malloc(strlen(full_text) + 1);
+        if (!new_str) {
+            error_raise(ERR_SORRY, 0);
+            return -1;
+        }
+        strcpy(new_str, full_text);
+
+        if (old_txt != NULL) {
+            if (store->bulk_buffer == NULL ||
+                old_txt < store->bulk_buffer ||
+                old_txt >= store->bulk_buffer + store->bulk_size) {
+                free(old_txt);
+            }
+        }
+        store->lines[pos].text = new_str;
+        return 0;
+    }
+
+    // Inserting a new line -- check capacity
+    if (store->count >= store->capacity) {
+        error_raise(ERR_SORRY, 0);
+        return -1;
+    }
+
+    new_str = (char *)malloc(strlen(full_text) + 1);
+    if (!new_str) {
+        error_raise(ERR_SORRY, 0);
+        return -1;
+    }
+    strcpy(new_str, full_text);
+
+    // Shift lines from pos..count-1 up by one position.
+    // We iterate backwards to avoid overwriting data.
+    for (i = store->count; i > pos; i--) {
+        store->lines[i] = store->lines[i - 1];
+    }
+
+    // Insert the new line at the correct sorted position
+    store->lines[pos].line_number = line_number;
+    store->lines[pos].text = new_str;
+    store->count++;
+
+    return 0;
+}
+
+int program_insert_pointer(ProgramStore *store, int line_number,
+    char *text_ptr)
+{
+    int pos;
+    int i;
+
+    pos = find_insert_pos(store, line_number);
+
+    // Check if this is a replacement of an existing line
+    if (pos < store->count &&
+        store->lines[pos].line_number == line_number) {
+        char *old_txt = store->lines[pos].text;
+        if (old_txt != NULL) {
+            if (store->bulk_buffer == NULL ||
+                old_txt < store->bulk_buffer ||
+                old_txt >= store->bulk_buffer + store->bulk_size) {
+                free(old_txt);
+            }
+        }
+        store->lines[pos].text = text_ptr;
         return 0;
     }
 
@@ -806,15 +974,13 @@ int program_insert(ProgramStore *store, int line_number,
     }
 
     // Shift lines from pos..count-1 up by one position.
-    // We iterate backwards to avoid overwriting data.
     for (i = store->count; i > pos; i--) {
         store->lines[i] = store->lines[i - 1];
     }
 
-    // Insert the new line at the correct sorted position
+    // Insert the new line
     store->lines[pos].line_number = line_number;
-    strncpy(store->lines[pos].text, full_text, MAX_LINE_LENGTH);
-    store->lines[pos].text[MAX_LINE_LENGTH] = '\0';
+    store->lines[pos].text = text_ptr;
     store->count++;
 
     return 0;
@@ -845,6 +1011,15 @@ int program_delete(ProgramStore *store, int line_number)
     if (pos >= store->count ||
         store->lines[pos].line_number != line_number) {
         return -1;  // line not found (silent, not an error)
+    }
+
+    char *txt = store->lines[pos].text;
+    if (txt != NULL) {
+        if (store->bulk_buffer == NULL ||
+            txt < store->bulk_buffer ||
+            txt >= store->bulk_buffer + store->bulk_size) {
+            free(txt);
+        }
     }
 
     // Shift lines down to fill the gap
@@ -927,6 +1102,23 @@ int program_find_next(ProgramStore *store, int line_number)
 //
 void program_clear(ProgramStore *store)
 {
+    int i;
+    for (i = 0; i < store->count; i++) {
+        char *txt = store->lines[i].text;
+        if (txt != NULL) {
+            if (store->bulk_buffer == NULL ||
+                txt < store->bulk_buffer ||
+                txt >= store->bulk_buffer + store->bulk_size) {
+                free(txt);
+            }
+            store->lines[i].text = NULL;
+        }
+    }
+    if (store->bulk_buffer != NULL) {
+        free(store->bulk_buffer);
+        store->bulk_buffer = NULL;
+    }
+    store->bulk_size = 0;
     store->count = 0;
 }
 
@@ -965,3 +1157,342 @@ void program_list(ProgramStore *store, int from, int to)
         printf("%s\n", store->lines[i].text);
     }
 }
+
+#include "security.h"
+
+// --- RAMBANK Paging & Encryption Helper ---
+static void rambank_crypt(char *buffer, long size, int bank_id) {
+    // A3: hybrid encryption - only if security level is standard (2) or higher
+    if (security_get_level() >= SEC_STANDARD) {
+        unsigned char key = (unsigned char)(0x5A ^ bank_id);
+        for (long i = 0; i < size; i++) {
+            buffer[i] ^= key;
+        }
+    }
+}
+
+// Get file path for a bank's swap file
+static void rambank_get_swap_path(int bank_id, char *path_out) {
+    sprintf(path_out, "bank_swap_%d.tmp", bank_id);
+}
+
+// Evict Least Recently Used (LRU) resident bank to swap file
+static void rambank_evict_lru(MemorySystem *mem) {
+    int victim = -1;
+    long oldest_access = -1;
+
+    for (int i = 1; i < MAX_RAMBANKS; i++) {
+        if (mem->banks[i].resident && mem->banks[i].base != NULL) {
+            if (oldest_access == -1 || mem->banks[i].last_access < oldest_access) {
+                oldest_access = mem->banks[i].last_access;
+                victim = i;
+            }
+        }
+    }
+
+    if (victim != -1) {
+        RamBank *b = &mem->banks[victim];
+        // If modified, write to disk
+        if (b->dirty) {
+            char path[260];
+            rambank_get_swap_path(victim, path);
+            FILE *f = fopen(path, "wb");
+            if (f != NULL) {
+                // Crypt if security warrants it
+                rambank_crypt(b->base, RAMBANK_SIZE, victim);
+                fwrite(b->base, 1, RAMBANK_SIZE, f);
+                fclose(f);
+                // Uncrypt it back in case we keep it or read it again
+                rambank_crypt(b->base, RAMBANK_SIZE, victim);
+                b->dirty = 0;
+            }
+        }
+        // Free resident memory of victim
+        free(b->base);
+        b->base = NULL;
+        b->resident = 0;
+    }
+}
+
+// Bring bank into resident memory (page fault handler)
+void rambank_ensure_resident(MemorySystem *mem, int bank_id) {
+    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) return;
+    RamBank *b = &mem->banks[bank_id];
+    
+    // Increment global access counter
+    mem->access_counter++;
+    b->last_access = mem->access_counter;
+
+    if (b->resident && b->base != NULL) {
+        return; // Already resident
+    }
+
+    // Count currently resident banks
+    int resident_count = 0;
+    for (int i = 1; i < MAX_RAMBANKS; i++) {
+        if (mem->banks[i].resident) {
+            resident_count++;
+        }
+    }
+
+    // Evict if we exceed limit
+    if (resident_count >= MAX_RESIDENT_BANKS) {
+        rambank_evict_lru(mem);
+    }
+
+    // Allocate memory for bank
+    b->base = (char *)malloc(RAMBANK_SIZE);
+    if (b->base == NULL) {
+        // Safe fallback - VM out of memory
+        error_raise(ERR_SORRY, 0);
+        return;
+    }
+    memset(b->base, 0, RAMBANK_SIZE);
+    b->resident = 1;
+    b->dirty = 0;
+
+    // Check if swap file exists, read from it
+    char path[260];
+    rambank_get_swap_path(bank_id, path);
+    FILE *f = fopen(path, "rb");
+    if (f != NULL) {
+        size_t read_bytes = fread(b->base, 1, RAMBANK_SIZE, f);
+        fclose(f);
+        if (read_bytes == RAMBANK_SIZE) {
+            // Decrypt buffer
+            rambank_crypt(b->base, RAMBANK_SIZE, bank_id);
+        }
+    }
+}
+
+void rambank_init(MemorySystem *mem) {
+    mem->access_counter = 0;
+    for (int i = 0; i < MAX_RAMBANKS; i++) {
+        mem->banks[i].base = NULL;
+        mem->banks[i].id = i;
+        mem->banks[i].resident = 0;
+        mem->banks[i].dirty = 0;
+        mem->banks[i].shared = 0;
+        mem->banks[i].last_access = 0;
+    }
+}
+
+void rambank_shutdown(MemorySystem *mem) {
+    for (int i = 0; i < MAX_RAMBANKS; i++) {
+        RamBank *b = &mem->banks[i];
+        if (b->base != NULL) {
+            free(b->base);
+            b->base = NULL;
+        }
+        b->resident = 0;
+        // Clean up swap file from disk (regression prevention / cleanup)
+        char path[260];
+        rambank_get_swap_path(i, path);
+        remove(path); // Silently try to delete
+    }
+}
+
+unsigned char rambank_peek(MemorySystem *mem, int bank_id, long offset, int line_num) {
+    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+        error_raise(ERR_HOW, line_num);
+        return 0;
+    }
+    if (offset < 0 || offset >= RAMBANK_SIZE) {
+        error_raise(ERR_HOW, line_num);
+        return 0;
+    }
+
+    MemorySystem *main_mem = task_get_main_mem();
+    int is_shared = (main_mem != NULL && main_mem->banks[bank_id].shared);
+
+    // Memory isolation check: Background task access validation
+    if (mem != main_mem) {
+        BasicTask *curr = task_get_current();
+        if (curr != NULL && curr->pid != 0) {
+            int allowed = (bank_id == curr->active_bank_id || is_shared);
+            if (!allowed) {
+                error_raise(ERR_HOW, line_num); // Memory Access Violation
+                return 0;
+            }
+        }
+    }
+
+    MemorySystem *target_mem = mem;
+    if (is_shared && main_mem != NULL) {
+        target_mem = main_mem;
+    }
+
+    if (is_shared) {
+        task_mutex_lock();
+    }
+    rambank_ensure_resident(target_mem, bank_id);
+    RamBank *b = &target_mem->banks[bank_id];
+    unsigned char ret = 0;
+    if (b->base != NULL) {
+        ret = (unsigned char)b->base[offset];
+    }
+    if (is_shared) {
+        task_mutex_unlock();
+    }
+    return ret;
+}
+
+void rambank_poke(MemorySystem *mem, int bank_id, long offset, unsigned char value, int line_num) {
+    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+    if (offset < 0 || offset >= RAMBANK_SIZE) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+
+    MemorySystem *main_mem = task_get_main_mem();
+    int is_shared = (main_mem != NULL && main_mem->banks[bank_id].shared);
+
+    // Memory isolation check: Background task access validation
+    if (mem != main_mem) {
+        BasicTask *curr = task_get_current();
+        if (curr != NULL && curr->pid != 0) {
+            int allowed = (bank_id == curr->active_bank_id || is_shared);
+            if (!allowed) {
+                error_raise(ERR_HOW, line_num); // Memory Access Violation
+                return;
+            }
+        }
+    }
+
+    MemorySystem *target_mem = mem;
+    if (is_shared && main_mem != NULL) {
+        target_mem = main_mem;
+    }
+
+    if (is_shared) {
+        task_mutex_lock();
+    }
+    rambank_ensure_resident(target_mem, bank_id);
+    RamBank *b = &target_mem->banks[bank_id];
+    if (b->base != NULL) {
+        b->base[offset] = (char)value;
+        b->dirty = 1;
+    }
+    if (is_shared) {
+        task_mutex_unlock();
+    }
+}
+
+long rambank_free_space(MemorySystem *mem, int bank_id) {
+    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+        return 0;
+    }
+    return RAMBANK_SIZE;
+}
+
+void rambank_set_shared(MemorySystem *mem, int bank_id, int shared) {
+    if (bank_id > 0 && bank_id < MAX_RAMBANKS) {
+        mem->banks[bank_id].shared = shared;
+    }
+}
+
+void rambank_copy(MemorySystem *mem, int src_bank, long src_offset, int dst_bank, long dst_offset, long length, int line_num) {
+    if (src_bank <= 0 || src_bank >= MAX_RAMBANKS || dst_bank <= 0 || dst_bank >= MAX_RAMBANKS) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+    if (src_offset < 0 || src_offset + length > RAMBANK_SIZE || dst_offset < 0 || dst_offset + length > RAMBANK_SIZE || length < 0) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+    if (length == 0) return;
+
+    MemorySystem *main_mem = task_get_main_mem();
+    int src_shared = (main_mem != NULL && main_mem->banks[src_bank].shared);
+    int dst_shared = (main_mem != NULL && main_mem->banks[dst_bank].shared);
+
+    // Memory isolation check
+    if (mem != main_mem) {
+        BasicTask *curr = task_get_current();
+        if (curr != NULL && curr->pid != 0) {
+            if (!(src_bank == curr->active_bank_id || src_shared)) {
+                error_raise(ERR_HOW, line_num);
+                return;
+            }
+            if (!(dst_bank == curr->active_bank_id || dst_shared)) {
+                error_raise(ERR_HOW, line_num);
+                return;
+            }
+        }
+    }
+
+    MemorySystem *src_target_mem = mem;
+    if (src_shared && main_mem != NULL) src_target_mem = main_mem;
+    MemorySystem *dst_target_mem = mem;
+    if (dst_shared && main_mem != NULL) dst_target_mem = main_mem;
+
+    // Mutex locking
+    if (src_shared || dst_shared) {
+        task_mutex_lock();
+    }
+
+    // Ensure residency
+    rambank_ensure_resident(src_target_mem, src_bank);
+    rambank_ensure_resident(dst_target_mem, dst_bank);
+
+    RamBank *sb = &src_target_mem->banks[src_bank];
+    RamBank *db = &dst_target_mem->banks[dst_bank];
+
+    if (sb->base != NULL && db->base != NULL) {
+        memmove(db->base + dst_offset, sb->base + src_offset, length);
+        db->dirty = 1;
+    }
+
+    if (src_shared || dst_shared) {
+        task_mutex_unlock();
+    }
+}
+
+void rambank_fill(MemorySystem *mem, int bank_id, long offset, long length, unsigned char value, int line_num) {
+    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+    if (offset < 0 || offset + length > RAMBANK_SIZE || length < 0) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+    if (length == 0) return;
+
+    MemorySystem *main_mem = task_get_main_mem();
+    int is_shared = (main_mem != NULL && main_mem->banks[bank_id].shared);
+
+    // Memory isolation check
+    if (mem != main_mem) {
+        BasicTask *curr = task_get_current();
+        if (curr != NULL && curr->pid != 0) {
+            if (!(bank_id == curr->active_bank_id || is_shared)) {
+                error_raise(ERR_HOW, line_num);
+                return;
+            }
+        }
+    }
+
+    MemorySystem *target_mem = mem;
+    if (is_shared && main_mem != NULL) target_mem = main_mem;
+
+    if (is_shared) {
+        task_mutex_lock();
+    }
+
+    rambank_ensure_resident(target_mem, bank_id);
+    RamBank *b = &target_mem->banks[bank_id];
+
+    if (b->base != NULL) {
+        memset(b->base + offset, value, length);
+        b->dirty = 1;
+    }
+
+    if (is_shared) {
+        task_mutex_unlock();
+    }
+}
+

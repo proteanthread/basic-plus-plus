@@ -52,27 +52,41 @@
 #include "codegen.h"
 #include "lexer.h"
 #include "errors.h"
+#include "codegen/target.h"
+#include "../console.h"
 
  // compiler_compile - Main compilation entry point.
  //
  // Reads all stored program lines, builds ASTs, generates C code.
 int compiler_compile(ProgramStore *program, const char *filename, const char *target)
 {
- FILE *out;
- AstLine *ast_lines;
- int i;
- int success = 1;
+    FILE *out;
+    AstLine *ast_lines;
+    int i;
+    int success = 1;
+    const TargetConfig *cfg = NULL;
 
- // Validate
- if (!program || program->count == 0) {
- printf("No program to compile.\n");
- return -1;
- }
+    // Resolve target platform
+    if (target && target[0] != '\0') {
+        cfg = target_find(target);
+        if (!cfg) {
+            printf("Error: Unrecognized compilation target '%s'\n", target);
+            return -1;
+        }
+    } else {
+        cfg = target_get_default();
+    }
 
- if (!filename || filename[0] == '\0') {
- printf("No output filename specified.\n");
- return -1;
- }
+    // Validate
+    if (!program || program->count == 0) {
+        printf("No program to compile.\n");
+        return -1;
+    }
+
+    if (!filename || filename[0] == '\0') {
+        printf("No output filename specified.\n");
+        return -1;
+    }
 
  // Open output file
  out = fopen(filename, "w");
@@ -122,14 +136,13 @@ int compiler_compile(ProgramStore *program, const char *filename, const char *ta
  }
  }
 
- // Pass 2: Generate code
- if (success) {
- error_clear();
- if (codegen_emit(out, ast_lines, program->count, program) != 0) {
- printf("Code generation failed.\n");
- success = 0;
- }
- }
+  if (success) {
+      error_clear();
+      if (codegen_emit(out, ast_lines, program->count, program, cfg) != 0) {
+          printf("Code generation failed.\n");
+          success = 0;
+      }
+  }
 
  // Cleanup
  for (i = 0; i < program->count; i++) {

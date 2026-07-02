@@ -122,4 +122,36 @@ int platform_list_env_system(void);
  // Returns count printed.
 int platform_list_env_all(void);
 
+// platform_cleanup_logs - Clean up logs and test outputs.
+void platform_cleanup_logs(int full_cleanup);
+
+// platform_stdin_is_tty - Check if standard input is a terminal/TTY.
+int platform_stdin_is_tty(void);
+
+// platform_stdin_is_redirected - Check if stdin is redirected from file/pipe.
+// Returns 1 if redirected, 0 if interactive terminal.
+int platform_stdin_is_redirected(void);
+
+// platform_kbhit - Non-blocking check if a key has been pressed.
+// Returns 1 if a key is available, 0 otherwise.
+int platform_kbhit(void);
+
+// platform_getch - Read a single character without echo or line buffering.
+// Blocks until a character is available.
+int platform_getch(void);
+
+// platform_nb_read_char - Non-blocking read of a single character from stdin.
+// Returns the character code (0-255) or -1 if no character is available.
+int platform_nb_read_char(void);
+
+// platform_sleep_ms - Sleep for the specified number of milliseconds.
+// Portable across Windows (Sleep) and POSIX (usleep/nanosleep).
+void platform_sleep_ms(int duration_ms);
+
+// platform_get_available_ram - Get currently available physical RAM.
+long long platform_get_available_ram(void);
+
+// plat_strdup - Portable string duplication avoiding MSVC deprecation warnings
+char *plat_strdup(const char *s);
+
 #endif // BASICPP_PLATFORM_H

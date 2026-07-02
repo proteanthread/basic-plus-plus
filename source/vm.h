@@ -80,6 +80,8 @@ struct RuntimeState_tag;
  // VM_PAUSED -> VM_RUNNING (CONT - future)
  // VM_ERROR -> VM_STOPPED (error handled, back to REPL)
  // VM_HALTED -> VM_STOPPED (program finished)
+struct RuntimeState;
+
 typedef enum VMState {
  VM_STOPPED = 0, // not running - idle at REPL
  VM_RUNNING, // normal execution in progress
@@ -135,7 +137,7 @@ typedef enum VMOpcode {
  // Every statement handler follows this uniform signature.
  // The handler receives:
  // lex - lexer positioned after the statement keyword
- // rt - runtime state (as opaque pointer for C89 compat)
+ // rt - runtime state (as opaque pointer for header decoupling)
  // line_num - current BASIC line number (for errors)
  //
  // Note: We use void* for rt to avoid circular includes between
@@ -207,6 +209,10 @@ int vm_eval_push(VMEvalStack *stk, BValue val);
 BValue vm_eval_pop(VMEvalStack *stk);
 BValue vm_eval_peek(VMEvalStack *stk);
 int vm_eval_depth(VMEvalStack *stk);
+
+BValue exec_func1(int func_id, BValue *arg, int line_num, struct RuntimeState *rt);
+BValue exec_func2(int func_id, BValue *a1, BValue *a2, int line_num, struct RuntimeState *rt);
+BValue exec_func3(int func_id, BValue *a1, BValue *a2, BValue *a3, int line_num, struct RuntimeState *rt);
 
 // --- Control Flow Primitives ---
  // These encapsulate the line-number->index resolution and stack

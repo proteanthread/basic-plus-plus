@@ -24,6 +24,7 @@
  //
  // Runtime state management implementation.
  //
+int g_screen_lock = 0; // 1=SCREEN LOCK active (no auto-flush)
  // DESIGN RATIONALE:
  // The runtime state is a single struct that captures ALL mutable
  // interpreter state. This design:
@@ -60,6 +61,13 @@
 #include "lexer.h"
 #include "dialect.h"
 #include "errors.h"
+#include "boot.h"
+#ifndef BPP_LITE_BUILD
+#include "pcode.h"
+#endif
+#include "../console.h"
+#include "modules/lib_space.h"
+#include "modules/bpl_format.h"
 
 // --- Runtime Initialization ---
 
@@ -87,6 +95,7 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  rt->stack_top = 0;
  rt->print_width = DEFAULT_PRINT_WIDTH;
  rt->option_base = 0;
+ rt->arithmetic_decimal = 0;
  rt->print_col = 1;
  rt->stopped = 0;
  rt->rnd_seed = 1;
@@ -124,18 +133,38 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  rt->dim_elements[i] = bval_int(0);
  }
 
- // String pool
- strpool_init(&rt->strpool);
- strpool_set_runtime(&rt->strpool, rt);
+  // String pool
+  if (rt->strpool.base == NULL) {
+#ifdef BPP_LITE_BUILD
+      strpool_init(&rt->strpool, (rt->memory->variable.size * 25L) / 15L);
+#else
+      strpool_init(&rt->strpool, rt->memory->variable.size);
+#endif
+      strpool_set_runtime(&rt->strpool, rt);
+  }
 
  // Virtual devices
  rt->dev_con = vdev_get(VDEV_CON);
  rt->dev_err = vdev_get(VDEV_ERR);
 
- // Trace and error handler
- rt->trace_on = 0;
- rt->debug_on = 0;
- rt->on_error_line = 0;
+  // Trace and error handler
+  rt->trace_on = 0;
+  rt->debug_on = 0;
+  rt->in_test = 0;
+  memset(rt->test_name, 0, sizeof(rt->test_name));
+  rt->test_pass = 0;
+  rt->test_fail = 0;
+  rt->test_total = 0;
+  memset(rt->breakpoints, 0, sizeof(rt->breakpoints));
+  rt->breakpoint_count = 0;
+  rt->single_step = 0;
+  rt->resume_index = 0;
+  if (!rt->log_fp) {
+      rt->log_level = 3; // LOG_ERROR
+      rt->log_to_stderr = 0;
+      rt->log_fp = NULL;
+  }
+  rt->on_error_line = 0;
 
  // User-defined functions
  rt->user_func_count = 0;
@@ -143,9 +172,15 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
 
  // VM state and eval stack
  rt->vm_state = 0; // VM_STOPPED
- rt->eval_top = -1;
+ vm_eval_init(&rt->eval_stack);
 
- // Debugger
+  rt->line_asts = NULL;
+  rt->line_asts_count = 0;
+  rt->acc = bval_int(0);
+  rt->chain_pending = 0;
+  rt->chain_file[0] = '\0';
+
+  // Debugger
  rt->breakpoint_count = 0;
  rt->single_step = 0;
  rt->resume_index = -1;
@@ -174,8 +209,10 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  rt->zone_override = -1; // use dialect default
 
  // SCREEN / DRAW state
- rt->screen_mode = 0; // text mode
- rt->draw_x = 40; // center of 80-col screen
+  rt->screen_mode = 0; // text mode
+  rt->is_atari_graphics = 0;
+  rt->atari_graphics_mode = 0;
+  rt->draw_x = 40; // center of 80-col screen
  rt->draw_y = 25; // center of 50-row canvas
  rt->draw_color = '*'; // default pen character
 
@@ -194,6 +231,8 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  rt->sub_count = 0;
  rt->fn_return_value = bval_int(0);
  rt->in_sub_index = -1;
+ rt->suspended = 0;
+ rt->resumed = 0;
 
  // User-Defined Types (Milestone 17)
  rt->type_count = 0;
@@ -287,6 +326,41 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  // Default variable type map (all NONE)
  memset(rt->deftype_map, DEFTYPE_NONE,
   sizeof(rt->deftype_map));
+
+  rt->loaded_pcode = NULL;
+  rt->has_loaded_pcode = 0;
+  rt->bytecode_only = 0;
+
+  rt->vm_call_stack_capacity = 256;
+  rt->vm_call_stack = (int *)malloc((size_t)rt->vm_call_stack_capacity * sizeof(int));
+  if (rt->vm_call_stack) {
+      memset(rt->vm_call_stack, 0, (size_t)rt->vm_call_stack_capacity * sizeof(int));
+  }
+
+  rt->vm_for_stack_capacity = 64;
+  rt->vm_for_stack = (VMForFrame *)malloc((size_t)rt->vm_for_stack_capacity * sizeof(VMForFrame));
+  if (rt->vm_for_stack) {
+      memset(rt->vm_for_stack, 0, (size_t)rt->vm_for_stack_capacity * sizeof(VMForFrame));
+  }
+
+    rt->direct_mode = 1;
+}
+
+void runtime_cleanup(RuntimeState *rt)
+{
+  if (rt->vm_call_stack) {
+      free(rt->vm_call_stack);
+      rt->vm_call_stack = NULL;
+  }
+  rt->vm_call_stack_capacity = 0;
+
+  if (rt->vm_for_stack) {
+      free(rt->vm_for_stack);
+      rt->vm_for_stack = NULL;
+  }
+  rt->vm_for_stack_capacity = 0;
+
+  pcode_cache_invalidate(rt);
 }
 
  // runtime_reset - Reset state for a new RUN.
@@ -297,12 +371,23 @@ void runtime_reset(RuntimeState *rt)
 {
  int i;
 
+#ifndef BPP_LITE_BUILD
+   if (rt->has_loaded_pcode && rt->loaded_pcode != NULL) {
+       PCodeProgram *pcode = (PCodeProgram *)rt->loaded_pcode;
+       pcode_free(pcode);
+       free(pcode);
+       rt->loaded_pcode = NULL;
+       rt->has_loaded_pcode = 0;
+   }
+#endif
+
  rt->running = 0;
  rt->current_index = 0;
  rt->next_index = -1;
  rt->stack_top = 0;
  rt->print_width = DEFAULT_PRINT_WIDTH;
  rt->option_base = 0;
+ rt->arithmetic_decimal = 0;
  rt->print_col = 1;
  rt->stopped = 0;
 
@@ -335,16 +420,27 @@ void runtime_reset(RuntimeState *rt)
  // Reset string pool
  strpool_reset(&rt->strpool);
 
- // Reset trace and error handler
- rt->trace_on = 0;
- rt->debug_on = 0;
- rt->on_error_line = 0;
+  // Reset trace and error handler
+  rt->trace_on = 0;
+  rt->debug_on = 0;
+  if (!rt->log_fp) {
+      rt->log_level = 3; // LOG_ERROR
+      rt->log_to_stderr = 0;
+      rt->log_fp = NULL;
+  }
+  rt->on_error_line = 0;
 
- // Reset VM state and eval stack
- rt->vm_state = 0; // VM_STOPPED
- rt->eval_top = -1;
+  rt->line_asts = NULL;
+  rt->line_asts_count = 0;
 
- // Reset CONST table
+  // Reset VM state and eval stack
+  rt->vm_state = 0; // VM_STOPPED
+  vm_eval_init(&rt->eval_stack);
+  rt->acc = bval_int(0);
+  rt->chain_pending = 0;
+  rt->chain_file[0] = '\0';
+
+  // Reset CONST table
  rt->const_count = 0;
 
  // Reset SUB/FUNCTION table -- free static storage
@@ -366,6 +462,8 @@ void runtime_reset(RuntimeState *rt)
  rt->sub_count = 0;
  rt->fn_return_value = bval_int(0);
  rt->in_sub_index = -1;
+ rt->suspended = 0;
+ rt->resumed = 0;
 
  // Reset dynamic scope stack (Milestone 9)
  scope_stack_free(&rt->scope_stack);
@@ -484,8 +582,21 @@ int runtime_pop(RuntimeState *rt, FrameType expected, StackFrame *out)
  *out = *top;
  }
 
- rt->stack_top--;
- return 0;
+  rt->stack_top--;
+
+  // Check if we just popped FRAME_SUB and a suspension frame is next!
+  if (expected == FRAME_SUB && rt->stack_top > 0 && rt->stack[rt->stack_top - 1].type == FRAME_SUSPEND) {
+      StackFrame susp_frame = rt->stack[rt->stack_top - 1];
+      rt->stack_top--; // pop the suspension frame too!
+
+      rt->resumed = 1;
+      memcpy(rt->restored_lexer, susp_frame.data.suspend.lex_state, sizeof(rt->restored_lexer));
+      rt->restored_frame = susp_frame;
+      rt->next_index = susp_frame.data.suspend.return_index;
+      rt->suspended = 0;
+  }
+
+  return 0;
 }
 
 // --- Variable Access ---
@@ -524,32 +635,42 @@ BValue runtime_get_var_bval(RuntimeState *rt, char name)
 
 void runtime_set_var(RuntimeState *rt, char name, long value)
 {
- int index;
- if (name < 'A' || name > 'Z') return;
- index = name - 'A';
- rt->variables[index] = bval_int(value);
+	int index;
+	if (name < 'A' || name > 'Z') return;
+	index = name - 'A';
+	rt->variables[index] = bval_int(value);
+	boot_log(BOOT_VERBOSE, "Variable Assignment: %c = %ld", name, value);
 }
 
 void runtime_set_var_bval(RuntimeState *rt, char name, BValue value)
 {
- int index;
- unsigned char dtype;
- if (name < 'A' || name > 'Z') return;
- index = name - 'A';
- // Enforce deftype_map coercion
- dtype = rt->deftype_map[index];
- if (dtype == DEFTYPE_INT) {
-  value = bval_int(bval_to_int(&value));
- } else if (dtype == DEFTYPE_SNG ||
-  dtype == DEFTYPE_DBL) {
-  value = bval_float(bval_to_float(&value));
- } else if (dtype == DEFTYPE_STR) {
-  if (!bval_is_string(&value)) {
-   error_raise(ERR_WHAT, 0);
-   return;
-  }
- }
- rt->variables[index] = value;
+	int index;
+	unsigned char dtype;
+	if (name < 'A' || name > 'Z') return;
+	index = name - 'A';
+	// Enforce deftype_map coercion
+	dtype = rt->deftype_map[index];
+	if (dtype == DEFTYPE_INT) {
+		value = bval_int(bval_to_int(&value));
+	} else if (dtype == DEFTYPE_SNG ||
+		dtype == DEFTYPE_DBL) {
+		value = bval_float(bval_to_float(&value));
+	} else if (dtype == DEFTYPE_STR) {
+		if (!bval_is_string(&value)) {
+			error_raise(ERR_WHAT, 0);
+			return;
+		}
+	}
+	rt->variables[index] = value;
+	if (bval_is_string(&value)) {
+		char sbuf[256];
+		bval_to_string_buf(&value, sbuf, sizeof(sbuf));
+		boot_log(BOOT_VERBOSE, "Variable Assignment: %c$ = \"%s\"", name, sbuf);
+	} else if (bval_is_float(&value)) {
+		boot_log(BOOT_VERBOSE, "Variable Assignment: %c = %f", name, bval_to_float(&value));
+	} else {
+		boot_log(BOOT_VERBOSE, "Variable Assignment: %c = %ld", name, bval_to_int(&value));
+	}
 }
 
 // --- Array Access ---
@@ -1447,6 +1568,172 @@ SubDef *runtime_find_sub(RuntimeState *rt, const char *name,
  }
  }
  return NULL;
+}
+
+extern int bpp_load(ProgramStore *prog, const char *filename, void *rt_ptr);
+extern int bpe_load(const char *filename, ProgramStore *prog, void *rt_ptr);
+extern int fileio_load(ProgramStore *store, const char *filename);
+extern void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num);
+
+int runtime_load_external_sub(RuntimeState *rt, SubDef *sd)
+{
+    ProgramStore temp_prog;
+    unsigned char magic[4] = {0};
+    FILE *mf;
+    int load_ok = 0;
+    int max_no = 0;
+    int l;
+    int start_line_no;
+    int idx;
+    int first_new_idx;
+    int scan_idx;
+    ProgramStore *pgm;
+    int saved_curr;
+    int saved_next;
+
+    if (sd->external_file[0] == '\0') {
+        return -1;
+    }
+
+    temp_prog.count = 0;
+    temp_prog.capacity = MAX_PROGRAM_LINES;
+    temp_prog.bulk_buffer = NULL;
+    temp_prog.bulk_size = 0;
+    temp_prog.lines = (ProgramLine *)calloc(MAX_PROGRAM_LINES, sizeof(ProgramLine));
+    if (temp_prog.lines == NULL) {
+        return -1;
+    }
+
+    mf = fopen(sd->external_file, "rb");
+    if (mf) {
+        if (fread(magic, 1, 4, mf) != 4) {
+            memset(magic, 0, 4);
+        }
+        fclose(mf);
+    } else {
+        free(temp_prog.lines);
+        return -1;
+    }
+
+    if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'E' && magic[3] == '\x1A') {
+        load_ok = (bpe_load(sd->external_file, &temp_prog, rt) == 0);
+    } else if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'P' && (magic[3] == '\x1B' || magic[3] == '\x1A')) {
+        load_ok = (bpp_load(&temp_prog, sd->external_file, rt) == 0);
+    } else if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'L' && magic[3] == '\x1A') {
+        LoadedLibrary bpl_lib;
+        memset(&bpl_lib, 0, sizeof(LoadedLibrary));
+        if (bpl_load(sd->external_file, &bpl_lib) == 0) {
+            int i;
+            for (i = 0; i < bpl_lib.src_line_count && i < MAX_PROGRAM_LINES; i++) {
+                temp_prog.lines[i].line_number = bpl_lib.src_lines[i].vline;
+                char *new_txt = (char *)malloc(strlen(bpl_lib.src_lines[i].text) + 1);
+                if (new_txt) {
+                    strcpy(new_txt, bpl_lib.src_lines[i].text);
+                    temp_prog.lines[i].text = new_txt;
+                    temp_prog.count++;
+                }
+            }
+            if (bpl_lib.src_lines) {
+                free(bpl_lib.src_lines);
+            }
+            load_ok = 1;
+        }
+    } else {
+        load_ok = (fileio_load(&temp_prog, sd->external_file) == 0);
+    }
+
+    if (!load_ok || temp_prog.count <= 0) {
+        free(temp_prog.lines);
+        return -1;
+    }
+
+    for (l = 0; l < rt->program->count; l++) {
+        if (rt->program->lines[l].line_number > max_no) {
+            max_no = rt->program->lines[l].line_number;
+        }
+    }
+    start_line_no = max_no + 1000;
+    if (start_line_no < 900000) start_line_no = 900000;
+
+    for (idx = 0; idx < temp_prog.count; idx++) {
+        int target_line_no = start_line_no + idx * 10;
+        const char *text = temp_prog.lines[idx].text;
+        char new_text[MAX_LINE_LENGTH + 32];
+        
+        while (*text == ' ' || *text == '\t') text++;
+        while (*text >= '0' && *text <= '9') text++;
+        while (*text == ' ' || *text == '\t') text++;
+        
+        snprintf(new_text, sizeof(new_text), "%d %s", target_line_no, text);
+        if (program_insert(rt->program, target_line_no, new_text) != 0) {
+            program_clear(&temp_prog);
+            free(temp_prog.lines);
+            return -1;
+        }
+    }
+    program_clear(&temp_prog);
+    free(temp_prog.lines);
+
+    first_new_idx = program_find(rt->program, start_line_no);
+    if (first_new_idx < 0) {
+        return -1;
+    }
+
+    pgm = rt->program;
+    saved_curr = rt->current_index;
+    saved_next = rt->next_index;
+    for (scan_idx = first_new_idx; scan_idx < pgm->count; scan_idx++) {
+        Lexer cl;
+        const char *text = pgm->lines[scan_idx].text;
+        int ln = pgm->lines[scan_idx].line_number;
+        lexer_init(&cl, text);
+        if (cl.current.type == TOK_NUMBER)
+            lexer_next(&cl);
+        if (cl.current.type == TOK_KEYWORD &&
+            (cl.current.value.keyword == KW_SUB ||
+             cl.current.value.keyword == KW_FUNCTION)) {
+            rt->current_index = scan_idx;
+            rt->next_index = -1;
+            parser_execute_line(&cl, rt, ln);
+            if (error_occurred()) {
+                rt->current_index = saved_curr;
+                rt->next_index = saved_next;
+                return -1;
+            }
+            if (rt->next_index > scan_idx)
+                scan_idx = rt->next_index - 1;
+        }
+    }
+    rt->current_index = saved_curr;
+    rt->next_index = saved_next;
+
+    return 0;
+}
+
+void runtime_pre_scan_external_declarations(RuntimeState *rt)
+{
+    int idx;
+    ProgramStore *pgm = rt->program;
+    if (!pgm) return;
+    for (idx = 0; idx < pgm->count; idx++) {
+        Lexer cl;
+        const char *text = pgm->lines[idx].text;
+        lexer_init(&cl, text);
+        if (cl.current.type == TOK_NUMBER)
+            lexer_next(&cl);
+        if (cl.current.type == TOK_KEYWORD && cl.current.value.keyword == KW_DECLARE) {
+            int ln = pgm->lines[idx].line_number;
+            parser_execute_line(&cl, rt, ln);
+        }
+    }
+    
+    // Trigger loading for all registered external subs
+    for (idx = 0; idx < rt->sub_count; idx++) {
+        SubDef *sd = &rt->subs[idx];
+        if (sd->is_external && sd->body_index == -1) {
+            runtime_load_external_sub(rt, sd);
+        }
+    }
 }
 
 // --- User-Defined Type Runtime Functions (Milestone 17) ---

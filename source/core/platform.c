@@ -125,6 +125,22 @@
 #include "runtime.h"
 #include "module.h"
 #include "security.h"
+#include <string.h>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define TokenType WinTokenType
+#include <windows.h>
+#undef TokenType
+#include <io.h>
+#include <conio.h>
+#else
+#include <unistd.h>
+#include <termios.h>
+#include <sys/select.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
 
 // -----------------------------------------------------------------
 // Compile-Time Platform Detection
@@ -248,6 +264,18 @@ void platform_init(void)
     plat_info.ptr_size = (int)sizeof(void *);
     plat_info.int_size = (int)sizeof(int);
     plat_info.long_size = (int)sizeof(long);
+
+#ifdef _WIN32
+    // Enable ANSI escape sequence processing on Windows Console/Terminal
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut != INVALID_HANDLE_VALUE && hOut != NULL) {
+        DWORD dwMode = 0;
+        if (GetConsoleMode(hOut, &dwMode)) {
+            dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+            SetConsoleMode(hOut, dwMode);
+        }
+    }
+#endif
 }
 
 // platform_get_info - Return the full PlatformInfo struct.
@@ -296,7 +324,7 @@ int platform_word_size(void)
 //   Platform: Windows x64 (WIN)
 //   Compiler: MSVC 19.50
 //   Word size: 64-bit (ptr=8 int=4 long=4)
-//   BASIC++ 4.1.1
+//   BASIC++ 4.1.2
 //   Security: STANDARD
 //   Modules: 6 registered
 //
@@ -375,6 +403,7 @@ void platform_print_memory(void *rt_ptr)
 // with the interpreter's TokenType in lexer.h.
 #define TokenType WinTokenType
 #include <windows.h>
+#include "../console.h"
 #undef TokenType
 
 // plat_list_registry_env - Enumerate registry key values.
@@ -516,4 +545,434 @@ int platform_list_env_all(void)
         }
     }
     return count;
+}
+
+static int plat_str_eq_nocase(const char *s1, const char *s2) {
+    if (!s1 || !s2) return 0;
+    while (*s1 && *s2) {
+        char c1 = *s1;
+        char c2 = *s2;
+        if (c1 >= 'A' && c1 <= 'Z') c1 = (char)(c1 + 32);
+        if (c2 >= 'A' && c2 <= 'Z') c2 = (char)(c2 + 32);
+        if (c1 != c2) return 0;
+        s1++;
+        s2++;
+    }
+    return (*s1 == '\0' && *s2 == '\0');
+}
+
+#ifdef _WIN32
+#include <io.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+typedef struct {
+    char name[260];
+    time_t mtime;
+    int is_log;
+    int is_output;
+} CleanupFile;
+
+void platform_cleanup_logs(int full_cleanup)
+{
+    static CleanupFile files[1000];
+    int count = 0;
+    struct _finddata_t data;
+    intptr_t handle;
+
+    const char *wildcards[] = {
+        "*.LOG", "*.log", "*.OUT", "*.out", "out*.txt", "test_out*.txt",
+        "stub_module.*", "temp_test.bas", "temp_input.bas"
+    };
+
+    for (int i = 0; i < (int)(sizeof(wildcards)/sizeof(wildcards[0])); i++) {
+        handle = _findfirst(wildcards[i], &data);
+        if (handle != -1) {
+            do {
+                if (data.attrib & _A_SUBDIR) continue;
+                
+                const char *ext = strrchr(data.name, '.');
+                if (ext != NULL && (plat_str_eq_nocase(ext, ".c") || plat_str_eq_nocase(ext, ".h"))) {
+                    continue;
+                }
+
+                int dup = 0;
+                for (int d = 0; d < count; d++) {
+                    if (strcmp(files[d].name, data.name) == 0) {
+                        dup = 1;
+                        break;
+                    }
+                }
+                if (dup) continue;
+
+                if (count < 1000) {
+                    strncpy(files[count].name, data.name, 255);
+                    files[count].name[255] = '\0';
+                    files[count].mtime = data.time_write;
+                    
+                    files[count].is_log = 0;
+                    files[count].is_output = 0;
+                    if (ext != NULL && (plat_str_eq_nocase(ext, ".log") || plat_str_eq_nocase(ext, ".LOG"))) {
+                        files[count].is_log = 1;
+                    }
+                    if (ext != NULL && (plat_str_eq_nocase(ext, ".txt") || plat_str_eq_nocase(ext, ".TXT")) && 
+                        (strncmp(data.name, "out", 3) == 0 || strncmp(data.name, "test_out", 8) == 0)) {
+                        files[count].is_output = 1;
+                    }
+                    if (ext != NULL && (plat_str_eq_nocase(ext, ".out") || plat_str_eq_nocase(ext, ".OUT"))) {
+                        files[count].is_output = 1;
+                    }
+                    count++;
+                }
+            } while (_findnext(handle, &data) == 0);
+            _findclose(handle);
+        }
+    }
+
+    int recent_log_idx = -1;
+    time_t max_log_time = 0;
+    int recent_output_idx = -1;
+    time_t max_output_time = 0;
+
+    for (int i = 0; i < count; i++) {
+        if (files[i].is_log) {
+            if (files[i].mtime > max_log_time) {
+                max_log_time = files[i].mtime;
+                recent_log_idx = i;
+            }
+        }
+        if (files[i].is_output) {
+            if (files[i].mtime > max_output_time) {
+                max_output_time = files[i].mtime;
+                recent_output_idx = i;
+            }
+        }
+    }
+
+    int deleted = 0;
+    for (int i = 0; i < count; i++) {
+        int keep = 0;
+        if (!full_cleanup) {
+            if (i == recent_log_idx) keep = 1;
+            if (i == recent_output_idx) keep = 1;
+        }
+        if (!keep) {
+            if (remove(files[i].name) == 0) {
+                deleted++;
+            }
+        }
+    }
+    printf("Clean-up finished. Removed %d files.\n", deleted);
+    if (!full_cleanup) {
+        if (recent_log_idx != -1) printf("Preserved most recent log: %s\n", files[recent_log_idx].name);
+        if (recent_output_idx != -1) printf("Preserved most recent test output: %s\n", files[recent_output_idx].name);
+    }
+}
+#else // POSIX (e.g. Linux, Unix, macOS)
+#include <dirent.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+typedef struct {
+    char name[260];
+    time_t mtime;
+    int is_log;
+    int is_output;
+} CleanupFile;
+
+void platform_cleanup_logs(int full_cleanup)
+{
+    static CleanupFile files[1000];
+    int count = 0;
+    DIR *dir = opendir(".");
+    if (!dir) return;
+    struct dirent *entry;
+
+    while ((entry = readdir(dir)) != NULL) {
+        const char *name = entry->d_name;
+        struct stat st;
+        if (stat(name, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) continue;
+
+        const char *ext = strrchr(name, '.');
+        if (ext == NULL) continue;
+
+        int match = 0;
+        int is_log = 0;
+        int is_output = 0;
+
+        if (plat_str_eq_nocase(ext, ".log") || plat_str_eq_nocase(ext, ".LOG")) {
+            match = 1;
+            is_log = 1;
+        } else if (plat_str_eq_nocase(ext, ".out") || plat_str_eq_nocase(ext, ".OUT")) {
+            match = 1;
+            is_output = 1;
+        } else if ((plat_str_eq_nocase(ext, ".txt") || plat_str_eq_nocase(ext, ".TXT")) && 
+                   (strncmp(name, "out", 3) == 0 || strncmp(name, "test_out", 8) == 0)) {
+            match = 1;
+            is_output = 1;
+        } else if (strncmp(name, "stub_module.", 12) == 0 && !plat_str_eq_nocase(ext, ".c") && !plat_str_eq_nocase(ext, ".h")) {
+            match = 1;
+        } else if (strcmp(name, "temp_test.bas") == 0 || strcmp(name, "temp_input.bas") == 0) {
+            match = 1;
+        }
+
+        if (match) {
+            int dup = 0;
+            for (int d = 0; d < count; d++) {
+                if (strcmp(files[d].name, name) == 0) {
+                    dup = 1;
+                    break;
+                }
+            }
+            if (dup) continue;
+
+            if (count < 1000) {
+                strncpy(files[count].name, name, 255);
+                files[count].name[255] = '\0';
+                files[count].mtime = st.st_mtime;
+                files[count].is_log = is_log;
+                files[count].is_output = is_output;
+                count++;
+            }
+        }
+    }
+    closedir(dir);
+
+    int recent_log_idx = -1;
+    time_t max_log_time = 0;
+    int recent_output_idx = -1;
+    time_t max_output_time = 0;
+
+    for (int i = 0; i < count; i++) {
+        if (files[i].is_log) {
+            if (files[i].mtime > max_log_time) {
+                max_log_time = files[i].mtime;
+                recent_log_idx = i;
+            }
+        }
+        if (files[i].is_output) {
+            if (files[i].mtime > max_output_time) {
+                max_output_time = files[i].mtime;
+                recent_output_idx = i;
+            }
+        }
+    }
+
+    int deleted = 0;
+    for (int i = 0; i < count; i++) {
+        int keep = 0;
+        if (!full_cleanup) {
+            if (i == recent_log_idx) keep = 1;
+            if (i == recent_output_idx) keep = 1;
+        }
+        if (!keep) {
+            if (remove(files[i].name) == 0) {
+                deleted++;
+            }
+        }
+    }
+    printf("Clean-up finished. Removed %d files.\n", deleted);
+    if (!full_cleanup) {
+        if (recent_log_idx != -1) printf("Preserved most recent log: %s\n", files[recent_log_idx].name);
+        if (recent_output_idx != -1) printf("Preserved most recent test output: %s\n", files[recent_output_idx].name);
+    }
+}
+#endif
+
+#if defined(_WIN32) || defined(_WIN64)
+long long platform_get_available_ram(void) {
+    MEMORYSTATUSEX statex;
+    statex.dwLength = sizeof(statex);
+    if (GlobalMemoryStatusEx(&statex)) {
+        return (long long)statex.ullAvailPhys;
+    }
+    return 16LL * 1024LL * 1024LL;
+}
+#elif defined(__linux__) || defined(__linux)
+#include <sys/sysinfo.h>
+long long platform_get_available_ram(void) {
+    struct sysinfo info;
+    if (sysinfo(&info) == 0) {
+        return (long long)info.freeram * info.mem_unit;
+    }
+    return 16LL * 1024LL * 1024LL;
+}
+#else
+long long platform_get_available_ram(void) {
+    return 512L * 1024L;
+}
+#endif
+
+char *plat_strdup(const char *s)
+{
+    if (s == NULL) return NULL;
+#ifdef _MSC_VER
+    return _strdup(s);
+#else
+    return strdup(s);
+#endif
+}
+
+int platform_stdin_is_tty(void)
+{
+#ifdef _WIN32
+    return _isatty(_fileno(stdin));
+#else
+    return isatty(fileno(stdin));
+#endif
+}
+
+// platform_stdin_is_redirected - Check if stdin is redirected from
+// file or pipe. Returns 1 if redirected, 0 if interactive terminal.
+//
+// On Windows, uses GetStdHandle + GetConsoleMode to detect
+// non-console redirected stdin (files and pipes).
+// On POSIX, uses isatty + fstat to detect regular files and FIFOs.
+int platform_stdin_is_redirected(void)
+{
+#ifdef _WIN32
+    HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+    if (hIn != NULL && hIn != INVALID_HANDLE_VALUE) {
+        DWORD mode;
+        if (!GetConsoleMode(hIn, &mode)) {
+            DWORD type = GetFileType(hIn);
+            if (type == FILE_TYPE_DISK || type == FILE_TYPE_PIPE) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+#else
+    if (!isatty(fileno(stdin))) {
+        struct stat st;
+        if (fstat(fileno(stdin), &st) == 0) {
+            if (S_ISREG(st.st_mode) || S_ISFIFO(st.st_mode)) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+#endif
+}
+
+// platform_kbhit - Non-blocking check if a key has been pressed.
+// Returns 1 if a key is available, 0 otherwise.
+//
+// On Windows, wraps _kbhit() from <conio.h>.
+// On POSIX, uses select() with zero timeout on STDIN_FILENO
+// after setting the terminal to raw mode (no canonical / no echo).
+int platform_kbhit(void)
+{
+#ifdef _WIN32
+    return _kbhit();
+#else
+    struct termios oldt, newt;
+    int result = 0;
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+    fd_set rfds;
+    struct timeval tv = {0, 0};
+    FD_ZERO(&rfds);
+    FD_SET(STDIN_FILENO, &rfds);
+    result = (select(STDIN_FILENO + 1, &rfds, NULL, NULL, &tv) > 0) ? 1 : 0;
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    return result;
+#endif
+}
+
+// platform_getch - Read a single character without echo or line
+// buffering. Blocks until a character is available.
+//
+// On Windows, wraps _getch() from <conio.h>.
+// On POSIX, sets terminal to raw mode, reads one byte, restores.
+int platform_getch(void)
+{
+#ifdef _WIN32
+    return _getch();
+#else
+    struct termios oldt, newt;
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+    int ch = getchar();
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    return ch;
+#endif
+}
+
+// platform_nb_read_char - Non-blocking read of a single character
+// from stdin. Returns the character code (0-255) or -1 if none.
+//
+// On Windows, checks handle type (file, pipe, char) and uses
+// the appropriate non-blocking read method.
+// On POSIX, uses select() + read() with zero timeout.
+int platform_nb_read_char(void)
+{
+#ifdef _WIN32
+    HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD fileType = GetFileType(hStdin);
+    if (fileType == FILE_TYPE_DISK) {
+        int ch = fgetc(stdin);
+        if (ch != EOF) return ch;
+    } else if (fileType == FILE_TYPE_PIPE || fileType == FILE_TYPE_CHAR ||
+               fileType == FILE_TYPE_UNKNOWN) {
+        DWORD bytesAvail = 0;
+        if (PeekNamedPipe(hStdin, NULL, 0, NULL, &bytesAvail, NULL) &&
+            bytesAvail > 0) {
+            char ch = 0;
+            DWORD bytesRead = 0;
+            if (ReadFile(hStdin, &ch, 1, &bytesRead, NULL) &&
+                bytesRead > 0) {
+                return (unsigned char)ch;
+            }
+        }
+    }
+    return -1;
+#else
+    struct termios oldt, newt;
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+    char ch = 0;
+    fd_set rfds;
+    struct timeval tv = {0, 0};
+    FD_ZERO(&rfds);
+    FD_SET(STDIN_FILENO, &rfds);
+
+    int result = -1;
+    if (select(STDIN_FILENO + 1, &rfds, NULL, NULL, &tv) > 0) {
+        if (read(STDIN_FILENO, &ch, 1) == 1) {
+            result = (unsigned char)ch;
+        }
+    }
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    return result;
+#endif
+}
+
+// platform_sleep_ms - Sleep for the specified number of milliseconds.
+// Portable across Windows (Sleep) and POSIX (usleep).
+//
+// Clamps duration to [1, 30000] ms range for safety.
+void platform_sleep_ms(int duration_ms)
+{
+    if (duration_ms < 1) return;
+    if (duration_ms > 30000) duration_ms = 30000;
+#ifdef _WIN32
+    Sleep((DWORD)duration_ms);
+#else
+    usleep((useconds_t)duration_ms * 1000);
+#endif
 }

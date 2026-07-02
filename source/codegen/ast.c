@@ -47,17 +47,10 @@
 #include <string.h>
 #include "ast.h"
 #include "dialect.h"
+#include "funcreg.h"
 #include "errors.h"
 
 // --- Internal forward declarations ---
-static AstExpr *build_term(Lexer *lex, int line_num);
-static AstExpr *build_power(Lexer *lex, int line_num);
-static AstExpr *build_factor(Lexer *lex, int line_num);
-static AstExpr *build_additive(Lexer *lex, int line_num);
-static AstExpr *build_comparison(Lexer *lex, int line_num);
-static AstExpr *build_not_expr(Lexer *lex, int line_num);
-static AstExpr *build_and_expr(Lexer *lex, int line_num);
-static AstExpr *build_or_expr(Lexer *lex, int line_num);
 static AstStmt *build_statement(Lexer *lex, int line_num);
 
 // --- Expression node constructors ---
@@ -158,6 +151,7 @@ static AstExpr *expr_func(AstFuncId func, int argc, AstExpr *a0,
  e->v.func_call.args[0] = a0;
  e->v.func_call.args[1] = a1;
  e->v.func_call.args[2] = a2;
+ e->v.func_call.builtin_kw = 0;
  }
  return e;
 }
@@ -198,427 +192,533 @@ static AstStmt *stmt_new(AstStmtType type)
 
 // --- Expression Builder - mirrors parse_expression_bval ---
 
- // build_factor - Parse atomic expression into AST node.
-static AstExpr *build_factor(Lexer *lex, int line_num)
+enum {
+    OP_UNARY_PLUS = 2000,
+    OP_UNARY_MINUS,
+    OP_NOT,
+    OP_AT,
+    OP_FUNC,
+    OP_USER_FUNC,
+    OP_ARRAY,
+    OP_LPAREN
+};
+
+static int ast_apply_operator(AstExpr **val_stack, int *val_top, int op,
+                              AstFuncId func_id, int builtin_kw, int arg_count, char fn_letter,
+                              const char *name, int name_len, int line_num)
 {
- if (error_occurred()) return NULL;
-
- switch (lex->current.type) {
- case TOK_NUMBER:
- {
- long val = lex->current.value.num_value;
- lexer_next(lex);
- return expr_int(val);
- }
-
- case TOK_FLOAT_LIT:
- {
- double val = lex->current.value.fval;
- lexer_next(lex);
- return expr_float(val);
- }
-
- case TOK_STRING:
- {
- AstExpr *e = expr_string(lex->current.str_start,
- lex->current.str_length);
- lexer_next(lex);
- return e;
- }
-
- case TOK_VARIABLE:
- {
- char name = lex->current.value.var_name;
- lexer_next(lex);
- // Check for DIM array access: A(...)
- if (lex->current.type == TOK_LPAREN) {
- AstExpr *idx1, *idx2 = NULL;
- char nm[2];
- nm[0] = name; nm[1] = '\0';
- lexer_next(lex); // consume (
- idx1 = ast_build_expr(lex, line_num);
- if (error_occurred()) return NULL;
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- idx2 = ast_build_expr(lex, line_num);
- if (error_occurred()) {
- ast_free_expr(idx1);
- return NULL;
- }
- }
- if (!lexer_expect(lex, TOK_RPAREN)) {
- ast_free_expr(idx1);
- ast_free_expr(idx2);
- return NULL;
- }
- return expr_dim_access(nm, 1, idx1, idx2);
- }
- return expr_var(name);
- }
-
- case TOK_STRING_VAR:
- {
- char name = lex->current.value.var_name;
- lexer_next(lex);
- // Check for string array subscript: A$(idx)
- if (lex->current.type == TOK_LPAREN) {
- char nm[3];
- AstExpr *idx1, *idx2 = NULL;
- nm[0] = name; nm[1] = '$'; nm[2] = '\0';
- lexer_next(lex);
- idx1 = ast_build_expr(lex, line_num);
- if (error_occurred()) return NULL;
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- idx2 = ast_build_expr(lex, line_num);
- if (error_occurred()) {
- ast_free_expr(idx1); return NULL;
- }
- }
- if (!lexer_expect(lex, TOK_RPAREN)) {
- ast_free_expr(idx1); ast_free_expr(idx2);
- return NULL;
- }
- return expr_dim_access(nm, 2, idx1, idx2);
- }
- return expr_string_var(name);
- }
-
- case TOK_NAMED_VAR:
- {
- char nm[MAX_VAR_NAME_LEN + 1];
- int nlen = lex->current.str_length;
- if (nlen > MAX_VAR_NAME_LEN) nlen = MAX_VAR_NAME_LEN;
- memcpy(nm, lex->current.str_start, (size_t)nlen);
- nm[nlen] = '\0';
-
- // Check for FN* user-defined function call
- if (nlen >= 3 &&
- (nm[0] == 'F' || nm[0] == 'f') &&
- (nm[1] == 'N' || nm[1] == 'n')) {
- char fc = nm[2];
- AstExpr *arg, *fn_expr;
- if (fc >= 'a' && fc <= 'z') fc = (char)(fc - 32);
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN)) return NULL;
- arg = ast_build_expr(lex, line_num);
- if (error_occurred()) return NULL;
- if (!lexer_expect(lex, TOK_RPAREN)) {
- ast_free_expr(arg);
- return NULL;
- }
- // Create a special expression for FN call
- fn_expr = (AstExpr *)calloc(1, sizeof(AstExpr));
- fn_expr->type = EXPR_FUNC_CALL;
- fn_expr->v.func_call.func = FUNC_FN_USER;
- fn_expr->v.func_call.args[0] = arg;
- fn_expr->v.func_call.fn_letter = fc;
- return fn_expr;
- }
-
- lexer_next(lex);
- // Check for DIM array access
- if (lex->current.type == TOK_LPAREN) {
- AstExpr *idx1, *idx2 = NULL;
- lexer_next(lex);
- idx1 = ast_build_expr(lex, line_num);
- if (error_occurred()) return NULL;
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- idx2 = ast_build_expr(lex, line_num);
- if (error_occurred()) {
- ast_free_expr(idx1);
- return NULL;
- }
- }
- if (!lexer_expect(lex, TOK_RPAREN)) {
- ast_free_expr(idx1);
- ast_free_expr(idx2);
- return NULL;
- }
- return expr_dim_access(nm, nlen, idx1, idx2);
- }
- return expr_named_var(nm, nlen);
- }
-
- case TOK_AT:
- {
- AstExpr *idx;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN)) return NULL;
- idx = ast_build_expr(lex, line_num);
- if (error_occurred()) return NULL;
- if (!lexer_expect(lex, TOK_RPAREN)) {
- ast_free_expr(idx);
- return NULL;
- }
- return expr_array_at(idx);
- }
-
- case TOK_LPAREN:
- {
- AstExpr *e;
- lexer_next(lex);
- e = ast_build_expr(lex, line_num);
- if (error_occurred()) return NULL;
- if (!lexer_expect(lex, TOK_RPAREN)) {
- ast_free_expr(e);
- return NULL;
- }
- return e;
- }
-
- case TOK_KEYWORD:
- {
- KeywordId kw = lex->current.value.keyword;
- AstFuncId fid;
- int argc = 1;
- AstExpr *a0 = NULL, *a1 = NULL, *a2 = NULL;
-
- // Map keyword to function ID
- switch (kw) {
- case KW_ABS: fid = FUNC_ABS; break;
- case KW_RND: fid = FUNC_RND; break;
- case KW_SIZE:
- lexer_next(lex);
- return expr_func(FUNC_SIZE, 0, NULL, NULL, NULL);
- case KW_SIN: fid = FUNC_SIN; break;
- case KW_COS: fid = FUNC_COS; break;
- case KW_TAN: fid = FUNC_TAN; break;
- case KW_ATN: fid = FUNC_ATN; break;
- case KW_SQR: fid = FUNC_SQR; break;
- case KW_LOG_FUNC: fid = FUNC_LOG; break;
- case KW_EXP: fid = FUNC_EXP; break;
- case KW_SGN: fid = FUNC_SGN; break;
- case KW_INT_FUNC: fid = FUNC_INT; break;
- case KW_LEN: fid = FUNC_LEN; break;
- case KW_ASC: fid = FUNC_ASC; break;
- case KW_VAL_FUNC: fid = FUNC_VAL; break;
- case KW_CHR: fid = FUNC_CHR; break;
- case KW_STR_FUNC: fid = FUNC_STR; break;
- case KW_LEFT: fid = FUNC_LEFT; argc = 2; break;
- case KW_RIGHT: fid = FUNC_RIGHT; argc = 2; break;
- case KW_MID: fid = FUNC_MID; argc = 3; break;
- case KW_TAB_FUNC: fid = FUNC_TAB; break;
- default:
- error_raise(ERR_WHAT, line_num);
- return NULL;
- }
-
- lexer_next(lex); // consume keyword
- if (!lexer_expect(lex, TOK_LPAREN)) return NULL;
-
- a0 = ast_build_expr(lex, line_num);
- if (error_occurred()) return NULL;
-
- if (argc >= 2) {
- if (!lexer_expect(lex, TOK_COMMA)) {
- ast_free_expr(a0);
- return NULL;
- }
- a1 = ast_build_expr(lex, line_num);
- if (error_occurred()) {
- ast_free_expr(a0);
- return NULL;
- }
- }
- if (argc >= 3) {
- if (!lexer_expect(lex, TOK_COMMA)) {
- ast_free_expr(a0);
- ast_free_expr(a1);
- return NULL;
- }
- a2 = ast_build_expr(lex, line_num);
- if (error_occurred()) {
- ast_free_expr(a0);
- ast_free_expr(a1);
- return NULL;
- }
- }
-
- if (!lexer_expect(lex, TOK_RPAREN)) {
- ast_free_expr(a0);
- ast_free_expr(a1);
- ast_free_expr(a2);
- return NULL;
- }
-
- return expr_func(fid, argc, a0, a1, a2);
- }
-
- default:
- error_raise(ERR_WHAT, line_num);
- return NULL;
- }
+    if (op == TOK_PLUS || op == TOK_MINUS || op == TOK_STAR || op == TOK_SLASH ||
+        op == TOK_CARET || op == TOK_EQUALS || op == TOK_NOT_EQ || op == TOK_LT ||
+        op == TOK_GT || op == TOK_LT_EQ || op == TOK_GT_EQ || op == TOK_HASH ||
+        op == KW_AND || op == KW_OR || op == KW_MOD) {
+        
+        if (*val_top < 2) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        AstExpr *right = val_stack[--(*val_top)];
+        AstExpr *left = val_stack[--(*val_top)];
+        
+        AstBinOp bop;
+        switch (op) {
+            case TOK_PLUS: bop = BOP_ADD; break;
+            case TOK_MINUS: bop = BOP_SUB; break;
+            case TOK_STAR: bop = BOP_MUL; break;
+            case TOK_SLASH: bop = BOP_DIV; break;
+            case TOK_CARET: bop = BOP_POW; break;
+            case TOK_EQUALS: bop = BOP_EQ; break;
+            case TOK_NOT_EQ: bop = BOP_NE; break;
+            case TOK_HASH: bop = BOP_NE; break;
+            case TOK_LT: bop = BOP_LT; break;
+            case TOK_GT: bop = BOP_GT; break;
+            case TOK_LT_EQ: bop = BOP_LE; break;
+            case TOK_GT_EQ: bop = BOP_GE; break;
+            case KW_AND: bop = BOP_AND; break;
+            case KW_OR: bop = BOP_OR; break;
+            case KW_MOD: bop = BOP_MOD; break;
+            default: bop = BOP_ADD; break;
+        }
+        val_stack[(*val_top)++] = expr_binop(bop, left, right);
+    } else if (op == OP_UNARY_PLUS) {
+        // Unary plus is a no-op, just leave it as-is
+    } else if (op == OP_UNARY_MINUS) {
+        if (*val_top < 1) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        AstExpr *val = val_stack[--(*val_top)];
+        val_stack[(*val_top)++] = expr_unop(UOP_NEG, val);
+    } else if (op == OP_NOT) {
+        if (*val_top < 1) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        AstExpr *val = val_stack[--(*val_top)];
+        val_stack[(*val_top)++] = expr_unop(UOP_NOT, val);
+    } else if (op == OP_AT) {
+        if (*val_top < 1) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        AstExpr *val = val_stack[--(*val_top)];
+        val_stack[(*val_top)++] = expr_array_at(val);
+    } else if (op == OP_FUNC) {
+        AstExpr *args[3] = {NULL, NULL, NULL};
+        int i;
+        if (*val_top < arg_count || arg_count > 3) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        for (i = arg_count - 1; i >= 0; i--) {
+            args[i] = val_stack[--(*val_top)];
+        }
+        AstExpr *f_expr = expr_func(func_id, arg_count, args[0], args[1], args[2]);
+        if (f_expr) {
+            f_expr->v.func_call.builtin_kw = builtin_kw;
+        }
+        val_stack[(*val_top)++] = f_expr;
+    } else if (op == OP_USER_FUNC) {
+        if (*val_top < 1) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        AstExpr *arg = val_stack[--(*val_top)];
+        AstExpr *fn_expr = (AstExpr *)calloc(1, sizeof(AstExpr));
+        if (fn_expr) {
+            fn_expr->type = EXPR_FUNC_CALL;
+            fn_expr->v.func_call.func = FUNC_FN_USER;
+            fn_expr->v.func_call.args[0] = arg;
+            fn_expr->v.func_call.fn_letter = fn_letter;
+            fn_expr->v.func_call.arg_count = 1;
+        }
+        val_stack[(*val_top)++] = fn_expr;
+    } else if (op == OP_ARRAY) {
+        AstExpr *args[3] = {NULL, NULL, NULL};
+        int i;
+        if (*val_top < arg_count || arg_count > 3) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        for (i = arg_count - 1; i >= 0; i--) {
+            args[i] = val_stack[--(*val_top)];
+        }
+        val_stack[(*val_top)++] = expr_dim_access(name, name_len, args[0], args[1]);
+        if (arg_count > 2 && args[2] != NULL) {
+            ast_free_expr(args[2]);
+        }
+    }
+    return 1;
 }
 
- // build_power - Parse exponentiation (right-associative).
-static AstExpr *build_power(Lexer *lex, int line_num)
+static int ast_get_op_precedence(int op, int is_unary)
 {
- AstExpr *left;
- left = build_factor(lex, line_num);
- if (error_occurred()) return NULL;
-
- if (lex->current.type == TOK_CARET) {
- AstExpr *right;
- lexer_next(lex);
- right = build_power(lex, line_num); // right-associative
- if (error_occurred()) { ast_free_expr(left); return NULL; }
- left = expr_binop(BOP_POW, left, right);
- }
-
- return left;
+    if (is_unary) {
+        if (op == OP_UNARY_PLUS || op == OP_UNARY_MINUS) return 8;
+        if (op == OP_NOT) return 3;
+        return 9;
+    }
+    switch (op) {
+        case KW_OR: return 1;
+        case KW_AND: return 2;
+        case TOK_EQUALS:
+        case TOK_NOT_EQ:
+        case TOK_HASH:
+        case TOK_LT:
+        case TOK_GT:
+        case TOK_LT_EQ:
+        case TOK_GT_EQ:
+            return 4;
+        case TOK_PLUS:
+        case TOK_MINUS:
+            return 5;
+        case TOK_STAR:
+        case TOK_SLASH:
+        case KW_MOD:
+            return 6;
+        case TOK_CARET:
+            return 7;
+        default:
+            return 0;
+    }
 }
 
- // build_term - Parse multiplicative expression.
-static AstExpr *build_term(Lexer *lex, int line_num)
-{
- AstExpr *left;
- left = build_power(lex, line_num);
- if (error_occurred()) return NULL;
-
- while (lex->current.type == TOK_STAR ||
- lex->current.type == TOK_SLASH) {
- AstBinOp op;
- AstExpr *right;
- op = (lex->current.type == TOK_STAR) ? BOP_MUL : BOP_DIV;
- lexer_next(lex);
- right = build_power(lex, line_num);
- if (error_occurred()) { ast_free_expr(left); return NULL; }
- left = expr_binop(op, left, right);
- }
-
- return left;
-}
-
- // build_additive - Parse additive expression (+ -).
-static AstExpr *build_additive(Lexer *lex, int line_num)
-{
- AstExpr *left;
- int negate = 0;
-
- if (error_occurred()) return NULL;
-
- // Optional leading sign
- if (lex->current.type == TOK_PLUS) {
- lexer_next(lex);
- } else if (lex->current.type == TOK_MINUS) {
- negate = 1;
- lexer_next(lex);
- }
-
- left = build_term(lex, line_num);
- if (error_occurred()) return NULL;
-
- if (negate) {
- left = expr_unop(UOP_NEG, left);
- }
-
- while (lex->current.type == TOK_PLUS ||
- lex->current.type == TOK_MINUS) {
- AstBinOp op;
- AstExpr *right;
- op = (lex->current.type == TOK_PLUS) ? BOP_ADD : BOP_SUB;
- lexer_next(lex);
- right = build_term(lex, line_num);
- if (error_occurred()) { ast_free_expr(left); return NULL; }
- left = expr_binop(op, left, right);
- }
-
- return left;
-}
-
- // build_comparison - Parse comparison operators (=, <>, <, >, <=, >=).
-static AstExpr *build_comparison(Lexer *lex, int line_num)
-{
- AstExpr *left;
- left = build_additive(lex, line_num);
- if (error_occurred()) return NULL;
-
- while (lex->current.type == TOK_EQUALS ||
- lex->current.type == TOK_NOT_EQ ||
- lex->current.type == TOK_LT ||
- lex->current.type == TOK_GT ||
- lex->current.type == TOK_LT_EQ ||
- lex->current.type == TOK_GT_EQ ||
- lex->current.type == TOK_HASH) {
- AstBinOp op;
- AstExpr *right;
- switch (lex->current.type) {
- case TOK_EQUALS: op = BOP_EQ; break;
- case TOK_NOT_EQ: op = BOP_NE; break;
- case TOK_LT: op = BOP_LT; break;
- case TOK_GT: op = BOP_GT; break;
- case TOK_LT_EQ: op = BOP_LE; break;
- case TOK_GT_EQ: op = BOP_GE; break;
- case TOK_HASH: op = BOP_NE; break;
- default: op = BOP_EQ; break;
- }
- lexer_next(lex);
- right = build_additive(lex, line_num);
- if (error_occurred()) { ast_free_expr(left); return NULL; }
- left = expr_binop(op, left, right);
- }
-
- return left;
-}
-
- // build_not_expr - Parse NOT prefix operator.
-static AstExpr *build_not_expr(Lexer *lex, int line_num)
-{
- if (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword == KW_NOT) {
- AstExpr *operand;
- lexer_next(lex);
- operand = build_not_expr(lex, line_num);
- if (error_occurred()) return NULL;
- return expr_unop(UOP_NOT, operand);
- }
- return build_comparison(lex, line_num);
-}
-
- // build_and_expr - Parse AND logical operator.
-static AstExpr *build_and_expr(Lexer *lex, int line_num)
-{
- AstExpr *left;
- left = build_not_expr(lex, line_num);
- if (error_occurred()) return NULL;
-
- while (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword == KW_AND) {
- AstExpr *right;
- lexer_next(lex);
- right = build_not_expr(lex, line_num);
- if (error_occurred()) { ast_free_expr(left); return NULL; }
- left = expr_binop(BOP_AND, left, right);
- }
-
- return left;
-}
-
- // build_or_expr - Parse OR logical operator.
-static AstExpr *build_or_expr(Lexer *lex, int line_num)
-{
- AstExpr *left;
- left = build_and_expr(lex, line_num);
- if (error_occurred()) return NULL;
-
- while (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword == KW_OR) {
- AstExpr *right;
- lexer_next(lex);
- right = build_and_expr(lex, line_num);
- if (error_occurred()) { ast_free_expr(left); return NULL; }
- left = expr_binop(BOP_OR, left, right);
- }
-
- return left;
-}
-
- // ast_build_expr - Parse a full expression (top-level, includes logic).
 AstExpr *ast_build_expr(Lexer *lex, int line_num)
 {
- return build_or_expr(lex, line_num);
+    AstExpr *val_stack[64];
+    int val_top = 0;
+    
+    struct {
+        int op;
+        int precedence;
+        int assoc;
+        int is_unary;
+        AstFuncId func_id;
+        char fn_letter;
+        char name[MAX_VAR_NAME_LEN + 1];
+        int name_len;
+        int arg_count;
+        int builtin_kw;
+    } op_stack[64];
+    int op_top = 0;
+    
+    int arg_count_stack[64];
+    int arg_count_top = 0;
+    int expect_operand = 1;
+    int i;
+    
+    if (error_occurred()) return NULL;
+    
+    while (!error_occurred()) {
+        Token tok = lex->current;
+        
+        if (!expect_operand) {
+            if (tok.type == TOK_CR || tok.type == TOK_EOF || tok.type == TOK_COLON) {
+                break;
+            }
+            if (tok.type == TOK_KEYWORD) {
+                KeywordId kw = tok.value.keyword;
+                if (kw != KW_AND && kw != KW_OR && kw != KW_MOD) {
+                    break;
+                }
+            }
+            
+            if (tok.type == TOK_COMMA || tok.type == TOK_RPAREN) {
+                int has_lparen = 0;
+                for (i = 0; i < op_top; i++) {
+                    if (op_stack[i].op == OP_LPAREN) {
+                        has_lparen = 1;
+                        break;
+                    }
+                }
+                if (!has_lparen) {
+                    break;
+                }
+            }
+        }
+        
+        if (expect_operand) {
+            if (tok.type == TOK_NUMBER) {
+                val_stack[val_top++] = expr_int(tok.value.num_value);
+                lexer_next(lex);
+                expect_operand = 0;
+            } else if (tok.type == TOK_FLOAT_LIT) {
+                val_stack[val_top++] = expr_float(tok.value.fval);
+                lexer_next(lex);
+                expect_operand = 0;
+            } else if (tok.type == TOK_STRING) {
+                val_stack[val_top++] = expr_string(tok.str_start, tok.str_length);
+                lexer_next(lex);
+                expect_operand = 0;
+            } else if (tok.type == TOK_PLUS) {
+                op_stack[op_top].op = OP_UNARY_PLUS;
+                op_stack[op_top].precedence = 8;
+                op_stack[op_top].assoc = 0;
+                op_stack[op_top].is_unary = 1;
+                op_top++;
+                lexer_next(lex);
+            } else if (tok.type == TOK_MINUS) {
+                op_stack[op_top].op = OP_UNARY_MINUS;
+                op_stack[op_top].precedence = 8;
+                op_stack[op_top].assoc = 0;
+                op_stack[op_top].is_unary = 1;
+                op_top++;
+                lexer_next(lex);
+            } else if (tok.type == TOK_KEYWORD && tok.value.keyword == KW_NOT) {
+                op_stack[op_top].op = OP_NOT;
+                op_stack[op_top].precedence = 3;
+                op_stack[op_top].assoc = 0;
+                op_stack[op_top].is_unary = 1;
+                op_top++;
+                lexer_next(lex);
+            } else if (tok.type == TOK_LPAREN) {
+                op_stack[op_top].op = OP_LPAREN;
+                op_stack[op_top].precedence = 0;
+                op_stack[op_top].assoc = 0;
+                op_stack[op_top].is_unary = 0;
+                op_top++;
+                lexer_next(lex);
+            } else if (tok.type == TOK_AT) {
+                lexer_next(lex);
+                if (!lexer_expect(lex, TOK_LPAREN)) goto clean_fail;
+                
+                op_stack[op_top].op = OP_AT;
+                op_stack[op_top].precedence = 9;
+                op_stack[op_top].assoc = 0;
+                op_stack[op_top].is_unary = 1;
+                op_top++;
+                
+                op_stack[op_top].op = OP_LPAREN;
+                op_stack[op_top].precedence = 0;
+                op_stack[op_top].assoc = 0;
+                op_stack[op_top].is_unary = 0;
+                op_top++;
+            } else if (tok.type == TOK_VARIABLE || tok.type == TOK_STRING_VAR || tok.type == TOK_NAMED_VAR) {
+                char nm[MAX_VAR_NAME_LEN + 1];
+                int nlen = 0;
+                
+                if (tok.type == TOK_VARIABLE) {
+                    nm[0] = tok.value.var_name;
+                    nm[1] = '\0';
+                    nlen = 1;
+                } else if (tok.type == TOK_STRING_VAR) {
+                    nm[0] = tok.value.var_name;
+                    nm[1] = '$';
+                    nm[2] = '\0';
+                    nlen = 2;
+                } else {
+                    nlen = tok.str_length < MAX_VAR_NAME_LEN ? tok.str_length : MAX_VAR_NAME_LEN;
+                    memcpy(nm, tok.str_start, (size_t)nlen);
+                    nm[nlen] = '\0';
+                }
+                
+                lexer_next(lex);
+                
+                if (lex->current.type == TOK_LPAREN) {
+                    lexer_next(lex);
+                    
+                    if (nlen >= 3 && (nm[0] == 'F' || nm[0] == 'f') && (nm[1] == 'N' || nm[1] == 'n')) {
+                        op_stack[op_top].op = OP_USER_FUNC;
+                        op_stack[op_top].fn_letter = nm[2];
+                    } else {
+                        op_stack[op_top].op = OP_ARRAY;
+                        memcpy(op_stack[op_top].name, nm, (size_t)nlen + 1);
+                        op_stack[op_top].name_len = nlen;
+                    }
+                    op_stack[op_top].precedence = 9;
+                    op_stack[op_top].assoc = 0;
+                    op_stack[op_top].is_unary = 1;
+                    op_top++;
+                    
+                    op_stack[op_top].op = OP_LPAREN;
+                    op_stack[op_top].precedence = 0;
+                    op_stack[op_top].assoc = 0;
+                    op_stack[op_top].is_unary = 0;
+                    op_top++;
+                    
+                    arg_count_stack[arg_count_top++] = 1;
+                } else {
+                    if (tok.type == TOK_VARIABLE) {
+                        val_stack[val_top++] = expr_var(tok.value.var_name);
+                    } else if (tok.type == TOK_STRING_VAR) {
+                        val_stack[val_top++] = expr_string_var(tok.value.var_name);
+                    } else {
+                        val_stack[val_top++] = expr_named_var(nm, nlen);
+                    }
+                    expect_operand = 0;
+                }
+            } else if (tok.type == TOK_KEYWORD) {
+                KeywordId kw = tok.value.keyword;
+                AstFuncId fid;
+                int argc = 1;
+                int has_args = 1;
+                
+                switch (kw) {
+                    case KW_ABS: fid = FUNC_ABS; break;
+                    case KW_RND: fid = FUNC_RND; break;
+                    case KW_SIZE: fid = FUNC_SIZE; argc = 0; has_args = 0; break;
+                    case KW_SIN: fid = FUNC_SIN; break;
+                    case KW_COS: fid = FUNC_COS; break;
+                    case KW_TAN: fid = FUNC_TAN; break;
+                    case KW_ATN: fid = FUNC_ATN; break;
+                    case KW_SQR: fid = FUNC_SQR; break;
+                    case KW_LOG_FUNC: fid = FUNC_LOG; break;
+                    case KW_EXP: fid = FUNC_EXP; break;
+                    case KW_SGN: fid = FUNC_SGN; break;
+                    case KW_INT_FUNC: fid = FUNC_INT; break;
+                    case KW_LEN: fid = FUNC_LEN; break;
+                    case KW_ASC: fid = FUNC_ASC; break;
+                    case KW_VAL_FUNC: fid = FUNC_VAL; break;
+                    case KW_CHR: fid = FUNC_CHR; break;
+                    case KW_STR_FUNC: fid = FUNC_STR; break;
+                    case KW_LEFT: fid = FUNC_LEFT; argc = 2; break;
+                    case KW_RIGHT: fid = FUNC_RIGHT; argc = 2; break;
+                    case KW_MID: fid = FUNC_MID; argc = 3; break;
+                    case KW_TAB_FUNC: fid = FUNC_TAB; break;
+                    case KW_MEMMAP_FUNC: fid = FUNC_MEMMAP; argc = 0; has_args = 0; break;
+                    case KW_VPATH_FUNC: fid = FUNC_VPATH; argc = 0; has_args = 0; break;
+                    case KW_CWD_FUNC: fid = FUNC_CWD; argc = 0; has_args = 0; break;
+                    case KW_PWD: fid = FUNC_PWD; argc = 0; has_args = 0; break;
+                    default:
+                    {
+                        const FunctionEntry *fn = funcreg_find_by_keyword(kw);
+                        if (fn != NULL) {
+                            fid = FUNC_BUILTIN;
+                            argc = fn->min_args;
+                            has_args = (fn->max_args > 0) ? 1 : 0;
+                        } else {
+                            error_raise(ERR_WHAT, line_num);
+                            goto clean_fail;
+                        }
+                        break;
+                    }
+                }
+                
+                lexer_next(lex);
+                
+                if (has_args) {
+                    if (!lexer_expect(lex, TOK_LPAREN)) goto clean_fail;
+                    
+                    op_stack[op_top].op = OP_FUNC;
+                    op_stack[op_top].func_id = fid;
+                    op_stack[op_top].precedence = 9;
+                    op_stack[op_top].assoc = 0;
+                    op_stack[op_top].is_unary = 1;
+                    op_stack[op_top].builtin_kw = (fid == FUNC_BUILTIN) ? kw : 0;
+                    op_top++;
+                    
+                    op_stack[op_top].op = OP_LPAREN;
+                    op_stack[op_top].precedence = 0;
+                    op_stack[op_top].assoc = 0;
+                    op_stack[op_top].is_unary = 0;
+                    op_top++;
+                    
+                    arg_count_stack[arg_count_top++] = 1;
+                } else {
+                    AstExpr *f_expr = expr_func(fid, 0, NULL, NULL, NULL);
+                    if (f_expr && fid == FUNC_BUILTIN) {
+                        f_expr->v.func_call.builtin_kw = kw;
+                    }
+                    val_stack[val_top++] = f_expr;
+                    expect_operand = 0;
+                }
+            } else {
+                error_raise(ERR_WHAT, line_num);
+                goto clean_fail;
+            }
+        } else {
+            if (tok.type == TOK_COMMA) {
+                while (op_top > 0 && op_stack[op_top - 1].op != OP_LPAREN) {
+                    int top_op = op_stack[--op_top].op;
+                    if (!ast_apply_operator(val_stack, &val_top, top_op,
+                                            op_stack[op_top].func_id,
+                                            op_stack[op_top].builtin_kw,
+                                            op_stack[op_top].arg_count,
+                                            op_stack[op_top].fn_letter,
+                                            op_stack[op_top].name,
+                                            op_stack[op_top].name_len,
+                                            line_num)) {
+                        goto clean_fail;
+                    }
+                }
+                if (op_top == 0 || arg_count_top == 0) {
+                    error_raise(ERR_WHAT, line_num);
+                    goto clean_fail;
+                }
+                arg_count_stack[arg_count_top - 1]++;
+                lexer_next(lex);
+                expect_operand = 1;
+            } else if (tok.type == TOK_RPAREN) {
+                while (op_top > 0 && op_stack[op_top - 1].op != OP_LPAREN) {
+                    int top_op = op_stack[--op_top].op;
+                    if (!ast_apply_operator(val_stack, &val_top, top_op,
+                                            op_stack[op_top].func_id,
+                                            op_stack[op_top].builtin_kw,
+                                            op_stack[op_top].arg_count,
+                                            op_stack[op_top].fn_letter,
+                                            op_stack[op_top].name,
+                                            op_stack[op_top].name_len,
+                                            line_num)) {
+                        goto clean_fail;
+                    }
+                }
+                if (op_top == 0) {
+                    error_raise(ERR_WHAT, line_num);
+                    goto clean_fail;
+                }
+                op_top--;
+                
+                if (op_top > 0 && op_stack[op_top - 1].is_unary) {
+                    int top_op = op_stack[--op_top].op;
+                    int ac = 1;
+                    if (top_op == OP_FUNC || top_op == OP_ARRAY) {
+                        if (arg_count_top > 0) {
+                            ac = arg_count_stack[--arg_count_top];
+                        }
+                    }
+                    if (!ast_apply_operator(val_stack, &val_top, top_op,
+                                            op_stack[op_top].func_id,
+                                            op_stack[op_top].builtin_kw,
+                                            ac,
+                                            op_stack[op_top].fn_letter,
+                                            op_stack[op_top].name,
+                                            op_stack[op_top].name_len,
+                                            line_num)) {
+                        goto clean_fail;
+                    }
+                }
+                lexer_next(lex);
+            } else {
+                int token_op = tok.type;
+                if (tok.type == TOK_KEYWORD) {
+                    token_op = tok.value.keyword;
+                }
+                int precedence = ast_get_op_precedence(token_op, 0);
+                if (precedence == 0) {
+                    break;
+                }
+                
+                while (op_top > 0) {
+                    int top_op = op_stack[op_top - 1].op;
+                    int top_prec = op_stack[op_top - 1].precedence;
+                    
+                    if (top_prec > precedence || (top_prec == precedence && op_stack[op_top - 1].assoc == 0)) {
+                        op_top--;
+                        if (!ast_apply_operator(val_stack, &val_top, top_op,
+                                                op_stack[op_top].func_id,
+                                                op_stack[op_top].builtin_kw,
+                                                op_stack[op_top].arg_count,
+                                                op_stack[op_top].fn_letter,
+                                                op_stack[op_top].name,
+                                                op_stack[op_top].name_len,
+                                                line_num)) {
+                            goto clean_fail;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                
+                op_stack[op_top].op = token_op;
+                op_stack[op_top].precedence = precedence;
+                op_stack[op_top].assoc = (token_op == TOK_CARET) ? 1 : 0;
+                op_stack[op_top].is_unary = 0;
+                op_top++;
+                
+                lexer_next(lex);
+                expect_operand = 1;
+            }
+        }
+    }
+    
+    while (op_top > 0) {
+        int top_op = op_stack[--op_top].op;
+        if (top_op == OP_LPAREN) {
+            error_raise(ERR_WHAT, line_num);
+            goto clean_fail;
+        }
+        if (!ast_apply_operator(val_stack, &val_top, top_op,
+                                op_stack[op_top].func_id,
+                                op_stack[op_top].builtin_kw,
+                                op_stack[op_top].arg_count,
+                                op_stack[op_top].fn_letter,
+                                op_stack[op_top].name,
+                                op_stack[op_top].name_len,
+                                line_num)) {
+            goto clean_fail;
+        }
+    }
+    
+    if (val_top == 1) {
+        return val_stack[0];
+    }
+    
+    error_raise(ERR_WHAT, line_num);
+    
+clean_fail:
+    for (i = 0; i < val_top; i++) {
+        ast_free_expr(val_stack[i]);
+    }
+    return NULL;
 }
 
 // --- Statement Builders ---
@@ -1117,6 +1217,7 @@ static AstStmt *build_dim(Lexer *lex, int line_num)
  // build_statement - Parse one statement into AST node.
 static AstStmt *build_statement(Lexer *lex, int line_num)
 {
+ const char *stmt_start = lex->source + lex->current.pos;
  if (error_occurred()) return NULL;
 
  if (lex->current.type == TOK_KEYWORD) {
@@ -1196,7 +1297,19 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
  return s;
  }
  case KW_END:
- return stmt_new(STMT_END);
+ {
+     if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_WHEN) {
+         lexer_next(lex);
+         return stmt_new(STMT_END_WHEN);
+     }
+     if (lex->current.type == TOK_KEYWORD && 
+         (lex->current.value.keyword == KW_IF || 
+          lex->current.value.keyword == KW_SUB || 
+          lex->current.value.keyword == KW_FUNCTION)) {
+         lexer_next(lex);
+     }
+     return stmt_new(STMT_END);
+ }
  case KW_STOP:
  return stmt_new(STMT_STOP);
  case KW_REM:
@@ -1335,12 +1448,16 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
  ast_build_expr(lex, line_num);
  if (error_occurred()) { free(s); return NULL; }
  // Expect GOTO or GOSUB
- if (!lexer_match_keyword(lex, KW_GOTO)) {
- error_raise(ERR_WHAT, line_num);
- ast_free_expr(s->v.on_goto.selector);
- free(s); return NULL;
+ int is_gosub = 0;
+ if (lexer_match_keyword(lex, KW_GOSUB)) {
+     is_gosub = 1;
+ } else if (!lexer_match_keyword(lex, KW_GOTO)) {
+     error_raise(ERR_WHAT, line_num);
+     ast_free_expr(s->v.on_goto.selector);
+     free(s); return NULL;
  }
  lexer_next(lex);
+ s->v.on_goto.is_gosub = is_gosub;
  s->v.on_goto.target_count = 0;
  while (!error_occurred()) {
  int ti = s->v.on_goto.target_count;
@@ -1357,54 +1474,28 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
  }
  return s;
  }
- case KW_DEF:
+ case KW_WHEN:
  {
- AstStmt *s = stmt_new(STMT_DEF_FN);
- // Handle both "DEF FN A(X)" and "DEF FNA(X)" patterns
- if (lexer_match_keyword(lex, KW_FN)) {
- // Pattern: DEF FN A(X)
- lexer_next(lex);
- if (lex->current.type != TOK_VARIABLE) {
- error_raise(ERR_WHAT, line_num);
- free(s); return NULL;
+     if (lex->current.type == TOK_NAMED_VAR) {
+         lexer_next(lex);
+     }
+     if (lex->current.type == TOK_NAMED_VAR) {
+         lexer_next(lex);
+     }
+     return stmt_new(STMT_WHEN);
  }
- s->v.def_fn.func_name = lex->current.value.var_name;
- lexer_next(lex);
- } else if (lex->current.type == TOK_NAMED_VAR &&
- lex->current.str_length >= 3 &&
- (lex->current.str_start[0] == 'F' ||
- lex->current.str_start[0] == 'f') &&
- (lex->current.str_start[1] == 'N' ||
- lex->current.str_start[1] == 'n')) {
- // Pattern: DEF FNA(X) - "FNA" as named var
- char fc = lex->current.str_start[2];
- if (fc >= 'a' && fc <= 'z') fc = (char)(fc - 32);
- s->v.def_fn.func_name = fc;
- lexer_next(lex);
- } else {
- error_raise(ERR_WHAT, line_num);
- free(s); return NULL;
- }
- // Expect (param)
- if (!lexer_expect(lex, TOK_LPAREN)) {
- free(s); return NULL;
- }
- if (lex->current.type != TOK_VARIABLE) {
- error_raise(ERR_WHAT, line_num);
- free(s); return NULL;
- }
- s->v.def_fn.param_name = lex->current.value.var_name;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_RPAREN)) {
- free(s); return NULL;
- }
- // Expect =
- if (!lexer_expect(lex, TOK_EQUALS)) {
- free(s); return NULL;
- }
- s->v.def_fn.body = ast_build_expr(lex, line_num);
- if (error_occurred()) { free(s); return NULL; }
- return s;
+ case KW_USE:
+     return stmt_new(STMT_USE);
+ case KW_RETRY:
+     return stmt_new(STMT_RETRY);
+ case KW_CONTINUE:
+     return stmt_new(STMT_CONTINUE);
+ case KW_INT_FUNC:
+ {
+     AstStmt *s = stmt_new(STMT_INT);
+     s->v.int_stmt.interrupt_number = ast_build_expr(lex, line_num);
+     if (error_occurred()) { free(s); return NULL; }
+     return s;
  }
  case KW_RUN:
  {
@@ -1420,8 +1511,26 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
  return s;
  }
  default:
- error_raise(ERR_WHAT, line_num);
- return NULL;
+ {
+     AstStmt *s = stmt_new(STMT_DIRECT_EXEC);
+     if (s) {
+         while (lex->current.type != TOK_COLON &&
+                lex->current.type != TOK_CR &&
+                lex->current.type != TOK_EOF) {
+             lexer_next(lex);
+         }
+         int start_idx = (int)(stmt_start - lex->source);
+         int end_idx = lex->current.pos;
+         int len = end_idx - start_idx;
+         if (len < 0) len = 0;
+         s->v.direct_exec.text = (char *)malloc((size_t)(len + 1));
+         if (s->v.direct_exec.text) {
+             memcpy(s->v.direct_exec.text, stmt_start, (size_t)len);
+             s->v.direct_exec.text[len] = '\0';
+         }
+     }
+     return s;
+ }
  }
  }
 
@@ -1434,10 +1543,27 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
  return build_let(lex, line_num);
  }
 
- if (lex->current.type != TOK_EOF && lex->current.type != TOK_CR) {
- error_raise(ERR_WHAT, line_num);
- }
- return NULL;
+  if (lex->current.type != TOK_EOF && lex->current.type != TOK_CR) {
+      AstStmt *s = stmt_new(STMT_DIRECT_EXEC);
+      if (s) {
+          while (lex->current.type != TOK_COLON &&
+                 lex->current.type != TOK_CR &&
+                 lex->current.type != TOK_EOF) {
+              lexer_next(lex);
+          }
+          int start_idx = (int)(stmt_start - lex->source);
+          int end_idx = lex->current.pos;
+          int len = end_idx - start_idx;
+          if (len < 0) len = 0;
+          s->v.direct_exec.text = (char *)malloc((size_t)(len + 1));
+          if (s->v.direct_exec.text) {
+              memcpy(s->v.direct_exec.text, stmt_start, (size_t)len);
+              s->v.direct_exec.text[len] = '\0';
+          }
+      }
+      return s;
+  }
+  return NULL;
 }
 
 // --- Public API ---
@@ -1588,6 +1714,14 @@ void ast_free_stmt(AstStmt *stmt)
  if (stmt->v.read.var_indices[ri])
  ast_free_expr(stmt->v.read.var_indices[ri]);
  }
+ }
+ break;
+ case STMT_INT:
+ ast_free_expr(stmt->v.int_stmt.interrupt_number);
+ break;
+ case STMT_DIRECT_EXEC:
+ if (stmt->v.direct_exec.text) {
+     free(stmt->v.direct_exec.text);
  }
  break;
  default:

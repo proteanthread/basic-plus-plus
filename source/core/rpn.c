@@ -41,6 +41,7 @@
 #include <math.h>
 #include <ctype.h>
 #include "rpn.h"
+#include "../console.h"
 
 // --- Stack Operations ---
 

@@ -1,6 +1,6 @@
 # Error Handling in BASIC++
 
-**Version 4.1.1**
+**Version 4.2.3**
 
 
 ---
@@ -68,6 +68,58 @@ Disable error trapping (errors halt the program):
 1040 RESUME NEXT
 ```
 
+### ERR$() Function
+
+Returns a human-readable string name for a given error code:
+
+```basic
+PRINT ERR$(11)     ' Output: "Division by zero"
+PRINT ERR$(53)     ' Output: "File not found"
+PRINT ERR$(ERR)    ' Name of last error
+```
+
+**Syntax:** `result$ = ERR$(error_code)`
+
+Internally, ERR$() calls `builtin_err_str()` which looks up the error code in the error registry. If the code is not registered, returns an empty string.
+
+### Custom Error Registration
+
+Modules and extensions can register custom error strings with the error registry:
+
+```c
+error_registry_register(200, "Custom error");
+```
+
+The error registry supports three layers:
+1. **Core errors** — `ERR_WHAT` (1), `ERR_HOW` (2), `ERR_SORRY` (3)
+2. **GW-BASIC codes** — Standard codes 1-77
+3. **Custom errors** — User-registered codes (200-255 reserved for applications)
+
+The registry is initialized at startup by `error_registry_init()` which registers all built-in GW-BASIC error strings.
+
+```basic
+' Using custom errors in BASIC:
+ERROR 200              ' Raises custom error 200
+PRINT ERR$(200)        ' Prints registered name
+```
+
+### Error Suppress API
+
+The error suppress system allows ON ERROR GOTO handlers to silently catch errors without printing messages to the console:
+
+| Function | Description |
+|----------|-------------|
+| `error_set_suppress(1)` | Suppress error message output (errors still set the flag) |
+| `error_set_suppress(0)` | Restore normal error message output |
+| `error_get_suppress()` | Query current suppress state (returns 0 or 1) |
+
+When suppress is active:
+- `error_raise()` sets the error flag but does NOT print the message
+- `ERR` and `ERL` are still updated normally
+- The ON ERROR GOTO handler still fires
+
+This is used internally by ON ERROR GOTO to prevent double-printing of error messages. It can also be saved and restored across pre-scan phases.
+
 ---
 
 ## 3. RESUME Statements
@@ -112,7 +164,15 @@ Useful for:
 
 ## 5. Error Codes
 
-Standard GW-BASIC/QBasic error codes:
+### The Three-Message Engine Model
+At the core execution level, the interpreter uses a classic Tiny BASIC three-message model to report errors on screen. These correspond to internal `ErrorCode` values:
+
+*   **`WHAT?`** (`ERR_WHAT`): Syntax errors, unexpected tokens, or malformed statements.
+*   **`HOW?`** (`ERR_HOW`): Logic or runtime execution errors (e.g. dividing by zero, GOTO to non-existent line, NEXT without FOR).
+*   **`SORRY.`** (`ERR_SORRY`): Resource limits exceeded (e.g. out of memory, stack overflow, too many lines).
+
+### Numeric Error Code Mapping (GW-BASIC Compatibility)
+When error trapping is active (`ON ERROR GOTO`), or when using `ERR` and `ERR$`, these categories map to standard numeric codes:
 
 | Code | Description |
 |------|-------------|
@@ -161,6 +221,7 @@ Standard GW-BASIC/QBasic error codes:
 | 74 | Rename across disks |
 | 75 | Path/file access error |
 | 76 | Path not found |
+| 77 | Advanced feature not available |
 
 **User-defined errors:** 200–255 are reserved for applications.
 

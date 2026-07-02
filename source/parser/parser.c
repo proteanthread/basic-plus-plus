@@ -251,9 +251,15 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  pi_parse_chain_cmd(lex, rt, line_num);
  return;
- case KW_DIALECT:
- pi_parse_dialect_cmd(lex, rt, line_num);
- return;
+  case KW_DIALECT:
+  pi_parse_dialect_cmd(lex, rt, line_num);
+  return;
+  case KW_BIOS:
+  pi_parse_bios_cmd(lex, rt, line_num);
+  return;
+  case KW_INT_FUNC:
+  pi_parse_int_cmd(lex, rt, line_num);
+  return;
  // DEF FN - user-defined functions
  case KW_DEF:
  pi_parse_def_fn(lex, rt, line_num);
@@ -554,6 +560,9 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_SCREEN:
   pi_parse_screen(lex, rt, line_num);
   return;
+ case KW_GRAPHICS:
+  pi_parse_graphics(lex, rt, line_num);
+  return;
  case KW_CONSOLE:
   pi_parse_console(lex, rt, line_num);
   return;
@@ -825,6 +834,9 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_POKE:
   pi_parse_poke(lex, rt, line_num);
   return;
+ case KW_POKEB:
+  pi_parse_pokeb(lex, rt, line_num);
+  return;
  case KW_PSET:
   pi_parse_pset(lex, rt, line_num);
   return;
@@ -1075,8 +1087,7 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
 static KeywordId postfix_scan(Lexer *lex, int *mod_pos)
 {
  // Save lexer state
- int save_pos = lex->pos;
- Token save_tok = lex->current;
+ Lexer save_lex = *lex;
  int depth = 0;
  KeywordId result = KW_COUNT;
 
@@ -1108,17 +1119,17 @@ static KeywordId postfix_scan(Lexer *lex, int *mod_pos)
  } else if (depth == 0 &&
  lex->current.type == TOK_KEYWORD) {
  KeywordId kw = lex->current.value.keyword;
-  if ((kw == KW_IF || kw == KW_UNLESS ||
-  (kw == KW_FOR && !(save_tok.type == TOK_KEYWORD && save_tok.value.keyword == KW_OPEN))) && prev_kw != KW_END) {
-   // Don't match prefix IF/UNLESS/FOR -
-   // they appear at the START of a statement.
-   // A postfix modifier always has some
-   // tokens before it.
-  if (lex->pos != save_pos ||
-  lex->current.type != save_tok.type ||
-  (save_tok.type == TOK_KEYWORD &&
-   save_tok.value.keyword != kw)) {
-  *mod_pos = lex->pos;
+   if ((kw == KW_IF || kw == KW_UNLESS ||
+   (kw == KW_FOR && !(save_lex.current.type == TOK_KEYWORD && save_lex.current.value.keyword == KW_OPEN))) && prev_kw != KW_END) {
+    // Don't match prefix IF/UNLESS/FOR -
+    // they appear at the START of a statement.
+    // A postfix modifier always has some
+    // tokens before it.
+   if (lex->pos != save_lex.pos ||
+   lex->current.type != save_lex.current.type ||
+   (save_lex.current.type == TOK_KEYWORD &&
+    save_lex.current.value.keyword != kw)) {
+  *mod_pos = lex->current.pos;
   result = kw;
   // Found - stop scanning
   break;
@@ -1141,9 +1152,8 @@ static KeywordId postfix_scan(Lexer *lex, int *mod_pos)
  }
  } // end prev_kw scope
 
- // Restore lexer state
- lex->pos = save_pos;
- lex->current = save_tok;
+   // Restore lexer state
+   *lex = save_lex;
 
   // Restore error state: always restore suppress flag.
   // If no error existed before the scan, clear any
@@ -1256,13 +1266,11 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
   //
   // Execute the statement body repeatedly for
   // each iteration of the loop variable.
- int stmt_start_pos = lex->pos;
- Token stmt_start_tok = lex->current;
- char loop_var;
- long start_val, limit_val, step_val;
- long loop_i;
- int for_end_pos;
- Token for_end_tok;
+  Lexer stmt_start_lex = *lex;
+  char loop_var;
+  long start_val, limit_val, step_val;
+  long loop_i;
+  Lexer for_end_lex;
 
  // Skip to the FOR keyword
  pi_skip_to_pos(lex, mod_pos);
@@ -1302,9 +1310,8 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred()) return;
  }
 
- // Save position after FOR clause
- for_end_pos = lex->pos;
- for_end_tok = lex->current;
+  // Save position after FOR clause
+  for_end_lex = *lex;
 
  // Execute the loop
  if (step_val == 0) {
@@ -1321,9 +1328,8 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
  runtime_set_var(
  rt, loop_var, loop_i);
 
- // Re-parse and execute statement body
- lex->pos = stmt_start_pos;
- lex->current = stmt_start_tok;
+  // Re-parse and execute statement body
+  *lex = stmt_start_lex;
 
  pi_parse_statement(lex, rt, line_num);
  if (error_occurred()) return;
@@ -1332,9 +1338,8 @@ void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num)
  if (rt->next_index != old_next) return;
  }
 
- // Restore to after FOR clause
- lex->pos = for_end_pos;
- lex->current = for_end_tok;
+  // Restore to after FOR clause
+  *lex = for_end_lex;
 
  } else {
   // No postfix modifier: execute statement

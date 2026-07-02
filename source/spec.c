@@ -25,6 +25,7 @@
 #include "spec.h"
 #include "dialect.h"
 #include "runtime.h"
+#include "console.h"
 
 static SpecObject spec_registry[MAX_SPECS];
 static int spec_count = 0;
@@ -45,9 +46,9 @@ SpecObject* spec_find(const char *name) {
 
 void spec_list_all(void) {
     int i;
-    printf("--- Loaded Specifications ---\n");
+    gw_printf("--- Loaded Specifications ---\n");
     for (i = 0; i < spec_count; i++) {
-        printf("SPEC: %s (v%s) - Category %d, LIB: %s\n", 
+        gw_printf("SPEC: %s (v%s) - Category %d, LIB: %s\n", 
             spec_registry[i].name, 
             spec_registry[i].version, 
             spec_registry[i].category,
@@ -133,8 +134,8 @@ void pi_parse_custom_statement(Lexer *lex, RuntimeState *rt, int line_num, int k
     int i;
     for (i = 0; i < spec_count; i++) {
         if (spec_registry[i].kw_id == kw_id) {
-            printf("[SPEC-LIB LOADER] Executing dynamically defined statement: %s\n", spec_registry[i].name);
-            printf("[SPEC-LIB LOADER] Loading logic from external cross-platform .LIB archive: %s\n", 
+            gw_printf("[SPEC-LIB LOADER] Executing dynamically defined statement: %s\n", spec_registry[i].name);
+            gw_printf("[SPEC-LIB LOADER] Loading logic from external cross-platform .LIB archive: %s\n", 
                 spec_registry[i].lib_path[0] ? spec_registry[i].lib_path : "(unspecified)");
              // In a full implementation, the VM would now load the custom 
              // BASIC++ .LIB bytecode and GOSUB into the routine here.

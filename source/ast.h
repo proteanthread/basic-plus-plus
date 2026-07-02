@@ -87,7 +87,12 @@ typedef enum AstFuncId {
  FUNC_CHR, FUNC_STR,
  FUNC_LEFT, FUNC_RIGHT, FUNC_MID,
  FUNC_TAB, // TAB(n) - PRINT column position
- FUNC_FN_USER // User-defined FN (DEF FN)
+ FUNC_FN_USER, // User-defined FN (DEF FN)
+ FUNC_BUILTIN, // Dynamic registered function
+ FUNC_MEMMAP, // MEMMAP$
+ FUNC_VPATH, // VPATH$
+ FUNC_CWD, // CWD$
+ FUNC_PWD // PWD
 } AstFuncId;
 
 // Forward declaration
@@ -135,6 +140,7 @@ struct AstExpr {
  AstExpr *args[3]; // up to 3 arguments
  int arg_count;
  char fn_letter; // For FUNC_FN_USER: A-Z
+ int builtin_kw; // For FUNC_BUILTIN
  } func_call; // EXPR_FUNC_CALL
  } v;
 };
@@ -165,7 +171,14 @@ typedef enum AstStmtType {
  STMT_DO,
  STMT_LOOP,
  STMT_ON_GOTO, // ON expr GOTO line1,line2,...
- STMT_DEF_FN // DEF FNA(X) = expr
+ STMT_DEF_FN, // DEF FNA(X) = expr
+ STMT_WHEN, // WHEN EXCEPTION IN
+ STMT_USE, // USE
+ STMT_END_WHEN, // END WHEN
+ STMT_RETRY, // RETRY
+ STMT_CONTINUE, // CONTINUE
+ STMT_INT, // INT interrupt_number
+ STMT_DIRECT_EXEC // execute raw statement via direct interpreter
 } AstStmtType;
 
 // Forward declaration
@@ -308,9 +321,10 @@ struct AstStmt {
 
  // STMT_ON_GOTO
  struct {
- AstExpr *selector; // ON <selector> GOTO ...
+ AstExpr *selector; // ON <selector> GOTO/GOSUB ...
  int targets[64]; // target line numbers
  int target_count;
+ int is_gosub; // 1 if GOSUB, 0 if GOTO
  } on_goto;
 
  // STMT_DEF_FN
@@ -319,6 +333,16 @@ struct AstStmt {
  char param_name; // parameter variable
  AstExpr *body; // expression body
  } def_fn;
+
+ // STMT_INT
+ struct {
+ AstExpr *interrupt_number;
+ } int_stmt;
+
+ // STMT_DIRECT_EXEC
+ struct {
+ char *text;
+ } direct_exec;
 
  } v;
 };

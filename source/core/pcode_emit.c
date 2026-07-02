@@ -38,18 +38,20 @@
  //   record its index, then patch it once the target is known.
  // - String constants are interned into the string pool.
  //
- // C89 COMPLIANCE:
- // - No VLAs, no C99 declarations-after-statements.
- // - All variables declared at block top.
+ // C17 COMPLIANCE:
+ // - ISO/IEC 9899:2018 guidelines
+ // - All variables declared at top block scope.
  //
  // ---
 
+#ifndef BPP_LITE_BUILD
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "pcode.h"
 #include "errors.h"
 #include "config.h"
+#include "../console.h"
 
 // ===================================================================
  // PCODE PROGRAM INITIALIZATION & MEMORY
@@ -337,6 +339,8 @@ void pcode_emit_expr(PCodeProgram *prog, AstExpr *expr)
             // Pack: high byte = fn_letter, low byte = FUNC_FN_USER
             o.u.ival = (long)expr->v.func_call.func |
                        ((long)expr->v.func_call.fn_letter << 8);
+        } else if (expr->v.func_call.func == FUNC_BUILTIN) {
+            o.u.ival = (long)expr->v.func_call.builtin_kw;
         } else {
             o.u.ival = (long)expr->v.func_call.func;
         }
@@ -700,11 +704,11 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
     case STMT_ON_GOTO:
     {
         int ti;
-        // ON expr GOTO line1, line2, ...
+        // ON expr GOTO/GOSUB line1, line2, ...
         pcode_emit_expr(prog, stmt->v.on_goto.selector);
         // Store jump table base in on_tables
         o.u.ival = (long)prog->on_table_count;
-        pcode_emit_instr(prog, PCODE_ON_GOTO, o);
+        pcode_emit_instr(prog, stmt->v.on_goto.is_gosub ? PCODE_ON_GOSUB : PCODE_ON_GOTO, o);
         // Append target line numbers to on_tables (resolved later)
         for (ti = 0; ti < stmt->v.on_goto.target_count; ti++) {
             if (prog->on_table_count >= prog->on_table_capacity) {
@@ -726,6 +730,50 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
         break;
     }
 
+    case STMT_WHEN:
+        pcode_emit_offset(prog, PCODE_WHEN_BEGIN, 0);
+        break;
+
+    case STMT_USE:
+        pcode_emit_simple(prog, PCODE_POP_EXCEPTION);
+        pcode_emit_offset(prog, PCODE_JUMP, 0);
+        break;
+
+    case STMT_END_WHEN:
+        pcode_emit_simple(prog, PCODE_POP_EXCEPTION);
+        break;
+
+    case STMT_RETRY:
+        pcode_emit_offset(prog, PCODE_JUMP, 0);
+        break;
+
+    case STMT_CONTINUE:
+        pcode_emit_simple(prog, PCODE_CONTINUE);
+        break;
+
+    case STMT_INT:
+    {
+        long int_val = 0;
+        if (stmt->v.int_stmt.interrupt_number) {
+            AstExpr *ex = stmt->v.int_stmt.interrupt_number;
+            if (ex->type == EXPR_INT_LIT) {
+                int_val = ex->v.ival;
+            }
+        }
+        pcode_emit_int(prog, PCODE_INT, int_val);
+        break;
+    }
+
+    case STMT_DIRECT_EXEC:
+    {
+        int pool_idx = pcode_add_string(prog,
+            stmt->v.direct_exec.text, (int)strlen(stmt->v.direct_exec.text));
+        o.u.str.idx = pool_idx;
+        o.u.str.len = (int)strlen(stmt->v.direct_exec.text);
+        pcode_emit_instr(prog, PCODE_DIRECT_EXEC, o);
+        break;
+    }
+
     case STMT_DEF_FN:
         // DEF FN is handled at parse time, not in bytecode
         break;
@@ -737,3 +785,4 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
         pcode_emit_stmt(prog, stmt->next, rt);
     }
 }
+#endif

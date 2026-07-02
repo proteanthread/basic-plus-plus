@@ -42,6 +42,8 @@
  // ---
 
 #include "parser_internal.h"
+#include "platform.h"
+#include "task.h"
 
  // pi_parse_const_stmt - Handle CONST_KW command.
 void pi_parse_const_stmt(Lexer *lex, RuntimeState *rt, int line_num)
@@ -482,17 +484,10 @@ static int scope_parse_varlist(Lexer *lex)
  // pi_parse_shared - Handle SHARED command.
 void pi_parse_shared(Lexer *lex, RuntimeState *rt, int line_num)
 {
- // SHARED var1 [AS type], var2, ...
- //
- // QBasic: makes procedure-local variables refer to
- // the module-level copy instead. Changes propagate
- // back to the caller on scope exit.
- //
- // Register each variable with scope_stack_add_shared
- // so scope_stack_pop skips restoring them.
- while (lex->current.type != TOK_EOF &&
-  lex->current.type != TOK_CR &&
-  lex->current.type != TOK_COLON) {
+    // SHARED var1 [AS type], var2, ...
+    while (lex->current.type != TOK_EOF &&
+        lex->current.type != TOK_CR &&
+        lex->current.type != TOK_COLON) {
   if (lex->current.type == TOK_NAMED_VAR) {
    const char *vn = lex->current.str_start;
    int vn_len = lex->current.str_length;
@@ -1304,7 +1299,7 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
          platform_word_size());
      printf(" BUILD=%s %s\n",
          __DATE__, __TIME__);
-     printf(" STANDARD=ANSI C89/C90\n");
+     printf(" STANDARD=ISO/IEC 9899:2018 (C17)\n");
      printf(" SECURITY=%d\n",
          (int)security_get_level());
      printf(" OPTION_BASE=%d\n",

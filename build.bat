@@ -37,12 +37,20 @@ call "%VCVARS%" x64
 :: Navigate to the source directory and run nmake
 cd /d "%~dp0source"
 
-echo [INFO] Running nmake msvc...
-nmake /f Makefile msvc
-
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] MSVC build failed.
-    exit /b %ERRORLEVEL%
+if "%1"=="lite" (
+    echo [INFO] Running nmake msvc-lite...
+    nmake /f Makefile msvc-lite
+    if !ERRORLEVEL! neq 0 (
+        echo [ERROR] MSVC Lite build failed.
+        exit /b !ERRORLEVEL!
+    )
+) else (
+    echo [INFO] Running nmake msvc...
+    nmake /f Makefile msvc
+    if !ERRORLEVEL! neq 0 (
+        echo [ERROR] MSVC Standard build failed.
+        exit /b !ERRORLEVEL!
+    )
 )
 
 cd /d "%~dp0"

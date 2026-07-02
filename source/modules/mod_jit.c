@@ -45,8 +45,8 @@
  //
  // All other opcodes: fall back to vm_exec_pcode() interpreter.
  //
- // C89 COMPLIANCE:
- //   - No VLAs, no C99 features
+ // C17 COMPLIANCE:
+ //   - ISO/IEC 9899:2018 standards compliant
  //   - Platform-specific code gated by #ifdef
  //
  // ---
@@ -93,6 +93,7 @@ static void jit_free_exec(void *ptr, size_t size)
 
 #else // __linux__
 #include <sys/mman.h>
+#include "../console.h"
 
 static void *jit_alloc_exec(size_t size)
 {

@@ -1,6 +1,6 @@
 # Using Aliases in BASIC++
 
-**Version 4.1.1**
+**Version 4.2.3**
 
 
 ---
@@ -154,9 +154,32 @@ ALIAS "UNTIL" = NEXT
 
 ---
 
+## 5b. Language Packs (ALIAS LANG)
+
+BASIC++ includes built-in language packs that load a complete set of keyword aliases for a natural language with a single command:
+
+```basic
+ALIAS LANG "ES"          ' Load Spanish language pack
+ALIAS LANG "PT"          ' Load Portuguese language pack
+ALIAS LANG "FR"          ' Load French language pack
+ALIAS LANG "DE"          ' Load German language pack
+ALIAS LANG "IT"          ' Load Italian language pack
+ALIAS LANG "JA"          ' Load Japanese (romaji) language pack
+```
+
+| Command | Description |
+|---------|-------------|
+| `ALIAS LANG "code"` | Load a language pack by two-letter code |
+| `ALIAS LANG CLEAR` | Remove all language-pack aliases |
+| `ALIAS LANG LIST` | List available language packs |
+
+Language-pack aliases use the `ASCOPE_LANG` scope and are cleared independently of user-defined aliases.
+
+---
+
 ## 6. Limitations
 
-- Maximum **32 aliases**
+- Maximum **128 aliases**
 - Alias names are **case-insensitive**
 - Alias names cannot conflict with existing keywords
 - Aliases **cannot chain** (alias of an alias)

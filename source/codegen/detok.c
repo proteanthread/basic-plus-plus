@@ -46,6 +46,7 @@
 #include <string.h>
 #include "config.h"
 #include "detok.h"
+#include "../console.h"
 
 // --- Keyword Name Table ---
  // Maps KeywordId values to their string representations.
@@ -213,6 +214,7 @@ static const char *keyword_names[] = {
  "SHELL", // KW_SHELL
  "REDIM", // KW_REDIM
  "SHARED", // KW_SHARED
+ "BANK", // KW_BANK
  "STATIC", // KW_STATIC
  "RESUME", // KW_RESUME
  "OPTION", // KW_OPTION
@@ -249,6 +251,9 @@ static const char *keyword_names[] = {
  "ERDEV", // KW_ERDEV
  "FIELD", // KW_FIELD
  "FRE", // KW_FRE
+ "TASK", // KW_TASK
+ "PEEKB", // KW_PEEKB
+ "POKEB", // KW_POKEB
  "GET", // KW_GET
  "PUT", // KW_PUT
  "INP", // KW_INP
@@ -442,7 +447,8 @@ static const char *keyword_names[] = {
  "UMOUNT", // KW_UMOUNT
  "MOUNTS", // KW_MOUNTS
  "VPATH", // KW_VPATH
- "VPATH$" // KW_VPATH_FUNC
+ "VPATH$", // KW_VPATH_FUNC
+ "BIOS" // KW_BIOS
 };
 
 // --- Token Type Names (for diagnostic output) ---

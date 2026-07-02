@@ -149,3 +149,7 @@ void gw_mem_clear_hooks(GW_Memory *mem) {
         mem->write_hook_count = 0;
     }
 }
+
+uint8_t *gw_mem_get_buffer(GW_Memory *mem) {
+    return mem ? mem->buffer : NULL;
+}

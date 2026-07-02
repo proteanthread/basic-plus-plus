@@ -56,10 +56,12 @@ void help_show(const char *topic);
  // registered functions, program size, etc.
 void help_info(RuntimeState *rt);
 
+#ifndef BPP_LITE_BUILD
  // help_catalog - List all registered functions.
  //
  // Groups functions by category and shows name, arg count,
  // and return type for each.
 void help_catalog(void);
+#endif
 
 #endif // BASICPP_HELP_H

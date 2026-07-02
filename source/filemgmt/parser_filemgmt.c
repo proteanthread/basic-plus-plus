@@ -242,6 +242,7 @@ void pi_parse_kill(Lexer *lex, RuntimeState *rt, int line_num)
  // Auto-appends .BAS if no extension given.
  {
  char fname[260];
+ char resolved[260];
  int flen;
 
  if (lex->current.type != TOK_STRING
@@ -261,9 +262,12 @@ void pi_parse_kill(Lexer *lex, RuntimeState *rt, int line_num)
  // Auto-append .BAS if no extension
  pi_ensure_bas_ext(fname, flen, 259);
 
- if (remove(fname) != 0) {
- printf("File not found: %s\n",
- fname);
+ if (vfs_resolve(fname, resolved, sizeof(resolved), 1) == 0) {
+  if (remove(resolved) != 0) {
+   printf("File not found: %s\n", fname);
+  }
+ } else {
+  printf("File not found: %s\n", fname);
  }
  }
  return;

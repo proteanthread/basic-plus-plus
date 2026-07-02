@@ -1,6 +1,6 @@
 THE BASIC++ USER-DEFINED TYPE SYSTEM
 =======================================
-Version 4.1.1
+Version 4.2.3
 
 This manual explains how to define and use custom data
 types in BASIC++ — structured records with named fields,
@@ -178,9 +178,9 @@ From config.h:
 
   Constant            Value   Meaning
   ──────────────────  ──────  ──────────────────────────
-  MAX_USER_TYPES      16      Maximum TYPE definitions
-  MAX_TYPE_FIELDS     16      Maximum fields per TYPE
-  MAX_TYPED_VARS      64      Maximum typed variable
+  MAX_USER_TYPES      64      Maximum TYPE definitions
+  MAX_TYPE_FIELDS     64      Maximum fields per TYPE
+  MAX_TYPED_VARS      512     Maximum typed variable
                               instances (total)
   MAX_VAR_NAME_LEN    31      Maximum name length for
                               types, fields, and vars
@@ -745,12 +745,12 @@ Each UserTypeDef represents one TYPE definition.  It
 stores:
 
   - name: the type name (up to 31 chars, null-terminated)
-  - fields[]: up to 16 field descriptors
+  - fields[]: up to 64 field descriptors
   - field_count: how many fields are defined
 
 The UserTypeDef array lives in RuntimeState:
 
-  UserTypeDef user_types[MAX_USER_TYPES];  /* 16 slots */
+  UserTypeDef user_types[MAX_USER_TYPES];  /* 64 slots */
   int         type_count;                  /* how many defined */
 
 
@@ -761,7 +761,8 @@ From runtime.h:
 
   typedef struct UserTypeField {
       char name[MAX_VAR_NAME_LEN + 1];
-      int  is_string;  /* 0=numeric, 1=string */
+      int  is_string;          /* 0=numeric, 1=string */
+      int  nested_type_index;  /* -1=primitive, >=0=nested UserTypeDef */
   } UserTypeField;
 
 Each field knows:
@@ -770,6 +771,9 @@ Each field knows:
   - is_string: type discriminator
     - 0 = numeric (stored as BValue with VAL_INTEGER)
     - 1 = string (stored as BValue with VAL_STRING)
+  - nested_type_index: index into user_types[] for nested types
+    - -1 = primitive (numeric or string)
+    - >=0 = this field is itself a user-defined type
 
 
 26.  THE TYPEDVAR STRUCTURE
@@ -797,30 +801,51 @@ name lookup (player.HP -> index 2) happens at access time
 by scanning the UserTypeDef's fields[] array.
 
 
+26b.  TYPED VARIABLE COPYING
+------------------------------
+
+BASIC++ supports copying all field values from one typed
+variable to another of the same type using LET assignment:
+
+  DIM Player1 AS CharType
+  DIM Player2 AS CharType
+  Player1.Name = "Alice" : Player1.HP = 100
+  LET Player2 = Player1     ' copy all fields
+
+Internally, this calls runtime_copy_typed_var():
+
+  int runtime_copy_typed_var(RuntimeState *rt,
+      TypedVar *dst, TypedVar *src);
+
+Both variables must have the same type_index (strict
+same-type check).  Returns 0 on success, -1 on type
+mismatch.
+
+
 27.  STORAGE LAYOUT IN RUNTIMESTATE
 ---------------------------------------
 
 The complete type system state in RuntimeState:
 
   /* User-defined types (TYPE...END TYPE) */
-  UserTypeDef user_types[MAX_USER_TYPES];  /* 16 defs */
+  UserTypeDef user_types[MAX_USER_TYPES];  /* 64 defs */
   int         type_count;                  /* # defined */
 
   /* Typed variable instances */
-  TypedVar    typed_vars[MAX_TYPED_VARS];  /* 64 vars */
+  TypedVar    typed_vars[MAX_TYPED_VARS];  /* 512 vars */
   int         typed_var_count;             /* # created */
 
 Memory layout (approximate):
 
   user_types:
-    16 × (32 name + 16 × (32 name + 4 is_string) + 4 count)
-    ≈ 16 × 612 = ~10 KB
+    64 × (32 name + 64 × (32 name + 4 is_string + 4 nested) + 4 count)
+    ≈ 64 × 2596 = ~162 KB
 
   typed_vars:
-    64 × (32 name + 4 index + 16 × sizeof(BValue))
-    ≈ 64 × 228 = ~15 KB
+    512 × (32 name + 4 index + 64 × sizeof(BValue))
+    ≈ 512 × 1060 = ~530 KB
 
-  Total: ~25 KB for the type system
+  Total: ~692 KB for the type system
 
 This is allocated statically inside RuntimeState, so
 there is no dynamic allocation for types.
@@ -831,18 +856,18 @@ there is no dynamic allocation for types.
 
   Limit                Value   What Happens at Limit
   ───────────────────  ──────  ──────────────────────────
-  MAX_USER_TYPES (16)  16      ERR_SORRY: "Out of memory"
-  MAX_TYPE_FIELDS (16) 16      Extra fields silently
+  MAX_USER_TYPES (64)  64      ERR_SORRY: "Out of memory"
+  MAX_TYPE_FIELDS (64) 64      Extra fields silently
                                ignored (parser stops
-                               collecting after 16)
-  MAX_TYPED_VARS (64)  64      ERR_SORRY: "Out of memory"
+                               collecting after 64)
+  MAX_TYPED_VARS (512) 512     ERR_SORRY: "Out of memory"
   MAX_VAR_NAME_LEN     31      Names truncated to 31 chars
 
 To increase these limits, edit config.h:
 
-  #define MAX_USER_TYPES   32   /* was 16 */
-  #define MAX_TYPE_FIELDS  32   /* was 16 */
-  #define MAX_TYPED_VARS   128  /* was 64 */
+  #define MAX_USER_TYPES   128  /* was 64 */
+  #define MAX_TYPE_FIELDS  128  /* was 64 */
+  #define MAX_TYPED_VARS   1024 /* was 512 */
 
 Then recompile.  The tradeoff is increased memory usage
 in RuntimeState.
@@ -1308,9 +1333,9 @@ Part VII:  ERROR REFERENCE AND BEST PRACTICES
   value = Array(I).FieldName       Read array element field
 
   Limits:
-    Max type definitions:          16 (MAX_USER_TYPES)
-    Max fields per type:           16 (MAX_TYPE_FIELDS)
-    Max typed variable instances:  64 (MAX_TYPED_VARS)
+    Max type definitions:          64 (MAX_USER_TYPES)
+    Max fields per type:           64 (MAX_TYPE_FIELDS)
+    Max typed variable instances:  512 (MAX_TYPED_VARS)
     Max name length:               31 (MAX_VAR_NAME_LEN)
     Numeric field default:         0
     String field default:          "" (empty)

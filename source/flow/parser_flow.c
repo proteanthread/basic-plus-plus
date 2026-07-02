@@ -293,12 +293,31 @@ void pi_parse_if(Lexer *lex, RuntimeState *rt, int line_num)
  int condition;
 
  // Parse condition as a full expression.
- // Comparisons (=, <, >, etc.) and logical operators
- // (AND, OR, NOT) are handled by parse_expression_bval.
- // Result: non-zero = true, zero = false.
  cond_val = parse_expression_bval(lex, rt, line_num);
  if (error_occurred()) return;
  condition = (bval_to_int(&cond_val) != 0);
+
+#ifdef BPP_LITE_BUILD
+ // Block IF check
+ if (lex->current.type == TOK_EOF || lex->current.type == TOK_CR) {
+     error_raise(ERR_HOW, line_num);
+     return;
+ }
+ // Check for ELSE in subsequent tokens
+ {
+     Lexer temp = *lex;
+     if (temp.current.type == TOK_KEYWORD && temp.current.value.keyword == KW_THEN) {
+         lexer_next(&temp);
+     }
+     while (temp.current.type != TOK_EOF && temp.current.type != TOK_CR) {
+         if (temp.current.type == TOK_KEYWORD && temp.current.value.keyword == KW_ELSE) {
+             error_raise(ERR_HOW, line_num);
+             return;
+         }
+         lexer_next(&temp);
+     }
+ }
+#endif
 
  // Consume optional THEN keyword (GW-BASIC uses THEN,
  // PATB does not).
@@ -323,17 +342,19 @@ void pi_parse_if(Lexer *lex, RuntimeState *rt, int line_num)
  // FALSE: scan forward for ELSEIF/ELSE/END IF.
  KeywordId found = pi_block_if_scan(rt, line_num);
 
- if (found == KW_ELSEIF) {
- // Found ELSEIF - the exec loop will execute
- // this line, which triggers the ELSEIF handler.
- // The ELSEIF handler evaluates its condition.
- return;
- }
- if (found == KW_ELSE) {
- // Found ELSE - execution continues on the
- // line AFTER the ELSE.
- return;
- }
+  if (found == KW_ELSEIF) {
+  // Found ELSEIF - the exec loop will execute
+  // this line, which triggers the ELSEIF handler.
+  // The ELSEIF handler evaluates its condition.
+  rt->jumped_to_else = 1;
+  return;
+  }
+  if (found == KW_ELSE) {
+  // Found ELSE - execution continues on the
+  // line AFTER the ELSE.
+  rt->jumped_to_else = 1;
+  return;
+  }
  // KW_ENDIF - skip past it, done
  return;
  }
@@ -397,7 +418,7 @@ void pi_parse_if(Lexer *lex, RuntimeState *rt, int line_num)
  // literal like PRINT "ELSE".
  const char *src = lex->source;
  int len = lex->length;
- int p = lex->pos;
+ int p = lex->current.pos; // START FROM CURRENT TOKEN, not raw scan pos!
  int found_else = -1;
 
  while (p < len) {
@@ -441,18 +462,17 @@ void pi_parse_if(Lexer *lex, RuntimeState *rt, int line_num)
  p++;
  }
 
- if (found_else >= 0) {
- // Reposition the lexer after "ELSE"
- // and execute the ELSE clause.
- lex->pos = found_else;
- lexer_next(lex); // prime first token
+    if (found_else >= 0) {
+        // Reposition the lexer after "ELSE"
+  // and execute the ELSE clause.
+  lexer_rewind_to(lex, found_else);
 
  // Skip optional whitespace already handled
  // by lexer_next 
  pi_parse_statement(lex, rt, line_num);
  } else {
- // No ELSE - skip entire line
- lexer_skip_to_end(lex);
+  // No ELSE - skip entire line
+  lexer_skip_to_end(lex);
  }
  }
 }
@@ -600,6 +620,10 @@ void pi_parse_goto(Lexer *lex, RuntimeState *rt, int line_num)
  // PATB rule: GOSUB must be the last command on a line.
 void pi_parse_gosub(Lexer *lex, RuntimeState *rt, int line_num)
 {
+#ifdef BPP_LITE_BUILD
+    error_raise(ERR_HOW, line_num);
+    return;
+#endif
  // Check for label-style GOSUB
  if (lex->current.type == TOK_NAMED_VAR ||
  (lex->current.type == TOK_KEYWORD &&
@@ -646,6 +670,10 @@ void pi_parse_gosub(Lexer *lex, RuntimeState *rt, int line_num)
  // PATB rule: RETURN must be the last command on a line.
 void pi_parse_return(Lexer *lex, RuntimeState *rt, int line_num)
 {
+#ifdef BPP_LITE_BUILD
+    error_raise(ERR_HOW, line_num);
+    return;
+#endif
  (void)lex;
 
  // Use VM control flow primitive
@@ -753,6 +781,7 @@ void pi_parse_end(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
+#ifndef BPP_LITE_BUILD
  // END ATOMIC - commit the atomic block.
  // Finalizes all journaled writes.
  if (lexer_match_keyword(lex, KW_ATOMIC)) {
@@ -760,6 +789,7 @@ void pi_parse_end(Lexer *lex, RuntimeState *rt, int line_num)
  pi_parse_end_atomic(line_num);
  return;
  }
+#endif
 
  // Use VM state machine
  vm_halt(rt);
@@ -814,201 +844,234 @@ void pi_parse_rem(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_on - Handle ON in control flow.
 void pi_parse_on(Lexer *lex, RuntimeState *rt, int line_num)
 {
- // ON expr GOTO l1,l2,l3 - computed GOTO
- // ON expr GOSUB l1,l2,l3 - computed GOSUB
- // ON ERROR GOTO n - error handler
- {
- // Peek: if next token is ERROR, handle
- // as ON ERROR GOTO. Otherwise, parse as
- // ON expr GOTO/GOSUB line-list.
-  if (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword ==
- KW_ERROR) {
- // ON ERROR GOTO n
- long target;
- if (!dialect_check_feature("ON ERROR",
- dialect_get_config()->has_on_error,
- line_num))
- return;
- lexer_next(lex); // consume ERROR
- if (lex->current.type != TOK_KEYWORD
- || lex->current.value.keyword !=
- KW_GOTO) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- lexer_next(lex); // consume GOTO
- target = parse_expression(
- lex, rt, line_num);
- rt->on_error_line = (int)target;
- }
-   // ON COM(n) / KEY(n) / PEN / PLAY(n) /
-   // STRIG(n) / TIMER(n) / BREAK GOSUB line
-   //
-   // Event trapping handler registration.
-   // Stores the GOSUB target line in the
-   // appropriate RuntimeState field for
-   // event_poll() to dispatch.
-  else if (lex->current.type ==
-    TOK_KEYWORD &&
-    (lex->current.value.keyword
-    == KW_COM ||
-    lex->current.value.keyword
-    == KW_KEY ||
-    lex->current.value.keyword
-    == KW_PEN ||
-    lex->current.value.keyword
-    == KW_PLAY ||
-    lex->current.value.keyword
-    == KW_STRIG ||
-    lex->current.value.keyword
-    == KW_TIMER ||
-    lex->current.value.keyword
-    == KW_TRAP ||
-    lex->current.value.keyword
-    == KW_BREAK)) {
-   KeywordId evkw =
-    lex->current.value.keyword;
-   long ev_arg = 0;
-   lexer_next(lex);
+#ifdef BPP_LITE_BUILD
+  {
+    long selector;
+    int targets[20];
+    int count = 0;
 
-   // Consume optional (n)
-   if (lex->current.type ==
-       TOK_LPAREN) {
+    selector = parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+
+    if (lex->current.type != TOK_KEYWORD || lex->current.value.keyword != KW_GOTO) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
     lexer_next(lex);
-    ev_arg = parse_expression(
+
+    targets[count] = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    count++;
+
+    while (lex->current.type == TOK_COMMA && count < 20) {
+        lexer_next(lex);
+        targets[count] = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        count++;
+    }
+
+    if (selector >= 1 && selector <= count) {
+        int tgt = targets[(int)selector - 1];
+        vm_jump(rt, tgt, line_num);
+    }
+  }
+#else
+  // ON expr GOTO l1,l2,l3 - computed GOTO
+  // ON expr GOSUB l1,l2,l3 - computed GOSUB
+  // ON ERROR GOTO n - error handler
+  {
+  // Peek: if next token is ERROR, handle
+  // as ON ERROR GOTO. Otherwise, parse as
+  // ON expr GOTO/GOSUB line-list.
+   if (lex->current.type == TOK_KEYWORD &&
+  lex->current.value.keyword ==
+  KW_ERROR) {
+  // ON ERROR GOTO n
+  long target;
+  if (!dialect_check_feature("ON ERROR",
+  dialect_get_config()->has_on_error,
+  line_num))
+  return;
+  lexer_next(lex); // consume ERROR
+  if (lex->current.type != TOK_KEYWORD
+  || lex->current.value.keyword !=
+  KW_GOTO) {
+  error_raise(ERR_WHAT, line_num);
+  return;
+  }
+  lexer_next(lex); // consume GOTO
+  target = parse_expression(
+  lex, rt, line_num);
+  rt->on_error_line = (int)target;
+  }
+    // ON COM(n) / KEY(n) / PEN / PLAY(n) /
+    // STRIG(n) / TIMER(n) / BREAK GOSUB line
+    //
+    // Event trapping handler registration.
+    // Stores the GOSUB target line in the
+    // appropriate RuntimeState field for
+    // event_poll() to dispatch.
+   else if (lex->current.type ==
+     TOK_KEYWORD &&
+     (lex->current.value.keyword
+     == KW_COM ||
+     lex->current.value.keyword
+     == KW_KEY ||
+     lex->current.value.keyword
+     == KW_PEN ||
+     lex->current.value.keyword
+     == KW_PLAY ||
+     lex->current.value.keyword
+     == KW_STRIG ||
+     lex->current.value.keyword
+     == KW_TIMER ||
+     lex->current.value.keyword
+     == KW_TRAP ||
+     lex->current.value.keyword
+     == KW_BREAK)) {
+    KeywordId evkw =
+     lex->current.value.keyword;
+    long ev_arg = 0;
+    lexer_next(lex);
+
+    // Consume optional (n)
+    if (lex->current.type ==
+        TOK_LPAREN) {
+     lexer_next(lex);
+     ev_arg = parse_expression(
+      lex, rt, line_num);
+     if (error_occurred()) return;
+     if (lex->current.type ==
+         TOK_RPAREN)
+      lexer_next(lex);
+    }
+
+    // Expect GOSUB or GOTO
+    if (!lexer_match_keyword(lex,
+     KW_GOSUB) &&
+        !lexer_match_keyword(lex,
+     KW_GOTO)) {
+     error_raise(ERR_WHAT,
+      line_num);
+     return;
+    }
+    lexer_next(lex);
+
+    // Parse target line
+    {
+    long tgt = parse_expression(
      lex, rt, line_num);
     if (error_occurred()) return;
-    if (lex->current.type ==
-        TOK_RPAREN)
-     lexer_next(lex);
-   }
 
-   // Expect GOSUB or GOTO
-   if (!lexer_match_keyword(lex,
-    KW_GOSUB) &&
-       !lexer_match_keyword(lex,
-    KW_GOTO)) {
-    error_raise(ERR_WHAT,
-     line_num);
-    return;
-   }
-   lexer_next(lex);
+    // Register handler by event type
+    if (evkw == KW_TIMER) {
+     rt->timer_interval =
+      (double)ev_arg;
+     rt->on_timer_line =
+      (int)tgt;
+    } else if (evkw == KW_KEY) {
+     if (ev_arg >= 1 &&
+         ev_arg <= MAX_KEY_TRAPS) {
+      rt->on_key_line[
+          (int)ev_arg - 1] =
+       (int)tgt;
+     }
+    } else if (evkw == KW_COM) {
+     if (ev_arg >= 1 &&
+         ev_arg <= MAX_COM_PORTS) {
+      rt->on_com_line[
+          (int)ev_arg - 1] =
+       (int)tgt;
+     }
+    } else if (evkw == KW_PEN) {
+     rt->on_pen_line =
+      (int)tgt;
+    } else if (evkw == KW_PLAY) {
+     rt->on_play_line =
+      (int)tgt;
+    } else if (evkw == KW_STRIG) {
+     if (ev_arg >= 0 &&
+         ev_arg < MAX_STRIG_BUTTONS) {
+      rt->on_strig_line[
+          (int)ev_arg] =
+       (int)tgt;
+     }
+    } else if (evkw == KW_TRAP) {
+     rt->on_error_line =
+      (int)tgt;
+    } else if (evkw == KW_BREAK) {
+     rt->on_break_line =
+      (int)tgt;
+     rt->break_event_state =
+      EVT_ON;
+    }
+    }
+   } else {
+  // ON expr GOTO/GOSUB line-list.
+  // Evaluate expr, then parse the
+  // GOTO/GOSUB keyword, then collect
+  // comma-separated line numbers.
+  // Branch to the Nth target.
+  long selector;
+  int is_gosub = 0;
+  int targets[20];
+  int count = 0;
 
-   // Parse target line
-   {
-   long tgt = parse_expression(
-    lex, rt, line_num);
-   if (error_occurred()) return;
+  selector = parse_expression(
+  lex, rt, line_num);
+  if (error_occurred()) return;
 
-   // Register handler by event type
-   if (evkw == KW_TIMER) {
-    rt->timer_interval =
-     (double)ev_arg;
-    rt->on_timer_line =
-     (int)tgt;
-   } else if (evkw == KW_KEY) {
-    if (ev_arg >= 1 &&
-        ev_arg <= MAX_KEY_TRAPS) {
-     rt->on_key_line[
-         (int)ev_arg - 1] =
-      (int)tgt;
-    }
-   } else if (evkw == KW_COM) {
-    if (ev_arg >= 1 &&
-        ev_arg <= MAX_COM_PORTS) {
-     rt->on_com_line[
-         (int)ev_arg - 1] =
-      (int)tgt;
-    }
-   } else if (evkw == KW_PEN) {
-    rt->on_pen_line =
-     (int)tgt;
-   } else if (evkw == KW_PLAY) {
-    rt->on_play_line =
-     (int)tgt;
-   } else if (evkw == KW_STRIG) {
-    if (ev_arg >= 0 &&
-        ev_arg < MAX_STRIG_BUTTONS) {
-     rt->on_strig_line[
-         (int)ev_arg] =
-      (int)tgt;
-    }
-   } else if (evkw == KW_TRAP) {
-    rt->on_error_line =
-     (int)tgt;
-   } else if (evkw == KW_BREAK) {
-    rt->on_break_line =
-     (int)tgt;
-    rt->break_event_state =
-     EVT_ON;
-   }
-   }
+  // Expect GOTO or GOSUB
+  if (lex->current.type == TOK_KEYWORD
+  && lex->current.value.keyword ==
+  KW_GOTO) {
+  is_gosub = 0;
+  } else if (lex->current.type ==
+  TOK_KEYWORD &&
+  lex->current.value
+  .keyword ==
+  KW_GOSUB) {
+  is_gosub = 1;
   } else {
- // ON expr GOTO/GOSUB line-list.
- // Evaluate expr, then parse the
- // GOTO/GOSUB keyword, then collect
- // comma-separated line numbers.
- // Branch to the Nth target.
- long selector;
- int is_gosub = 0;
- int targets[20];
- int count = 0;
+  error_raise(ERR_WHAT, line_num);
+  return;
+  }
+  lexer_next(lex);
 
- selector = parse_expression(
- lex, rt, line_num);
- if (error_occurred()) return;
+  // Parse line number list
+  targets[count] = (int)
+  parse_expression(
+  lex, rt, line_num);
+  if (error_occurred()) return;
+  count++;
 
- // Expect GOTO or GOSUB
- if (lex->current.type == TOK_KEYWORD
- && lex->current.value.keyword ==
- KW_GOTO) {
- is_gosub = 0;
- } else if (lex->current.type ==
- TOK_KEYWORD &&
- lex->current.value
- .keyword ==
- KW_GOSUB) {
- is_gosub = 1;
- } else {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- lexer_next(lex);
+  while (lex->current.type ==
+  TOK_COMMA && count < 20) {
+  lexer_next(lex);
+  targets[count] = (int)
+  parse_expression(
+  lex, rt, line_num);
+  if (error_occurred()) return;
+  count++;
+  }
 
- // Parse line number list
- targets[count] = (int)
- parse_expression(
- lex, rt, line_num);
- if (error_occurred()) return;
- count++;
-
- while (lex->current.type ==
- TOK_COMMA && count < 20) {
- lexer_next(lex);
- targets[count] = (int)
- parse_expression(
- lex, rt, line_num);
- if (error_occurred()) return;
- count++;
- }
-
- // Branch if selector is valid
- if (selector >= 1 &&
- selector <= count) {
- int tgt = targets[
- (int)selector - 1];
- if (is_gosub) {
- vm_call(rt, tgt, line_num);
- } else {
- vm_jump(rt, tgt, line_num);
- }
- }
- // else: fall through to next line
- // (GW-BASIC behavior) 
- }
- }
- return;
+  // Branch if selector is valid
+  if (selector >= 1 &&
+  selector <= count) {
+  int tgt = targets[
+  (int)selector - 1];
+  if (is_gosub) {
+  vm_call(rt, tgt, line_num);
+  } else {
+  vm_jump(rt, tgt, line_num);
+  }
+  }
+  // else: fall through to next line
+  // (GW-BASIC behavior)
+  }
+  }
+#endif
+  return;
 }
 
  // pi_parse_else - Handle ELSE in control flow.
@@ -1025,16 +1088,17 @@ void pi_parse_else(Lexer *lex, RuntimeState *rt, int line_num)
  // Block IF with block_if_depth == 0: reached
  // from false path via scan - fall through to
  // execute the ELSE body.
- if (lex->current.type == TOK_EOF ||
- lex->current.type == TOK_CR) {
- // Block ELSE
- if (rt->block_if_depth > 0) {
- // True branch ran - skip to END IF
- pi_block_if_skip_to_end(rt, line_num);
- } else {
- // False path - enter ELSE body
- rt->block_if_depth++;
- }
+  if (lex->current.type == TOK_EOF ||
+  lex->current.type == TOK_CR) {
+  // Block ELSE
+  if (!rt->jumped_to_else) {
+  // True branch ran - skip to END IF
+  pi_block_if_skip_to_end(rt, line_num);
+  } else {
+  // False path - enter ELSE body
+  rt->jumped_to_else = 0;
+  rt->block_if_depth++;
+  }
  } else {
  // Single-line ELSE - skip rest
  lexer_skip_to_end(lex);
@@ -1052,11 +1116,12 @@ void pi_parse_elseif(Lexer *lex, RuntimeState *rt, int line_num)
  //
  // If block_if_depth == 0, we were scanned to
  // from a FALSE path - evaluate the condition.
- if (rt->block_if_depth > 0) {
- // True branch already ran - skip to END IF
- pi_block_if_skip_to_end(rt, line_num);
- return;
- }
+  if (!rt->jumped_to_else) {
+  // True branch already ran - skip to END IF
+  pi_block_if_skip_to_end(rt, line_num);
+  return;
+  }
+  rt->jumped_to_else = 0; // Clear the flag for the next evaluation
  {
  BValue elif_val;
  int elif_cond;
@@ -1078,7 +1143,10 @@ void pi_parse_elseif(Lexer *lex, RuntimeState *rt, int line_num)
  } else {
  // FALSE: scan forward for next
  // ELSEIF/ELSE/END IF.
- pi_block_if_scan(rt, line_num);
+ KeywordId found = pi_block_if_scan(rt, line_num);
+ if (found == KW_ELSEIF || found == KW_ELSE) {
+ rt->jumped_to_else = 1;
+ }
  return;
  }
  }

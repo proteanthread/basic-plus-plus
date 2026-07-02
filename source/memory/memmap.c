@@ -43,6 +43,8 @@
 #include <string.h>
 #include "memmap.h"
 #include "config.h"
+#include "../console.h"
+#include "../dialect.h"
 
 // --- Helper: fill a range of memory with a value ---
 static void mem_fill(unsigned char *mem, int start, int len,
@@ -72,6 +74,8 @@ static void mem_set16(unsigned char *mem, int addr,
  }
 }
 
+static void memmap_init_bios_common(unsigned char *mem, unsigned char model_byte);
+
 // --- MS-DOS Memory Map ---
  // 0x0000-0x03FF: Interrupt Vector Table (256 dword entries)
  // 0x0400-0x04FF: BIOS Data Area (BDA)
@@ -82,22 +86,88 @@ static void mem_set16(unsigned char *mem, int addr,
  // 0x0463-0x0464: CRT controller base port (0x03D4)
 static void memmap_init_msdos(unsigned char *mem)
 {
- // BIOS Data Area
- mem_set16(mem, 0x0413, 0x0280); // 640K
- mem_set(mem, 0x0449, 0x03); // Video mode 3
- mem_set16(mem, 0x044A, 80); // 80 columns
- mem_set(mem, 0x0462, 0x00); // Page 0
- mem_set16(mem, 0x0463, 0x03D4); // CRT port
+  memmap_init_bios_common(mem, 0xFF); // IBM PC/MSDOS model byte
+  // BIOS Data Area
+  mem_set16(mem, 0x0413, 0x0280); // 640K
+  mem_set(mem, 0x0449, 0x03); // Video mode 3
+  mem_set16(mem, 0x044A, 80); // 80 columns
+  mem_set(mem, 0x0462, 0x00); // Page 0
+  mem_set16(mem, 0x0463, 0x03D4); // CRT port
 
- // Equipment word: 80-col, 1 floppy, VGA
- mem_set16(mem, 0x0410, 0x0021);
+  // Equipment word: 80-col, 1 floppy, VGA
+  mem_set16(mem, 0x0410, 0x0021);
 
- // Keyboard buffer head/tail
- mem_set16(mem, 0x041A, 0x001E);
- mem_set16(mem, 0x041C, 0x001E);
+  // Keyboard buffer head/tail
+  mem_set16(mem, 0x041A, 0x001E);
+  mem_set16(mem, 0x041C, 0x001E);
 
- // Timer tick count (approx 0 at boot)
- mem_set(mem, 0x046C, 0x00);
+  // Timer tick count (approx 0 at boot)
+  mem_set(mem, 0x046C, 0x00);
+}
+
+static void memmap_init_bios_common(unsigned char *mem, unsigned char model_byte)
+{
+ int i;
+ // 1. Initialize IVT with hybrid ROM pointers pointing to segment 0xF000
+ for (i = 0; i < 256; i++) {
+     unsigned int offset = 0x1000 + (i * 16);
+     unsigned int segment = 0xF000;
+     unsigned int addr = i * 4;
+     if (addr + 3 < MAX_MEM_SEGMENT) {
+         mem[addr] = (unsigned char)(offset & 0xFF);
+         mem[addr + 1] = (unsigned char)((offset >> 8) & 0xFF);
+         mem[addr + 2] = (unsigned char)(segment & 0xFF);
+         mem[addr + 3] = (unsigned char)((segment >> 8) & 0xFF);
+     }
+ }
+
+ // 2. Initialize BIOS Data Area (BDA)
+ if (0x0400 + 256 <= MAX_MEM_SEGMENT) {
+     mem_set16(mem, 0x0413, 0x0280); // 640K conventional memory
+     mem_set(mem, 0x0449, 0x03); // Video mode 3
+     mem_set16(mem, 0x044A, 80); // 80 columns per line
+     mem_set(mem, 0x0462, 0x00); // Active video page 0
+     mem_set16(mem, 0x0463, 0x03D4); // CRT controller base port
+     mem_set16(mem, 0x0410, 0x0021); // Equipment word
+     mem_set16(mem, 0x041A, 0x001E); // Keyboard buffer head
+     mem_set16(mem, 0x041C, 0x001E); // Keyboard buffer tail
+     mem_set(mem, 0x046C, 0x00); // System timer ticks
+ }
+
+ // 3. Set BIOS model byte at F000:FFFE -> 0xFFFFE
+ if (0xFFFFE < MAX_MEM_SEGMENT) {
+     mem[0xFFFFE] = model_byte;
+ }
+}
+
+static void memmap_init_ibm_pc(unsigned char *mem)
+{
+ memmap_init_bios_common(mem, 0xFF); // IBM PC model byte
+}
+
+static void memmap_init_ibm_pcjr(unsigned char *mem)
+{
+ memmap_init_bios_common(mem, 0xFD); // IBM PCjr model byte
+ if (0x0400 + 256 <= MAX_MEM_SEGMENT) {
+     mem_set(mem, 0x0449, 0x01); // Video mode 1 (PCjr 40x25)
+     mem_set16(mem, 0x044A, 40); // 40 columns
+ }
+}
+
+static void memmap_init_ibm_xt(unsigned char *mem)
+{
+ memmap_init_bios_common(mem, 0xFE); // IBM XT model byte
+ if (0x0475 < MAX_MEM_SEGMENT) {
+     mem[0x0475] = 1; // 1 hard disk drive
+ }
+}
+
+static void memmap_init_ibm_at(unsigned char *mem)
+{
+ memmap_init_bios_common(mem, 0xFC); // IBM AT model byte
+ if (0x0496 < MAX_MEM_SEGMENT) {
+     mem[0x0496] = 0x10; // AT keyboard layout flags
+ }
 }
 
 // --- Commodore 64 Memory Map ---
@@ -498,14 +568,18 @@ static void memmap_init_ql(unsigned char *mem)
  mem_set(mem, 0x0110, 0x00); // Mode 4
 }
 
-// --- Name Table ---
+/// --- Name Table ---
 static const struct {
  const char *name;
  const char *desc;
  MemMapType type;
 } memmap_table[] = {
- { "NONE", "Bare 64K, no presets", MMAP_NONE },
+ { "NONE", "Bare segment, no presets", MMAP_NONE },
  { "MSDOS", "MS-DOS (BIOS Data Area, 640K)", MMAP_MSDOS },
+ { "IBMPC", "IBM PC 5150 BIOS", MMAP_IBM_PC },
+ { "PCJR", "IBM PCjr 4860 BIOS", MMAP_IBM_PCJR },
+ { "PCXT", "IBM PC/XT 5160 BIOS", MMAP_IBM_XT },
+ { "PCAT", "IBM PC/AT 5170 BIOS", MMAP_IBM_AT },
  { "C64", "Commodore 64 (VIC-II, SID, CIA)", MMAP_C64 },
  { "C128", "Commodore 128 (C64 + MMU)", MMAP_C128 },
  { "VIC20", "Commodore VIC-20", MMAP_VIC20 },
@@ -523,11 +597,15 @@ static const struct {
 
 void memmap_init(unsigned char *mem, MemMapType type)
 {
- // Clear entire 64K
+ // Clear entire segment
  memset(mem, 0, (size_t)MAX_MEM_SEGMENT);
 
  switch (type) {
  case MMAP_MSDOS: memmap_init_msdos(mem); break;
+ case MMAP_IBM_PC: memmap_init_ibm_pc(mem); break;
+ case MMAP_IBM_PCJR: memmap_init_ibm_pcjr(mem); break;
+ case MMAP_IBM_XT: memmap_init_ibm_xt(mem); break;
+ case MMAP_IBM_AT: memmap_init_ibm_at(mem); break;
  case MMAP_C64: memmap_init_c64(mem); break;
  case MMAP_C128: memmap_init_c128(mem); break;
  case MMAP_VIC20: memmap_init_vic20(mem); break;
@@ -542,6 +620,19 @@ void memmap_init(unsigned char *mem, MemMapType type)
  default:
  break; // Already zeroed
  }
+
+#ifndef BPP_LITE_BUILD
+  {
+      extern struct GW_Memory *g_gw_mem;
+      extern uint8_t *gw_mem_get_buffer(struct GW_Memory *mem);
+      if (g_gw_mem != NULL) {
+          uint8_t *gw_buf = gw_mem_get_buffer(g_gw_mem);
+          if (gw_buf != NULL) {
+              memcpy(gw_buf, mem, MAX_MEM_SEGMENT);
+          }
+      }
+  }
+#endif
 }
 
 const char *memmap_get_name(MemMapType type)
@@ -567,11 +658,23 @@ void memmap_list(void)
 
 MemMapType memmap_from_string(const char *name, int len)
 {
- int i;
- for (i = 0; memmap_table[i].name != NULL; i++) {
- const char *n = memmap_table[i].name;
- int nlen = (int)strlen(n);
- int j, match;
+  int i;
+
+  // Alias checks
+  if (len == 2) {
+      char a = name[0];
+      char b = name[1];
+      if (a >= 'a' && a <= 'z') a = (char)(a - 32);
+      if (b >= 'a' && b <= 'z') b = (char)(b - 32);
+      if (a == 'X' && b == 'T') return MMAP_IBM_XT;
+      if (a == 'A' && b == 'T') return MMAP_IBM_AT;
+      if (a == 'P' && b == 'C') return MMAP_IBM_PC;
+  }
+
+  for (i = 0; memmap_table[i].name != NULL; i++) {
+  const char *n = memmap_table[i].name;
+  int nlen = (int)strlen(n);
+  int j, match;
 
  if (nlen != len) continue;
 
@@ -588,4 +691,39 @@ MemMapType memmap_from_string(const char *name, int len)
  return memmap_table[i].type;
  }
  return MMAP_COUNT; // Not found
+}
+
+MemMapType memmap_default_for_dialect(int dialect_id)
+{
+    switch (dialect_id) {
+        case DIALECT_TINY_BASIC:
+            return MMAP_NONE;
+        case DIALECT_TRS80_L1:
+        case DIALECT_TRS80_L2:
+            return MMAP_TRS80;
+        case DIALECT_GW_BASIC:
+            return MMAP_MSDOS;
+        case DIALECT_ECMA55:
+        case DIALECT_ECMA116:
+        case DIALECT_QBASIC:
+            return MMAP_MSDOS;
+        case DIALECT_APPLE_INT:
+        case DIALECT_APPLESOFT:
+            return MMAP_APPLE2;
+        case DIALECT_ATARI_MS:
+            return MMAP_ATARI8;
+        case DIALECT_COMMODORE:
+            return MMAP_C64;
+        case DIALECT_COCO:
+            return MMAP_NONE;
+        case DIALECT_MBASIC:
+            return MMAP_MSDOS;
+        case DIALECT_SINCLAIR:
+            return MMAP_SPECTRUM;
+        case DIALECT_SUPERBASIC:
+            return MMAP_QL;
+        case DIALECT_SBASIC:
+        default:
+            return MMAP_NONE;
+    }
 }

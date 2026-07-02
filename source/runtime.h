@@ -59,12 +59,16 @@
 #define BASICPP_RUNTIME_H
 
 #include "config.h"
+struct Lexer;
+typedef struct Lexer Lexer;
+typedef int KeywordId;
 #include "memory.h"
 #include "value.h"
 #include "stringpool.h"
 #include "vdev.h"
 #include "rpn.h"
 #include "scope_stack.h"
+#include "vm.h"
 
 // --- Stack Frame Types ---
  // Each type of flow-control construct that uses the runtime stack
@@ -78,8 +82,21 @@ typedef enum FrameType {
  FRAME_DO, // DO/LOOP loop
  FRAME_SUB, // SUB/FUNCTION call
  FRAME_EXCEPTION, // WHEN EXCEPTION IN block
- FRAME_REPEAT // REPeat/END REPeat loop
+ FRAME_REPEAT, // REPeat/END REPeat loop
+ FRAME_SUSPEND // suspended expression evaluator state
 } FrameType;
+
+// --- Parse Operator for Iterative Evaluation ---
+typedef struct ParseOp {
+    int op;           // OpType (e.g. OP_ADD, OP_FUNC)
+    int precedence;   // precedence level (1-14)
+    int assoc;        // 0 = left, 1 = right
+    int is_unary;     // 1 if unary, 0 if binary
+    KeywordId kw;     // function KeywordId or variable name
+    int arg_count;    // actual argument count
+    char name[32];    // variable or function name
+    int name_len;     // name length
+} ParseOp;
 
 // --- Stack Frame ---
  // A single entry on the runtime stack. The 'type' field identifies
@@ -148,11 +165,22 @@ typedef struct StackFrame {
  int end_when_index; // END WHEN line
  int err_index; // line where error occurred
  } exception;
- struct {
- char name[MAX_VAR_NAME_LEN + 1]; // loop identifier
- int body_index; // index of line after REPeat
- } repeat_loop;
- } data;
+  struct {
+  char name[MAX_VAR_NAME_LEN + 1]; // loop identifier
+  int body_index; // index of line after REPeat
+  } repeat_loop;
+  struct {
+      int return_index;                 // Program index of suspended line
+      double lex_state[16];             // saved Lexer state (128 bytes, aligned)
+      BValue val_stack[32];             // saved operand values
+      int val_top;
+      ParseOp op_stack[32];             // saved operators
+      int op_top;
+      int arg_count_stack[32];
+      int arg_count_top;
+      int expect_operand;
+  } suspend;
+  } data;
 } StackFrame;
 
 // --- Named Variable Entry ---
@@ -231,6 +259,8 @@ typedef struct SubDef {
  void   *static_named; // saved named vars (NamedVariable*)
  int     static_named_count;
  int     has_static_data; // 1 if static storage initialized
+ int     is_external; // 1 if external subprogram/function
+ char    external_file[260]; // path to external source file
 } SubDef;
 
 // --- Runtime State ---
@@ -299,6 +329,13 @@ typedef struct UserFunction {
  // data_ptr - current READ position in data_pool
  // user_funcs - DEF FN function table
  // user_func_count - number of defined user functions
+typedef struct VMForFrame {
+    int    var_id; // 0-25 for A-Z
+    double limit;
+    double step;
+    int    check_pc; // instruction index of FOR_CHECK
+} VMForFrame;
+
 typedef struct RuntimeState {
  ProgramStore *program;
  MemorySystem *memory;
@@ -312,6 +349,7 @@ typedef struct RuntimeState {
  int stack_top;
  int print_width;
  int option_base; // OPTION BASE 0 or 1
+ int arithmetic_decimal; // OPTION ARITHMETIC DECIMAL mode (1=DECIMAL, 0=NATIVE)
  int print_col; // current column in PRINT
  int stopped;
  uint64_t rnd_seed;
@@ -334,9 +372,12 @@ typedef struct RuntimeState {
  // virtual devices
  VDev *dev_con; // console device (CON:)
  VDev *dev_err; // error device (ERR:)
- // trace system (TRON/TROFF)
- int trace_on; // 1 = trace active
- int debug_on; // 1 = verbose trace (DEBUG)
+  // trace system (TRON/TROFF)
+  int trace_on; // 1 = trace active
+  int debug_on; // 1 = verbose trace (DEBUG)
+  int log_level;
+  int log_to_stderr;
+  void* log_fp;
  // error handler (ON ERROR GOTO)
  int on_error_line; // target line, 0 = disabled
  int on_timer_line; // ON TIMER target, 0 = off
@@ -347,15 +388,16 @@ typedef struct RuntimeState {
  int user_func_count;
  // VM state machine
  int vm_state; // VMState enum value
- // expression evaluation stack (vm.h)
- BValue eval_items[VM_EVAL_STACK_SIZE];
- int eval_top; // -1 = empty
+  // expression evaluation stack (vm.h)
+  VMEvalStack eval_stack;
  // Interactive debugger
  int breakpoints[MAX_BREAKPOINTS];
  int breakpoint_count;
- int single_step; // 1 = pause after each line
- int resume_index; // program index to resume from
- // Self-test framework
+  int single_step; // 1 = pause after each line
+  int resume_index; // program index to resume from
+  int yielded;      // 1 if statement execution yielded
+  int yield_pos;    // Lexer position for resuming yielded statement
+  // Self-test framework
  int test_pass;
  int test_fail;
  int test_total;
@@ -367,8 +409,9 @@ typedef struct RuntimeState {
  // AUTO mode
  int auto_line; // next AUTO line number, 0=off
  int auto_step; // AUTO increment (default 10)
- // Block IF depth (ECMA-116 / QBasic)
- int block_if_depth; // nesting depth of active true blocks
+  // Block IF depth (ECMA-116 / QBasic)
+  int block_if_depth; // nesting depth of active true blocks
+  int jumped_to_else; // flag for IF scanner to signal ELSE/ELSEIF evaluation
  // OPTION ANGLE (ECMA-116)
  int angle_degrees; // 0=radians (default), 1=degrees
  // OPTION TAB: 0=spaces (default), 1=real HT chars
@@ -377,10 +420,12 @@ typedef struct RuntimeState {
  int zone_override;
 
  // SCREEN / DRAW state
- int screen_mode; // 0=text (default)
- int draw_x; // DRAW cursor X (0-79)
+  int screen_mode; // 0=text (default)
+  int is_atari_graphics; // 1 if Atari GRAPHICS command mode is active
+  int atari_graphics_mode; // Atari GRAPHICS mode number (0-127)
+  int draw_x; // DRAW cursor X (0-79)
  int draw_y; // DRAW cursor Y (0-49)
- int draw_color; // DRAW pen character
+  int draw_color; // DRAW pen character
 
  // Cursor tracking for CSRLIN / POS(0)
  int cursor_row; // 1-based row (CSRLIN)
@@ -403,7 +448,11 @@ typedef struct RuntimeState {
  SubDef subs[MAX_SUBS];
  int sub_count;
  BValue fn_return_value; // FUNCTION return value
- int in_sub_index; // index of currently executing SUB, -1 = none
+  int in_sub_index; // index of currently executing SUB, -1 = none
+  int suspended;    // 1 if execution is suspended (function evaluation), 0 otherwise
+  int resumed;      // 1 if execution has just resumed from suspension
+  double restored_lexer[16]; // saved lexer state to resume from (128 bytes, aligned)
+  StackFrame restored_frame; // saved frame context when resuming
 
  // Dynamic scope stack (Milestone 9)
  ScopeStack scope_stack;
@@ -556,7 +605,30 @@ typedef struct RuntimeState {
 
  // Last saved filename for UNSAVE
  char last_save_file[260];
+
+ // Pre-compiled bytecode cache
+ void *loaded_pcode; // pointer to a dynamically allocated PCodeProgram (or NULL)
+ int has_loaded_pcode; // 1 if loaded_pcode is valid
+ int bytecode_only; // 1 if execution is orphaned (no source available)
+
+ // VM execution stacks (allocated dynamically)
+ int *vm_call_stack;
+ int vm_call_stack_capacity;
+
+ VMForFrame *vm_for_stack;
+ int vm_for_stack_capacity;
+
+  int direct_mode; // 1 = force direct interpretation mode, 0 = unified VM mode (default)
+  int lite_mode;   // 1 = execute under the hybrid vm/ast lite mode, 0 = standard mode (default)
+  struct AstStmt **line_asts; // cached ASTs per program line
+  int line_asts_count;
+  BValue acc; // accumulator register for Category 2 Operations
+  int chain_pending;
+  char chain_file[256];
 } RuntimeState;
+
+void runtime_cleanup(RuntimeState *rt);
+void pcode_cache_invalidate(RuntimeState *rt);
 
 // --- Runtime Functions ---
 
@@ -614,10 +686,10 @@ void runtime_set_array(RuntimeState *rt, long index, long value);
  // runtime_rnd - Generate a pseudo-random number.
  //
  // Returns a random integer between 1 and max (inclusive).
- // Uses a simple linear congruential generator (LCG) that is
+ // Uses a pseudo-random PCG32 generator that is
  // portable and does not depend on <time.h> or platform APIs.
  //
- // The LCG parameters are chosen for reasonable distribution
+ // The PCG32 parameters are chosen for reasonable distribution
  // on both 16-bit and 32-bit targets.
 long runtime_rnd(RuntimeState *rt, long max);
 
@@ -767,6 +839,8 @@ int runtime_find_label(RuntimeState *rt, const char *name, int len);
  // Returns pointer to SubDef, or NULL if not found.
  // Case-insensitive comparison.
 SubDef *runtime_find_sub(RuntimeState *rt, const char *name, int len);
+int runtime_load_external_sub(RuntimeState *rt, SubDef *sd);
+void runtime_pre_scan_external_declarations(RuntimeState *rt);
 
  // --- User-Defined Type Runtime Functions ---
 
@@ -805,5 +879,7 @@ BValue *runtime_get_typed_array_field(RuntimeState *rt,
  // Returns 0 on success, -1 on type mismatch or error.
 int runtime_copy_typed_var(RuntimeState *rt,
     TypedVar *dst, TypedVar *src);
+
+void emulate_interrupt(RuntimeState *rt, int int_num, int line_num);
 
 #endif // BASICPP_RUNTIME_H

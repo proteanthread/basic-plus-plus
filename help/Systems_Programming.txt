@@ -112,6 +112,38 @@ the variable is located in the internal variable storage table. This allows
 developers to pass references to variables or arrays to C modules and system
 APIs.
 
+3.4 DEF USR Addresses
+
+BASIC++ supports up to 10 user-defined machine language function addresses
+(USR0 through USR9), stored in the usr_addresses[MAX_USR_FUNCS] array in
+the RuntimeState structure.
+
+
+10 DEF USR0 = &HC000    ' Set USR0 address
+20 DEF USR1 = &HD000    ' Set USR1 address
+30 X = USR0(A)          ' Call USR0 with argument A
+
+
+The MAX_USR_FUNCS constant is set to 10 in runtime.h.
+
+3.5 DEFTYPE Map
+
+The deftype_map[26] array (A-Z) in RuntimeState tracks default variable
+types set by DEFINT, DEFSNG, DEFDBL, and DEFSTR statements.
+
+| Constant | Value | Type |
+|----------|-------|------|
+| DEFTYPE_NONE | 0 | No default (variant) |
+| DEFTYPE_INT | 1 | Integer |
+| DEFTYPE_SNG | 2 | Single-precision |
+| DEFTYPE_DBL | 3 | Double-precision |
+| DEFTYPE_STR | 4 | String |
+
+
+10 DEFINT A-M         ' Variables A through M default to integer
+20 DEFSTR N-Z         ' Variables N through Z default to string
+
+
 
 4. The Virtual Device Layer (VDev) as a Driver Model
 

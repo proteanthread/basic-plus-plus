@@ -586,7 +586,8 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  }
  if (lex->current.type == TOK_EOF ||
   lex->current.type == TOK_CR ||
-  lex->current.type == TOK_COLON) {
+  lex->current.type == TOK_COLON ||
+  (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_ELSE)) {
   break;
   }
  } else if (lex->current.type == TOK_SEMICOLON) {
@@ -594,10 +595,13 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
   need_newline = 0;
   if (lex->current.type == TOK_EOF ||
   lex->current.type == TOK_CR ||
-  (lex->current.type == TOK_COLON && sep == ':')) {
+  (lex->current.type == TOK_COLON && sep == ':') ||
+  (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_ELSE)) {
   break;
   }
  } else if (lex->current.type == TOK_COLON && sep == ':') {
+ break;
+ } else if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_ELSE) {
  break;
  } else {
  break;
@@ -649,61 +653,109 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex); // consume comma
  }
 
- // INPUT USING "format"; var-list
- // Validated input: reads input, checks against format,
- // re-prompts if invalid (Microsoft-style protection).
- if (file_chan == 0 && lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword == KW_USING) {
- const char *ufmt;
- int uflen;
- char ubuf[INPUT_BUFFER_SIZE];
- int ulen;
- lexer_next(lex); // consume USING
+ // INPUT USING "format"; var-list / INPUT #n, USING "format"; var-list
+    // Validated input: reads input, checks against format.
+    if (lex->current.type == TOK_KEYWORD &&
+        lex->current.value.keyword == KW_USING) {
+        const char *ufmt;
+        int uflen;
+        char ubuf[INPUT_BUFFER_SIZE];
+        int ulen = 0;
+        InputFormatSpec spec;
+        lexer_next(lex); // consume USING
 
- if (lex->current.type != TOK_STRING) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- ufmt = lex->current.str_start;
- uflen = lex->current.str_length;
- lexer_next(lex);
+        if (lex->current.type != TOK_STRING) {
+            error_raise(ERR_WHAT, line_num);
+            return;
+        }
+        ufmt = lex->current.str_start;
+        uflen = lex->current.str_length;
+        lexer_next(lex);
 
- // Consume semicolon or comma after format
- if (lex->current.type == TOK_SEMICOLON ||
- lex->current.type == TOK_COMMA)
- lexer_next(lex);
+        // Consume semicolon or comma after format
+        if (lex->current.type == TOK_SEMICOLON ||
+            lex->current.type == TOK_COMMA)
+            lexer_next(lex);
 
- // Read and validate
- ulen = format_input_using(ubuf, INPUT_BUFFER_SIZE,
- ufmt, uflen, "? ");
- if (ulen < 0) {
- error_raise(ERR_HOW, line_num);
- return;
- }
+        input_parse_format(ufmt, uflen, &spec);
 
- // Store in the target variable
- if (lex->current.type == TOK_STRING_VAR) {
- char svar = lex->current.value.var_name;
- char *ptr;
- lexer_next(lex);
- ptr = strpool_store(&rt->strpool, ubuf, ulen);
- if (ptr == NULL) {
- error_raise(ERR_SORRY, line_num);
- return;
- }
- runtime_set_string_var(rt, svar,
- bval_string(ptr, ulen));
- } else if (lex->current.type == TOK_VARIABLE) {
- char vn = lex->current.value.var_name;
- char *endp;
- long val = strtol(ubuf, &endp, 10);
- lexer_next(lex);
- runtime_set_var(rt, vn, val);
- } else {
- error_raise(ERR_WHAT, line_num);
- }
- return;
- }
+        while (!error_occurred()) {
+            if (file_chan > 0) {
+                if (!file_buf_valid || file_buf[file_buf_pos] == '\0') {
+                    if (fileio_input_line(file_chan, file_buf, INPUT_BUFFER_SIZE, line_num) != 0) return;
+                    file_buf_valid = 1;
+                    file_buf_pos = 0;
+                }
+                int di = 0;
+                while (file_buf[file_buf_pos] != '\0'
+                       && file_buf[file_buf_pos] != ','
+                       && file_buf[file_buf_pos] != '\n'
+                       && file_buf[file_buf_pos] != '\r'
+                       && di < INPUT_BUFFER_SIZE - 1) {
+                    ubuf[di++] = file_buf[file_buf_pos++];
+                }
+                ubuf[di] = '\0';
+                if (file_buf[file_buf_pos] == ',')
+                    file_buf_pos++;
+                ulen = di;
+
+                if (!input_validate(ubuf, ulen, &spec)) {
+                    error_raise(ERR_HOW, line_num); // Illegal function call
+                    return;
+                }
+            } else {
+                ulen = format_input_using(ubuf, INPUT_BUFFER_SIZE, ufmt, uflen, "? ");
+                if (ulen < 0) {
+                    error_raise(ERR_HOW, line_num);
+                    return;
+                }
+            }
+
+            if (lex->current.type == TOK_STRING_VAR) {
+                char svar = lex->current.value.var_name;
+                char *ptr;
+                lexer_next(lex);
+                ptr = strpool_store(&rt->strpool, ubuf, ulen);
+                if (ptr == NULL) {
+                    error_raise(ERR_SORRY, line_num);
+                    return;
+                }
+                runtime_set_string_var(rt, svar, bval_string(ptr, ulen));
+            } else if (lex->current.type == TOK_VARIABLE) {
+                char vn = lex->current.value.var_name;
+                char *endp;
+                long val = strtol(ubuf, &endp, 10);
+                lexer_next(lex);
+                runtime_set_var(rt, vn, val);
+            } else if (lex->current.type == TOK_NAMED_VAR) {
+                const char *name = lex->current.str_start;
+                int name_len = lex->current.str_length;
+                lexer_next(lex);
+                if (name[name_len - 1] == '$') {
+                    char *ptr = strpool_store(&rt->strpool, ubuf, ulen);
+                    if (ptr == NULL) {
+                        error_raise(ERR_SORRY, line_num);
+                        return;
+                    }
+                    runtime_set_named_var_bval(rt, name, name_len, bval_string(ptr, ulen));
+                } else {
+                    char *endp;
+                    double val = strtod(ubuf, &endp);
+                    runtime_set_named_var_bval(rt, name, name_len, bval_float(val));
+                }
+            } else {
+                error_raise(ERR_WHAT, line_num);
+                return;
+            }
+
+            if (lex->current.type == TOK_COMMA) {
+                lexer_next(lex);
+            } else {
+                break;
+            }
+        }
+        return;
+    }
 
  // Check for custom prompt string (only for stdin)
  if (file_chan == 0 && lex->current.type == TOK_STRING) {
@@ -1244,137 +1296,183 @@ void pi_parse_data(Lexer *lex, RuntimeState *rt, int line_num)
  // Syntax: READ var [, var ...]
  //
  // Reads the next value from the DATA pool for each variable.
+static BValue validate_read_value(BValue val, int has_format, const InputFormatSpec *spec, RuntimeState *rt, int line_num)
+{
+    if (!has_format) return val;
+    char vbuf[256];
+    if (bval_is_string(&val)) {
+        int sl = val.v.sval.length;
+        if (sl > 255) sl = 255;
+        if (val.v.sval.data) {
+            memcpy(vbuf, val.v.sval.data, (size_t)sl);
+        }
+        vbuf[sl] = '\0';
+    } else {
+        sprintf(vbuf, "%g", bval_to_float(&val));
+    }
+    if (!input_validate(vbuf, (int)strlen(vbuf), spec)) {
+        error_raise(ERR_HOW, line_num); // Illegal function call
+        return bval_int(0);
+    }
+    if (bval_is_string(&val)) {
+        int vlen = (int)strlen(vbuf);
+        char *ptr = strpool_store(&rt->strpool, vbuf, vlen);
+        if (ptr != NULL) return bval_string(ptr, vlen);
+    }
+    return val;
+}
+
 void pi_parse_read(Lexer *lex, RuntimeState *rt, int line_num)
 {
- while (!error_occurred()) {
- BValue val;
+    const char *ufmt = NULL;
+    int uflen = 0;
+    InputFormatSpec spec;
+    int has_format = 0;
 
- if (lex->current.type == TOK_VARIABLE) {
-  // Single-letter var: READ A or READ A(idx)
-  char var_name = lex->current.value.var_name;
-  lexer_next(lex); // consume variable
+    if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_USING) {
+        lexer_next(lex); // consume USING
+        if (lex->current.type != TOK_STRING) {
+            error_raise(ERR_WHAT, line_num);
+            return;
+        }
+        ufmt = lex->current.str_start;
+        uflen = lex->current.str_length;
+        lexer_next(lex); // consume format string
 
-  // Check for DIM array subscript: A(idx)
-  if (lex->current.type == TOK_LPAREN &&
-  dialect_get_config()->has_dim_arrays) {
-  char sname[2];
-  int idx1, idx2 = 0, idx3 = 0;
-  sname[0] = var_name; sname[1] = '\0';
-  lexer_next(lex); // consume (
-  idx1 = (int)parse_expression(lex, rt, line_num);
-  if (error_occurred()) return;
-  if (lex->current.type == TOK_COMMA) {
-   lexer_next(lex);
-   idx2 = (int)parse_expression(lex, rt, line_num);
-   if (error_occurred()) return;
-   if (lex->current.type == TOK_COMMA) {
-   lexer_next(lex);
-   idx3 = (int)parse_expression(lex, rt, line_num);
-   if (error_occurred()) return;
-   }
-  }
-  if (!lexer_expect(lex, TOK_RPAREN)) return;
-  val = runtime_read_data_bval(rt, line_num);
-  if (error_occurred()) return;
-  runtime_set_dim(rt, sname, 1, idx1, idx2, idx3,
-   val, line_num);
-  } else {
-  val = runtime_read_data_bval(rt, line_num);
-  if (error_occurred()) return;
-  runtime_set_var(rt, var_name, bval_to_int(&val));
-  }
- } else if (lex->current.type == TOK_STRING_VAR) {
-  // Single-letter string var: READ A$ or A$(idx)
-  char svar = lex->current.value.var_name;
-  lexer_next(lex); // consume string var
+        // Consume semicolon or comma after format
+        if (lex->current.type == TOK_SEMICOLON || lex->current.type == TOK_COMMA) {
+            lexer_next(lex);
+        }
 
-  // Check for DIM string array: A$(idx)
-  if (lex->current.type == TOK_LPAREN &&
-  dialect_get_config()->has_dim_arrays) {
-  char sname[3];
-  int idx1, idx2 = 0, idx3 = 0;
-  sname[0] = svar; sname[1] = '$'; sname[2] = '\0';
-  lexer_next(lex); // consume (
-  idx1 = (int)parse_expression(lex, rt, line_num);
-  if (error_occurred()) return;
-  if (lex->current.type == TOK_COMMA) {
-   lexer_next(lex);
-   idx2 = (int)parse_expression(lex, rt, line_num);
-   if (error_occurred()) return;
-   if (lex->current.type == TOK_COMMA) {
-   lexer_next(lex);
-   idx3 = (int)parse_expression(lex, rt, line_num);
-   if (error_occurred()) return;
-   }
-  }
-  if (!lexer_expect(lex, TOK_RPAREN)) return;
-  val = runtime_read_data_bval(rt, line_num);
-  if (error_occurred()) return;
-  runtime_set_dim(rt, sname, 2, idx1, idx2, idx3,
-   val, line_num);
-  } else {
-  val = runtime_read_data_bval(rt, line_num);
-  if (error_occurred()) return;
-  if (bval_is_string(&val)) {
-   runtime_set_string_var(rt, svar, val);
-  } else {
-   // Numeric DATA into string var - convert
-   char nbuf[32];
-   char *ptr;
-   int nlen;
-   sprintf(nbuf, "%ld", bval_to_int(&val));
-   nlen = (int)strlen(nbuf);
-   ptr = strpool_store(&rt->strpool, nbuf, nlen);
-   if (ptr != NULL) {
-   runtime_set_string_var(rt, svar,
-    bval_string(ptr, nlen));
-   }
-  }
-  }
- } else if (lex->current.type == TOK_NAMED_VAR) {
-  // Named var: READ Score or READ B7 or READ A$(idx)
-  const char *name = lex->current.str_start;
-  int name_len = lex->current.str_length;
-  lexer_next(lex); // consume named var
+        input_parse_format(ufmt, uflen, &spec);
+        has_format = 1;
+    }
 
-  // Check for DIM array subscript
-  if (lex->current.type == TOK_LPAREN &&
-  dialect_get_config()->has_dim_arrays) {
-  int idx1, idx2 = 0, idx3 = 0;
-  lexer_next(lex); // consume (
-  idx1 = (int)parse_expression(lex, rt, line_num);
-  if (error_occurred()) return;
-  if (lex->current.type == TOK_COMMA) {
-   lexer_next(lex);
-   idx2 = (int)parse_expression(lex, rt, line_num);
-   if (error_occurred()) return;
-   if (lex->current.type == TOK_COMMA) {
-   lexer_next(lex);
-   idx3 = (int)parse_expression(lex, rt, line_num);
-   if (error_occurred()) return;
-   }
-  }
-  if (!lexer_expect(lex, TOK_RPAREN)) return;
-  val = runtime_read_data_bval(rt, line_num);
-  if (error_occurred()) return;
-  runtime_set_dim(rt, name, name_len, idx1, idx2,
-   idx3, val, line_num);
-  } else {
-  val = runtime_read_data_bval(rt, line_num);
-  if (error_occurred()) return;
-  runtime_set_named_var_bval(rt, name, name_len, val);
-  }
- } else {
-  error_raise(ERR_WHAT, line_num);
-  return;
- }
+    while (!error_occurred()) {
+        BValue val;
 
- if (lex->current.type == TOK_COMMA) {
-  lexer_next(lex); // consume comma
- } else {
-  break;
- }
- }
+        if (lex->current.type == TOK_VARIABLE) {
+            // Single-letter var: READ A or READ A(idx)
+            char var_name = lex->current.value.var_name;
+            lexer_next(lex); // consume variable
+
+            // Check for DIM array subscript: A(idx)
+            if (lex->current.type == TOK_LPAREN &&
+                dialect_get_config()->has_dim_arrays) {
+                char sname[2];
+                int idx1, idx2 = 0, idx3 = 0;
+                sname[0] = var_name; sname[1] = '\0';
+                lexer_next(lex); // consume (
+                idx1 = (int)parse_expression(lex, rt, line_num);
+                if (error_occurred()) return;
+                if (lex->current.type == TOK_COMMA) {
+                    lexer_next(lex);
+                    idx2 = (int)parse_expression(lex, rt, line_num);
+                    if (error_occurred()) return;
+                    if (lex->current.type == TOK_COMMA) {
+                        lexer_next(lex);
+                        idx3 = (int)parse_expression(lex, rt, line_num);
+                        if (error_occurred()) return;
+                    }
+                }
+                if (!lexer_expect(lex, TOK_RPAREN)) return;
+                val = validate_read_value(runtime_read_data_bval(rt, line_num), has_format, &spec, rt, line_num);
+                if (error_occurred()) return;
+                runtime_set_dim(rt, sname, 1, idx1, idx2, idx3, val, line_num);
+            } else {
+                val = validate_read_value(runtime_read_data_bval(rt, line_num), has_format, &spec, rt, line_num);
+                if (error_occurred()) return;
+                runtime_set_var(rt, var_name, bval_to_int(&val));
+            }
+        } else if (lex->current.type == TOK_STRING_VAR) {
+            // Single-letter string var: READ A$ or A$(idx)
+            char svar = lex->current.value.var_name;
+            lexer_next(lex); // consume string var
+
+            // Check for DIM string array: A$(idx)
+            if (lex->current.type == TOK_LPAREN &&
+                dialect_get_config()->has_dim_arrays) {
+                char sname[3];
+                int idx1, idx2 = 0, idx3 = 0;
+                sname[0] = svar; sname[1] = '$'; sname[2] = '\0';
+                lexer_next(lex); // consume (
+                idx1 = (int)parse_expression(lex, rt, line_num);
+                if (error_occurred()) return;
+                if (lex->current.type == TOK_COMMA) {
+                    lexer_next(lex);
+                    idx2 = (int)parse_expression(lex, rt, line_num);
+                    if (error_occurred()) return;
+                    if (lex->current.type == TOK_COMMA) {
+                        lexer_next(lex);
+                        idx3 = (int)parse_expression(lex, rt, line_num);
+                        if (error_occurred()) return;
+                    }
+                }
+                if (!lexer_expect(lex, TOK_RPAREN)) return;
+                val = validate_read_value(runtime_read_data_bval(rt, line_num), has_format, &spec, rt, line_num);
+                if (error_occurred()) return;
+                runtime_set_dim(rt, sname, 2, idx1, idx2, idx3, val, line_num);
+            } else {
+                val = validate_read_value(runtime_read_data_bval(rt, line_num), has_format, &spec, rt, line_num);
+                if (error_occurred()) return;
+                if (bval_is_string(&val)) {
+                    runtime_set_string_var(rt, svar, val);
+                } else {
+                    // Numeric DATA into string var - convert
+                    char nbuf[32];
+                    char *ptr;
+                    int nlen;
+                    sprintf(nbuf, "%ld", bval_to_int(&val));
+                    nlen = (int)strlen(nbuf);
+                    ptr = strpool_store(&rt->strpool, nbuf, nlen);
+                    if (ptr != NULL) {
+                        runtime_set_string_var(rt, svar, bval_string(ptr, nlen));
+                    }
+                }
+            }
+        } else if (lex->current.type == TOK_NAMED_VAR) {
+            // Named var: READ Score or READ B7 or READ A$(idx)
+            const char *name = lex->current.str_start;
+            int name_len = lex->current.str_length;
+            lexer_next(lex); // consume named var
+
+            // Check for DIM array subscript
+            if (lex->current.type == TOK_LPAREN &&
+                dialect_get_config()->has_dim_arrays) {
+                int idx1, idx2 = 0, idx3 = 0;
+                lexer_next(lex); // consume (
+                idx1 = (int)parse_expression(lex, rt, line_num);
+                if (error_occurred()) return;
+                if (lex->current.type == TOK_COMMA) {
+                    lexer_next(lex);
+                    idx2 = (int)parse_expression(lex, rt, line_num);
+                    if (error_occurred()) return;
+                    if (lex->current.type == TOK_COMMA) {
+                        lexer_next(lex);
+                        idx3 = (int)parse_expression(lex, rt, line_num);
+                        if (error_occurred()) return;
+                    }
+                }
+                if (!lexer_expect(lex, TOK_RPAREN)) return;
+                val = validate_read_value(runtime_read_data_bval(rt, line_num), has_format, &spec, rt, line_num);
+                if (error_occurred()) return;
+                runtime_set_dim(rt, name, name_len, idx1, idx2, idx3, val, line_num);
+            } else {
+                val = validate_read_value(runtime_read_data_bval(rt, line_num), has_format, &spec, rt, line_num);
+                if (error_occurred()) return;
+                runtime_set_named_var_bval(rt, name, name_len, val);
+            }
+        } else {
+            error_raise(ERR_WHAT, line_num);
+            return;
+        }
+
+        if (lex->current.type == TOK_COMMA) {
+            lexer_next(lex); // consume comma
+        } else {
+            break;
+        }
+    }
 }
 
  // parse_restore - Execute RESTORE statement.

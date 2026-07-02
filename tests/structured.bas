@@ -15,18 +15,28 @@
 70 REM  Test 9  (900): SELECT CASE string range (TO)
 72 REM  Test 10 (1000): SELECT CASE string IS comparison
 74 REM
-76 REM  EXPECTED: All 11 tests print PASS. Summary shows
-78 REM  total passed/failed. SUB/FUNCTION definitions are
-80 REM  at line 5000+.
-82 REM
-84 REM  KEY CONCEPTS TESTED:
-86 REM   - Parameters are passed by value (SUB scope isolation)
-88 REM   - LOCAL saves/restores caller's variable on exit
-90 REM   - STATIC retains value between calls (counter pattern)
-92 REM   - SHARED gives SUB access to caller's variable
-94 REM   - SELECT CASE supports strings, ranges (TO), and IS
+76 REM  WHAT CAN BE CHANGED:
+78 REM   - Test values and parameter values
+79 REM   - Additional SUB/FUNCTION definitions
+80 REM
+81 REM  WHAT CANNOT BE CHANGED:
+82 REM   - OPTION DIALECT QBASIC is required for SUB/FUNCTION
+83 REM   - Do NOT use single-line IF/THEN/ELSE for FUNCTION
+84 REM     return value assignment (parser limitation)
+85 REM   - Use multi-line IF with GOTO for branched returns
+86 REM
+87 REM  WHAT TO EXPECT:
+88 REM   - All tests should print PASS
+89 REM   - Summary shows total passed/failed count
+90 REM
+91 REM  TROUBLESHOOTING:
+92 REM   - WHAT? on SUB/FUNCTION: ensure OPTION DIALECT QBASIC
+93 REM   - ASSERTION FAILED in Factorial/Fibonacci: ensure
+94 REM     functions use GOTO-based branching, not ELSE
+95 REM   - LOCAL/STATIC/SHARED errors: verify QBASIC dialect
 96 REM ============================================================
-98 REM
+98 OPTION DIALECT QBASIC
+99 REM
 100 P = 0 : F = 0
 110 REM
 200 REM --- Test 1: Basic SUB call ---
@@ -156,15 +166,19 @@
 5310 REM  Base case: N<=1 returns 1.
 5320 REM  Recursive case: N * Factorial(N-1).
 5330 FUNCTION Factorial(N)
-5340   IF N <= 1 THEN Factorial = 1 ELSE Factorial = N * Factorial(N - 1)
-5350 END FUNCTION
+5335   IF N <= 1 THEN GOTO 5345
+5340   Factorial = N * Factorial(N - 1) : GOTO 5348
+5345   Factorial = 1
+5348 END FUNCTION
 5360 REM
 5400 REM --- Fibonacci: recursive fib(N) ---
 5410 REM  Base case: N<=1 returns N (fib(0)=0, fib(1)=1).
 5420 REM  Recursive case: fib(N-1) + fib(N-2).
 5430 FUNCTION Fibonacci(N)
-5440   IF N <= 1 THEN Fibonacci = N ELSE Fibonacci = Fibonacci(N-1) + Fibonacci(N-2)
-5450 END FUNCTION
+5435   IF N <= 1 THEN GOTO 5445
+5440   Fibonacci = Fibonacci(N-1) + Fibonacci(N-2) : GOTO 5448
+5445   Fibonacci = N
+5448 END FUNCTION
 5460 REM
 5500 REM --- SetX: sets X=42 in SUB scope ---
 5510 REM  Main's X should NOT be affected (scope isolation).

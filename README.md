@@ -1,7 +1,7 @@
 [![GitGem](https://gitgem.org/api/badge/github/proteanthread/basic-plus-plus.svg)](https://gitgem.org/github/proteanthread/basic-plus-plus)
 
 # BASIC++ (protoBASIC) Interpreter
-**Version 4.1.1 (Stable)**
+**Version 4.4.4**
 
 I don't care what you do with my code, just don't take my code and sell it and/or don't take my code, modify my code, and sell it. This code is not for sale.
 
@@ -11,7 +11,7 @@ I don't care what you do with my code, just don't take my code and sell it and/o
 
 ## Abstract
 
-A portable, multi-dialect BASIC interpreter written in 115 C17 source files and 60 header files (~90,000 lines of code). Organized into 28 domain subdirectories with a modular, layered architecture. Zero external dependencies -- compiles on any platform with a standards-compliant C compiler.
+A portable, multi-dialect BASIC interpreter written in 129 C17 source files and 65 header files (~90,000 lines of code). Organized into 28 domain subdirectories with a modular, layered architecture. Zero external dependencies -- compiles on any platform with a standards-compliant C compiler.
 
 BASIC++ ships with 16 historically accurate dialect profiles, a runtime dialect-switching engine, a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 70 documentation files.
 
@@ -47,7 +47,7 @@ All variables are initialized to zero (numeric) or empty string (string) upon `R
 
 ### 1.3. Parser
 
-Expression evaluation is conducted via a recursive-descent parser with correct mathematical operator precedence:
+Expression evaluation in both the interpreter and C transpiler is conducted via an iterative, stack-based Shunting-Yard precedence parser with correct mathematical operator precedence:
 
 ```
 ^                     (highest — exponentiation)
@@ -61,7 +61,7 @@ OR, XOR               (bitwise/logical OR, exclusive OR)
 EQV, IMP              (equivalence, implication — lowest)
 ```
 
-Sub-expressions encapsulated in parentheses are evaluated recursively, permitting explicit enforcement of evaluation order. The parser supports both line-numbered program mode and unnumbered direct (immediate) mode execution.
+Sub-expressions encapsulated in parentheses and function arguments are evaluated iteratively using dedicated operand and operator stacks, avoiding host C language recursion limit dependencies. The parser supports both line-numbered program mode and unnumbered direct (immediate) mode execution.
 
 ### 1.4. Implemented Directives
 
@@ -71,7 +71,7 @@ The interpreter implements over 220 keywords spanning the following categories:
 
 **Assignment:** `LET` (optional), `SWAP`, `CONST`
 
-**Program Flow:** `GOTO`, `GOSUB`, `RETURN`, `IF...THEN...ELSE`, `FOR...NEXT`, `WHILE...WEND`, `DO...LOOP`, `SELECT CASE`, `ON...GOTO`, `ON...GOSUB`, `EXIT`
+**Program Flow & Multitasking:** `GOTO`, `GOSUB`, `RETURN`, `IF...THEN...ELSE`, `FOR...NEXT`, `WHILE...WEND`, `DO...LOOP`, `SELECT CASE`, `ON...GOTO`, `ON...GOSUB`, `EXIT`, `TASK`
 
 **Subroutines & Functions:** `SUB...END SUB`, `FUNCTION...END FUNCTION`, `CALL`, `DEF FN`, `SHARED`, `STATIC`
 
@@ -91,9 +91,11 @@ The interpreter implements over 220 keywords spanning the following categories:
 
 **System & Shell:** `SHELL`, `SHELL$()`, `EXEC`, `ENVIRON`, `ENVIRON$()`, `CHDIR`, `MKDIR`, `RMDIR`, `KILL`, `NAME`, `FILES`
 
-**Memory:** `PEEK`, `POKE`, `DEF SEG`, `VARPTR`, `FRE`
+**Memory:** `PEEK`, `POKE`, `PEEKB`, `POKEB`, `DEF SEG`, `VARPTR`, `FRE`
 
-**Environment:** `NEW`, `RUN`, `LIST`, `SAVE`, `LOAD`, `MERGE`, `CHAIN`, `RENUM`, `DELETE`, `AUTO`, `EDIT`, `TRON`, `TROFF`, `STOP`, `CONT`, `BREAK`, `VARS`, `VER`, `HELP`, `INFO`, `CATALOG`, `DIR`, `BYE`
+**Environment:** `NEW`, `RUN`, `LIST`, `SAVE`, `LOAD`, `MERGE`, `CHAIN`, `RENUM`, `DELETE`, `AUTO`, `EDIT`, `VARS`, `VER`, `HELP`, `CATALOG`, `DIR`, `BYE`
+
+**Debugging & Unit Testing:** `TRON`, `TROFF`, `BREAK`, `CONT`, `TRACE`, `BACKTRACE`, `INFO`, `DEBUG`, `DUMP`, `CHECK`, `VERIFY`, `TEST`, `ASSERT`, `ENDTEST`, `SELFTEST`
 
 **Security:** `SECURITY LEVEL`, `SECURITY REPORT`
 
@@ -128,6 +130,15 @@ The core implementation provides multiple output pathways:
 - **`LPRINT`** — Redirects output to the error device (`lprint.out`), simulating a physical line printer.
 - **File I/O** — Full GW-BASIC/QBasic-compatible file operations supporting sequential (`INPUT`, `OUTPUT`, `APPEND`), random-access (`RANDOM`), and binary (`BINARY`) modes across 8 simultaneous file channels (`#1` through `#8`).
 - **Shell integration** — `SHELL "command"` for synchronous execution, `SHELL$("command")` for output capture, pipe (`|`) and redirect (`>`, `>>`) operators.
+
+### 1.7. Program Serialization & Execution Formats
+
+BASIC++ supports four execution and storage profiles to enable portable and secure distribution of BASIC applications:
+
+- **Source Code (`.BAS`)** — Human-readable, byte-for-byte preserved plain text BASIC source code. Correct formatting, whitespace, and case choices are maintained.
+- **Compiled VM Bytecode (`.BPP`)** — Platform/dialect-independent bytecode format containing serialized VM instructions, string pools, line number maps, and ON jump tables. Features VM major version validation and payload CRC-16 integrity checks. If the adjacent `.BAS` source file is missing, it runs in **orphaned execution mode** where interactive LISTing and line editing are blocked.
+- **Portable Libraries (`.BPL`)** — Pre-compiled bytecode modules with export tables. Supports XOR-obfuscation (`0x5A`) of source code representation on disk for proprietary/obfuscated library imports.
+- **Execution Archives (`.EXE`/`.BPE`)** — Self-contained chunk-based containers bundling metadata (`META`), dependencies (`DEPS`), source code (`SRC_`), compiled bytecode (`BYTE`), and combined signatures (`SIGN`) for direct cross-platform execution.
 
 
 ---
@@ -263,11 +274,20 @@ All interpreter memory is defined by static, fixed-size pools. Dimensions are es
 | Virtual Memory | `MAX_MEM_SEGMENT` | 64 KB | PEEK/POKE address space |
 | Call Stack | `MAX_STACK_DEPTH` | 256 levels | GOSUB, FOR/NEXT, SUB/FUNCTION frames |
 | File Channels | `MAX_FILE_CHANNELS` | 8 | Simultaneous open files |
+| Graphics Pool | `GRAPHICS_MEMORY_SIZE` | 4 MB | Dynamic sprite, page, and font cache |
 
 ### 4.3. Adjustment of Memory Allocations
 
 Alterations to these memory limitations are effectuated by modifying the appropriate `#define` pre-processor constants within `config.h`. Subsequent recompilation of the interpreter is mandatory for such changes to take effect. This compile-time configuration is a deliberate design choice, precluding runtime memory negotiation. This approach ensures that the interpreter's resource requirements are fixed and verifiable, a critical attribute for high-reliability systems, embedded applications, or legacy operating systems where dynamic memory management is complex or unreliable.
 
+
+### 4.4. Segmented Virtual Memory (RAMBANKs) & Multitasking
+
+BASIC++ implements a high-performance Segmented Virtual Memory system (RAMBANKs) and a multitasking process system:
+- **RAMBANKs**: Supports up to 254 virtual memory banks (1MB each) dynamically mapped into a resident bank pool (max 8 resident banks) utilizing a Least Recently Used (LRU) page eviction algorithm and disk swapping. Page swap data is obfuscated using XOR encryption according to the active security sandbox level.
+- **Multitasking**: Spawns concurrent background worker tasks (`TASK("filename")`) running on native OS threads (Win32 threads or POSIX threads) with transparent fallback schedulers using cooperative statement-level slicing on the main interpreter loop.
+- **Memory Controls**: Provides the unified `BANK` command family (`BANK LIST`, `BANK n SHARED`/`PRIVATE`, `BANK n CLEAR`, `BANK n STATUS`, `BANK n` switch, `BANK COPY` fast bulk copy, and `BANK FILL` fast bulk fill) under thread-safe mutex synchronization constraints.
+- **Process synchronization**: Supports join/waits (`TASK WAIT pid`), process termination (`TASK KILL pid`), and process lifecycle queries (`TASK(pid)` status function).
 
 ---
 
@@ -369,9 +389,47 @@ Hello, World!
  1  2  3  4  5
 ```
 
-### 6.3. Program Execution
+### 6.3. Command-Line Switches
+
+The interpreter executable supports several switches when launched from the command line:
+
+*   `-q` / `--quiet` — Quiet mode; suppresses the startup banner and prompts.
+*   `-c "command"` — Run the specified BASIC command in batch mode and exit.
+*   `-r "file.bas"` — Load and run the specified BASIC script file and exit.
+*   `--log [filename]` — Enable session logging. Saves boot phase diagnostics and runtime warnings/trace to the specified file. If no filename is provided, a dynamic name like `[script]-yyyy-mm-dd-hh-mm-ss.LOG` is generated.
+*   `--out [filename]` — Echo all console program output and keyboard inputs to the specified file. If no filename is provided, a dynamic name like `[script]-yyyy-mm-dd-hh-mm-ss.OUT` is generated, using the same timestamp as the log file.
+*   `--clean-up` / `--cleanup` — Sweep intermediate files (logs, object files, stub modules, etc.) in the workspace, but preserve the most recently modified `.LOG` file and `.OUT` file.
+*   `--full-clean-up` / `--full-cleanup` — Sweep all intermediate files including all `.LOG` and `.OUT` files.
+
+### 6.4. Program Execution
 
 The `RUN` directive initiates sequential execution of the stored program. This directive first clears Variable Storage and the Call Stack to a zeroed state, ensuring that the program executes in a clean, predictable environment. Execution begins at the lowest extant line number. The `BYE` command exits the interpreter entirely, returning control to the operating system.
+
+### 6.5. Built-In Diagnostics (SELFTEST)
+
+The interpreter includes a formal self-test diagnostic suite. By running the command:
+```
+SELFTEST
+```
+or launching the binaries from the host shell:
+```bash
+basicpp-console.exe -c "SELFTEST"
+```
+the interpreter executes a series of exhaustive subtests:
+1. **Lexer** — Verifies tokenization correctness.
+2. **Value System** — Tests integer, double-precision float operations, and type coercion.
+3. **String Pool** — Introspects bump-allocator usage and bounds.
+4. **Function Registry** — Asserts that all built-in library functions are properly registered.
+5. **Memory Pool** — Validates scratch memory allocation watermarks.
+6. **Dialect Configuration** — Queries current dialect personality properties.
+7. **Parser Precedence** — Checks recursive-descent math precedence rules.
+8. **Loop Control Flow** — Exercises FOR/NEXT loop evaluation.
+9. **VFS File I/O** — Runs sequential line writes and inputs.
+10. **Device Aliases** — Confirms that device mappings (e.g. `SCRN:` -> `CON:`) resolve.
+11. **Graphics/SDL2** — Assesses compiled vs. linked SDL versions, queries renderer features (VSync, hardware acceleration, maximum texture sizes), monitor resolutions, active drivers, and audio synthesis devices.
+
+In Console/text-only builds, `SELFTEST` dynamically boots the SDL2 engine on-demand to verify graphical and audio capabilities, cleaning up all SDL window and audio threads immediately after the check completes. When run in conjunction with `--log`, all diagnostic metadata is written in-depth to the active session log.
+
 
 
 ---
@@ -510,6 +568,8 @@ A comprehensive documentation suite of 37 reference manuals and tutorials is inc
 | `Virtual_Machines.txt` | Virtual machines, consoles, terminals |
 | `Virtual_Filesystem.txt` | Safe local file access |
 | `Virtual_Network.txt` | TCP, UDP, TLS, Telnet, SSH, FTP, IRC, HTTP |
+| `Virtual_Memory_RAMBANKs.md` | Segmented virtual memory and bank swapping |
+| `Multitasking_Systems.md` | Multitasking scheduler and task control |
 | `USB_Devices.txt` | USB HID and serial device support |
 | `Compiling_BASIC_Programs.txt` | Transpile BASIC to native executables |
 | `Memory_Maps.txt` | Creating and using MEMMAP presets |
@@ -527,9 +587,9 @@ A comprehensive documentation suite of 37 reference manuals and tutorials is inc
 ## Section 13: Example Session
 
 ```
-BASIC++ 4.1.1
+BASIC++ 4.4.4
 @COPYLEFT ALL WRONGS RESERVED
-Jun  8 2026
+Jul 01 2026
 
 Ready.
 > 10 INPUT "Your name"; N$
@@ -557,7 +617,7 @@ Goodbye.
 
 | Metric | Value |
 |:-------|:------|
-| Source files | 115 `.c` + 60 `.h` |
+| Source files | 129 `.c` + 65 `.h` |
 | Lines of code | ~90,000 |
 | Keywords | 223 |
 | Dialect profiles | 16 |
@@ -568,5 +628,7 @@ Goodbye.
 
 
 ---
+
+*Last updated: 2026-07-02 (Lexer Lookahead & Case-Insensitive improvements)*
 
 *BASIC++ — Because the world needed one more BASIC interpreter.*

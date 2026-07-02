@@ -53,6 +53,7 @@
 #include "ext_lib_api.h"
 #include "../spec.h"
 #include "../security.h"
+#include "../console.h"
 
 // --- Slot ---
 static BppExtFeature feat_table[MAX_EXT_FEATURES];

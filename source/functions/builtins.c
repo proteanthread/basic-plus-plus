@@ -78,27 +78,28 @@ void builtins_register(void)
  { "INT", KW_INT_FUNC, FCAT_MATH, FRET_INT, 1, 1,
  FSAFE_PURE, 0, builtin_int_func,
  "Truncate to integer: INT(3.7)=3" },
- { "SQR", KW_SQR, FCAT_MATH, FRET_FLOAT,1, 1,
- FSAFE_PURE, 0, builtin_sqr,
- "Square root: SQR(144)=12" },
- { "SIN", KW_SIN, FCAT_MATH, FRET_FLOAT,1, 1,
- FSAFE_PURE, 0, builtin_sin,
- "Sine (radians): SIN(3.14159)=0" },
- { "COS", KW_COS, FCAT_MATH, FRET_FLOAT,1, 1,
- FSAFE_PURE, 0, builtin_cos,
- "Cosine (radians): COS(0)=1" },
- { "TAN", KW_TAN, FCAT_MATH, FRET_FLOAT,1, 1,
- FSAFE_PURE, 0, builtin_tan,
- "Tangent (radians): TAN(0)=0" },
- { "ATN", KW_ATN, FCAT_MATH, FRET_FLOAT,1, 1,
- FSAFE_PURE, 0, builtin_atn,
- "Arctangent: ATN(1)=0.7854" },
- { "LOG", KW_LOG_FUNC, FCAT_MATH, FRET_FLOAT,1, 1,
- FSAFE_PURE, 0, builtin_log,
- "Natural logarithm: LOG(2.718)=1" },
- { "EXP", KW_EXP, FCAT_MATH, FRET_FLOAT, 1, 1,
- FSAFE_PURE, 0, builtin_exp,
- "e^x: EXP(1)=2.718" },
+#ifndef BPP_LITE_BUILD
+  { "SQR", KW_SQR, FCAT_MATH, FRET_FLOAT,1, 1,
+  FSAFE_PURE, 0, builtin_sqr,
+  "Square root: SQR(144)=12" },
+  { "SIN", KW_SIN, FCAT_MATH, FRET_FLOAT,1, 1,
+  FSAFE_PURE, 0, builtin_sin,
+  "Sine (radians): SIN(3.14159)=0" },
+  { "COS", KW_COS, FCAT_MATH, FRET_FLOAT,1, 1,
+  FSAFE_PURE, 0, builtin_cos,
+  "Cosine (radians): COS(0)=1" },
+  { "TAN", KW_TAN, FCAT_MATH, FRET_FLOAT,1, 1,
+  FSAFE_PURE, 0, builtin_tan,
+  "Tangent (radians): TAN(0)=0" },
+  { "ATN", KW_ATN, FCAT_MATH, FRET_FLOAT,1, 1,
+  FSAFE_PURE, 0, builtin_atn,
+  "Arctangent: ATN(1)=0.7854" },
+  { "LOG", KW_LOG_FUNC, FCAT_MATH, FRET_FLOAT,1, 1,
+  FSAFE_PURE, 0, builtin_log,
+  "Natural logarithm: LOG(2.718)=1" },
+  { "EXP", KW_EXP, FCAT_MATH, FRET_FLOAT, 1, 1,
+  FSAFE_PURE, 0, builtin_exp,
+  "e^x: EXP(1)=2.718" },
   { "FIX", KW_FIX, FCAT_MATH, FRET_INT, 1, 1,
   FSAFE_PURE, 0, builtin_fix,
   "Truncate toward zero: FIX(-3.7)=-3" },
@@ -178,6 +179,7 @@ void builtins_register(void)
   { "PI", KW_PI_FUNC, FCAT_MATH, FRET_FLOAT,0, 0,
   FSAFE_PURE, 0, builtin_pi,
   "Pi constant: PI=3.14159" },
+#endif
  { "RND", KW_RND, FCAT_MATH, FRET_ANY, 0, 1,
  FSAFE_STATE, 1, builtin_rnd,
  "Random number: RND(N) returns 1..N" }
@@ -229,7 +231,8 @@ void builtins_register(void)
  "Binary conversion: BIN$(10)=\"1010\"" }
  };
 
- // --- File I/O (builtins_fileio.c) ---
+#ifndef BPP_LITE_BUILD
+  // --- File I/O (builtins_fileio.c) ---
  static const FunctionEntry fileio_funcs[] = {
  { "EOF", KW_EOF, FCAT_UTIL, FRET_INT, 1, 1,
  FSAFE_STATE, 0, builtin_eof,
@@ -378,42 +381,46 @@ void builtins_register(void)
  FSAFE_PURE, 0, builtin_ninfo,
  "Adapter info: NINFO$(key$)" }
  };
+#endif
 
  int i;
  int math_count   = (int)(sizeof(math_funcs)   / sizeof(math_funcs[0]));
  int str_count    = (int)(sizeof(str_funcs)    / sizeof(str_funcs[0]));
- int fileio_count = (int)(sizeof(fileio_funcs) / sizeof(fileio_funcs[0]));
- int io_count     = (int)(sizeof(io_funcs)     / sizeof(io_funcs[0]));
- int mem_count    = (int)(sizeof(mem_funcs)    / sizeof(mem_funcs[0]));
- int sys_count    = (int)(sizeof(sys_funcs)    / sizeof(sys_funcs[0]));
- int gfx_count    = (int)(sizeof(gfx_funcs)    / sizeof(gfx_funcs[0]));
- int sio_count    = (int)(sizeof(sio_funcs)    / sizeof(sio_funcs[0]));
- int bio_count    = (int)(sizeof(bio_funcs)    / sizeof(bio_funcs[0]));
- int txn_count    = (int)(sizeof(txn_funcs)    / sizeof(txn_funcs[0]));
- int net_count    = (int)(sizeof(net_funcs)    / sizeof(net_funcs[0]));
+#ifndef BPP_LITE_BUILD
+  int fileio_count = (int)(sizeof(fileio_funcs) / sizeof(fileio_funcs[0]));
+  int io_count     = (int)(sizeof(io_funcs)     / sizeof(io_funcs[0]));
+  int mem_count    = (int)(sizeof(mem_funcs)    / sizeof(mem_funcs[0]));
+  int sys_count    = (int)(sizeof(sys_funcs)    / sizeof(sys_funcs[0]));
+  int gfx_count    = (int)(sizeof(gfx_funcs)    / sizeof(gfx_funcs[0]));
+  int sio_count    = (int)(sizeof(sio_funcs)    / sizeof(sio_funcs[0]));
+  int bio_count    = (int)(sizeof(bio_funcs)    / sizeof(bio_funcs[0]));
+  int txn_count    = (int)(sizeof(txn_funcs)    / sizeof(txn_funcs[0]));
+  int net_count    = (int)(sizeof(net_funcs)    / sizeof(net_funcs[0]));
+#endif
 
  // Register all categories
  for (i = 0; i < math_count; i++)
  funcreg_register(&math_funcs[i]);
  for (i = 0; i < str_count; i++)
  funcreg_register(&str_funcs[i]);
- for (i = 0; i < fileio_count; i++)
- funcreg_register(&fileio_funcs[i]);
- for (i = 0; i < io_count; i++)
- funcreg_register(&io_funcs[i]);
- for (i = 0; i < mem_count; i++)
- funcreg_register(&mem_funcs[i]);
- for (i = 0; i < sys_count; i++)
- funcreg_register(&sys_funcs[i]);
- for (i = 0; i < gfx_count; i++)
- funcreg_register(&gfx_funcs[i]);
- for (i = 0; i < sio_count; i++)
- funcreg_register(&sio_funcs[i]);
- for (i = 0; i < bio_count; i++)
- funcreg_register(&bio_funcs[i]);
- for (i = 0; i < txn_count; i++)
- funcreg_register(&txn_funcs[i]);
- for (i = 0; i < net_count; i++)
- funcreg_register(&net_funcs[i]);
+#ifndef BPP_LITE_BUILD
+  for (i = 0; i < fileio_count; i++)
+  funcreg_register(&fileio_funcs[i]);
+  for (i = 0; i < io_count; i++)
+  funcreg_register(&io_funcs[i]);
+  for (i = 0; i < mem_count; i++)
+  funcreg_register(&mem_funcs[i]);
+  for (i = 0; i < sys_count; i++)
+  funcreg_register(&sys_funcs[i]);
+  for (i = 0; i < gfx_count; i++)
+  funcreg_register(&gfx_funcs[i]);
+  for (i = 0; i < sio_count; i++)
+  funcreg_register(&sio_funcs[i]);
+  for (i = 0; i < bio_count; i++)
+  funcreg_register(&bio_funcs[i]);
+  for (i = 0; i < txn_count; i++)
+  funcreg_register(&txn_funcs[i]);
+  for (i = 0; i < net_count; i++)
+  funcreg_register(&net_funcs[i]);
+#endif
 }
-

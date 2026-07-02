@@ -52,6 +52,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "device_alias.h"
+#include "../console.h"
 
 // --- Alias Table ---
  // Static table of MAX_DEVICE_ALIASES entries.
