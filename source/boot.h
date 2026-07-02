@@ -162,6 +162,8 @@ BootStatus boot_execute(const BootConfig *config,
                         MemorySystem *memory,
                         struct RuntimeState *runtime);
 
+void boot_downgrade_status(BootStatus status);
+
  // boot_shutdown - Symmetric shutdown in reverse phase order.
  //
  // Tears down all subsystems in reverse order of initialization.
@@ -196,5 +198,7 @@ void boot_print_summary(void);
  //   fmt   - printf-style format string
  //   ...   - format arguments
 void boot_log(BootVerbosity level, const char *fmt, ...);
+void boot_log_write(struct RuntimeState *rt, const char *fmt, ...);
+void boot_init_runtime(struct RuntimeState *runtime);
 
 #endif // BASICPP_BOOT_H

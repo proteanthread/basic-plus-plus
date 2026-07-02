@@ -154,6 +154,16 @@ typedef enum PCodeOp {
 
     // === Extended Range (80-127): future file I/O, events ===
     PCODE_EXTENDED_BASE = 80,
+    PCODE_INT = 81, // Software Interrupt: operand.ival = interrupt number
+    PCODE_WHEN_BEGIN = 82, // Push exception frame: operand.offset = USE offset
+    PCODE_POP_EXCEPTION = 83, // Pop exception frame
+    PCODE_CONTINUE = 84, // CONTINUE from USE: pop frame and jump to error PC + 1
+    PCODE_DIRECT_EXEC = 85, // execute raw statement via direct interpreter
+    PCODE_LOAD_ACC, // Load stack top or variable into rt->acc
+    PCODE_STORE_ACC, // Push rt->acc to stack
+    PCODE_SWAP, // Swap rt->acc with top of evaluation stack
+    PCODE_DUP, // Duplicate top of stack
+    PCODE_CLRSTACK, // Clear evaluation stack pointer
 
     // === Module Range (128-191): future module opcodes ===
     PCODE_MODULE_BASE = 128,

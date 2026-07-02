@@ -242,6 +242,7 @@ enum {
  KW_SOUND, // SOUND - play tone
  KW_PLAY, // PLAY - music macro language
  KW_SCREEN, // SCREEN - set screen mode
+ KW_GRAPHICS, // GRAPHICS - Atari 8-bit set graphics mode
  KW_DRAW, // DRAW - graphics macro language
  KW_WIDTH, // WIDTH - set screen width
  KW_MOD, // MOD - modulo operator
@@ -284,6 +285,7 @@ enum {
  KW_SHELL, // SHELL - execute OS command
  KW_REDIM, // REDIM - resize dynamic array
  KW_SHARED, // SHARED - share vars with main
+ KW_BANK,   // BANK - RAMBANK management keyword
  KW_STATIC, // STATIC - preserve vars across calls
  KW_RESUME, // RESUME - return from error handler
  KW_OPTION, // OPTION - OPTION BASE
@@ -322,6 +324,9 @@ enum {
  KW_ERDEV, // ERDEV - device error
  KW_FIELD, // FIELD - random file buffer fields
  KW_FRE, // FRE - free memory function
+ KW_TASK, // TASK - task control command/statement
+ KW_PEEKB, // PEEKB - read byte from segmented bank
+ KW_POKEB, // POKEB - write byte to segmented bank
  KW_GET, // GET - file read / graphics capture
  KW_PUT, // PUT - file write / graphics put
  KW_INP, // INP - read I/O port
@@ -445,6 +450,8 @@ enum {
  KW_MOVE, // MOVE - move/rename a file
  KW_PWD, // PWD - print working directory
  KW_CWD_FUNC, // CWD$ - current working directory string
+ KW_HOSTNAME_FUNC, // HOSTNAME$ - system hostname string
+ KW_USERNAME_FUNC, // USERNAME$ - user name string
  KW_EXIST_FUNC, // EXIST - check if file/dir exists
  KW_FILELEN_FUNC, // FILELEN - file size in bytes
  // Event trapping
@@ -522,6 +529,9 @@ enum {
  KW_MOUNTS, // MOUNTS - list mounts
  KW_VPATH, // VPATH - set VPATH
  KW_VPATH_FUNC, // VPATH$ - get VPATH
+ KW_BIOS, // BIOS - switch BIOS emulation
+ KW_CURSOR, // CURSOR - text cursor control
+ KW_TICKS, // TICKS - system uptime ticks
  KW_COUNT // sentinel - must be last
 };
 
@@ -553,6 +563,7 @@ typedef struct Token {
  } value;
  const char *str_start; // TOK_STRING: pointer into source
  int str_length; // TOK_STRING: length of string content
+ int pos; // Char index in source string of the START of the token
 } Token;
 
 // --- Lexer - Tokenizer state. ---
@@ -565,11 +576,17 @@ typedef struct Token {
  // pos - current scan position (0-based index).
  // length - total length of the source line.
  // current - the most recently lexed token.
+#define LEXER_LOOKAHEAD_SIZE 4
+
 typedef struct Lexer {
  const char *source;
  int pos;
  int length;
  Token current;
+ Token lookahead[LEXER_LOOKAHEAD_SIZE];
+ int lookahead_count;
+ int lookahead_read_idx;
+ int lookahead_write_idx;
 } Lexer;
 
 // --- Lexer Functions ---
@@ -592,6 +609,13 @@ void lexer_init(Lexer *lex, const char *source);
  // produces TOK_EOF (and continues returning TOK_EOF on subsequent
  // calls).
 void lexer_next(Lexer *lex);
+
+ // lexer_peek - Peek ahead at a token at a specific lookahead distance.
+ // distance = 0 returns current token, distance = 1 returns first lookahead token, etc.
+Token *lexer_peek(Lexer *lex, int distance);
+
+ // lexer_rewind_to - Rewind the lexer to a specific character position on the current line and re-prime.
+void lexer_rewind_to(Lexer *lex, int pos);
 
  // lexer_peek_type - Return the type of the current token.
  //

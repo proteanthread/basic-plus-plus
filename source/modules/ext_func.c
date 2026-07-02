@@ -65,6 +65,7 @@
 #elif !defined(BPP_FREEDOS) && !defined(BPP_EMBEDDED)
 #include <dlfcn.h>
 #include <stdbool.h>
+#include "../console.h"
 #endif
 
 // --- Slot ---

@@ -252,6 +252,7 @@ static FILE *try_open(const char *dir, const char *filename,
     return f;
 }
 
+#if 0
  // config_file_create_default - Creates a default, heavily-commented config file.
 static void config_file_create_default(const char *filename)
 {
@@ -283,14 +284,14 @@ static void config_file_create_default(const char *filename)
     fprintf(f, ";   GWBS   - Microsoft GW-BASIC\n");
     fprintf(f, ";   QBAS   - Microsoft QBasic\n");
     fprintf(f, ";   E116   - ECMA-116 Standard BASIC\n");
-    fprintf(f, ";   SUPA   - Sinclair QL SuperBASIC\n");
-    fprintf(f, ";   SBAS   - Tymshare SUPER BASIC\n");
+    fprintf(f, ";   SQLB   - Sinclair QL SuperBASIC\n");
+    fprintf(f, ";   SUPB   - Tymshare SUPER BASIC\n");
     fprintf(f, ";   (and many more like TRS1, TRS2, C64B, etc.)\n");
     fprintf(f, ";\n");
     if (is_freedos) {
         fprintf(f, "dialect = GWBS,QBAS\n\n");
     } else {
-        fprintf(f, "dialect = GWBS,SBAS,E116\n\n");
+        fprintf(f, "dialect = GWBS,SUPB,E116\n\n");
     }
 
     fprintf(f, "; --------------------------------------------------------------\n");
@@ -301,7 +302,7 @@ static void config_file_create_default(const char *filename)
     fprintf(f, ";   STANDARD   - Restricts shell access and limits file I/O to safe dirs\n");
     fprintf(f, ";   RESTRICTED - Completely disables file I/O, SHELL, and networking\n");
     fprintf(f, ";\n");
-    fprintf(f, "security = STANDARD\n\n");
+    fprintf(f, "security = OPEN\n\n");
 
     fprintf(f, "; --------------------------------------------------------------\n");
     fprintf(f, "; STRICT\n");
@@ -336,13 +337,13 @@ static void config_file_create_default(const char *filename)
     
     fclose(f);
 }
+#endif
 
  // config_file_load - Load configuration from the INI file.
 int config_file_load(ConfigFile *cfg, const char *exe_path)
 {
     FILE *f = NULL;
     char line[CFG_MAX_LINE];
-    char home_path[512];
     const char *filename;
     const char *home;
 
@@ -374,13 +375,9 @@ int config_file_load(ConfigFile *cfg, const char *exe_path)
     }
 
     if (f == NULL) {
-        // Auto-create in the current directory
-        config_file_create_default(filename);
-        f = try_open("", filename, cfg->filepath, 256);
-        if (f == NULL) {
-            cfg->filepath[0] = '\0';
-            return -1; // Still no config file found
-        }
+        cfg->filepath[0] = '\0';
+        cfg->found = 0;
+        return 0; // Optional, so missing file is not an error
     }
 
     cfg->found = 1;

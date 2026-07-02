@@ -47,11 +47,17 @@
 #include "parser_internal.h"
 #include "parser_internal_additions.h"
 #include "pcode.h"
+#include "../bytecode.h"
+#include "../codegen/archive.h"
 #include "modules/bpl_format.h"
 
  // pi_parse_renum - Handle RENUM command.
 void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
 {
+ if (rt->bytecode_only) {
+     printf("RENUM: Prohibited in obfuscated/bytecode-only mode.\n");
+     return;
+ }
  {
  // RENUM [start[,step]]
  // Renumber all program lines and fix
@@ -192,23 +198,40 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  *dst = '\0';
 
  // Update the line
- rt->program->lines[i].line_number =
- new_line;
- strcpy(rt->program->lines[i].text, buf);
+  rt->program->lines[i].line_number = new_line;
+  char *old_txt = rt->program->lines[i].text;
+  char *new_txt = (char *)malloc(strlen(buf) + 1);
+  if (new_txt) {
+      strcpy(new_txt, buf);
+      if (old_txt != NULL) {
+          if (rt->program->bulk_buffer == NULL ||
+              old_txt < rt->program->bulk_buffer ||
+              old_txt >= rt->program->bulk_buffer + rt->program->bulk_size) {
+              free(old_txt);
+          }
+      }
+      rt->program->lines[i].text = new_txt;
+  }
  }
 
- free(old_nums);
- free(new_nums);
- printf("Renumbered %d lines"
- " (%d,%d).\n",
- count, start_num, step_num);
- return;
- }
+  free(old_nums);
+  free(new_nums);
+  printf("Renumbered %d lines"
+  " (%d,%d).\n",
+  count, start_num, step_num);
+
+  pcode_cache_invalidate(rt);
+  return;
+  }
 }
 
  // pi_parse_delete - Handle DELETE command.
 void pi_parse_delete(Lexer *lex, RuntimeState *rt, int line_num)
 {
+ if (rt->bytecode_only) {
+     printf("DELETE: Prohibited in obfuscated/bytecode-only mode.\n");
+     return;
+ }
  {
  // DELETE from-to
  // Delete all lines in range [from, to].
@@ -250,6 +273,8 @@ void pi_parse_delete(Lexer *lex, RuntimeState *rt, int line_num)
  printf("%d line%s deleted.\n",
  deleted,
  deleted == 1 ? "" : "s");
+
+ pcode_cache_invalidate(rt);
  return;
  }
 }
@@ -257,6 +282,10 @@ void pi_parse_delete(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_edit - Handle EDIT command.
 void pi_parse_edit(Lexer *lex, RuntimeState *rt, int line_num)
 {
+ if (rt->bytecode_only) {
+     printf("EDIT: Prohibited in obfuscated/bytecode-only mode.\n");
+     return;
+ }
  // EDIT [line_number]
  //
  // Display a program line for editing.
@@ -323,6 +352,10 @@ void pi_parse_edit(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_auto - Handle AUTO command.
 void pi_parse_auto(Lexer *lex, RuntimeState *rt, int line_num)
 {
+ if (rt->bytecode_only) {
+     printf("AUTO: Prohibited in obfuscated/bytecode-only mode.\n");
+     return;
+ }
  // AUTO [start[,increment]]
  //
  // Enable auto line numbering mode.
@@ -360,6 +393,10 @@ void pi_parse_auto(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_compile - Handle COMPILE command.
 void pi_parse_compile(Lexer *lex, RuntimeState *rt, int line_num)
 {
+#ifdef BPP_LITE_BUILD
+    error_raise(ERR_HOW, line_num);
+    return;
+#endif
  if (security_check(SECOP_COMPILE, line_num))
  return;
  {
@@ -446,13 +483,39 @@ void pi_parse_compile(Lexer *lex, RuntimeState *rt, int line_num)
 
   {
       int len = (int)strlen(fname);
-      if (len >= 4 && (strcasecmp(&fname[len - 4], ".bpp") == 0)) {
-          PCodeProgram pcode;
-          if (pcode_compile(rt->program, &pcode) == 0) {
-              printf("Compiled %d PCode instructions.\n", pcode.count);
-              pcode_free(&pcode);
+      int tlen = (int)strlen(target);
+
+      if ((len >= 4 && strcasecmp(&fname[len - 4], ".bpp") == 0) ||
+          (tlen >= 4 && strcasecmp(&target[tlen - 4], ".bpp") == 0)) {
+          const char *out_name = (tlen >= 4) ? target : fname;
+          if (bpp_save(rt->program, out_name) == 0) {
+              printf("Compiled bytecode saved to '%s'\n", out_name);
           } else {
-              printf("Failed to compile PCode.\n");
+              printf("Compilation failed.\n");
+          }
+      } else if ((len >= 4 && (strcasecmp(&fname[len - 4], ".exe") == 0 || strcasecmp(&fname[len - 4], ".bpe") == 0)) ||
+                 (tlen >= 4 && (strcasecmp(&target[tlen - 4], ".exe") == 0 || strcasecmp(&target[tlen - 4], ".bpe") == 0))) {
+          const char *out_name = (tlen >= 4) ? target : fname;
+          const char *src_name = (tlen >= 4) ? fname : "_temp_src.bas";
+
+          if (strcmp(src_name, "_temp_src.bas") == 0) {
+              extern int fileio_save(ProgramStore *store, const char *filename);
+              fileio_save(rt->program, src_name);
+          }
+
+          if (bpp_save(rt->program, "_temp_bpp.bpp") == 0) {
+              if (bpe_save(src_name, "_temp_bpp.bpp", out_name) == 0) {
+                  printf("Execution archive saved to '%s'\n", out_name);
+              } else {
+                  printf("Failed to package execution archive.\n");
+              }
+              remove("_temp_bpp.bpp");
+          } else {
+              printf("Compilation failed.\n");
+          }
+
+          if (strcmp(src_name, "_temp_src.bas") == 0) {
+              remove("_temp_src.bas");
           }
       } else {
           compiler_compile(rt->program, fname, target);
@@ -465,6 +528,10 @@ void pi_parse_compile(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_bsave - Handle BSAVE command.
 void pi_parse_bsave(Lexer *lex, RuntimeState *rt, int line_num)
 {
+#ifdef BPP_LITE_BUILD
+    error_raise(ERR_HOW, line_num);
+    return;
+#endif
  if (security_check(SECOP_FILE_WRITE, line_num))
  return;
  {
@@ -491,6 +558,10 @@ void pi_parse_bsave(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_bload - Handle BLOAD command.
 void pi_parse_bload(Lexer *lex, RuntimeState *rt, int line_num)
 {
+#ifdef BPP_LITE_BUILD
+    error_raise(ERR_HOW, line_num);
+    return;
+#endif
  if (security_check(SECOP_FILE_READ, line_num))
  return;
  {
@@ -509,14 +580,18 @@ void pi_parse_bload(Lexer *lex, RuntimeState *rt, int line_num)
  fname[flen] = '\0';
  pi_ensure_bpp_ext(fname, flen, MAX_LINE_LENGTH);
  lexer_next(lex);
- bpp_load(&rt->memory->program, fname);
- return;
+  bpp_load(&rt->memory->program, fname, rt);
+  return;
  }
 }
 
  // pi_parse_brun - Handle BRUN command.
 void pi_parse_brun(Lexer *lex, RuntimeState *rt, int line_num)
 {
+#ifdef BPP_LITE_BUILD
+    error_raise(ERR_HOW, line_num);
+    return;
+#endif
  if (lex->current.type == TOK_STRING) {
  char fname[MAX_LINE_LENGTH + 1];
  int flen = lex->current.str_length;
@@ -531,8 +606,8 @@ void pi_parse_brun(Lexer *lex, RuntimeState *rt, int line_num)
  
  if (security_check(SECOP_FILE_READ, line_num))
  return;
- bpp_load(&rt->memory->program, fname);
- if (error_occurred()) return;
+  bpp_load(&rt->memory->program, fname, rt);
+  if (error_occurred()) return;
  }
  exec_brun(rt);
 }

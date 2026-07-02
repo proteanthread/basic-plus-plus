@@ -62,6 +62,7 @@
 #include "../module.h"
 #include "../spec.h"
 #include "../security.h"
+#include "../console.h"
 
 // --- Slot ---
 static BppPlugin plug_table[MAX_EXT_PLUGINS];
@@ -510,7 +511,7 @@ void ext_plugin_list(void)
     static const char *type_names[] = {
         "module", "library", "feature", "spec"
     };
-    int j, found = 0;
+    int found = 0;
 
     printf("--- Loaded Plugins ---\n");
     for (int i = 0; i < plug_count; i++) {

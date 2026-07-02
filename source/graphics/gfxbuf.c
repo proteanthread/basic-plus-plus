@@ -53,15 +53,16 @@
 #include <stdio.h>
 #include <string.h>
 #include "gfxbuf.h"
+#include "memory.h"
 #include "gw_memory.h"
 #include "gw_sdl2.h"
 #include "dialect.h"
+#include "../console.h"
 
 extern struct GW_Memory *g_gw_mem;
 
-// Multi-page pixel buffers: each byte is a color index 0-15
-static unsigned char framepages[GFX_MAX_PAGES]
- [GFX_WIDTH * GFX_HEIGHT];
+// Multi-page pixel buffers: pointer mapped to dynamic graphics memory pool
+static unsigned char (*framepages)[GFX_WIDTH * GFX_HEIGHT] = NULL;
 
 // Active drawing page and visual display page
 static int active_page = 0;
@@ -101,39 +102,64 @@ static const int default_palette[16] = {
  15 // 15: White
 };
 
+void gfxbuf_init_pool(MemorySystem *memory)
+{
+    int i;
+    long required_size = (long)(GFX_MAX_PAGES * GFX_WIDTH * GFX_HEIGHT);
+    if (memory && memory->graphics.base && memory->graphics.size >= required_size) {
+        framepages = (unsigned char (*)[GFX_WIDTH * GFX_HEIGHT])memory->graphics.base;
+    } else {
+        static unsigned char fallback_pages[GFX_MAX_PAGES][GFX_WIDTH * GFX_HEIGHT];
+        framepages = fallback_pages;
+    }
+
+    memset(framepages, 0, GFX_MAX_PAGES * GFX_WIDTH * GFX_HEIGHT);
+    active_page = 0;
+    visual_page = 0;
+    for (i = 0; i < GFX_MAX_COLORS; i++) {
+        palette[i] = default_palette[i];
+    }
+    gfx_active = 0;
+    vp_x1 = 0; vp_y1 = 0;
+    vp_x2 = GFX_WIDTH - 1;
+    vp_y2 = GFX_HEIGHT - 1;
+}
+
 void gfxbuf_init(void)
 {
- int i;
- memset(framepages, 0, sizeof(framepages));
- active_page = 0;
- visual_page = 0;
- for (i = 0; i < GFX_MAX_COLORS; i++) {
- palette[i] = default_palette[i];
- }
- gfx_active = 0;
- vp_x1 = 0; vp_y1 = 0;
- vp_x2 = GFX_WIDTH - 1;
- vp_y2 = GFX_HEIGHT - 1;
+    gfxbuf_init_pool(NULL);
 }
 
 void gfxbuf_clear(int color)
 {
  if (color < 0) color = 0;
  if (color >= GFX_MAX_COLORS) color = 0;
- memset(framebuf, (unsigned char)color, sizeof(framebuf));
+ // When SDL is active, clear the SDL pixel buffer using the palette color
+ if (gw_sdl2_is_active()) {
+     uint32_t argb = GW_PALETTE[color % 256];
+     gw_sdl2_clear(argb);
+     gw_sdl2_present_force();
+ }
+ memset(framebuf, (unsigned char)color, GFX_WIDTH * GFX_HEIGHT);
 }
 
 void gfxbuf_pset(int x, int y, int color)
 {
- if (g_gw_mem != NULL) {
-     int w = gw_sdl2_get_width();
-     int h = gw_sdl2_get_height();
-     if (x < 0 || x >= w || y < 0 || y >= h) return;
-     if (color < 0) color = 0;
-     uint32_t argb = GW_PALETTE[color % 16];
-     gw_sdl2_set_pixel(x, y, argb);
-     return;
- }
+#ifndef NO_SDL2
+    if (!gw_sdl2_is_active()) {
+        gw_sdl2_init(640, 400, "BASIC++ Emulation", 0);
+        gw_sdl2_set_mode(0, 80);
+    }
+#endif
+    if (gw_sdl2_is_active()) {
+        int w = gw_sdl2_get_width();
+        int h = gw_sdl2_get_height();
+        if (x < 0 || x >= w || y < 0 || y >= h) return;
+        if (color < 0) color = 0;
+        uint32_t argb = GW_PALETTE[color % 256];
+        gw_sdl2_set_pixel(x, y, argb);
+        return;
+    }
  // Clip against viewport bounds
  if (x < vp_x1 || x > vp_x2 ||
  y < vp_y1 || y > vp_y2)
@@ -148,12 +174,12 @@ void gfxbuf_pset(int x, int y, int color)
 
 int gfxbuf_point(int x, int y)
 {
- if (g_gw_mem != NULL) {
+ if (gw_sdl2_is_active()) {
      int w = gw_sdl2_get_width();
      int h = gw_sdl2_get_height();
      if (x < 0 || x >= w || y < 0 || y >= h) return 0;
      uint32_t argb = gw_sdl2_get_pixel(x, y);
-     for (int i = 0; i < 16; i++) {
+     for (int i = 0; i < 256; i++) {
          if (GW_PALETTE[i] == argb) return i;
      }
      return 0;
@@ -235,53 +261,79 @@ void gfxbuf_circle(int cx, int cy, int r, int color)
  }
 }
 
- // Flood fill using a stack-based iterative approach.
- // Bounded to prevent stack overflow on large areas.
-void gfxbuf_paint(int x, int y, int fill_color,
+void gfxbuf_paint(MemorySystem *memory, int x, int y, int fill_color,
  int border_color)
 {
- // Simple iterative scanline fill
- // Use a static stack to avoid dynamic allocation
-#define PAINT_STACK_SIZE 4096
- struct { int x, y; } stack[PAINT_STACK_SIZE];
- int top = 0;
- int old_color;
+    typedef struct { int x, y; } PaintPoint;
+    PaintPoint *stack = NULL;
+    int stack_capacity = 16384;
+    int top = 0;
+    int old_color;
+    long old_scratch_used = 0;
 
- if (x < 0 || x >= GFX_WIDTH || y < 0 || y >= GFX_HEIGHT)
- return;
+    // Use dynamic pre-allocated Scratch Pool from the Canvas system if available
+    if (memory && memory->scratch.base) {
+        old_scratch_used = memory->scratch.used;
+        long bytes_needed = (long)(stack_capacity * sizeof(PaintPoint));
+        stack = (PaintPoint *)mem_pool_alloc(&memory->scratch, bytes_needed);
+    }
 
- old_color = gfxbuf_point(x, y);
- if (old_color == fill_color) return;
- if (old_color == border_color) return;
+    // Fallback queue on the CPU stack if no memory system is passed or pool is full
+    PaintPoint fallback_stack[512];
+    if (stack == NULL) {
+        stack = fallback_stack;
+        stack_capacity = 512;
+    }
 
- stack[top].x = x;
- stack[top].y = y;
- top++;
+    // Use SDL dimensions when SDL is active, fallback to framebuffer dimensions
+    int max_w = gw_sdl2_is_active() ? gw_sdl2_get_width() : GFX_WIDTH;
+    int max_h = gw_sdl2_is_active() ? gw_sdl2_get_height() : GFX_HEIGHT;
 
- while (top > 0) {
- int px, py, c;
- top--;
- px = stack[top].x;
- py = stack[top].y;
+    if (x < 0 || x >= max_w || y < 0 || y >= max_h) {
+        if (memory && memory->scratch.base && stack != fallback_stack) {
+            memory->scratch.used = old_scratch_used;
+        }
+        return;
+    }
 
- if (px < 0 || px >= GFX_WIDTH ||
- py < 0 || py >= GFX_HEIGHT)
- continue;
+    old_color = gfxbuf_point(x, y);
+    if (old_color == fill_color || old_color == border_color) {
+        if (memory && memory->scratch.base && stack != fallback_stack) {
+            memory->scratch.used = old_scratch_used;
+        }
+        return;
+    }
 
- c = gfxbuf_point(px, py);
- if (c == fill_color || c == border_color)
- continue;
+    stack[top].x = x;
+    stack[top].y = y;
+    top++;
 
- gfxbuf_pset(px, py, fill_color);
+    while (top > 0) {
+        int px, py, c;
+        top--;
+        px = stack[top].x;
+        py = stack[top].y;
 
- if (top + 4 < PAINT_STACK_SIZE) {
- stack[top].x = px + 1; stack[top].y = py; top++;
- stack[top].x = px - 1; stack[top].y = py; top++;
- stack[top].x = px; stack[top].y = py + 1; top++;
- stack[top].x = px; stack[top].y = py - 1; top++;
- }
- }
-#undef PAINT_STACK_SIZE
+        if (px < 0 || px >= max_w || py < 0 || py >= max_h)
+            continue;
+
+        c = gfxbuf_point(px, py);
+        if (c == fill_color || c == border_color)
+            continue;
+
+        gfxbuf_pset(px, py, fill_color);
+
+        if (top + 4 < stack_capacity) {
+            stack[top].x = px + 1; stack[top].y = py; top++;
+            stack[top].x = px - 1; stack[top].y = py; top++;
+            stack[top].x = px; stack[top].y = py + 1; top++;
+            stack[top].x = px; stack[top].y = py - 1; top++;
+        }
+    }
+    
+    if (memory && memory->scratch.base && stack != fallback_stack) {
+        memory->scratch.used = old_scratch_used;
+    }
 }
 
 void gfxbuf_palette(int attr, int color)
@@ -306,7 +358,7 @@ void gfxbuf_palette(int attr, int color)
  // On Windows, the UTF-8 sequence for U+2580 is E2 96 80.
 void gfxbuf_render(void)
 {
- if (g_gw_mem != NULL) {
+ if (gw_sdl2_is_active()) {
 #ifndef NO_SDL2
      gw_sdl2_present();
      gw_sdl2_poll_events();

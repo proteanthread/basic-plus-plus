@@ -1,6 +1,6 @@
 EXTERNAL MODULES, FUNCTIONS, AND PLUG-INS
 ==========================================
-Version 4.1.1
+Version 4.2.3
 
 BASIC++ has a module system that enables external code to extend
 the interpreter with new functions, statements, devices, and
@@ -119,13 +119,17 @@ powerful:
     Registered via the function registry (funcreg) and
     module system (module.h).
 
-  Layer 3: External Plug-Ins (planned)
+  Layer 3: External Plug-Ins (prototype only)
     Dynamically loaded shared libraries (.dll/.so) that
     register new keywords and functions at runtime without
-    recompiling the interpreter.
+    recompiling the interpreter.  The module_load_dynamic()
+    prototype exists in module.h, but the full implementation
+    is not yet complete.
+
+> [!WARNING]
+> **PLANNED / FUTURE** — Layer 3 dynamic plug-in loading is not yet fully implemented.
 
 This manual covers Layers 1 and 2 in full detail.
-Layer 3 is planned for a future version.
 
 
 =====================================================================
@@ -244,12 +248,14 @@ functions, devices, or dialect extensions together.
       const char    *description;  /* one-line summary */
       ModuleClass    mod_class;    /* Library/Dialect/Device/Extension */
       unsigned int   capabilities; /* CAP_ bitfield */
-      SecLevel       required_level; /* security pinning */
       int          (*init)(void*); /* init callback */
       void         (*cleanup)(void); /* cleanup callback */
   };
 
-  The required_level field controls security pinning:
+> [!WARNING]
+> **PLANNED / FUTURE** — The `required_level` field (security pinning for modules) is not yet implemented in the ModuleInfo struct. The security pinning description below describes planned behavior.
+
+  The planned required_level field will control security pinning:
     SEC_COUNT     Unpinned (works at any security level)
     SEC_OPEN      Only loads when security is OPEN
     SEC_STANDARD  Only loads when security is STANDARD or lower
@@ -278,7 +284,7 @@ From BASIC:
   MODULE "SERIAL"                 Activate the SERIAL module
   MODULE                          List all modules
 
-Maximum 32 modules (configurable in config.h).
+Maximum 64 modules (configurable in config.h).
 
 
 =====================================================================
@@ -409,7 +415,7 @@ Define callable functions directly in BASIC:
   PRINT FN HYPOTENUSE(3, 4)  ' 5
 
   Limits:
-  - Maximum 64 user functions (MAX_USER_FUNCS)
+  - Maximum 256 user functions (MAX_USER_FUNCS)
   - Maximum 4 parameters per function (MAX_FN_PARAMS)
   - Body is a single expression (no multi-line)
   - Can reference global variables and other FN functions
@@ -462,7 +468,7 @@ A reusable pattern for BASIC libraries:
 8.5 LOAD LIBRARY / UNLOAD LIBRARY (NEW)
 =====================================================================
 
-BASIC++ 3.3.0 adds a dedicated library loading system that replaces
+BASIC++ 4.2.3 adds a dedicated library loading system that replaces
 MERGE for reusable code. Libraries use SUB/FUNCTION definitions
 with isolated variable spaces.
 

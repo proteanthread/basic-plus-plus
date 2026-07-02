@@ -418,6 +418,8 @@ int dialect_register(const DialectConfig *config);
  // Called once from main.c during boot, before dialect_init().
  // Calls each dialect_register_XXXX() function.
 void dialect_register_all(void);
+struct ProgramStore;
+void dialect_detect_and_apply_header(struct ProgramStore *program);
 
 // Per-dialect registration functions (one per dialect_*.c file)
  //

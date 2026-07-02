@@ -83,6 +83,7 @@
 
 // Project headers
 #include "parser.h"
+#include "console.h"
 #include "exec.h"
 #include "dialect.h"
 #include "fileio.h"
@@ -109,6 +110,22 @@
 #include "memmap.h"
 #include "device_alias.h"
 #include "mod_fujinet.h"
+
+// InputFormatSpec - Parsed input format specification.
+typedef struct {
+    int numeric_only; // N: accept only digits, +, -, .
+    int hex_only;     // H: accept only hex digits
+    int octal_only;   // O: accept only 0-7
+    int text_only;    // T: reject digits
+    int force_upper;  // U: convert to uppercase
+    int force_lower;  // L: convert to lowercase
+    int max_length;   // Sn: max string length
+    int has_default;  // D: has default value
+    char default_val[256]; // default value string
+} InputFormatSpec;
+
+void input_parse_format(const char *fmt, int flen, InputFormatSpec *spec);
+int input_validate(char *buf, int len, const InputFormatSpec *spec);
 
 // -----------------------------------------------------------
  // Internal utility functions (defined in parser.c)
@@ -274,6 +291,10 @@ void pi_parse_merge_cmd(Lexer *lex, RuntimeState *rt,
 void pi_parse_chain_cmd(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_dialect_cmd(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_bios_cmd(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_int_cmd(Lexer *lex, RuntimeState *rt,
     int line_num);
 int pi_ensure_bas_ext(char *fname, int len, int maxlen);
 int pi_ensure_bpp_ext(char *fname, int len, int maxlen);
@@ -495,6 +516,14 @@ void pi_parse_catalog(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_ver(Lexer *lex, RuntimeState *rt,
     int line_num);
+void pi_parse_hostname(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_username(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_pwd(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_cwd(Lexer *lex, RuntimeState *rt,
+    int line_num);
 
 // parser_virtual.c - Virtual infrastructure
 void pi_parse_vdev(Lexer *lex, RuntimeState *rt,
@@ -654,5 +683,6 @@ void pi_parse_commit(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_rollback(Lexer *lex, RuntimeState *rt,
     int line_num);
+#include "parser_internal_additions.h"
 
 #endif // BASICPP_PARSER_INTERNAL_H

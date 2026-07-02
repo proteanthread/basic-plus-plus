@@ -69,6 +69,7 @@ extern void parser_execute_line(Lexer *lex, RuntimeState *rt,
                                 int line_num);
 #include "../security.h"
 #include <stdbool.h>
+#include "../console.h"
 
 // Forward declarations
 int lib_space_load_bpl(const char *path);
@@ -495,7 +496,6 @@ int lib_space_load_compiled(const char *path,
 
 int lib_space_unload(const char *name)
 {
-    int j;
     for (int i = 0; i < lib_slot_count; i++) {
         if (lib_slots[i].loaded &&
             ls_str_iequal(lib_slots[i].name, name)) {
@@ -538,7 +538,6 @@ LoadedLibrary *lib_space_find(const char *name)
 LibSymbol *lib_space_find_symbol(const char *name,
                                  LoadedLibrary **out_lib)
 {
-    int j;
     for (int i = 0; i < lib_slot_count; i++) {
         if (!lib_slots[i].loaded) continue;
         for (int j = 0; j < lib_slots[i].symbol_count; j++) {
@@ -924,7 +923,7 @@ int lib_space_try_call_func(const char *name, int name_len,
 
 void lib_space_list(void)
 {
-    int j, found = 0;
+    int found = 0;
     const char *type_names[] = {
         "LIB", "FN", "FT", "MOD", "PLG"
     };

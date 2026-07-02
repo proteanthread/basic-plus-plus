@@ -63,6 +63,10 @@ void pi_parse_def_fn(Lexer *lex, RuntimeState *rt, int line_num)
  // Set virtual memory segment base.
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_SEG) {
+#ifdef BPP_LITE_BUILD
+      error_raise(ERR_HOW, line_num);
+      return;
+#else
  lexer_next(lex); // consume SEG
  if (lex->current.type == TOK_EQUALS) {
  lexer_next(lex); // consume =
@@ -82,6 +86,7 @@ void pi_parse_def_fn(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
  return;
+#endif
  }
 
  // DEF USR [= address]
@@ -138,7 +143,7 @@ void pi_parse_def_fn(Lexer *lex, RuntimeState *rt, int line_num)
  }
  fn_name[nlen] = '\0';
  fn_name_len = nlen;
- lexer_next(lex); // consume FN<name>
+  lexer_next(lex); // consume FN<name>
  } else if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_FN) {
  lexer_next(lex); // consume FN
@@ -152,14 +157,14 @@ void pi_parse_def_fn(Lexer *lex, RuntimeState *rt, int line_num)
  fn_name[0] = lex->current.value.var_name;
  fn_name_len = 1;
  fn_name[fn_name_len] = '\0';
- lexer_next(lex); // consume variable name
+  lexer_next(lex); // consume variable name
  } else {
  error_raise(ERR_WHAT, line_num);
  return;
  }
 
- // Parse parameter list: (X) or (X,Y) or (X,Y,Z)
- if (!lexer_expect(lex, TOK_LPAREN)) return;
+  // Parse parameter list: (X) or (X,Y) or (X,Y,Z)
+  if (!lexer_expect(lex, TOK_LPAREN)) return;
 
  if (lex->current.type == TOK_VARIABLE) {
  params[param_count++] = lex->current.value.var_name;
@@ -261,18 +266,18 @@ void pi_parse_def_fn(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  }
 
- // Single-line DEF FN: DEF FNA(X) = X*X+1
- // Capture the body expression text after '='.
- {
- int eq_pos = lex->pos; // pos is right after the '='
- // Skip whitespace after '='
- while (eq_pos < lex->length &&
- lex->source[eq_pos] == ' ') {
- eq_pos++;
- }
- body_start = lex->source + eq_pos;
- body_len = lex->length - eq_pos;
- }
+  // Single-line DEF FN: DEF FNA(X) = X*X+1
+  // Capture the body expression text after '='.
+  {
+  int eq_pos = lex->current.pos + 1; // pos is right after the '='
+  // Skip whitespace after '='
+  while (eq_pos < lex->length &&
+  lex->source[eq_pos] == ' ') {
+  eq_pos++;
+  }
+  body_start = lex->source + eq_pos;
+  body_len = lex->length - eq_pos;
+  }
 
  // Trim trailing whitespace
  while (body_len > 0 &&
@@ -282,10 +287,10 @@ void pi_parse_def_fn(Lexer *lex, RuntimeState *rt, int line_num)
  body_len--;
  }
 
- if (body_len <= 0) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
+  if (body_len <= 0) {
+  error_raise(ERR_WHAT, line_num);
+  return;
+  }
 
  // Store the function definition
  if (runtime_def_fn(rt, fn_name, fn_name_len,

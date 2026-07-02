@@ -43,10 +43,22 @@
  // ---
 
 #include "parser_internal.h"
+#include "../pcode.h"
+#include "../bytecode.h"
+#include "../codegen/archive.h"
+#include "../memmap.h"
+#include "../gw_memory.h"
+
+extern struct GW_Memory *g_gw_mem;
 
 void pi_parse_list_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
  (void)line_num;
+
+ if (rt->bytecode_only) {
+     printf("LIST: Prohibited in obfuscated/bytecode-only mode.\n");
+     return;
+ }
 
  // LIST "filename" - Display file from disk
  // without loading it into memory.
@@ -164,59 +176,106 @@ int pi_ensure_bas_ext(char *fname, int len, int maxlen);
  // If filename has no extension, ".BAS" is appended.
 void pi_parse_run_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
- if (lex->current.type == TOK_STRING) {
- // RUN "filename" - load then execute
- char filename[MAX_LINE_LENGTH + 1];
- int flen = lex->current.str_length;
+  if (lex->current.type == TOK_STRING) {
+#ifdef BPP_LITE_BUILD
+      error_raise(ERR_HOW, line_num);
+      return;
+#else
+  // RUN "filename" - load then execute
+  char filename[MAX_LINE_LENGTH + 1];
+  int flen = lex->current.str_length;
 
-  if (security_check(SECOP_PROG_MGMT, line_num))
+   if (security_check(SECOP_PROG_MGMT, line_num))
+    return;
+
+   if (flen >= MAX_LINE_LENGTH) {
+   error_raise(ERR_WHAT, line_num);
    return;
+  }
+  memcpy(filename, lex->current.str_start,
+   (size_t)flen);
+  filename[flen] = '\0';
+  lexer_next(lex);
 
-  if (flen >= MAX_LINE_LENGTH) {
-  error_raise(ERR_WHAT, line_num);
-  return;
- }
- memcpy(filename, lex->current.str_start,
-  (size_t)flen);
- filename[flen] = '\0';
- lexer_next(lex);
+  // Auto-append .BAS if no extension
+  pi_ensure_bas_ext(filename, flen,
+   MAX_LINE_LENGTH);
 
- // Auto-append .BAS if no extension
- pi_ensure_bas_ext(filename, flen,
-  MAX_LINE_LENGTH);
+  // Clear and load
+  program_clear(&rt->memory->program);
+  runtime_reset(rt);
 
- // Clear and load
- program_clear(&rt->memory->program);
- runtime_reset(rt);
- if (fileio_load(&rt->memory->program,
-  filename) != 0)
-  return; // load failed
- }
+  // Auto-detect format by checking magic bytes
+  unsigned char magic[4] = {0};
+  FILE *mf = fopen(filename, "rb");
+  if (mf) {
+      if (fread(magic, 1, 4, mf) != 4) {
+          memset(magic, 0, 4);
+      }
+      fclose(mf);
+  }
+
+  if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'E' && magic[3] == '\x1A') {
+      if (bpe_load(filename, &rt->memory->program, rt) != 0)
+          return;
+  } else if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'P' && (magic[3] == '\x1B' || magic[3] == '\x1A')) {
+      if (bpp_load(&rt->memory->program, filename, rt) != 0)
+          return;
+  } else {
+      if (fileio_load(&rt->memory->program, filename) != 0)
+          return; // load failed
+  }
+#endif
+  }
 
  if (rt->memory->program.count == 0) {
  // No program to run
  return;
  }
 
- // ECMA-55: END must be the last line of the program.
- // Check in strict mode only. Warn but still execute.
- if (dialect_is_strict()) {
- ProgramStore *ps = &rt->memory->program;
- int last = ps->count - 1;
- if (last >= 0) {
-  Lexer chk;
-  lexer_init(&chk, ps->lines[last].text);
-  if (chk.current.type == TOK_NUMBER)
-  lexer_next(&chk);
-  if (!(chk.current.type == TOK_KEYWORD &&
-  chk.current.value.keyword == KW_END)) {
-  printf("Warning: END is not the "
-   "last statement (ECMA-55)\n");
+#ifdef BPP_LITE_BUILD
+  {
+      ProgramStore *ps = &rt->memory->program;
+      int last = ps->count - 1;
+      if (last >= 0) {
+          Lexer chk;
+          lexer_init(&chk, ps->lines[last].text);
+          if (chk.current.type == TOK_NUMBER)
+              lexer_next(&chk);
+          if (!(chk.current.type == TOK_KEYWORD &&
+                chk.current.value.keyword == KW_END)) {
+              error_raise(ERR_WHAT, ps->lines[last].line_number);
+              return;
+          }
+      }
   }
- }
- }
+#else
+  // ECMA-55: END must be the last line of the program.
+  // Check in strict mode only. Warn but still execute.
+  if (dialect_is_strict()) {
+  ProgramStore *ps = &rt->memory->program;
+  int last = ps->count - 1;
+  if (last >= 0) {
+   Lexer chk;
+   lexer_init(&chk, ps->lines[last].text);
+   if (chk.current.type == TOK_NUMBER)
+   lexer_next(&chk);
+   if (!(chk.current.type == TOK_KEYWORD &&
+   chk.current.value.keyword == KW_END)) {
+   printf("Warning: END is not the "
+    "last statement (ECMA-55)\n");
+   }
+  }
+  }
+#endif
 
- exec_run(rt);
+#ifndef BPP_LITE_BUILD
+  if (rt->has_loaded_pcode) {
+      exec_brun(rt);
+      return;
+  }
+#endif
+  exec_run(rt);
 }
 
  // parse_new_cmd - Parse NEW command.
@@ -229,6 +288,10 @@ void pi_parse_new_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 
  program_clear(&rt->memory->program);
  runtime_reset(rt);
+
+ pcode_cache_invalidate(rt);
+ rt->bytecode_only = 0;
+
  lexer_clear_scope(ASCOPE_PROGRAM);
 }
 
@@ -266,6 +329,7 @@ void pi_parse_load_cmd(Lexer *lex, RuntimeState *rt, int line_num);
  // 4. Push a FRAME_FOR with variable, limit, step, and body index.
  // 5. Continue executing the loop body.
 
+#ifndef BPP_LITE_BUILD
 void pi_parse_merge_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
  char filename[MAX_LINE_LENGTH + 1];
@@ -313,8 +377,10 @@ void pi_parse_merge_cmd(Lexer *lex, RuntimeState *rt, int line_num)
     sd->has_static_data = 0;
    }
   }
-  rt->sub_count = 0;
- }
+   rt->sub_count = 0;
+  }
+
+  pcode_cache_invalidate(rt);
 }
 
  // parse_chain_cmd - Parse CHAIN "filename"
@@ -389,11 +455,12 @@ void pi_parse_chain_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  rt->data_ptr = 0; // reset DATA pointer
  rt->label_count = 0; // labels need re-scan
 
- if (fileio_chain(&rt->memory->program, filename) == 0) {
-  // Trigger execution preserving variables
-  exec_chain_run(rt);
- }
+ rt->chain_pending = 1;
+ strncpy(rt->chain_file, filename, sizeof(rt->chain_file) - 1);
+ rt->chain_file[sizeof(rt->chain_file) - 1] = '\0';
+ vm_set_state(rt, VM_RUNNING);
 }
+#endif
 
  // parse_dialect_cmd - Parse DIALECT command.
  //
@@ -404,10 +471,43 @@ void pi_parse_chain_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  //
  // Calls dialect_apply() after switching to reconfigure
  // the function registry and runtime for the new dialect.
+static void dialect_update_memmap_and_screen(RuntimeState *rt, int dialect_id)
+{
+    MemMapType default_map = memmap_default_for_dialect(dialect_id);
+    if (default_map != MMAP_NONE) {
+        memmap_init(rt->mem_segment, default_map);
+        rt->memmap_type = (int)default_map;
+        rt->mem_seg_base = 0;
+#ifndef BPP_LITE_BUILD
+        if (g_gw_mem != NULL) {
+            gw_mem_def_seg(g_gw_mem, 0);
+        }
+#endif
+        // Sync screen columns
+        if (default_map == MMAP_IBM_PCJR) {
+            rt->screen_width = 40;
+#ifndef BPP_LITE_BUILD
+#ifndef NO_SDL2
+            extern void gw_sdl2_set_mode(int mode, int cols);
+            gw_sdl2_set_mode(rt->screen_mode, 40);
+#endif
+#endif
+        } else if (default_map == MMAP_IBM_PC || default_map == MMAP_IBM_XT || default_map == MMAP_IBM_AT || default_map == MMAP_MSDOS) {
+            rt->screen_width = 80;
+#ifndef BPP_LITE_BUILD
+#ifndef NO_SDL2
+            extern void gw_sdl2_set_mode(int mode, int cols);
+            gw_sdl2_set_mode(rt->screen_mode, 80);
+#endif
+#endif
+        }
+    } else {
+        rt->memmap_type = (int)MMAP_NONE;
+    }
+}
+
 void pi_parse_dialect_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
- (void)rt;
-
  if (lex->current.type == TOK_EOF || lex->current.type == TOK_CR) {
  // No argument - list all dialects
  dialect_list_all();
@@ -424,6 +524,7 @@ void pi_parse_dialect_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
  dialect_init((DialectId)id);
  dialect_apply();
+ dialect_update_memmap_and_screen(rt, id);
  printf("Dialect: %s [%s]\n",
  dialect_get_name(), dialect_get_short_name());
  return;
@@ -450,6 +551,7 @@ void pi_parse_dialect_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
  dialect_init((DialectId)found);
  dialect_apply();
+ dialect_update_memmap_and_screen(rt, found);
  printf("Dialect: %s [%s]\n",
  dialect_get_name(), dialect_get_short_name());
  return;
@@ -481,6 +583,7 @@ void pi_parse_dialect_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
  dialect_init((DialectId)found);
  dialect_apply();
+ dialect_update_memmap_and_screen(rt, found);
  printf("Dialect: %s [%s]\n",
  dialect_get_name(),
  dialect_get_short_name());
@@ -574,8 +677,13 @@ int pi_ensure_bpp_ext(char *fname, int len, int maxlen)
  return len;
 }
 
+#ifndef BPP_LITE_BUILD
 void pi_parse_save_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
+#ifdef BPP_LITE_BUILD
+    error_raise(ERR_HOW, line_num);
+    return;
+#endif
  char filename[MAX_LINE_LENGTH + 1];
 
  if (lex->current.type == TOK_STRING) {
@@ -619,6 +727,7 @@ void pi_parse_save_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  rt->last_save_file[sl] = '\0';
  }
 }
+#endif
 
  // parse_load_cmd - LOAD "filename"
  //
@@ -627,6 +736,7 @@ void pi_parse_save_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  //   MENU.BAS, HELLO.BAS, RUNME.BAS, MAIN.BAS, AUTORUN.BAS
  //
  // If filename has no extension, ".BAS" is appended.
+#ifndef BPP_LITE_BUILD
 void pi_parse_load_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
     if (lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_VARIABLE) {
@@ -747,11 +857,32 @@ void pi_parse_load_cmd(Lexer *lex, RuntimeState *rt, int line_num)
     program_clear(&rt->memory->program);
     runtime_reset(rt);
 
-    fileio_load(&rt->memory->program, filename);
+    // Auto-detect format by checking magic bytes
+    unsigned char magic[4] = {0};
+    FILE *mf = fopen(filename, "rb");
+    if (mf) {
+        if (fread(magic, 1, 4, mf) != 4) {
+            memset(magic, 0, 4);
+        }
+        fclose(mf);
+    }
+
+    if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'E' && magic[3] == '\x1A') {
+        bpe_load(filename, &rt->memory->program, rt);
+    } else if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'P' && (magic[3] == '\x1B' || magic[3] == '\x1A')) {
+        bpp_load(&rt->memory->program, filename, rt);
+    } else {
+        fileio_load(&rt->memory->program, filename);
+    }
 }
+#endif
 
 void pi_parse_unload_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
+#ifdef BPP_LITE_BUILD
+    error_raise(ERR_HOW, line_num);
+    return;
+#endif
     (void)rt;
     if (lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_VARIABLE) {
         const char *nv = (lex->current.type == TOK_NAMED_VAR) ? lex->current.str_start : NULL;
@@ -828,4 +959,59 @@ void pi_parse_unload_cmd(Lexer *lex, RuntimeState *rt, int line_num)
         }
     }
     error_raise(ERR_WHAT, line_num);
+}
+
+void pi_parse_bios_cmd(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    if (lex->current.type == TOK_EOF || lex->current.type == TOK_CR) {
+        printf("Current BIOS Map: %s\n", memmap_get_name((MemMapType)rt->memmap_type));
+        return;
+    }
+
+    if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_LIST) {
+        lexer_next(lex);
+        memmap_list();
+        return;
+    }
+
+    if (lex->current.type == TOK_STRING || lex->current.type == TOK_NAMED_VAR) {
+        char name[MAX_LINE_LENGTH + 1];
+        int len = lex->current.str_length;
+        if (len >= MAX_LINE_LENGTH) {
+            error_raise(ERR_WHAT, line_num);
+            return;
+        }
+        memcpy(name, lex->current.str_start, (size_t)len);
+        name[len] = '\0';
+        lexer_next(lex);
+
+        MemMapType mtype = memmap_from_string(name, len);
+        if (mtype == MMAP_COUNT || (mtype != MMAP_NONE && mtype != MMAP_MSDOS && 
+            mtype != MMAP_IBM_PC && mtype != MMAP_IBM_PCJR && 
+            mtype != MMAP_IBM_XT && mtype != MMAP_IBM_AT)) {
+            printf("Invalid BIOS map. Must be NONE, MSDOS, IBMPC, PCJR, PCXT, or PCAT.\n");
+            error_raise(ERR_HOW, line_num);
+            return;
+        }
+
+        memmap_init(rt->mem_segment, mtype);
+        rt->memmap_type = (int)mtype;
+        rt->mem_seg_base = 0;
+#ifndef BPP_LITE_BUILD
+        if (g_gw_mem != NULL) {
+            gw_mem_def_seg(g_gw_mem, 0);
+        }
+#endif
+        printf("BIOS Map switched to: %s\n", memmap_get_name(mtype));
+        return;
+    }
+
+    error_raise(ERR_WHAT, line_num);
+}
+
+void pi_parse_int_cmd(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    long int_num = (long)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    emulate_interrupt(rt, (int)int_num, line_num);
 }

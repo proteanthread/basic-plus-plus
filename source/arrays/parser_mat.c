@@ -332,176 +332,176 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  if (pi_mat_match_ident(lex, "IDN")) {
- DimArray *arr = runtime_find_dim(rt, name_a, name_a_len);
- int r, c;
- if (arr == NULL || arr->dims != 2) {
- error_raise(ERR_HOW, line_num);
- return;
- }
- // rows and cols must match for identity
- if (arr->size[0] != arr->size[1]) {
- error_raise(ERR_HOW, line_num);
- return;
- }
- for (r = 0; r < arr->size[0]; r++) {
- for (c = 0; c < arr->size[1]; c++) {
- arr->elements[r * arr->size[1] + c] =
- (r == c) ? bval_float(1.0) : bval_float(0.0);
- }
- }
- lexer_next(lex);
- return;
- }
+  DimArray *arr = runtime_find_dim(rt, name_a, name_a_len);
+  int r, c;
+  if (arr == NULL || arr->dims != 2) {
+  error_raise(ERR_HOW, line_num);
+  return;
+  }
+  // rows and cols must match for identity
+  if (arr->size[0] != arr->size[1]) {
+  error_raise(ERR_HOW, line_num);
+  return;
+  }
+  for (r = 0; r < arr->size[0]; r++) {
+  for (c = 0; c < arr->size[1]; c++) {
+  arr->elements[r * arr->size[1] + c] =
+  (r == c) ? bval_float(1.0) : bval_float(0.0);
+  }
+  }
+  lexer_next(lex);
+  return;
+  }
 
- // --- MAT A = TRN(B) ---
- if (pi_mat_match_ident(lex, "TRN")) {
- char name_b[MAX_VAR_NAME_LEN + 1];
- int name_b_len;
- DimArray *a, *b;
- int r, c;
+  // --- MAT A = TRN(B) ---
+  if (pi_mat_match_ident(lex, "TRN")) {
+  char name_b[MAX_VAR_NAME_LEN + 1];
+  int name_b_len;
+  DimArray *a, *b;
+  int r, c;
 
- lexer_next(lex); // consume TRN
- if (!lexer_expect(lex, TOK_LPAREN)) return;
- if (!pi_mat_get_array_name(lex, name_b, &name_b_len)) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- if (!lexer_expect(lex, TOK_RPAREN)) return;
+  lexer_next(lex); // consume TRN
+  if (!lexer_expect(lex, TOK_LPAREN)) return;
+  if (!pi_mat_get_array_name(lex, name_b, &name_b_len)) {
+  error_raise(ERR_WHAT, line_num);
+  return;
+  }
+  if (!lexer_expect(lex, TOK_RPAREN)) return;
 
- b = runtime_find_dim(rt, name_b, name_b_len);
- if (b == NULL || b->dims != 2) {
- error_raise(ERR_HOW, line_num);
- return;
- }
+  b = runtime_find_dim(rt, name_b, name_b_len);
+  if (b == NULL || b->dims != 2) {
+  error_raise(ERR_HOW, line_num);
+  return;
+  }
 
- // A must be DIMmed with transposed dimensions
- a = runtime_find_dim(rt, name_a, name_a_len);
- if (a == NULL || a->dims != 2) {
- error_raise(ERR_HOW, line_num);
- return;
- }
- if (a->size[0] != b->size[1] || a->size[1] != b->size[0]) {
- error_raise(ERR_HOW, line_num);
- return;
- }
+  // A must be DIMmed with transposed dimensions
+  a = runtime_find_dim(rt, name_a, name_a_len);
+  if (a == NULL || a->dims != 2) {
+  error_raise(ERR_HOW, line_num);
+  return;
+  }
+  if (a->size[0] != b->size[1] || a->size[1] != b->size[0]) {
+  error_raise(ERR_HOW, line_num);
+  return;
+  }
 
- // A(r,c) = B(c,r) - using 1-based indexing
- for (r = 1; r < a->size[0]; r++) {
- for (c = 1; c < a->size[1]; c++) {
- int a_off = r * a->size[1] + c;
- int b_off = c * b->size[1] + r;
- a->elements[a_off] = b->elements[b_off];
- }
- }
- return;
- }
+  // A(r,c) = B(c,r) - using 0-based packed indexing
+  for (r = 0; r < a->size[0]; r++) {
+  for (c = 0; c < a->size[1]; c++) {
+  int a_off = r * a->size[1] + c;
+  int b_off = c * b->size[1] + r;
+  a->elements[a_off] = b->elements[b_off];
+  }
+  }
+  return;
+  }
 
- // --- MAT A = INV(B) ---
- if (pi_mat_match_ident(lex, "INV")) {
- char name_b[MAX_VAR_NAME_LEN + 1];
- int name_b_len;
- DimArray *a, *b;
- int n, r, c, p;
- double work[16][32]; // max 15x15 matrix for inverse
- double pivot, factor;
+  // --- MAT A = INV(B) ---
+  if (pi_mat_match_ident(lex, "INV")) {
+  char name_b[MAX_VAR_NAME_LEN + 1];
+  int name_b_len;
+  DimArray *a, *b;
+  int n, r, c, p;
+  double work[16][32]; // max 15x15 matrix for inverse
+  double pivot, factor;
 
- lexer_next(lex); // consume INV
- if (!lexer_expect(lex, TOK_LPAREN)) return;
- if (!pi_mat_get_array_name(lex, name_b, &name_b_len)) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- if (!lexer_expect(lex, TOK_RPAREN)) return;
+  lexer_next(lex); // consume INV
+  if (!lexer_expect(lex, TOK_LPAREN)) return;
+  if (!pi_mat_get_array_name(lex, name_b, &name_b_len)) {
+  error_raise(ERR_WHAT, line_num);
+  return;
+  }
+  if (!lexer_expect(lex, TOK_RPAREN)) return;
 
- b = runtime_find_dim(rt, name_b, name_b_len);
- if (b == NULL || b->dims != 2) {
- error_raise(ERR_HOW, line_num);
- return;
- }
- // Must be square
- if (b->size[0] != b->size[1]) {
- error_raise(ERR_HOW, line_num);
- return;
- }
- n = b->size[0] - 1; // 1-based size
- if (n > 15 || n < 1) {
- error_raise(ERR_SORRY, line_num); // too large
- return;
- }
+  b = runtime_find_dim(rt, name_b, name_b_len);
+  if (b == NULL || b->dims != 2) {
+  error_raise(ERR_HOW, line_num);
+  return;
+  }
+  // Must be square
+  if (b->size[0] != b->size[1]) {
+  error_raise(ERR_HOW, line_num);
+  return;
+  }
+  n = b->size[0]; // active packed size
+  if (n > 15 || n < 1) {
+  error_raise(ERR_SORRY, line_num); // too large
+  return;
+  }
 
- a = runtime_find_dim(rt, name_a, name_a_len);
- if (a == NULL || a->dims != 2 ||
- a->size[0] != b->size[0] ||
- a->size[1] != b->size[1]) {
- error_raise(ERR_HOW, line_num);
- return;
- }
+  a = runtime_find_dim(rt, name_a, name_a_len);
+  if (a == NULL || a->dims != 2 ||
+  a->size[0] != b->size[0] ||
+  a->size[1] != b->size[1]) {
+  error_raise(ERR_HOW, line_num);
+  return;
+  }
 
- // Build augmented matrix [B | I]
- for (r = 0; r < n; r++) {
- for (c = 0; c < n; c++) {
- BValue v = b->elements[(r+1) * b->size[1] + (c+1)];
- work[r][c] = bval_to_float(&v);
- work[r][c + n] = (r == c) ? 1.0 : 0.0;
- }
- }
+  // Build augmented matrix [B | I]
+  for (r = 0; r < n; r++) {
+  for (c = 0; c < n; c++) {
+  BValue v = b->elements[r * b->size[1] + c];
+  work[r][c] = bval_to_float(&v);
+  work[r][c + n] = (r == c) ? 1.0 : 0.0;
+  }
+  }
 
- // Gauss-Jordan elimination
- for (p = 0; p < n; p++) {
- // Find pivot
- int max_row = p;
- double max_val = work[p][p];
- if (max_val < 0) max_val = -max_val;
+  // Gauss-Jordan elimination
+  for (p = 0; p < n; p++) {
+  // Find pivot
+  int max_row = p;
+  double max_val = work[p][p];
+  if (max_val < 0) max_val = -max_val;
 
- for (r = p + 1; r < n; r++) {
- double v = work[r][p];
- if (v < 0) v = -v;
- if (v > max_val) {
- max_val = v;
- max_row = r;
- }
- }
+  for (r = p + 1; r < n; r++) {
+  double v = work[r][p];
+  if (v < 0) v = -v;
+  if (v > max_val) {
+  max_val = v;
+  max_row = r;
+  }
+  }
 
- // Swap rows if needed
- if (max_row != p) {
- for (c = 0; c < 2 * n; c++) {
- double tmp = work[p][c];
- work[p][c] = work[max_row][c];
- work[max_row][c] = tmp;
- }
- }
+  // Swap rows if needed
+  if (max_row != p) {
+  for (c = 0; c < 2 * n; c++) {
+  double tmp = work[p][c];
+  work[p][c] = work[max_row][c];
+  work[max_row][c] = tmp;
+  }
+  }
 
- pivot = work[p][p];
- if (pivot > -1e-12 && pivot < 1e-12) {
- // Singular matrix
- error_raise(ERR_HOW, line_num);
- return;
- }
+  pivot = work[p][p];
+  if (pivot > -1e-12 && pivot < 1e-12) {
+  // Singular matrix
+  error_raise(ERR_HOW, line_num);
+  return;
+  }
 
- // Scale pivot row
- for (c = 0; c < 2 * n; c++) {
- work[p][c] /= pivot;
- }
+  // Scale pivot row
+  for (c = 0; c < 2 * n; c++) {
+  work[p][c] /= pivot;
+  }
 
- // Eliminate column
- for (r = 0; r < n; r++) {
- if (r == p) continue;
- factor = work[r][p];
- for (c = 0; c < 2 * n; c++) {
- work[r][c] -= factor * work[p][c];
- }
- }
- }
+  // Eliminate column
+  for (r = 0; r < n; r++) {
+  if (r == p) continue;
+  factor = work[r][p];
+  for (c = 0; c < 2 * n; c++) {
+  work[r][c] -= factor * work[p][c];
+  }
+  }
+  }
 
- // Extract inverse from right half
- for (r = 0; r < n; r++) {
- for (c = 0; c < n; c++) {
- a->elements[(r+1) * a->size[1] + (c+1)] =
- bval_float(work[r][c + n]);
- }
- }
- return;
- }
+  // Extract inverse from right half
+  for (r = 0; r < n; r++) {
+  for (c = 0; c < n; c++) {
+  a->elements[r * a->size[1] + c] =
+  bval_float(work[r][c + n]);
+  }
+  }
+  return;
+  }
 
  // --- MAT A = (k) * B - scalar multiplication ---
  if (lex->current.type == TOK_LPAREN) {

@@ -51,7 +51,7 @@ File I/O is famously fractured across historical dialects. The Standard Library 
 
 ## Extensible Error Architecture
 BASIC++ implements an extensible error mapping system through `error_registry.c`.
-- **`ERR$`:** Retrieves the syntax name for a 32-bit error code (e.g. `ERR$(11)` -> `"Division by zero"`).
+- **`ERR$()`:** With no arguments, returns the message string for the most recent error. With one argument, `ERR$(code)` returns the message string for the specified error code (e.g. `ERR$(11)` → `"Division by zero"`). Accepts 0-1 arguments.
 - Dialects and external modules can inject custom errors at runtime via `error_registry_register()`.
 - Standard PATB trapping using the raw `ERR` variable and `ERL` (Error Line Number) is natively preserved.
 

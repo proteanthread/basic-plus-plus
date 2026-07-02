@@ -123,6 +123,7 @@
 #include <stdio.h>
 #include "errors.h"
 #include "txn.h"
+#include "../console.h"
 
 // -----------------------------------------------------------------
 // Module State -- Global Error Flag
@@ -175,7 +176,11 @@ const char *error_message(ErrorCode code)
     switch (code) {
     case ERR_WHAT:  return "WHAT?";
     case ERR_HOW:   return "HOW?";
+#ifdef BPP_LITE_BUILD
+    case ERR_SORRY: return "SORRY";
+#else
     case ERR_SORRY: return "SORRY.";
+#endif
     default:        return "";
     }
 }
@@ -211,10 +216,12 @@ void error_raise(ErrorCode code, int line_num)
 
     current_error = code;
 
+#ifdef BPP_SUPPORT_TXN
     // Auto-rollback ATOMIC blocks on error.
     // If a transaction is in progress, this rolls it back
     // before the error message is printed.
     txn_on_error(line_num);
+#endif
 
     // If ON ERROR GOTO is active, suppress the message.
     // The error flag is still set so exec.c can detect it

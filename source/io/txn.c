@@ -63,6 +63,7 @@
 #include "txn.h"
 #include "fileio.h"
 #include "errors.h"
+#include "../console.h"
 
 // The single global journal
 static TxnJournal journal;

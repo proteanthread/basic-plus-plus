@@ -1,6 +1,6 @@
 # BASIC++ Programmer's Guide
 
-**Version 4.1.1**
+**Version 4.2.3**
 
 ## Table of Contents
 
@@ -66,7 +66,7 @@ Type is determined by context:
 SCORE, PLAYER_NAME$, TOTAL.COUNT
 ```
 
-Up to 40 characters, case-insensitive.
+Up to 31 characters, case-insensitive.
 
 ### Special variables
 

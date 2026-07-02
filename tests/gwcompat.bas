@@ -8,10 +8,25 @@
 80 REM    4. Space inside operators (< =, > =, < >)
 90 REM    5. FUNCTION with multi-word identifiers (GetCount)
 95 REM    6. LOAD LIBRARY syntax (static analysis only)
+96 REM
+97 REM  WHAT CAN BE CHANGED:
+98 REM   - Test values and assertions
+99 REM   - Additional FUNCTION definitions
 100 REM
-110 REM  EXPECTED: All TEST blocks pass.  PRINT double comma
-120 REM  produces tab-zone spacing visually.
-130 REM ============================================================
+101 REM  WHAT CANNOT BE CHANGED:
+102 REM   - Do NOT use single-line IF/THEN/ELSE for FUNCTION
+103 REM     return value assignment (parser limitation)
+104 REM   - Use multi-line IF with GOTO for branched returns
+105 REM
+106 REM  WHAT TO EXPECT:
+107 REM   - All TEST blocks should pass
+108 REM   - PRINT double comma produces tab-zone spacing
+110 REM
+111 REM  TROUBLESHOOTING:
+112 REM   - ASSERTION FAILED in GetMax: ensure the function
+113 REM     uses GOTO-based branching, not ELSE assignment
+114 REM   - WHAT? on FUNCTION: verify GW-BASIC dialect is active
+115 REM ============================================================
 
 1000 TEST "RANDOMIZE TIMER"
 1010 ON ERROR GOTO 1090
@@ -73,8 +88,10 @@
 5120 END FUNCTION
 
 5200 FUNCTION GetMax(A, B)
-5210   IF A > B THEN GetMax = A ELSE GetMax = B
-5220 END FUNCTION
+5210   IF A > B THEN GOTO 5230
+5220   GetMax = B : GOTO 5240
+5230   GetMax = A
+5240 END FUNCTION
 
 6000 TEST "CHECK and VERIFY"
 6010 REM Verify that CHECK and VERIFY commands exist and

@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include "stdlib_dialect.h"
 #include "config.h"
+#include "../console.h"
 
 static DialectOverrides active_overrides;
 

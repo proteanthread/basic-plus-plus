@@ -46,6 +46,7 @@
 #include "config.h"
 #include "scope_stack.h"
 #include "runtime.h"
+#include "../console.h"
 
  // scope_stack_init - Allocate initial scope stack capacity.
 void scope_stack_init(ScopeStack *ss)

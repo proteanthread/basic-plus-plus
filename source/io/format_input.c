@@ -118,23 +118,10 @@ int input_read_protected(char *buf, int maxlen, const char *prompt)
  // INPUT FORMAT VALIDATION
  // ============================================================ 
 
- // InputFormatSpec - Parsed input format specification.
-typedef struct {
- int numeric_only; // N: accept only digits, +, -, .
- int hex_only; // H: accept only hex digits
- int octal_only; // O: accept only 0-7
- int text_only; // T: reject digits
- int force_upper; // U: convert to uppercase
- int force_lower; // L: convert to lowercase
- int max_length; // Sn: max string length
- int has_default; // D: has default value
- char default_val[256]; // default value string
-} InputFormatSpec;
-
  // input_parse_format - Parse an input format string.
  //
  // Reads the format string and populates the spec structure.
-static void input_parse_format(const char *fmt, int flen,
+void input_parse_format(const char *fmt, int flen,
           InputFormatSpec *spec)
 {
  int fi = 0;
@@ -194,7 +181,7 @@ static void input_parse_format(const char *fmt, int flen,
  //
  // Returns 1 if input is valid, 0 if it should be rejected.
  // Also applies transformations (uppercase/lowercase).
-static int input_validate(char *buf, int len,
+int input_validate(char *buf, int len,
      const InputFormatSpec *spec)
 {
  int i;

@@ -43,6 +43,8 @@
 
 #include "parser_internal.h"
 
+#ifndef BPP_LITE_BUILD
+
  // pi_parse_option - Handle OPTION command.
 void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
 {
@@ -298,8 +300,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
     lex->source[p+5]=='\0' || lex->source[p+5]=='\r' ||
     lex->source[p+5]=='\n')) {
    // Skip past "TRICT" and re-prime lexer
-   lex->pos = p + 5;
-   lexer_next(lex);
+   lexer_rewind_to(lex, p + 5);
    // Check for OFF keyword (KW_OFF is not defined, check ON)
    if (lex->current.type == TOK_KEYWORD &&
     lex->current.value.keyword == KW_ON) {
@@ -448,25 +449,23 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  != NULL) {
  const char *m =
  lex->current.str_start;
- if ((m[0]=='N'||m[0]=='n') &&
- (m[1]=='A'||m[1]=='a') &&
- (m[2]=='T'||m[2]=='t')) {
- // NATIVE - no-op (default)
- lexer_next(lex);
- } else if (
- (m[0]=='D'||m[0]=='d') &&
- (m[1]=='E'||m[1]=='e') &&
- (m[2]=='C'||m[2]=='c')) {
- // DECIMAL - not supported
- printf("SORRY. Decimal"
- " arithmetic is not"
- " implemented.\n");
- error_raise(ERR_SORRY,
- line_num);
- } else {
- error_raise(ERR_WHAT,
- line_num);
- }
+                    if ((m[0]=='N'||m[0]=='n') &&
+                        (m[1]=='A'||m[1]=='a') &&
+                        (m[2]=='T'||m[2]=='t')) {
+                        rt->arithmetic_decimal = 0;
+                        g_arithmetic_decimal = 0;
+                        lexer_next(lex);
+                    } else if (
+                        (m[0]=='D'||m[0]=='d') &&
+                        (m[1]=='E'||m[1]=='e') &&
+                        (m[2]=='C'||m[2]=='c')) {
+                        rt->arithmetic_decimal = 1;
+                        g_arithmetic_decimal = 1;
+                        lexer_next(lex);
+                    } else {
+                        error_raise(ERR_WHAT,
+                                    line_num);
+                    }
  } else {
  error_raise(ERR_WHAT, line_num);
  }
@@ -1951,4 +1950,5 @@ void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
 
  // ===== Security =====
 }
+#endif
 

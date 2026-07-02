@@ -38,9 +38,18 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "gwbasic.h"
+
 struct GW_Memory *g_gw_mem = NULL;
+GW_State *g_state = NULL;
 struct GW_PluginManager *g_gw_plugin_mgr = NULL;
-int g_gw_machine_type = 0; // Default to VGA
+#ifdef INPUT_CONSOLE
+int g_gw_machine_type = 8; // Default to MACHINE_MDA (Monochrome Text Mode) for Console/text-only builds
+#else
+int g_gw_machine_type = 9; // Default to MACHINE_CGA (Color Graphics Adapter) for SDL GUI builds
+#endif
+int g_cga_snow = 0;
+char g_mda_color[16] = "amber";
 
 static uint8_t gw_var_read_hook(uint32_t addr, void *ctx) {
     RuntimeState *rt = (RuntimeState *)ctx;
@@ -313,7 +322,9 @@ static uint8_t gw_array_read_hook(uint32_t addr, void *ctx) {
     
     int element_offset = (addr - 0x10000) / 8;
     int byte_offset = (addr - 0x10000) % 8;
-    if (element_offset < 0 || element_offset >= rt->dim_elements_used) return 0;
+    if (element_offset < 0 || element_offset >= rt->dim_elements_used) {
+        return rt->mem_segment[addr % 1048576];
+    }
     
     BValue val = rt->dim_elements[element_offset];
     int is_int = 0;
@@ -374,7 +385,10 @@ static void gw_array_write_hook(uint32_t addr, uint8_t val, void *ctx) {
     
     int element_offset = (addr - 0x10000) / 8;
     int byte_offset = (addr - 0x10000) % 8;
-    if (element_offset < 0 || element_offset >= rt->dim_elements_used) return;
+    if (element_offset < 0 || element_offset >= rt->dim_elements_used) {
+        rt->mem_segment[addr % 1048576] = val;
+        return;
+    }
     
     BValue *val_ptr = &rt->dim_elements[element_offset];
     int is_int = 0;

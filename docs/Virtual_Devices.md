@@ -1,6 +1,6 @@
 VIRTUAL DEVICES IN BASIC++
 ==========================
-Version 4.1.1
+Version 4.2.3
 
 The Virtual Device (VDev) system is BASIC++'s hardware
 abstraction layer.  All I/O flows through VDevs, enabling
@@ -409,7 +409,7 @@ never knows the difference.
 4. DEVICE SLOTS AND REGISTRATION
 =====================================================================
 
-BASIC++ maintains a static table of 16 device slots:
+BASIC++ maintains a static table of 64 device slots:
 
   Slot   ID           Name    Status
   ----   --------     ----    ------
@@ -420,9 +420,9 @@ BASIC++ maintains a static table of 16 device slots:
   4      VDEV_USER+1  (user)  Available
   5      VDEV_USER+2  (user)  Available
   ...    ...          ...     ...
-  15     VDEV_USER+12 (user)  Available
+  63     VDEV_USER+60 (user)  Available
 
-  13 user slots are available for custom devices.
+  61 user slots are available for custom devices.
 
 Registration:
 
@@ -430,7 +430,7 @@ Registration:
 
   vdev_register() copies the VDev structure into the next
   available slot and returns the slot number.  Returns -1
-  if all 13 user slots are full.
+  if all 61 user slots are full.
 
   After registration, access the device by slot:
 
@@ -2375,7 +2375,7 @@ Examples:
 =====================================================================
 
   DEVICE TABLE:
-  - Maximum 16 device slots (3 built-in + 13 user)
+  - Maximum 64 device slots (3 built-in + 61 user)
   - No vdev_unregister() — once registered, always present
   - Device names are for display only (not used for routing)
   - vdev_register() copies the struct — original not retained

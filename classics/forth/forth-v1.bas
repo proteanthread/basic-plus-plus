@@ -1,9 +1,31 @@
 5 REM === VIC FORTH for BASIC++ ===
 10 REM =============================================
-11 REM  VIC FORTH -- A Forth Interpreter
-12 REM  Written in BASIC++ (GWBS dialect)
+11 REM  VIC FORTH v1 -- A Forth Interpreter
+12 REM  Written in BASIC++ v4.4 (GWBS dialect)
 13 REM  Inspired by HES VIC Forth / Fig-Forth
 14 REM =============================================
+15 REM
+16 REM  WHAT CAN BE CHANGED:
+17 REM   - Stack sizes DS(128), RS(64), BD(2048)
+18 REM   - Dictionary size DW$/DL/DT/DA(256)
+19 REM   - User memory UM(1024)
+20 REM
+21 REM  WHAT CANNOT BE CHANGED:
+22 REM   - Line number structure (GOSUB targets)
+23 REM   - DW$() must be DIMmed before dictionary init
+24 REM   - Avoid multi-statement IF/THEN with ELSE
+25 REM     on the same line (parser limitation)
+26 REM
+27 REM  WHAT TO EXPECT:
+28 REM   - Interactive Forth REPL
+29 REM   - Full colon definitions, control flow
+30 REM   - Type BYE to exit, WORDS for list
+31 REM
+32 REM  TROUBLESHOOTING:
+33 REM   - WHAT? on DW$: ensure DIM DW$(256) exists
+34 REM   - Stack underflow: check Forth word usage
+35 REM   - If GOSUB 8000 fails: line 8000 must exist
+36 REM =============================================
 30 REM
 100 REM --- Data Stack ---
 111 DIM DS(128)
@@ -13,6 +35,7 @@
 122 LET RP = 0
 130 REM --- Dictionary ---
 131 REM DW$(i)=name DL(i)=link DT(i)=type DA(i)=body
+132 DIM DW$(256)
 139 DIM DL(256)
 140 DIM DT(256)
 141 DIM DA(256)

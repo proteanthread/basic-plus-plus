@@ -1,5 +1,5 @@
 5 REM =============================================
-6 REM  MINI-FORTH for BASIC++ (GWBS LOAD-safe)
+6 REM  MINI-FORTH for BASIC++ v4.4 (GWBS LOAD-safe)
 7 REM  All constructs avoid:
 8 REM    - String arrays (use N$ concat)
 9 REM    - RETURN inside IF THEN
@@ -7,6 +7,29 @@
 11 REM    - FOR with LEN() bound
 12 REM    - Nested IF ELSE (outer binds)
 13 REM =============================================
+14 REM
+15 REM  WHAT CAN BE CHANGED:
+16 REM   - Stack size DS(32), dictionary DL/DT/DA(64)
+17 REM   - Built-in word names in DATA statements
+18 REM   - Batch input filename (forth_input.txt)
+19 REM
+20 REM  WHAT CANNOT BE CHANGED:
+21 REM   - Line number structure (GOSUB targets)
+22 REM   - Avoid multi-statement IF/THEN with ELSE
+23 REM     on the same line (parser limitation)
+24 REM   - Variable N$ (dictionary name table)
+25 REM
+26 REM  WHAT TO EXPECT:
+27 REM   - Interactive Forth REPL with "ok" prompt
+28 REM   - Supports basic Forth primitives
+29 REM   - Type BYE to exit
+30 REM
+31 REM  TROUBLESHOOTING:
+32 REM   - WHAT? on LINE INPUT: split complex IF
+33 REM     lines; do not combine THEN/ELSE with
+34 REM     colon-separated statements
+35 REM   - Stack underflow: check Forth word usage
+36 REM =============================================
 100 REM === DATA STRUCTURES ===
 101 DIM DS(32)
 102 LET SP = 0
@@ -45,10 +68,11 @@
 230 IF RUNNING = 0 THEN GOTO 299
 231 IF BATCH = 0 THEN PRINT "ok ";
 232 IF BATCH = 1 THEN IF EOF(1) THEN CLOSE #1 : BATCH = 0 : GOTO 299
-233 IF BATCH = 1 THEN LINE INPUT #1, L$ : PRINT "> "; L$ ELSE LINE INPUT L$
-234 IF LEN(L$) = 0 THEN GOTO 230
-235 LET IPOS = 1
-236 LET ILEN = LEN(L$)
+233 IF BATCH = 1 THEN LINE INPUT #1, L$ : PRINT "> "; L$ : GOTO 235
+234 LINE INPUT L$
+235 IF LEN(L$) = 0 THEN GOTO 230
+236 LET IPOS = 1
+237 LET ILEN = LEN(L$)
 240 REM === Parse and dispatch loop ===
 241 GOSUB 1000
 242 IF W$ = "" THEN GOTO 230

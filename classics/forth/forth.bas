@@ -1,8 +1,34 @@
 5 REM =============================================
-6 REM  VIC FORTH for BASIC++ v1.0 (GWBS LOAD-safe)
+6 REM  VIC FORTH for BASIC++ v4.4 (GWBS LOAD-safe)
 7 REM  Colon definitions, variables, constants,
 8 REM  IF/THEN/ELSE, BEGIN/UNTIL, DO/LOOP
 9 REM =============================================
+10 REM
+11 REM  WHAT CAN BE CHANGED:
+12 REM   - Stack sizes: DS(64), RS(32), BD(256)
+13 REM   - Dictionary size: DL/DT/DA(64)
+14 REM   - Built-in word names in DATA statements
+15 REM   - Batch input filename (forth_input.txt)
+16 REM
+17 REM  WHAT CANNOT BE CHANGED:
+18 REM   - Line number structure (GOSUB targets)
+19 REM   - Avoid multi-statement IF/THEN with ELSE
+20 REM     on the same line (parser limitation)
+21 REM   - Variable name N$ (dictionary name table)
+22 REM
+23 REM  WHAT TO EXPECT:
+24 REM   - Interactive Forth REPL with "ok" prompt
+25 REM   - Supports : definitions, IF/ELSE/THEN,
+26 REM     BEGIN/UNTIL, DO/LOOP, VARIABLE, CONSTANT
+27 REM   - Type BYE to exit, WORDS for word list
+28 REM
+29 REM  TROUBLESHOOTING:
+30 REM   - WHAT? AT LINE 233: batch LINE INPUT
+31 REM     failed; ensure forth_input.txt exists
+32 REM     or remove it for interactive mode
+33 REM   - Stack underflow: check Forth word usage
+34 REM   - Dictionary full: increase DL/DT/DA size
+35 REM =============================================
 100 DIM DS(64)
 101 LET SP = 0
 102 DIM RS(32)
@@ -48,13 +74,14 @@
 230 IF RUNNING = 0 THEN GOTO 299
 231 IF STATE = 0 AND BATCH = 0 THEN PRINT "ok ";
 232 IF BATCH = 1 THEN IF EOF(1) THEN CLOSE #1 : BATCH = 0 : GOTO 299
-233 IF BATCH = 1 THEN LINE INPUT #1, L$ : PRINT "> "; L$ ELSE LINE INPUT L$
-234 IF LEN(L$) = 0 THEN GOTO 230
-235 LET IPOS = 1
-236 LET ILEN = LEN(L$)
-237 GOSUB 5000
-238 IF RUNNING = 0 THEN GOTO 299
-239 GOTO 230
+233 IF BATCH = 1 THEN LINE INPUT #1, L$ : PRINT "> "; L$ : GOTO 235
+234 LINE INPUT L$
+235 IF LEN(L$) = 0 THEN GOTO 230
+236 LET IPOS = 1
+237 LET ILEN = LEN(L$)
+238 GOSUB 5000
+239 IF RUNNING = 0 THEN GOTO 299
+240 GOTO 230
 299 PRINT "Goodbye."
 300 END
 1000 REM === Parse next word ===

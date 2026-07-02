@@ -6,6 +6,8 @@ Building BASIC++ — Makefile Tutorial
 Table of Contents
 
 - Overview
+  - Feature Gates (BPP_SUPPORT_* Macros)
+  - Console vs SDL Builds
 - Quick Start
   - Linux / MinGW (gcc)
   - Windows 11 (MSVC)
@@ -55,11 +57,57 @@ platforms:
 | FreeDOS        | OpenWatcom 16-bit| 16-bit DOS MZ   | bpp.exe      |
 | FreeDOS        | OpenWatcom 32-bit| 32-bit DOS/4GW  | bpp.exe      |
 
-The source code is identical across platforms — no #ifdef branches in the
-language engine.  Platform differences are isolated in core/platform.c and
-virtual/vdev.c.
+The core language engine is largely identical across platforms, with
+platform-specific adaptations isolated in core/platform.c and
+virtual/vdev.c.  However, config.h does contain several #ifdef
+branches that control build profiles and feature availability:
+
+| Macro            | Purpose                                          |
+|------------------|--------------------------------------------------|
+| BPP_FREEDOS   | FreeDOS / OpenWatcom build profile               |
+| BPP_EMBEDDED  | Embedded / bare-metal build profile              |
+| BPP_LITE_BUILD| BASIC++ Lite minimal build (undefines all features) |
+| INPUT_CONSOLE | Console-mode build (defines BASICPP_NAME as 'BASIC++ Standard') |
 
 For a complete file-by-file reference, see source/SOURCE_TREE.txt.
+
+Feature Gates (BPP_SUPPORT_* Macros)
+
+config.h defines a set of BPP_SUPPORT_* macros that act as compile-time
+feature gates.  Each macro enables or disables an entire subsystem:
+
+| Macro                   | Subsystem                              |
+|-------------------------|----------------------------------------|
+| BPP_SUPPORT_GRAPHICS  | SDL2 graphics and SCREEN modes         |
+| BPP_SUPPORT_SOUND     | SOUND, PLAY, BEEP audio support        |
+| BPP_SUPPORT_FILEMGMT  | File management (OPEN, CLOSE, etc.)    |
+| BPP_SUPPORT_MAT       | MAT (matrix) operations               |
+| BPP_SUPPORT_STRUCT    | Structured programming (SUB, FUNCTION) |
+| BPP_SUPPORT_ERRHAND   | Error handling (ON ERROR, RESUME)      |
+| BPP_SUPPORT_SHELL     | SHELL command / OS access              |
+| BPP_SUPPORT_DEBUG     | TRON, TROFF, DEBUG commands            |
+| BPP_SUPPORT_COMPILER  | COMPILE command (C transpiler)         |
+| BPP_SUPPORT_VFS       | Virtual File System                    |
+| BPP_SUPPORT_TXN       | Transaction support                    |
+
+When BPP_LITE_BUILD is defined, all BPP_SUPPORT_* macros are
+undefined, producing the smallest possible binary (BASIC++ Lite).
+
+Console vs SDL Builds
+
+The build system produces two executables on Windows and Linux:
+
+| Build             | Windows Executable    | Linux Executable | Define          | Banner Name        |
+|-------------------|-----------------------|------------------|-----------------|--------------------|
+| Console/Text  | basicpp-console.exe | baspp-console  | INPUT_CONSOLE | BASIC++ Standard |
+| SDL/GUI       | basicpp.exe         | baspp          | (not defined) | BASIC++ SDL      |
+
+When INPUT_CONSOLE is defined, the interpreter boots as a text-only
+console application (BASIC++ Standard).  When it is not defined, the
+interpreter boots with SDL2 windowed output (BASIC++ SDL).  Both builds
+share the same source — the only difference is the initial I/O path: the
+console build initializes SDL on demand (e.g., on a SCREEN command),
+while the SDL build initializes it at boot.
 
 ---
 
@@ -83,11 +131,11 @@ cd source
 nmake /f Makefile msvc
 
 
-Output: ..\basicpp.exe
+Output: ..\basicpp.exe (GUI build) and ..\basicpp-console.exe (Console build)
 
 Alternative (standalone cl command):
 
-cl /TC /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS /Fe:..\basicpp.exe *.c /link advapi32.lib
+cl /TC /std:c17 /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS /DINPUT_CONSOLE /DNO_SDL2 /Fe:..\basicpp-console.exe core\*.c lexer\*.c parser\*.c flow\*.c arrays\*.c variables\*.c errors\*.c display\*.c io\*.c memory\*.c modules\*.c dialect\*.c help\*.c /link advapi32.lib ws2_32.lib Shell32.lib User32.lib Gdi32.lib Winmm.lib
 
 
 FreeDOS (OpenWatcom 16-bit)
@@ -164,19 +212,20 @@ under 10 seconds on modern hardware.
 
 | Compiler     | Flags                                                      |
 |--------------|------------------------------------------------------------|
-| gcc      | -std=c17 -pedantic -Wall -Wextra -O2 -I.               |
-| MSVC     | /TC /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS              |
-| Watcom 16| -ml -0 -za -wx -ox -i=.                                 |
-| Watcom 32| -mf -za -wx -ox -i=.                                    |
+| gcc      | -std=c17 -Wall -Wextra -O2 -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2 |
+| MSVC     | /TC /std:c17 /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS       |
+| Watcom 16| -ml -0 -za -wx -ox -i=. -dBPP_FREEDOS                    |
+| Watcom 32| -mf -za -wx -ox -i=. -dBPP_FREEDOS                    |
 
 Key flags explained:
 
 - -std=c17 / -za / /TC — strict ANSI C for maximum portability
-- -pedantic — reject non-standard extensions
+- -DNO_SDL2 — compile standard console-only interpreter without SDL graphics dependency
+- -D_POSIX_C_SOURCE=200809L — expose POSIX standard library API extensions on Unix/Linux
 - -ml — large memory model (16-bit: far code + far data)
 - -mf — flat memory model (32-bit: DPMI protected mode)
 - -0 — 8086 instruction set (broadest DOS compatibility)
-- /link advapi32.lib — Windows registry/security API
+- /link advapi32.lib ... winmm.lib — Windows API & runtime subsystem helper libraries
 
 2.4 Output Location
 
@@ -209,13 +258,13 @@ Tested compilers: gcc 12+, clang 15+, MSVC 19+, OpenWatcom 2.0.
 
 
 Maximum speed
-CFLAGS = -std=c17 -pedantic -Wall -Wextra -O3 -I.
+CFLAGS = -std=c17 -Wall -Wextra -O3 -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
 
 Smallest binary
-CFLAGS = -std=c17 -pedantic -Wall -Wextra -Os -I.
+CFLAGS = -std=c17 -Wall -Wextra -Os -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
 
 Debugging
-CFLAGS = -std=c17 -pedantic -Wall -Wextra -g -O0 -DDEBUG -I.
+CFLAGS = -std=c17 -Wall -Wextra -g -O0 -DDEBUG -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
 
 
 3.3 Changing the Output Name
@@ -288,12 +337,12 @@ Dialect Reference
 | AINT | dialect_aint.c       | Apple II Integer BASIC (1977)        |
 | ASFT | dialect_asft.c       | Applesoft BASIC (1978)               |
 | ATAR | dialect_atari.c      | Atari BASIC (1979)                   |
-| C64  | dialect_c64.c        | Commodore BASIC v2 (1982)            |
+| C64B | dialect_c64.c        | Commodore BASIC v2 (1982)            |
 | COCO | dialect_coco.c       | Color Computer BASIC (1980)          |
 | MBAS | dialect_mbasic.c     | MBASIC / BASIC-80 / CP/M (1978)     |
 | SINC | dialect_sinclair.c   | Sinclair ZX Spectrum (1982)          |
-| QLSB | dialect_superbasic.c | Sinclair QL SuperBASIC (1984)        |
-| SBAS | dialect_sbasic.c     | Tymshare SUPER BASIC (1968)          |
+| SQLB | dialect_superbasic.c | Sinclair QL SuperBASIC (1984)        |
+| SUPB | dialect_sbasic.c     | Tymshare SUPER BASIC (1968)          |
 
 ---
 
@@ -334,28 +383,29 @@ For memory-constrained targets (FreeDOS 16-bit), reduce pool sizes in
 source/config.h:
 
 
-/ Key tunable settings /
-#define MAX_PROGRAM_LINES    1000    / Stored program lines      /
-#define MAX_VARIABLES        52      / Variable slots (A-Z, A$-Z$) /
-#define MAX_DIM_ARRAYS       20      / DIM array slots           /
-#define MAX_ARRAY_ELEMENTS   5000    / Total array element count /
-#define MAX_STACK_DEPTH      50      /* GOSUB/FOR stack depth     */
-#define STRINGPOOL_SIZE      32768   / String pool bytes         /
-#define MAX_MODULES          16      / Module slots              /
-#define MAX_VDEV_SLOTS       32      / Virtual device slots      /
+/* Key tunable settings (config.h defaults) */
+#define PROGRAM_MEMORY_SIZE  8388608L / 8 MB stored program text  /
+#define VARIABLE_MEMORY_SIZE 1048576L / 1 MB runtime variable space /
+#define MAX_STRING_POOL      16777216L/ 16 MB string value space  /
+#define MAX_PROGRAM_LINES    65536    / Max line statements       /
+#define MAX_STACK_DEPTH      1024     /* Nested GOSUB/FOR limits   */
+#define MAX_NAMED_VARS       4096     / Max runtime named vars    /
+#define MAX_DIM_ARRAYS       1024     / DIM array slots           /
+#define MAX_ARRAY_ELEMENTS   4194304  / Max total array elements  /
 
 
 Preset Profiles
 
-| Setting                | Minimal (16-bit) | Default | Generous      |
-|------------------------|-------------------|---------|---------------|
-| MAX_PROGRAM_LINES    | 500               | 1000    | 10000         |
-| MAX_DIM_ARRAYS       | 10                | 20      | 100           |
-| MAX_ARRAY_ELEMENTS   | 2000              | 5000    | 50000         |
-| MAX_STACK_DEPTH      | 25                | 50      | 200           |
-| STRINGPOOL_SIZE      | 16384             | 32768   | 262144        |
-| MAX_MODULES          | 8                 | 16      | 64            |
-| MAX_VDEV_SLOTS       | 16                | 32      | 64            |
+| Setting | Lite/Embedded | FreeDOS Lite | Modern Default |
+|---|---|---|---|
+| PROGRAM_MEMORY_SIZE | 8 KB | 32 KB | 8 MB |
+| VARIABLE_MEMORY_SIZE| 4 KB | 16 KB | 1 MB |
+| MAX_STRING_POOL | 8 KB | 16 KB | 16 MB |
+| MAX_PROGRAM_LINES | 256 | 1,024 | 65,536 |
+| MAX_STACK_DEPTH | 32 | 64 | 1,024 |
+| MAX_NAMED_VARS | 64 | 128 | 4,096 |
+| MAX_DIM_ARRAYS | 16 | 32 | 1,024 |
+| MAX_ARRAY_ELEMENTS | 1,024 | 2,048 | 4,194,304 |
 
 ---
 
@@ -432,7 +482,7 @@ basicpp.exe -v                    # Windows
 bpp.exe -v                        # FreeDOS
 
 
-Expected: BASIC++ 2.0.2
+Expected: BASIC++ 4.2.3
 
 Run the built-in self-test:
 
@@ -440,7 +490,7 @@ Run the built-in self-test:
 ./baspp -q -c "SELFTEST"
 
 
-Expected: ALL TESTS PASSED (79 assertions)
+Expected: ALL TESTS PASSED (runs full suite of lexer, value, memory, string pool, VFS, and SDL checks)
 
 ---
 

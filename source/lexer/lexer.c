@@ -103,6 +103,8 @@
 #include "dialect.h"
 #include "errors.h"
 #include "dialect.h"
+#include "../console.h"
+#include "../platform.h"
 
 // --- Keyword Table ---
  // Static table mapping keyword strings to KeywordId values.
@@ -119,6 +121,43 @@ typedef struct KeywordEntry {
  // DFLAG_MSBASIC= TRS2+GWBS+QBAS+ASFT+C64B+COCO
  // DFLAG_GWQB = GW-BASIC + QBasic
  // DFLAG_STRUCT = GWBS + QBAS + E116 (structured flow)
+#ifdef BPP_LITE_BUILD
+static const KeywordEntry core_keyword_init_table[] = {
+    { "PRINT", KW_PRINT, DFLAG_ALL },
+    { "LET", KW_LET, DFLAG_ALL },
+    { "INPUT", KW_INPUT, DFLAG_ALL },
+    { "IF", KW_IF, DFLAG_ALL },
+    { "GOTO", KW_GOTO, DFLAG_ALL },
+    { "END", KW_END, DFLAG_ALL },
+    { "REM", KW_REM, DFLAG_ALL },
+    { "RUN", KW_RUN, DFLAG_ALL },
+    { "LIST", KW_LIST, DFLAG_ALL },
+    { "NEW", KW_NEW, DFLAG_ALL },
+    { "STOP", KW_STOP, DFLAG_ALL },
+    { "THEN", KW_THEN, DFLAG_ALL },
+    { "FOR", KW_FOR, DFLAG_ALL },
+    { "NEXT", KW_NEXT, DFLAG_ALL },
+    { "TO", KW_TO, DFLAG_ALL },
+    { "STEP", KW_STEP, DFLAG_ALL },
+    { "ON", KW_ON, DFLAG_ALL },
+    { "DATA", KW_DATA, DFLAG_ALL },
+    { "READ", KW_READ, DFLAG_ALL },
+    { "RESTORE", KW_RESTORE, DFLAG_ALL },
+    { "DIM", KW_DIM, DFLAG_ALL },
+    { "BEEP", KW_BEEP, DFLAG_ALL },
+    { "HELP", KW_HELP, DFLAG_ALL },
+    { "VARS", KW_VARS, DFLAG_ALL },
+    { "FRE", KW_FRE, DFLAG_ALL },
+    { "TIMER", KW_TIMER, DFLAG_ALL },
+    { "RND", KW_RND, DFLAG_ALL },
+    { "VER", KW_VER, DFLAG_ALL },
+    { "PWD", KW_PWD, DFLAG_ALL },
+    { "CWD", KW_CWD_FUNC, DFLAG_ALL },
+    { "HOSTNAME", KW_HOSTNAME_FUNC, DFLAG_ALL },
+    { "USERNAME", KW_USERNAME_FUNC, DFLAG_ALL },
+    { NULL, 0, 0 } // sentinel
+};
+#else
 static const KeywordEntry core_keyword_init_table[] = {
  // Universal BASIC keywords
  { "PRINT", KW_PRINT, DFLAG_ALL },
@@ -255,6 +294,7 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "SOUND", KW_SOUND, DFLAG_GWQB | DFLAG_COCO },
  { "PLAY", KW_PLAY, DFLAG_GWQB | DFLAG_COCO },
  { "SCREEN", KW_SCREEN, DFLAG_GWQB | DFLAG_COCO },
+ { "GRAPHICS", KW_GRAPHICS, DFLAG_ATRI },
  { "DRAW", KW_DRAW, DFLAG_GWQB | DFLAG_SINC },
  { "WIDTH", KW_WIDTH, DFLAG_GWQB | DFLAG_TRS2 },
  // Logical/bitwise operators
@@ -306,6 +346,7 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "SHELL", KW_SHELL, DFLAG_GWQB },
  { "REDIM", KW_REDIM, DFLAG_QBAS },
  { "SHARED", KW_SHARED, DFLAG_QBAS },
+ { "BANK", KW_BANK, DFLAG_ALL },
  { "STATIC", KW_STATIC, DFLAG_QBAS },
  { "RESUME", KW_RESUME, DFLAG_GWQB | DFLAG_E116 },
  { "OPTION", KW_OPTION, DFLAG_ALL },
@@ -342,6 +383,9 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "ERDEV", KW_ERDEV, DFLAG_GWBS },
  { "FIELD", KW_FIELD, DFLAG_GWQB },
  { "FRE", KW_FRE, DFLAG_GWQB | DFLAG_C64B | DFLAG_ASFT | DFLAG_COCO },
+ { "TASK", KW_TASK, DFLAG_ALL },
+ { "PEEKB", KW_PEEKB, DFLAG_ALL },
+ { "POKEB", KW_POKEB, DFLAG_ALL },
  { "GET", KW_GET, DFLAG_GWQB | DFLAG_C64B | DFLAG_ASFT },
  { "PUT", KW_PUT, DFLAG_GWQB | DFLAG_C64B | DFLAG_ASFT },
  { "INP", KW_INP, DFLAG_GWQB | DFLAG_TRS2 | DFLAG_SINC },
@@ -477,6 +521,8 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "PWD", KW_PWD, DFLAG_ALL },
  { "CWD", KW_CWD_FUNC, DFLAG_ALL },
  { "CURDIR", KW_CWD_FUNC, DFLAG_ALL }, // QBasic alias
+ { "HOSTNAME", KW_HOSTNAME_FUNC, DFLAG_ALL },
+ { "USERNAME", KW_USERNAME_FUNC, DFLAG_ALL },
  { "EXIST", KW_EXIST_FUNC, DFLAG_ALL },
  { "FILELEN", KW_FILELEN_FUNC, DFLAG_ALL },
  // Event trapping
@@ -525,8 +571,12 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "UMOUNT", KW_UMOUNT, DFLAG_ALL },
  { "MOUNTS", KW_MOUNTS, DFLAG_ALL },
  { "VPATH", KW_VPATH, DFLAG_ALL },
+ { "BIOS", KW_BIOS, DFLAG_ALL },
+ { "CURSOR", KW_CURSOR, DFLAG_ALL },
+ { "TICKS", KW_TICKS, DFLAG_ALL },
  { NULL, 0, 0 } // sentinel
 };
+#endif
 
 // --- Dynamic Keyword Registry ---
 #define MAX_DYNAMIC_KEYWORDS 512
@@ -534,11 +584,36 @@ static KeywordEntry dynamic_keyword_table[MAX_DYNAMIC_KEYWORDS];
 static int dynamic_keyword_count = 0;
 static int next_custom_keyword_id = KW_CUSTOM_START;
 
+#define KEYWORD_HASH_SIZE 1024
+static int keyword_hash_table[KEYWORD_HASH_SIZE];
+
+static unsigned int hash_string_nocase(const char *str, int len) {
+    unsigned int hash = 5381;
+    int i;
+    for (i = 0; i < len; i++) {
+        char c = str[i];
+        if (c >= 'a' && c <= 'z') c = (char)(c - 32);
+        hash = ((hash << 5) + hash) + (unsigned char)c;
+    }
+    return hash % KEYWORD_HASH_SIZE;
+}
+
+static void add_to_keyword_hash(int index) {
+    const char *name = dynamic_keyword_table[index].name;
+    unsigned int h = hash_string_nocase(name, (int)strlen(name));
+    while (keyword_hash_table[h] != -1) {
+        h = (h + 1) % KEYWORD_HASH_SIZE;
+    }
+    keyword_hash_table[h] = index;
+}
+
 void keyword_registry_init(void) {
     int i = 0;
     if (dynamic_keyword_count > 0) return; // Already initialized
+    memset(keyword_hash_table, -1, sizeof(keyword_hash_table));
     while (core_keyword_init_table[i].name != NULL) {
         dynamic_keyword_table[i] = core_keyword_init_table[i];
+        add_to_keyword_hash(i);
         i++;
     }
     dynamic_keyword_count = i;
@@ -548,9 +623,10 @@ KeywordId keyword_register_custom(const char *name, unsigned int dialect_flags) 
     int id;
     if (dynamic_keyword_count >= MAX_DYNAMIC_KEYWORDS) return KW_COUNT;
     id = next_custom_keyword_id++;
-    dynamic_keyword_table[dynamic_keyword_count].name = strdup(name);
+    dynamic_keyword_table[dynamic_keyword_count].name = plat_strdup(name);
     dynamic_keyword_table[dynamic_keyword_count].id = id;
     dynamic_keyword_table[dynamic_keyword_count].dialect_flags = dialect_flags;
+    add_to_keyword_hash(dynamic_keyword_count);
     dynamic_keyword_count++;
     return id;
 }
@@ -843,6 +919,8 @@ int lexer_keyword_needs_dollar(KeywordId kw)
     kw == KW_MEMMAP_FUNC ||
     kw == KW_ALIAS_FUNC ||
     kw == KW_CWD_FUNC ||
+    kw == KW_HOSTNAME_FUNC ||
+    kw == KW_USERNAME_FUNC ||
     kw == KW_SIOREAD ||
     kw == KW_SIOREADLN ||
     kw == KW_BIOREAD ||
@@ -855,6 +933,7 @@ int lexer_keyword_needs_dollar(KeywordId kw)
     kw == KW_ONKEY ||
     kw == KW_VPATH_FUNC ||
     kw == KW_HASH ||
+    kw == KW_PWD ||
     kw == KW_ERR_STR);
 }
 
@@ -1177,28 +1256,25 @@ static KeywordId match_keyword(const char *start, int len)
  }
  }
 
- // Then check built-in keyword table
- for (i = 0; i < dynamic_keyword_count; i++) {
- const char *kw = dynamic_keyword_table[i].name;
- int kw_len = (int)strlen(kw);
- int j;
- int matched;
-
- if (kw_len != len) {
- continue;
- }
-
- matched = 1;
- for (j = 0; j < len; j++) {
- if (to_upper(start[j]) != kw[j]) {
- matched = 0;
- break;
- }
- }
-
- if (matched) {
- return dynamic_keyword_table[i].id;
- }
+ // Then check built-in keyword table via hash map
+ unsigned int h = hash_string_nocase(start, len);
+ while (keyword_hash_table[h] != -1) {
+     int idx = keyword_hash_table[h];
+     const char *kw = dynamic_keyword_table[idx].name;
+     int kw_len = (int)strlen(kw);
+     if (kw_len == len) {
+         int j, matched = 1;
+         for (j = 0; j < len; j++) {
+             if (to_upper(start[j]) != kw[j]) {
+                 matched = 0;
+                 break;
+             }
+         }
+         if (matched) {
+             return dynamic_keyword_table[idx].id;
+         }
+     }
+     h = (h + 1) % KEYWORD_HASH_SIZE;
  }
 
  return KW_COUNT; // not a keyword
@@ -1268,12 +1344,25 @@ static KeywordId match_keyword_prefix(const char *start, int len,
  //
  // Sets up all fields and primes the first token by calling
  // lexer_next(). After this call, lex->current contains the
- // first token of the source line.
+  // first token of the source line.
+static void scan_next_raw_token_internal(Lexer *lex);
+
+static void scan_next_raw_token(Lexer *lex, Token *tok)
+{
+ Token old = lex->current;
+ scan_next_raw_token_internal(lex);
+ *tok = lex->current;
+ lex->current = old;
+}
+
 void lexer_init(Lexer *lex, const char *source)
 {
  lex->source = source;
  lex->pos = 0;
  lex->length = (int)strlen(source);
+ lex->lookahead_count = 0;
+ lex->lookahead_read_idx = 0;
+ lex->lookahead_write_idx = 0;
 
  // Clear current token
  lex->current.type = TOK_EOF;
@@ -1285,23 +1374,32 @@ void lexer_init(Lexer *lex, const char *source)
  lexer_next(lex);
 }
 
- // lexer_next - Scan and produce the next token.
- //
- // This is the core of the lexer. It handles:
- // - Whitespace skipping
- // - Integer literals (sequences of digits)
- // - String literals (double-quoted, no escape sequences)
- // - Identifiers and keywords (alphabetic sequences)
- // - Single-character operators (+, -, *, /, =, (, ), etc.)
- // - Multi-character operators (<=, >=, <>)
- // - End of input (TOK_EOF)
- //
- // The function updates lex->current with the new token.
-void lexer_next(Lexer *lex)
+static int is_in_sub_decl(Lexer *lex, int start) {
+    int p = start - 1;
+    while (p >= 0 && (lex->source[p] == ' ' || lex->source[p] == '\t')) p--;
+    if (p >= 2) {
+        if (to_upper(lex->source[p]) == 'B' && to_upper(lex->source[p-1]) == 'U' && to_upper(lex->source[p-2]) == 'S') {
+            if (p-3 < 0 || lex->source[p-3] == ' ' || lex->source[p-3] == '\t' || lex->source[p-3] == ':') return 1;
+        }
+    }
+    if (p >= 7) {
+        if (to_upper(lex->source[p]) == 'N' && to_upper(lex->source[p-1]) == 'O' && to_upper(lex->source[p-2]) == 'I' &&
+            to_upper(lex->source[p-3]) == 'T' && to_upper(lex->source[p-4]) == 'C' && to_upper(lex->source[p-5]) == 'N' &&
+            to_upper(lex->source[p-6]) == 'U' && to_upper(lex->source[p-7]) == 'F') {
+            if (p-8 < 0 || lex->source[p-8] == ' ' || lex->source[p-8] == '\t' || lex->source[p-8] == ':') return 1;
+        }
+    }
+    return 0;
+}
+
+static void scan_next_raw_token_internal(Lexer *lex)
 {
  char c;
+ int start_pos;
 
  skip_whitespace(lex);
+ start_pos = lex->pos;
+ lex->current.pos = start_pos;
 
  // Check for end of input
  if (lex->pos >= lex->length) {
@@ -1518,8 +1616,8 @@ void lexer_next(Lexer *lex)
   // (A1 = variable A followed by 1) while allowing
   // keywords like LOG10 and LOG2 to work.
 
- // Try keyword match with full alphanumeric token
- kw = match_keyword(lex->source + start, len);
+  // Try keyword match with full alphanumeric token
+  kw = match_keyword(lex->source + start, len);
 
   if (kw == KW_COUNT) {
   // No keyword match - back off trailing digits so
@@ -1575,7 +1673,11 @@ void lexer_next(Lexer *lex)
    kw == KW_VARPTR || kw == KW_ERR_VAR || kw == KW_DIALECT ||
    kw == KW_MEMMAP || kw == KW_ALIAS ||
   kw == KW_CLOCK_FUNC || kw == KW_ALARM_FUNC ||
-  kw == KW_CWD_FUNC || kw == KW_SIOREAD ||
+  kw == KW_CWD_FUNC ||
+  kw == KW_HOSTNAME_FUNC ||
+  kw == KW_USERNAME_FUNC ||
+  kw == KW_PWD ||
+  kw == KW_SIOREAD ||
   kw == KW_SIOREADLN || kw == KW_BIOREAD ||
   kw == KW_NJSONQUERY || kw == KW_NINFO ||
   kw == KW_REPLACE || kw == KW_REVERSE ||
@@ -1625,6 +1727,9 @@ void lexer_next(Lexer *lex)
   kw == KW_CLOCK_FUNC ||
   kw == KW_ALARM_FUNC ||
  kw == KW_CWD_FUNC ||
+ kw == KW_HOSTNAME_FUNC ||
+ kw == KW_USERNAME_FUNC ||
+ kw == KW_PWD ||
  kw == KW_SIOREAD ||
  kw == KW_SIOREADLN ||
  kw == KW_BIOREAD ||
@@ -1718,8 +1823,8 @@ void lexer_next(Lexer *lex)
     lex->pos++; // consume $
     lex->current.type = TOK_STRING_VAR;
     lex->current.value.var_name = to_upper(lex->source[start]);
-    lex->current.str_start = NULL;
-    lex->current.str_length = 0;
+    lex->current.str_start = lex->source + start;
+    lex->current.str_length = 2;
   } else if (lex->pos < lex->length &&
     (lex->source[lex->pos] == '%' ||
      lex->source[lex->pos] == '!' || lex->source[lex->pos] == '#' ||
@@ -1731,11 +1836,11 @@ void lexer_next(Lexer *lex)
     lex->current.str_start = lex->source + start;
     lex->current.str_length = 2;
  } else {
- // Standard single-letter variable A-Z
- lex->current.type = TOK_VARIABLE;
- lex->current.value.var_name = to_upper(lex->source[start]);
- lex->current.str_start = NULL;
- lex->current.str_length = 0;
+  // Standard single-letter variable A-Z
+  lex->current.type = TOK_VARIABLE;
+  lex->current.value.var_name = to_upper(lex->source[start]);
+  lex->current.str_start = lex->source + start;
+  lex->current.str_length = 1;
  }
  } else {
    // Multi-character identifier that's not a keyword.
@@ -1750,11 +1855,15 @@ void lexer_next(Lexer *lex)
    // If no keyword prefix is found and the dialect supports
    // extended variables, treat as a named variable.
    // Otherwise, rewind to single letter and treat as A-Z.
-  {
-  int prefix_len = 0;
-  KeywordId prefix_kw = match_keyword_prefix(
-   lex->source + start, len, &prefix_len);
-  if (prefix_kw != KW_COUNT) {
+   {
+    int prefix_len = 0;
+    KeywordId prefix_kw = KW_COUNT;
+    if (dialect_get_config()->id != DIALECT_QBASIC &&
+        dialect_get_config()->id != DIALECT_ECMA116 &&
+        !is_in_sub_decl(lex, start)) {
+        prefix_kw = match_keyword_prefix(lex->source + start, len, &prefix_len);
+    }
+   if (prefix_kw != KW_COUNT) {
    // Found a keyword prefix - rewind to just after it
    lex->pos = start + prefix_len;
    lex->current.type = TOK_KEYWORD;
@@ -1775,6 +1884,10 @@ void lexer_next(Lexer *lex)
     prefix_kw == KW_HEX_FUNC ||
     prefix_kw == KW_OCT_FUNC ||
     prefix_kw == KW_INKEY ||
+    prefix_kw == KW_HOSTNAME_FUNC ||
+    prefix_kw == KW_USERNAME_FUNC ||
+    prefix_kw == KW_PWD ||
+    prefix_kw == KW_CWD_FUNC ||
     prefix_kw == KW_INPUT) {
     lex->pos++;
     if (prefix_kw == KW_INPUT) {
@@ -1821,14 +1934,14 @@ void lexer_next(Lexer *lex)
      lex->current.value.num_value = 0;
      lex->current.str_start = lex->source + start;
      lex->current.str_length = len;
-  } else {
-   lex->pos = start + 1;
-   lex->current.type = TOK_VARIABLE;
-   lex->current.value.var_name =
-   to_upper(lex->source[start]);
-   lex->current.str_start = NULL;
-   lex->current.str_length = 0;
-  }
+   } else {
+    lex->pos = start + 1;
+    lex->current.type = TOK_VARIABLE;
+    lex->current.value.var_name =
+    to_upper(lex->source[start]);
+    lex->current.str_start = lex->source + start;
+    lex->current.str_length = 1;
+   }
   }
  }
  return;
@@ -1944,7 +2057,6 @@ void lexer_next(Lexer *lex)
  // Unknown character. In Tiny BASIC, this is a
  // syntax error. We produce TOK_EOF to terminate
  // scanning and let the parser raise WHAT?.
- error_raise(ERR_WHAT, 0);
  lex->current.type = TOK_EOF;
  break;
  }
@@ -1953,6 +2065,51 @@ void lexer_next(Lexer *lex)
   lex->current.str_start = NULL;
   lex->current.str_length = 0;
 
+  if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_REM) {
+      lex->pos = lex->length;
+  }
+
+}
+
+void lexer_next(Lexer *lex)
+{
+ if (lex->lookahead_count > 0) {
+  lex->current = lex->lookahead[lex->lookahead_read_idx];
+  lex->lookahead_read_idx = (lex->lookahead_read_idx + 1) % LEXER_LOOKAHEAD_SIZE;
+  lex->lookahead_count--;
+ } else {
+  scan_next_raw_token_internal(lex);
+ }
+
+ while (lex->lookahead_count < LEXER_LOOKAHEAD_SIZE - 1) {
+  Token next_tok;
+  scan_next_raw_token(lex, &next_tok);
+  lex->lookahead[lex->lookahead_write_idx] = next_tok;
+  lex->lookahead_write_idx = (lex->lookahead_write_idx + 1) % LEXER_LOOKAHEAD_SIZE;
+  lex->lookahead_count++;
+ }
+}
+
+Token *lexer_peek(Lexer *lex, int distance)
+{
+ if (distance == 0) {
+  return &lex->current;
+ }
+ if (distance > 0 && distance <= lex->lookahead_count) {
+  int idx = (lex->lookahead_read_idx + distance - 1) % LEXER_LOOKAHEAD_SIZE;
+  return &lex->lookahead[idx];
+ }
+  static Token eof_token = { TOK_EOF, {0}, NULL, 0, 0 };
+  return &eof_token;
+}
+
+void lexer_rewind_to(Lexer *lex, int pos)
+{
+ lex->pos = pos;
+ lex->lookahead_count = 0;
+ lex->lookahead_read_idx = 0;
+ lex->lookahead_write_idx = 0;
+ lexer_next(lex);
 }
 
  // lexer_peek_type - Return the type of the current token.
@@ -1987,7 +2144,7 @@ int lexer_match_keyword(Lexer *lex, KeywordId kw)
  lex->current.value.keyword == kw) ? 1 : 0;
 }
 
- // lexer_skip_to_end - Skip all remaining tokens.
+// lexer_skip_to_end - Skip all remaining tokens.
  //
  // Advances the position to the end of the source string,
  // setting the current token to TOK_EOF. Used by REM to
@@ -1995,6 +2152,9 @@ int lexer_match_keyword(Lexer *lex, KeywordId kw)
 void lexer_skip_to_end(Lexer *lex)
 {
  lex->pos = lex->length;
+ lex->lookahead_count = 0;
+ lex->lookahead_read_idx = 0;
+ lex->lookahead_write_idx = 0;
  lex->current.type = TOK_EOF;
  lex->current.value.num_value = 0;
  lex->current.str_start = NULL;

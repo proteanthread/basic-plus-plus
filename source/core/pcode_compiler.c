@@ -57,6 +57,7 @@
 //   Use error_raise(ERR_xxx, line_num) for error reporting.
  // ---
 
+#ifndef BPP_LITE_BUILD
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -65,6 +66,7 @@
 #include "lexer.h"
 #include "errors.h"
 #include "runtime.h"
+#include "../console.h"
 
 // ===================================================================
  // LOOP STACK (compile-time FOR/NEXT, WHILE/WEND pairing)
@@ -74,7 +76,9 @@
 typedef enum {
     LOOP_FOR,
     LOOP_WHILE,
-    LOOP_DO
+    LOOP_DO,
+    LOOP_WHEN,
+    LOOP_USE
 } LoopType;
 
 typedef struct {
@@ -302,6 +306,27 @@ int pcode_compile(ProgramStore *program, PCodeProgram *out_pcode)
                             entry.check_idx, j + 1);
                     }
                 }
+                else if (op == (unsigned char)PCODE_WHEN_BEGIN) {
+                    loop_push(LOOP_WHEN, j, j + 1, 0);
+                }
+                else if (op == (unsigned char)PCODE_POP_EXCEPTION) {
+                    LoopEntry entry;
+                    if (s_loop_top >= 0 && s_loop_stack[s_loop_top].type == LOOP_WHEN) {
+                        if (loop_pop(LOOP_WHEN, &entry) == 0) {
+                            out_pcode->instrs[entry.check_idx].operand.u.offset = j + 2;
+                            loop_push(LOOP_USE, j + 1, entry.body_start, 0);
+                        }
+                    } else if (s_loop_top >= 0 && s_loop_stack[s_loop_top].type == LOOP_USE) {
+                        if (loop_pop(LOOP_USE, &entry) == 0) {
+                            out_pcode->instrs[entry.check_idx].operand.u.offset = j + 1;
+                        }
+                    }
+                }
+                else if (op == (unsigned char)PCODE_JUMP && out_pcode->instrs[j].operand.u.offset == 0) {
+                    if (s_loop_top >= 0 && s_loop_stack[s_loop_top].type == LOOP_USE) {
+                        out_pcode->instrs[j].operand.u.offset = s_loop_stack[s_loop_top].body_start;
+                    }
+                }
                 else if (op == (unsigned char)PCODE_JUMP_FALSE) {
                     // Check if this is a WHILE condition.
                      // We identify WHILE by looking at the STMT_WHILE
@@ -373,3 +398,4 @@ void pcode_free(PCodeProgram *pcode)
     pcode->on_table_count = 0;
     pcode->on_table_capacity = 0;
 }
+#endif

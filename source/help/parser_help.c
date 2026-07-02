@@ -41,6 +41,13 @@
  // ---
 
 #include "parser_internal.h"
+#include <stdlib.h>
+#include <string.h>
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <unistd.h>
+#endif
 
  // pi_parse_help - Handle HELP command.
 void pi_parse_help(Lexer *lex, RuntimeState *rt, int line_num)
@@ -147,24 +154,79 @@ void pi_parse_help(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
+#ifndef BPP_LITE_BUILD
  // pi_parse_catalog - Handle CATALOG command.
 void pi_parse_catalog(Lexer *lex, RuntimeState *rt, int line_num)
 {
   // CATALOG - List registered functions.
- help_catalog();
- return;
+  help_catalog();
+  return;
 
- // ===== Virtual Subsystem Introspection =====
+  // ===== Virtual Subsystem Introspection =====
 }
+#endif
 
  // pi_parse_ver - Handle VER command.
 void pi_parse_ver(Lexer *lex, RuntimeState *rt, int line_num)
 {
- // VER - Display version information.
- printf("%s %s\n",
- BASICPP_NAME, BASICPP_VERSION);
- printf("%s\n", BASICPP_COPYRIGHT);
- printf("Build: %s\n", __DATE__);
- return;
+  (void)lex; (void)rt; (void)line_num;
+  // VER - Display version information.
+  printf("%s %s\n",
+  BASICPP_NAME, BASICPP_VERSION);
+  printf("%s\n", BASICPP_COPYRIGHT);
+  printf("Build: %s\n", __DATE__);
+  return;
+}
+
+void pi_parse_hostname(Lexer *lex, RuntimeState *rt, int line_num)
+{
+  (void)lex; (void)rt; (void)line_num;
+  const char *h = getenv("COMPUTERNAME");
+  if (!h) h = getenv("HOSTNAME");
+  if (!h) h = "localhost";
+  printf("%s\n", h);
+}
+
+void pi_parse_username(Lexer *lex, RuntimeState *rt, int line_num)
+{
+  (void)lex; (void)rt; (void)line_num;
+  const char *u = getenv("USERNAME");
+  if (!u) u = getenv("USER");
+  if (!u) u = "user";
+  printf("%s\n", u);
+}
+
+#ifdef BPP_LITE_BUILD
+void pi_parse_pwd(Lexer *lex, RuntimeState *rt, int line_num)
+{
+  (void)lex; (void)rt; (void)line_num;
+  char cwdbuf[512];
+#ifdef _WIN32
+  if (_getcwd(cwdbuf, sizeof(cwdbuf)) == NULL) cwdbuf[0] = '\0';
+#else
+  if (getcwd(cwdbuf, sizeof(cwdbuf)) == NULL) cwdbuf[0] = '\0';
+#endif
+  printf("%s\n", cwdbuf);
+}
+#endif
+
+void pi_parse_cwd(Lexer *lex, RuntimeState *rt, int line_num)
+{
+  (void)lex; (void)rt; (void)line_num;
+  char cwdbuf[512];
+#ifdef _WIN32
+  if (_getcwd(cwdbuf, sizeof(cwdbuf)) == NULL) cwdbuf[0] = '\0';
+#else
+  if (getcwd(cwdbuf, sizeof(cwdbuf)) == NULL) cwdbuf[0] = '\0';
+#endif
+  char *last_comp = cwdbuf;
+  for (int i = 0; cwdbuf[i] != '\0'; i++) {
+      if (cwdbuf[i] == '/' || cwdbuf[i] == '\\') {
+          if (cwdbuf[i+1] != '\0') {
+              last_comp = &cwdbuf[i+1];
+          }
+      }
+  }
+  printf("%s\n", last_comp);
 }
 

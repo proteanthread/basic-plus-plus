@@ -44,7 +44,9 @@
  // ---
 
 #include "parser_internal.h"
+#include "task.h"
 #include "gw_memory.h"
+#include "../memmap.h"
 extern struct GW_Memory *g_gw_mem;
 
 static int event_parse_on_off_stop(Lexer *lex);
@@ -282,6 +284,7 @@ void pi_parse_clr(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
+#ifndef BPP_LITE_BUILD
  // pi_parse_reset - Handle RESET command.
 void pi_parse_reset(Lexer *lex, RuntimeState *rt, int line_num)
 {
@@ -297,6 +300,10 @@ void pi_parse_reset(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_poke - Handle POKE command.
 void pi_parse_poke(Lexer *lex, RuntimeState *rt, int line_num)
 {
+#ifdef BPP_LITE_BUILD
+    error_raise(ERR_HOW, line_num);
+    return;
+#else
  // POKE address, value
  // Write a byte to virtual memory.
  {
@@ -324,6 +331,86 @@ void pi_parse_poke(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
  return;
+#endif
+}
+
+// pi_parse_pokeb - Handle POKEB command.
+void pi_parse_pokeb(Lexer *lex, RuntimeState *rt, int line_num)
+{
+#ifdef BPP_LITE_BUILD
+    error_raise(ERR_HOW, line_num);
+    return;
+#else
+    // POKEB bank, offset, value
+    int bank, offset, val;
+    BValue bank_bval = parse_expression_bval(lex, rt, line_num);
+    if (error_occurred()) return;
+    bank = (int)bval_to_int(&bank_bval);
+
+    if (lex->current.type == TOK_COMMA)
+        lexer_next(lex);
+
+    BValue offset_bval = parse_expression_bval(lex, rt, line_num);
+    if (error_occurred()) return;
+    offset = (int)bval_to_int(&offset_bval);
+
+    if (lex->current.type == TOK_COMMA)
+        lexer_next(lex);
+
+    BValue val_bval = parse_expression_bval(lex, rt, line_num);
+    if (error_occurred()) return;
+    val = (int)bval_to_int(&val_bval);
+
+    rambank_poke(rt->memory, bank, (long)offset, (unsigned char)(val & 0xFF), line_num);
+#endif
+}
+
+// pi_parse_task - Handle TASK command.
+void pi_parse_task(Lexer *lex, RuntimeState *rt, int line_num)
+{
+#ifdef BPP_LITE_BUILD
+    error_raise(ERR_HOW, line_num);
+    return;
+#endif
+    // A. Peek if it's TASK LIST
+    if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_LIST) {
+        lexer_next(lex); // consume LIST
+        task_list();
+        return;
+    }
+
+    // A2. TASK WAIT pid
+    if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_WAIT) {
+        lexer_next(lex); // consume WAIT
+        int wait_pid = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        task_join(wait_pid, rt, line_num);
+        return;
+    }
+
+    // A3. TASK KILL pid
+    if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_KILL) {
+        lexer_next(lex); // consume KILL
+        int kill_pid = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        task_kill(kill_pid, line_num);
+        return;
+    }
+
+    // B. Otherwise, parse argument (string for spawn, int for switch)
+    BValue arg = parse_expression_bval(lex, rt, line_num);
+    if (error_occurred()) return;
+
+    if (bval_is_string(&arg)) {
+        // TASK "filename" -> spawn task
+        char fname[260];
+        bval_to_string_buf(&arg, fname, sizeof(fname));
+        task_spawn(fname, line_num);
+    } else {
+        // TASK n -> switch task
+        int target_pid = (int)bval_to_int(&arg);
+        task_switch(target_pid, line_num);
+    }
 }
 
  // pi_parse_memmap - Handle MEMMAP command.
@@ -351,17 +438,37 @@ void pi_parse_memmap(Lexer *lex, RuntimeState *rt, int line_num)
  printf("Unknown memory map."
  " Use MEMMAP LIST.\n");
  } else {
-  memmap_init(rt->mem_segment,
-  mtype);
-  rt->memmap_type = (int)mtype;
-  rt->mem_seg_base = 0;
-  if (g_gw_mem != NULL) {
-      gw_mem_def_seg(g_gw_mem, 0);
+   memmap_init(rt->mem_segment,
+   mtype);
+   rt->memmap_type = (int)mtype;
+   rt->mem_seg_base = 0;
+#ifndef BPP_LITE_BUILD
+   extern struct GW_Memory *g_gw_mem;
+   if (g_gw_mem != NULL) {
+       gw_mem_def_seg(g_gw_mem, 0);
+   }
+#endif
+   if (mtype == MMAP_IBM_PCJR) {
+       rt->screen_width = 40;
+#ifndef BPP_LITE_BUILD
+#ifndef NO_SDL2
+       extern void gw_sdl2_set_mode(int mode, int cols);
+       gw_sdl2_set_mode(rt->screen_mode, 40);
+#endif
+#endif
+   } else if (mtype == MMAP_IBM_PC || mtype == MMAP_IBM_XT || mtype == MMAP_IBM_AT || mtype == MMAP_MSDOS) {
+       rt->screen_width = 80;
+#ifndef BPP_LITE_BUILD
+#ifndef NO_SDL2
+       extern void gw_sdl2_set_mode(int mode, int cols);
+       gw_sdl2_set_mode(rt->screen_mode, 80);
+#endif
+#endif
+   }
+   printf("Memory map: %s\n",
+   memmap_get_name(mtype));
   }
-  printf("Memory map: %s\n",
-  memmap_get_name(mtype));
- }
- } else {
+  } else {
  // Show current map
  printf("Current map: %s\n",
  memmap_get_name(
@@ -369,6 +476,32 @@ void pi_parse_memmap(Lexer *lex, RuntimeState *rt, int line_num)
  }
  return;
 }
+#endif
+
+#ifdef BPP_LITE_BUILD
+extern void vdev_beep(void);
+void pi_parse_beep(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    (void)rt; (void)line_num;
+    if (lexer_match_keyword(lex, KW_ON)) {
+        lexer_next(lex);
+        error_set_beep(1);
+    } else if (lex->current.type == TOK_NAMED_VAR &&
+               lex->current.str_length == 3 &&
+               (lex->current.str_start[0] == 'O' || lex->current.str_start[0] == 'o') &&
+               (lex->current.str_start[1] == 'F' || lex->current.str_start[1] == 'f') &&
+               (lex->current.str_start[2] == 'F' || lex->current.str_start[2] == 'f')) {
+        lexer_next(lex);
+        error_set_beep(0);
+    } else if (lex->current.type == TOK_EOF ||
+               lex->current.type == TOK_CR ||
+               lex->current.type == TOK_COLON) {
+        vdev_beep();
+    } else {
+        error_raise(ERR_HOW, line_num);
+    }
+}
+#endif
 
  // pi_parse_mid - Handle MID command.
 void pi_parse_mid(Lexer *lex, RuntimeState *rt, int line_num)

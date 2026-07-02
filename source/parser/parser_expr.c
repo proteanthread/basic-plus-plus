@@ -314,3193 +314,2131 @@ long pi_parse_term(Lexer *lex, RuntimeState *rt, int line_num)
  // The optional leading +/- handles unary plus/minus.
  // NOT is unary prefix (bitwise complement).
  // AND/OR/XOR/EQV/IMP are lowest-precedence binary.
+
+BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num, int stop_at_comparisons);
+
 long parse_expression(Lexer *lex, RuntimeState *rt, int line_num)
 {
- long left;
- int negate = 0;
- int do_not = 0;
+    BValue val = parse_expression_bval_internal(lex, rt, line_num, 1);
+    return bval_to_int(&val);
+}
 
- if (error_occurred()) return 0;
-
- // Optional leading sign or NOT
- if (lex->current.type == TOK_PLUS) {
- lexer_next(lex);
- } else if (lex->current.type == TOK_MINUS) {
- negate = 1;
- lexer_next(lex);
- } else if (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword == KW_NOT) {
- do_not = 1;
- lexer_next(lex);
- // Handle sign after NOT: NOT -1, NOT +5
- if (lex->current.type == TOK_MINUS) {
- negate = 1;
- lexer_next(lex);
- } else if (lex->current.type == TOK_PLUS) {
- lexer_next(lex);
- }
- }
-
- left = pi_parse_term(lex, rt, line_num);
- if (error_occurred()) return 0;
-
- if (negate) {
- left = -left;
- }
- if (do_not) {
- left = ~left; // bitwise NOT
- }
-
- // Additive: + -
- while (lex->current.type == TOK_PLUS ||
- lex->current.type == TOK_MINUS) {
- long right;
- TokenType op = lex->current.type;
- lexer_next(lex); // consume operator
-
- right = pi_parse_term(lex, rt, line_num);
- if (error_occurred()) return 0;
-
- if (op == TOK_PLUS) {
- left = left + right;
- } else {
- left = left - right;
- }
- }
-
- // Logical/bitwise: AND OR XOR EQV IMP
- while (lex->current.type == TOK_KEYWORD) {
- KeywordId kw = lex->current.value.keyword;
- long right;
- if (kw != KW_AND && kw != KW_OR &&
- kw != KW_XOR && kw != KW_EQV &&
- kw != KW_IMP) {
- break;
- }
- lexer_next(lex); // consume operator
-
- // Parse the right side at additive level
- {
- int rn = 0, rn2 = 0;
- if (lex->current.type == TOK_MINUS) {
- rn = 1; lexer_next(lex);
- } else if (lex->current.type == TOK_PLUS) {
- lexer_next(lex);
- } else if (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword == KW_NOT) {
- rn2 = 1; lexer_next(lex);
- }
- right = pi_parse_term(lex, rt, line_num);
- if (error_occurred()) return 0;
- if (rn) right = -right;
- if (rn2) right = ~right;
-
- // Inner additive loop
- while (lex->current.type == TOK_PLUS ||
- lex->current.type == TOK_MINUS) {
- long r2;
- TokenType op2 = lex->current.type;
- lexer_next(lex);
- r2 = pi_parse_term(lex, rt, line_num);
- if (error_occurred()) return 0;
- if (op2 == TOK_PLUS)
- right = right + r2;
- else
- right = right - r2;
- }
- }
-
- switch (kw) {
- case KW_AND: left = left & right; break;
- case KW_OR: left = left | right; break;
- case KW_XOR: left = left ^ right; break;
- case KW_EQV:
- left = ~(left ^ right); break;
- case KW_IMP:
- left = (~left) | right; break;
- default: break;
- }
- }
-
- return left;
+BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    return parse_expression_bval_internal(lex, rt, line_num, 0);
 }
 
 // --- BValue Expression System ---
- // These are the BValue-returning versions of parse_factor, parse_term,
- // and parse_expression. They handle integers, floats, strings, and
- // all functions.
- //
- // The old long-returning versions are preserved for backward
- // compatibility with Phases 1-3 code paths.
+/* =====================================================================
+ * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
+ * Subsystem: Expression Parsing & Evaluation
+ * =====================================================================
+ * 1. PURPOSE & OPERATION:
+ *    Iterative expression evaluation utilizing Dijkstra's Shunting-yard
+ *    algorithm. Operands and operators are pushed to explicit software
+ *    stacks to avoid C runtime call stack recursion.
+ *
+ * 2. PORTABILITY CONCERNS:
+ *    Completely portable ANSI/ISO C17. State structures are stored
+ *    entirely within interpreter-managed stack frames rather than the
+ *    host operating system stack, making execution fully independent
+ *    of the compiler's stack model.
+ *
+ * 3. MEMORY MANAGEMENT:
+ *    Parser stacks are pre-allocated inside local arrays or stored
+ *    in the interpreter stack. Scratch pool memory is leveraged
+ *    only for string allocations.
+ *
+ * 4. PARSER & LEXER BEHAVIOR:
+ *    Consumes tokens from the Lexer stream. Relies on operator precedence
+ *    hierarchies (precedence levels 1-14) to control reduction order.
+ *    Stops on statement separators, commas, or right parentheses
+ *    if no matching left parentheses exist on the stack.
+ *
+ * 5. FUTURE EXPANSION POINTS:
+ *    New operators or built-in functions can be registered dynamically
+ *    in funcreg.c without changing this evaluation engine.
+ *
+ * 6. WHAT CAN BE CHANGED:
+ *    Operator precedence definitions, support for new literal types.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ *    Iterative loop structure, suspension frame restoration sequence.
+ *
+ * 8. TROUBLESHOOTING & FAILURE MODES:
+ *    Check precedence mapping if mathematical ordering is wrong.
+ *    Ensure stack sizes (32 elements) are not exceeded during nested
+ *    evaluations.
+ * ===================================================================== */
 
- // parse_factor_bval - BValue atom parser.
- //
- // Handles: integers, floats, string literals, variables (A-Z, named),
- // string variables (A$-Z$), @() arrays, DIM array access, parenthesized
- // expressions, and all built-in functions.
-BValue pi_parse_factor_bval(Lexer *lex, RuntimeState *rt, int line_num)
+enum OpType {
+    OP_EOF = 0,
+    OP_IMP,
+    OP_EQV,
+    OP_XOR,
+    OP_OR,
+    OP_AND,
+    OP_NOT,
+    OP_CMP_EQ,
+    OP_CMP_NE,
+    OP_CMP_LT,
+    OP_CMP_GT,
+    OP_CMP_LE,
+    OP_CMP_GE,
+    OP_LIKE,
+    OP_ADD,
+    OP_SUB,
+    OP_INTDIV,
+    OP_MOD,
+    OP_MUL,
+    OP_DIV,
+    OP_UNARY_MINUS,
+    OP_UNARY_PLUS,
+    OP_POW,
+    OP_LPAREN,
+    OP_FUNC,
+    OP_USER_FUNC,
+    OP_ARRAY,
+    OP_AT
+};
+
+static int get_precedence(int op) {
+    switch (op) {
+        case OP_IMP: return 1;
+        case OP_EQV: return 2;
+        case OP_XOR: return 3;
+        case OP_OR:  return 4;
+        case OP_AND: return 5;
+        case OP_NOT: return 6;
+        case OP_CMP_EQ:
+        case OP_CMP_NE:
+        case OP_CMP_LT:
+        case OP_CMP_GT:
+        case OP_CMP_LE:
+        case OP_CMP_GE:
+        case OP_LIKE: return 7;
+        case OP_ADD:
+        case OP_SUB: return 8;
+        case OP_INTDIV: return 9;
+        case OP_MOD: return 10;
+        case OP_MUL:
+        case OP_DIV: return 11;
+        case OP_UNARY_MINUS:
+        case OP_UNARY_PLUS: return 12;
+        case OP_POW: return 13;
+        case OP_FUNC:
+        case OP_USER_FUNC:
+        case OP_ARRAY:
+        case OP_AT: return 14;
+        default: return 0;
+    }
+}
+
+static int is_right_associative(int op) {
+    return (op == OP_POW || op == OP_UNARY_MINUS || op == OP_UNARY_PLUS || op == OP_NOT);
+}
+
+static BValue evaluate_variable_simple(Lexer *lex, RuntimeState *rt, Token var_tok, int line_num)
 {
- BValue val;
-
- if (error_occurred()) return bval_int(0);
-
- switch (lex->current.type) {
- case TOK_NUMBER:
- val = bval_int(lex->current.value.num_value);
- lexer_next(lex);
- return val;
-
- case TOK_FLOAT_LIT:
- if (!dialect_check_feature("floating point",
- dialect_get_config()->has_float, line_num)) {
- // Integer-only: truncate to int
- val = bval_int((long)lex->current.value.fval);
- lexer_next(lex);
- return val;
- }
- val = bval_float(lex->current.value.fval);
- lexer_next(lex);
- return val;
-
- case TOK_IMAGINARY:
- // Pure imaginary literal: 2i -> (0+2i)
- val = bval_complex(0.0, lex->current.value.fval);
- lexer_next(lex);
- return val;
-
- case TOK_STRING:
- {
- // String literal - store in pool
- char *ptr = strpool_store(&rt->strpool,
- lex->current.str_start, lex->current.str_length);
- int slen = lex->current.str_length;
- lexer_next(lex);
- if (ptr == NULL) {
- error_raise(ERR_SORRY, line_num);
- return bval_string(NULL, 0);
- }
- return bval_string(ptr, slen);
- }
-
- case TOK_VARIABLE:
- {
- char vname = lex->current.value.var_name;
- lexer_next(lex);
- // Check for typed var dot-read: V.field
- if (lex->current.type == TOK_DOT) {
- TypedVar *tv = runtime_find_typed_var(
-  rt, &vname, 1);
- if (tv != NULL) {
-  UserTypeDef *td =
-  &rt->user_types[tv->type_index];
-  const char *fname;
-  int flen, fi;
-  lexer_next(lex); // consume dot
-  if (lex->current.type == TOK_NAMED_VAR) {
-  fname = lex->current.str_start;
-  flen = lex->current.str_length;
-  } else if (lex->current.type ==
-   TOK_KEYWORD) {
-  fname = lexer_keyword_name(
-   lex->current.value.keyword);
-  flen = fname ?
-   (int)strlen(fname) : 0;
-  } else if (lex->current.type ==
-   TOK_VARIABLE) {
-  fname = &lex->current.value.var_name;
-  flen = 1;
-  } else {
-  error_raise(ERR_WHAT, line_num);
-  return bval_int(0);
-  }
-  fi = runtime_find_field(td, fname, flen);
-  if (fi < 0) {
-  error_raise(ERR_WHAT, line_num);
-  return bval_int(0);
-  }
-  lexer_next(lex); // consume field
-  // Nested type: walk into child
-  while (td->fields[fi].nested_type_index >= 0
-      && lex->current.type == TOK_DOT) {
-   int ci = (int)bval_to_int(&tv->fields[fi]);
-   if (ci < 0 || ci >= rt->typed_var_count) {
-    error_raise(ERR_HOW, line_num);
-    return bval_int(0);
-   }
-   tv = &rt->typed_vars[ci];
-   td = &rt->user_types[tv->type_index];
-   lexer_next(lex); // consume dot
-   if (lex->current.type == TOK_NAMED_VAR) {
-    fname = lex->current.str_start;
-    flen = lex->current.str_length;
-   } else if (lex->current.type == TOK_KEYWORD) {
-    fname = lexer_keyword_name(lex->current.value.keyword);
-    flen = fname ? (int)strlen(fname) : 0;
-   } else if (lex->current.type == TOK_VARIABLE) {
-    fname = &lex->current.value.var_name;
-    flen = 1;
-   } else {
+    char vname;
+    const char *nm;
+    int nlen;
+    
+    if (var_tok.type == TOK_VARIABLE) {
+        vname = var_tok.value.var_name;
+        lexer_next(lex); // consume variable name
+        if (lex->current.type == TOK_DOT) {
+            TypedVar *tv = runtime_find_typed_var(rt, &vname, 1);
+            if (tv != NULL) {
+                UserTypeDef *td = &rt->user_types[tv->type_index];
+                const char *fname;
+                int flen, fi;
+                lexer_next(lex); // consume dot
+                if (lex->current.type == TOK_NAMED_VAR) {
+                    fname = lex->current.str_start;
+                    flen = lex->current.str_length;
+                } else if (lex->current.type == TOK_KEYWORD) {
+                    fname = lexer_keyword_name(lex->current.value.keyword);
+                    flen = fname ? (int)strlen(fname) : 0;
+                } else if (lex->current.type == TOK_VARIABLE) {
+                    fname = &lex->current.value.var_name;
+                    flen = 1;
+                } else {
+                    error_raise(ERR_WHAT, line_num);
+                    return bval_int(0);
+                }
+                fi = runtime_find_field(td, fname, flen);
+                if (fi < 0) {
+                    error_raise(ERR_WHAT, line_num);
+                    return bval_int(0);
+                }
+                lexer_next(lex); // consume field
+                while (td->fields[fi].nested_type_index >= 0 && lex->current.type == TOK_DOT) {
+                    int ci = (int)bval_to_int(&tv->fields[fi]);
+                    if (ci < 0 || ci >= rt->typed_var_count) {
+                        error_raise(ERR_HOW, line_num);
+                        return bval_int(0);
+                    }
+                    tv = &rt->typed_vars[ci];
+                    td = &rt->user_types[tv->type_index];
+                    lexer_next(lex); // consume dot
+                    if (lex->current.type == TOK_NAMED_VAR) {
+                        fname = lex->current.str_start;
+                        flen = lex->current.str_length;
+                    } else if (lex->current.type == TOK_KEYWORD) {
+                        fname = lexer_keyword_name(lex->current.value.keyword);
+                        flen = fname ? (int)strlen(fname) : 0;
+                    } else if (lex->current.type == TOK_VARIABLE) {
+                        fname = &lex->current.value.var_name;
+                        flen = 1;
+                    } else {
+                        error_raise(ERR_WHAT, line_num);
+                        return bval_int(0);
+                    }
+                    fi = runtime_find_field(td, fname, flen);
+                    if (fi < 0) {
+                        error_raise(ERR_WHAT, line_num);
+                        return bval_int(0);
+                    }
+                    lexer_next(lex);
+                }
+                return tv->fields[fi];
+            }
+        }
+        return runtime_get_var_bval(rt, vname);
+    } else if (var_tok.type == TOK_STRING_VAR) {
+        vname = var_tok.value.var_name;
+        lexer_next(lex); // consume string var name
+        if (!dialect_check_feature("string variables", dialect_get_config()->has_string_vars, line_num))
+            return bval_int(0);
+        return runtime_get_string_var(rt, vname);
+    } else if (var_tok.type == TOK_NAMED_VAR) {
+        nm = var_tok.str_start;
+        nlen = var_tok.str_length;
+        lexer_next(lex); // consume named var name
+        for (int ci = 0; ci < rt->const_count; ci++) {
+            int cl = rt->constants[ci].name_len;
+            if (cl == nlen) {
+                int j, match = 1;
+                for (j = 0; j < nlen; j++) {
+                    char a = nm[j];
+                    char b = rt->constants[ci].name[j];
+                    if (a >= 'a' && a <= 'z') a = (char)(a - 32);
+                    if (b >= 'a' && b <= 'z') b = (char)(b - 32);
+                    if (a != b) { match = 0; break; }
+                }
+                if (match) return rt->constants[ci].value;
+            }
+        }
+        return runtime_get_named_var_bval(rt, nm, nlen);
+    }
+    
     error_raise(ERR_WHAT, line_num);
     return bval_int(0);
-   }
-   fi = runtime_find_field(td, fname, flen);
-   if (fi < 0) {
-    error_raise(ERR_WHAT, line_num);
-    return bval_int(0);
-   }
-   lexer_next(lex);
-  }
-  return tv->fields[fi];
- }
- }
-  // Check if this is a DIM array access: A(...) -- auto-DIMs
-  if (lex->current.type == TOK_LPAREN &&
-  dialect_get_config()->has_dim_arrays) {
-  int idx1, idx2 = 0, idx3 = 0;
-  lexer_next(lex); // consume (
-  val = parse_expression_bval(lex, rt, line_num);
-  idx1 = (int)bval_to_subscript(&val);
-  if (error_occurred()) return bval_int(0);
-  if (lex->current.type == TOK_COMMA) {
-  lexer_next(lex);
-  val = parse_expression_bval(lex, rt,
-  line_num);
-  idx2 = (int)bval_to_subscript(&val);
-  if (error_occurred()) return bval_int(0);
-  if (lex->current.type == TOK_COMMA) {
-  lexer_next(lex);
-  val = parse_expression_bval(lex, rt,
-  line_num);
-  idx3 = (int)bval_to_subscript(&val);
-  if (error_occurred()) return bval_int(0);
-  }
-  }
-  if (!lexer_expect(lex, TOK_RPAREN))
-  return bval_int(0);
-  return runtime_get_dim(rt, &vname, 1,
-  idx1, idx2, idx3, line_num);
-  }
- return runtime_get_var_bval(rt, vname);
- }
+}
 
-  case TOK_STRING_VAR:
- {
- char vname = lex->current.value.var_name;
- if (!dialect_check_feature("string variables",
- dialect_get_config()->has_string_vars, line_num))
- return bval_int(0);
- lexer_next(lex);
- // Check for DIM string array access: A$(index)
- // The DIM name for single-char string arrays is
- // stored as "A$" (2 chars).
- if (lex->current.type == TOK_LPAREN &&
- dialect_get_config()->has_dim_arrays) {
- char sname[3];
- sname[0] = vname;
- sname[1] = '$';
- sname[2] = '\0';
- {
- DimArray *arr = runtime_find_dim(
- rt, sname, 2);
- if (arr != NULL) {
- int idx1, idx2 = 0, idx3 = 0;
- lexer_next(lex); // consume (
- val = parse_expression_bval(
- lex, rt, line_num);
- idx1 = (int)bval_to_subscript(
- &val);
- if (error_occurred())
- return bval_int(0);
- if (lex->current.type ==
- TOK_COMMA) {
- lexer_next(lex);
- val = parse_expression_bval(
- lex, rt, line_num);
- idx2 = (int)bval_to_subscript(
- &val);
- if (error_occurred())
- return bval_int(0);
- if (lex->current.type ==
- TOK_COMMA) {
- lexer_next(lex);
- val = parse_expression_bval(
- lex, rt, line_num);
- idx3 = (int)bval_to_subscript(
- &val);
- if (error_occurred())
- return bval_int(0);
- }
- }
- if (!lexer_expect(lex,
- TOK_RPAREN))
- return bval_int(0);
- return runtime_get_dim(rt,
- sname, 2, idx1, idx2,
- idx3, line_num);
- }
- }
- }
- return runtime_get_string_var(rt, vname);
- }
+static int apply_operator(RuntimeState *rt, int op, BValue *val_stack, int *val_top, KeywordId kw, const char *op_name, int op_name_len, int arg_count, int line_num)
+{
+    if (op == OP_ADD || op == OP_SUB || op == OP_MUL || op == OP_DIV ||
+        op == OP_INTDIV || op == OP_MOD || op == OP_POW ||
+        op == OP_CMP_EQ || op == OP_CMP_NE || op == OP_CMP_LT ||
+        op == OP_CMP_GT || op == OP_CMP_LE || op == OP_CMP_GE ||
+        op == OP_LIKE || op == OP_AND || op == OP_OR || op == OP_XOR ||
+        op == OP_EQV || op == OP_IMP) {
+        
+        if (*val_top < 2) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        BValue right = val_stack[--(*val_top)];
+        BValue left = val_stack[--(*val_top)];
+        BValue res = bval_int(0);
+        
+        switch (op) {
+            case OP_ADD:
+                if (bval_is_string(&left) && bval_is_string(&right)) {
+                    if (dialect_is_strict()) {
+                        error_raise(ERR_WHAT, line_num);
+                        return 0;
+                    }
+                    res = bval_concat(&left, &right, line_num, &rt->strpool);
+                } else {
+                    res = bval_add(&left, &right, line_num);
+                }
+                break;
+            case OP_SUB: res = bval_sub(&left, &right, line_num); break;
+            case OP_MUL: res = bval_mul(&left, &right, line_num); break;
+            case OP_DIV: res = bval_div(&left, &right, line_num); break;
+            case OP_INTDIV: {
+                long a = bval_to_int(&left);
+                long b = bval_to_int(&right);
+                if (b == 0) {
+                    error_raise(ERR_HOW, line_num);
+                    return 0;
+                }
+                res = bval_int(a / b);
+                break;
+            }
+            case OP_MOD: res = bval_mod(&left, &right, line_num); break;
+            case OP_POW: {
+                double base_d = bval_to_float(&left);
+                double exp_d = bval_to_float(&right);
+                res = bval_float(pow(base_d, exp_d));
+                break;
+            }
+            case OP_AND: res = bval_int(bval_to_int(&left) & bval_to_int(&right)); break;
+            case OP_OR:  res = bval_int(bval_to_int(&left) | bval_to_int(&right)); break;
+            case OP_XOR: res = bval_int(bval_to_int(&left) ^ bval_to_int(&right)); break;
+            case OP_EQV: res = bval_int(~(bval_to_int(&left) ^ bval_to_int(&right))); break;
+            case OP_IMP: res = bval_int((~bval_to_int(&left)) | bval_to_int(&right)); break;
+            case OP_LIKE: {
+                if (!bval_is_string(&left) || !bval_is_string(&right)) {
+                    error_raise(ERR_HOW, line_num);
+                    return 0;
+                }
+                const char *s = left.v.sval.data;
+                int sl = left.v.sval.length;
+                const char *p = right.v.sval.data;
+                int pl = right.v.sval.length;
+                if (!s) { s = ""; sl = 0; }
+                if (!p) { p = ""; pl = 0; }
+                int si = 0, pi = 0, star_pi = -1, star_si = -1, match = 0;
+                while (si < sl) {
+                    if (pi < pl && p[pi] == '*') {
+                        star_pi = pi++; star_si = si;
+                    } else if (pi < pl && p[pi] == '?') {
+                        si++; pi++;
+                    } else if (pi < pl && p[pi] == '#') {
+                        if (s[si] >= '0' && s[si] <= '9') { si++; pi++; }
+                        else if (star_pi >= 0) { pi = star_pi + 1; si = ++star_si; }
+                        else break;
+                    } else if (pi < pl && p[pi] == '[') {
+                        int neg = 0, found = 0;
+                        int ci = pi + 1;
+                        if (ci < pl && p[ci] == '!') { neg = 1; ci++; }
+                        while (ci < pl && p[ci] != ']') {
+                            if (p[ci] == s[si]) found = 1;
+                            ci++;
+                        }
+                        if (ci < pl) ci++;
+                        if (found != neg) { pi = ci; si++; }
+                        else if (star_pi >= 0) { pi = star_pi + 1; si = ++star_si; }
+                        else break;
+                    } else if (pi < pl && (p[pi] == s[si] || (tolower((unsigned char)p[pi]) == tolower((unsigned char)s[si])))) {
+                        si++; pi++;
+                    } else if (star_pi >= 0) {
+                        pi = star_pi + 1; si = ++star_si;
+                    } else break;
+                }
+                while (pi < pl && p[pi] == '*') pi++;
+                if (si == sl && pi == pl) match = 1;
+                res = bval_int(match ? -1 : 0);
+                break;
+            }
+            default: {
+                // Relational comparisons
+                int result = 0;
+                if (bval_is_string(&left) && bval_is_string(&right)) {
+                    const char *ld = left.v.sval.data;
+                    int ll = left.v.sval.length;
+                    const char *rd = right.v.sval.data;
+                    int rl = right.v.sval.length;
+                    if (!ld) { ld = ""; ll = 0; }
+                    if (!rd) { rd = ""; rl = 0; }
+                    int minlen = ll < rl ? ll : rl;
+                    int cmp = memcmp(ld, rd, (size_t)minlen);
+                    if (cmp == 0) {
+                        if (ll < rl) cmp = -1;
+                        else if (ll > rl) cmp = 1;
+                    }
+                    switch (op) {
+                        case OP_CMP_EQ: result = (cmp == 0); break;
+                        case OP_CMP_NE: result = (cmp != 0); break;
+                        case OP_CMP_LT: result = (cmp < 0); break;
+                        case OP_CMP_GT: result = (cmp > 0); break;
+                        case OP_CMP_LE: result = (cmp <= 0); break;
+                        case OP_CMP_GE: result = (cmp >= 0); break;
+                    }
+                } else if (left.type == VAL_FLOAT || right.type == VAL_FLOAT) {
+                    double lv = bval_to_float(&left);
+                    double rv = bval_to_float(&right);
+                    switch (op) {
+                        case OP_CMP_EQ: result = (lv == rv); break;
+                        case OP_CMP_NE: result = (lv != rv); break;
+                        case OP_CMP_LT: result = (lv < rv); break;
+                        case OP_CMP_GT: result = (lv > rv); break;
+                        case OP_CMP_LE: result = (lv <= rv); break;
+                        case OP_CMP_GE: result = (lv >= rv); break;
+                    }
+                } else {
+                    long lv = bval_to_int(&left);
+                    long rv = bval_to_int(&right);
+                    switch (op) {
+                        case OP_CMP_EQ: result = (lv==rv); break;
+                        case OP_CMP_NE: result = (lv!=rv); break;
+                        case OP_CMP_LT: result = (lv<rv); break;
+                        case OP_CMP_GT: result = (lv>rv); break;
+                        case OP_CMP_LE: result = (lv<=rv); break;
+                        case OP_CMP_GE: result = (lv>=rv); break;
+                    }
+                }
+                res = bval_int(result ? -1 : 0);
+                break;
+            }
+        }
+        if (error_occurred()) return 0;
+        val_stack[(*val_top)++] = res;
+    } else if (op == OP_UNARY_MINUS) {
+        if (*val_top < 1) { error_raise(ERR_WHAT, line_num); return 0; }
+        BValue val = val_stack[--(*val_top)];
+        val_stack[(*val_top)++] = bval_neg(&val, line_num);
+    } else if (op == OP_UNARY_PLUS) {
+        // no-op
+    } else if (op == OP_NOT) {
+        if (*val_top < 1) { error_raise(ERR_WHAT, line_num); return 0; }
+        BValue val = val_stack[--(*val_top)];
+        val_stack[(*val_top)++] = bval_int(~bval_to_int(&val));
+    } else if (op == OP_AT) {
+        if (*val_top < 1) { error_raise(ERR_WHAT, line_num); return 0; }
+        BValue val = val_stack[--(*val_top)];
+        val_stack[(*val_top)++] = bval_int(runtime_get_array(rt, bval_to_int(&val)));
+    } else if (op == OP_FUNC) {
+        BValue args[16];
+        if (*val_top < arg_count || arg_count > 16) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        for (int i = arg_count - 1; i >= 0; i--) {
+            args[i] = val_stack[--(*val_top)];
+        }
+        const FunctionEntry *fn = funcreg_find_by_keyword(kw);
+        if (fn == NULL) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        if (arg_count < fn->min_args || arg_count > fn->max_args) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        val_stack[(*val_top)++] = fn->handler(args, arg_count, rt);
+    } else if (op == OP_ARRAY) {
+        BValue args[3];
+        if (*val_top < arg_count || arg_count > 3) {
+            error_raise(ERR_WHAT, line_num);
+            return 0;
+        }
+        for (int i = arg_count - 1; i >= 0; i--) {
+            args[i] = val_stack[--(*val_top)];
+        }
+        int idx1 = arg_count >= 1 ? (int)bval_to_subscript(&args[0]) : 0;
+        int idx2 = arg_count >= 2 ? (int)bval_to_subscript(&args[1]) : 0;
+        int idx3 = arg_count >= 3 ? (int)bval_to_subscript(&args[2]) : 0;
+        
+        char name_buf[MAX_VAR_NAME_LEN + 1];
+        int nlen = 0;
+        if (op_name_len > 0) {
+            nlen = op_name_len < MAX_VAR_NAME_LEN ? op_name_len : MAX_VAR_NAME_LEN;
+            memcpy(name_buf, op_name, (size_t)nlen);
+            name_buf[nlen] = '\0';
+        } else {
+            if (kw < 256) {
+                name_buf[0] = (char)kw;
+                name_buf[1] = '\0';
+                nlen = 1;
+            } else {
+                name_buf[0] = (char)(kw & 0xFF);
+                name_buf[1] = (char)((kw >> 8) & 0xFF);
+                name_buf[2] = '\0';
+                nlen = 2;
+            }
+        }
+        
+        val_stack[(*val_top)++] = runtime_get_dim(rt, name_buf, nlen, idx1, idx2, idx3, line_num);
+    }
+    
+    return 1;
+}
 
-   case TOK_NAMED_VAR:
- {
- const char *nm = lex->current.str_start;
- int nlen = lex->current.str_length;
- if (!dialect_check_feature("named variables",
- dialect_get_config()->has_extended_vars, line_num))
- return bval_int(0);
- lexer_next(lex);
+static int is_rnd_argument_start(Lexer *lex) {
+    TokenType t = lex->current.type;
+    return (t == TOK_NUMBER || t == TOK_FLOAT_LIT || t == TOK_VARIABLE ||
+            t == TOK_NAMED_VAR || t == TOK_LPAREN || t == TOK_MINUS || t == TOK_PLUS);
+}
 
- // Dot-read for scalar TypedVar: Player.HP
- // Must check before FUNCTION/DIM checks.
- if (lex->current.type == TOK_DOT) {
- TypedVar *tv = runtime_find_typed_var(rt, nm, nlen);
- if (tv != NULL) {
-  UserTypeDef *td = &rt->user_types[tv->type_index];
-  const char *fname;
-  int flen, fi;
+BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num, int stop_at_comparisons)
+{
+    BValue val_stack[32];
+    int val_top = 0;
+    ParseOp op_stack[32];
+    int op_top = 0;
+    int arg_count_stack[32];
+    int arg_count_top = 0;
+    int expect_operand = 1;
 
-  lexer_next(lex); // consume dot
-  if (lex->current.type != TOK_NAMED_VAR &&
-      lex->current.type != TOK_VARIABLE &&
-      lex->current.type != TOK_KEYWORD) {
-  error_raise(ERR_WHAT, line_num);
-  return bval_int(0);
-  }
-  if (lex->current.type == TOK_NAMED_VAR) {
-  fname = lex->current.str_start;
-  flen = lex->current.str_length;
-  } else if (lex->current.type == TOK_KEYWORD) {
-  fname = lexer_keyword_name(lex->current.value.keyword);
-  flen = fname ? (int)strlen(fname) : 0;
-  } else {
-  fname = &lex->current.value.var_name;
-  flen = 1;
-  }
-  fi = runtime_find_field(td, fname, flen);
-  if (fi < 0) {
-  error_raise(ERR_WHAT, line_num);
-  return bval_int(0);
-  }
-  lexer_next(lex); // consume field name
-  // Nested type: walk into child
-  while (td->fields[fi].nested_type_index >= 0
-      && lex->current.type == TOK_DOT) {
-   int ci = (int)bval_to_int(&tv->fields[fi]);
-   if (ci < 0 || ci >= rt->typed_var_count) {
-    error_raise(ERR_HOW, line_num);
-    return bval_int(0);
-   }
-   tv = &rt->typed_vars[ci];
-   td = &rt->user_types[tv->type_index];
-   lexer_next(lex); // consume dot
-   if (lex->current.type == TOK_NAMED_VAR) {
-    fname = lex->current.str_start;
-    flen = lex->current.str_length;
-   } else if (lex->current.type == TOK_KEYWORD) {
-    fname = lexer_keyword_name(lex->current.value.keyword);
-    flen = fname ? (int)strlen(fname) : 0;
-   } else if (lex->current.type == TOK_VARIABLE) {
-    fname = &lex->current.value.var_name;
-    flen = 1;
-   } else {
-    error_raise(ERR_WHAT, line_num);
-    return bval_int(0);
-   }
-   fi = runtime_find_field(td, fname, flen);
-   if (fi < 0) {
-    error_raise(ERR_WHAT, line_num);
-    return bval_int(0);
-   }
-   lexer_next(lex);
-  }
-  return tv->fields[fi];
- }
- }
-
- // Typed array dot-read: Enemies(1).HP
- // Check for array with type_index >= 0, then
- // parse subscript + dot + field.
- if (lex->current.type == TOK_LPAREN &&
-     dialect_get_config()->has_dim_arrays) {
- DimArray *arr = runtime_find_dim(rt, nm, nlen);
- if (arr != NULL && arr->type_index >= 0) {
-  int idx1, idx2 = 0, idx3 = 0;
-  int elem_idx;
-  UserTypeDef *td;
-  BValue *fval;
-  BValue val;
-
-  lexer_next(lex); // consume (
-  val = parse_expression_bval(lex, rt, line_num);
-  idx1 = (int)bval_to_subscript(&val);
-  if (error_occurred()) return bval_int(0);
-  if (lex->current.type == TOK_COMMA) {
-  lexer_next(lex);
-  val = parse_expression_bval(lex, rt, line_num);
-  idx2 = (int)bval_to_subscript(&val);
-  if (error_occurred()) return bval_int(0);
-  if (lex->current.type == TOK_COMMA) {
-   lexer_next(lex);
-   val = parse_expression_bval(lex, rt, line_num);
-   idx3 = (int)bval_to_subscript(&val);
-   if (error_occurred()) return bval_int(0);
-  }
-  }
-  if (!lexer_expect(lex, TOK_RPAREN))
-  return bval_int(0);
-
-  td = &rt->user_types[arr->type_index];
-  elem_idx = idx1 - rt->option_base;
-  if (arr->dims >= 2)
-  elem_idx = elem_idx * arr->size[1]
-   + (idx2 - rt->option_base);
-  if (arr->dims >= 3)
-  elem_idx = elem_idx * arr->size[2]
-   + (idx3 - rt->option_base);
-
-  if (lex->current.type == TOK_DOT) {
-  const char *fname;
-  int flen, fi;
-  lexer_next(lex); // consume dot
-  if (lex->current.type != TOK_NAMED_VAR &&
-      lex->current.type != TOK_VARIABLE &&
-      lex->current.type != TOK_KEYWORD) {
-   error_raise(ERR_WHAT, line_num);
-   return bval_int(0);
-  }
-  if (lex->current.type == TOK_NAMED_VAR) {
-   fname = lex->current.str_start;
-   flen = lex->current.str_length;
-  } else if (lex->current.type == TOK_KEYWORD) {
-   fname = lexer_keyword_name(lex->current.value.keyword);
-   flen = fname ? (int)strlen(fname) : 0;
-  } else {
-   fname = &lex->current.value.var_name;
-   flen = 1;
-  }
-  fi = runtime_find_field(td, fname, flen);
-  if (fi < 0) {
-   error_raise(ERR_WHAT, line_num);
-   return bval_int(0);
-  }
-  lexer_next(lex); // consume field name
-  fval = runtime_get_typed_array_field(
-   rt, arr, elem_idx, fi);
-  if (fval == NULL) {
-   error_raise(ERR_HOW, line_num);
-   return bval_int(0);
-  }
-  return *fval;
-  }
-  // No dot: return int of element 0? Error - typed array must use dot
-  error_raise(ERR_WHAT, line_num);
-  return bval_int(0);
- }
- }
-
- // Check for FUNCTION call.
- // If name(args) matches a FUNCTION def,
- // execute it and return fn_return_value.
- if (lex->current.type == TOK_LPAREN &&
- nm != NULL && nlen > 0) {
- SubDef *sd = runtime_find_sub(
- rt, nm, nlen);
- if (sd != NULL && sd->is_function) {
- StackFrame frame;
- int i;
- int save_idx, save_next;
-
- // Push FRAME_SUB
- frame.type = FRAME_SUB;
- frame.data.sub_call.return_index =
- rt->current_index;
- frame.data.sub_call.sub_index =
- (int)(sd - rt->subs);
- for (i = 0; i < MAX_VARIABLES; i++){
- frame.data.sub_call
- .saved_vars[i] =
- rt->variables[i];
- }
- for (i=0; i<MAX_STRING_VARS; i++){
- frame.data.sub_call
- .saved_strvars[i] =
- rt->string_vars[i];
- }
- if (runtime_push(rt, &frame) != 0)
- return bval_int(0);
-
- // Push scope stack
- {
- int smode = SCOPE_FULL;
- if (dialect_get_config()->id ==
-  DIALECT_QBASIC)
-  smode = SCOPE_FRESH;
- scope_stack_push(
-  &rt->scope_stack, rt,
-  smode,
-  (int)(sd - rt->subs),
-  rt->current_index);
- }
-
- // Parse args
- lexer_next(lex); // consume (
- for (i = 0; i < sd->param_count;
- i++) {
- BValue av;
- if (i > 0) {
- if (lex->current.type !=
- TOK_COMMA) break;
- lexer_next(lex);
- }
- av = parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred())
- return bval_int(0);
- pi_set_param_by_name(rt,
- sd->params[i], av);
- }
- if (lex->current.type == TOK_RPAREN)
- lexer_next(lex);
-
- // Execute FUNCTION body inline.
- // Save/restore execution position and
- // fn_return_value (for recursion).
- {
- BValue saved_fn_rv =
-  rt->fn_return_value;
- int saved_sub_idx =
-  rt->in_sub_index;
- int saved_bif_depth =
-  rt->block_if_depth;
- rt->fn_return_value = bval_int(0);
- rt->block_if_depth = 0;
- rt->in_sub_index =
- (int)(sd - rt->subs);
- save_idx = rt->current_index;
- save_next = rt->next_index;
-
- {
- int fi = sd->body_index;
- ProgramStore *pgm = rt->program;
- while (fi < pgm->count &&
- !error_occurred()) {
- Lexer fl;
- int fln;
- ProgramLine *fline =
- &pgm->lines[fi];
- fln = fline->line_number;
- lexer_init(&fl,
- fline->text);
- if (fl.current.type ==
- TOK_NUMBER)
- lexer_next(&fl);
-
- rt->current_index = fi;
- rt->next_index = -1;
-
- parser_execute_line(
- &fl, rt, fln);
-
- if (error_occurred())
- return bval_int(0);
-
- // Check if END SUB/FUNCTION
- // popped our frame 
- if (rt->in_sub_index < 0) {
- break;
- }
-
- if (rt->next_index >= 0)
- fi = rt->next_index;
- else
- fi++;
- }
- }
-
- rt->current_index = save_idx;
- rt->next_index = save_next;
- {
-  BValue rv = rt->fn_return_value;
- rt->fn_return_value = saved_fn_rv;
- rt->in_sub_index = saved_sub_idx;
- rt->block_if_depth = saved_bif_depth;
- return rv;
- }
- }
- } else {
-      extern int lib_space_try_call_func(const char *name, int name_len,
-                                         void *lex_ptr, void *rt_ptr,
-                                         int line_num, void *out_result);
-      BValue res;
-      if (lib_space_try_call_func(nm, nlen, lex, rt, line_num, &res)) {
-          return res;
-      }
-  }
-
- // Check for single-line DEF FN
- // called as FNA(x) in extended-vars
- // mode (where FNA is TOK_NAMED_VAR).
- if (nlen >= 3 &&
- (nm[0] == 'F' || nm[0] == 'f') &&
- (nm[1] == 'N' || nm[1] == 'n')) {
- // Extract fn letter(s) after FN
- char fn_ch = nm[2];
- char fn_buf[2];
- UserFunction *ufn;
- if (fn_ch >= 'a' && fn_ch <= 'z')
- fn_ch = (char)(fn_ch - 32);
- fn_buf[0] = fn_ch;
- fn_buf[1] = '\0';
- ufn = runtime_find_fn(rt,
- fn_buf, 1);
- if (ufn != NULL) {
- // Evaluate inline
- BValue args[MAX_FN_PARAMS];
- BValue saved[MAX_FN_PARAMS];
- int ac = 0, pi;
- Lexer bl;
- BValue res;
- lexer_next(lex); // (
- if (ufn->param_count > 0) {
- args[ac] =
- parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred())
- return bval_int(0);
- ac++;
- while (ac <
- ufn->param_count &&
- lex->current.type
- == TOK_COMMA) {
- lexer_next(lex);
- args[ac] =
- parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred())
- return bval_int(0);
- ac++;
- }
- }
- if (!lexer_expect(lex,
- TOK_RPAREN))
- return bval_int(0);
- // Save & bind params
- for (pi = 0;
- pi < ufn->param_count;
- pi++) {
- int vi =
- ufn->params[pi] - 'A';
- saved[pi] =
- rt->variables[vi];
- if (pi < ac)
- rt->variables[vi] =
- args[pi];
- }
- // Eval body
- lexer_init(&bl, ufn->body);
- res = parse_expression_bval(
- &bl, rt, line_num);
- // Restore
- for (pi = 0;
- pi < ufn->param_count;
- pi++) {
- int vi =
- ufn->params[pi] - 'A';
- rt->variables[vi] =
- saved[pi];
- }
- return res;
- }
- }
- }
-
- // Check for DIM array access
- if (lex->current.type == TOK_LPAREN &&
- dialect_get_config()->has_dim_arrays) {
- DimArray *arr = runtime_find_dim(rt, nm, nlen);
- if (arr != NULL) {
- int idx1, idx2 = 0, idx3 = 0;
- lexer_next(lex);
- val = parse_expression_bval(lex, rt, line_num);
- idx1 = (int)bval_to_subscript(&val);
- if (error_occurred()) return bval_int(0);
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- val = parse_expression_bval(lex, rt,
- line_num);
- idx2 = (int)bval_to_subscript(&val);
- if (error_occurred()) return bval_int(0);
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- val = parse_expression_bval(lex, rt,
- line_num);
- idx3 = (int)bval_to_subscript(&val);
- if (error_occurred()) return bval_int(0);
- }
- }
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- return runtime_get_dim(rt, nm, nlen,
- idx1, idx2, idx3, line_num);
- }
- }
- // Check CONST table before named vars
- {
- int ci;
- for (ci = 0; ci < rt->const_count; ci++){
- int cl = rt->constants[ci].name_len;
- if (cl == nlen) {
- // Case-insensitive compare
- int j, match = 1;
- for (j = 0; j < nlen; j++) {
- char a = nm[j];
- char b = rt->constants[ci]
- .name[j];
- if (a >= 'a' && a <= 'z')
- a = (char)(a - 32);
- if (b >= 'a' && b <= 'z')
- b = (char)(b - 32);
- if (a != b) {
- match = 0; break;
- }
- }
- if (match) {
- return rt->constants[ci]
- .value;
- }
- }
- }
- }
- return runtime_get_named_var_bval(rt, nm, nlen);
- }
-
- case TOK_AT:
- {
- long index;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
- index = parse_expression(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
- return bval_int(runtime_get_array(rt, index));
- }
-
- case TOK_LPAREN:
- lexer_next(lex);
- val = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
-
- // Check for complex literal: (real +/- coeffai)
- if ((lex->current.type == TOK_PLUS ||
-      lex->current.type == TOK_MINUS) &&
-     bval_is_numeric(&val) &&
-     !bval_is_complex(&val)) {
-  int neg = (lex->current.type == TOK_MINUS);
-  // Peek ahead a" only convert if next is imaginary
-  lexer_next(lex); // consume +/-
-  if (lex->current.type == TOK_IMAGINARY) {
-   double real_part = bval_to_float(&val);
-   double imag_part = lex->current.value.fval;
-   if (neg) imag_part = -imag_part;
-   lexer_next(lex); // consume imaginary
-   if (!lexer_expect(lex, TOK_RPAREN))
-    return bval_int(0);
-   return bval_complex(real_part, imag_part);
-  }
-  // Not imaginary a" put back the +/- as part of
-   // a normal expression. We can't un-consume the
-   // +/-, so evaluate what follows and combine. 
-  {
-   BValue rhs = pi_parse_term_bval(lex, rt,
-    line_num);
-   if (error_occurred()) return bval_int(0);
-   if (neg)
-    val = bval_sub(&val, &rhs, line_num);
-   else
-    val = bval_add(&val, &rhs, line_num);
-   // Continue with remaining +/- terms
-   while (lex->current.type == TOK_PLUS ||
-          lex->current.type == TOK_MINUS) {
-    int s = (lex->current.type == TOK_MINUS);
-    lexer_next(lex);
-    rhs = pi_parse_term_bval(lex, rt, line_num);
     if (error_occurred()) return bval_int(0);
-    if (s)
-     val = bval_sub(&val, &rhs, line_num);
-    else
-     val = bval_add(&val, &rhs, line_num);
-   }
-  }
- }
 
- if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
- return val;
+    while (!error_occurred()) {
+        Token tok = lex->current;
 
- case TOK_KEYWORD:
- // User-defined function dispatch.
- if (lex->current.value.keyword == KW_FN) {
- lexer_next(lex); // consume FN
- return pi_eval_user_fn(lex, rt, line_num);
- }
- // LBOUND(arrayname, dim) / UBOUND(arrayname, dim)
- // Array bound query functions. The first arg is an
- // array name (not an expression), so we parse it
- // specially.
- if (lex->current.value.keyword == KW_LBOUND ||
-     lex->current.value.keyword == KW_UBOUND) {
-  int is_upper = (lex->current.value.keyword
-   == KW_UBOUND);
-  char aname[MAX_VAR_NAME_LEN + 1];
-  int alen = 0, dim_arg = 1, i;
-  DimArray *arr;
+        // Stop conditions when expecting operator
+        if (!expect_operand) {
+            if (tok.type == TOK_CR || tok.type == TOK_EOF || tok.type == TOK_COLON) {
+                break;
+            }
+            if (tok.type == TOK_KEYWORD) {
+                KeywordId kw = tok.value.keyword;
+                if (kw != KW_AND && kw != KW_OR && kw != KW_XOR && kw != KW_EQV && kw != KW_IMP && kw != KW_MOD && kw != KW_LIKE) {
+                    break;
+                }
+            }
+            if (tok.type == TOK_COMMA || tok.type == TOK_RPAREN) {
+                int has_lparen = 0;
+                for (int i = 0; i < op_top; i++) {
+                    if (op_stack[i].op == OP_LPAREN) {
+                        has_lparen = 1; break;
+                    }
+                }
+                if (!has_lparen) break;
+            }
+            
+            // Check for comparison operator stop condition
+            int is_cmp = 0;
+            if (tok.type == TOK_EQUALS || tok.type == TOK_NOT_EQ || tok.type == TOK_LT ||
+                tok.type == TOK_GT || tok.type == TOK_LT_EQ || tok.type == TOK_GT_EQ) {
+                is_cmp = 1;
+            } else if (tok.type == TOK_KEYWORD && tok.value.keyword == KW_LIKE) {
+                is_cmp = 1;
+            }
+            if (is_cmp && stop_at_comparisons) {
+                break;
+            }
+        }
 
-  lexer_next(lex); // consume LBOUND/UBOUND
-  if (!lexer_expect(lex, TOK_LPAREN))
-   return bval_int(0);
-
-  // Parse array name
-  if (lex->current.type == TOK_VARIABLE) {
-   aname[0] = lex->current.value.var_name;
-   aname[1] = '\0';
-   alen = 1;
-   lexer_next(lex);
-  } else if (lex->current.type == TOK_NAMED_VAR) {
-   alen = lex->current.str_length;
-   if (alen > MAX_VAR_NAME_LEN)
-    alen = MAX_VAR_NAME_LEN;
-   memcpy(aname, lex->current.str_start,
-    (size_t)alen);
-   aname[alen] = '\0';
-   lexer_next(lex);
-  } else {
-   error_raise(ERR_WHAT, line_num);
-   return bval_int(0);
-  }
-  // Uppercase
-  for (i = 0; i < alen; i++) {
-   if (aname[i] >= 'a' && aname[i] <= 'z')
-    aname[i] = (char)(aname[i] - 32);
-  }
-
-  // Optional dimension argument
-   if (lex->current.type == TOK_COMMA) {
-    BValue dim_val;
-    lexer_next(lex);
-    dim_val = parse_expression_bval(
-     lex, rt, line_num);
-    dim_arg = (int)bval_to_int(&dim_val);
-    if (error_occurred()) return bval_int(0);
-  }
-  if (!lexer_expect(lex, TOK_RPAREN))
-   return bval_int(0);
-
-  arr = runtime_find_dim(rt, aname, alen);
-  if (arr == NULL) {
-   error_raise(ERR_HOW, line_num);
-   return bval_int(0);
-  }
-  if (dim_arg < 1 || dim_arg > arr->dims) {
-   error_raise(ERR_HOW, line_num);
-   return bval_int(0);
-  }
-  if (is_upper) {
-   // UBOUND: max valid subscript
-   return bval_int(
-    arr->size[dim_arg - 1] - 1
-    + rt->option_base);
-  } else {
-   // LBOUND: OPTION BASE value
-   return bval_int(rt->option_base);
-  }
- }
-
- // DET(arrayname) - Matrix determinant.
- // Computes determinant of a square 2D array
- // using LU decomposition with partial pivoting.
- if (lex->current.value.keyword == KW_DET) {
-  char aname[MAX_VAR_NAME_LEN + 1];
-  int alen = 0, i, n, p, r;
-  DimArray *arr;
-  double work[16][16];
-  double det_val = 1.0;
-  int sign = 1;
-
-  lexer_next(lex); // consume DET
-  if (!lexer_expect(lex, TOK_LPAREN))
-   return bval_float(0.0);
-
-  // Parse array name
-  if (lex->current.type == TOK_VARIABLE) {
-   aname[0] = lex->current.value.var_name;
-   aname[1] = '\0';
-   alen = 1;
-   lexer_next(lex);
-  } else if (lex->current.type == TOK_NAMED_VAR) {
-   alen = lex->current.str_length;
-   if (alen > MAX_VAR_NAME_LEN)
-    alen = MAX_VAR_NAME_LEN;
-   memcpy(aname, lex->current.str_start,
-    (size_t)alen);
-   aname[alen] = '\0';
-   lexer_next(lex);
-  } else {
-   error_raise(ERR_WHAT, line_num);
-   return bval_float(0.0);
-  }
-  for (i = 0; i < alen; i++) {
-   if (aname[i] >= 'a' && aname[i] <= 'z')
-    aname[i] = (char)(aname[i] - 32);
-  }
-  if (!lexer_expect(lex, TOK_RPAREN))
-   return bval_float(0.0);
-
-  arr = runtime_find_dim(rt, aname, alen);
-  if (arr == NULL || arr->dims != 2) {
-   error_raise(ERR_HOW, line_num);
-   return bval_float(0.0);
-  }
-  if (arr->size[0] != arr->size[1]) {
-   error_raise(ERR_HOW, line_num);
-   return bval_float(0.0);
-  }
-  n = arr->size[0] - 1; // 1-based size
-  if (n > 15 || n < 1) {
-   error_raise(ERR_SORRY, line_num);
-   return bval_float(0.0);
-  }
-
-  // Copy matrix to work array (1-based)
-  for (r = 0; r < n; r++) {
-   int c;
-   for (c = 0; c < n; c++) {
-    BValue v = arr->elements[
-     (r + 1) * arr->size[1] + (c + 1)];
-    work[r][c] = bval_to_float(&v);
-   }
-  }
-
-  // LU decomposition with partial pivoting
-  for (p = 0; p < n; p++) {
-   int max_row = p;
-   double max_val = work[p][p];
-   double pivot;
-   int c;
-   if (max_val < 0) max_val = -max_val;
-
-   for (r = p + 1; r < n; r++) {
-    double v = work[r][p];
-    if (v < 0) v = -v;
-    if (v > max_val) {
-     max_val = v;
-     max_row = r;
-    }
-   }
-   if (max_row != p) {
-    // Swap rows
-    for (c = 0; c < n; c++) {
-     double tmp = work[p][c];
-     work[p][c] = work[max_row][c];
-     work[max_row][c] = tmp;
-    }
-    sign = -sign;
-   }
-   pivot = work[p][p];
-   if (pivot > -1e-12 && pivot < 1e-12) {
-    return bval_float(0.0); // singular
-   }
-   det_val *= pivot;
-   // Eliminate below pivot
-   for (r = p + 1; r < n; r++) {
-    double factor = work[r][p] / pivot;
-    for (c = p + 1; c < n; c++) {
-     work[r][c] -= factor * work[p][c];
-    }
-   }
-  }
-  return bval_float(det_val * sign);
- }
-
- // Registry-based BValue function dispatch.
- //
- // Look up the keyword in the function registry. Parse
- // arguments into BValue array using the BValue expression
- // parser (preserving float/string types). Call the handler
- // and return the BValue result directly.
- {
- KeywordId kw = lex->current.value.keyword;
- const FunctionEntry *fn;
- fn = funcreg_find_by_keyword(kw);
- if (fn != NULL) {
- BValue args[16];
- int argc = 0;
- BValue result;
-
-  lexer_next(lex); // consume function name
-
-  if (fn->max_args > 0 &&
-  lex->current.type == TOK_LPAREN) {
-  // Parse (arg1, arg2, ...)
-  lexer_next(lex); // consume (
-
-  args[argc] = parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- argc++;
-
- while (argc < fn->max_args &&
- lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- args[argc] = parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- argc++;
- }
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- }
- // else: zero-arg function (SIZE)
-
- // Validate argument count
- if (argc < fn->min_args) {
- error_raise(ERR_WHAT, line_num);
- return bval_int(0);
- }
-
- result = fn->handler(args, argc, (void *)rt);
- return result;
- }
-
- // TIMER - returns seconds since midnight (float).
- if (kw == KW_TIMER) {
- time_t t;
- struct tm *tm;
- lexer_next(lex);
- t = time(NULL);
- tm = localtime(&t);
- return bval_float(
- (double)(tm->tm_hour * 3600 +
- tm->tm_min * 60 +
- tm->tm_sec));
- }
-
- // DATE$ - returns current date as "MM-DD-YYYY".
- // TIME$ - returns current time as "HH:MM:SS".
- if (kw == KW_DATE_FUNC) {
- char buf[16];
- char *ptr;
- time_t t;
- struct tm *tm;
- lexer_next(lex);
- // $ already consumed by lexer
- t = time(NULL);
- tm = localtime(&t);
- sprintf(buf, "%02d-%02d-%04d",
- tm->tm_mon + 1, tm->tm_mday,
- tm->tm_year + 1900);
- ptr = strpool_store(&rt->strpool, buf, 10);
- return bval_string(ptr, 10);
- }
- if (kw == KW_TIME_FUNC) {
- char buf[16];
- char *ptr;
- time_t t;
- struct tm *tm;
- lexer_next(lex);
- t = time(NULL);
- tm = localtime(&t);
- sprintf(buf, "%02d:%02d:%02d",
- tm->tm_hour, tm->tm_min,
- tm->tm_sec);
- ptr = strpool_store(&rt->strpool, buf, 8);
- return bval_string(ptr, 8);
- }
-
-  // CLOCK$ - returns full timestamp "YYYY-MM-DD HH:MM:SS".
-  // More detailed than DATE$ or TIME$ alone.
- if (kw == KW_CLOCK_FUNC) {
- char buf[64];
- char *ptr;
- time_t t;
- struct tm *tm;
- int len;
- lexer_next(lex);
- t = time(NULL);
- tm = localtime(&t);
- sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d",
- tm->tm_year + 1900, tm->tm_mon + 1,
- tm->tm_mday, tm->tm_hour,
- tm->tm_min, tm->tm_sec);
- len = 19;
- ptr = strpool_store(&rt->strpool, buf, len);
- return bval_string(ptr, len);
- }
-
-  // ALARM$ - get/set the alarm time string.
-  // As a function (expression context), returns the
-  // current alarm time setting. If no alarm is set,
-  // returns empty string.
-  //
-  // Alarm time is stored in rt->alarm_str[].
-  // Setting ALARM$ is done via ALARM$ = "HH:MM:SS"
-  // in the statement handler (not here).
- if (kw == KW_ALARM_FUNC) {
- char *ptr;
- int len;
- lexer_next(lex);
- len = (int)strlen(rt->alarm_str);
- if (len == 0)
- return bval_string(NULL, 0);
- ptr = strpool_store(&rt->strpool,
- rt->alarm_str, len);
- return bval_string(ptr, len);
- }
-  // DIALECT$ - returns the current dialect name.
-  // Read-only introspection; does not change dialect.
-  // Example: PRINT DIALECT$  -> "GW-BASIC"
-  //          IF DIALECT$ = "GWBS" THEN ...
- if (kw == KW_DIALECT_FUNC) {
- const char *dname;
- char *ptr;
- int len;
- lexer_next(lex);
- dname = dialect_get_short_name();
- len = (int)strlen(dname);
- ptr = strpool_store(&rt->strpool, dname, len);
- return bval_string(ptr, len);
- }
-
-  // MEMMAP$ - returns the current memory map name.
-  // Read-only introspection; does not change memmap.
-  // Example: PRINT MEMMAP$  -> "Commodore 64"
- if (kw == KW_MEMMAP_FUNC) {
- const char *mname;
- char *ptr;
- int len;
- lexer_next(lex);
- mname = memmap_get_name(
- (MemMapType)rt->memmap_type);
- len = (int)strlen(mname);
- ptr = strpool_store(&rt->strpool, mname, len);
- return bval_string(ptr, len);
- }
-  if (kw == KW_VPATH_FUNC) {
-      const char *vpath = vfs_get_vpath();
-      char *ptr;
-      int len;
-      lexer_next(lex);
-      if (vpath == NULL) vpath = "";
-      len = (int)strlen(vpath);
-      ptr = strpool_store(&rt->strpool, vpath, len);
-      return bval_string(ptr, len);
-  }
-  // CWD$ - returns the current working directory.
-  // Read-only string pseudo-variable.
-  // CURDIR$ is an alias (mapped to KW_CWD_FUNC).
-  // Example: PRINT CWD$   -> "C:\GAMES"
-  //          A$ = CURDIR$
- if (kw == KW_CWD_FUNC) {
- char cwdbuf[512];
- char *ptr;
- int len;
- lexer_next(lex);
+        if (expect_operand) {
+            // Parse Operand or Unary Operator
+            if (tok.type == TOK_NUMBER) {
+                val_stack[val_top++] = bval_int(tok.value.num_value);
+                lexer_next(lex);
+                expect_operand = 0;
+            } else if (tok.type == TOK_FLOAT_LIT) {
+                if (!dialect_check_feature("floating point", dialect_get_config()->has_float, line_num)) {
+                    val_stack[val_top++] = bval_int((long)tok.value.fval);
+                } else {
+                    val_stack[val_top++] = bval_float(tok.value.fval);
+                }
+                lexer_next(lex);
+                expect_operand = 0;
+            } else if (tok.type == TOK_IMAGINARY) {
+                val_stack[val_top++] = bval_complex(0.0, tok.value.fval);
+                lexer_next(lex);
+                expect_operand = 0;
+            } else if (tok.type == TOK_STRING) {
+                char *ptr = strpool_store(&rt->strpool, tok.str_start, tok.str_length);
+                val_stack[val_top++] = bval_string(ptr, tok.str_length);
+                lexer_next(lex);
+                expect_operand = 0;
+            } else if (tok.type == TOK_PLUS) {
+                ParseOp op_entry;
+                memset(&op_entry, 0, sizeof(op_entry));
+                op_entry.op = OP_UNARY_PLUS;
+                op_entry.precedence = 12;
+                op_entry.assoc = 1;
+                op_entry.is_unary = 1;
+                op_stack[op_top++] = op_entry;
+                lexer_next(lex);
+            } else if (tok.type == TOK_MINUS) {
+                ParseOp op_entry;
+                memset(&op_entry, 0, sizeof(op_entry));
+                op_entry.op = OP_UNARY_MINUS;
+                op_entry.precedence = 12;
+                op_entry.assoc = 1;
+                op_entry.is_unary = 1;
+                op_stack[op_top++] = op_entry;
+                lexer_next(lex);
+            } else if (tok.type == TOK_KEYWORD && tok.value.keyword == KW_NOT) {
+                ParseOp op_entry;
+                memset(&op_entry, 0, sizeof(op_entry));
+                op_entry.op = OP_NOT;
+                op_entry.precedence = 6;
+                op_entry.assoc = 1;
+                op_entry.is_unary = 1;
+                op_stack[op_top++] = op_entry;
+                lexer_next(lex);
+            } else if (tok.type == TOK_LPAREN) {
+                // Peek for complex literal (real +/- imagi)
+                int parsed_complex = 0;
+                Lexer peek = *lex;
+                lexer_next(&peek);
+                if (peek.current.type == TOK_NUMBER || peek.current.type == TOK_FLOAT_LIT) {
+                    lexer_next(&peek);
+                    if (peek.current.type == TOK_PLUS || peek.current.type == TOK_MINUS) {
+                        int neg = (peek.current.type == TOK_MINUS);
+                        lexer_next(&peek);
+                        if (peek.current.type == TOK_IMAGINARY) {
+                            double imag = peek.current.value.fval;
+                            if (neg) imag = -imag;
+                            lexer_next(&peek);
+                            if (peek.current.type == TOK_RPAREN) {
+                                lexer_next(lex); // consume (
+                                double real = 0.0;
+                                if (lex->current.type == TOK_NUMBER) real = (double)lex->current.value.num_value;
+                                else real = lex->current.value.fval;
+                                lexer_next(lex); // consume real
+                                lexer_next(lex); // consume +/-
+                                lexer_next(lex); // consume imaginary
+                                lexer_next(lex); // consume )
+                                val_stack[val_top++] = bval_complex(real, imag);
+                                expect_operand = 0;
+                                parsed_complex = 1;
+                            }
+                        }
+                    }
+                }
+                if (!parsed_complex) {
+                    ParseOp op_entry;
+                    memset(&op_entry, 0, sizeof(op_entry));
+                    op_entry.op = OP_LPAREN;
+                    op_stack[op_top++] = op_entry;
+                    lexer_next(lex);
+                }
+            } else if (tok.type == TOK_AT) {
+                lexer_next(lex);
+                if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                ParseOp op_entry_at;
+                memset(&op_entry_at, 0, sizeof(op_entry_at));
+                op_entry_at.op = OP_AT;
+                op_entry_at.precedence = 14;
+                op_entry_at.assoc = 1;
+                op_entry_at.is_unary = 1;
+                op_stack[op_top++] = op_entry_at;
+                
+                ParseOp op_entry_lp;
+                memset(&op_entry_lp, 0, sizeof(op_entry_lp));
+                op_entry_lp.op = OP_LPAREN;
+                op_stack[op_top++] = op_entry_lp;
+            } else if (tok.type == TOK_VARIABLE || tok.type == TOK_STRING_VAR || tok.type == TOK_NAMED_VAR) {
+                // Peek if followed by (
+                Lexer peek = *lex;
+                lexer_next(&peek);
+                if (peek.current.type == TOK_LPAREN) {
+                    char name_buf[32];
+                    int nlen = 0;
+                    KeywordId kw = 0;
+                    if (tok.type == TOK_VARIABLE) {
+                        kw = (KeywordId)tok.value.var_name;
+                        name_buf[0] = tok.value.var_name;
+                        name_buf[1] = '\0';
+                        nlen = 1;
+                    } else if (tok.type == TOK_STRING_VAR) {
+                        kw = (KeywordId)tok.value.var_name | ('$' << 8);
+                        name_buf[0] = tok.value.var_name;
+                        name_buf[1] = '$';
+                        name_buf[2] = '\0';
+                        nlen = 2;
+                    } else {
+                        nlen = tok.str_length < 31 ? tok.str_length : 31;
+                        memcpy(name_buf, tok.str_start, (size_t)nlen);
+                        name_buf[nlen] = '\0';
+                    }
+                    
+                    // 1. Check if user-defined FUNCTION
+                    SubDef *sd = runtime_find_sub(rt, name_buf, nlen);
+                    if (sd != NULL && sd->is_external && sd->body_index == -1) {
+                        extern int runtime_load_external_sub(RuntimeState *rt, SubDef *sd);
+                        if (runtime_load_external_sub(rt, sd) != 0) {
+                            error_raise(ERR_HOW, line_num);
+                            return bval_float(0.0);
+                        }
+                    }
+                    if (sd != NULL && sd->is_function) {
+                        ParseOp op_entry;
+                        memset(&op_entry, 0, sizeof(op_entry));
+                        op_entry.op = OP_USER_FUNC;
+                        op_entry.precedence = 14;
+                        op_entry.kw = 0;
+                        memcpy(op_entry.name, name_buf, (size_t)nlen + 1);
+                        op_entry.name_len = nlen;
+                        op_stack[op_top++] = op_entry;
+                        
+                        lexer_next(lex); // consume variable name
+                        lexer_next(lex); // consume (
+                        ParseOp lp_entry;
+                        memset(&lp_entry, 0, sizeof(lp_entry));
+                        lp_entry.op = OP_LPAREN;
+                        op_stack[op_top++] = lp_entry;
+                        arg_count_stack[arg_count_top++] = 1;
+                    } else {
+                        // 2. Check single-line DEF FN
+                        int is_def_fn = 0;
+                        UserFunction *ufn = NULL;
+                        if (nlen >= 3 && (name_buf[0] == 'F' || name_buf[0] == 'f') && (name_buf[1] == 'N' || name_buf[1] == 'n')) {
+                            char fn_ch = name_buf[2];
+                            char fn_buf[2];
+                            if (fn_ch >= 'a' && fn_ch <= 'z') fn_ch = (char)(fn_ch - 32);
+                            fn_buf[0] = fn_ch; fn_buf[1] = '\0';
+                            ufn = runtime_find_fn(rt, fn_buf, 1);
+                            if (ufn != NULL) {
+                                is_def_fn = 1;
+                            }
+                        }
+                        
+                        if (is_def_fn) {
+                            lexer_next(lex); // consume FNx
+                            lexer_next(lex); // consume (
+                            BValue args[MAX_FN_PARAMS];
+                            BValue saved[MAX_FN_PARAMS];
+                            int ac = 0, pi;
+                            if (ufn->param_count > 0) {
+                                args[ac++] = parse_expression_bval_internal(lex, rt, line_num, 0);
+                                if (error_occurred()) return bval_int(0);
+                                while (ac < ufn->param_count && lex->current.type == TOK_COMMA) {
+                                    lexer_next(lex);
+                                    args[ac++] = parse_expression_bval_internal(lex, rt, line_num, 0);
+                                    if (error_occurred()) return bval_int(0);
+                                }
+                            }
+                            if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                            for (pi = 0; pi < ufn->param_count; pi++) {
+                                int vi = ufn->params[pi] - 'A';
+                                saved[pi] = rt->variables[vi];
+                                if (pi < ac) rt->variables[vi] = args[pi];
+                            }
+                            Lexer bl;
+                            lexer_init(&bl, ufn->body);
+                            BValue res = parse_expression_bval_internal(&bl, rt, line_num, 0);
+                            for (pi = 0; pi < ufn->param_count; pi++) {
+                                int vi = ufn->params[pi] - 'A';
+                                rt->variables[vi] = saved[pi];
+                            }
+                            val_stack[val_top++] = res;
+                            expect_operand = 0;
+                        } else {
+                            // 3. Try library function
+                            extern int lib_space_try_call_func(const char *name, int name_len,
+                                                               void *lex_ptr, void *rt_ptr,
+                                                               int line_num, void *out_result);
+                            BValue res;
+                            Lexer saved_lex = *lex;
+                            lexer_next(lex); // consume variable name (points to '(')
+                            if (lib_space_try_call_func(name_buf, nlen, lex, rt, line_num, &res)) {
+                                val_stack[val_top++] = res;
+                                expect_operand = 0;
+                            } else {
+                                // 4. Fallback to array read
+                                *lex = saved_lex;
+                                ParseOp op_entry;
+                                memset(&op_entry, 0, sizeof(op_entry));
+                                op_entry.op = OP_ARRAY;
+                                op_entry.precedence = 14;
+                                op_entry.kw = kw;
+                                memcpy(op_entry.name, name_buf, (size_t)nlen + 1);
+                                op_entry.name_len = nlen;
+                                op_stack[op_top++] = op_entry;
+                                
+                                lexer_next(lex); // consume name
+                                lexer_next(lex); // consume (
+                                ParseOp lp_entry;
+                                memset(&lp_entry, 0, sizeof(lp_entry));
+                                lp_entry.op = OP_LPAREN;
+                                op_stack[op_top++] = lp_entry;
+                                arg_count_stack[arg_count_top++] = 1;
+                            }
+                        }
+                    }
+                } else {
+                    val_stack[val_top++] = evaluate_variable_simple(lex, rt, tok, line_num);
+                    expect_operand = 0;
+                }
+            } else if (tok.type == TOK_KEYWORD) {
+                KeywordId kw = tok.value.keyword;
+                if (kw == KW_FN) {
+                    Lexer saved = *lex;
+                    lexer_next(lex); // consume FN
+                    if (lex->current.type != TOK_VARIABLE) {
+                        error_raise(ERR_WHAT, line_num);
+                        return bval_int(0);
+                    }
+                    char fn_name = lex->current.value.var_name;
+                    lexer_next(lex); // consume name
+                    
+                    char name_buf[4];
+                    name_buf[0] = 'F'; name_buf[1] = 'N'; name_buf[2] = fn_name; name_buf[3] = '\0';
+                    SubDef *sd = runtime_find_sub(rt, name_buf, 3);
+                    if (sd != NULL && sd->is_function && sd->body_index >= 0) {
+                        if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                        ParseOp op_entry;
+                        memset(&op_entry, 0, sizeof(op_entry));
+                        op_entry.op = OP_USER_FUNC;
+                        op_entry.precedence = 14;
+                        op_entry.kw = (KeywordId)fn_name;
+                        op_entry.name[0] = 'F'; op_entry.name[1] = 'N'; op_entry.name[2] = fn_name; op_entry.name[3] = '\0';
+                        op_entry.name_len = 3;
+                        op_stack[op_top++] = op_entry;
+                        
+                        ParseOp lp_entry;
+                        memset(&lp_entry, 0, sizeof(lp_entry));
+                        lp_entry.op = OP_LPAREN;
+                        op_stack[op_top++] = lp_entry;
+                        arg_count_stack[arg_count_top++] = 1;
+                    } else {
+                        *lex = saved; // restore FN
+                        val_stack[val_top++] = pi_eval_user_fn(lex, rt, line_num);
+                        expect_operand = 0;
+                    }
+                } else if (kw == KW_LBOUND || kw == KW_UBOUND) {
+                    int is_upper = (kw == KW_UBOUND);
+                    char aname[MAX_VAR_NAME_LEN + 1];
+                    int alen = 0, dim_arg = 1;
+                    lexer_next(lex); // consume bounds kw
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    if (lex->current.type == TOK_VARIABLE) {
+                        aname[0] = lex->current.value.var_name; aname[1] = '\0'; alen = 1; lexer_next(lex);
+                    } else if (lex->current.type == TOK_NAMED_VAR) {
+                        alen = lex->current.str_length;
+                        if (alen > MAX_VAR_NAME_LEN) alen = MAX_VAR_NAME_LEN;
+                        memcpy(aname, lex->current.str_start, (size_t)alen); aname[alen] = '\0'; lexer_next(lex);
+                    } else {
+                        error_raise(ERR_WHAT, line_num); return bval_int(0);
+                    }
+                    for (int i = 0; i < alen; i++) {
+                        if (aname[i] >= 'a' && aname[i] <= 'z') aname[i] = (char)(aname[i] - 32);
+                    }
+                    if (lex->current.type == TOK_COMMA) {
+                        lexer_next(lex);
+                        BValue dim_val = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        dim_arg = (int)bval_to_int(&dim_val);
+                    }
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    val_stack[val_top++] = runtime_get_dim(rt, aname, alen, is_upper ? -2 : -1, dim_arg, 0, line_num);
+                    expect_operand = 0;
+                } else if (kw == KW_DET) {
+                    char aname[MAX_VAR_NAME_LEN + 1];
+                    int alen = 0, i, n, p, r;
+                    lexer_next(lex); // consume DET
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_float(0.0);
+                    if (lex->current.type == TOK_VARIABLE) {
+                        aname[0] = lex->current.value.var_name; aname[1] = '\0'; alen = 1; lexer_next(lex);
+                    } else if (lex->current.type == TOK_NAMED_VAR) {
+                        alen = lex->current.str_length;
+                        if (alen > MAX_VAR_NAME_LEN) alen = MAX_VAR_NAME_LEN;
+                        memcpy(aname, lex->current.str_start, (size_t)alen); aname[alen] = '\0'; lexer_next(lex);
+                    } else {
+                        error_raise(ERR_WHAT, line_num); return bval_float(0.0);
+                    }
+                    for (i = 0; i < alen; i++) {
+                        if (aname[i] >= 'a' && aname[i] <= 'z') aname[i] = (char)(aname[i] - 32);
+                    }
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_float(0.0);
+                    DimArray *arr = runtime_find_dim(rt, aname, alen);
+                    if (arr == NULL || arr->dims != 2 || arr->size[0] != arr->size[1]) {
+                        error_raise(ERR_HOW, line_num); return bval_float(0.0);
+                    }
+                    n = arr->size[0] - 1;
+                    if (n > 15 || n < 1) { error_raise(ERR_SORRY, line_num); return bval_float(0.0); }
+                    double work[16][16];
+                    for (r = 0; r < n; r++) {
+                        for (int c = 0; c < n; c++) {
+                            BValue v = arr->elements[(r + 1) * arr->size[1] + (c + 1)];
+                            work[r][c] = bval_to_float(&v);
+                        }
+                    }
+                    double det_val = 1.0;
+                    int sign = 1;
+                    for (p = 0; p < n; p++) {
+                        int max_row = p;
+                        double max_val = work[p][p] < 0 ? -work[p][p] : work[p][p];
+                        for (r = p + 1; r < n; r++) {
+                            double v = work[r][p] < 0 ? -work[r][p] : work[r][p];
+                            if (v > max_val) { max_val = v; max_row = r; }
+                        }
+                        if (max_row != p) {
+                            for (int c = 0; c < n; c++) {
+                                double tmp = work[p][c]; work[p][c] = work[max_row][c]; work[max_row][c] = tmp;
+                            }
+                            sign = -sign;
+                        }
+                        double pivot = work[p][p];
+                        if (pivot > -1e-12 && pivot < 1e-12) { det_val = 0.0; break; }
+                        det_val *= pivot;
+                        for (r = p + 1; r < n; r++) {
+                            double factor = work[r][p] / pivot;
+                            for (int c = p + 1; c < n; c++) work[r][c] -= factor * work[p][c];
+                        }
+                    }
+                    val_stack[val_top++] = bval_float(det_val * sign);
+                    expect_operand = 0;
+                } else if (kw == KW_VARPTR || kw == KW_VARPTR_STR) {
+                    int is_str = (kw == KW_VARPTR_STR);
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        if (is_str) val_stack[val_top++] = bval_string("", 0);
+                        else val_stack[val_top++] = bval_int(0);
+                    } else {
+                        TokenType vt = lex->current.type;
+                        if (vt == TOK_VARIABLE || vt == TOK_STRING_VAR || vt == TOK_NAMED_VAR) {
+                            char name[MAX_VAR_NAME_LEN + 1];
+                            int len = 0;
+                            if (vt == TOK_VARIABLE || vt == TOK_STRING_VAR) {
+                                name[0] = lex->current.value.var_name;
+                                if (vt == TOK_STRING_VAR) { name[1] = '$'; name[2] = '\0'; len = 2; }
+                                else { name[1] = '\0'; len = 1; }
+                            } else {
+                                len = lex->current.str_length < MAX_VAR_NAME_LEN ? lex->current.str_length : MAX_VAR_NAME_LEN;
+                                memcpy(name, lex->current.str_start, (size_t)len);
+                                name[len] = '\0';
+                            }
+                            lexer_next(lex); // consume name
+                            
+                            int is_array = 0;
+                            int idx1 = 0, idx2 = 0, idx3 = 0;
+                            if (lex->current.type == TOK_LPAREN) {
+                                lexer_next(lex); // consume (
+                                BValue t1 = parse_expression_bval_internal(lex, rt, line_num, 0);
+                                idx1 = (int)bval_to_int(&t1);
+                                if (lex->current.type == TOK_COMMA) {
+                                    lexer_next(lex);
+                                    BValue t2 = parse_expression_bval_internal(lex, rt, line_num, 0);
+                                    idx2 = (int)bval_to_int(&t2);
+                                    if (lex->current.type == TOK_COMMA) {
+                                        lexer_next(lex);
+                                        BValue t3 = parse_expression_bval_internal(lex, rt, line_num, 0);
+                                        idx3 = (int)bval_to_int(&t3);
+                                    }
+                                }
+                                lexer_expect(lex, TOK_RPAREN);
+                                is_array = 1;
+                            }
+                            lexer_expect(lex, TOK_RPAREN);
+                            
+                            uint32_t addr = 0;
+                            uint8_t type_byte = 2;
+                            if (is_array) {
+                                DimArray *arr = NULL;
+                                for (int i = 0; i < rt->dim_count; i++) {
+                                    if (pi_str_case_equal(name, rt->dim_arrays[i].name)) {
+                                        arr = &rt->dim_arrays[i]; break;
+                                    }
+                                }
+                                if (arr != NULL) {
+                                    int flat_idx = 0;
+                                    if (arr->dims == 1) flat_idx = idx1 - rt->option_base;
+                                    else if (arr->dims == 2) flat_idx = (idx1 - rt->option_base) * arr->size[1] + (idx2 - rt->option_base);
+                                    else if (arr->dims == 3) flat_idx = ((idx1 - rt->option_base) * arr->size[1] + (idx2 - rt->option_base)) * arr->size[2] + (idx3 - rt->option_base);
+                                    
+                                    if (flat_idx >= 0 && flat_idx < arr->total) {
+                                        int element_offset = (int)(arr->elements - rt->dim_elements) + flat_idx;
+                                        addr = (uint32_t)(0x10000 + element_offset * 8);
+                                    }
+                                }
+                                int suffix = (len > 0) ? name[len - 1] : 0;
+                                if (suffix == '%') type_byte = 2;
+                                else if (suffix == '!') type_byte = 4;
+                                else if (suffix == '#') type_byte = 8;
+                                else if (suffix == '$') type_byte = 3;
+                            } else {
+                                if (len == 1 && name[0] >= 'A' && name[0] <= 'Z') {
+                                    addr = (uint32_t)(0x7000 + (name[0] - 'A') * 8);
+                                    unsigned char dtype = rt->deftype_map[name[0] - 'A'];
+                                    if (dtype == DEFTYPE_INT) type_byte = 2;
+                                    else if (dtype == DEFTYPE_SNG) type_byte = 4;
+                                    else if (dtype == DEFTYPE_DBL) type_byte = 8;
+                                    else if (dtype == DEFTYPE_STR) type_byte = 3;
+                                } else if (len == 2 && name[0] >= 'A' && name[0] <= 'Z' && name[1] == '$') {
+                                    addr = (uint32_t)(0x7000 + (26 + (name[0] - 'A')) * 8);
+                                    type_byte = 3;
+                                } else {
+                                    int named_idx = -1;
+                                    for (int i = 0; i < rt->named_count; i++) {
+                                        if (pi_str_case_equal(name, rt->named_vars[i].name)) {
+                                            named_idx = i; break;
+                                        }
+                                    }
+                                    if (named_idx != -1) {
+                                        addr = (uint32_t)(0x7000 + (52 + named_idx) * 8);
+                                        char last = name[len - 1];
+                                        if (last == '%') type_byte = 2;
+                                        else if (last == '!') type_byte = 4;
+                                        else if (last == '#') type_byte = 8;
+                                        else if (last == '$') type_byte = 3;
+                                    }
+                                }
+                            }
+                            
+                            if (is_str) {
+                                char desc[4];
+                                desc[0] = (char)type_byte;
+                                desc[1] = (char)(addr & 0xFF);
+                                desc[2] = (char)((addr >> 8) & 0xFF);
+                                desc[3] = '\0';
+                                char *pool_str = strpool_store(&rt->strpool, desc, 3);
+                                val_stack[val_top++] = bval_string(pool_str, 3);
+                            } else {
+                                val_stack[val_top++] = bval_int((long)addr);
+                            }
+                        } else {
+                            lexer_skip_to_end(lex);
+                            if (is_str) val_stack[val_top++] = bval_string("", 0);
+                            else val_stack[val_top++] = bval_int(0);
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_TICKS) {
+                    val_stack[val_top++] = bval_float(vdev_get_time());
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_TIMER) {
+                    double remain = 0.0;
+                    if (rt->timer_interval > 0.0) {
+                        double elapsed = vdev_get_time() - rt->timer_last_fire;
+                        remain = rt->timer_interval - elapsed;
+                        if (remain < 0.0) remain = 0.0;
+                    }
+                    val_stack[val_top++] = bval_float(remain);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_DATE_FUNC) {
+                    char buf[16];
+                    time_t t = time(NULL);
+                    struct tm *tm = localtime(&t);
+                    sprintf(buf, "%02d-%02d-%04d", tm->tm_mon + 1, tm->tm_mday, tm->tm_year + 1900);
+                    char *ptr = strpool_store(&rt->strpool, buf, 10);
+                    val_stack[val_top++] = bval_string(ptr, 10);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_TIME_FUNC) {
+                    char buf[16];
+                    time_t t = time(NULL);
+                    struct tm *tm = localtime(&t);
+                    sprintf(buf, "%02d:%02d:%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
+                    char *ptr = strpool_store(&rt->strpool, buf, 8);
+                    val_stack[val_top++] = bval_string(ptr, 8);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_CLOCK_FUNC) {
+                    char buf[64];
+                    time_t t = time(NULL);
+                    struct tm *tm = localtime(&t);
+                    sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
+                    int len = 19;
+                    char *ptr = strpool_store(&rt->strpool, buf, len);
+                    val_stack[val_top++] = bval_string(ptr, len);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_ALARM_FUNC) {
+                    int len = (int)strlen(rt->alarm_str);
+                    if (len == 0) {
+                        val_stack[val_top++] = bval_string(NULL, 0);
+                    } else {
+                        char *ptr = strpool_store(&rt->strpool, rt->alarm_str, len);
+                        val_stack[val_top++] = bval_string(ptr, len);
+                    }
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_DIALECT_FUNC) {
+                    const char *dname = dialect_get_short_name();
+                    int len = (int)strlen(dname);
+                    char *ptr = strpool_store(&rt->strpool, dname, len);
+                    val_stack[val_top++] = bval_string(ptr, len);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_MEMMAP_FUNC) {
+                    const char *mname = memmap_get_name((MemMapType)rt->memmap_type);
+                    int len = (int)strlen(mname);
+                    char *ptr = strpool_store(&rt->strpool, mname, len);
+                    val_stack[val_top++] = bval_string(ptr, len);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_VPATH_FUNC) {
+                    const char *vpath = vfs_get_vpath();
+                    if (vpath == NULL) vpath = "";
+                    int len = (int)strlen(vpath);
+                    char *ptr = strpool_store(&rt->strpool, vpath, len);
+                    val_stack[val_top++] = bval_string(ptr, len);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_CWD_FUNC || kw == KW_PWD) {
+                    char cwdbuf[512];
 #ifdef _WIN32
- if (_getcwd(cwdbuf, sizeof(cwdbuf))
- == NULL)
+                    if (_getcwd(cwdbuf, sizeof(cwdbuf)) == NULL) cwdbuf[0] = '\0';
 #else
- if (getcwd(cwdbuf, sizeof(cwdbuf))
- == NULL)
+                    if (getcwd(cwdbuf, sizeof(cwdbuf)) == NULL) cwdbuf[0] = '\0';
 #endif
- {
- cwdbuf[0] = '\0';
- }
- len = (int)strlen(cwdbuf);
- ptr = strpool_store(&rt->strpool,
- cwdbuf, len);
- return bval_string(ptr, len);
- }
-  // ALIAS$(name$) - bidirectional alias lookup.
-  // If name$ is an alias, returns the original keyword.
-  // If name$ is a keyword, returns its alias (if any).
-  // Returns empty string if neither found.
- if (kw == KW_ALIAS_FUNC) {
- BValue arg;
- const char *result;
- char *ptr;
- int len;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_string(NULL, 0);
- arg = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_string(NULL, 0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_string(NULL, 0);
-
- if (!bval_is_string(&arg))
- return bval_string(NULL, 0);
-
- // Try forward: alias name -> keyword
- result = lexer_find_alias_by_name(
- arg.v.sval.data, arg.v.sval.length);
- if (result == NULL) {
- // Try reverse: keyword name -> alias
- int ki;
- KeywordId found_kw = KW_COUNT;
- for (ki = 0; ki < (int)KW_COUNT; ki++) {
- const char *kname =
- lexer_keyword_name((KeywordId)ki);
- if (kname[0] != '\0') {
- int klen = (int)strlen(kname);
- if (klen == arg.v.sval.length) {
- int j, m = 1;
- for (j = 0; j < klen; j++) {
- char ca = arg.v.sval.data[j];
- char cb = kname[j];
- if (ca>='a' && ca<='z') ca=(char)(ca-32);
- if (cb>='a' && cb<='z') cb=(char)(cb-32);
- if (ca != cb) { m=0; break; }
- }
- if (m) { found_kw=(KeywordId)ki; break; }
- }
- }
- }
- if (found_kw != KW_COUNT) {
- result = lexer_find_alias_for_keyword(found_kw);
- }
- }
-
- if (result == NULL)
- return bval_string(NULL, 0);
-
- len = (int)strlen(result);
- ptr = strpool_store(&rt->strpool, result, len);
- return bval_string(ptr, len);
- }
-
- // CINT(x) - round to integer.
- if (kw == KW_CINT) {
- double v;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- val = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- v = bval_to_float(&val);
- return bval_int((long)(v >= 0 ? v+0.5 : v-0.5));
- }
-
- // CSNG(x) - convert to single-precision float.
- // CDBL(x) - convert to double-precision float.
- // Both return double since BASIC++ uses double internally.
- if (kw == KW_CSNG || kw == KW_CDBL) {
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- val = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- return bval_float(bval_to_float(&val));
- }
-
- // CSRLIN - return current cursor row.
- // No parentheses needed (variable-like).
- if (kw == KW_CSRLIN) {
- lexer_next(lex);
- return bval_int((long)rt->cursor_row);
- }
-
- // ERL - last error line number.
- // Variable-like (no parentheses).
- if (kw == KW_ERL) {
- lexer_next(lex);
- return bval_int((long)rt->last_err_line);
- }
-
- // ERR - last error code.
- // Variable-like (no parentheses).
- if (kw == KW_ERR_VAR) {
- lexer_next(lex);
- return bval_int((long)rt->last_err_code);
- }
-
- // EXTERR(n) - DOS extended error.
- // Returns 0 (not applicable on modern OS).
- if (kw == KW_EXTERR) {
- lexer_next(lex);
- if (lex->current.type == TOK_LPAREN) {
- lexer_next(lex);
- (void)parse_expression(lex, rt,
- line_num);
- if (error_occurred())
- return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- }
- return bval_int(0);
- }
-
- // ERDEV - device error code.
- // Returns 0 (not applicable).
- if (kw == KW_ERDEV) {
- lexer_next(lex);
- return bval_int(0);
- }
-
- // FRE(n) - Free memory query.
- //
- // GW-BASIC compatible:
- // FRE(0) = free string space
- // FRE("") = free string space
- // FRE(x$) = free string space
- // FRE(-1) = free stack space
- // FRE(-2) = free array/variable space
- //
- // BASIC++ extension:
- // FRE(-3) = variable pool free
- // FRE(n) for n>0 = total free (all pools)
- if (kw == KW_FRE) {
- long arg;
- long result;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- // Accept string arg: FRE("") or FRE(x$)
- if (lex->current.type == TOK_STRING ||
- lex->current.type == TOK_STRING_VAR) {
- lexer_next(lex);
- arg = 0;
- } else {
- arg = parse_expression(lex, rt,
- line_num);
- if (error_occurred())
- return bval_int(0);
- }
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
-
- if (arg == 0) {
- // GW-BASIC: free string space
- result = rt->strpool.size
- - rt->strpool.used;
- } else if (arg == -1) {
- // GW-BASIC: free stack space
- result = mem_pool_available(
- &rt->memory->scratch);
- } else if (arg == -2) {
- // GW-BASIC: free array/var space
- result = mem_pool_available(
- &rt->memory->variable);
- } else if (arg == -3) {
- // BASIC++ ext: variable pool
- result = mem_pool_available(
- &rt->memory->variable);
- } else {
- // Total free (all pools)
- result = mem_pool_available(
- &rt->memory->variable)
- + (rt->strpool.size
- - rt->strpool.used)
- + mem_pool_available(
- &rt->memory->scratch);
- }
- return bval_int(result);
- }
-
- // EXIST("filename") - Check if file exists.
- // Returns 1 if the file can be opened, 0 if not.
- // Pure C89: uses fopen("rb") test.
- // Example: IF EXIST("GAME.BAS") THEN LOAD "GAME.BAS"
- if (kw == KW_EXIST_FUNC) {
- BValue arg;
- char fname[260];
- int flen;
- FILE *fp;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- arg = parse_expression_bval(lex, rt,
- line_num);
- if (error_occurred())
- return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- if (!bval_is_string(&arg))
- return bval_int(0);
- flen = arg.v.sval.length;
- if (flen > 259) flen = 259;
- if (flen < 1 || arg.v.sval.data == NULL)
- return bval_int(0);
- memcpy(fname, arg.v.sval.data,
- (size_t)flen);
- fname[flen] = '\0';
- fp = fopen(fname, "rb");
- if (fp != NULL) {
- fclose(fp);
- return bval_int(1);
- }
- return bval_int(0);
- }
-
- // FILELEN("filename") - File size in bytes.
- // Opens the file, seeks to end, returns
- // the position (= file size in bytes).
- // Returns -1 if file not found.
- // Pure C89: fopen/fseek/ftell.
- // Example: PRINT FILELEN("DATA.BIN")
- if (kw == KW_FILELEN_FUNC) {
- BValue arg;
- char fname[260];
- int flen;
- FILE *fp;
- long sz;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(-1);
- arg = parse_expression_bval(lex, rt,
- line_num);
- if (error_occurred())
- return bval_int(-1);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(-1);
- if (!bval_is_string(&arg))
- return bval_int(-1);
- flen = arg.v.sval.length;
- if (flen > 259) flen = 259;
- if (flen < 1 || arg.v.sval.data == NULL)
- return bval_int(-1);
- memcpy(fname, arg.v.sval.data,
- (size_t)flen);
- fname[flen] = '\0';
- fp = fopen(fname, "rb");
- if (fp == NULL)
- return bval_int(-1);
- fseek(fp, 0L, SEEK_END);
- sz = ftell(fp);
- fclose(fp);
- return bval_int(sz);
- }
-
- // INP(port) - Read I/O port.
- // No direct port access; returns 0.
- if (kw == KW_INP) {
- long port;
- int paddr;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- port = parse_expression(lex, rt,
- line_num);
- if (error_occurred())
- return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- // Read from virtual memory segment.
- // On memory-mapped platforms (C64,
- // Atari, Apple, etc.) I/O ports live
- // in the address space, so INP and
- // PEEK are equivalent. On x86 (MSDOS)
- // the port space is separate, but we
- // map it into the same 64K array for
- // compatibility.
- paddr = (int)(port & 0xFFFF);
- if (paddr >= 0 &&
- paddr < MAX_MEM_SEGMENT)
- return bval_int(
- (long)rt->mem_segment[paddr]);
- return bval_int(0);
- }
-
- // SHELL$(command$) - Capture command output.
- //
- // Runs the command via popen/_ popen and
- // returns stdout as a string. Max 32K.
- if (kw == KW_SHELL) {
- BValue sv;
- char cmd[512];
- int cl;
- static char outbuf[32768];
- int outlen = 0;
- FILE *pp;
- char *poolbuf;
-
- lexer_next(lex);
-
- // Expect $(
- if (lex->current.type != TOK_LPAREN) {
- // No parens = not SHELL$, error
- error_raise(ERR_WHAT, line_num);
- return bval_int(0);
- }
- lexer_next(lex);
-
- sv = parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred())
- return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
-
- if (!bval_is_string(&sv)) {
- error_raise(ERR_WHAT, line_num);
- return bval_string(NULL, 0);
- }
-
- cl = sv.v.sval.length;
- if (cl > 510) cl = 510;
- if (sv.v.sval.data)
- memcpy(cmd, sv.v.sval.data,
- (size_t)cl);
- cmd[cl] = '\0';
-
-#if defined(__MSDOS__) || defined(__DOS__) || defined(MSDOS)
- pp = NULL; // popen not available on DOS
-#elif defined(_WIN32)
- pp = _popen(cmd, "r");
+                    if (kw == KW_CWD_FUNC) {
+                        char *last_comp = cwdbuf;
+                        for (int i = 0; cwdbuf[i] != '\0'; i++) {
+                            if (cwdbuf[i] == '/' || cwdbuf[i] == '\\') {
+                                if (cwdbuf[i+1] != '\0') last_comp = &cwdbuf[i+1];
+                            }
+                        }
+                        int len = (int)strlen(last_comp);
+                        char *ptr = strpool_store(&rt->strpool, last_comp, len);
+                        val_stack[val_top++] = bval_string(ptr, len);
+                    } else {
+                        int len = (int)strlen(cwdbuf);
+                        char *ptr = strpool_store(&rt->strpool, cwdbuf, len);
+                        val_stack[val_top++] = bval_string(ptr, len);
+                    }
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_ALIAS_FUNC) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    BValue arg = parse_expression_bval_internal(lex, rt, line_num, 0);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    if (!bval_is_string(&arg)) {
+                        val_stack[val_top++] = bval_string(NULL, 0);
+                    } else {
+                        const char *result = lexer_find_alias_by_name(arg.v.sval.data, arg.v.sval.length);
+                        if (result == NULL) {
+                            int ki;
+                            KeywordId found_kw = KW_COUNT;
+                            for (ki = 0; ki < (int)KW_COUNT; ki++) {
+                                const char *kname = lexer_keyword_name((KeywordId)ki);
+                                if (kname[0] != '\0') {
+                                    int klen = (int)strlen(kname);
+                                    if (klen == arg.v.sval.length) {
+                                        int j, m = 1;
+                                        for (j = 0; j < klen; j++) {
+                                            char ca = arg.v.sval.data[j];
+                                            char cb = kname[j];
+                                            if (ca >= 'a' && ca <= 'z') ca = (char)(ca - 32);
+                                            if (cb >= 'a' && cb <= 'z') cb = (char)(cb - 32);
+                                            if (ca != cb) { m = 0; break; }
+                                        }
+                                        if (m) { found_kw = (KeywordId)ki; break; }
+                                    }
+                                }
+                            }
+                            if (found_kw != KW_COUNT) {
+                                result = lexer_find_alias_for_keyword(found_kw);
+                            }
+                        }
+                        if (result == NULL) {
+                            val_stack[val_top++] = bval_string(NULL, 0);
+                        } else {
+                            int len = (int)strlen(result);
+                            char *ptr = strpool_store(&rt->strpool, result, len);
+                            val_stack[val_top++] = bval_string(ptr, len);
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_CINT) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    BValue val = parse_expression_bval_internal(lex, rt, line_num, 0);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    double v = bval_to_float(&val);
+                    val_stack[val_top++] = bval_int((long)(v >= 0 ? v + 0.5 : v - 0.5));
+                    expect_operand = 0;
+                } else if (kw == KW_CSNG || kw == KW_CDBL) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    BValue val = parse_expression_bval_internal(lex, rt, line_num, 0);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    val_stack[val_top++] = bval_float(bval_to_float(&val));
+                    expect_operand = 0;
+                } else if (kw == KW_CSRLIN) {
+                    val_stack[val_top++] = bval_int((long)rt->cursor_row);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_ERL) {
+                    val_stack[val_top++] = bval_int((long)rt->last_err_line);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_ERR_VAR) {
+                    val_stack[val_top++] = bval_int((long)rt->last_err_code);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_EXTERR) {
+                    lexer_next(lex);
+                    if (lex->current.type == TOK_LPAREN) {
+                        lexer_next(lex);
+                        (void)parse_expression(lex, rt, line_num);
+                        if (error_occurred()) return bval_int(0);
+                        if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    }
+                    val_stack[val_top++] = bval_int(0);
+                    expect_operand = 0;
+                } else if (kw == KW_ERDEV) {
+                    val_stack[val_top++] = bval_int(0);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_FRE) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    long arg = 0;
+                    if (lex->current.type == TOK_STRING || lex->current.type == TOK_STRING_VAR) {
+                        lexer_next(lex);
+                    } else {
+                        arg = parse_expression(lex, rt, line_num);
+                        if (error_occurred()) return bval_int(0);
+                    }
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    long result = 0;
+                    if (arg == 0) result = rt->strpool.size - rt->strpool.used;
+                    else if (arg == -1) result = mem_pool_available(&rt->memory->scratch);
+                    else if (arg == -2 || arg == -3) result = mem_pool_available(&rt->memory->variable);
+                    else result = mem_pool_available(&rt->memory->variable) + (rt->strpool.size - rt->strpool.used) + mem_pool_available(&rt->memory->scratch);
+                    val_stack[val_top++] = bval_int(result);
+                    expect_operand = 0;
+                } else if (kw == KW_EXIST_FUNC) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    BValue arg = parse_expression_bval_internal(lex, rt, line_num, 0);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    int res = 0;
+                    if (bval_is_string(&arg) && arg.v.sval.length > 0 && arg.v.sval.length < 260 && arg.v.sval.data != NULL) {
+                        char fname[260];
+                        memcpy(fname, arg.v.sval.data, (size_t)arg.v.sval.length);
+                        fname[arg.v.sval.length] = '\0';
+                        FILE *fp = fopen(fname, "rb");
+                        if (fp != NULL) { fclose(fp); res = 1; }
+                    }
+                    val_stack[val_top++] = bval_int(res);
+                    expect_operand = 0;
+                } else if (kw == KW_FILELEN_FUNC) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(-1);
+                    BValue arg = parse_expression_bval_internal(lex, rt, line_num, 0);
+                    if (error_occurred()) return bval_int(-1);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(-1);
+                    long sz = -1;
+                    if (bval_is_string(&arg) && arg.v.sval.length > 0 && arg.v.sval.length < 260 && arg.v.sval.data != NULL) {
+                        char fname[260];
+                        memcpy(fname, arg.v.sval.data, (size_t)arg.v.sval.length);
+                        fname[arg.v.sval.length] = '\0';
+                        FILE *fp = fopen(fname, "rb");
+                        if (fp != NULL) {
+                            fseek(fp, 0L, SEEK_END);
+                            sz = ftell(fp);
+                            fclose(fp);
+                        }
+                    }
+                    val_stack[val_top++] = bval_int(sz);
+                    expect_operand = 0;
+                } else if (kw == KW_INP) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    long port = parse_expression(lex, rt, line_num);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    int paddr = (int)(port & 0xFFFF);
+                    long res = 0;
+                    if (paddr >= 0 && paddr < MAX_MEM_SEGMENT) res = (long)rt->mem_segment[paddr];
+                    val_stack[val_top++] = bval_int(res);
+                    expect_operand = 0;
+                } else if (kw == KW_SHELL) {
+                    lexer_next(lex);
+                    if (lex->current.type != TOK_LPAREN) {
+                        error_raise(ERR_WHAT, line_num);
+                        return bval_int(0);
+                    }
+                    lexer_next(lex);
+                    BValue sv = parse_expression_bval_internal(lex, rt, line_num, 0);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    if (!bval_is_string(&sv)) {
+                        error_raise(ERR_WHAT, line_num);
+                        val_stack[val_top++] = bval_string(NULL, 0);
+                    } else {
+                        char cmd[512];
+                        int cl = sv.v.sval.length < 510 ? sv.v.sval.length : 510;
+                        if (sv.v.sval.data) memcpy(cmd, sv.v.sval.data, (size_t)cl);
+                        cmd[cl] = '\0';
+                        FILE *pp = NULL;
+#if !defined(__MSDOS__) && !defined(__DOS__) && !defined(MSDOS)
+#ifdef _WIN32
+                        pp = _popen(cmd, "r");
 #else
- pp = popen(cmd, "r");
+                        pp = popen(cmd, "r");
 #endif
- if (pp == NULL)
- return bval_string(NULL, 0);
-
- while (outlen < 32760) {
- int ch = fgetc(pp);
- if (ch == EOF) break;
- outbuf[outlen++] = (char)ch;
- }
-
-#if defined(__MSDOS__) || defined(__DOS__) || defined(MSDOS)
- rt->last_shell_exitcode = -1;
-#elif defined(_WIN32)
- rt->last_shell_exitcode =
- _pclose(pp);
+#endif
+                        if (pp == NULL) {
+                            val_stack[val_top++] = bval_string(NULL, 0);
+                        } else {
+                            static char outbuf[32768];
+                            int outlen = 0;
+                            while (outlen < 32760) {
+                                int ch = fgetc(pp);
+                                if (ch == EOF) break;
+                                outbuf[outlen++] = (char)ch;
+                            }
+#ifdef _WIN32
+                            rt->last_shell_exitcode = _pclose(pp);
 #else
- rt->last_shell_exitcode =
- pclose(pp);
+                            rt->last_shell_exitcode = pclose(pp);
 #endif
- // Strip trailing newline
- while (outlen > 0 &&
- (outbuf[outlen - 1] == '\n' ||
- outbuf[outlen - 1] == '\r'))
- outlen--;
-
- poolbuf = strpool_alloc(
- &rt->strpool, outlen);
- if (poolbuf && outlen > 0)
- memcpy(poolbuf, outbuf,
- (size_t)outlen);
- return bval_string(poolbuf, outlen);
- }
-
- // ERRORLEVEL - Return last SHELL exit code.
- // Used as a pseudo-variable in expressions.
- if (kw == KW_ERRORLEVEL) {
- lexer_next(lex);
- return bval_int(
- (long)rt->last_shell_exitcode);
- }
-
- // LOC(n) - File position.
- // Returns current byte position in file.
- if (kw == KW_LOC) {
- long chan;
- long result = 0;
- FILE *fp;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- chan = parse_expression(lex, rt,
- line_num);
- if (error_occurred())
- return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- fp = fileio_get_fp((int)chan);
- if (fp) {
- result = (long)ftell(fp);
- if (result < 0) result = 0;
- }
- return bval_int(result);
- }
-
- // LPOS(n) - Printer head position.
- // Returns column position on printer.
- // No printer support; returns 0.
- if (kw == KW_LPOS) {
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- (void)parse_expression(lex, rt,
- line_num);
- if (error_occurred())
- return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- return bval_int(0);
- }
-
- // POS(x) - Return current cursor column.
- // Argument is a dummy (GW-BASIC compat).
- if (kw == KW_POS_FUNC) {
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- (void)parse_expression(lex, rt,
- line_num);
- if (error_occurred())
- return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- return bval_int(
- (long)rt->cursor_col);
- }
-
-  // PMAP(coordinate, function)
-  // Map between physical and view coords.
-  // Stub: returns the input coordinate.
- if (kw == KW_PMAP) {
-  long coord, pmap_fn;
-  lexer_next(lex);
-  if (!lexer_expect(lex, TOK_LPAREN))
-   return bval_int(0);
-  coord = parse_expression(lex, rt,
-   line_num);
-  if (error_occurred())
-   return bval_int(0);
-  if (lex->current.type == TOK_COMMA)
-   lexer_next(lex);
-  pmap_fn = parse_expression(lex, rt,
-   line_num);
-  if (error_occurred())
-   return bval_int(0);
-  if (!lexer_expect(lex, TOK_RPAREN))
-   return bval_int(0);
-  (void)pmap_fn;
-  return bval_int(coord);
- }
-
- // PLAY(n) - Return number of notes in
- // background music buffer.
- // No sound hardware; always returns 0.
- if (kw == KW_PLAY) {
- lexer_next(lex);
- if (lex->current.type == TOK_LPAREN) {
- lexer_next(lex);
- (void)parse_expression(lex, rt,
- line_num);
- if (error_occurred())
- return bval_int(0);
- if (!lexer_expect(lex,
- TOK_RPAREN))
- return bval_int(0);
-  return bval_int(0);
- }
- // If no parens, fall through to
- // statement PLAY handling 
- return bval_int(0);
- }
-
-  // STICK(n) - Return joystick position.
-  // n=0: x of joystick A, n=1: y of A
-  // n=2: x of joystick B, n=3: y of B
-  // No joystick hardware; always returns 0.
- if (kw == KW_STICK) {
-  lexer_next(lex);
-  if (!lexer_expect(lex, TOK_LPAREN))
-   return bval_int(0);
-  (void)parse_expression(lex, rt,
-   line_num);
-  if (error_occurred())
-   return bval_int(0);
-  if (!lexer_expect(lex, TOK_RPAREN))
-   return bval_int(0);
-  return bval_int(0);
- }
-
-  // USR(n) - Call machine language routine.
-  // In GW-BASIC, calls a user assembly routine
-  // at the DEF USR address. No machine code
-  // execution in this interpreter; consume
-  // the argument and return 0.
- if (kw == KW_USR) {
-  lexer_next(lex);
-  if (!lexer_expect(lex, TOK_LPAREN))
-   return bval_int(0);
-  (void)parse_expression(lex, rt,
-   line_num);
-  if (error_occurred())
-   return bval_int(0);
-  if (!lexer_expect(lex, TOK_RPAREN))
-   return bval_int(0);
-  return bval_int(0);
- }
-
-  // VARPTR(var) - Return pointer to variable.
-  // In GW-BASIC, returns the memory address
-  // of a variable in the emulated segmented memory space.
-  if (kw == KW_VARPTR) {
-      lexer_next(lex);
-      if (!lexer_expect(lex, TOK_LPAREN))
-          return bval_int(0);
-      
-      TokenType vt = lex->current.type;
-      if (vt == TOK_VARIABLE || vt == TOK_STRING_VAR || vt == TOK_NAMED_VAR) {
-          char name[MAX_VAR_NAME_LEN + 1];
-          int len = 0;
-          if (vt == TOK_VARIABLE || vt == TOK_STRING_VAR) {
-              name[0] = lex->current.value.var_name;
-              if (vt == TOK_STRING_VAR) {
-                  name[1] = '$';
-                  name[2] = '\0';
-                  len = 2;
-              } else {
-                  name[1] = '\0';
-                  len = 1;
-              }
-          } else {
-              len = lex->current.str_length;
-              if (len > MAX_VAR_NAME_LEN) len = MAX_VAR_NAME_LEN;
-              memcpy(name, lex->current.str_start, len);
-              name[len] = '\0';
-          }
-          
-          lexer_next(lex); // consume var name
-          
-          int is_array = 0;
-          int idx1 = 0, idx2 = 0, idx3 = 0;
-          if (lex->current.type == TOK_LPAREN) {
-              lexer_next(lex); // consume '('
-              BValue t1 = parse_expression_bval(lex, rt, line_num);
-              idx1 = (int)bval_to_int(&t1);
-              if (lex->current.type == TOK_COMMA) {
-                  lexer_next(lex); // consume ','
-                  BValue t2 = parse_expression_bval(lex, rt, line_num);
-                  idx2 = (int)bval_to_int(&t2);
-                  if (lex->current.type == TOK_COMMA) {
-                      lexer_next(lex); // consume ','
-                      BValue t3 = parse_expression_bval(lex, rt, line_num);
-                      idx3 = (int)bval_to_int(&t3);
-                  }
-              }
-              if (!lexer_expect(lex, TOK_RPAREN))
-                  return bval_int(0);
-              is_array = 1;
-          }
-          
-          if (!lexer_expect(lex, TOK_RPAREN))
-              return bval_int(0);
-          
-          if (is_array) {
-              int i;
-              DimArray *arr = NULL;
-              for (i = 0; i < rt->dim_count; i++) {
-                  if (pi_str_case_equal(name, rt->dim_arrays[i].name)) {
-                      arr = &rt->dim_arrays[i];
-                      break;
-                  }
-              }
-              if (arr != NULL) {
-                  int flat_idx = 0;
-                  if (arr->dims == 1) {
-                      flat_idx = idx1 - rt->option_base;
-                  } else if (arr->dims == 2) {
-                      flat_idx = (idx1 - rt->option_base) * arr->size[1] + (idx2 - rt->option_base);
-                  } else if (arr->dims == 3) {
-                      flat_idx = ((idx1 - rt->option_base) * arr->size[1] + (idx2 - rt->option_base)) * arr->size[2] + (idx3 - rt->option_base);
-                  }
-                  
-                  if (flat_idx >= 0 && flat_idx < arr->total) {
-                      int element_offset = (int)(arr->elements - rt->dim_elements) + flat_idx;
-                      return bval_int(0x10000 + element_offset * 8);
-                  }
-              }
-              return bval_int(0);
-          } else {
-              if (len == 1 && name[0] >= 'A' && name[0] <= 'Z') {
-                  return bval_int(0x7000 + (name[0] - 'A') * 8);
-              } else if (len == 2 && name[0] >= 'A' && name[0] <= 'Z' && name[1] == '$') {
-                  return bval_int(0x7000 + (26 + (name[0] - 'A')) * 8);
-              } else {
-                  int named_idx = -1;
-                  int i;
-                  for (i = 0; i < rt->named_count; i++) {
-                      if (pi_str_case_equal(name, rt->named_vars[i].name)) {
-                          named_idx = i;
-                          break;
-                      }
-                  }
-                  if (named_idx != -1) {
-                      return bval_int(0x7000 + (52 + named_idx) * 8);
-                  }
-              }
-              return bval_int(0);
-          }
-      }
-      lexer_skip_to_end(lex);
-      return bval_int(0);
-  }
-
-  // VARPTR$(var) - Return 3-byte string descriptor representation of the variable pointer.
-  if (kw == KW_VARPTR_STR) {
-      lexer_next(lex);
-      if (!lexer_expect(lex, TOK_LPAREN))
-          return bval_string("", 0);
-      
-      TokenType vt = lex->current.type;
-      if (vt == TOK_VARIABLE || vt == TOK_STRING_VAR || vt == TOK_NAMED_VAR) {
-          char name[MAX_VAR_NAME_LEN + 1];
-          int len = 0;
-          if (vt == TOK_VARIABLE || vt == TOK_STRING_VAR) {
-              name[0] = lex->current.value.var_name;
-              if (vt == TOK_STRING_VAR) {
-                  name[1] = '$';
-                  name[2] = '\0';
-                  len = 2;
-              } else {
-                  name[1] = '\0';
-                  len = 1;
-              }
-          } else {
-              len = lex->current.str_length;
-              if (len > MAX_VAR_NAME_LEN) len = MAX_VAR_NAME_LEN;
-              memcpy(name, lex->current.str_start, len);
-              name[len] = '\0';
-          }
-          
-          lexer_next(lex); // consume var name
-          
-          int is_array = 0;
-          int idx1 = 0, idx2 = 0, idx3 = 0;
-          if (lex->current.type == TOK_LPAREN) {
-              lexer_next(lex); // consume '('
-              BValue t1 = parse_expression_bval(lex, rt, line_num);
-              idx1 = (int)bval_to_int(&t1);
-              if (lex->current.type == TOK_COMMA) {
-                  lexer_next(lex); // consume ','
-                  BValue t2 = parse_expression_bval(lex, rt, line_num);
-                  idx2 = (int)bval_to_int(&t2);
-                  if (lex->current.type == TOK_COMMA) {
-                      lexer_next(lex); // consume ','
-                      BValue t3 = parse_expression_bval(lex, rt, line_num);
-                      idx3 = (int)bval_to_int(&t3);
-                  }
-              }
-              if (!lexer_expect(lex, TOK_RPAREN))
-                  return bval_string("", 0);
-              is_array = 1;
-          }
-          
-          if (!lexer_expect(lex, TOK_RPAREN))
-              return bval_string("", 0);
-          
-          uint16_t addr = 0;
-          uint8_t type_byte = 2; // default integer
-          
-          if (is_array) {
-              int i;
-              DimArray *arr = NULL;
-              for (i = 0; i < rt->dim_count; i++) {
-                  if (pi_str_case_equal(name, rt->dim_arrays[i].name)) {
-                      arr = &rt->dim_arrays[i];
-                      break;
-                  }
-              }
-              if (arr != NULL) {
-                  int flat_idx = 0;
-                  if (arr->dims == 1) {
-                      flat_idx = idx1 - rt->option_base;
-                  } else if (arr->dims == 2) {
-                      flat_idx = (idx1 - rt->option_base) * arr->size[1] + (idx2 - rt->option_base);
-                  } else if (arr->dims == 3) {
-                      flat_idx = ((idx1 - rt->option_base) * arr->size[1] + (idx2 - rt->option_base)) * arr->size[2] + (idx3 - rt->option_base);
-                  }
-                  
-                  if (flat_idx >= 0 && flat_idx < arr->total) {
-                      int element_offset = (int)(arr->elements - rt->dim_elements) + flat_idx;
-                      addr = (uint16_t)(0x10000 + element_offset * 8);
-                  }
-                  
-                  int suffix = (len > 0) ? name[len - 1] : 0;
-                  if (suffix == '%') type_byte = 2;
-                  else if (suffix == '!') type_byte = 4;
-                  else if (suffix == '#') type_byte = 8;
-                  else if (suffix == '$') type_byte = 3;
-              }
-          } else {
-              if (len == 1 && name[0] >= 'A' && name[0] <= 'Z') {
-                  addr = (uint16_t)(0x7000 + (name[0] - 'A') * 8);
-                  unsigned char dtype = rt->deftype_map[name[0] - 'A'];
-                  if (dtype == DEFTYPE_INT) type_byte = 2;
-                  else if (dtype == DEFTYPE_SNG) type_byte = 4;
-                  else if (dtype == DEFTYPE_DBL) type_byte = 8;
-                  else if (dtype == DEFTYPE_STR) type_byte = 3;
-              } else if (len == 2 && name[0] >= 'A' && name[0] <= 'Z' && name[1] == '$') {
-                  addr = (uint16_t)(0x7000 + (26 + (name[0] - 'A')) * 8);
-                  type_byte = 3;
-              } else {
-                  int named_idx = -1;
-                  int i;
-                  for (i = 0; i < rt->named_count; i++) {
-                      if (pi_str_case_equal(name, rt->named_vars[i].name)) {
-                          named_idx = i;
-                          break;
-                      }
-                  }
-                  if (named_idx != -1) {
-                      addr = (uint16_t)(0x7000 + (52 + named_idx) * 8);
-                      char last = name[len - 1];
-                      if (last == '%') type_byte = 2;
-                      else if (last == '!') type_byte = 4;
-                      else if (last == '#') type_byte = 8;
-                      else if (last == '$') type_byte = 3;
-                  }
-              }
-          }
-          
-          char desc[4];
-          desc[0] = (char)type_byte;
-          desc[1] = (char)(addr & 0xFF);
-          desc[2] = (char)((addr >> 8) & 0xFF);
-          desc[3] = '\0';
-          
-          char *pool_str = strpool_store(&rt->strpool, desc, 3);
-          return bval_string(pool_str, 3);
-      }
-      
-      lexer_skip_to_end(lex);
-      return bval_string("", 0);
-  }
-
- // SCREEN(row, col [, flag])
- // Read character or attribute at screen pos.
- // flag=0 or omitted: return ASCII code.
- // flag=1: return color attribute.
-  if (kw == KW_SCREEN) {
-      lexer_next(lex);
-      if (lex->current.type == TOK_LPAREN) {
-          lexer_next(lex);
-          BValue t1 = parse_expression_bval(lex, rt, line_num);
-          int row = (int)bval_to_int(&t1);
-          if (error_occurred()) return bval_int(32);
-          if (lex->current.type == TOK_COMMA)
-              lexer_next(lex);
-          BValue t2 = parse_expression_bval(lex, rt, line_num);
-          int col = (int)bval_to_int(&t2);
-          if (error_occurred()) return bval_int(32);
-          
-          int flag = 0;
-          if (lex->current.type == TOK_COMMA) {
-              lexer_next(lex);
-              BValue t3 = parse_expression_bval(lex, rt, line_num);
-              flag = (int)bval_to_int(&t3);
-              if (error_occurred()) return bval_int(0);
-          }
-          if (!lexer_expect(lex, TOK_RPAREN))
-              return bval_int(32);
-          
+                            while (outlen > 0 && (outbuf[outlen - 1] == '\n' || outbuf[outlen - 1] == '\r')) outlen--;
+                            char *poolbuf = strpool_alloc(&rt->strpool, outlen);
+                            if (poolbuf && outlen > 0) memcpy(poolbuf, outbuf, (size_t)outlen);
+                            val_stack[val_top++] = bval_string(poolbuf, outlen);
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_ERRORLEVEL) {
+                    val_stack[val_top++] = bval_int((long)rt->last_shell_exitcode);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_LOC) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    long chan = parse_expression(lex, rt, line_num);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    FILE *fp = fileio_get_fp((int)chan);
+                    long res = 0;
+                    if (fp) {
+                        res = (long)ftell(fp);
+                        if (res < 0) res = 0;
+                    }
+                    val_stack[val_top++] = bval_int(res);
+                    expect_operand = 0;
+                } else if (kw == KW_LPOS) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    (void)parse_expression(lex, rt, line_num);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    val_stack[val_top++] = bval_int(0);
+                    expect_operand = 0;
+                } else if (kw == KW_POS_FUNC) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    (void)parse_expression(lex, rt, line_num);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    val_stack[val_top++] = bval_int((long)rt->cursor_col);
+                    expect_operand = 0;
+                } else if (kw == KW_PMAP) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    long coord = parse_expression(lex, rt, line_num);
+                    if (error_occurred()) return bval_int(0);
+                    if (lex->current.type == TOK_COMMA) lexer_next(lex);
+                    (void)parse_expression(lex, rt, line_num);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    val_stack[val_top++] = bval_int(coord);
+                    expect_operand = 0;
+                } else if (kw == KW_PLAY) {
+                    lexer_next(lex);
+                    if (lex->current.type == TOK_LPAREN) {
+                        lexer_next(lex);
+                        (void)parse_expression(lex, rt, line_num);
+                        if (error_occurred()) return bval_int(0);
+                        if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    }
+                    val_stack[val_top++] = bval_int(0);
+                    expect_operand = 0;
+                } else if (kw == KW_STICK) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    (void)parse_expression(lex, rt, line_num);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    val_stack[val_top++] = bval_int(0);
+                    expect_operand = 0;
+                } else if (kw == KW_USR) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) return bval_int(0);
+                    (void)parse_expression(lex, rt, line_num);
+                    if (error_occurred()) return bval_int(0);
+                    if (!lexer_expect(lex, TOK_RPAREN)) return bval_int(0);
+                    val_stack[val_top++] = bval_int(0);
+                    expect_operand = 0;
+                } else if (kw == KW_SCREEN) {
+                    lexer_next(lex);
+                    if (lex->current.type == TOK_LPAREN) {
+                        lexer_next(lex);
+                        BValue t1 = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        int row = (int)bval_to_int(&t1);
+                        if (error_occurred()) { val_stack[val_top++] = bval_int(32); }
+                        else {
+                            if (lex->current.type == TOK_COMMA) lexer_next(lex);
+                            BValue t2 = parse_expression_bval_internal(lex, rt, line_num, 0);
+                            int col = (int)bval_to_int(&t2);
+                            if (error_occurred()) { val_stack[val_top++] = bval_int(32); }
+                            else {
+                                int flag = 0;
+                                if (lex->current.type == TOK_COMMA) {
+                                    lexer_next(lex);
+                                    BValue t3 = parse_expression_bval_internal(lex, rt, line_num, 0);
+                                    flag = (int)bval_to_int(&t3);
+                                }
+                                if (!lexer_expect(lex, TOK_RPAREN)) {
+                                    val_stack[val_top++] = bval_int(32);
+                                } else {
 #ifndef NO_SDL2
-          char ch = gw_sdl2_get_char(col - 1, row - 1);
-          if (flag == 1) {
-              return bval_int(7); // normal white attribute
-          }
-          return bval_int((unsigned char)ch);
+                                    char ch = gw_sdl2_get_char(col - 1, row - 1);
+                                    if (flag == 1) {
+                                        val_stack[val_top++] = bval_int(7);
+                                    } else {
+                                        val_stack[val_top++] = bval_int((unsigned char)ch);
+                                    }
 #else
-          return bval_int(32);
+                                    val_stack[val_top++] = bval_int(32);
 #endif
-      }
- // No parens = SCREEN statement,
- // fall through 
- return bval_int(0);
- }
+                                }
+                            }
+                        }
+                    } else {
+                        val_stack[val_top++] = bval_int(0);
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_MKI_FUNC || kw == KW_MKS_FUNC || kw == KW_MKD_FUNC) {
+                    double mkval;
+                    char buf[8];
+                    int blen;
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_string("", 0);
+                    } else {
+                        BValue mkarg = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        mkval = bval_to_float(&mkarg);
+                        if (error_occurred()) {
+                            val_stack[val_top++] = bval_string("", 0);
+                        } else {
+                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                val_stack[val_top++] = bval_string("", 0);
+                            } else {
+                                if (kw == KW_MKI_FUNC) {
+                                    short sv = (short)(long)mkval;
+                                    memcpy(buf, &sv, 2);
+                                    blen = 2;
+                                } else if (kw == KW_MKS_FUNC) {
+                                    if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+                                        gw_double_to_mbf32(mkval, (uint8_t *)buf);
+                                    } else {
+                                        float fv = (float)mkval;
+                                        memcpy(buf, &fv, 4);
+                                    }
+                                    blen = 4;
+                                } else {
+                                    if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+                                        gw_double_to_mbf64(mkval, (uint8_t *)buf);
+                                    } else {
+                                        memcpy(buf, &mkval, 8);
+                                    }
+                                    blen = 8;
+                                }
+                                char *ptr = strpool_store(&rt->strpool, buf, blen);
+                                if (ptr) val_stack[val_top++] = bval_string(ptr, blen);
+                                else val_stack[val_top++] = bval_string("", 0);
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_INPUT_FUNC) {
+                    long nchars;
+                    int chan = 0;
+                    char buf[256];
+                    int i;
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_string("", 0);
+                    } else {
+                        BValue nchars_val = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        nchars = bval_to_int(&nchars_val);
+                        if (error_occurred()) {
+                            val_stack[val_top++] = bval_string("", 0);
+                        } else {
+                            if (nchars < 1) nchars = 1;
+                            if (nchars > 255) nchars = 255;
+                            if (lex->current.type == TOK_COMMA) {
+                                lexer_next(lex);
+                                if (lex->current.type == TOK_HASH) lexer_next(lex);
+                                BValue chan_val = parse_expression_bval_internal(lex, rt, line_num, 0);
+                                chan = (int)bval_to_int(&chan_val);
+                            }
+                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                val_stack[val_top++] = bval_string("", 0);
+                            } else {
+                                if (chan > 0) {
+                                    FILE *fp = fileio_get_fp(chan);
+                                    for (i = 0; i < (int)nchars; i++) {
+                                        int ch;
+                                        if (!fp) break;
+                                        ch = fgetc(fp);
+                                        if (ch == EOF) break;
+                                        buf[i] = (char)ch;
+                                    }
+                                } else {
+                                    for (i = 0; i < (int)nchars; i++) {
+                                        int ch = getchar();
+                                        if (ch == EOF) break;
+                                        buf[i] = (char)ch;
+                                    }
+                                }
+                                buf[i] = '\0';
+                                char *ptr = strpool_store(&rt->strpool, buf, i);
+                                if (!ptr) {
+                                    error_raise(ERR_SORRY, line_num);
+                                    val_stack[val_top++] = bval_string("", 0);
+                                } else {
+                                    BValue sv;
+                                    sv.type = VAL_STRING;
+                                    sv.v.sval.data = ptr;
+                                    sv.v.sval.length = i;
+                                    val_stack[val_top++] = sv;
+                                }
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_IOCTL_FUNC) {
+                    int chan;
+                    int cmode;
+                    const char *st;
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_string("", 0);
+                    } else {
+                        if (lex->current.type == TOK_HASH) lexer_next(lex);
+                        BValue chan_val = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        chan = (int)bval_to_int(&chan_val);
+                        if (error_occurred()) {
+                            val_stack[val_top++] = bval_string("", 0);
+                        } else {
+                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                val_stack[val_top++] = bval_string("", 0);
+                            } else {
+                                cmode = fileio_get_channel_mode(chan);
+                                switch (cmode) {
+                                    case FCHAN_INPUT: st="I"; break;
+                                    case FCHAN_OUTPUT: st="O"; break;
+                                    case FCHAN_APPEND: st="A"; break;
+                                    case FCHAN_RANDOM: st="R"; break;
+                                    case FCHAN_BINARY: st="B"; break;
+                                    default: st=""; break;
+                                }
+                                int sl = (int)strlen(st);
+                                char *p = strpool_store(&rt->strpool, st, sl);
+                                val_stack[val_top++] = bval_string(p, sl);
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_CVI) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_int(0);
+                    } else {
+                        BValue sv = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        if (error_occurred()) {
+                            val_stack[val_top++] = bval_int(0);
+                        } else {
+                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                val_stack[val_top++] = bval_int(0);
+                            } else {
+                                if (!bval_is_string(&sv) || sv.v.sval.data == NULL || sv.v.sval.length < 2) {
+                                    val_stack[val_top++] = bval_int(0);
+                                } else {
+                                    unsigned char lo = (unsigned char)sv.v.sval.data[0];
+                                    unsigned char hi = (unsigned char)sv.v.sval.data[1];
+                                    int cvi_val = (int)(lo | (hi << 8));
+                                    if (cvi_val > 32767) cvi_val -= 65536;
+                                    val_stack[val_top++] = bval_int((long)cvi_val);
+                                }
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_CVS) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_int(0);
+                    } else {
+                        BValue sv = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        if (error_occurred()) {
+                            val_stack[val_top++] = bval_int(0);
+                        } else {
+                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                val_stack[val_top++] = bval_int(0);
+                            } else {
+                                if (!bval_is_string(&sv) || sv.v.sval.data == NULL || sv.v.sval.length < 4) {
+                                    val_stack[val_top++] = bval_int(0);
+                                } else {
+                                    if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+                                        double val = gw_mbf32_to_double((const uint8_t *)sv.v.sval.data);
+                                        val_stack[val_top++] = bval_float(val);
+                                    } else {
+                                        float f;
+                                        memcpy(&f, sv.v.sval.data, sizeof(float));
+                                        val_stack[val_top++] = bval_float((double)f);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_CVD) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_int(0);
+                    } else {
+                        BValue sv = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        if (error_occurred()) {
+                            val_stack[val_top++] = bval_int(0);
+                        } else {
+                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                val_stack[val_top++] = bval_int(0);
+                            } else {
+                                if (!bval_is_string(&sv) || sv.v.sval.data == NULL || sv.v.sval.length < 8) {
+                                    val_stack[val_top++] = bval_int(0);
+                                } else {
+                                    if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+                                        double val = gw_mbf64_to_double((const uint8_t *)sv.v.sval.data);
+                                        val_stack[val_top++] = bval_float(val);
+                                    } else {
+                                        double d;
+                                        memcpy(&d, sv.v.sval.data, sizeof(double));
+                                        val_stack[val_top++] = bval_float(d);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_INKEY || kw == KW_ONKEY) {
+                    lexer_next(lex);
+                    int ch = vdev_inkey();
+                    if (ch > 0) {
+                        char kb[2];
+                        kb[0] = (char)ch;
+                        kb[1] = '\0';
+                        char *ptr = strpool_store(&rt->strpool, kb, 1);
+                        val_stack[val_top++] = bval_string(ptr, 1);
+                    } else {
+                        val_stack[val_top++] = bval_string(NULL, 0);
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_LCASE || kw == KW_UCASE || kw == KW_TCASE ||
+                           kw == KW_LTRIM || kw == KW_RTRIM || kw == KW_TRIM) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_int(0);
+                    } else {
+                        BValue val = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        if (error_occurred()) {
+                            val_stack[val_top++] = bval_int(0);
+                        } else {
+                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                val_stack[val_top++] = bval_int(0);
+                            } else {
+                                const char *s = val.v.sval.data;
+                                int slen = val.v.sval.length;
+                                if (s == NULL) { s = ""; slen = 0; }
+                                if (slen > 255) slen = 255;
+                                char buf[256];
+                                char *ptr;
+                                
+                                if (kw == KW_LCASE) {
+                                    for (int i = 0; i < slen; i++) buf[i] = (char)tolower((unsigned char)s[i]);
+                                    ptr = strpool_store(&rt->strpool, buf, slen);
+                                    val_stack[val_top++] = bval_string(ptr, slen);
+                                } else if (kw == KW_UCASE) {
+                                    for (int i = 0; i < slen; i++) buf[i] = (char)toupper((unsigned char)s[i]);
+                                    ptr = strpool_store(&rt->strpool, buf, slen);
+                                    val_stack[val_top++] = bval_string(ptr, slen);
+                                } else if (kw == KW_TCASE) {
+                                    int after_space = 1;
+                                    for (int i = 0; i < slen; i++) {
+                                        unsigned char c = (unsigned char)s[i];
+                                        if (c == ' ' || c == '\t') { buf[i] = (char)c; after_space = 1; }
+                                        else if (after_space) { buf[i] = (char)toupper(c); after_space = 0; }
+                                        else { buf[i] = (char)tolower(c); }
+                                    }
+                                    ptr = strpool_store(&rt->strpool, buf, slen);
+                                    val_stack[val_top++] = bval_string(ptr, slen);
+                                } else if (kw == KW_LTRIM) {
+                                    int i = 0;
+                                    while (i < slen && s[i] == ' ') i++;
+                                    ptr = strpool_store(&rt->strpool, s + i, slen - i);
+                                    val_stack[val_top++] = bval_string(ptr, slen - i);
+                                } else if (kw == KW_RTRIM) {
+                                    int i = slen;
+                                    while (i > 0 && s[i-1] == ' ') i--;
+                                    ptr = strpool_store(&rt->strpool, s, i);
+                                    val_stack[val_top++] = bval_string(ptr, i);
+                                } else if (kw == KW_TRIM) {
+                                    int left = 0;
+                                    int right = slen;
+                                    while (left < right && s[left] == ' ') left++;
+                                    while (right > left && s[right-1] == ' ') right--;
+                                    ptr = strpool_store(&rt->strpool, s + left, right - left);
+                                    val_stack[val_top++] = bval_string(ptr, right - left);
+                                }
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_REPLACE) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_int(0);
+                    } else {
+                        BValue src = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        if (error_occurred()) { val_stack[val_top++] = bval_int(0); }
+                        else {
+                            if (lex->current.type != TOK_COMMA) {
+                                error_raise(ERR_WHAT, line_num);
+                                val_stack[val_top++] = bval_int(0);
+                            } else {
+                                lexer_next(lex);
+                                BValue old_v = parse_expression_bval_internal(lex, rt, line_num, 0);
+                                if (error_occurred()) { val_stack[val_top++] = bval_int(0); }
+                                else {
+                                    if (lex->current.type != TOK_COMMA) {
+                                        error_raise(ERR_WHAT, line_num);
+                                        val_stack[val_top++] = bval_int(0);
+                                    } else {
+                                        lexer_next(lex);
+                                        BValue new_v = parse_expression_bval_internal(lex, rt, line_num, 0);
+                                        if (error_occurred()) { val_stack[val_top++] = bval_int(0); }
+                                        else {
+                                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                                val_stack[val_top++] = bval_int(0);
+                                            } else {
+                                                const char *sd = src.v.sval.data; int sl = src.v.sval.length;
+                                                const char *od = old_v.v.sval.data; int ol = old_v.v.sval.length;
+                                                const char *nd = new_v.v.sval.data; int nl = new_v.v.sval.length;
+                                                if (!sd) { sd = ""; sl = 0; }
+                                                if (!od || ol == 0) {
+                                                    char *ptr = strpool_store(&rt->strpool, sd, sl);
+                                                    val_stack[val_top++] = bval_string(ptr, sl);
+                                                } else {
+                                                    if (!nd) { nd = ""; nl = 0; }
+                                                    char buf[MAX_LINE_LENGTH + 1];
+                                                    int wi = 0, ri = 0;
+                                                    for (ri = 0; ri < sl && wi < MAX_LINE_LENGTH; ) {
+                                                        if (ri + ol <= sl && memcmp(sd + ri, od, (size_t)ol) == 0) {
+                                                            for (int ci = 0; ci < nl && wi < MAX_LINE_LENGTH; ci++)
+                                                                buf[wi++] = nd[ci];
+                                                            ri += ol;
+                                                        } else {
+                                                            buf[wi++] = sd[ri++];
+                                                        }
+                                                    }
+                                                    char *ptr = strpool_store(&rt->strpool, buf, wi);
+                                                    val_stack[val_top++] = bval_string(ptr, wi);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_REVERSE) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_int(0);
+                    } else {
+                        BValue val = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        if (error_occurred()) { val_stack[val_top++] = bval_int(0); }
+                        else {
+                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                val_stack[val_top++] = bval_int(0);
+                            } else {
+                                const char *s = val.v.sval.data;
+                                int slen = val.v.sval.length;
+                                if (s == NULL) { s = ""; slen = 0; }
+                                if (slen > 255) slen = 255;
+                                char buf[256];
+                                for (int i = 0; i < slen; i++) buf[i] = s[slen - 1 - i];
+                                char *ptr = strpool_store(&rt->strpool, buf, slen);
+                                val_stack[val_top++] = bval_string(ptr, slen);
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_MCASE) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_int(0);
+                    } else {
+                        BValue val = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        if (error_occurred()) { val_stack[val_top++] = bval_int(0); }
+                        else {
+                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                val_stack[val_top++] = bval_int(0);
+                            } else {
+                                const char *s = val.v.sval.data;
+                                int slen = val.v.sval.length;
+                                if (s == NULL) { s = ""; slen = 0; }
+                                if (slen > 255) slen = 255;
+                                char buf[256];
+                                for (int i = 0; i < slen; i++) {
+                                    unsigned char c = (unsigned char)s[i];
+                                    uint64_t r = rt->rnd_seed;
+                                    rt->rnd_seed = r * 6364136223846793005ULL + (12345ULL | 1);
+                                    if ((r >> 17) & 1) buf[i] = (char)toupper(c);
+                                    else buf[i] = (char)tolower(c);
+                                }
+                                char *ptr = strpool_store(&rt->strpool, buf, slen);
+                                val_stack[val_top++] = bval_string(ptr, slen);
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_ICASE) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_int(0);
+                    } else {
+                        BValue val = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        if (error_occurred()) { val_stack[val_top++] = bval_int(0); }
+                        else {
+                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                val_stack[val_top++] = bval_int(0);
+                            } else {
+                                const char *s = val.v.sval.data;
+                                int slen = val.v.sval.length;
+                                if (s == NULL) { s = ""; slen = 0; }
+                                if (slen > 255) slen = 255;
+                                char buf[256];
+                                for (int i = 0; i < slen; i++) {
+                                    unsigned char c = (unsigned char)s[i];
+                                    if (isupper(c)) buf[i] = (char)tolower(c);
+                                    else if (islower(c)) buf[i] = (char)toupper(c);
+                                    else buf[i] = (char)c;
+                                }
+                                char *ptr = strpool_store(&rt->strpool, buf, slen);
+                                val_stack[val_top++] = bval_string(ptr, slen);
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else if (kw == KW_HASH) {
+                    lexer_next(lex);
+                    if (!lexer_expect(lex, TOK_LPAREN)) {
+                        val_stack[val_top++] = bval_int(0);
+                    } else {
+                        BValue val = parse_expression_bval_internal(lex, rt, line_num, 0);
+                        if (error_occurred()) { val_stack[val_top++] = bval_int(0); }
+                        else {
+                            int bits = 32;
+                            if (lex->current.type == TOK_COMMA) {
+                                lexer_next(lex);
+                                bits = (int)parse_expression(lex, rt, line_num);
+                            }
+                            if (!lexer_expect(lex, TOK_RPAREN)) {
+                                val_stack[val_top++] = bval_int(0);
+                            } else {
+                                const char *s = val.v.sval.data;
+                                int slen = val.v.sval.length;
+                                if (s == NULL) { s = ""; slen = 0; }
+                                if (bits != 8 && bits != 16 && bits != 32 && bits != 64 && bits != 128 && bits != 256)
+                                    bits = 32;
+                                int rounds = (bits + 63) / 64;
+                                if (rounds < 1) rounds = 1;
+                                if (rounds > 4) rounds = 4;
+                                char hexbuf[65];
+                                int hexlen = 0;
+                                for (int r = 0; r < rounds; r++) {
+                                    unsigned long long h = 14695981039346656037ULL + (unsigned long long)r * 6364136223846793005ULL;
+                                    for (int i = 0; i < slen; i++) {
+                                        h ^= (unsigned char)s[i];
+                                        h *= 1099511628211ULL;
+                                    }
+                                    if (bits <= 64 && rounds == 1) {
+                                        if (bits == 8) {
+                                            h = (h ^ (h >> 8) ^ (h >> 16) ^ (h >> 24) ^ (h >> 32) ^ (h >> 40) ^ (h >> 48) ^ (h >> 56)) & 0xFF;
+                                            sprintf(hexbuf, "%02X", (unsigned)h);
+                                            hexlen = 2;
+                                        } else if (bits == 16) {
+                                            h = ((h >> 16) ^ h) & 0xFFFF;
+                                            sprintf(hexbuf, "%04X", (unsigned)h);
+                                            hexlen = 4;
+                                        } else if (bits == 32) {
+                                            h = ((h >> 32) ^ h) & 0xFFFFFFFFULL;
+                                            sprintf(hexbuf, "%08X", (unsigned)h);
+                                            hexlen = 8;
+                                        } else {
+                                            sprintf(hexbuf, "%08X%08X", (unsigned)(h >> 32), (unsigned)(h & 0xFFFFFFFFULL));
+                                            hexlen = 16;
+                                        }
+                                    } else {
+                                        sprintf(hexbuf + hexlen, "%08X%08X", (unsigned)(h >> 32), (unsigned)(h & 0xFFFFFFFFULL));
+                                        hexlen += 16;
+                                    }
+                                }
+                                int want = bits / 4;
+                                if (hexlen > want) hexlen = want;
+                                char *hptr = strpool_store(&rt->strpool, hexbuf, hexlen);
+                                val_stack[val_top++] = bval_string(hptr, hexlen);
+                            }
+                        }
+                    }
+                    expect_operand = 0;
+                } else {
+                    const FunctionEntry *fn = funcreg_find_by_keyword(kw);
+                    if (fn != NULL) {
+                        lexer_next(lex);
+                        if (lex->current.type == TOK_LPAREN) {
+                            lexer_next(lex);
+                            ParseOp op_entry;
+                            memset(&op_entry, 0, sizeof(op_entry));
+                            op_entry.op = OP_FUNC;
+                            op_entry.precedence = 14;
+                            op_entry.kw = kw;
+                            op_stack[op_top++] = op_entry;
+                            
+                            ParseOp lp_entry;
+                            memset(&lp_entry, 0, sizeof(lp_entry));
+                            lp_entry.op = OP_LPAREN;
+                            op_stack[op_top++] = lp_entry;
+                            arg_count_stack[arg_count_top++] = 1;
+                        } else {
+                            if (fn->max_args == 0) {
+                                val_stack[val_top++] = fn->handler(NULL, 0, rt);
+                                expect_operand = 0;
+                            } else if (is_rnd_argument_start(lex)) {
+                                ParseOp op_entry;
+                                memset(&op_entry, 0, sizeof(op_entry));
+                                op_entry.op = OP_FUNC;
+                                op_entry.precedence = 12;
+                                op_entry.kw = kw;
+                                op_entry.is_unary = 1;
+                                op_entry.arg_count = 1;
+                                op_stack[op_top++] = op_entry;
+                            } else {
+                                val_stack[val_top++] = fn->handler(NULL, 0, rt);
+                                expect_operand = 0;
+                            }
+                        }
+                    } else {
+                        // CONST lookup: check if keyword matches a stored constant name
+                        const char *knm = tok.str_start;
+                        int knl = tok.str_length;
+                        int ci, matched = 0;
+                        if (knm != NULL && knl > 0) {
+                            for (ci = 0; ci < rt->const_count; ci++) {
+                                if (rt->constants[ci].name_len == knl && memcmp(rt->constants[ci].name, knm, (size_t)knl) == 0) {
+                                    lexer_next(lex);
+                                    val_stack[val_top++] = rt->constants[ci].value;
+                                    expect_operand = 0;
+                                    matched = 1;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!matched) {
+                            error_raise(ERR_WHAT, line_num);
+                            return bval_int(0);
+                        }
+                    }
+                }
+            } else {
+                error_raise(ERR_WHAT, line_num);
+                return bval_int(0);
+            }
+        } else {
+            int op = OP_EOF;
+            int precedence = 0;
+            
+            if (tok.type == TOK_PLUS) op = OP_ADD;
+            else if (tok.type == TOK_MINUS) op = OP_SUB;
+            else if (tok.type == TOK_STAR) op = OP_MUL;
+            else if (tok.type == TOK_SLASH) op = OP_DIV;
+            else if (tok.type == TOK_BACKSLASH) op = OP_INTDIV;
+            else if (tok.type == TOK_CARET) op = OP_POW;
+            else if (tok.type == TOK_EQUALS) op = OP_CMP_EQ;
+            else if (tok.type == TOK_NOT_EQ) op = OP_CMP_NE;
+            else if (tok.type == TOK_LT) op = OP_CMP_LT;
+            else if (tok.type == TOK_GT) op = OP_CMP_GT;
+            else if (tok.type == TOK_LT_EQ) op = OP_CMP_LE;
+            else if (tok.type == TOK_GT_EQ) op = OP_CMP_GE;
+            else if (tok.type == TOK_KEYWORD) {
+                KeywordId kw = tok.value.keyword;
+                if (kw == KW_AND) op = OP_AND;
+                else if (kw == KW_OR) op = OP_OR;
+                else if (kw == KW_XOR) op = OP_XOR;
+                else if (kw == KW_EQV) op = OP_EQV;
+                else if (kw == KW_IMP) op = OP_IMP;
+                else if (kw == KW_MOD) op = OP_MOD;
+                else if (kw == KW_LIKE) op = OP_LIKE;
+            }
+            
+            if (op != OP_EOF) {
+                precedence = get_precedence(op);
+                int is_right = is_right_associative(op);
+                
+                while (op_top > 0) {
+                    ParseOp top_op = op_stack[op_top - 1];
+                    if (top_op.op == OP_LPAREN) break;
+                    int top_prec = get_precedence(top_op.op);
+                    if (top_prec > precedence || (!is_right && top_prec == precedence)) {
+                        op_top--;
+                        if (!apply_operator(rt, top_op.op, val_stack, &val_top, top_op.kw, top_op.name, top_op.name_len, top_op.arg_count, line_num)) {
+                            return bval_int(0);
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                ParseOp op_entry;
+                memset(&op_entry, 0, sizeof(op_entry));
+                op_entry.op = op;
+                op_entry.precedence = precedence;
+                op_entry.assoc = is_right;
+                op_stack[op_top++] = op_entry;
+                lexer_next(lex);
+                expect_operand = 1;
+            } else if (tok.type == TOK_COMMA) {
+                while (op_top > 0 && op_stack[op_top - 1].op != OP_LPAREN) {
+                    ParseOp top_op = op_stack[--op_top];
+                    if (!apply_operator(rt, top_op.op, val_stack, &val_top, top_op.kw, top_op.name, top_op.name_len, top_op.arg_count, line_num)) {
+                        return bval_int(0);
+                    }
+                }
+                if (op_top > 0 && op_stack[op_top - 1].op == OP_LPAREN) {
+                    if (arg_count_top > 0) {
+                        arg_count_stack[arg_count_top - 1]++;
+                    }
+                }
+                lexer_next(lex);
+                expect_operand = 1;
+            } else if (tok.type == TOK_RPAREN) {
+                while (op_top > 0 && op_stack[op_top - 1].op != OP_LPAREN) {
+                    ParseOp top_op = op_stack[--op_top];
+                    if (!apply_operator(rt, top_op.op, val_stack, &val_top, top_op.kw, top_op.name, top_op.name_len, top_op.arg_count, line_num)) {
+                        return bval_int(0);
+                    }
+                }
+                if (op_top > 0 && op_stack[op_top - 1].op == OP_LPAREN) {
+                    op_top--; // pop (
+                    if (op_top > 0) {
+                        ParseOp next_op = op_stack[op_top - 1];
+                        if (next_op.op == OP_FUNC || next_op.op == OP_USER_FUNC || next_op.op == OP_ARRAY) {
+                            op_top--; // pop function operator
+                            int arg_count = arg_count_top > 0 ? arg_count_stack[--arg_count_top] : 0;
+                            
+                            if (next_op.op == OP_USER_FUNC) {
+                                char sub_name[MAX_VAR_NAME_LEN + 1];
+                                if (next_op.name_len > 0) {
+                                    memcpy(sub_name, next_op.name, (size_t)next_op.name_len);
+                                    sub_name[next_op.name_len] = '\0';
+                                } else {
+                                    sub_name[0] = 'F'; sub_name[1] = 'N'; sub_name[2] = (char)next_op.kw; sub_name[3] = '\0';
+                                }
+                                SubDef *sd = runtime_find_sub(rt, sub_name, (int)strlen(sub_name));
+                                if (sd != NULL && sd->is_function && sd->body_index >= 0) {
+                                    BValue args[16];
+                                    if (val_top < arg_count || arg_count > 16) {
+                                        error_raise(ERR_WHAT, line_num);
+                                        return bval_int(0);
+                                    }
+                                    for (int i = arg_count - 1; i >= 0; i--) {
+                                        args[i] = val_stack[--val_top];
+                                    }
+                                    
+                                    // Save runtime state
+                                    BValue saved_fn_rv = rt->fn_return_value;
+                                    int saved_sub_idx = rt->in_sub_index;
+                                    int saved_bif_depth = rt->block_if_depth;
+                                    rt->fn_return_value = bval_int(0);
+                                    rt->block_if_depth = 0;
+                                    rt->in_sub_index = (int)(sd - rt->subs);
+                                    
+                                    // Push FRAME_SUB
+                                    StackFrame frame;
+                                    frame.type = FRAME_SUB;
+                                    frame.data.sub_call.return_index = rt->current_index;
+                                    frame.data.sub_call.sub_index = (int)(sd - rt->subs);
+                                    for (int i = 0; i < MAX_VARIABLES; i++)
+                                        frame.data.sub_call.saved_vars[i] = rt->variables[i];
+                                    for (int i = 0; i < MAX_STRING_VARS; i++)
+                                        frame.data.sub_call.saved_strvars[i] = rt->string_vars[i];
+                                    if (runtime_push(rt, &frame) != 0) return bval_int(0);
+                                    
+                                    // Push scope
+                                    int smode = SCOPE_FULL;
+                                    if (dialect_get_config()->id == DIALECT_QBASIC)
+                                        smode = SCOPE_FRESH;
+                                    scope_stack_push(&rt->scope_stack, rt, smode, (int)(sd - rt->subs), rt->current_index);
+                                    
+                                    // Assign parameters
+                                    for (int i = 0; i < arg_count && i < sd->param_count; i++) {
+                                        pi_set_param_by_name(rt, sd->params[i], args[i]);
+                                    }
+                                    
+                                    // Execute FUNCTION body lines
+                                    int save_idx = rt->current_index;
+                                    int save_next = rt->next_index;
+                                    int fi = sd->body_index;
+                                    ProgramStore *pgm = rt->program;
+                                    while (fi < pgm->count && !error_occurred()) {
+                                        ProgramLine *fline = &pgm->lines[fi];
+                                        int fln = fline->line_number;
+                                        Lexer fl;
+                                        lexer_init(&fl, fline->text);
+                                        if (fl.current.type == TOK_NUMBER) lexer_next(&fl);
+                                        
+                                        rt->current_index = fi;
+                                        rt->next_index = -1;
+                                        
+                                        parser_execute_line(&fl, rt, fln);
+                                        
+                                        if (error_occurred()) return bval_int(0);
+                                        
+                                        // Check if END SUB/FUNCTION popped our frame
+                                        if (rt->in_sub_index < 0) break;
+                                        
+                                        if (rt->next_index >= 0) fi = rt->next_index;
+                                        else fi++;
+                                    }
+                                    
+                                    rt->current_index = save_idx;
+                                    rt->next_index = save_next;
+                                    
+                                    BValue rv = rt->fn_return_value;
+                                    rt->fn_return_value = saved_fn_rv;
+                                    rt->in_sub_index = saved_sub_idx;
+                                    rt->block_if_depth = saved_bif_depth;
+                                    
+                                    val_stack[val_top++] = rv;
+                                }
+                            } else {
+                                if (!apply_operator(rt, next_op.op, val_stack, &val_top, next_op.kw, next_op.name, next_op.name_len, arg_count, line_num)) {
+                                    return bval_int(0);
+                                }
+                            }
+                        }
+                    }
+                }
+                lexer_next(lex);
+                expect_operand = 0;
+            } else {
+                break;
+            }
+        }
+    }
 
- // MKI$(n) - Pack integer into 2-byte string.
- // MKS$(n) - Pack single into 4-byte string.
- // MKD$(n) - Pack double into 8-byte string.
- // Used with FIELD/PUT for random-access files.
- if (kw == KW_MKI_FUNC ||
- kw == KW_MKS_FUNC ||
- kw == KW_MKD_FUNC) {
- double mkval;
- char buf[8];
- int blen;
- char *ptr;
+    if (error_occurred()) {
+        return bval_int(0);
+    }
 
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_string("", 0);
- {
- BValue mkarg;
- mkarg = parse_expression_bval(
- lex, rt, line_num);
- mkval = bval_to_float(&mkarg);
- }
- if (error_occurred())
- return bval_string("", 0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_string("", 0);
+    while (op_top > 0) {
+        ParseOp top_op = op_stack[--op_top];
+        if (top_op.op == OP_LPAREN) {
+            error_raise(ERR_WHAT, line_num);
+            return bval_int(0);
+        }
+        if (!apply_operator(rt, top_op.op, val_stack, &val_top, top_op.kw, top_op.name, top_op.name_len, top_op.arg_count, line_num)) {
+            return bval_int(0);
+        }
+    }
 
-  if (kw == KW_MKI_FUNC) {
-  // 2-byte integer (little-endian)
-  short sv = (short)(long)mkval;
-  memcpy(buf, &sv, 2);
-  blen = 2;
-  } else if (kw == KW_MKS_FUNC) {
-  if (dialect_get_config()->id == DIALECT_GW_BASIC) {
-      gw_double_to_mbf32(mkval, (uint8_t *)buf);
-  } else {
-      // 4-byte single float
-      float fv = (float)mkval;
-      memcpy(buf, &fv, 4);
-  }
-  blen = 4;
-  } else {
-  if (dialect_get_config()->id == DIALECT_GW_BASIC) {
-      gw_double_to_mbf64(mkval, (uint8_t *)buf);
-  } else {
-      // 8-byte double
-      memcpy(buf, &mkval, 8);
-  }
-  blen = 8;
-  }
- ptr = strpool_store(
- &rt->strpool, buf, blen);
- if (ptr)
- return bval_string(ptr, blen);
- return bval_string("", 0);
- }
+    if (val_top != 1) {
+        error_raise(ERR_WHAT, line_num);
+        return bval_int(0);
+    }
 
- // INPUT$(n [, #channel])
- // Read n characters from keyboard or file.
- // From keyboard: reads n chars without echo.
- // From file: reads n bytes from channel.
- if (kw == KW_INPUT_FUNC) {
- long nchars;
- int chan = 0;
- char buf[256];
- int i;
- char *ptr;
- BValue sv;
-
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_string("", 0);
- nchars = parse_expression(lex, rt,
- line_num);
- if (error_occurred())
- return bval_string("", 0);
- if (nchars < 1) nchars = 1;
- if (nchars > 255) nchars = 255;
- // Optional channel: , #n
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- if (lex->current.type == TOK_HASH)
- lexer_next(lex);
- chan = (int)parse_expression(
- lex, rt, line_num);
- if (error_occurred())
- return bval_string("", 0);
- }
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_string("", 0);
-
- if (chan > 0) {
- // File: read n bytes
- FILE *fp = fileio_get_fp(chan);
- for (i = 0; i < (int)nchars; i++) {
- int ch;
- if (!fp) break;
- ch = fgetc(fp);
- if (ch == EOF) break;
- buf[i] = (char)ch;
- }
- } else {
- // Keyboard: read n chars
- for (i = 0; i < (int)nchars; i++) {
- int ch = getchar();
- if (ch == EOF) break;
- buf[i] = (char)ch;
- }
- }
- buf[i] = '\0';
- ptr = strpool_store(&rt->strpool,
- buf, i);
- if (!ptr) {
- error_raise(ERR_SORRY, line_num);
- return bval_string("", 0);
- }
- sv.type = VAL_STRING;
- sv.v.sval.data = ptr;
- sv.v.sval.length = i;
- return sv;
- }
-
- // IOCTL$(#n) - Read device control string.
- // Device-specific; returns empty string.
- if (kw == KW_IOCTL_FUNC) {
- // IOCTL$(#n) - Return device status.
- // Returns the channel mode as a string.
- int chan;
- int cmode;
- const char *st;
- char *p;
- int sl;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_string("", 0);
- if (lex->current.type == TOK_HASH)
- lexer_next(lex);
- chan = (int)parse_expression(
- lex, rt, line_num);
- if (error_occurred())
- return bval_string("", 0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_string("", 0);
- cmode = fileio_get_channel_mode(chan);
- switch (cmode) {
- case FCHAN_INPUT: st="I"; break;
- case FCHAN_OUTPUT: st="O"; break;
- case FCHAN_APPEND: st="A"; break;
- case FCHAN_RANDOM: st="R"; break;
- case FCHAN_BINARY: st="B"; break;
- default: st=""; break;
- }
- sl = (int)strlen(st);
- p = strpool_store(&rt->strpool,
- st, sl);
- return bval_string(p, sl);
- }
-
- // CVI(string$) - 2-byte string to integer.
- if (kw == KW_CVI) {
- BValue sv;
- int cvi_val;
- unsigned char lo, hi;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- sv = parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- if (!bval_is_string(&sv) ||
- sv.v.sval.data == NULL ||
- sv.v.sval.length < 2) {
- return bval_int(0);
- }
- lo = (unsigned char)sv.v.sval.data[0];
- hi = (unsigned char)sv.v.sval.data[1];
- cvi_val = (int)(lo | (hi << 8));
- if (cvi_val > 32767) cvi_val -= 65536;
- return bval_int((long)cvi_val);
- }
-
- // CVS(string$) - 4-byte string to float.
- if (kw == KW_CVS) {
- BValue sv;
- float f;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- sv = parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- if (!bval_is_string(&sv) ||
- sv.v.sval.data == NULL ||
- sv.v.sval.length < 4) {
- return bval_int(0);
- }
- if (dialect_get_config()->id == DIALECT_GW_BASIC) {
-     double val = gw_mbf32_to_double((const uint8_t *)sv.v.sval.data);
-     return bval_float(val);
- }
- memcpy(&f, sv.v.sval.data,
- sizeof(float));
- return bval_float((double)f);
- }
-
- // CVD(string$) - 8-byte string to double.
- if (kw == KW_CVD) {
- BValue sv;
- double d;
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- sv = parse_expression_bval(
- lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
- if (!bval_is_string(&sv) ||
- sv.v.sval.data == NULL ||
- sv.v.sval.length < 8) {
- return bval_int(0);
- }
- if (dialect_get_config()->id == DIALECT_GW_BASIC) {
-     double val = gw_mbf64_to_double((const uint8_t *)sv.v.sval.data);
-     return bval_float(val);
- }
- memcpy(&d, sv.v.sval.data,
- sizeof(double));
- return bval_float(d);
- }
-
- // INKEY$ - non-blocking keyboard read.
- // Returns empty string if no key, or 1-char string.
- if (kw == KW_INKEY) {
- int ch;
- lexer_next(lex);
- ch = vdev_inkey();
- if (ch > 0) {
- char kb[2];
- char *ptr;
- kb[0] = (char)ch;
- kb[1] = '\0';
- ptr = strpool_store(&rt->strpool, kb, 1);
- return bval_string(ptr, 1);
- }
- return bval_string(NULL, 0);
- }
-
- // ONKEY$ - event-aware keyboard read.
- // Currently behaves like INKEY$ (non-blocking).
- // Returns empty string if no key, or 1-char string.
- // Future: integrate with ON KEY GOSUB event trap.
- if (kw == KW_ONKEY) {
- int ch;
- lexer_next(lex);
- ch = vdev_inkey();
- if (ch > 0) {
- char kb[2];
- char *ptr;
- kb[0] = (char)ch;
- kb[1] = '\0';
- ptr = strpool_store(&rt->strpool, kb, 1);
- return bval_string(ptr, 1);
- }
- return bval_string(NULL, 0);
- }
-
- // CONST lookup: check if keyword matches a
- // stored constant name.
- {
- const char *knm = lex->current.str_start;
- int knl = lex->current.str_length;
- int ci;
- if (knm != NULL && knl > 0) {
- for (ci = 0; ci < rt->const_count;
- ci++) {
- if (rt->constants[ci].name_len ==
- knl &&
- memcmp(rt->constants[ci].name,
- knm, (size_t)knl)==0) {
- lexer_next(lex);
- return rt->constants[ci].value;
- }
- }
- }
- }
-
- // LCASE$(s$) - lowercase.
- // UCASE$(s$) - uppercase.
- // TCASE$(s$) - title case.
- // LTRIM$(s$) - trim left spaces.
- // RTRIM$(s$) - trim right spaces.
- // TRIM$(s$) - trim left and right spaces.
- if (kw == KW_LCASE || kw == KW_UCASE ||
- kw == KW_TCASE ||
- kw == KW_LTRIM || kw == KW_RTRIM ||
- kw == KW_TRIM) {
- char buf[256];
- char *ptr;
- const char *s;
- int slen, i;
-
- lexer_next(lex);
- // $ already consumed by lexer
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- val = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
-
- s = val.v.sval.data;
- slen = val.v.sval.length;
- if (s == NULL) { s = ""; slen = 0; }
- if (slen > 255) slen = 255;
-
- if (kw == KW_LCASE) {
- for (i = 0; i < slen; i++)
- buf[i] = (char)tolower(
- (unsigned char)s[i]);
- ptr = strpool_store(&rt->strpool,
- buf, slen);
- return bval_string(ptr, slen);
- }
- if (kw == KW_UCASE) {
- for (i = 0; i < slen; i++)
- buf[i] = (char)toupper(
- (unsigned char)s[i]);
- ptr = strpool_store(&rt->strpool,
- buf, slen);
- return bval_string(ptr, slen);
- }
- if (kw == KW_TCASE) {
- int after_space = 1;
- for (i = 0; i < slen; i++) {
- unsigned char c = (unsigned char)s[i];
- if (c == ' ' || c == '\t') {
- buf[i] = (char)c;
- after_space = 1;
- } else if (after_space) {
- buf[i] = (char)toupper(c);
- after_space = 0;
- } else {
- buf[i] = (char)tolower(c);
- }
- }
- ptr = strpool_store(&rt->strpool,
- buf, slen);
- return bval_string(ptr, slen);
- }
- if (kw == KW_LTRIM) {
- i = 0;
- while (i < slen && s[i] == ' ') i++;
- ptr = strpool_store(&rt->strpool,
- s + i, slen - i);
- return bval_string(ptr, slen - i);
- }
- if (kw == KW_RTRIM) {
- i = slen;
- while (i > 0 && s[i-1] == ' ') i--;
- ptr = strpool_store(&rt->strpool,
- s, i);
- return bval_string(ptr, i);
- }
- if (kw == KW_TRIM) {
- int left = 0;
- int right = slen;
- while (left < right && s[left] == ' ')
- left++;
- while (right > left && s[right-1] == ' ')
- right--;
- ptr = strpool_store(&rt->strpool,
- s + left, right - left);
- return bval_string(ptr, right - left);
- }
- }
-
- // REPLACE$(source$, old$, new$) - Replace all occurrences.
- if (kw == KW_REPLACE) {
- BValue src, old_v, new_v;
- const char *sd, *od, *nd;
- int sl, ol, nl, ri, wi;
- char buf[MAX_LINE_LENGTH + 1];
-
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- src = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (lex->current.type != TOK_COMMA) {
- error_raise(ERR_WHAT, line_num);
- return bval_int(0);
- }
- lexer_next(lex);
- old_v = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (lex->current.type != TOK_COMMA) {
- error_raise(ERR_WHAT, line_num);
- return bval_int(0);
- }
- lexer_next(lex);
- new_v = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
-
- sd = src.v.sval.data; sl = src.v.sval.length;
- od = old_v.v.sval.data; ol = old_v.v.sval.length;
- nd = new_v.v.sval.data; nl = new_v.v.sval.length;
- if (!sd) { sd = ""; sl = 0; }
- if (!od || ol == 0) {
- // Empty search: return source unchanged
- char *ptr = strpool_store(&rt->strpool, sd, sl);
- return bval_string(ptr, sl);
- }
- if (!nd) { nd = ""; nl = 0; }
-
- wi = 0;
- for (ri = 0; ri < sl && wi < MAX_LINE_LENGTH; ) {
- if (ri + ol <= sl &&
- memcmp(sd + ri, od, (size_t)ol) == 0) {
- // Match found: copy replacement
- int ci;
- for (ci = 0; ci < nl &&
- wi < MAX_LINE_LENGTH; ci++)
- buf[wi++] = nd[ci];
- ri += ol;
- } else {
- buf[wi++] = sd[ri++];
- }
- }
- {
- char *ptr = strpool_store(&rt->strpool,
- buf, wi);
- return bval_string(ptr, wi);
- }
- }
-
- // REVERSE$(s$) - Reverse string.
- if (kw == KW_REVERSE) {
- const char *s;
- int slen, i;
- char buf[256];
- char *ptr;
-
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- val = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
-
- s = val.v.sval.data;
- slen = val.v.sval.length;
- if (s == NULL) { s = ""; slen = 0; }
- if (slen > 255) slen = 255;
- for (i = 0; i < slen; i++)
- buf[i] = s[slen - 1 - i];
- ptr = strpool_store(&rt->strpool, buf, slen);
- return bval_string(ptr, slen);
- }
-
- // MCASE$(s$) - Mixed/random case.
- // Each character is randomly upper or lower case.
- // Uses the runtime's RNG (rnd_seed) for
- // deterministic behavior when seeded.
- if (kw == KW_MCASE) {
- const char *s;
- int slen, i;
- char buf[256];
- char *ptr;
-
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- val = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
-
- s = val.v.sval.data;
- slen = val.v.sval.length;
- if (s == NULL) { s = ""; slen = 0; }
- if (slen > 255) slen = 255;
- for (i = 0; i < slen; i++) {
- unsigned char c = (unsigned char)s[i];
- // Use PCG-derived bit for randomness
- uint64_t r = rt->rnd_seed;
- rt->rnd_seed = r * 6364136223846793005ULL
- + (12345ULL | 1);
- if ((r >> 17) & 1) {
- buf[i] = (char)toupper(c);
- } else {
- buf[i] = (char)tolower(c);
- }
- }
- ptr = strpool_store(&rt->strpool, buf, slen);
- return bval_string(ptr, slen);
- }
-
- // ICASE$(s$) - Invert case.
- // Swaps upper to lower and lower to upper
- // for every character. Non-alpha chars unchanged.
- if (kw == KW_ICASE) {
- const char *s;
- int slen, i;
- char buf[256];
- char *ptr;
-
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- val = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
-
- s = val.v.sval.data;
- slen = val.v.sval.length;
- if (s == NULL) { s = ""; slen = 0; }
- if (slen > 255) slen = 255;
- for (i = 0; i < slen; i++) {
- unsigned char c = (unsigned char)s[i];
- if (isupper(c))
- buf[i] = (char)tolower(c);
- else if (islower(c))
- buf[i] = (char)toupper(c);
- else
- buf[i] = (char)c;
- }
- ptr = strpool_store(&rt->strpool, buf, slen);
- return bval_string(ptr, slen);
- }
-
- // HASH$(s$ [, bits]) - Hash string to hex.
- // bits = 8, 16, 32 (default), 64, 128, 256.
- // Uses FNV-1a algorithm. For >64 bits, uses
- // multiple seeded rounds and concatenates.
- if (kw == KW_HASH) {
- const char *s;
- int slen, bits, i;
- unsigned long long h;
- char hexbuf[65]; // max 256 bits = 64 hex chars
- int hexlen;
- char *hptr;
-
- lexer_next(lex);
- if (!lexer_expect(lex, TOK_LPAREN))
- return bval_int(0);
- val = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
-
- bits = 32; // default
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- bits = (int)parse_expression(
- lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- }
- if (!lexer_expect(lex, TOK_RPAREN))
- return bval_int(0);
-
- s = val.v.sval.data;
- slen = val.v.sval.length;
- if (s == NULL) { s = ""; slen = 0; }
-
- // Validate bit width
- if (bits != 8 && bits != 16 && bits != 32 &&
- bits != 64 && bits != 128 && bits != 256)
- bits = 32;
-
- hexlen = 0;
- {
- // Number of 64-bit rounds needed
- int rounds = (bits + 63) / 64;
- int r;
- if (rounds < 1) rounds = 1;
- if (rounds > 4) rounds = 4; // 256 max
-
- for (r = 0; r < rounds; r++) {
- // FNV-1a with per-round seed
- h = 14695981039346656037ULL +
- (unsigned long long)r * 6364136223846793005ULL;
- for (i = 0; i < slen; i++) {
- h ^= (unsigned char)s[i];
- h *= 1099511628211ULL;
- }
- // Fold to required width on last round
- if (bits <= 64 && rounds == 1) {
- if (bits == 8) {
- h = (h ^ (h >> 8) ^ (h >> 16) ^
- (h >> 24) ^ (h >> 32) ^
- (h >> 40) ^ (h >> 48) ^
- (h >> 56)) & 0xFF;
- sprintf(hexbuf, "%02X",
- (unsigned)h);
- hexlen = 2;
- } else if (bits == 16) {
- h = ((h >> 16) ^ h) & 0xFFFF;
- sprintf(hexbuf, "%04X",
- (unsigned)h);
- hexlen = 4;
- } else if (bits == 32) {
- h = ((h >> 32) ^ h) & 0xFFFFFFFFULL;
- sprintf(hexbuf, "%08X",
- (unsigned)h);
- hexlen = 8;
- } else {
- // 64-bit
- sprintf(hexbuf, "%08X%08X",
- (unsigned)(h >> 32),
- (unsigned)(h & 0xFFFFFFFFULL));
- hexlen = 16;
- }
- } else {
- // Multi-round: append 16 hex per round
- sprintf(hexbuf + hexlen, "%08X%08X",
- (unsigned)(h >> 32),
- (unsigned)(h & 0xFFFFFFFFULL));
- hexlen += 16;
- }
- }
- // Truncate to exact bit-width hex chars
- {
- int want = bits / 4;
- if (hexlen > want) hexlen = want;
- }
- }
- hptr = strpool_store(&rt->strpool,
- hexbuf, hexlen);
- return bval_string(hptr, hexlen);
- }
-
- // Unknown keyword in expression context
- error_raise(ERR_WHAT, line_num);
- return bval_int(0);
- }
-
- default:
- error_raise(ERR_WHAT, line_num);
- return bval_int(0);
- }
+    return val_stack[0];
 }
-
- // parse_power_bval - BValue exponentiation (^) parser.
-BValue pi_parse_power_bval(Lexer *lex, RuntimeState *rt, int line_num)
-{
- BValue left;
- left = pi_parse_factor_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
-
- while (lex->current.type == TOK_CARET) {
- BValue right;
- double base_d, exp_d;
- lexer_next(lex); // consume ^
- right = pi_parse_factor_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- base_d = bval_to_float(&left);
- exp_d = bval_to_float(&right);
- left = bval_float(pow(base_d, exp_d));
- }
-
- return left;
-}
-
- // parse_term_bval - BValue multiplicative expression parser.
- //
- // term = power ((*|/|\|MOD) power)*
-BValue pi_parse_term_bval(Lexer *lex, RuntimeState *rt, int line_num)
-{
- BValue left;
- TokenType op;
-
- left = pi_parse_power_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
-
- for (;;) {
- int is_mod = 0;
- int is_intdiv = 0;
-
- if (lex->current.type == TOK_STAR ||
- lex->current.type == TOK_SLASH) {
- op = lex->current.type;
- } else if (lex->current.type == TOK_BACKSLASH) {
- is_intdiv = 1;
- op = TOK_SLASH;
- } else if (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword == KW_MOD) {
- is_mod = 1;
- op = TOK_SLASH; // placeholder
- } else {
- break;
- }
-
- lexer_next(lex);
-
- {
- BValue right;
- right = pi_parse_power_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
-
- if (is_mod) {
- left = bval_mod(&left, &right, line_num);
- } else if (is_intdiv) {
- // Integer division: truncate both to int
- long a = bval_to_int(&left);
- long b = bval_to_int(&right);
- if (b == 0) {
- error_raise(ERR_HOW, line_num);
- return bval_int(0);
- }
- left = bval_int(a / b);
- } else if (op == TOK_STAR) {
- left = bval_mul(&left, &right, line_num);
- } else {
- left = bval_div(&left, &right, line_num);
- }
- if (error_occurred()) return bval_int(0);
- }
- }
-
- return left;
-}
-
- // parse_expression_bval - BValue additive expression parser.
- //
- // expression = [+|-|NOT] term ((+|-) term)*
- // ((AND|OR|XOR|EQV|IMP) expr)*
- //
- // String concatenation: when both operands are strings and the
- // operator is +, performs string concatenation instead of addition.
-BValue parse_expression_bval(Lexer *lex, RuntimeState *rt, int line_num)
-{
- BValue left;
- int negate = 0;
- int do_not = 0;
-
- if (error_occurred()) return bval_int(0);
-
- // Optional leading sign or NOT
- if (lex->current.type == TOK_PLUS) {
- lexer_next(lex);
- } else if (lex->current.type == TOK_MINUS) {
- negate = 1;
- lexer_next(lex);
- } else if (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword == KW_NOT) {
- do_not = 1;
- lexer_next(lex);
- // Handle sign after NOT: NOT -1, NOT +5
- if (lex->current.type == TOK_MINUS) {
- negate = 1;
- lexer_next(lex);
- } else if (lex->current.type == TOK_PLUS) {
- lexer_next(lex);
- }
- }
-
- left = pi_parse_term_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
-
- if (negate) {
- left = bval_neg(&left, line_num);
- if (error_occurred()) return bval_int(0);
- }
- if (do_not) {
- long v = bval_to_int(&left);
- left = bval_int(~v);
- }
-
- // Additive: + -
- while (lex->current.type == TOK_PLUS ||
- lex->current.type == TOK_MINUS) {
- BValue right;
- TokenType op = lex->current.type;
- lexer_next(lex);
-
- right = pi_parse_term_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
-
- if (op == TOK_PLUS) {
- // Check for string concatenation
- if (bval_is_string(&left) && bval_is_string(&right)) {
- // ECMA-55 does not support string concatenation.
- // In strict mode, reject it. In union/normal
- // mode, allow it for GW-BASIC/QBasic compat.
- if (dialect_is_strict()) {
- error_raise(ERR_WHAT, line_num);
- return bval_int(0);
- }
- left = bval_concat(&left, &right, line_num,
- &rt->strpool);
- } else {
- left = bval_add(&left, &right, line_num);
- }
- } else {
- left = bval_sub(&left, &right, line_num);
- }
- if (error_occurred()) return bval_int(0);
- }
-
- // Comparison operators: = < > <= >= <>
- // These return -1 for true, 0 for false (QBasic convention).
- // Precedence: between additive and logical.
- if (lex->current.type == TOK_EQUALS ||
- lex->current.type == TOK_LT ||
- lex->current.type == TOK_GT ||
- lex->current.type == TOK_LT_EQ ||
- lex->current.type == TOK_GT_EQ ||
- lex->current.type == TOK_NOT_EQ) {
- TokenType cmp_op = lex->current.type;
- BValue right;
- int result = 0;
-
- lexer_next(lex); // consume comparison operator
-
- // Parse right side: unary + additive
- {
- int rn = 0;
- if (lex->current.type == TOK_MINUS) {
- rn = 1; lexer_next(lex);
- } else if (lex->current.type == TOK_PLUS) {
- lexer_next(lex);
- }
- right = pi_parse_term_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (rn) {
- right = bval_neg(&right, line_num);
- if (error_occurred()) return bval_int(0);
- }
- while (lex->current.type == TOK_PLUS ||
- lex->current.type == TOK_MINUS) {
- BValue r2;
- TokenType op2 = lex->current.type;
- lexer_next(lex);
- r2 = pi_parse_term_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (op2 == TOK_PLUS)
- right = bval_add(&right, &r2, line_num);
- else
- right = bval_sub(&right, &r2, line_num);
- if (error_occurred()) return bval_int(0);
- }
- }
-
- // Compare left and right
- if (bval_is_string(&left) && bval_is_string(&right)) {
- const char *ld = left.v.sval.data;
- int ll = left.v.sval.length;
- const char *rd = right.v.sval.data;
- int rl = right.v.sval.length;
- int cmp, minlen;
- if (ld == NULL) { ld = ""; ll = 0; }
- if (rd == NULL) { rd = ""; rl = 0; }
- minlen = ll < rl ? ll : rl;
- cmp = memcmp(ld, rd, (size_t)minlen);
- if (cmp == 0) {
- if (ll < rl) cmp = -1;
- else if (ll > rl) cmp = 1;
- }
- switch (cmp_op) {
- case TOK_EQUALS: result=(cmp==0); break;
- case TOK_LT: result=(cmp<0); break;
- case TOK_GT: result=(cmp>0); break;
- case TOK_LT_EQ: result=(cmp<=0); break;
- case TOK_GT_EQ: result=(cmp>=0); break;
- case TOK_NOT_EQ:result=(cmp!=0); break;
- default: break;
- }
- } else if (left.type == VAL_FLOAT ||
- right.type == VAL_FLOAT) {
- double lv = bval_to_float(&left);
- double rv = bval_to_float(&right);
- switch (cmp_op) {
- case TOK_EQUALS: result=(lv==rv); break;
- case TOK_LT: result=(lv<rv); break;
- case TOK_GT: result=(lv>rv); break;
- case TOK_LT_EQ: result=(lv<=rv); break;
- case TOK_GT_EQ: result=(lv>=rv); break;
- case TOK_NOT_EQ:result=(lv!=rv); break;
- default: break;
- }
- } else {
- long lv = bval_to_int(&left);
- long rv = bval_to_int(&right);
- switch (cmp_op) {
- case TOK_EQUALS: result=(lv==rv); break;
- case TOK_LT: result=(lv<rv); break;
- case TOK_GT: result=(lv>rv); break;
- case TOK_LT_EQ: result=(lv<=rv); break;
- case TOK_GT_EQ: result=(lv>=rv); break;
- case TOK_NOT_EQ:result=(lv!=rv); break;
- default: break;
- }
- }
- left = bval_int(result ? -1 : 0);
- }
-
- // LIKE operator: string LIKE "pattern"
- // Returns -1 for match, 0 for no match.
- // Pattern metacharacters:
- //   * = match any zero or more characters
- //   ? = match any single character
- //   # = match any single digit (0-9)
- //   [abc] = match any char in set
- //   [!abc] = match any char NOT in set
- if (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword == KW_LIKE) {
- BValue right;
- const char *s, *p;
- int sl, pl;
- int match;
-
- lexer_next(lex); // consume LIKE
- right = pi_parse_term_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
-
- // Both operands must be strings
- if (!bval_is_string(&left) ||
- !bval_is_string(&right)) {
- error_raise(ERR_HOW, line_num);
- return bval_int(0);
- }
- s = left.v.sval.data;
- sl = left.v.sval.length;
- p = right.v.sval.data;
- pl = right.v.sval.length;
- if (!s) { s = ""; sl = 0; }
- if (!p) { p = ""; pl = 0; }
-
- // Glob match with stack-based backtracking
- {
- int si = 0, pi2 = 0;
- int star_pi = -1, star_si = -1;
- match = 0;
- while (si < sl) {
- if (pi2 < pl && p[pi2] == '*') {
- star_pi = pi2++;
- star_si = si;
- } else if (pi2 < pl && p[pi2] == '?') {
- si++; pi2++;
- } else if (pi2 < pl && p[pi2] == '#') {
- if (s[si] >= '0' && s[si] <= '9') {
- si++; pi2++;
- } else if (star_pi >= 0) {
- pi2 = star_pi + 1;
- si = ++star_si;
- } else break;
- } else if (pi2 < pl && p[pi2] == '[') {
- // Character class
- int neg2 = 0, found2 = 0;
- int ci = pi2 + 1;
- if (ci < pl && p[ci] == '!') {
- neg2 = 1; ci++;
- }
- while (ci < pl && p[ci] != ']') {
- if (p[ci] == s[si]) found2 = 1;
- ci++;
- }
- if (ci < pl) ci++; // skip ]
- if (found2 != neg2) {
- pi2 = ci; si++;
- } else if (star_pi >= 0) {
- pi2 = star_pi + 1;
- si = ++star_si;
- } else break;
- } else if (pi2 < pl &&
- (p[pi2] == s[si] ||
- ((p[pi2] >= 'A' && p[pi2] <= 'Z' ?
- p[pi2] + 32 : p[pi2]) ==
- (s[si] >= 'A' && s[si] <= 'Z' ?
- s[si] + 32 : s[si])))) {
- si++; pi2++;
- } else if (star_pi >= 0) {
- pi2 = star_pi + 1;
- si = ++star_si;
- } else break;
- }
- while (pi2 < pl && p[pi2] == '*') pi2++;
- if (si == sl && pi2 == pl) match = 1;
- }
- left = bval_int(match ? -1 : 0);
- }
-
- // Logical/bitwise: AND OR XOR EQV IMP
- while (lex->current.type == TOK_KEYWORD) {
- KeywordId kw = lex->current.value.keyword;
- long lv, rv;
- if (kw != KW_AND && kw != KW_OR &&
- kw != KW_XOR && kw != KW_EQV &&
- kw != KW_IMP) {
- break;
- }
- lexer_next(lex); // consume operator
-
- // Parse right side as full additive expr
- {
- BValue right;
- int rn = 0, rn2 = 0;
- if (lex->current.type == TOK_MINUS) {
- rn = 1; lexer_next(lex);
- } else if (lex->current.type == TOK_PLUS) {
- lexer_next(lex);
- } else if (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword == KW_NOT) {
- rn2 = 1; lexer_next(lex);
- }
- right = pi_parse_term_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (rn) {
- right = bval_neg(&right, line_num);
- if (error_occurred()) return bval_int(0);
- }
- if (rn2) {
- long v = bval_to_int(&right);
- right = bval_int(~v);
- }
-
- // Inner additive loop
- while (lex->current.type == TOK_PLUS ||
- lex->current.type == TOK_MINUS) {
- BValue r2;
- TokenType op2 = lex->current.type;
- lexer_next(lex);
- r2 = pi_parse_term_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (op2 == TOK_PLUS)
- right = bval_add(&right, &r2, line_num);
- else
- right = bval_sub(&right, &r2, line_num);
- if (error_occurred()) return bval_int(0);
- }
-
- // Inner comparison check
- if (lex->current.type == TOK_EQUALS ||
- lex->current.type == TOK_LT ||
- lex->current.type == TOK_GT ||
- lex->current.type == TOK_LT_EQ ||
- lex->current.type == TOK_GT_EQ ||
- lex->current.type == TOK_NOT_EQ) {
- TokenType cop = lex->current.type;
- BValue rr;
- int cmp_res = 0;
- int rn3 = 0;
- lexer_next(lex);
- if (lex->current.type == TOK_MINUS) {
- rn3 = 1; lexer_next(lex);
- } else if (lex->current.type == TOK_PLUS) {
- lexer_next(lex);
- }
- rr = pi_parse_term_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (rn3) {
- rr = bval_neg(&rr, line_num);
- if (error_occurred()) return bval_int(0);
- }
- while (lex->current.type == TOK_PLUS ||
- lex->current.type == TOK_MINUS) {
- BValue r3;
- TokenType op3 = lex->current.type;
- lexer_next(lex);
- r3 = pi_parse_term_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (op3 == TOK_PLUS)
- rr = bval_add(&rr, &r3, line_num);
- else
- rr = bval_sub(&rr, &r3, line_num);
- if (error_occurred()) return bval_int(0);
- }
- if (right.type == VAL_FLOAT ||
- rr.type == VAL_FLOAT) {
- double lf = bval_to_float(&right);
- double rf = bval_to_float(&rr);
- switch (cop) {
- case TOK_EQUALS: cmp_res=(lf==rf); break;
- case TOK_LT: cmp_res=(lf<rf); break;
- case TOK_GT: cmp_res=(lf>rf); break;
- case TOK_LT_EQ: cmp_res=(lf<=rf); break;
- case TOK_GT_EQ: cmp_res=(lf>=rf); break;
- case TOK_NOT_EQ:cmp_res=(lf!=rf); break;
- default: break;
- }
- } else {
- long li = bval_to_int(&right);
- long ri = bval_to_int(&rr);
- switch (cop) {
- case TOK_EQUALS: cmp_res=(li==ri); break;
- case TOK_LT: cmp_res=(li<ri); break;
- case TOK_GT: cmp_res=(li>ri); break;
- case TOK_LT_EQ: cmp_res=(li<=ri); break;
- case TOK_GT_EQ: cmp_res=(li>=ri); break;
- case TOK_NOT_EQ:cmp_res=(li!=ri); break;
- default: break;
- }
- }
- right = bval_int(cmp_res ? -1 : 0);
- }
-
- // Inner LIKE check
- if (lex->current.type == TOK_KEYWORD &&
- lex->current.value.keyword == KW_LIKE) {
- BValue pat;
- const char *s2, *p2;
- int sl2, pl2, match2;
- lexer_next(lex);
- pat = pi_parse_term_bval(lex, rt, line_num);
- if (error_occurred()) return bval_int(0);
- if (!bval_is_string(&right) ||
- !bval_is_string(&pat)) {
- error_raise(ERR_HOW, line_num);
- return bval_int(0);
- }
- s2 = right.v.sval.data;
- sl2 = right.v.sval.length;
- p2 = pat.v.sval.data;
- pl2 = pat.v.sval.length;
- if (!s2) { s2 = ""; sl2 = 0; }
- if (!p2) { p2 = ""; pl2 = 0; }
- {
- int si2 = 0, pi3 = 0;
- int sp = -1, ss = -1;
- match2 = 0;
- while (si2 < sl2) {
- if (pi3 < pl2 && p2[pi3] == '*') {
- sp = pi3++; ss = si2;
- } else if (pi3 < pl2 && p2[pi3] == '?') {
- si2++; pi3++;
- } else if (pi3 < pl2 && p2[pi3] == '#') {
- if (s2[si2]>='0' && s2[si2]<='9') {
- si2++; pi3++;
- } else if (sp >= 0) {
- pi3 = sp+1; si2 = ++ss;
- } else break;
- } else if (pi3 < pl2 && p2[pi3] == '[') {
- int ng = 0, fd = 0;
- int ci2 = pi3 + 1;
- if (ci2 < pl2 && p2[ci2]=='!') {
- ng=1; ci2++;
- }
- while (ci2<pl2 && p2[ci2]!=']') {
- if (p2[ci2]==s2[si2]) fd=1;
- ci2++;
- }
- if (ci2<pl2) ci2++;
- if (fd!=ng) {
- pi3=ci2; si2++;
- } else if (sp>=0) {
- pi3=sp+1; si2=++ss;
- } else break;
- } else if (pi3 < pl2 &&
- (p2[pi3]==s2[si2] ||
- ((p2[pi3]>='A'&&p2[pi3]<='Z'?
- p2[pi3]+32:p2[pi3])==
- (s2[si2]>='A'&&s2[si2]<='Z'?
- s2[si2]+32:s2[si2])))) {
- si2++; pi3++;
- } else if (sp >= 0) {
- pi3=sp+1; si2=++ss;
- } else break;
- }
- while (pi3<pl2 && p2[pi3]=='*') pi3++;
- if (si2==sl2 && pi3==pl2) match2=1;
- }
- right = bval_int(match2 ? -1 : 0);
- }
-
- rv = bval_to_int(&right);
- }
-
- lv = bval_to_int(&left);
- switch (kw) {
- case KW_AND: left = bval_int(lv & rv); break;
- case KW_OR: left = bval_int(lv | rv); break;
- case KW_XOR: left = bval_int(lv ^ rv); break;
- case KW_EQV: left = bval_int(~(lv ^ rv)); break;
- case KW_IMP: left = bval_int((~lv) | rv); break;
- default: break;
- }
- }
-
- return left;
-}
-
-

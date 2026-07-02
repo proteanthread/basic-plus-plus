@@ -194,7 +194,7 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
   // Body follows on this line after the colon.
    // Save pos BEFORE the colon so NEXT can rewind
    // and let parser_execute_line see the colon separator. 
-  frame.data.for_loop.inline_body_pos = lex->pos - 1;
+  frame.data.for_loop.inline_body_pos = lex->current.pos;
   frame.data.for_loop.inline_line_num = line_num;
   frame.data.for_loop.body_index = rt->current_index; // same line
  } else {
@@ -289,13 +289,12 @@ void pi_parse_next(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
  // Loop continues
- if (top->data.for_loop.inline_body_pos >= 0) {
-   // Inline FOR...NEXT: rewind lexer to the saved body
-   // position on the current line and re-execute the
-   // inline body.
-  lex->pos = top->data.for_loop.inline_body_pos;
-  lexer_next(lex); // re-scan to TOK_COLON
-  // parser_execute_line will see the colon, consume it,
+  if (top->data.for_loop.inline_body_pos >= 0) {
+    // Inline FOR...NEXT: rewind lexer to the saved body
+    // position on the current line and re-execute the
+    // inline body.
+   lexer_rewind_to(lex, top->data.for_loop.inline_body_pos);
+   // parser_execute_line will see the colon, consume it,
    // and dispatch the body statement 
  } else {
   // Multi-line loop: jump back to body_index

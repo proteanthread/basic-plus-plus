@@ -68,8 +68,10 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#define TokenType WinTokenType
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#undef TokenType
 #pragma comment(lib, "ws2_32.lib")
 #elif defined(__MSDOS__) || defined(__DOS__) || defined(MSDOS)
 #define VNET_NO_NETWORKING 1
@@ -84,6 +86,8 @@ typedef int SOCKET;
 
 #include "vdev_net.h"
 #include "../security.h"
+#include "../console.h"
+#include "../boot.h"
 
 // ================================================================
  // Protocol-to-port mapping
@@ -212,12 +216,22 @@ static int parse_net_uri(const char *uri,
  // PLATFORM INIT / CLEANUP
  // ================================================================ 
 
+static int s_net_initialized = 0;
+static int s_net_init_result = 0;
+
 int vdev_net_init(void)
 {
+    if (s_net_initialized) return s_net_init_result;
 #ifdef _WIN32
     WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) return -1;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+        s_net_init_result = -1;
+        s_net_initialized = 1;
+        return -1;
+    }
 #endif
+    s_net_init_result = 0;
+    s_net_initialized = 1;
     return 0;
 }
 
@@ -235,7 +249,7 @@ void vdev_net_cleanup(void)
 static int net_close(VDev *d)
 {
     if (d && d->user_data) {
-        int sock = (int)(long)d->user_data;
+        int sock = (int)(intptr_t)d->user_data;
 #ifdef _WIN32
         closesocket(sock);
 #elif !defined(VNET_NO_NETWORKING)
@@ -255,7 +269,7 @@ static int net_read(VDev *d, void *buf, int len)
     (void)d; (void)buf; (void)len;
     return -1;
 #else
-    int sock = (int)(long)d->user_data;
+    int sock = (int)(intptr_t)d->user_data;
     int r = recv(sock, (char *)buf, len, 0);
     return r > 0 ? r : -1;
 #endif
@@ -267,7 +281,7 @@ static int net_write(VDev *d, const void *buf, int len)
     (void)d; (void)buf; (void)len;
     return -1;
 #else
-    int sock = (int)(long)d->user_data;
+    int sock = (int)(intptr_t)d->user_data;
     int r = send(sock, (const char *)buf, len, 0);
     return r > 0 ? r : -1;
 #endif
@@ -322,6 +336,11 @@ VDev *vdev_net_open(const char *uri)
     (void)uri;
     return NULL;
 #else
+    if (vdev_net_init() != 0) {
+        boot_downgrade_status(BOOT_DEGRADED);
+        return NULL;
+    }
+
     char proto[16], host[256], port_str[32];
     const ProtoMap *pm;
     struct addrinfo hints, *res;
@@ -428,7 +447,7 @@ VDev *vdev_net_open(const char *uri)
     d->dev_class = VDCLASS_NETWORK;
     d->dev_caps = VDCAP_READ | VDCAP_WRITE |
                   VDCAP_BINARY | VDCAP_STREAM;
-    d->user_data = (void *)(long)sock;
+    d->user_data = (void *)(intptr_t)sock;
     d->dev_close = net_close;
     d->dev_read = net_read;
     d->dev_write = net_write;

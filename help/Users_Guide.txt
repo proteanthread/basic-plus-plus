@@ -1,6 +1,6 @@
 BASIC++ User's Guide
 
-Version 4.1.1
+Version 4.2.3
 
 Table of Contents
 
@@ -23,7 +23,7 @@ BASIC++ is an interactive BASIC interpreter. When you start it, you see a Ready.
 
 To write a program, you prefix each line with a number. These numbered lines are stored in memory and executed when you type RUN. This is called program mode.
 
-BASIC++ supports multiple BASIC dialects. By default it starts in its own extended dialect (BPP), but you can switch to GW-BASIC, QBasic, TRS-80 CoCo, Tiny BASIC, or Dartmouth BASIC at any time.
+BASIC++ supports multiple BASIC dialects. By default it starts in GW-BASIC mode, but you can switch to QBasic, TRS-80 CoCo, Tiny BASIC, or Dartmouth BASIC at any time.
 
 ---
 
@@ -38,7 +38,7 @@ basicpp < commands.txt      # Pipe commands from a file
 On startup you see:
 
 
-BASIC++ 0.21.0
+BASIC++ 4.2.3
 @COPYLEFT ALL WRONGS RESERVED
 Jun  7 2026
 
@@ -218,11 +218,11 @@ See Quick_Reference for the complete alphabetical list.
 | Integer precision | 32-bit signed (−2,147,483,648 to 2,147,483,647) |
 | Float precision | 64-bit double precision |
 | Max string length | 255 characters |
-| String pool | 32 KB |
+| String pool | 16 MB |
 | Numeric variables | 26 (A–Z) |
 | String variables | 26 (A$–Z$) |
-| Named variables | Up to 40 chars (extended dialects) |
-| DIM arrays | Up to 256 per program |
+| Named variables | Up to 31 chars (extended dialects) |
+| DIM arrays | Up to 1,024 per program |
 
 ---
 

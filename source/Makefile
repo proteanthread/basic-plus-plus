@@ -27,7 +27,7 @@
 
 # Compiler and flags (gcc default)
 CC = gcc
-CFLAGS = -std=c17 -Wall -Wextra -O2 -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
+LINUX_CFLAGS = -std=c17 -Wall -Wextra -O2 -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
 LDFLAGS =
 
 # Output directory — project root (parent of source/)
@@ -47,7 +47,7 @@ CORE_SOURCES = \
     core/config_file.c core/stdlib_core.c core/stdlib_dialect.c \
     core/error_registry.c core/pcode_compiler.c core/pcode_emit.c \
     core/vm_exec.c \
-    core/boot.c core/rpn.c
+    core/boot.c core/rpn.c core/console.c core/task.c core/lite_stubs.c core/pcode_cache.c
 
 # Lexer / tokenizer
 LEXER_SOURCES = \
@@ -121,7 +121,7 @@ SHELL_SOURCES = \
 
 # Debugging & testing
 DEBUG_SOURCES = \
-    debug/parser_debug.c debug/selftest.c debug/check.c
+    debug.c
 
 # Help system
 HELP_SOURCES = \
@@ -162,7 +162,7 @@ DIALECT_SOURCES = \
 
 # Code generation & bytecode
 CODEGEN_SOURCES = \
-    codegen/ast.c codegen/codegen.c codegen/bytecode.c codegen/detok.c
+    codegen/ast.c codegen/codegen.c codegen/target.c codegen/bytecode.c codegen/detok.c codegen/archive.c
 
 # External modules
 MODULES_SOURCES = \
@@ -179,7 +179,7 @@ MODULES_SOURCES = \
 
 # Runtime state & execution
 RUNTIME_SOURCES = \
-    runtime/runtime.c runtime/exec.c
+    runtime/runtime.c runtime/exec.c runtime/ast_interpreter.c
 
 # Miscellaneous utility commands
 MISC_SOURCES = \
@@ -199,13 +199,32 @@ SOURCES = $(CORE_SOURCES) $(LEXER_SOURCES) $(PARSER_SOURCES) \
           $(DIALECT_SOURCES) $(CODEGEN_SOURCES) $(MODULES_SOURCES) \
           $(RUNTIME_SOURCES) $(MISC_SOURCES)
 
+LITE_SOURCES = $(CORE_SOURCES) $(LEXER_SOURCES) $(PARSER_SOURCES) \
+               $(FLOW_SOURCES) \
+               io/parser_io.c io/format_using.c io/format_input.c \
+               io/vfs.c \
+               variables/parser_vars.c variables/parser_assign.c \
+               strings/builtins_string.c \
+               math/builtins_math.c \
+               functions/funcreg.c functions/parser_deffn.c functions/builtins.c \
+               help/parser_help.c help/help.c \
+               config/parser_config.c config/override.c config/scope.c config/scope_stack.c \
+               progmgmt/parser_progmgmt.c progmgmt/parser_cmds.c \
+               virtual/vdev.c virtual/vm.c \
+               memory/memmap.c memory/builtins_memory.c \
+               system/builtins_system.c system/builtins_io.c \
+               dialect/dialect.c dialect/dialect_gwbs.c dialect/dialect_ecma116.c \
+               modules/module.c modules/mod_stdlib.c \
+               runtime/runtime.c runtime/exec.c \
+               misc/parser_misc.c
+
 # Object files (derived from sources)
 OBJECTS = $(SOURCES:.c=.o)
 
 # Header files (all in source/ root — the public interface surface)
 HEADERS = config.h memory.h lexer.h parser.h parser_internal.h \
           parser_internal_additions.h \
-          exec.h runtime.h \
+          exec.h runtime.h console.h task.h \
           dialect.h fileio.h detok.h errors.h value.h stringpool.h \
           ast.h codegen.h compiler.h \
           vdev.h funcreg.h builtins.h vm.h module.h security.h \
@@ -223,19 +242,32 @@ HEADERS = config.h memory.h lexer.h parser.h parser_internal.h \
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJECTS) -lm
+	$(CC) $(LINUX_CFLAGS) -o $@ $(OBJECTS) $(LDFLAGS) -lm
 
 # Generic rule: compile .c to .o
 # All object files depend on all headers (conservative but correct)
 %.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(LINUX_CFLAGS) -c $< -o $@
 
 # =====================================================================
 # Debug build: gcc with debug symbols, no optimization
 # =====================================================================
 # debug target invokes make with debug flags
 debug:
-	$(MAKE) CFLAGS="-std=c17 -Wall -Wextra -g -O0 -DDEBUG -I." clean $(TARGET)
+	$(MAKE) LINUX_CFLAGS="-std=c17 -Wall -Wextra -g -O0 -DDEBUG -I." clean $(TARGET)
+
+# =====================================================================
+# Lite build — produces "blite" (Linux/gcc) and "blite.exe" (MSVC)
+# =====================================================================
+blite:
+	$(CC) -std=c17 -Wall -Wextra -O2 -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2 -DBPP_LITE_BUILD -o $(OUTDIR)/blite $(LITE_SOURCES) -lm
+
+msvc-lite:
+	@del /q *.obj 2>nul
+	cl /TC /std:c17 /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS /DINPUT_CONSOLE /DBPP_LITE_BUILD /DNO_SDL2 /MP /c $(LITE_SOURCES)
+	link /OUT:blite.exe /SUBSYSTEM:CONSOLE *.obj advapi32.lib ws2_32.lib Shell32.lib User32.lib Gdi32.lib Winmm.lib
+	@if exist blite.exe move /Y blite.exe $(OUTDIR)\blite.exe >nul
+	@del /q *.obj 2>nul
 
 # =====================================================================
 # MSVC build — produces "basicpp.exe" in project root
@@ -244,9 +276,14 @@ debug:
 #   (from Visual Studio Developer Command Prompt)
 #
 msvc:
-	cl /TC /std:c17 /W3 /O2 /I. /I../sdl2/include /D_CRT_SECURE_NO_WARNINGS /c $(SOURCES)
-	link /OUT:basicpp.exe /SUBSYSTEM:CONSOLE *.obj advapi32.lib ws2_32.lib /LIBPATH:../sdl2/lib/x64 SDL2.lib SDL2main.lib Shell32.lib User32.lib Gdi32.lib Winmm.lib
+	cl /TC /std:c17 /W3 /O2 /I. /I../sdl2/include /D_CRT_SECURE_NO_WARNINGS /DINPUT_CONSOLE /MP /c $(SOURCES)
+	link /OUT:basicpp-console.exe /SUBSYSTEM:CONSOLE *.obj advapi32.lib ws2_32.lib /LIBPATH:../sdl2/lib/x64 SDL2.lib SDL2main.lib Shell32.lib User32.lib Gdi32.lib Winmm.lib
+	@if exist basicpp-console.exe move /Y basicpp-console.exe $(OUTDIR)\basicpp-console.exe >nul
+	@del /q *.obj 2>nul
+	cl /TC /std:c17 /W3 /O2 /I. /I../sdl2/include /D_CRT_SECURE_NO_WARNINGS /MP /c $(SOURCES)
+	link /OUT:basicpp.exe /MAP:basicpp.map /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup *.obj advapi32.lib ws2_32.lib /LIBPATH:../sdl2/lib/x64 SDL2.lib SDL2main.lib Shell32.lib User32.lib Gdi32.lib Winmm.lib
 	@if exist basicpp.exe move /Y basicpp.exe $(OUTDIR)\basicpp.exe >nul
+	@if exist basicpp.map move /Y basicpp.map $(OUTDIR)\basicpp.map >nul
 	@del /q *.obj 2>nul
 
 # =====================================================================
@@ -289,7 +326,7 @@ WCFLAGS386 = -mf -za -wx -ox -i=. -dBPP_FREEDOS
 # To restore a dialect: add its .obj here AND its compile line below.
 WATCOM_OBJS = \
 	main.obj memory.obj errors.obj value.obj stringpool.obj \
-	platform.obj security.obj ldisdbl.obj config_file.obj \
+	platform.obj security.obj ldisdbl.obj config_file.obj console.obj \
 	stdlib_core.obj stdlib_dialect.obj \
 	error_registry.obj pcode_compiler.obj pcode_emit.obj vm_exec.obj \
 	boot.obj rpn.obj \
@@ -319,7 +356,7 @@ WATCOM_OBJS = \
 	builtins_system.obj builtins_io.obj \
 	dialect.obj \
 	dialect_patb.obj \
-	ast.obj codegen.obj bytecode.obj detok.obj \
+	ast.obj codegen.obj target.obj bytecode.obj detok.obj \
 	module.obj mod_stdlib.obj mod_jit.obj \
 	format_using.obj format_input.obj device_alias.obj \
 	builtins_sio.obj builtins_bio.obj builtins_txn.obj \
@@ -337,6 +374,7 @@ watcom:
 	$(WCC) $(WCFLAGS) -fo=stringpool.obj core/stringpool.c
 	$(WCC) $(WCFLAGS) -fo=platform.obj core/platform.c
 	$(WCC) $(WCFLAGS) -fo=security.obj core/security.c
+	$(WCC) $(WCFLAGS) -fo=console.obj core/console.c
 	$(WCC) $(WCFLAGS) -fo=ldisdbl.obj core/ldisdbl.c
 	$(WCC) $(WCFLAGS) -fo=config_file.obj core/config_file.c
 	$(WCC) $(WCFLAGS) -fo=stdlib_core.obj core/stdlib_core.c
@@ -411,6 +449,7 @@ watcom:
 	$(WCC) $(WCFLAGS) -fo=dialect_patb.obj dialect/dialect_patb.c
 	$(WCC) $(WCFLAGS) -fo=ast.obj codegen/ast.c
 	$(WCC) $(WCFLAGS) -fo=codegen.obj codegen/codegen.c
+	$(WCC) $(WCFLAGS) -fo=target.obj codegen/target.c
 	$(WCC) $(WCFLAGS) -fo=bytecode.obj codegen/bytecode.c
 	$(WCC) $(WCFLAGS) -fo=detok.obj codegen/detok.c
 	$(WCC) $(WCFLAGS) -fo=module.obj modules/module.c
@@ -444,6 +483,7 @@ watcom386:
 	$(WCC386) $(WCFLAGS386) -fo=stringpool.obj core/stringpool.c
 	$(WCC386) $(WCFLAGS386) -fo=platform.obj core/platform.c
 	$(WCC386) $(WCFLAGS386) -fo=security.obj core/security.c
+	$(WCC386) $(WCFLAGS386) -fo=console.obj core/console.c
 	$(WCC386) $(WCFLAGS386) -fo=ldisdbl.obj core/ldisdbl.c
 	$(WCC386) $(WCFLAGS386) -fo=config_file.obj core/config_file.c
 	$(WCC386) $(WCFLAGS386) -fo=lexer.obj lexer/lexer.c
@@ -499,6 +539,7 @@ watcom386:
 	$(WCC386) $(WCFLAGS386) -fo=dialect_ecma116.obj dialect/dialect_ecma116.c
 	$(WCC386) $(WCFLAGS386) -fo=ast.obj codegen/ast.c
 	$(WCC386) $(WCFLAGS386) -fo=codegen.obj codegen/codegen.c
+	$(WCC386) $(WCFLAGS386) -fo=target.obj codegen/target.c
 	$(WCC386) $(WCFLAGS386) -fo=bytecode.obj codegen/bytecode.c
 	$(WCC386) $(WCFLAGS386) -fo=detok.obj codegen/detok.c
 	$(WCC386) $(WCFLAGS386) -fo=module.obj modules/module.c
@@ -517,9 +558,9 @@ watcom386:
 # Clean
 # =====================================================================
 clean:
-	rm -f $(OBJECTS) $(OUTDIR)/baspp $(OUTDIR)/basicpp.exe $(OUTDIR)/bpp.exe *.obj
+	rm -f $(OBJECTS) *.obj
 	find . -name '*.o' -delete 2>/dev/null || true
 	find . -name '*.obj' -delete 2>/dev/null || true
 	rm -f _link.lnk
 
-.PHONY: all debug msvc watcom watcom386 clean
+.PHONY: all debug msvc watcom watcom386 clean blite msvc-lite

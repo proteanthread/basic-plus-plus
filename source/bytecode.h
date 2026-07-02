@@ -122,6 +122,6 @@ int bpp_save(const ProgramStore *prog, const char *filename);
  // filename - input file path (e.g., "program.bpp")
  //
  // Returns 0 on success, -1 on error (prints message).
-int bpp_load(ProgramStore *prog, const char *filename);
+int bpp_load(ProgramStore *prog, const char *filename, void *rt_ptr);
 
 #endif // BASICPP_BYTECODE_H

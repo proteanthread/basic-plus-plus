@@ -137,12 +137,95 @@ void pi_parse_get(Lexer *lex, RuntimeState *rt, int line_num)
  line_num);
  if (error_occurred()) return;
  if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- rec = parse_expression(lex, rt,
- line_num);
- if (error_occurred()) return;
- got_rec = 1;
- }
+            lexer_next(lex);
+            if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_USING) {
+                // Skip reading record number since USING is next
+            } else {
+                rec = parse_expression(lex, rt, line_num);
+                if (error_occurred()) return;
+                got_rec = 1;
+            }
+        }
+
+        if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_USING) {
+            lexer_next(lex); // consume USING
+            if (lex->current.type != TOK_STRING) {
+                error_raise(ERR_WHAT, line_num);
+                return;
+            }
+            const char *ufmt = lex->current.str_start;
+            int uflen = lex->current.str_length;
+            lexer_next(lex); // consume format string
+
+            if (lex->current.type == TOK_SEMICOLON || lex->current.type == TOK_COMMA)
+                lexer_next(lex);
+
+            InputFormatSpec spec;
+            input_parse_format(ufmt, uflen, &spec);
+
+            while (!error_occurred()) {
+                char ubuf[INPUT_BUFFER_SIZE];
+                int ulen = 0;
+                char file_buf[INPUT_BUFFER_SIZE];
+                if (fileio_input_line(chan, file_buf, INPUT_BUFFER_SIZE, line_num) != 0) return;
+
+                int di = 0;
+                while (file_buf[di] != '\0' && file_buf[di] != ',' && file_buf[di] != '\n' && file_buf[di] != '\r' && di < INPUT_BUFFER_SIZE - 1) {
+                    ubuf[di] = file_buf[di];
+                    di++;
+                }
+                ubuf[di] = '\0';
+                ulen = di;
+
+                if (!input_validate(ubuf, ulen, &spec)) {
+                    error_raise(ERR_HOW, line_num); // Illegal function call
+                    return;
+                }
+
+                if (lex->current.type == TOK_STRING_VAR) {
+                    char svar = lex->current.value.var_name;
+                    char *ptr = strpool_store(&rt->strpool, ubuf, ulen);
+                    lexer_next(lex);
+                    if (ptr == NULL) {
+                        error_raise(ERR_SORRY, line_num);
+                        return;
+                    }
+                    runtime_set_string_var(rt, svar, bval_string(ptr, ulen));
+                } else if (lex->current.type == TOK_VARIABLE) {
+                    char vn = lex->current.value.var_name;
+                    char *endp;
+                    long val = strtol(ubuf, &endp, 10);
+                    lexer_next(lex);
+                    runtime_set_var(rt, vn, val);
+                } else if (lex->current.type == TOK_NAMED_VAR) {
+                    const char *name = lex->current.str_start;
+                    int name_len = lex->current.str_length;
+                    lexer_next(lex);
+                    if (name[name_len - 1] == '$') {
+                        char *ptr = strpool_store(&rt->strpool, ubuf, ulen);
+                        if (ptr == NULL) {
+                            error_raise(ERR_SORRY, line_num);
+                            return;
+                        }
+                        runtime_set_named_var_bval(rt, name, name_len, bval_string(ptr, ulen));
+                    } else {
+                        char *endp;
+                        double val = strtod(ubuf, &endp);
+                        runtime_set_named_var_bval(rt, name, name_len, bval_float(val));
+                    }
+                } else {
+                    error_raise(ERR_WHAT, line_num);
+                    return;
+                }
+
+                if (lex->current.type == TOK_COMMA) {
+                    lexer_next(lex);
+                } else {
+                    break;
+                }
+            }
+            return;
+        }
  {
  int cmode =
  fileio_get_channel_mode(
@@ -384,6 +467,12 @@ void pi_parse_lock(Lexer *lex, RuntimeState *rt, int line_num)
  int is_lock = 1; // LOCK
  int chan;
  long s = 1, e = 1;
+ extern int g_screen_lock;
+ if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_SCREEN) {
+     g_screen_lock = 1;
+     lexer_next(lex);
+     return;
+ }
  if (lex->current.type == TOK_HASH)
  lexer_next(lex);
  chan = (int)parse_expression(
@@ -423,6 +512,14 @@ void pi_parse_unlock(Lexer *lex, RuntimeState *rt, int line_num)
  int is_lock = 0; // UNLOCK
  int chan;
  long s = 1, e = 1;
+ extern int g_screen_lock;
+ if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_SCREEN) {
+     g_screen_lock = 0;
+     lexer_next(lex);
+     // Flush the screen buffers upon unlock
+     vdev_flush(vdev_get(VDEV_CON));
+     return;
+ }
  if (lex->current.type == TOK_HASH)
  lexer_next(lex);
  chan = (int)parse_expression(
@@ -533,7 +630,7 @@ void pi_parse_ioctl(Lexer *lex, RuntimeState *rt, int line_num)
   ioctl_arg = arg_buf;
  } else if (has_arg) {
   int nval = bval_to_int(&arg_val);
-  ioctl_arg = (void *)(long)nval;
+  ioctl_arg = (void *)(intptr_t)nval;
  }
 
  // Map string commands

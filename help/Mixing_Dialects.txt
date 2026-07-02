@@ -1,6 +1,6 @@
 MIXING DIALECTS IN BASIC++
 ==========================
-Version 4.1.1
+Version 4.2.3
 
 BASIC++ is the union of all BASIC dialects.  This means you
 can mix features from GW-BASIC, QBasic, Commodore, Apple,
@@ -17,7 +17,7 @@ TABLE OF CONTENTS
 
   Part I:   Fundamentals
   1.  The Union Principle
-  2.  Available Dialects (All 12)
+  2.  Available Dialects (All 16)
   3.  The Feature Matrix (Complete)
   4.  Switching Dialects at Runtime
   5.  Union Mode vs Strict Mode
@@ -102,7 +102,7 @@ specific dialect when you want STRICT mode enforcement.
 
 
 =====================================================================
-2. AVAILABLE DIALECTS (ALL 12)
+2. AVAILABLE DIALECTS (ALL 16)
 =====================================================================
 
   Code   Name                      Year  Origin
@@ -119,6 +119,10 @@ specific dialect when you want STRICT mode enforcement.
   ATRI   Atari BASIC               1979  Shepardson Microsystems
   C64B   Commodore BASIC v2        1982  Microsoft (for C64)
   COCO   Color Computer BASIC      1980  Microsoft (for CoCo)
+  MBAS   Microsoft MBASIC          1977  Microsoft (CP/M)
+  SINC   Sinclair Spectrum BASIC   1982  Sinclair Research
+  SQLB   Sinclair QL SuperBASIC    1984  Sinclair Research / Jan Jones
+  SUPB   Tymshare SUPER BASIC      1968  Tymshare / Mark Alexander
 
   Plus the default:
   BPP    BASIC++ (union of all)    2026  BASIC++ Project
@@ -141,7 +145,7 @@ specific dialect when you want STRICT mode enforcement.
   @() arrays           YES YES   NO   NO   NO   NO   NO
   FOR/NEXT             YES YES  YES  YES  YES  YES  YES
   WHILE/WEND           YES YES*  NO  YES  YES   NO  YES
-  DO/LOOP              YES YES*  NO   NO  YES   NO  YES
+  DO/LOOP              YES YES*  NO   NO   NO   NO  YES
   IF/THEN required     N/A  NO  YES  YES  YES  YES  YES
   LET optional         YES YES  YES  YES  YES   NO  YES
   DATA/READ            YES  NO  YES  YES  YES  YES  YES
@@ -179,6 +183,30 @@ specific dialect when you want STRICT mode enforcement.
   Statement sep        :     :    :    :    :    :
   Not-equal operator   <>    <>   <>   <>   <>   <>
   Max line number      65K  32K  64K  32K  64K  64K
+
+  Feature              MBAS SINC SQLB SUPB
+  -------              ---- ---- ---- ----
+  Float arithmetic     YES  YES  YES  YES
+  String variables     YES  YES  YES  YES
+  Named variables      YES  YES  YES  YES
+  DIM arrays           YES  YES  YES  YES
+  @() arrays            NO   NO   NO   NO
+  FOR/NEXT             YES  YES  YES  YES
+  WHILE/WEND           YES   NO   NO   NO
+  DO/LOOP               NO   NO   NO   NO
+  IF/THEN required     YES  YES  YES  YES
+  LET optional         YES   NO  YES   NO
+  DATA/READ            YES  YES  YES  YES
+  DEF FN               YES  YES  YES  YES
+  SUB/FUNCTION          NO   NO   NO   NO
+  ON ERROR             YES   NO  YES   NO
+  MERGE/CHAIN          YES  YES   NO   NO
+  CLS                   NO  YES  YES   NO
+  TRON/TROFF           YES   NO  YES  YES
+  String functions     YES  YES  YES  YES
+  Statement sep        :     :    :    :
+  Not-equal operator   <>   <>   <>   <>
+  Max line number      65K  10K  32K  99K
 
   * PATB: WHILE/DO are BASIC++ extensions, not in original.
 

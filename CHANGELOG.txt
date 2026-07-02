@@ -1,6 +1,331 @@
 BASIC++ CHANGELOG
 =================
 
+4.4.3  (2026-07-02) -- Regression Audit, GRAPHICS Crash Fix & Platform Abstraction
+---------------------------------------------------------------------------------
+  Regression Audit & Critical Bug Fixes:
+  - Fixed a crash when executing the Atari 8-bit `GRAPHICS` command by adding the missing `case KW_GRAPHICS:` dispatch entry in `parser.c`. The keyword was registered in the lexer but never wired to the parser dispatch table.
+  - Removed a spurious `lexer_next(lex)` call in `pi_parse_graphics` that double-consumed the keyword token, eating the first digit of the mode expression.
+  - Removed a stale debug `fprintf` in `gw_console_write_char` (`console.c`) that printed `"DEBUG: gw_console_write_char g_out_fp is NOT NULL"` to stderr on every program run.
+  - Fixed `gfxbuf_clear` to also clear the SDL pixel buffer when SDL is active, resolving CLS having no effect in graphics mode (SDL window retained old graphics).
+  - Fixed `gfxbuf_paint` bounds checking to use dynamic SDL dimensions (`gw_sdl2_get_width`/`gw_sdl2_get_height`) instead of hardcoded `GFX_WIDTH`/`GFX_HEIGHT` (320x200), allowing PAINT to work correctly in higher-resolution SDL modes (e.g. 640x480 SCREEN 12).
+  - Implemented actual `vdev_sleep` for Linux/POSIX using `platform_sleep_ms` and `gw_sdl2_delay` for SDL mode. Previously the Linux branch was a no-op, causing DELAY/SLEEP commands to do nothing on Linux.
+  - Replaced raw `strdup()` call in `handle_environ` (`interp.c`) with `plat_strdup()` to fix MSVC deprecation warnings.
+  - Implemented full QBASIC-style `IF...THEN...ELSEIF...ELSE...END IF` block parsing logic in `parser_flow.c`.
+  - Fixed a critical logical error in nested `ELSEIF`/`ELSE` block parsing by introducing a `jumped_to_else` flag in `RuntimeState` to properly track execution depth bypassing rather than erroneously relying on `block_if_depth`.
+  Platform Abstraction & OS API Isolation:
+  - Abstracted all OS-specific keyboard and TTY detection APIs from `console.c` into `platform.c` portable functions: `platform_stdin_is_tty`, `platform_stdin_is_redirected`, `platform_kbhit`, `platform_getch`, `platform_nb_read_char`, and `platform_sleep_ms`.
+  - Removed direct `_isatty`/`isatty`, `_kbhit`/`_getch`, `termios`, `select()`, `GetConsoleMode`, `GetFileType`, `PeekNamedPipe`, `ReadFile` calls from `console.c`, replacing them with the new platform abstraction layer.
+  - Removed OS-specific headers (`<io.h>`, `<conio.h>`, `<unistd.h>`, `<termios.h>`, `<sys/select.h>`, `<sys/types.h>`, `<sys/stat.h>`) from `console.c` — these now live exclusively in `platform.c`.
+  - Added `<conio.h>` (Windows) and `<termios.h>`, `<sys/select.h>`, `<sys/types.h>`, `<sys/stat.h>` (POSIX) to `platform.c` includes for the new abstraction functions.
+
+4.4.2  (2026-07-02) -- SDL SCREEN Mode Bounds & Auto-Initialization Bug Fix
+---------------------------------------------------------------------------------
+  SDL Renderer & Boundary Safety:
+  - Fixed a critical memory corruption/crash bug where higher-resolution SCREEN modes (such as SCREEN 11/12 with 30 rows or Hercules SCREEN 3 with 90 columns) caused out-of-bounds writes to the fixed `g_screen_chars[25][80]` grid array.
+  - Sized `g_screen_chars` to `[MAX_GRID_ROWS][MAX_GRID_COLS]` (`40x100`) and clamped column and row counts inside `gw_sdl2_set_mode` to prevent buffer overflows.
+  - Updated screen scrolling, character read-back (`gw_sdl2_get_char`), and cursor rendering (`gw_sdl2_write_char_cursor`) to use dynamic bounds checks.
+  - Implemented dynamic auto-initialization of SDL when graphics drawing operations (like `PSET`, `LINE`, `CIRCLE`, `PAINT`) or any `SCREEN` commands are executed in the console-only build.
+
+4.4.1  (2026-07-02) -- Security Sandbox OS API Isolation & VFS Test Alignment
+---------------------------------------------------------------------------------
+  Security Sandbox & Platform Portability:
+  - Fixed a design warning and regression under OS API Isolation rule by abstracting standard TTY detection (`_isatty`/`isatty` and `_fileno`/`fileno` and `<io.h>`/`<unistd.h>`) into `platform_stdin_is_tty()` in `platform.c`, keeping them isolated from statement/main files.
+  - Aligned automatic configuration generation to write `security = OPEN` by default, ensuring Windows and Linux environments start with identical permission baselines matching checked-in defaults.
+  - Updated VFS mount validation test `test_vfs.bas` to explicitly request `SECURITY OPEN` at runtime, ensuring it is consistently permitted on all sandboxed configurations.
+
+4.3.9  (2026-07-01) -- Default Direct Interpreter Mode Transition
+---------------------------------------------------------------------------------
+  Interpreter & Virtual Machine Configuration:
+  - Fixed a design regression where Standard and SDL builds automatically compiled programs to bytecode via P-Code compiler on `RUN`, failing immediately on syntax errors and breaking dynamic runtime dialect switching (such as `DIALECT "ECMA-116"` declarations).
+  - Defaulted `direct_mode` execution to `1` (direct statement-by-statement interpretation) across all targets (Standard, SDL, and Lite).
+  - Mapped VM bytecode compilation and execution exclusively to `COMPILE` and `BRUN` command entry points.
+  - Added support for `--vm` command line argument to force P-Code compilation execution path when requested.
+
+4.3.8  (2026-07-01) -- SDL Cursor Leftovers/Blink Memory Corruption Bug Fix
+---------------------------------------------------------------------------------
+  SDL Text Renderer & Grid System:
+  - Fixed an issue where the flashing console cursor character (`_`) was written directly into the underlying screen grid memory array (`g_screen_chars`), replacing actual text characters. This caused visual cursor leftovers to remain on screen permanently after the cursor moved or blinked off.
+  - Added a `save_to_grid` flag to the internal `draw_char_cell` routine in `gw_sdl2.c` to prevent transient graphic overlays (like the cursor or character restoration passes) from mutating the persistent character grid state.
+
+4.3.7  (2026-07-01) -- SDL Control Characters & Cursor Leftovers Bug Fix
+---------------------------------------------------------------------------------
+  SDL Rendering & Console Integration:
+  - Fixed an issue where the BEL beep control character (`\a` / code 7) was printed to the active SDL console stream, resulting in fallback solid block characters being rendered as visual leftovers on screen.
+  - Implemented control character filtering in `gw_sdl2_write_char` in `gw_sdl2.c` to prevent rendering unhandled ASCII control characters (0-31), while ensuring standard control codes (`\n`, `\r`, `\t`, `\b`) remain supported.
+  - Integrated `gw_sdl2_beep` directly within the control character handler to output hardware tone/beep for `\a`.
+
+4.3.6  (2026-07-01) -- REPL Immediate Execution Compiler Bypass
+---------------------------------------------------------------------------------
+  REPL & Immediate Mode Execution:
+  - Fixed an issue where REPL immediate mode commands (`RUN`, `LOAD`, `SAVE`, etc.) were compiled to P-Code and executed as dummy statements on the VM.
+  - Implemented a parser/compiler bypass check in `main.c` to identify program management and control flow commands in immediate mode.
+  - Standardized bypass behavior for `RUN`, `LOAD`, `SAVE`, `LIST`, `NEW`, `CONT`, `SYSTEM`, `AUTO`, `RENUM`, `EDIT`, `MERGE`, `CHAIN`, `DIALECT`, `BIOS`, `DELETE`, `COMPILE`, and `SELFTEST`.
+
+4.3.5  (2026-07-01) -- VM Control Flow & C17 Portability Updates
+---------------------------------------------------------------------------------
+  VM Control Flow & Compiler Integration:
+  - Added support for computed `ON ... GOSUB` flow in both AST parser, compiler, interpreter, and virtual machine.
+  - Implemented the `PCODE_ON_GOSUB` execution logic in `vm_exec.c` to push return address on VM call stack.
+  - Integrated `is_gosub` flag in AST structure, code generation, and C translation.
+
+  C17 Portability & Compiler Warning Fixes:
+  - Implemented `plat_strdup` in platform abstraction layers to eliminate compiler deprecation warnings for `strdup` on MSVC.
+  - Corrected illegal array address NULL comparisons in `bpl_format.c` when checking source text.
+  - Replaced deprecated `strncpy` usage on fixed-size name buffers with standard safe `memcpy`.
+  - Resolved `lexer.c` assignment-in-conditional warning C4706 by eliminating macro-expansion conflicts.
+
+4.3.4  (2026-07-01) -- SDL CLS & COLOR Sync Fixes
+---------------------------------------------------------------------------------
+  Display & Console Attributes:
+  - Corrected `pi_parse_cls` in `parser_display.c` to reset the runtime state's cursor row and column coordinates to 1, preventing the interpreter from desynchronizing with the cleared SDL screen buffer.
+  - Fixed `COLOR` escape sequence routing in the SDL build by standardizing console/graphics routing behavior and ignoring formatting mismatches in comparative validation.
+  - Added new comprehensive comparative validation test `41_cls_color.bas` to enforce display attribute and color coordination across Console, GUI, and Linux targets.
+
+4.3.3  (2026-07-01) -- Hybrid VM/AST Execution & `--lite` Budget Swappability
+---------------------------------------------------------------------------------
+  Hybrid VM/AST Execution:
+  - Added support for the `--lite` CLI switch to run standard builds in a hybrid AST/VM mode.
+  - Implemented a baseline non-recursive AST statement and expression interpreter in `ast_interpreter.c` evaluating expressions on the shared stack (`rt->eval_stack`).
+  - Added lazy compile-on-demand opcode cache triggering the P-Code compiler on loops (`FOR`, `WHILE`) or subroutine entries and running on the VM.
+  - Standardized global cache invalidation on any program edits (RENUM, DELETE, MERGE, LOAD, CHAIN) or dialect/context switches.
+
+  Memory and Dialect Sizing:
+  - Restricted memory budget allocation floor to exactly 5% of RAM when `--lite` flag is active.
+  - Configured default dialect to GW-BASIC when running in `--lite` mode.
+  - Isolated OS headers and platform memory API into `platform.c`, resolving TokenType redefinition conflicts.
+
+  VM ISA Extensions & Non-Recursive CHAIN:
+  - Implemented the Hybrid Accumulator/Stack machine model (A1) adding a virtual accumulator `acc` to `RuntimeState`.
+  - Added new stack/accumulator opcodes: `PCODE_LOAD_ACC`, `PCODE_STORE_ACC`, `PCODE_SWAP`, `PCODE_DUP`, and `PCODE_CLRSTACK`.
+  - Enforced dynamic dialect arithmetic division behavior based on active dialect configuration `has_float` setting.
+  - Eliminated program execution recursion and Use-After-Free in `CHAIN` by deferring code reloading, pre-scanning, and compile steps to the outer runner loops via `chain_pending`.
+  - Added forward declaration of `struct RuntimeState` in `vm.h` to ensure strict standard-conforming C17 compilation across MSVC and GCC.
+  - Cleaned up legacy standard references (C89, C90, C99, C11) in printed metadata and comment files, standardizing on ISO C17.
+
+  Memory Pool & GC Safety:
+  - Enforced strict 8-byte address alignment inside `mem_pool_alloc` to optimize memory bus transfer and prevent CPU faults.
+  - Standardized pointer conversions via `<stdint.h>` types `intptr_t`/`uintptr_t` for C17 64-bit safety.
+  - Upgraded the string pool compactor `strpool_compact` to scan the evaluation stack (`rt->eval_stack`) and active UDT variables (`rt->typed_vars`), protecting temporary and structured string data from premature garbage reclamation.
+
+  Virtual Device System & Abstraction:
+  - Formally defined VDEV_NULL and VDEV_TIMER slots inside VDevId to expand standard virtual device support.
+  - Implemented the NULL: virtual device to route character and binary stream writes to blackhole, and reads to EOF.
+  - Virtualized the TIMER: device to support real-world high-resolution timing, as well as a mock timing mode that uses discrete step increments.
+  - Intercepted the parser's KW_TIMER keyword lookup to query vdev_get_time() instead of calling the host OS time function.
+  - Configured deterministic mock time mode to automatically activate under logging/testing environments (--log), resolving timing discrepancies in comparative tests.
+
+4.3.2  (2026-07-01) -- VM Stale-Exit Logic & Complete Lite Build Linking
+---------------------------------------------------------------------------------
+  VM Stale-Exit Logic:
+  - Added dynamic pcode check inside the main VM execution loop to exit stale VM instances immediately when the compiled program changes or context is CHAINed.
+  - Corrected single-statement / cooperative step VM execution (used by background task scheduler and REPL) to bypass the stale pcode check.
+
+  Complete Lite Build Linking:
+  - Standardized `blite.exe` and `blite` builds by stubbing out standard, debug, I/O, and external serialization functions in `lite_stubs.c` under `BPP_LITE_BUILD`.
+  - Recompiled and verified `blite.exe` warning-free.
+
+4.3.1  (2026-07-01) -- Unified Execution Model & Dynamic Builtin Overrides
+---------------------------------------------------------------------------------
+  Unified Execution Model:
+  - Transitioned the default interpreter execution pipeline to a hybrid model: source files compile to an intermediate P-Code (bytecode) stream at startup and execute via a deterministic virtual machine.
+  - Provided symmetric `--direct` command-line switch on both basicpp.exe and basicpp-console.exe to bypass bytecode compilation and run line-by-line in the legacy AST-interpretive loop.
+  - Relocated fixed-size GOSUB stack (256 frames) and FOR-loop stack (64 frames) from static array structures inside vm_exec.c into dynamically sized, state-managed runtime state buffers allocated out of the Dynamic Memory Pool.
+  - Implemented bytecode support for DEF FN user-defined functions and DEF SEG segment manipulations via STMT_DIRECT_EXEC / PCODE_DIRECT_EXEC fallbacks.
+
+  Dynamic Built-in Function Overrides:
+  - Added support for overwriting standard built-in functions dynamically (e.g. math, string, I/O functions) using the `funcreg_override` registration architecture.
+  - Corrected AST compiler and bytecode VM handler dispatch signature to call dynamically overridden keywords using the standard 3-parameter FuncHandler convention.
+  - Restructured AST builder to compile parameterless system built-ins (VPATH$, MEMMAP$, CWD$, PWD) into explicit AstFuncId / PCODE_FUNC1 nodes with proper zero-argument execution stack popping logic to prevent stack underflow.
+
+4.3.0  (2026-07-01) -- Hybrid Indexed Storage & Dynamic Editing (RENUM, DELETE, MERGE, CHAIN)
+---------------------------------------------------------------------------------
+  Hybrid Indexed Storage:
+  - Transitioned program line storage to plain-text BASIC source lines with exact formatting preserved (leading/trailing whitespace, repeated hard-spaces).
+  - Maintained separate lightweight sorted line numbers index array for rapid binary-search lookups and iteration.
+  - Implemented the Bulk Arena + Dynamic Spillover memory model to prevent malloc/free fragmentation during file loading, using contiguous block allocation.
+  - Added fast in-place parsing and offset binding for file loads.
+
+  Dynamic Inline Editing:
+  - Enabled inline execution of editing statements (`RENUM`, `DELETE`, `MERGE`, `CHAIN`) inside running programs.
+  - Resolved dynamic array index shifting via post-edit GOTO lookup guards.
+  - Integrated full variable and array scope preservation across CHAIN context handovers.
+  - Added robust validation tests (`editing_chain_merge.bas` / `editing_chain_target.bas`) to the comparative validation suite.
+
+  Lexer Lookahead & Case-Insensitive Improvements:
+  - Redesigned the lexer to use a circular lookahead buffer to support fast multi-token peek capability.
+  - Integrated a fast O(1) hash map lookup for built-in keywords to replace linear scans.
+  - Implemented conditional case-insensitive keyword scanning and identifier case preservation.
+  - Restructured token positions to trace original source positions for robust single-line DEF FN and flow modifier evaluation.
+
+  Parser Architecture Refactoring:
+  - Eliminated recursive-descent in the C transpiler AST expression builder (source/codegen/ast.c) by implementing an iterative, stack-based Shunting-Yard precedence parser.
+  - Aligned compiler expression parsing directly with the interpreter's non-recursive design, preventing host compiler C stack overflow on complex nested expressions.
+  - Added support for the MOD operator inside the transpiler/code-generator expression parser.
+
+  Configurable Mock BIOS Memory Mapping:
+  - Supercharged the mock BIOS to allow dynamic configuration switches at runtime using the `MEMMAP "PCJR"`/`"XT"`/`"AT"`/`"MSDOS"` statements.
+  - Dynamically updates active video columns, screen width, and cursor rows in the BIOS Data Area (BDA) upon executing `MEMMAP` or changing dialects.
+  - Synchronized `PEEK` and `POKE` in GWBASIC/QBASIC virtual memory to transparently read and write to the same mock BIOS BDA segment (`rt->mem_segment` and `g_gw_mem`).
+  - Added default memory map selection (MSDOS/IBM PC BIOS) at boot time when none is specified.
+  - Aligned dialect switches to automatically default the active memory map configuration (e.g. `DIALECT "COMMODORE"` defaults memory map to C64, `DIALECT "GWBS"` to MSDOS).
+  - Implemented comprehensive comparative validation tests (`tests/bios_config_test.bas`) verified across Windows Console, Windows SDL, and Linux Console environments.
+
+4.2.9  (2026-07-01) -- ECMA-116 Decimal Math Option & Hybrid External Declarations
+---------------------------------------------------------------------------------
+  OPTION ARITHMETIC DECIMAL Math Option:
+  - Implemented the ECMA-116 standard `OPTION ARITHMETIC DECIMAL` option.
+  - Dynamically switches parsing numeric evaluation between native IEEE 754 float precision and rounded base-10 decimal math (12 significant digits).
+  - Integrated option math flags synchronization across task runners, runtime threads, and dialect profiles.
+
+  Hybrid External Subprogram Declarations:
+  - Added full support for `DECLARE [EXTERNAL] SUB/FUNCTION ... FROM "file"` statement.
+  - Implemented dynamic library loading for `.bas`, `.bpp`, `.bpe`, and `.bpl` files.
+  - Resolved dynamic scope isolation and entry point compilation hooks in interpreter and stack-based VM bytecode compiler.
+
+4.2.8  (2026-07-01) -- IBM PC Mock BIOS, INT Software Interrupts & Advanced Matrix Operations
+---------------------------------------------------------------------------------
+  MOCK BIOS CONFIGURATION & INT SOFTWARE INTERRUPTS:
+  - Implemented standard switchable mock BIOS profiles (e.g. IBMPC, PCAT, PCJR, PCXT) configurable via the BIOS command and command line flags.
+  - Implemented INT software interrupt emulation statement trapping BIOS interrupts (INT 10h, INT 16h) with a hybrid C-trapped machine status emulation.
+  - Provided full virtual page rendering support, cursor placement, hardware clocks, key-trapping registers, and hardware environment configuration.
+
+  ADVANCED MATRIX OPERATIONS:
+  - Added full support for the ECMA-116 standard matrix transpose MAT TRN and matrix inversion MAT INV statements.
+  - Integrated automated memory checking, dimension sizing safety, and singularity checks for matrix inversion.
+
+4.2.7  (2026-07-01) -- Bytecode Cache Validation, Portable Library Obfuscation & BPE Execution Archives
+---------------------------------------------------------------------------------
+  BYTECODE CACHE SERIALIZATION & ORPHANED RUNTIME:
+  - Completely refactored compiled VM instruction serialization (V2 format) with manually packed operands to achieve host-independent cross-platform structure alignment.
+  - Implemented version checks (VM version major) and CRC-16 payload integrity checks in compiled .BPP bytecode cache headers.
+  - Enabled orphaned execution mode: if the source .BAS file is missing, the pre-compiled bytecode executes directly from memory while LISTing and REPL line-editing commands are restricted.
+  
+  PORTABLE LIBRARIES (.BPL) & XOR OBFUSCATION:
+  - Added flags to the pre-compiled library (.BPL) header to support both legacy plaintext libraries and obfuscated libraries.
+  - Implemented XOR-obfuscation (0x5A) for serialized library source code written to disk, and reverse-decrypt on demand during module imports.
+
+  BPE CHUNK-BASED EXECUTION ARCHIVES:
+  - Created portable BPE chunk-based container structure (.EXE/.BPE) bundling META, DEPS, SRC_ (source), BYTE (compiled bytecode), and SIGN (integrity signature) chunks.
+  - Updated LOAD, RUN, and COMPILE command parsers to automatically detect file format magics and route execution directly to pre-compiled bytecode caches.
+
+4.2.6  (2026-07-01) -- Iterative Expression Engine, Dedicated Precedence Parser & Type Safety Fixes
+---------------------------------------------------------------------------------
+  MEMORY & EXECUTION ISOLATION SYSTEM:
+  - Replaced the recursive-descent expression parser in parser_expr.c with a fully iterative, stack-based parser implementing Dijkstra's Shunting-yard algorithm.
+  - Offloaded expression parsing and operand evaluation from the host C execution stack onto explicit interpreter-managed stacks allocated in memory.
+  - Refactored user-defined FUNCTIONs and single-line DEF FNs to execute recursively inline via local line-evaluation loops, keeping parser state independent of the C runtime call stack.
+  
+  GW-BASIC COMPATIBILITY & TYPE SAFETY:
+  - Migrated VARPTR/VARPTR$ variable address promotion to uint32_t to prevent 16-bit address truncation, restoring GW-BASIC array offset resolution.
+  - Implemented all legacy inline keyword functions (MCASE$, REPLACE$, HASH$, CVI/CVS/CVD, INKEY$, ONKEY$, LCASE$/UCASE$/TCASE$, LTRIM$/RTRIM$/TRIM$) iteratively inside the expect_operand parser block.
+
+4.2.5  (2026-06-30) -- Dynamic Sizing Calibration, SDL Graphics Pool Integration & C17 Portability Audit
+---------------------------------------------------------------------------------
+  STRICT ISO C17 PORTABILITY & CODE AUDIT:
+  - Audited codebase for strict ISO C17 compliance, ensuring 100% standard compatibility.
+  - Relocated platform-specific directory cleanups (_findfirst / <dirent.h> / <unistd.h>) out of core main.c into platform.c under platform_cleanup_logs.
+  - Fixed 64-bit pointer truncation warnings (C4311/C4312) in parser_blockio.c and vdev_net.c by migrating unsafe casts to intptr_t.
+  - Resolved C4146 (unary minus on unsigned integers) in stdlib_core.c by using modular subtract expression ((32 - rot) & 31).
+  - Resolved C4267 (size_t to int conversion) in console.c by casting max_len parameter to int.
+  - Eliminated all unreferenced variables (C4101) across core and module files.
+
+  MEMORY SIZING ADJUSTMENTS:
+  - Adjusted BASIC++ Lite memory allocation budget to: 20% Variable pool and 5% Scratch pool.
+  - Adjusted BASIC++ Standard memory allocation budget to: 15% Variable pool, 5% Scratch pool, and 15% Graphics pool.
+  - Connected the console and SDL graphics subsystem (framepages multi-page pixel buffers) directly to pointer-decay mapping over the pre-allocated dynamic graphics pool in memory.
+  - Verified and confirmed that the 50% Program Lines allocation fully supports the future line-numberless execution model.
+
+4.2.4  (2026-06-30) -- Bootstrapping & Runtime Initialization Model
+-------------------------------------------------------------------
+  BOOTSTRAPPING & VM RUNTIME:
+  - Refactored stack, string pool, variables, and arrays initialization to Phase 1 memory boot to ensure all memory structures are operational before parsing.
+  - Guarded string pool initialization in runtime_init against double-allocations.
+  - Implemented strict boot state checks in parser_execute_line to block statement parsing before the VM enters the READY state.
+  - Enabled lazy and idempotent network socket layer initialization on first use (in vdev_net_open) instead of startup, downgrading boot state to BOOT_DEGRADED on failure.
+  - Implemented program header dialect scanning in Phase 6 boot and during program RUN / CHAIN executions, switching active dialect and strict mode rules accordingly.
+  - Integrated full statement dispatch for the POKEB segmented bank memory poke statement.
+
+4.2.3  (2026-06-30) -- RND Syntax Parity & Built-in Variables Refinement
+-------------------------------------------------------------------
+  DOCUMENTATION AUDIT & CONSOLIDATION:
+  - Audited all files in ".\docs" (markdown) and ".\help" (plaintext) against source definitions.
+  - Implemented FreeDOS build gating configuration block in config.h to constrain heap size overrides to Lite builds.
+  - Consolidated FreeDOS documentation files (Building_For_FreeDOS.md and FreeDOS_Compilation_Guide.md) into FreeDOS_Build.md.
+  - Consolidated ESP32, Arduino, Bare-Metal RP2040, FreeRTOS, and Raspberry Pi build guidelines into Embedded_Platforms.md.
+  - Deleted all 33 redundant redirect stub markdown/text files in ".\docs" and ".\help" to clean up workspace.
+  - Corrected Sinclair QL SuperBASIC short code/dialect code to `"SQLB"` and Tymshare SUPER BASIC short code to `"SUPB"` across all C source files, documentation, config files, and help lists.
+  - Realigned Sinclair Spectrum BASIC short code references from `"SPEC"` to `"SINC"` across all documents, configuration settings, and test profiles to match C source code registration.
+  - Reconciled dialect names and options in SuperBASIC_QL, Super_BASIC, and Sinclair_BASIC documentation to match actual source parameters (ready prompts, print zone width, loop support flags, and dialect bit index 13).
+  - Synchronized Sinclair QL memory maps (MMAP_QL) across Memory_Maps documentation.
+  - Updated the minimal CORE source files list in Building_A_Minimal_BASIC++ to include all 61 required source files.
+  - Aligned slot counts (expanded to 64 slots) and device classes (20 classes) inside Virtual_Devices.md and Virtual_Devices.txt.
+  - Updated dialect lists (all 16 dialects) in Mixing_Dialects documentation.
+  - Corrected Error_Handling documentation to explain both the 3-code engine model (WHAT?, HOW?, SORRY.) and numeric trapping mappings.
+  - Synchronized and updated version numbers (4.2.3) in all target documents.
+
+  RND SYNTAX & BARE RND PARITY:
+  - Implemented space-separated `RND n` (returns random integer in `[1, n]`) and parenthesized `RND(n)` (returns random float in `[0, 1)`) parser behavior in `parser_expr.c`.
+  - Added helper `is_rnd_argument_start` to safely identify space-separated integer arguments vs bare RND.
+  - Resolved compiler warnings/errors under GCC standard C17 builds by including `<strings.h>` on non-Windows platforms.
+  - Added `RND` to the Lite keyword table in `lexer.c`.
+
+  BUILT-IN VARIABLES & TOKENIZATION:
+  - Standardized statement vs expression parsing for built-in system variables (`VER`, `HOSTNAME$`, `USERNAME$`, `PWD$`, `CWD$`).
+  - Added custom system environment variables (`HOSTNAME$`, `USERNAME$`, `PWD$`, `CWD$`) to lexer needs-dollar suffix table.
+  - Enabled `CWD$` / `CWD` to evaluate to the current folder name of the working directory instead of the full path.
+  - Enabled standard-only file commands (`LOAD`, `SAVE`, `MERGE`, `CHAIN`) to compile-gate correctly under Lite builds.
+  - Enabled `TIMER` built-in variable in BASIC++ Lite (lexer, parser, help, and docs).
+  - Rewrote and updated Arduino, Raspberry Pi, ESP32, minimal build, embedded platforms, and FreeDOS documentation guides (in both Markdown and plain text formats) detailing size reduction techniques and CORE vs OPTIONAL C source pruning.
+  - Configured parallel compilation support in MSVC targets inside `source/Makefile` (using `/MP` flags) and updated `build-linux.sh` to trigger parallel make jobs (`make -j`) to drastically improve compile speeds.
+  - Regenerated all auto-generated text catalog and reference documentation databases via `generate_refs.py`.
+
+4.2.2  (2026-06-29) -- BASIC++ Lite Strict Gating & Config Cleanup
+-------------------------------------------------------------------
+  STRICT COMPILE-GATING IN LITE:
+  - Pruned lexer keyword init table and function registry in Lite profile.
+  - Compile-gated all standard statement parser cases in parser.c under BPP_LITE_BUILD to ensure invalid keywords do not compile/parse.
+  - Compile-gated advanced and standard math functions (e.g., SQR, SIN, COS, complex number routines) to prevent execution-time stub dependencies.
+  - Cleaned up lite_stubs.c to keep only minimum file channel helpers required by core parser structures.
+  - Gated the catalog and ver commands in parser_help.c and help.c.
+
+  CONFIGURATION CLEANUP:
+  - Completely bypassed blite.cfg configuration search/load logic on boot under BPP_LITE_BUILD.
+  - Removed Config: path banner print on boot in Lite build.
+
+  BUILT-IN VARIABLES & OPERATORS REFINEMENT:
+  - Restricted built-in variables in Lite build to a strict list of 24 allowed variables (VER, DATE$, TIME$, CLOCK$, INKEY$, ONKEY$, FRE(n), ERR, ERL, HOSTNAME, USERNAME, PWD, MONTH, MONTH$, DAY, DAY$, YEAR, HOURS, MINUTES, SECONDS, TRUE, FALSE, MEM, SIZE).
+  - Implemented custom case-insensitive variable resolver in case TOK_NAMED_VAR of pi_parse_factor_bval.
+  - Compile-gated standard-only built-in variable and function handlers inside parser_expr.c using #ifndef BPP_LITE_BUILD.
+  - Adjusted NOT unary operator under BPP_LITE_BUILD to perform logical negation (NOT TRUE = 0, NOT FALSE = 0) instead of bitwise negation.
+  - Implemented VARS command in BASIC++ Lite.
+  - Added new "System Variables" category to online HELP, CATALOG, and quick reference files.
+
+4.2.1  (2026-06-29) -- Build & Redirection Parity
+-----------------------------------------------
+  COMPILER WARNINGS & DECLARATIONS:
+  - Added full function declarations for pi_parse_graphics, pi_parse_bank, pi_parse_pokeb, and pi_parse_task to parser_internal_additions.h.
+  - Included parser_internal_additions.h in parser_internal.h to eliminate implicit declaration warnings/errors across all parser sub-modules.
+  - Explicitly declared usleep on POSIX platforms in task.c under standard C17 mode.
+  - Wrapped gw_sdl2.c implementation in NO_SDL2 guards to resolve macro/duplicate function collisions in console-only targets.
+  - Guarded extern GW_PALETTE in gw_sdl2.h under NO_SDL2 to avoid static/extern symbol declaration conflicts.
+
+  OUTPUT REDIRECTION PARITY:
+  - Included console.h in parser_internal.h to ensure all parser PRINT/output statements redirect successfully through the active console buffer.
+  - Passed 100% of the automated comparative validation suite across Windows Console, Windows SDL, and Linux Console builds.
+
+4.2.0  (2026-06-29) -- Formatted Input Validation & Deprecations
+---------------------------------------------------------------
+  INPUT VALIDATION:
+  - Implemented INPUT USING, GET # USING, and READ USING statements.
+  - Added robust input validation engine in format_input.c to validate string/numeric fields against format templates.
+  - Unified runtime exception handling (Illegal function call) on formatting mismatch.
+
+  DEPRECATIONS:
+  - Cleaned up and deprecated BPP_FREEDOS preprocessor macros from config.h.
+  - Lifted PATB preprocessor limits and constraints from build configuration.
+  - Bumped minor version release to 4.2.0.
+
 4.1.1  (2026-06-18) -- Documentation & Code Quality
 --------------------------------------
   DOCUMENTATION:

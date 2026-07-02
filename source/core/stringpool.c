@@ -140,15 +140,15 @@
 //
 // Called by: runtime_init() in runtime.c during boot.
 //
-int strpool_init(StringPool *pool)
+int strpool_init(StringPool *pool, long size)
 {
-    pool->base = (char *)malloc((size_t)MAX_STRING_POOL);
+    pool->base = (char *)malloc((size_t)size);
     if (pool->base == NULL) {
         pool->size = 0;
         pool->used = 0;
         return -1;
     }
-    pool->size = MAX_STRING_POOL;
+    pool->size = size;
     pool->used = 0;
     return 0;
 }
@@ -425,6 +425,38 @@ int strpool_compact(StringPool *pool, void *runtime_state)
     // Scan CONST values (CONST FOO$ = "BAR")
     for (i = 0; i < rt->const_count && count < MAX_LIVE_STRINGS; i++) {
         BValue *v = &rt->constants[i].value;
+        if (bval_is_string(v) && v->v.sval.data != NULL &&
+            v->v.sval.length > 0 &&
+            v->v.sval.data >= pool->base &&
+            v->v.sval.data < pool->base + pool->size) {
+            live[count].ref = v;
+            live[count].old_data = v->v.sval.data;
+            live[count].length = v->v.sval.length;
+            count++;
+        }
+    }
+    // Scan UDT typed variables
+    for (i = 0; i < rt->typed_var_count && count < MAX_LIVE_STRINGS; i++) {
+        TypedVar *tv = &rt->typed_vars[i];
+        UserTypeDef *td = &rt->user_types[tv->type_index];
+        int f;
+        for (f = 0; f < td->field_count && count < MAX_LIVE_STRINGS; f++) {
+            BValue *v = &tv->fields[f];
+            if (bval_is_string(v) && v->v.sval.data != NULL &&
+                v->v.sval.length > 0 &&
+                v->v.sval.data >= pool->base &&
+                v->v.sval.data < pool->base + pool->size) {
+                live[count].ref = v;
+                live[count].old_data = v->v.sval.data;
+                live[count].length = v->v.sval.length;
+                count++;
+            }
+        }
+    }
+
+    // Scan pre-existing evaluation stack (flat/stackless sweep tracker)
+    for (i = 0; i <= rt->eval_stack.top && count < MAX_LIVE_STRINGS; i++) {
+        BValue *v = &rt->eval_stack.items[i];
         if (bval_is_string(v) && v->v.sval.data != NULL &&
             v->v.sval.length > 0 &&
             v->v.sval.data >= pool->base &&
