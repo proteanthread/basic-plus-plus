@@ -374,8 +374,9 @@ void pi_parse_shared(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_static(Lexer *lex, RuntimeState *rt,
     int line_num);
-void pi_parse_common(Lexer *lex, RuntimeState *rt,
-    int line_num);
+void pi_parse_common(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_shared_cmd(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_public_cmd(Lexer *lex, RuntimeState *rt, int line_num);
 void pi_parse_type(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_defint(Lexer *lex, RuntimeState *rt,

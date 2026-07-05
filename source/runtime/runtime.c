@@ -547,10 +547,11 @@ void runtime_reset(RuntimeState *rt)
  // overflow and raises ERR_SORRY if full.
 int runtime_push(RuntimeState *rt, const StackFrame *frame)
 {
- if (rt->stack_top >= MAX_STACK_DEPTH) {
- error_raise(ERR_SORRY, 0);
- return -1;
- }
+    if (rt->stack_top >= MAX_STACK_DEPTH) {
+        printf("DEBUG: Stack overflow! Type=%d, Top=%d\n", frame->type, rt->stack_top);
+        error_raise(ERR_SORRY, 0);
+        return -1;
+    }
 
  rt->stack[rt->stack_top] = *frame;
  rt->stack_top++;
@@ -770,29 +771,35 @@ int runtime_find_matching(RuntimeState *rt, int start_index,
  int i;
  Lexer scan_lex;
 
- for (i = start_index + 1; i < rt->program->count; i++) {
- // Tokenize the line to inspect its first keyword.
- // We create a temporary lexer - this does not affect
- // the main execution lexer.
- lexer_init(&scan_lex, rt->program->lines[i].text);
+    for (i = start_index; i < rt->program->count; i++) {
+        lexer_init(&scan_lex, rt->program->lines[i].text);
 
- // Skip the line number token if present
- if (scan_lex.current.type == TOK_NUMBER || scan_lex.current.type == TOK_FLOAT_LIT || scan_lex.current.type == TOK_FLOAT_LIT) {
- lexer_next(&scan_lex);
- }
+        if (scan_lex.current.type == TOK_NUMBER || scan_lex.current.type == TOK_FLOAT_LIT) {
+            lexer_next(&scan_lex);
+        }
 
- // Check for open or close keyword
- if (scan_lex.current.type == TOK_KEYWORD) {
- if ((int)scan_lex.current.value.keyword == open_kw) {
- depth++;
- } else if ((int)scan_lex.current.value.keyword == close_kw) {
- if (depth == 0) {
- return i; // found matching end
- }
- depth--;
- }
- }
- }
+        int is_start_line = (i == start_index);
+        int first_open_skipped = 0;
+
+        while (scan_lex.current.type != TOK_EOF) {
+            if (scan_lex.current.type == TOK_KEYWORD) {
+                if ((int)scan_lex.current.value.keyword == open_kw) {
+                    if (is_start_line && !first_open_skipped) {
+                        first_open_skipped = 1;
+                    } else {
+                        depth++;
+                    }
+                } else if ((int)scan_lex.current.value.keyword == close_kw) {
+                    if (depth == 0) {
+                        return i;
+                    }
+                    depth--;
+                }
+            }
+            lexer_next(&scan_lex);
+        }
+    }
+
 
  // No matching end found - mismatched loop structure
  error_raise(ERR_HOW, line_num);

@@ -287,6 +287,7 @@ enum {
  KW_SHELL, // SHELL - execute OS command
  KW_REDIM, // REDIM - resize dynamic array
  KW_SHARED, // SHARED - share vars with main
+ KW_PUBLIC, // PUBLIC - share globally
  KW_BANK,   // BANK - RAMBANK management keyword
  KW_STATIC, // STATIC - preserve vars across calls
  KW_RESUME, // RESUME - return from error handler

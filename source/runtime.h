@@ -190,6 +190,7 @@ typedef struct NamedVariable {
   char name[MAX_VAR_NAME_LEN + 1]; // null-terminated name
   BValue value;
   int capacity; // maximum string capacity, 0/negative if unlimited
+  int flags; // 1=COMMON, 2=SHARED, 4=PUBLIC
 } NamedVariable;
 
 // --- DIM Array Entry ---
@@ -205,6 +206,7 @@ typedef struct DimArray {
  int v_channel; // 1-based channel number for virtual array (0 if normal)
  int v_elem_size; // element size in bytes for virtual array
  int capacity; // maximum string capacity for string array elements
+ int flags; // 1=COMMON, 2=SHARED, 4=PUBLIC
 } DimArray;
 
 // --- User-Defined Type (TYPE...END TYPE) ---
@@ -226,6 +228,7 @@ typedef struct TypedVar {
  char name[MAX_VAR_NAME_LEN + 1];
  int type_index; // index into user_types
  BValue fields[MAX_TYPE_FIELDS]; // field values
+ int flags; // 1=COMMON, 2=SHARED, 4=PUBLIC
 } TypedVar;
 
 // --- SUB/FUNCTION Definition (QBasic compatibility) ---
@@ -347,6 +350,7 @@ typedef struct RuntimeState {
  int current_index;
  int next_index;
  BValue variables[MAX_VARIABLES]; // A-Z
+ int var_flags[MAX_VARIABLES]; // 1=COMMON, 2=SHARED, 4=PUBLIC
  long *array_base; // @() legacy array
  long array_size;
  StackFrame stack[MAX_STACK_DEPTH];
@@ -367,6 +371,7 @@ typedef struct RuntimeState {
  // string variables A$-Z$
  BValue string_vars[MAX_STRING_VARS];
  int string_capacities[MAX_STRING_VARS];
+ int string_var_flags[MAX_STRING_VARS]; // 1=COMMON, etc.
  // DIM arrays
  DimArray dim_arrays[MAX_DIM_ARRAYS];
  int dim_count;

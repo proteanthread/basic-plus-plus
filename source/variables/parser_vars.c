@@ -600,33 +600,96 @@ void pi_parse_static(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
- // pi_parse_common - Handle COMMON command.
+static void parse_and_flag_varlist(Lexer *lex, RuntimeState *rt, int line_num, int flag_bit)
+{
+    (void)line_num;
+    for (;;) {
+        if (lex->current.type == TOK_VARIABLE) {
+            char name = toupper(lex->current.value.var_name);
+            if (name >= 'A' && name <= 'Z') {
+                rt->var_flags[name - 'A'] |= flag_bit;
+            }
+            lexer_next(lex);
+        } else if (lex->current.type == TOK_STRING_VAR) {
+            char name = toupper(lex->current.value.var_name);
+            if (name >= 'A' && name <= 'Z') {
+                rt->string_var_flags[name - 'A'] |= flag_bit;
+            }
+            lexer_next(lex);
+        } else if (lex->current.type == TOK_NAMED_VAR) {
+            int len = lex->current.str_length;
+            char name[MAX_VAR_NAME_LEN + 1];
+            if (len > MAX_VAR_NAME_LEN) len = MAX_VAR_NAME_LEN;
+            memcpy(name, lex->current.str_start, len);
+            name[len] = '\0';
+            
+            int i;
+            for (i=0; i<len; i++) name[i] = toupper(name[i]);
+            
+            // Find or create named var
+            int found = -1;
+            for (i = 0; i < rt->named_count; i++) {
+                if (strcmp(rt->named_vars[i].name, name) == 0) {
+                    found = i;
+                    break;
+                }
+            }
+            if (found == -1 && rt->named_count < MAX_NAMED_VARS) {
+                found = rt->named_count++;
+                strcpy(rt->named_vars[found].name, name);
+                rt->named_vars[found].value = bval_int(0);
+                rt->named_vars[found].capacity = 0;
+                rt->named_vars[found].flags = 0;
+            }
+            if (found != -1) {
+                rt->named_vars[found].flags |= flag_bit;
+            }
+            lexer_next(lex);
+        } else {
+            break;
+        }
+
+        // Skip optional () for arrays
+        if (lex->current.type == TOK_LPAREN) {
+            lexer_next(lex);
+            if (lex->current.type == TOK_RPAREN) {
+                lexer_next(lex);
+                // Mark arrays with same name
+            }
+        }
+        
+        // Skip AS
+        if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_AS) {
+            lexer_next(lex);
+            if (lex->current.type == TOK_KEYWORD || lex->current.type == TOK_NAMED_VAR) {
+                lexer_next(lex);
+            }
+        }
+        
+        if (lex->current.type == TOK_COMMA) {
+            lexer_next(lex);
+        } else {
+            break;
+        }
+    }
+}
+
 void pi_parse_common(Lexer *lex, RuntimeState *rt, int line_num)
 {
-    (void)rt;
-    (void)line_num;
- // COMMON [SHARED] var1, var2, ...
- //
- // GW-BASIC/QBasic: declares variables that
- // persist across CHAIN to another program.
- // Without COMMON, variables are cleared
- // when CHAINing.
- //
- // BASIC++ architecture: CHAIN runs in the
- // same process with the same RuntimeState,
- // so all variables naturally survive CHAIN.
- // This makes COMMON a semantic no-op.
- //
- // Hybrid mode: parse optional SHARED keyword
- // and the variable list correctly.
- // Consume optional SHARED keyword
- if (lex->current.type == TOK_KEYWORD &&
-  lex->current.value.keyword == KW_SHARED) {
-  lexer_next(lex);
- }
- (void)scope_parse_varlist(lex);
- return;
+    if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_SHARED) {
+        lexer_next(lex);
+    }
+    parse_and_flag_varlist(lex, rt, line_num, 1);
+}
 
+void pi_parse_shared_cmd(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    parse_and_flag_varlist(lex, rt, line_num, 2);
+}
+
+void pi_parse_public_cmd(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    parse_and_flag_varlist(lex, rt, line_num, 4);
 }
 
  // pi_parse_type - Handle TYPE command.

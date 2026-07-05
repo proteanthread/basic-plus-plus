@@ -841,10 +841,15 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  Lexer cl;
  lexer_init(&cl,
  pgm->lines[idx].text);
+ lexer_next(&cl);
  // Skip line number
  if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  // Check for END
+ if (cl.current.type == TOK_KEYWORD && cl.current.value.keyword == KW_ENDDEFINE) {
+  rt->next_index = idx + 1;
+  return;
+ }
  if (cl.current.type ==
  TOK_KEYWORD &&
  cl.current.value.keyword ==
@@ -1136,10 +1141,15 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  Lexer cl;
  lexer_init(&cl,
  pgm->lines[idx].text);
+ lexer_next(&cl);
  // Skip line number
  if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  // Check for END
+ if (cl.current.type == TOK_KEYWORD && cl.current.value.keyword == KW_ENDDEFINE) {
+  rt->next_index = idx + 1;
+  return;
+ }
  if (cl.current.type ==
  TOK_KEYWORD &&
  cl.current.value.keyword ==
@@ -1276,7 +1286,11 @@ void pi_parse_declare(Lexer *lex, RuntimeState *rt, int line_num)
         }
         sd->is_function = is_func;
         sd->param_count = 0;
-        sd->body_index = -1;
+        // Do NOT overwrite body_index if already set during prescan,
+        // unless it's explicitly external which changes its nature.
+        if (sd->body_index < 0 || is_ext) {
+            sd->body_index = -1;
+        }
         sd->is_external = is_ext;
         if (is_ext) {
             strncpy(sd->external_file, ext_file, sizeof(sd->external_file) - 1);

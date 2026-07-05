@@ -2386,7 +2386,12 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                                     sub_name[0] = 'F'; sub_name[1] = 'N'; sub_name[2] = (char)next_op.kw; sub_name[3] = '\0';
                                 }
                                 SubDef *sd = runtime_find_sub(rt, sub_name, (int)strlen(sub_name));
-                                if (sd != NULL && sd->is_function && sd->body_index >= 0) {
+                                if (sd != NULL && sd->is_function) {
+                                    if (sd->body_index < 0) {
+                                        printf("DEBUG: ERR_HOW in eval: fn=%s body_index=%d\n", sub_name, sd->body_index);
+                                        error_raise(ERR_HOW, line_num);
+                                        return bval_int(0);
+                                    }
                                     BValue args[16];
                                     if (val_top < arg_count || arg_count > 16) {
                                         error_raise(ERR_WHAT, line_num);
