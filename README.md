@@ -11,9 +11,7 @@ I don't care what you do with my code, just don't take my code and sell it and/o
 
 ## Abstract
 
-A portable, multi-dialect BASIC interpreter written in 129 C17 source files and 65 header files (~90,000 lines of code). Organized into 28 domain subdirectories with a modular, layered architecture. Zero external dependencies -- compiles on any platform with a standards-compliant C compiler.
-
-BASIC++ ships with 16 historically accurate dialect profiles, a runtime dialect-switching engine, a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 70 documentation files.
+BASIC++ ships with a runtime dialect-switching engine, a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 70 documentation files.
 
 Designed for small memory footprints and readable source code. Runs on Windows 11, Linux, and FreeDOS. Suitable for embedded systems, legacy hardware, and as a teaching tool for interpreter design (tokenization, recursive-descent parsing, virtual machines, and environment management).
 
