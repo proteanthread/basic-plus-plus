@@ -40,6 +40,8 @@
  // ---
 
 #include <string.h>
+#include <stdlib.h>
+#include "console.h"
 #include "builtins.h"
 #include "runtime.h"
 #include "errors.h"
@@ -327,15 +329,132 @@ BValue builtin_bin(BValue *args, int argc, void *rt)
  // Step 3: Build output MSB-first with space between bytes
  o = 0;
  for (i = total_bits - 1; i >= 0; i--) {
- out[o++] = raw[i];
- if (i > 0 && (i % 8) == 0) {
- out[o++] = ' ';
- }
- }
- out[o] = '\0';
+  out[o++] = raw[i];
+  if (i > 0 && (i % 8) == 0) {
+  out[o++] = ' ';
+  }
+  }
+  out[o] = '\0';
 
- buf = strpool_alloc(&state->strpool, o);
- if (buf == NULL) return bval_string(NULL, 0);
- memcpy(buf, out, (size_t)o);
- return bval_string(buf, o);
+  buf = strpool_alloc(&state->strpool, o);
+  if (buf == NULL) return bval_string(NULL, 0);
+  memcpy(buf, out, (size_t)o);
+  return bval_string(buf, o);
+}
+
+BValue builtin_edit(BValue *args, int argc, void *rt)
+{
+    RuntimeState *state = (RuntimeState *)rt;
+    if (argc < 2) {
+        error_raise(ERR_WHAT, 0);
+        return bval_string(NULL, 0);
+    }
+    BValue s_val = args[0];
+    BValue code_val = args[1];
+    if (s_val.type != VAL_STRING || !bval_is_numeric(&code_val)) {
+        error_raise(ERR_WHAT, 0);
+        return bval_string(NULL, 0);
+    }
+
+    const char *src = s_val.v.sval.data;
+    int src_len = s_val.v.sval.length;
+    long code = bval_to_int(&code_val);
+
+    char *dest = malloc((size_t)src_len + 1);
+    if (dest == NULL) {
+        error_raise(ERR_SORRY, 0);
+        return bval_string(NULL, 0);
+    }
+
+    int dest_len = 0;
+    int in_quotes = 0;
+    int last_was_space = 0;
+
+    for (int i = 0; i < src_len; i++) {
+        char c = src[i];
+
+        if (code & 1) {
+            c = (char)(c & 127);
+        }
+
+        if ((code & 256) && c == '"') {
+            in_quotes = !in_quotes;
+        }
+
+        if (in_quotes) {
+            dest[dest_len++] = c;
+            continue;
+        }
+
+        if ((code & 2) && (c == ' ' || c == '\t')) {
+            continue;
+        }
+
+        if ((code & 4) && (c == '\r' || c == '\n' || c == '\f' || c == '\b' || c == 27 || c == '\0')) {
+            continue;
+        }
+
+        if (code & 64) {
+            if (c == '[') c = '(';
+            else if (c == ']') c = ')';
+        }
+
+        if (code & 32) {
+            if (c >= 'a' && c <= 'z') {
+                c = (char)(c - 32);
+            }
+        }
+
+        if (code & 16) {
+            if (c == ' ' || c == '\t') {
+                if (last_was_space) {
+                    continue;
+                }
+                c = ' ';
+                last_was_space = 1;
+            } else {
+                last_was_space = 0;
+            }
+        }
+
+        dest[dest_len++] = c;
+    }
+
+    dest[dest_len] = '\0';
+
+    int start = 0;
+    int end = dest_len;
+
+    if (code & 8) {
+        while (start < end && (dest[start] == ' ' || dest[start] == '\t')) {
+            start++;
+        }
+    }
+
+    if (code & 128) {
+        while (end > start && (dest[end - 1] == ' ' || dest[end - 1] == '\t')) {
+            end--;
+        }
+    }
+
+    int final_len = end - start;
+    char *pooled = strpool_alloc(&state->strpool, final_len);
+    if (final_len > 0 && pooled != NULL) {
+        memcpy(pooled, dest + start, (size_t)final_len);
+    }
+    free(dest);
+
+    if (pooled == NULL && final_len > 0) {
+        error_raise(ERR_SORRY, 0);
+        return bval_string(NULL, 0);
+    }
+
+    return bval_string(pooled, final_len);
+}
+
+BValue builtin_num_str(BValue *args, int argc, void *rt)
+{
+    RuntimeState *state = (RuntimeState *)rt;
+    (void)argc;
+    return bval_str(&args[0], 0, &state->strpool);
 }

@@ -60,7 +60,10 @@ typedef struct ConfigFile {
     int quiet; // suppress banner: 0=no, 1=yes, -1=unset
     int found; // 1 if a config file was found and loaded
     char filepath[256]; // path of the file that was loaded
+    int implicit_shell_fallback;
+    char profile_script[256];
 } ConfigFile;
+
 
  // config_file_load - Load configuration from the INI file.
  //

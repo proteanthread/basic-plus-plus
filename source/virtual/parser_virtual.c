@@ -50,6 +50,9 @@
  // pi_parse_vdev - Handle VDEV command.
 void pi_parse_vdev(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)rt;
+    (void)line_num;
   // VDEV - List all registered virtual devices.
   //
   // Shows slot ID, name, class, capability flags,
@@ -62,6 +65,8 @@ void pi_parse_vdev(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_vmem - Handle VMEM command.
 void pi_parse_vmem(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)line_num;
  {
   // VMEM - Virtual memory status.
   //
@@ -297,6 +302,9 @@ void pi_parse_bank(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_vnet - Handle VNET command.
 void pi_parse_vnet(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)rt;
+    (void)line_num;
  {
   // VNET - Virtual network status.
   //
@@ -393,6 +401,9 @@ void pi_parse_vnet(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_vcon - Handle VCON command.
 void pi_parse_vcon(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)rt;
+    (void)line_num;
  {
   // VCON - Virtual console information.
   //
@@ -439,6 +450,8 @@ void pi_parse_vcon(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_vterm - Handle VTERM command.
 void pi_parse_vterm(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)line_num;
  {
   // VTERM - Virtual terminal information.
   //
@@ -447,7 +460,7 @@ void pi_parse_vterm(Lexer *lex, RuntimeState *rt, int line_num)
   // specific terminal behavior.
  printf("=== VIRTUAL TERMINAL ===\n\n");
  printf(" Dialect: %s\n",
-     dialect_get_name());
+     "BASIC++");
  printf(" Encoding: ASCII (7-bit)\n");
  printf(" Columns: %d\n",
      rt->screen_width > 0 ?
@@ -473,6 +486,8 @@ void pi_parse_vterm(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_vmach - Handle VMACH command.
 void pi_parse_vmach(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)line_num;
  {
   // VMACH - Virtual machine state.
   //
@@ -525,7 +540,7 @@ void pi_parse_vmach(Lexer *lex, RuntimeState *rt, int line_num)
      security_get_level() == 0 ?
          "UNRESTRICTED" : "RESTRICTED");
  printf(" Dialect: %s\n",
-     dialect_get_name());
+     "BASIC++");
  printf(" Trace: %s\n",
      rt->trace_on ? "ON (TRON)" : "OFF (TROFF)");
  return;
@@ -535,6 +550,7 @@ void pi_parse_vmach(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_devmap - Handle DEVMAP command.
 void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
  {
    // DEVMAP - Device slot mapping.
    //
@@ -565,17 +581,7 @@ void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
     return;
    }
 
-   // DEVMAP ALIAS DIALECT - reload from current dialect
-   if (lex->current.type == TOK_KEYWORD &&
-       lex->current.value.keyword == KW_DIALECT) {
-    int n;
-    lexer_next(lex);
-    n = device_alias_load_dialect(
-        dialect_get_config()->id);
-    printf("Loaded %d aliases for %s.\n",
-           n, dialect_get_name());
-    return;
-   }
+   
 
    // DEVMAP ALIAS "src" "tgt" - manual alias creation
    if (lex->current.type == TOK_STRING) {

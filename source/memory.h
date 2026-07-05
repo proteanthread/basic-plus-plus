@@ -92,7 +92,7 @@ typedef struct MemoryPool {
  // text - the full line text including the line number prefix.
  // Null-terminated, max MAX_LINE_LENGTH characters.
 typedef struct ProgramLine {
- int line_number;
+ double line_number;
  char *text;
 } ProgramLine;
 
@@ -182,6 +182,8 @@ long mem_pool_available(MemoryPool *pool);
 
 // --- Program Store Functions ---
 
+double program_parse_line_number(const char *input, int *end_pos, int *is_non_decimal);
+
  // program_insert - Insert or replace a program line.
  //
  // If a line with the given number already exists, it is replaced.
@@ -189,30 +191,30 @@ long mem_pool_available(MemoryPool *pool);
  // parameter is the complete line as entered (including line number).
  //
  // Returns 0 on success, -1 if the program store is full (ERR_SORRY).
-int program_insert(ProgramStore *store, int line_number,
+int program_insert(ProgramStore *store, double line_number,
  const char *full_text);
 
  // program_insert_pointer - Insert or replace a program line using a pre-allocated pointer.
-int program_insert_pointer(ProgramStore *store, int line_number,
+int program_insert_pointer(ProgramStore *store, double line_number,
  char *text_ptr);
 
  // program_delete - Delete a program line by number.
  //
  // Removes the line with the given number, shifting subsequent lines
  // down. Returns 0 on success, -1 if the line was not found.
-int program_delete(ProgramStore *store, int line_number);
+int program_delete(ProgramStore *store, double line_number);
 
  // program_find - Find a line by exact line number.
  //
  // Returns the index into the lines array, or -1 if not found.
  // Uses binary search for efficiency.
-int program_find(ProgramStore *store, int line_number);
+int program_find(ProgramStore *store, double line_number);
 
  // program_find_next - Find the first line with number >= target.
  //
  // Used by GOTO to find the target line. Returns the index, or -1
  // if no line has a number >= target. Uses binary search.
-int program_find_next(ProgramStore *store, int line_number);
+int program_find_next(ProgramStore *store, double line_number);
 
  // program_clear - Remove all stored lines (NEW command).
  //
@@ -224,7 +226,13 @@ void program_clear(ProgramStore *store);
  // Prints all lines with line numbers between 'from' and 'to'
  // (inclusive). If from <= 0, starts from the first line.
  // If to <= 0, continues to the last line.
-void program_list(ProgramStore *store, int from, int to);
+void program_list(ProgramStore *store, double from, double to);
+
+#define SEARCH_SUBSTRING      1
+#define SEARCH_IDENTIFIER     2
+#define SEARCH_LABEL_OR_FUNC  3
+
+void program_list_search(ProgramStore *store, int search_type, const char *pattern);
 
 // --- RAMBANK Segmented Virtual Memory Functions ---
 void rambank_init(MemorySystem *mem);

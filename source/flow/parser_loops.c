@@ -57,7 +57,7 @@
  // 5. Continue executing the loop body.
 void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
 {
- char var_name;
+ char var_name = '\0';
  const char *ext_name = NULL;
  int ext_len = 0;
  double start_val, limit_val, step_val;
@@ -70,13 +70,13 @@ void pi_parse_for(Lexer *lex, RuntimeState *rt, int line_num)
  var_name = lex->current.value.var_name;
  lexer_next(lex); // consume variable
  } else if (lex->current.type == TOK_NAMED_VAR &&
- dialect_get_config()->has_extended_vars) {
+ 1) {
  ext_name = lex->current.str_start;
  ext_len = lex->current.str_length;
  var_name = ext_name[0]; // fallback first char
  lexer_next(lex); // consume named var
  } else if (lex->current.type == TOK_KEYWORD &&
- dialect_get_config()->has_extended_vars) {
+ 1) {
  // GW-BASIC: keywords can be used as variable names
  const char *kn = lexer_keyword_name(
   lex->current.value.keyword);
@@ -388,12 +388,68 @@ void pi_parse_wend(Lexer *lex, RuntimeState *rt, int line_num)
  // LOOP UNTIL expr relop expr (post-check, UNTIL condition)
 void pi_parse_do(Lexer *lex, RuntimeState *rt, int line_num)
 {
- StackFrame frame;
- int is_until = 0;
- int is_pre = 0;
+    if (lex->current.type == TOK_FLOAT_LIT) {
+        double dval = lex->current.value.fval;
+        int a_part = (int)dval;
+        int b_part = (int)((dval - a_part) * 100.0 + 0.5);
+        char label_nm[64];
+        int label_len = sprintf(label_nm, "STEP_%d_%d", a_part, b_part);
+        
+        lexer_next(lex);
+        int idx = runtime_find_label(rt, label_nm, label_len);
+        if (idx >= 0) {
+            StackFrame frame;
+            frame.type = FRAME_GOSUB;
+            frame.data.gosub.return_index = rt->current_index + 1;
+            if (runtime_push(rt, &frame) == 0) {
+                rt->next_index = idx;
+                lexer_skip_to_end(lex);
+            }
+            return;
+        } else {
+            int target_line = 50000 + a_part * 100 + b_part;
+            vm_call(rt, target_line, line_num);
+            lexer_skip_to_end(lex);
+            return;
+        }
+    }
+    if (lex->current.type == TOK_NUMBER) {
+        int target_line = (int)lex->current.value.num_value;
+        lexer_next(lex);
+        vm_call(rt, target_line, line_num);
+        lexer_skip_to_end(lex);
+        return;
+    }
+    if (lex->current.type == TOK_STRING || lex->current.type == TOK_NAMED_VAR) {
+        char nm[64];
+        int nlen = lex->current.str_length;
+        if (nlen >= (int)sizeof(nm)) nlen = (int)sizeof(nm) - 1;
+        memcpy(nm, lex->current.str_start, (size_t)nlen);
+        nm[nlen] = '\0';
+        lexer_next(lex);
 
- frame.type = FRAME_DO;
- frame.data.do_loop.body_index = rt->current_index + 1;
+        int idx = runtime_find_label(rt, nm, nlen);
+        if (idx >= 0) {
+            StackFrame frame;
+            frame.type = FRAME_GOSUB;
+            frame.data.gosub.return_index = rt->current_index + 1;
+            if (runtime_push(rt, &frame) == 0) {
+                rt->next_index = idx;
+                lexer_skip_to_end(lex);
+            }
+            return;
+        } else {
+            error_raise(ERR_HOW, line_num); // label not found
+            return;
+        }
+    }
+
+    StackFrame frame;
+    int is_until = 0;
+    int is_pre = 0;
+
+    frame.type = FRAME_DO;
+    frame.data.do_loop.body_index = rt->current_index + 1;
 
  // Check for optional WHILE or UNTIL keyword
  if (lexer_match_keyword(lex, KW_WHILE)) {

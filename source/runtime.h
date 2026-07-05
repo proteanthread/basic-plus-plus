@@ -187,8 +187,9 @@ typedef struct StackFrame {
  // Stores a single named variable (multi-character identifier).
  // Used when the active dialect supports extended variable names.
 typedef struct NamedVariable {
- char name[MAX_VAR_NAME_LEN + 1]; // null-terminated name
- BValue value;
+  char name[MAX_VAR_NAME_LEN + 1]; // null-terminated name
+  BValue value;
+  int capacity; // maximum string capacity, 0/negative if unlimited
 } NamedVariable;
 
 // --- DIM Array Entry ---
@@ -201,6 +202,9 @@ typedef struct DimArray {
  BValue *elements; // pointer into element pool
  int total; // total number of elements
  int type_index; // -1=normal, >=0 = typed array (UserTypeDef index)
+ int v_channel; // 1-based channel number for virtual array (0 if normal)
+ int v_elem_size; // element size in bytes for virtual array
+ int capacity; // maximum string capacity for string array elements
 } DimArray;
 
 // --- User-Defined Type (TYPE...END TYPE) ---
@@ -362,6 +366,7 @@ typedef struct RuntimeState {
  int data_ptr;
  // string variables A$-Z$
  BValue string_vars[MAX_STRING_VARS];
+ int string_capacities[MAX_STRING_VARS];
  // DIM arrays
  DimArray dim_arrays[MAX_DIM_ARRAYS];
  int dim_count;
@@ -378,37 +383,37 @@ typedef struct RuntimeState {
   int log_level;
   int log_to_stderr;
   void* log_fp;
- // error handler (ON ERROR GOTO)
- int on_error_line; // target line, 0 = disabled
- int on_timer_line; // ON TIMER target, 0 = off
- int last_err_code; // ERR - last error code
- int last_err_line; // ERL - line where error occurred
- // user-defined functions (DEF FN)
- UserFunction user_funcs[MAX_USER_FUNCS];
- int user_func_count;
- // VM state machine
- int vm_state; // VMState enum value
-  // expression evaluation stack (vm.h)
-  VMEvalStack eval_stack;
- // Interactive debugger
- int breakpoints[MAX_BREAKPOINTS];
- int breakpoint_count;
-  int single_step; // 1 = pause after each line
-  int resume_index; // program index to resume from
-  int yielded;      // 1 if statement execution yielded
-  int yield_pos;    // Lexer position for resuming yielded statement
-  // Self-test framework
- int test_pass;
- int test_fail;
- int test_total;
- char test_name[64]; // current TEST block name
- int in_test; // 1 = inside TEST/ENDTEST block
- int assert_pass_total; // cumulative pass across blocks
- int assert_fail_total; // cumulative fail across blocks
- int test_block_count; // number of TEST blocks run
- // AUTO mode
- int auto_line; // next AUTO line number, 0=off
- int auto_step; // AUTO increment (default 10)
+  // error handler (ON ERROR GOTO)
+  double on_error_line; // target line, 0 = disabled
+  double on_timer_line; // ON TIMER target, 0 = off
+  int last_err_code; // ERR - last error code
+  double last_err_line; // ERL - line where error occurred
+  // user-defined functions (DEF FN)
+  UserFunction user_funcs[MAX_USER_FUNCS];
+  int user_func_count;
+  // VM state machine
+  int vm_state; // VMState enum value
+   // expression evaluation stack (vm.h)
+   VMEvalStack eval_stack;
+  // Interactive debugger
+  double breakpoints[MAX_BREAKPOINTS];
+  int breakpoint_count;
+   int single_step; // 1 = pause after each line
+   int resume_index; // program index to resume from
+   int yielded;      // 1 if statement execution yielded
+   int yield_pos;    // Lexer position for resuming yielded statement
+   // Self-test framework
+  int test_pass;
+  int test_fail;
+  int test_total;
+  char test_name[64]; // current TEST block name
+  int in_test; // 1 = inside TEST/ENDTEST block
+  int assert_pass_total; // cumulative pass across blocks
+  int assert_fail_total; // cumulative fail across blocks
+  int test_block_count; // number of TEST blocks run
+  // AUTO mode
+  double auto_line; // next AUTO line number, 0=off
+  int auto_step; // AUTO increment (default 10)
   // Block IF depth (ECMA-116 / QBasic)
   int block_if_depth; // nesting depth of active true blocks
   int jumped_to_else; // flag for IF scanner to signal ELSE/ELSEIF evaluation
@@ -531,11 +536,11 @@ typedef struct RuntimeState {
 #define MAX_COM_PORTS 4
 #define MAX_STRIG_BUTTONS 4
 #define MAX_KEY_TRAPS 20
- int on_com_line[MAX_COM_PORTS];
- int on_key_line[MAX_KEY_TRAPS];
- int on_pen_line;
- int on_play_line;
- int on_strig_line[MAX_STRIG_BUTTONS];
+  double on_com_line[MAX_COM_PORTS];
+  double on_key_line[MAX_KEY_TRAPS];
+  double on_pen_line;
+  double on_play_line;
+  double on_strig_line[MAX_STRIG_BUTTONS];
 
  // Event enable state: 0=OFF, 1=ON, 2=STOP
 #define EVT_OFF  0
@@ -552,16 +557,16 @@ typedef struct RuntimeState {
 
  // Tier 2: Device I/O interrupt handlers
 #define MAX_DEVICE_TRAPS 8
- int on_device_line[MAX_DEVICE_TRAPS]; // GOSUB targets
+ double on_device_line[MAX_DEVICE_TRAPS]; // GOSUB targets
  int device_event_state[MAX_DEVICE_TRAPS]; // ON/OFF/STOP
 
  // Tier 3: OS / system interrupt handlers
- int on_break_line; // ON BREAK GOSUB target
+ double on_break_line; // ON BREAK GOSUB target
  int break_event_state; // ON/OFF/STOP
  int signal_pending; // set by OS signal handler
 
  // Tier 4: File I/O event handlers
- int on_fileio_line; // ON FILEIO GOSUB target
+ double on_fileio_line; // ON FILEIO GOSUB target
  int fileio_event_state; // ON/OFF/STOP
  int fileio_pending; // set when disk event occurs
 
@@ -619,6 +624,7 @@ typedef struct RuntimeState {
  int vm_for_stack_capacity;
 
   int direct_mode; // 1 = force direct interpretation mode, 0 = unified VM mode (default)
+  int implicit_shell_fallback; // 1 = enabled, 0 = disabled
   int lite_mode;   // 1 = execute under the hybrid vm/ast lite mode, 0 = standard mode (default)
   struct AstStmt **line_asts; // cached ASTs per program line
   int line_asts_count;
@@ -700,10 +706,10 @@ long runtime_rnd(RuntimeState *rt, long max);
 long runtime_size(RuntimeState *rt);
 
  // Interactive debugger functions.
-int runtime_breakpoint_add(RuntimeState *rt, int line_num);
-int runtime_breakpoint_remove(RuntimeState *rt, int line_num);
+int runtime_breakpoint_add(RuntimeState *rt, double line_num);
+int runtime_breakpoint_remove(RuntimeState *rt, double line_num);
 void runtime_breakpoint_clear(RuntimeState *rt);
-int runtime_is_breakpoint(RuntimeState *rt, int line_num);
+int runtime_is_breakpoint(RuntimeState *rt, double line_num);
 void runtime_breakpoint_list(RuntimeState *rt);
 
  // runtime_find_matching - Scan forward to find a matching keyword.
@@ -726,7 +732,7 @@ void runtime_breakpoint_list(RuntimeState *rt);
  // close_kw - the closing keyword (KW_WEND or KW_LOOP)
  // line_num - current line number for error context
 int runtime_find_matching(RuntimeState *rt, int start_index,
- int open_kw, int close_kw, int line_num);
+ int open_kw, int close_kw, double line_num);
 
  // runtime_get_named_var - Get a named variable's value (integer).
 long runtime_get_named_var(RuntimeState *rt, const char *name, int len);
@@ -747,6 +753,7 @@ int runtime_set_named_var_bval(RuntimeState *rt, const char *name,
 
 BValue runtime_get_string_var(RuntimeState *rt, char name);
 void runtime_set_string_var(RuntimeState *rt, char name, BValue value);
+void runtime_set_string_capacity(RuntimeState *rt, const char *name, int len, int capacity);
 
 // --- DIM Arrays ---
 
@@ -755,15 +762,15 @@ void runtime_set_string_var(RuntimeState *rt, char name, BValue value);
  // For 2D: pass dim1 and dim2, dim3 = 0.
  // For 1D: pass dim2 = 0, dim3 = 0.
 int runtime_dim(RuntimeState *rt, const char *name, int name_len,
- int dim1, int dim2, int dim3, int line_num);
+ int dim1, int dim2, int dim3, double line_num);
 
  // runtime_get_dim - Get element from DIMmed array.
 BValue runtime_get_dim(RuntimeState *rt, const char *name, int name_len,
- int idx1, int idx2, int idx3, int line_num);
+ int idx1, int idx2, int idx3, double line_num);
 
  // runtime_set_dim - Set element in DIMmed array.
 void runtime_set_dim(RuntimeState *rt, const char *name, int name_len,
- int idx1, int idx2, int idx3, BValue val, int line_num);
+ int idx1, int idx2, int idx3, BValue val, double line_num);
 
  // runtime_find_dim - Find a DIM array by name.
  // Returns pointer or NULL.
@@ -773,8 +780,8 @@ DimArray *runtime_find_dim(RuntimeState *rt, const char *name,
 // --- DATA Pool (, extended in for BValue) ---
 
 void runtime_collect_data(RuntimeState *rt);
-BValue runtime_read_data_bval(RuntimeState *rt, int line_num);
-long runtime_read_data(RuntimeState *rt, int line_num);
+BValue runtime_read_data_bval(RuntimeState *rt, double line_num);
+long runtime_read_data(RuntimeState *rt, double line_num);
 void runtime_restore_data(RuntimeState *rt);
 
 // --- User-Defined Functions (DEF FN) ---

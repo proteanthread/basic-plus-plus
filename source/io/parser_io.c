@@ -63,7 +63,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  char sep;
  int file_chan = 0; // 0=stdout, 1-8=file channel
 
- sep = dialect_get_separator();
+ sep = ';';
 
  // PRINT #n, ...
  // If the first token is #, parse channel number then comma.
@@ -339,7 +339,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
   need_newline = 0; // trailing comma = no newline
   // ECMA-55: advance to next print zone
   if (file_chan == 0) {
-  int zone = dialect_get_config()->print_zone_width;
+  int zone = 14;
   int prop_zone =
   keyword_prop_get_int(KW_PRINT,
   "ZONE", -1);
@@ -562,7 +562,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  need_newline = 0; // trailing comma = no newline
  // ECMA-55: advance to next print zone
  if (file_chan == 0) {
- int zone = dialect_get_config()->print_zone_width;
+ int zone = 14;
  int prop_zone =
  keyword_prop_get_int(KW_PRINT,
  "ZONE", -1);
@@ -636,7 +636,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  char input_buf[INPUT_BUFFER_SIZE];
  int file_chan = 0; // 0=stdin, 1-8=file channel
  // For file INPUT#: read whole line, split on commas
- char file_buf[INPUT_BUFFER_SIZE];
+ char file_buf[INPUT_BUFFER_SIZE] = {0};
  int file_buf_valid = 0;
  int file_buf_pos = 0;
 
@@ -785,7 +785,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
 
  // Check for DIM array element: A(expr)
  if (lex->current.type == TOK_LPAREN &&
-  dialect_get_config()->has_dim_arrays) {
+  1) {
   int idx1, idx2 = 0, idx3 = 0;
   BValue dval;
   lexer_next(lex); // consume (
@@ -910,9 +910,10 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
 
  // Check for DIM string array: O$(expr)
  if (lex->current.type == TOK_LPAREN &&
-  dialect_get_config()->has_dim_arrays) {
+  1) {
   char sname[3];
   int idx1, idx2 = 0, idx3 = 0;
+    (void)idx3;
   BValue dval;
   sname[0] = svar_name; sname[1] = '$'; sname[2] = '\0';
   lexer_next(lex); // consume (
@@ -1028,7 +1029,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
 
   // Check for DIM array subscript: B$(C) or A(I)
   if (lex->current.type == TOK_LPAREN &&
-  dialect_get_config()->has_dim_arrays) {
+  1) {
   DimArray *arr = runtime_find_dim(rt, nm, nlen);
   if (arr != NULL) {
    int idx1, idx2 = 0, idx3 = 0;
@@ -1358,7 +1359,7 @@ void pi_parse_read(Lexer *lex, RuntimeState *rt, int line_num)
 
             // Check for DIM array subscript: A(idx)
             if (lex->current.type == TOK_LPAREN &&
-                dialect_get_config()->has_dim_arrays) {
+                1) {
                 char sname[2];
                 int idx1, idx2 = 0, idx3 = 0;
                 sname[0] = var_name; sname[1] = '\0';
@@ -1391,7 +1392,7 @@ void pi_parse_read(Lexer *lex, RuntimeState *rt, int line_num)
 
             // Check for DIM string array: A$(idx)
             if (lex->current.type == TOK_LPAREN &&
-                dialect_get_config()->has_dim_arrays) {
+                1) {
                 char sname[3];
                 int idx1, idx2 = 0, idx3 = 0;
                 sname[0] = svar; sname[1] = '$'; sname[2] = '\0';
@@ -1438,7 +1439,7 @@ void pi_parse_read(Lexer *lex, RuntimeState *rt, int line_num)
 
             // Check for DIM array subscript
             if (lex->current.type == TOK_LPAREN &&
-                dialect_get_config()->has_dim_arrays) {
+                1) {
                 int idx1, idx2 = 0, idx3 = 0;
                 lexer_next(lex); // consume (
                 idx1 = (int)parse_expression(lex, rt, line_num);

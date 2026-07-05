@@ -42,8 +42,8 @@
  // ---
 
 #include "parser_internal.h"
-#include "gw_memory.h"
-#include "gw_sdl2.h"
+#include "segmented_mem.h"
+#include "sdl2_emu.h"
 extern struct GW_Memory *g_gw_mem;
 extern int g_gw_machine_type;
 
@@ -236,6 +236,11 @@ void pi_parse_console(Lexer *lex, RuntimeState *rt, int line_num)
             if (error_occurred()) return;
         }
     }
+    
+    (void)start;
+    (void)lines;
+    (void)fn_keys;
+    (void)mono;
 
 #ifndef NO_SDL2
     if (g_gw_mem != NULL) {
@@ -993,6 +998,8 @@ void pi_parse_pcopy(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_view - Handle VIEW command.
 void pi_parse_view(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
+    (void)line_num;
  // VIEW [[SCREEN] (x1,y1)-(x2,y2) [,c[,b]]]
    // VIEW PRINT [top TO bottom]
    //

@@ -219,15 +219,15 @@ static int parse_yaml_manifest(const char *manifest_path,
 
         // Top-level keys
         if (plug_str_iequal(key, "name")) {
-            strncpy(plug->name, val, 63);
+            snprintf(plug->name, 64, "%.63s", val);
             in_entries = 0;
         } else if (plug_str_iequal(key, "version")) {
-            strncpy(plug->version, val, 15);
+            snprintf(plug->version, 16, "%.15s", val);
         } else if (plug_str_iequal(key, "author")) {
-            strncpy(plug->author, val, 63);
+            snprintf(plug->author, 64, "%.63s", val);
         } else if (plug_str_iequal(key,
                        "description")) {
-            strncpy(plug->description, val, 255);
+            snprintf(plug->description, 256, "%.255s", val);
         } else if (plug_str_iequal(key, "security")) {
             int lvl = security_find_level_by_name(val);
             if (lvl >= 0) {
@@ -239,9 +239,7 @@ static int parse_yaml_manifest(const char *manifest_path,
             // File for current list entry
             if (cur_entry >= 0 &&
                 cur_entry < plug->entry_count) {
-                strncpy(
-                    plug->entries[cur_entry].filename,
-                    val, 255);
+                snprintf(plug->entries[cur_entry].filename, 256, "%s", val);
             }
         }
     }

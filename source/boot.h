@@ -69,7 +69,6 @@
 #include "config.h"
 #include "memory.h"
 #include "security.h"
-#include "dialect.h"
 
 // Forward declaration
 struct RuntimeState;
@@ -107,7 +106,7 @@ typedef enum BootVerbosity {
  // Passed into boot_execute() to control behavior.
 typedef struct BootConfig {
  // Dialect & security
- DialectId  dialect;
+ int  dialect;
  SecLevel   security;
  int        strict;
  int        quiet;

@@ -43,7 +43,7 @@
 
 #include "parser_internal.h"
 #include "console.h"
-#include "gw_sdl2.h"
+#include "sdl2_emu.h"
 
 struct GW_Memory;
 extern struct GW_Memory *g_gw_mem;
@@ -62,6 +62,8 @@ void pi_parse_cls(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_home - Handle HOME command.
 void pi_parse_home(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)line_num;
  // HOME - Move cursor to top-left.
  //
  // Like CLS but does NOT clear screen.
@@ -114,7 +116,7 @@ void pi_parse_width(Lexer *lex, RuntimeState *rt, int line_num)
  // report the current setting.
  {
  int w, lines;
- char sep = dialect_get_separator();
+ char sep = ';';
 
  // No arguments = display current
  if (lex->current.type == TOK_EOF ||

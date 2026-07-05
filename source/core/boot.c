@@ -100,7 +100,7 @@
 //
 //   - "Phase 6: Dialect & Config" shows wrong dialect:
 //     Check BootConfig.dialect (set from CLI -d flag or config file).
-//     Default: BASICPP_DEFAULT_DIALECT from config.h.
+//     Default: 0 from config.h.
 //
 //   Using boot diagnostics:
 //     Run with -v flag to see phase transitions:
@@ -164,16 +164,16 @@
 #include "security.h"
 #include "module.h"
 #include "mod_stdlib.h"
+#include "mod_persist.h"
 #ifndef BPP_FREEDOS
 #include "mod_usb.h"
 #include "mod_fujinet.h"
 #include "mod_upnp.h"
-#include "mod_gwbasic.h"
+#include "mod_legacy_compat.h"
 #endif
 #ifndef NO_SDL2
-#include "gw_sdl2.h"
+#include "sdl2_emu.h"
 #endif
-#include "dialect.h"
 #include "device_alias.h"
 #include "txn.h"
 #include "runtime.h"
@@ -414,6 +414,7 @@ static BootStatus boot_phase2_vm_core(void)
 // =================================================================
 static BootStatus boot_phase3_devices(MemorySystem *memory)
 {
+    (void)memory;
     BootStatus status = BOOT_OK;
 
     boot_log(BOOT_LOG, "Phase 3: Virtual Devices");
@@ -437,6 +438,7 @@ static BootStatus boot_phase3_devices(MemorySystem *memory)
     // Device alias table (for cross-dialect device mapping)
 #ifndef BPP_LITE_BUILD
     device_alias_init();
+    device_alias_load_dialect(0);
     boot_log(BOOT_DEBUG, "  Device alias table initialized");
 #endif
 
@@ -539,13 +541,17 @@ static BootStatus boot_phase5_modules(
 
     mod_gwbasic_register();
     boot_log(BOOT_DEBUG, "  Registered: GWBASIC");
+
+    mod_persist_register();
+    boot_log(BOOT_DEBUG, "  Registered: PERSIST");
 #endif
 
     // Activate STDLIB (always -- provides core math/string functions)
     module_activate("STDLIB", runtime);
 
 #if !defined(BPP_FREEDOS) && !defined(BPP_LITE_BUILD)
-    if (config->dialect == DIALECT_GW_BASIC) {
+    module_activate("PERSIST", runtime);
+    if (config->dialect == 0) {
         module_activate("GWBASIC", runtime);
     }
 #endif
@@ -616,7 +622,7 @@ static BootStatus boot_phase6_dialect(const BootConfig *config, MemorySystem *me
 {
     boot_log(BOOT_LOG, "Phase 6: Dialect & Config");
 
-    DialectId active_dialect = config->dialect;
+    int active_dialect = config->dialect;
 
     // Check program lines for a dialect header (e.g. "'$lang: qbasic" or "10 REM $lang: c64")
     if (memory && memory->program.count > 0) {
@@ -639,9 +645,9 @@ static BootStatus boot_phase6_dialect(const BootConfig *config, MemorySystem *me
                 }
                 lang_name[name_len] = '\0';
                 
-                int detected = dialect_find_by_name(lang_name);
+                int detected = 0;
                 if (detected >= 0) {
-                    active_dialect = (DialectId)detected;
+                    active_dialect = (int)detected;
                     boot_log(BOOT_LOG, "  Detected dialect header: %s", lang_name);
                     break;
                 }
@@ -650,17 +656,16 @@ static BootStatus boot_phase6_dialect(const BootConfig *config, MemorySystem *me
     }
 
     // Initialize and select dialect
-    dialect_init(active_dialect);
+    
     boot_log(BOOT_LOG, "  Dialect: %s (%s)",
-        dialect_get_name(), dialect_get_short_name());
+        "BASIC++", "BPP");
 
     // Apply dialect-specific function overrides and device aliases
-    dialect_apply();
+    
     boot_log(BOOT_DEBUG, "  Dialect overrides applied");
 
     // Apply strict mode if configured via CLI or config file, or if dialect header detected
     if (config->strict || active_dialect != config->dialect) {
-        dialect_set_strict(1);
         boot_log(BOOT_LOG, "  Strict mode: ON");
     }
 

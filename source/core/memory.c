@@ -434,10 +434,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "memory.h"
 #include "errors.h"
 #include "task.h"
 #include "../console.h"
+#include "../lexer.h"
 
 #include "platform.h"
 
@@ -542,6 +544,7 @@ int mem_init(MemorySystem *mem)
     long var_size;
     long scr_size;
     long gfx_size = 0;
+    (void)gfx_size;
     int max_lines;
 
 #ifdef BPP_LITE_BUILD
@@ -839,7 +842,7 @@ long mem_pool_available(MemoryPool *pool)
 //   If an exact match exists, returns the index of the match.
 //   If no match, returns the insertion point.
 //
-static int find_insert_pos(ProgramStore *store, int line_number)
+static int find_insert_pos(ProgramStore *store, double line_number)
 {
     int low = 0;
     int high = store->count - 1;
@@ -857,6 +860,106 @@ static int find_insert_pos(ProgramStore *store, int line_number)
     }
 
     return low;  // insertion point
+}
+
+double program_parse_line_number(const char *input, int *end_pos, int *is_non_decimal)
+{
+    int pos = 0;
+    if (is_non_decimal) {
+        *is_non_decimal = 0;
+    }
+
+    // Skip leading whitespace
+    while (input[pos] == ' ' || input[pos] == '\t') {
+        pos++;
+    }
+
+    // Check for prefixes
+    int base = 10;
+    int has_prefix = 0;
+    (void)has_prefix;
+
+    if (input[pos] == '&') {
+        char next = input[pos + 1];
+        if (next == 'h' || next == 'H') {
+            base = 16;
+            pos += 2;
+            has_prefix = 1;
+        } else if (next == 'o' || next == 'O') {
+            base = 8;
+            pos += 2;
+            has_prefix = 1;
+        } else if (next == 'b' || next == 'B') {
+            base = 2;
+            pos += 2;
+            has_prefix = 1;
+        } else if (next >= '0' && next <= '7') {
+            base = 8;
+            pos += 1; // consume '&'
+            has_prefix = 1;
+        }
+    } else if (input[pos] == '0') {
+        char next = input[pos + 1];
+        if (next == 'x' || next == 'X') {
+            base = 16;
+            pos += 2;
+            has_prefix = 1;
+        } else if (next == 'o' || next == 'O') {
+            base = 8;
+            pos += 2;
+            has_prefix = 1;
+        } else if (next == 'b' || next == 'B') {
+            base = 2;
+            pos += 2;
+            has_prefix = 1;
+        }
+    }
+
+    double val = 0.0;
+    if (base == 10) {
+        char *endptr;
+        val = strtod(input + pos, &endptr);
+        if (endptr == input + pos) {
+            *end_pos = pos;
+            return 0.0;
+        }
+        // Enforce up to 2 decimal places by rounding
+        val = ((int)(val * 100.0 + (val >= 0.0 ? 0.5 : -0.5))) / 100.0;
+        pos = (int)(endptr - input);
+    } else {
+        int start_pos = pos;
+        for (;;) {
+            char c = input[pos];
+            int digit_val = -1;
+
+            if (c >= '0' && c <= '9') {
+                digit_val = c - '0';
+            } else if (c >= 'A' && c <= 'F') {
+                digit_val = c - 'A' + 10;
+            } else if (c >= 'a' && c <= 'f') {
+                digit_val = c - 'a' + 10;
+            }
+
+            if (digit_val < 0 || digit_val >= base) {
+                break; // not a valid digit for this base
+            }
+
+            val = val * base + digit_val;
+            pos++;
+        }
+
+        if (pos == start_pos) {
+            *end_pos = pos;
+            return 0.0;
+        }
+    }
+
+    if (is_non_decimal && base != 10) {
+        *is_non_decimal = 1;
+    }
+
+    *end_pos = pos;
+    return val;
 }
 
 // program_insert - Insert or replace a program line.
@@ -885,7 +988,7 @@ static int find_insert_pos(ProgramStore *store, int line_number)
 //   To support more lines, increase MAX_PROGRAM_LINES in config.h
 //   (costs ~260 bytes per additional slot).
 //
-int program_insert(ProgramStore *store, int line_number,
+int program_insert(ProgramStore *store, double line_number,
     const char *full_text)
 {
     int pos;
@@ -944,7 +1047,7 @@ int program_insert(ProgramStore *store, int line_number,
     return 0;
 }
 
-int program_insert_pointer(ProgramStore *store, int line_number,
+int program_insert_pointer(ProgramStore *store, double line_number,
     char *text_ptr)
 {
     int pos;
@@ -1000,7 +1103,7 @@ int program_insert_pointer(ProgramStore *store, int line_number,
 //  -1 if the line was not found (this is NOT an error in BASIC;
 //      deleting a nonexistent line is silently ignored)
 //
-int program_delete(ProgramStore *store, int line_number)
+int program_delete(ProgramStore *store, double line_number)
 {
     int pos;
     int i;
@@ -1043,7 +1146,7 @@ int program_delete(ProgramStore *store, int line_number)
 //   Index into store->lines[] if found.
 //  -1 if no line with that number exists.
 //
-int program_find(ProgramStore *store, int line_number)
+int program_find(ProgramStore *store, double line_number)
 {
     int pos;
 
@@ -1076,7 +1179,7 @@ int program_find(ProgramStore *store, int line_number)
 //   Index of the first line with number >= line_number.
 //  -1 if no such line exists.
 //
-int program_find_next(ProgramStore *store, int line_number)
+int program_find_next(ProgramStore *store, double line_number)
 {
     int pos;
 
@@ -1143,7 +1246,7 @@ void program_clear(ProgramStore *store)
 //   modify this function. The stored text is in store->lines[i].text.
 //   The line number is in store->lines[i].line_number.
 //
-void program_list(ProgramStore *store, int from, int to)
+void program_list(ProgramStore *store, double from, double to)
 {
     int i;
 
@@ -1155,6 +1258,217 @@ void program_list(ProgramStore *store, int from, int to)
             break;  // lines are sorted, so no more matches
         }
         printf("%s\n", store->lines[i].text);
+    }
+}
+
+static int match_wildcard_recursive(const char *pat, const char *str)
+{
+    if (*pat == '\0' && *str == '\0') return 1;
+    if (*pat == '*') {
+        while (*(pat + 1) == '*') pat++;
+        if (*(pat + 1) == '\0') return 1;
+        while (*str != '\0') {
+            if (match_wildcard_recursive(pat + 1, str)) return 1;
+            str++;
+        }
+        return 0;
+    }
+    if (*pat == '?' && *str != '\0') {
+        return match_wildcard_recursive(pat + 1, str + 1);
+    }
+    if (toupper((unsigned char)*pat) == toupper((unsigned char)*str)) {
+        return match_wildcard_recursive(pat + 1, str + 1);
+    }
+    return 0;
+}
+
+static int strcasecontains(const char *haystack, const char *needle)
+{
+    if (*needle == '\0') return 1;
+    for (; *haystack != '\0'; haystack++) {
+        if (toupper((unsigned char)*haystack) == toupper((unsigned char)*needle)) {
+            const char *h = haystack + 1;
+            const char *n = needle + 1;
+            while (*n != '\0' && toupper((unsigned char)*h) == toupper((unsigned char)*n)) {
+                h++;
+                n++;
+            }
+            if (*n == '\0') return 1;
+        }
+    }
+    return 0;
+}
+
+static int match_anywhere(const char *pat, const char *str)
+{
+    int has_wildcard = 0;
+    const char *p = pat;
+    while (*p != '\0') {
+        if (*p == '*' || *p == '?') {
+            has_wildcard = 1;
+            break;
+        }
+        p++;
+    }
+    
+    if (!has_wildcard) {
+        return strcasecontains(str, pat);
+    }
+    
+    if (*pat == '*') {
+        return match_wildcard_recursive(pat, str);
+    }
+    while (*str != '\0') {
+        if (match_wildcard_recursive(pat, str)) return 1;
+        str++;
+    }
+    return 0;
+}
+
+static int line_matches_identifier(const char *line_text, const char *pattern)
+{
+    Lexer lex;
+    lexer_init(&lex, line_text);
+    
+    if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
+        lexer_next(&lex);
+    }
+    
+    while (lex.current.type != TOK_EOF && lex.current.type != TOK_CR) {
+        TokenType curr_type = lex.current.type;
+        if (curr_type == TOK_VARIABLE || curr_type == TOK_STRING_VAR || 
+            curr_type == TOK_NAMED_VAR || curr_type == TOK_COMPLEX_VAR) {
+            char name_buf[64] = {0};
+            if (curr_type == TOK_VARIABLE) {
+                name_buf[0] = lex.current.value.var_name;
+            } else if (curr_type == TOK_STRING_VAR) {
+                name_buf[0] = lex.current.value.var_name;
+                name_buf[1] = '$';
+            } else if (curr_type == TOK_COMPLEX_VAR) {
+                name_buf[0] = lex.current.value.var_name;
+                name_buf[1] = '~';
+            } else {
+                int len = lex.current.str_length;
+                if (len > 63) len = 63;
+                strncpy(name_buf, lex.current.str_start, len);
+            }
+            
+            if (match_wildcard_recursive(pattern, name_buf)) {
+                return 1;
+            }
+        }
+        lexer_next(&lex);
+    }
+    return 0;
+}
+
+static int line_matches_label_or_func(const char *line_text, const char *pattern)
+{
+    Lexer lex;
+    lexer_init(&lex, line_text);
+    
+    if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
+        lexer_next(&lex);
+    }
+    
+    TokenType prev_type = TOK_EOF;
+    KeywordId prev_keyword = KW_COUNT;
+    int in_goto_list = 0;
+    
+    while (lex.current.type != TOK_EOF && lex.current.type != TOK_CR) {
+        TokenType curr_type = lex.current.type;
+        KeywordId curr_keyword = (curr_type == TOK_KEYWORD) ? lex.current.value.keyword : KW_COUNT;
+        
+        if (curr_keyword == KW_GOTO || curr_keyword == KW_GOSUB || 
+            curr_keyword == KW_RESTORE || curr_keyword == KW_RUN || 
+            curr_keyword == KW_RESUME) {
+            in_goto_list = 1;
+        } else if (curr_type == TOK_COLON) {
+            in_goto_list = 0;
+        }
+        
+        if (curr_type == TOK_NAMED_VAR || curr_type == TOK_VARIABLE) {
+            char name_buf[64] = {0};
+            if (curr_type == TOK_VARIABLE) {
+                name_buf[0] = lex.current.value.var_name;
+            } else {
+                int len = lex.current.str_length;
+                if (len > 63) len = 63;
+                strncpy(name_buf, lex.current.str_start, len);
+            }
+            
+            Lexer look = lex;
+            lexer_next(&look);
+            if (look.current.type == TOK_COLON) {
+                if (match_wildcard_recursive(pattern, name_buf)) return 1;
+            }
+            
+            if (in_goto_list) {
+                if (match_wildcard_recursive(pattern, name_buf)) return 1;
+            }
+            
+            if (prev_keyword == KW_SUB || prev_keyword == KW_FUNCTION) {
+                if (match_wildcard_recursive(pattern, name_buf)) return 1;
+            }
+            
+            if (prev_keyword == KW_CALL) {
+                if (match_wildcard_recursive(pattern, name_buf)) return 1;
+            }
+            
+            if ((prev_type == TOK_EOF || prev_type == TOK_COLON) && curr_type == TOK_NAMED_VAR) {
+                if (look.current.type != TOK_EQUALS && look.current.type != TOK_EOF && look.current.type != TOK_CR && look.current.type != TOK_COLON) {
+                    if (match_wildcard_recursive(pattern, name_buf)) return 1;
+                }
+            }
+            
+            if (strncmp(name_buf, "FN", 2) == 0 || strncmp(name_buf, "fn", 2) == 0) {
+                if (match_wildcard_recursive(pattern, name_buf + 2)) return 1;
+            }
+        }
+        
+        if (curr_keyword == KW_FN && prev_keyword == KW_DEF) {
+            Lexer look = lex;
+            lexer_next(&look);
+            char name_buf[64] = {0};
+            if (look.current.type == TOK_VARIABLE) {
+                name_buf[0] = look.current.value.var_name;
+            } else if (look.current.type == TOK_NAMED_VAR) {
+                int len = look.current.str_length;
+                if (len > 63) len = 63;
+                strncpy(name_buf, look.current.str_start, len);
+            }
+            const char *fname = name_buf;
+            if (strncmp(fname, "FN", 2) == 0 || strncmp(fname, "fn", 2) == 0) {
+                fname += 2;
+            }
+            if (match_wildcard_recursive(pattern, fname)) return 1;
+        }
+        
+        prev_type = curr_type;
+        prev_keyword = curr_keyword;
+        lexer_next(&lex);
+    }
+    return 0;
+}
+
+void program_list_search(ProgramStore *store, int search_type, const char *pattern)
+{
+    int i;
+    for (i = 0; i < store->count; i++) {
+        const char *text = store->lines[i].text;
+        int match = 0;
+        
+        if (search_type == SEARCH_SUBSTRING) {
+            match = match_anywhere(pattern, text);
+        } else if (search_type == SEARCH_IDENTIFIER) {
+            match = line_matches_identifier(text, pattern);
+        } else if (search_type == SEARCH_LABEL_OR_FUNC) {
+            match = line_matches_label_or_func(text, pattern);
+        }
+        
+        if (match) {
+            printf("%s\n", text);
+        }
     }
 }
 
@@ -1382,6 +1696,7 @@ void rambank_poke(MemorySystem *mem, int bank_id, long offset, unsigned char val
 }
 
 long rambank_free_space(MemorySystem *mem, int bank_id) {
+    (void)mem;
     if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
         return 0;
     }

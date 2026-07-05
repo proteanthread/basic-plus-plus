@@ -290,6 +290,7 @@ static void bios_write_mem(RuntimeState *rt, int addr, unsigned char val) {
 
 void emulate_interrupt(RuntimeState *rt, int int_num, int line_num)
 {
+    (void)line_num;
     unsigned int ax = 0, bx = 0, cx = 0, dx = 0;
     load_registers_from_vars(rt, &ax, &bx, &cx, &dx);
 
@@ -430,7 +431,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
 
 #define VM_CALL_STACK_POP(line) \
     ((call_sp <= 0) ? \
-        (printf("RETURN without GOSUB at line %d\n", (line)), \
+        ((floor(line) == (line) ? printf("RETURN without GOSUB at line %.0f\n", (double)(line)) : printf("RETURN without GOSUB at line %.2f\n", (double)(line))), \
          vm_set_state(rt, VM_ERROR), \
          -1) : \
         call_stack[--call_sp])
@@ -479,7 +480,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
         for_stack = rt->vm_for_stack;
     }
 
-    int line_num = 0;
+    double line_num_d = 0.0;
 
     if (!pcode || !pcode->instrs || pcode->count == 0) return -1;
 
@@ -497,8 +498,11 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
         PCodeInstr *inst = &pcode->instrs[pc];
         PCodeOp op = (PCodeOp)inst->op;
 
+
         // Track current line for error reporting
-        line_num = (pcode->line_map) ? pcode->line_map[pc] : 0;
+        line_num_d = (pcode->line_map) ? pcode->line_map[pc] : 0.0;
+        g_current_executing_line = line_num_d;
+        int line_num = (int)line_num_d;
 
         switch (op) {
 
@@ -888,7 +892,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             if (target_idx >= 0 &&
                 target_idx < pcode->on_table_count &&
                 pcode->on_tables[target_idx] > 0) {
-                pc = pcode->on_tables[target_idx];
+                pc = (int)pcode->on_tables[target_idx];
                 continue;
             }
             break;
@@ -909,7 +913,7 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
                 target_idx < pcode->on_table_count &&
                 pcode->on_tables[target_idx] > 0) {
                 VM_CALL_STACK_PUSH(pc + 1);
-                pc = pcode->on_tables[target_idx];
+                pc = (int)pcode->on_tables[target_idx];
                 continue;
             }
             break;
@@ -1170,6 +1174,15 @@ int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode)
             BValue val = runtime_read_data_bval(rt, line_num);
             if (vid >= 0 && vid < 26)
                 runtime_set_string_var(rt, (char)('A' + vid), val);
+            break;
+        }
+
+        case PCODE_READ_NAMED:
+        {
+            const char *name = inst->operand.u.dim.name;
+            int nlen = (int)strlen(name);
+            BValue val = runtime_read_data_bval(rt, line_num);
+            runtime_set_named_var_bval(rt, name, nlen, val);
             break;
         }
 

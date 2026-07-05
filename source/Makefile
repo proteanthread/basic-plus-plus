@@ -44,10 +44,11 @@ TARGET = $(OUTDIR)/baspp
 CORE_SOURCES = \
     core/main.c core/memory.c core/errors.c core/value.c \
     core/stringpool.c core/platform.c core/security.c core/ldisdbl.c \
-    core/config_file.c core/stdlib_core.c core/stdlib_dialect.c \
+    core/config_file.c core/stdlib_core.c  \
     core/error_registry.c core/pcode_compiler.c core/pcode_emit.c \
     core/vm_exec.c \
-    core/boot.c core/rpn.c core/console.c core/task.c core/lite_stubs.c core/pcode_cache.c
+    core/boot.c core/rpn.c core/console.c core/task.c core/lite_stubs.c core/pcode_cache.c \
+    standalone/vt/vt_core.c standalone/mock_bios/mock_bios_core.c
 
 # Lexer / tokenizer
 LEXER_SOURCES = \
@@ -153,16 +154,15 @@ SYSTEM_SOURCES = \
 DIALECT_SOURCES = \
     dialect/dialect.c \
     dialect/dialect_patb.c dialect/dialect_trs1.c dialect/dialect_trs2.c \
-    dialect/dialect_gwbs.c dialect/dialect_ecma55.c \
-    dialect/dialect_ecma116.c dialect/dialect_qbasic.c \
-    dialect/dialect_aint.c dialect/dialect_asft.c \
+    dialect/dialect_gwbs.c dialect/dialect_ecma55.c dialect/dialect_ecma116.c \
+    dialect/dialect_qbasic.c dialect/dialect_aint.c dialect/dialect_asft.c \
     dialect/dialect_atari.c dialect/dialect_c64.c dialect/dialect_coco.c \
-    dialect/dialect_mbasic.c dialect/dialect_sinclair.c \
-    dialect/dialect_superbasic.c dialect/dialect_sbasic.c
-
-# Code generation & bytecode
+    dialect/dialect_mbasic.c dialect/dialect_sinclair.c dialect/dialect_superbasic.c \
+    dialect/dialect_sbasic.c \
+    # Code generation & bytecode
 CODEGEN_SOURCES = \
-    codegen/ast.c codegen/codegen.c codegen/target.c codegen/bytecode.c codegen/detok.c codegen/archive.c
+    codegen/ast.c codegen/codegen.c codegen/target.c codegen/bytecode.c codegen/detok.c codegen/archive.c \
+    standalone/archive/archive_core.c
 
 # External modules
 MODULES_SOURCES = \
@@ -173,9 +173,10 @@ MODULES_SOURCES = \
     modules/ext_feature.c modules/ext_plugin.c \
     modules/lib_space.c modules/bpl_format.c \
     modules/parser_block.c \
-    modules/gw_math_mbf.c modules/gw_memory.c \
-    modules/gw_sdl2.c modules/gw_plugin.c \
-    modules/gw_serial.c modules/mod_gwbasic.c
+    modules/mbf_math.c modules/segmented_mem.c \
+    modules/sdl2_emu.c modules/compat_plugin.c \
+    modules/serial_compat.c modules/mod_legacy_compat.c \
+    modules/mod_fsk_audio.c modules/mod_persist.c
 
 # Runtime state & execution
 RUNTIME_SOURCES = \
@@ -222,19 +223,16 @@ LITE_SOURCES = $(CORE_SOURCES) $(LEXER_SOURCES) $(PARSER_SOURCES) \
 OBJECTS = $(SOURCES:.c=.o)
 
 # Header files (all in source/ root — the public interface surface)
-HEADERS = config.h memory.h lexer.h parser.h parser_internal.h \
-          parser_internal_additions.h \
-          exec.h runtime.h console.h task.h \
-          dialect.h fileio.h detok.h errors.h value.h stringpool.h \
+HEADERS = config.h errors.h lexer.h parser.h runtime.h parser_internal.h \
           ast.h codegen.h compiler.h \
           vdev.h funcreg.h builtins.h vm.h module.h security.h \
           platform.h help.h selftest.h memmap.h gfxbuf.h bytecode.h \
           keyword_props.h alias_lang.h override.h scope.h scope_stack.h \
           config_file.h boot.h rpn.h check.h device_alias.h txn.h \
           mod_stdlib.h mod_usb.h mod_fujinet.h mod_upnp.h mod_jit.h \
-          io/vfs.h compat.h \
-          gw_math_mbf.h gw_memory.h gw_sdl2.h gw_plugin.h gw_serial.h \
-          mod_gwbasic.h
+          mod_persist.h io/vfs.h compat.h \
+          mbf_math.h segmented_mem.h sdl2_emu.h compat_plugin.h serial_compat.h \
+          mod_legacy_compat.h
 
 # =====================================================================
 # Default target: gcc release build
@@ -246,7 +244,7 @@ $(TARGET): $(OBJECTS)
 
 # Generic rule: compile .c to .o
 # All object files depend on all headers (conservative but correct)
-%.o: %.c $(HEADERS)
+%.o: %.c
 	$(CC) $(LINUX_CFLAGS) -c $< -o $@
 
 # =====================================================================
@@ -260,12 +258,13 @@ debug:
 # Lite build — produces "blite" (Linux/gcc) and "blite.exe" (MSVC)
 # =====================================================================
 blite:
-	$(CC) -std=c17 -Wall -Wextra -O2 -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2 -DBPP_LITE_BUILD -o $(OUTDIR)/blite $(LITE_SOURCES) -lm
+	$(CC) -std=c17 -Wall -Wextra -Os -flto -ffunction-sections -fdata-sections -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2 -DBPP_LITE_BUILD -o $(OUTDIR)/blite $(LITE_SOURCES) -lm -Wl,--gc-sections -flto
+	strip $(OUTDIR)/blite
 
 msvc-lite:
 	@del /q *.obj 2>nul
-	cl /TC /std:c17 /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS /DINPUT_CONSOLE /DBPP_LITE_BUILD /DNO_SDL2 /MP /c $(LITE_SOURCES)
-	link /OUT:blite.exe /SUBSYSTEM:CONSOLE *.obj advapi32.lib ws2_32.lib Shell32.lib User32.lib Gdi32.lib Winmm.lib
+	cl /TC /std:c17 /W3 /O1 /GL /Ob0 /I. /D_CRT_SECURE_NO_WARNINGS /DINPUT_CONSOLE /DBPP_LITE_BUILD /DNO_SDL2 /MP /c $(LITE_SOURCES)
+	link /OUT:blite.exe /LTCG /OPT:REF /OPT:ICF /SUBSYSTEM:CONSOLE *.obj advapi32.lib ws2_32.lib Shell32.lib User32.lib Gdi32.lib Winmm.lib
 	@if exist blite.exe move /Y blite.exe $(OUTDIR)\blite.exe >nul
 	@del /q *.obj 2>nul
 
@@ -378,7 +377,7 @@ watcom:
 	$(WCC) $(WCFLAGS) -fo=ldisdbl.obj core/ldisdbl.c
 	$(WCC) $(WCFLAGS) -fo=config_file.obj core/config_file.c
 	$(WCC) $(WCFLAGS) -fo=stdlib_core.obj core/stdlib_core.c
-	$(WCC) $(WCFLAGS) -fo=stdlib_dialect.obj core/stdlib_dialect.c
+	$(WCC) $(WCFLAGS) -fo=stdlib_dialect.obj 
 	$(WCC) $(WCFLAGS) -fo=error_registry.obj core/error_registry.c
 	$(WCC) $(WCFLAGS) -fo=pcode_compiler.obj core/pcode_compiler.c
 	$(WCC) $(WCFLAGS) -fo=pcode_emit.obj core/pcode_emit.c
@@ -445,8 +444,7 @@ watcom:
 	$(WCC) $(WCFLAGS) -fo=builtins_memory.obj memory/builtins_memory.c
 	$(WCC) $(WCFLAGS) -fo=builtins_system.obj system/builtins_system.c
 	$(WCC) $(WCFLAGS) -fo=builtins_io.obj system/builtins_io.c
-	$(WCC) $(WCFLAGS) -fo=dialect.obj dialect/dialect.c
-	$(WCC) $(WCFLAGS) -fo=dialect_patb.obj dialect/dialect_patb.c
+	$(WCC) $(WCFLAGS) -fo=dialect_patb.obj 
 	$(WCC) $(WCFLAGS) -fo=ast.obj codegen/ast.c
 	$(WCC) $(WCFLAGS) -fo=codegen.obj codegen/codegen.c
 	$(WCC) $(WCFLAGS) -fo=target.obj codegen/target.c
@@ -534,9 +532,8 @@ watcom386:
 	$(WCC386) $(WCFLAGS386) -fo=builtins_memory.obj memory/builtins_memory.c
 	$(WCC386) $(WCFLAGS386) -fo=builtins_system.obj system/builtins_system.c
 	$(WCC386) $(WCFLAGS386) -fo=builtins_io.obj system/builtins_io.c
-	$(WCC386) $(WCFLAGS386) -fo=dialect.obj dialect/dialect.c
-	$(WCC386) $(WCFLAGS386) -fo=dialect_gwbs.obj dialect/dialect_gwbs.c
-	$(WCC386) $(WCFLAGS386) -fo=dialect_ecma116.obj dialect/dialect_ecma116.c
+	$(WCC386) $(WCFLAGS386) -fo=dialect_gwbs.obj 
+	$(WCC386) $(WCFLAGS386) -fo=dialect_ecma116.obj 
 	$(WCC386) $(WCFLAGS386) -fo=ast.obj codegen/ast.c
 	$(WCC386) $(WCFLAGS386) -fo=codegen.obj codegen/codegen.c
 	$(WCC386) $(WCFLAGS386) -fo=target.obj codegen/target.c
@@ -563,4 +560,18 @@ clean:
 	find . -name '*.obj' -delete 2>/dev/null || true
 	rm -f _link.lnk
 
-.PHONY: all debug msvc watcom watcom386 clean blite msvc-lite
+trans:
+	cl /TC /std:c17 /W3 /O2 /I. /I../sdl2/include /D_CRT_SECURE_NO_WARNINGS /DINPUT_CONSOLE /DBPP_TRANS_BUILD /MP /c $(SOURCES) codegen/trans*.c standalone/trans_cli.c
+	link /OUT:trans.exe /SUBSYSTEM:CONSOLE *.obj advapi32.lib ws2_32.lib /LIBPATH:../sdl2/lib/x64 SDL2.lib SDL2main.lib Shell32.lib User32.lib Gdi32.lib Winmm.lib
+	@del /q *.obj 2>nul
+
+trans-linux:
+	$(CC) -std=c17 -Wall -Wextra -O2 -I. -D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE -D_GNU_SOURCE -DNO_SDL2 -DBPP_LITE_BUILD -DBPP_TRANS_BUILD -o $(OUTDIR)/trans $(LITE_SOURCES) codegen/trans.c codegen/trans_c17.c codegen/trans_c89.c codegen/trans_py3.c codegen/trans_pas.c codegen/trans_f90.c codegen/codegen.c codegen/ast.c codegen/detok.c codegen/target.c standalone/trans_cli.c -lm
+
+bppc:
+	cl /TC /std:c17 /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS /Fe:bppc.exe standalone/bppc.c
+
+bppc-linux:
+	$(CC) $(LINUX_CFLAGS) -o $(OUTDIR)/bppc standalone/bppc.c
+
+.PHONY: all debug msvc watcom watcom386 clean blite msvc-lite trans trans-linux bppc bppc-linux

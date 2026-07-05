@@ -63,50 +63,50 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  // Renumber all program lines and fix
  // GOTO/GOSUB line references.
  // Default: start=10, step=10.
- int start_num = 10;
- int step_num = 10;
- int i, count;
- int *old_nums;
- int *new_nums;
+  int start_num = 10;
+  int step_num = 10;
+  int i, count;
+  double *old_nums;
+  double *new_nums;
 
- // Parse optional arguments
- if (lex->current.type == TOK_NUMBER) {
- start_num = (int)lex->current
- .value.num_value;
- lexer_next(lex);
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- if (lex->current.type == TOK_NUMBER) {
- step_num = (int)lex->current
- .value.num_value;
- lexer_next(lex);
- }
- }
- }
+  // Parse optional arguments
+  if (lex->current.type == TOK_NUMBER) {
+  start_num = (int)lex->current
+  .value.num_value;
+  lexer_next(lex);
+  if (lex->current.type == TOK_COMMA) {
+  lexer_next(lex);
+  if (lex->current.type == TOK_NUMBER) {
+  step_num = (int)lex->current
+  .value.num_value;
+  lexer_next(lex);
+  }
+  }
+  }
 
- count = rt->program->count;
- if (count == 0) {
- printf("No program.\n");
- return;
- }
+  count = rt->program->count;
+  if (count == 0) {
+  printf("No program.\n");
+  return;
+  }
 
- // Build old->new mapping
- old_nums = (int *)malloc(
- (size_t)count * sizeof(int));
- new_nums = (int *)malloc(
- (size_t)count * sizeof(int));
- if (!old_nums || !new_nums) {
- free(old_nums);
- free(new_nums);
- error_raise(ERR_SORRY, line_num);
- return;
- }
+  // Build old->new mapping
+  old_nums = (double *)malloc(
+  (size_t)count * sizeof(double));
+  new_nums = (double *)malloc(
+  (size_t)count * sizeof(double));
+  if (!old_nums || !new_nums) {
+  free(old_nums);
+  free(new_nums);
+  error_raise(ERR_SORRY, line_num);
+  return;
+  }
 
- for (i = 0; i < count; i++) {
- old_nums[i] = rt->program->lines[i]
- .line_number;
- new_nums[i] = start_num + i * step_num;
- }
+  for (i = 0; i < count; i++) {
+  old_nums[i] = rt->program->lines[i]
+  .line_number;
+  new_nums[i] = (double)(start_num + i * step_num);
+  }
 
  // Fix GOTO/GOSUB references in each line.
  // Scan line text for GOTO/GOSUB/RESTORE
@@ -117,10 +117,10 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  char buf[MAX_LINE_LENGTH + 1];
  char *dst = buf;
  const char *src = txt;
- int new_line = new_nums[i];
+ double new_line = new_nums[i];
 
  // Write new line number
- dst += sprintf(dst, "%d", new_line);
+ dst += sprintf(dst, "%.0f", new_line);
 
  // Skip old line number
  while (*src >= '0' && *src <= '9') src++;
@@ -165,19 +165,19 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
 
  if (digits > 0) {
  // Look up in mapping
- int j;
- int mapped = old_target;
- for (j = 0; j < count;
- j++) {
- if (old_nums[j] ==
- old_target) {
- mapped =
- new_nums[j];
- break;
- }
- }
- dst += sprintf(dst, "%d",
- mapped);
+  int j;
+  double mapped = (double)old_target;
+  for (j = 0; j < count;
+  j++) {
+  if (old_nums[j] ==
+  (double)old_target) {
+  mapped =
+  new_nums[j];
+  break;
+  }
+  }
+  dst += sprintf(dst, "%.0f",
+  mapped);
  src = ns;
 
  // Handle comma-separated
@@ -235,35 +235,32 @@ void pi_parse_delete(Lexer *lex, RuntimeState *rt, int line_num)
  {
  // DELETE from-to
  // Delete all lines in range [from, to].
- int from_line, to_line;
+ double from_line, to_line;
  int deleted = 0;
  int i;
 
- if (lex->current.type != TOK_NUMBER) {
+ if (lex->current.type != TOK_NUMBER && lex->current.type != TOK_FLOAT_LIT) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- from_line = (int)lex->current
- .value.num_value;
+ from_line = (lex->current.type == TOK_NUMBER) ? (double)lex->current.value.num_value : lex->current.value.fval;
  lexer_next(lex);
 
  to_line = from_line;
  if (lex->current.type == TOK_MINUS) {
  lexer_next(lex);
- if (lex->current.type != TOK_NUMBER) {
+ if (lex->current.type != TOK_NUMBER && lex->current.type != TOK_FLOAT_LIT) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
- to_line = (int)lex->current
- .value.num_value;
+ to_line = (lex->current.type == TOK_NUMBER) ? (double)lex->current.value.num_value : lex->current.value.fval;
  lexer_next(lex);
  }
 
  // Delete lines in range (reverse order)
  for (i = rt->program->count - 1;
  i >= 0; i--) {
- int ln = rt->program->lines[i]
- .line_number;
+ double ln = rt->program->lines[i].line_number;
  if (ln >= from_line && ln <= to_line) {
  program_delete(rt->program, ln);
  deleted++;
@@ -441,7 +438,7 @@ void pi_parse_compile(Lexer *lex, RuntimeState *rt, int line_num)
             }
 
             // Create target filename <libname>.bpl
-            char outname[MAX_LINE_LENGTH + 1];
+            char outname[512];
             sprintf(outname, "%s.bpl", libname);
 
             // Save bytecode to the .bpl file

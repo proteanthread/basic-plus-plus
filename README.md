@@ -1,7 +1,7 @@
 [![GitGem](https://gitgem.org/api/badge/github/proteanthread/basic-plus-plus.svg)](https://gitgem.org/github/proteanthread/basic-plus-plus)
 
 # BASIC++ (protoBASIC) Interpreter
-**Version 4.4.4**
+**Version 4.9.7**
 
 I don't care what you do with my code, just don't take my code and sell it and/or don't take my code, modify my code, and sell it. This code is not for sale.
 
@@ -18,8 +18,16 @@ BASIC++ ships with 16 historically accurate dialect profiles, a runtime dialect-
 Designed for small memory footprints and readable source code. Runs on Windows 11, Linux, and FreeDOS. Suitable for embedded systems, legacy hardware, and as a teaching tool for interpreter design (tokenization, recursive-descent parsing, virtual machines, and environment management).
 
 
----
+## Standalone Legacy Interpreters
 
+Alongside the main BASIC++ interpreter, the repository includes four fully self-contained, single-file legacy interpreters at the root directory. These are intended as highly portable, C89-compliant educational references:
+
+- **tinybasic.c**: Palo Alto Tiny BASIC clone.
+- **level1.c**: TRS-80 Level I BASIC clone.
+- **apple2.c**: Apple II Integer BASIC clone.
+- **1964.c**: Original Dartmouth BASIC 1964 clone.
+
+---
 
 ## Section 1: Core Features
 
@@ -108,7 +116,7 @@ A distinct set of directives, which operate at the "edit" level outside stored p
 | Command | Function |
 |:--------|:---------|
 | `RUN [line]` | Execute program (optionally from a specific line) |
-| `LIST [n1[-n2]]` | Display stored program lines |
+| `LIST [range/search]` | Display stored program lines or search patterns |
 | `NEW` | Clear program memory and variables |
 | `SAVE "filename"` | Persist program to disk |
 | `LOAD "filename"` | Retrieve program from disk |
@@ -194,6 +202,14 @@ ALIAS "ESCRIBE" = WRITE       ' Spanish alias for WRITE
 ALIAS LIST                    ' Show active aliases
 ALIAS CLEAR ALL               ' Remove all aliases
 ```
+
+
+### 2.5. Conversational Dialect Features
+
+BASIC++ integrates features from classic conversational dialects (JOSS, FOCAL, MUMPS):
+- **Decimal Line Steps (JOSS/FOCAL)**: Supports load-time translation of decimal step numbers (e.g. `10.10 PRINT "Hi"`) which translate to standard line `1010` and label `STEP_10_10:`.
+- **Step Execution (FOCAL)**: The `DO` command supports step calls (e.g. `DO 10.10`) executing that single step as an implicit subroutine.
+- **Persistent Key-Value Store (MUMPS)**: Provides built-in functions `PSTORE(key$, val)` and `PRETRIEVE(key$)`/`PRETRIEVE$(key$)` as well as the virtual device `PERSIST:<key>` to save and load persistent data to `/vfs/persist/<key>.dat`.
 
 
 ---
@@ -367,10 +383,18 @@ The direct, or "immediate," execution context is invoked when directives are ent
 > DIALECT "QBAS" : PRINT "Now in QBasic mode"
 Now in QBasic mode
 ```
-
 ### 6.2. Program Mode
 
 The "stored program" context is invoked when directives are entered with a preceding line number. Such lines are not executed; instead, they are inserted into the Program Storage array, maintained in sorted order by line number.
+
+By default, decimal line numbers must be between 1 and `LINE_NUMBER_MAX` (65529).
+
+BASIC++ also supports hexadecimal, octal, and binary line numbers. These line numbers are allowed to go up to `4294967295` (32-bit unsigned):
+*   **Hexadecimal**: Prefixed with `&H`/`&h` or `0x`/`0X` (e.g., `&H10 PRINT` or `0x10 PRINT` stores under line number 16).
+*   **Octal**: Prefixed with `&O`/`&o`, `0o`/`0O`, or a bare `&` followed by octal digits (e.g., `&O10 PRINT` or `&10 PRINT` stores under line number 8).
+*   **Binary**: Prefixed with `&B`/`&b` or `0b`/`0B` (e.g., `&B10 PRINT` or `0b10 PRINT` stores under line number 2).
+
+When listed using `LIST`, the original prefix format and base are preserved exactly as entered by the programmer. Directives that reference line numbers (such as `GOTO`, `GOSUB`, `RESTORE`, and `DELETE`) can use any base representation in their expressions (e.g., `GOTO &H10`).
 
 ```
 > 10 PRINT "Hello, World!"
@@ -500,7 +524,10 @@ External modules follow the `ModuleInterface` contract: an `init()`, `shutdown()
 
 ## Section 10: Transpiler
 
-BASIC++ includes a BASIC-to-C transpiler that converts stored programs into standalone C source code, compilable into native executables with no runtime dependency on the interpreter.
+BASIC++ includes a powerful **External Compilation Suite** (`bppc` and `trans`):
+- **`trans`** (Transpiler): Converts stored `.BAS` programs and bytecode into standalone C17, Python 3, Free Pascal, or Fortran source code with strict, no-dependency translation rules.
+- **`bppc`** (Compiler Orchestrator): Invokes `trans` and automatically orchestrates external C compilers (MSVC, Watcom, GCC) to compile C17/Python stubs into native executables. It also supports zero-toolchain standalone compilation (`--target standalone`) which prepends native host/cross-platform interpreter runner binaries to packaged BPE payloads for portable execution.
+- **`detok`** (Detokenizer): Converts legacy proprietary binary formats (GW-BASIC, QBASIC) into plaintext `.BAS` for compilation.
 
 ```basic
 10 PRINT "Hello, World!"
@@ -508,7 +535,6 @@ BASIC++ includes a BASIC-to-C transpiler that converts stored programs into stan
 COMPILE "hello"       ' Generates hello.c
 ```
 
-The generated C code is self-contained ANSI C89, suitable for compilation on any target platform.
 
 
 ---

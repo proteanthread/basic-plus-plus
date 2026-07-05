@@ -120,6 +120,7 @@ void pi_parse_lprint(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_llist - Handle LLIST command.
 void pi_parse_llist(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)line_num;
  // LLIST [start] [-] [end]
  // List program to printer. In our
  // terminal environment, same as LIST.
@@ -150,9 +151,9 @@ void pi_parse_llist(Lexer *lex, RuntimeState *rt, int line_num)
  for (li = 0;
  li < rt->program->count;
  li++) {
- int ln = rt->program
- ->lines[li]
- .line_number;
+  double ln = rt->program
+  ->lines[li]
+  .line_number;
  if (ls > 0 && ln < ls)
  continue;
  if (le > 0 && ln > le)
