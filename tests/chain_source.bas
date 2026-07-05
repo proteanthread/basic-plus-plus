@@ -32,7 +32,7 @@
 180 REM
 190 REM --- CHAIN: replace program, preserve variables ---
 200 PRINT "CHAINing to chain_target.bas..."
-210 CHAIN "tests\chain_target.bas"
+210 CHAIN "tests/chain_target.bas"
 220 REM
 230 REM --- If we reach here, CHAIN failed ---
 240 PRINT "ERROR: should not reach here!"

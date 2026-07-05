@@ -64,6 +64,7 @@
 #include <string.h>
 #include "keyword_props.h"
 #include "lexer.h"
+#include "../console.h"
 
 // --- Property Entry ---
 typedef struct {

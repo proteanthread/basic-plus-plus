@@ -1,6 +1,6 @@
 FILE I/O IN BASIC++
 ===================
-Version 4.1.1
+Version 4.2.3
 
 BASIC++ provides complete file I/O with three modes: sequential,
 random-access, and binary.  Up to 8 files can be open at once.
@@ -597,23 +597,42 @@ chaos of legacy device access.  It provides a single,
 uniform interface for ALL I/O:
 
   struct VDev {
+      /* --- Original fields (10) --- */
       const char *name;          /* "CON:", "SER:", etc. */
       int  (*dev_putc)(VDev*, int);     /* write char */
       int  (*dev_puts)(VDev*, const char*); /* write string */
-      int  (*dev_getc)(VDev*);          /* read char */
-      int  (*dev_gets)(VDev*, char*, int); /* read line */
       int  (*dev_flush)(VDev*);         /* flush buffer */
       int  (*dev_cls)(VDev*);           /* clear/reset */
+      int  (*dev_getc)(VDev*);          /* read char */
+      int  (*dev_gets)(VDev*, char*, int); /* read line */
       int  (*dev_open)(VDev*, const char*, const char*);
       int  (*dev_close)(VDev*);         /* close */
       void *user_data;                  /* device state */
+
+      /* --- VDev2 Extensions: metadata (5) --- */
+      VDevClass  dev_class;             /* device classification */
+      unsigned int dev_caps;            /* capability flags */
+      const char *dev_version;          /* version string */
+      const char *dev_description;      /* human-readable desc */
+      unsigned int dev_req_caps;        /* required capabilities */
+
+      /* --- VDev2 Extensions: binary I/O (3) --- */
+      int  (*dev_read)(VDev*, void *buf, int len);
+      int  (*dev_write)(VDev*, const void *buf, int len);
+      long (*dev_seek)(VDev*, long offset, int whence);
+
+      /* --- VDev2 Extensions: control/status (4) --- */
+      int  (*dev_ioctl)(VDev*, int cmd, void *arg);
+      int  (*dev_status)(VDev*);
+      int  (*dev_poll)(VDev*);
+      const char *(*dev_info)(VDev*, const char *key);
   };
 
-16 device slots:
+64 device slots (3 built-in + 61 user):
   Slot 0: CON:  (Console — stdout + stdin)
   Slot 1: ERR:  (Error — stderr)
   Slot 2: FILE: (File I/O — fopen/fclose)
-  Slots 3-15: User-registerable (VDEV_USER+)
+  Slots 3-63: User-registerable (VDEV_USER+)
 
 Every PRINT goes through dev_puts().
 Every INPUT goes through dev_gets().
@@ -667,6 +686,9 @@ to do based on the filename:
        "COM1:"  -> route to registered COM VDev (or file)
        "NUL:"   -> route to registered NUL VDev
 
+> [!WARNING]
+> **PLANNED / FUTURE** — The NUL: device is not yet implemented.
+
   2. CHECK FOR DEVICE PREFIXES
      Atari-style "D:", "P:", "R:" prefixes:
        "P:filename" -> printer device
@@ -693,7 +715,10 @@ either a file OR a virtual device:
   Channel #1: open for "data.txt"    -> FILE: device
   Channel #2: open for "LPT1:"      -> LPT VDev
   Channel #3: open for "COM1:9600"   -> Serial VDev
-  Channel #4: open for "NUL:"       -> Null VDev
+  Channel #4: open for "NUL:"       -> Null VDev (PLANNED)
+
+> [!WARNING]
+> **PLANNED / FUTURE** — The NUL: device is not yet implemented.
 
 Once connected, PRINT #n and INPUT #n route through the
 appropriate device.  The BASIC program doesn't need to

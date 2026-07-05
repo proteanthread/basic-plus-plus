@@ -1,296 +1,451 @@
 BASIC++ Quick Reference Card
 
-Version 4.1.1
-
+Version 4.2.3
 
 ---
 
 Table of Contents
-
 - Commands (Direct Mode)
 - Statements
 - Numeric Functions
 - String Functions
-- Operators (Precedence Order)
+- Stream I/O (SIO) Functions
+- Block I/O (BIO) Functions
+- Operators
 - Special Symbols
-
----
-
-Alphabetical listing of every keyword, statement, function, and command in BASIC++.
+- System Variables
 
 ---
 
 Commands (Direct Mode)
 
-| Command | Description |
-|---------|-------------|
-| ALIAS "name" = KEYWORD | Define keyword alias |
-| ALIAS LIST | List active aliases |
-| ALIAS CLEAR "name" | Remove alias |
-| ALIAS CLEAR ALL | Remove all aliases |
-| BYE | Exit interpreter to OS prompt |
-| CONT | Continue after STOP |
-| DELETE n1-n2 | Delete line range |
-| DIALECT "code" | Switch BASIC dialect |
-| FILES [pattern] | List directory |
-| HELP [keyword] | Show help |
-| LIST [n1[-n2]] | List program lines |
-| LOAD "filename" | Load program |
-| MEMMAP "name" | Select memory map |
-| MERGE "filename" | Merge file into program |
-| NEW | Clear program and variables |
-| RENUM [start [, step]] | Renumber lines |
-| RUN [line] | Execute program |
-| SAVE ["filename"] | Save program (auto-names if bare) |
-| SELFTEST | Run built-in tests |
-| SYSTEM | Exit BASIC++ |
-| TROFF | Disable trace mode |
-| TRON | Enable trace mode |
-| VERIFY ["filename"] | Full program verification (CHECK + deep analysis) |
-| CHECK ["filename"] | Static program analysis (errors, warnings, stats) |
-| BACKTRACE | Show GOSUB/SUB/FUNCTION call stack |
+| Command / Syntax | Description |
+|:---|:---|
+| ALIAS "name" = KEYWORD | Define keyword alias (e.g. ALIAS "AFFICHER" = PRINT) |
+| ALIAS CLEAR "name" | Remove custom alias |
+| ALIAS CLEAR ALL | Remove all custom aliases |
+| ALIAS LIST | List all active aliases |
+| BACKTRACE | Show GOSUB/FOR/WHILE call stack backtrace |
+| BLOAD "filename", address | Load binary file into memory at specific address |
+| BSAVE "filename", address, length | Save memory range to binary file |
+| BRUN "filename" | Load and run binary P-Code program |
+| BIOS "name" | Switch active mock BIOS profile (e.g. "IBMPC") |
+| BYE | Exit the interpreter |
+| CHECK | Analyze program syntax currently in memory |
+| COMPILE "src.bas", "dest.bpp" | Transpile BASIC source to bytecode |
+| CONT | Continue program execution from STOP/BREAK |
+| COPY "src", "dest" | Copy a file |
+| DELETE n1-n2 | Delete line range from program |
+| DIALECT "code" | Switch BASIC dialect (e.g. "GWBS", "SQLB", "QBAS") |
+| DIR [pattern] | List directory filenames only (short format) |
+| DUMP | Dump variables or memory state |
+| FILES [pattern] | List directory with sizes and details |
+| HELP [topic] | Show help reference for interpreter or keyword |
+| LIST [range/search] | Display program lines or search patterns |
+| LOAD "filename" | Load program from disk |
+| MEMMAP "name" | Select active memory map profile (e.g. "QL", "C64") |
+| MERGE "filename" | Merge program from disk into current program |
+| MODULE LOAD "filename" | Load extension module |
+| MODULE LIST | List all loaded modules |
+| MOVE "src", "dest" | Move or rename a file |
+| NEW | Clear program and variables from memory |
+| OVERRIDE keyword "text" | Intercept and rewrite keyword behaviour |
+| OVERRIDE keyword CLEAR | Restore default keyword behaviour |
+| OVERRIDE LIST | List all active keyword overrides |
+| OVERRIDE RESET | Clear all active overrides |
+| RENAME "old", "new" | Rename a .BAS or .BPP file |
+| RENUM [new_start[, increment]] | Renumber program lines |
+| RUN [line] | Execute program from memory |
+| SAVE ["filename"] | Save program to disk |
+| SCOPE keyword hook | Set keyword access control or GOSUB hooks |
+| SELFTEST | Run built-in validation suite |
+| SYSTEM | Exit BASIC++ interpreter |
+| TROFF | Disable line trace output |
+| TRON | Enable line trace output |
+| VERIFY "filename" | Verify syntax of program file on disk |
+| VARS [ENV \| SYSTEM \| ALL] | List variables or environment state |
 
 ---
 
 Statements
 
-| Statement | Description |
-|-----------|-------------|
-| BEEP | Audible beep |
-| BEEP ON / OFF | Toggle error beep |
+| Statement / Syntax | Description |
+|:---|:---|
+| ALARM time$, line | Set or trigger a timed alarm |
+| ASK channel, property, var | Query file channel status (ECMA-116) |
+| ASSERT expression | Test assertion; raises error on failure |
+| AT col, row | Position text cursor or draw coordinate |
+| ATOMIC | Begin a transactional block |
+| AUTO [start[, increment]] | Auto-generate line numbers |
+| BANK n [SHARED \| PRIVATE] | RAMBANK segmented virtual memory control |
+| BEEP | Emit PC speaker beep tone |
+| BEEP ON \| OFF | Toggle error beep |
+| BIOREAD ch, pos, len, var$ | Read block from block-level device |
+| BIOWRITE ch, pos, data$ | Write block to block-level device |
+| BORDER color | Set screen border color |
+| BREAK [line] | Set/clear/list breakpoints |
+| BRIGHT value | Set text screen brightness attribute |
 | CALL name(args) | Call a SUB procedure |
-| CHAIN "filename" | Load + run, keep variables |
-| CHDIR "path" | Change directory |
-| CIRCLE (x,y), r [,c] | Draw circle |
-| CLEAR | Clear all variables |
-| CLOSE [#n, ...] | Close file channel(s) |
-| CLS | Clear screen |
-| COLOR fg [, bg] | Set text color |
-| COMMON [SHARED] var, ... | Share vars with CHAIN |
-| CONST name = value | Define constant |
-| DATA value, value, ... | Inline data |
-| DEF FN name(p) = expr | Define function |
-| DEF SEG [= segment] | Set memory segment |
-| DEF USR [= address] | Define USR address |
-| DEFDBL letter[-letter] | Default double precision |
-| DEFINT letter[-letter] | Default integer |
-| DEFSNG letter[-letter] | Default single precision |
-| DEFSTR letter[-letter] | Default string |
-| DIM var(s1 [, s2 [, s3]]) | Declare array (1D/2D/3D) |
-| DO [WHILE\|UNTIL cond] | Begin DO loop |
-| DRAW "commands" | Turtle graphics |
-| END | Terminate program |
-| ENVIRON "var=value" | Set environment variable |
-| ERASE var [, var, ...] | Delete array |
-| ERROR n | Raise error |
-| EXEC "command" | Fire-and-forget command |
-| FIELD #n, w AS v$ [, ...] | Map record fields |
-| FOR v = s TO e [STEP i] | Begin FOR loop (BY = STEP alias) |
-| FUNCTION name(params) | Begin user function |
-| GET #n [, record] | Read record/bytes |
-| GOSUB line | Call subroutine |
-| GOTO line | Unconditional jump |
-| IF cond THEN ... [ELSE ...] | Conditional |
-| INPUT [prompt;] var | Read keyboard |
-| INPUT #n, var | Read from file |
-| IOCTL #n, string$ | Send device control |
-| KEY n, "string" | Define function key |
-| KEY ON / OFF / LIST | Function key display |
-| KILL "filename" | Delete file |
-| LET var = expr | Assignment (LET optional) |
-| LINE (x1,y1)-(x2,y2) [,c] | Draw line/box |
-| LINE INPUT [prompt;] var$ | Read full line |
-| LINE INPUT #n, var$ | Read line from file |
-| LOCATE row, col | Move cursor |
-| LOCK #n [, s TO e] | Lock file region |
-| LOOP [WHILE\|UNTIL cond] | End DO loop |
-| LPRINT expr | Print to error device |
-| LSET var$ = expr$ | Left-justify in field |
-| MID$(v$, start, len) = s$ | Replace substring |
-| MKDIR "dirname" | Create directory |
-| NAME "old" AS "new" | Rename file |
-| NEXT [var] | End FOR loop |
-| ON ERROR GOTO line | Set error handler |
-| ON expr GOSUB l1, l2, ... | Computed GOSUB |
-| ON expr GOTO l1, l2, ... | Computed GOTO |
-| ON KEY(n) GOSUB line | Key event handler |
-| ON TIMER(n) GOSUB line | Timer event handler |
-| OPEN file FOR mode AS #n | Open file channel |
-| OPTION BASE 0\|1 | Array base index |
-| OUT port, value | Write to I/O port |
-| PAINT (x,y) [, fc [, bc]] | Flood fill |
-| PALETTE [attr, color] | Set color palette |
-| PCOPY src, dst | Copy video page |
-| PLAY "mml_string" | Play music |
-| POKE addr, value | Write byte to memory |
-| PRESET (x, y) | Clear pixel |
-| PRINT expr [; expr] [, ...] | Output to screen |
-| PRINT #n, expr | Output to file |
-| PRINT USING fmt; expr | Formatted output |
-| PSET (x, y) [, color] | Plot pixel |
-| PUT #n [, record] | Write record/bytes |
-| RANDOMIZE [seed \| TIMER] | Seed random generator |
-| READ var [, var, ...] | Read from DATA |
-| REM comment | Comment (' also works) |
-| RESET | Close all files |
+| CATALOG | List all registered keywords and functions |
+| CAUSE error_num | Raise custom exception |
+| CHAIN "filename" | Load and run program, preserving variables |
+| CHDIR "path" | Change current working directory |
+| CIRCLE x, y, radius | Draw a circle on graphics screen |
+| CLEAR | Clear stack, arrays, and variables |
+| CLOSE [#]channel | Close active file channel |
+| CLR | Clear all variables (Atari/C64 alias for CLEAR) |
+| CLS | Clear the screen |
+| COLOR fg [, bg] | Set text foreground and background colors |
+| COM(n) ON \| OFF | Enable/disable serial port communication |
+| COMMIT | Commit active transaction changes |
+| COMMON var1, var2 | Share variables with CHAINed program |
+| CONSOLE device | Set active console device |
+| CONST name = value | Define a named constant |
+| CONTINUE | Resume execution of loop |
+| DATA val1, val2, ... | Define data constants for READ statements |
+| DEBUG [ON\|OFF] | Enable/disable verbose debug trace output |
+| DEF FNname(args) = expr | Define single-line user function |
+| DEF FNname(args) ... END DEF | Define multi-line user function |
+| DEF SEG=addr | Set memory segment address for PEEK/POKE |
+| DEF USR=addr | Set user function machine language address |
+| DEFDBL letter-range | Define default double-precision variable type |
+| DEFine FuNction name ... END DEFine | Define named function (SuperBASIC) |
+| DEFine PROCedure name ... END DEFine | Define named procedure (SuperBASIC) |
+| DEFINT letter-range | Define default integer variable type |
+| DEFSNG letter-range | Define default single-precision variable type |
+| DEFSTR letter-range | Define default string variable type |
+| DEVMAP "name", slot | Map virtual device to slot |
+| DIM array(dims) | Dimension array |
+| DISPLAY expr | Output expression to screen (BBC BASIC style) |
+| DO [UNTIL \| WHILE expr] ... LOOP | Start conditional block loop |
+| DRAW x, y | Draw line on graphics screen |
+| EDIT line | Open editor for line number |
+| ELSE | Alternate clause of IF statement |
+| END | Terminate program execution |
+| END IF \| SUB \| DEF \| SELECT | Terminate structured blocks |
+| ENVIRON "var=val" | Set environment variable |
+| ERASE array | De-allocate dynamic array |
+| ERROR err_num | Simulate run-time error |
+| EXEC "command" | Launch background shell command (non-blocking) |
+| EXIT loop_name | Break out of loop |
+| FIELD [#]ch, width AS var$, ...| Define random-access file buffer fields |
+| FLASH n | Set text blink/flash mode (Sinclair) |
+| FOR var = start TO limit [STEP st] | Initialize counting loop |
+| GET [#]ch [, record] | Read record from random-access file |
+| GOSUB line | Branch to subroutine |
+| GOTO line | Branch to line number |
+| GRAPHICS mode | Set graphics mode (Atari 8-bit) |
+| IF cond THEN statement [ELSE st]| Conditional branching (single or multi-line) |
+| IMAGE format$ | Define format string for PRINT USING (SUPER BASIC) |
+| INPUT [prompt;] var | Read input from console |
+| INT expression | Emulate interrupt call |
+| INVERSE | Toggle reverse video text mode |
+| IOCTL #ch, cmd$ | Send I/O control command to device |
+| KEY n, "text" | Assign string to function key |
+| KEY ON \| OFF \| LIST | Control function key display |
+| KILL "filename" | Delete file from disk |
+| LINE (x1,y1)-(x2,y2)[, color] | Draw line on graphics screen |
+| LLIST [range] | List program to line printer / stderr |
+| LOCAL var | Declare local variable (SuperBASIC) |
+| LOCATE row, col | Move text cursor |
+| LOCK [#]ch [, range] | Lock file channel range |
+| LPRINT [expr] | Print to line printer / stderr |
+| MAT array1 = array2 | Copy matrix |
+| MAT array1 = CON | Set all elements of matrix to 1 |
+| MAT array1 = IDN | Set identity matrix |
+| MAT array1 = INV(array2) | Set matrix inverse |
+| MAT array1 = TRN(array2) | Set matrix transpose |
+| MAT array1 = ZER | Set all elements of matrix to 0 |
+| MAT INPUT array | Read matrix elements from input |
+| MAT PRINT array | Display matrix elements |
+| MAT READ array | Read matrix elements from DATA |
+| MOUNT prefix$, target$ | Mount virtual filesystem prefix |
+| MOUNTS | List all active VFS mounts |
+| NEXT [var] | End FOR loop step |
+| ON expr GOSUB \| GOTO ... | Computed branch |
+| ON ERROR GOTO line | Enable error trap handler |
+| ON KEY(n) GOSUB line | Enable keyboard event handler |
+| ON TIMER(sec) GOSUB line | Enable timer event handler |
+| OPEN "mode", [#]ch, "file" [, len]| Open file channel |
+| OPTION BASE 0 \| 1 | Set lower array index bound |
+| OUT port, value | Write byte to CPU I/O port |
+| PAINT x, y [, color] | Flood fill graphic region |
+| PCOPY src_page, dest_page | Copy graphic pages |
+| PEN ON\|OFF\|STOP | Enable/disable/stop light pen event trapping |
+| PLAY "music$" | Play music string (macro language) |
+| POKE address, value | Write byte to memory |
+| POKEB bank, addr, value | Write byte to specific RAMBANK address |
+| PRINT [expr] | Print text to console |
+| PSET (x, y)[, color] | Draw pixel on graphics screen |
+| PUT [#]ch [, record] | Write record to random-access file |
+| READ var1, var2, ... | Read data from DATA statements |
+| REM comment | Add comment to program |
+| REMAINDER | Default case in SELect ON block (SuperBASIC) |
+| REPeat name ... END REPeat name | Named infinite loop (SuperBASIC) |
 | RESTORE [line] | Reset DATA pointer |
-| RESUME [NEXT \| line] | Resume after error |
-| RETURN | Return from GOSUB |
-| RMDIR "dirname" | Remove directory |
-| RSET var$ = expr$ | Right-justify in field |
-| SCRATCH "filename" | Delete file (SBASIC alias) |
-| SCREEN mode | Set graphics mode |
-| SECURITY LEVEL n | Set security level |
-| SEEK #n, position | Set file position |
-| SHELL ["command"] | Execute OS command |
-| SLEEP [seconds] | Pause execution |
-| SOUND freq, duration | Generate tone |
-| STOP | Break into direct mode |
-| SUB name(params) | Begin subroutine |
-| SWAP var1, var2 | Exchange values (scalars/arrays) |
-| UNLESS cond THEN stmt | Negated IF (SBASIC) |
-| UNLOCK #n [, s TO e] | Unlock file region |
-| UNSAVE | Delete last saved file |
-| VIEW [[SCREEN] (x1,y1)-(x2,y2)] | Set viewport |
-| VIEW PRINT [top TO bottom] | Set text viewport |
-| WAIT port, AND [, XOR] | Wait for I/O condition |
-| WEND | End WHILE loop |
-| WHILE condition | Begin WHILE loop |
-| WIDTH columns | Set screen width |
-| WINDOW [(x1,y1)-(x2,y2)] | Set coordinate system |
-| WRITE [expr, ...] | Quoted/delimited output |
-| WRITE #n, [expr, ...] | Write to file |
+| RESUME [line \| NEXT] | Resume after error handler |
+| RETURN | Return from GOSUB subroutine |
+| REWRITE #ch | Replace record in file channel (ECMA-116) |
+| ROLLBACK | Discard active transaction changes |
+| SCREEN mode | Set graphics screen mode |
+| SEEK [#]ch, position | Set random-access file pointer |
+| SELECT CASE expr ... END SELECT | Structured multi-way conditional block |
+| SET #ch, pos | Set file pointer position (ECMA-116) |
+| SHELL cmd$ | Execute OS shell command synchronously |
+| SOUND freq, duration | Emit tone from speaker |
+| STRIG ON\|OFF\|STOP | Enable/disable/stop joystick trigger event trapping |
+| SUB name(params) ... END SUB | Define custom subroutine |
+| SWAP var1, var2 | Swap values of two variables |
+| TASK "file" \| LIST | Register or list multitasking threads |
+| TRACE [ON\|OFF] | Single-step execution trace mode |
+| TRAP n, GOSUB line | Set event trap handler |
+| UMOUNT prefix$ | Unmount virtual filesystem prefix |
+| UNLOAD filename$ | Unload program or module from memory |
+| UNLOCK [#]ch [, range] | Unlock file channel range |
+| VPATH path$ | Set virtual path search directory |
+| WAIT port, mask [, select] | Wait for CPU I/O port status |
+| WHILE cond ... WEND | Start conditional block loop |
+| WIDTH [#ch,] chars | Set output line width limit |
+| WRITE [expr] | Write formatted data to file/console |
 
 ---
 
 Numeric Functions
 
-| Function | Description |
-|----------|-------------|
-| ABS(x) | Absolute value |
-| ACOS(x) | Arccosine (SBASIC) |
-| ASIN(x) | Arcsine (SBASIC) |
-| ASC(s$) | ASCII code of first char |
-| ATN(x) | Arctangent (radians) |
-| AVG(a, b, ...) | Average (mean) |
-| CDBL(x) | Convert to double |
-| CINT(x) | Round to integer |
-| COMP(a, b) | Compare −1/0/+1 (SBASIC) |
-| COMPLEX(re, im) | Create complex number |
-| COS(x) | Cosine |
-| COSH(x) | Hyperbolic cosine (SBASIC) |
-| CSNG(x) | Convert to single |
-| CSRLIN | Current cursor row |
-| CVI(s$) | 2-byte string to integer |
-| CVS(s$) | 4-byte string to single |
-| CVD(s$) | 8-byte string to double |
-| EOF(n) | End of file (−1 or 0) |
-| ERL | Error line number |
-| ERR | Error code |
-| ERRORLEVEL | Last SHELL exit code |
-| EXP(x) | e^x |
-| FIX(x) | Truncate toward zero |
-| FRE(x) | Free memory |
-| IMAG(z) | Imaginary part of complex |
-| INP(port) | Read I/O port |
-| INSTR(h$, n$) | Find substring |
-| INT(x) | Floor |
-| LBOUND(a, dim) | Array lower bound |
-| LEN(s$) | String length |
-| LOC(n) | File position |
-| LOF(n) | File length |
-| LOG(x) | Natural log |
-| LOG10(x) | Common log base 10 (SBASIC) |
-| LOG2(x) | Binary log base 2 (SBASIC) |
-| LPOS(x) | Printer position |
-| MAX(a, b, ...) | Maximum value |
-| MED(a, b, ...) | Median value |
-| MIN(a, b, ...) | Minimum value |
-| PDIF(a, b) | Positive difference (SBASIC) |
-| PEEK(addr) | Read memory byte |
-| PI | Constant 3.14159... (SBASIC) |
-| POINT(x, y) | Pixel color |
-| POS(x) | Cursor column |
-| REAL(z) | Real part of complex |
-| RND[(x)] | Random number (0–1); parens optional |
-| ROUND(x [, n]) | Round to N decimal places |
-| SCREEN(r, c) | Character at position |
-| SGN(x) | Sign (−1, 0, 1) |
-| SIN(x) | Sine |
-| SINH(x) | Hyperbolic sine (SBASIC) |
-| SQR(x) | Square root |
-| TAN(x) | Tangent |
-| TANH(x) | Hyperbolic tangent (SBASIC) |
-| TIMER | Seconds since midnight |
-| UBOUND(a, dim) | Array upper bound |
-| USR(x) | User-defined machine fn |
-| VAL(s$) | String to number |
+| Function | Args | Description |
+|:---|:---|:---|
+| ABS(x) | 1 | Absolute value (complex magnitude if complex) |
+| ACOS(x) | 1 | Arccosine (radians) |
+| ASIN(x) | 1 | Arcsine (radians) |
+| ATN(x) | 1 | Arctangent (radians) |
+| AVG(values...) | 1-16 | Average of values |
+| CABS(z) | 1 | Complex absolute value (magnitude) |
+| CARG(z) | 1 | Complex argument (phase) |
+| CDBL(x) | 1 | Convert to double-precision |
+| CEXP(z) | 1 | Complex exponential |
+| CINT(x) | 1 | Convert to integer (rounding) |
+| CLOG(z) | 1 | Complex natural logarithm |
+| COMPLEX(r, i) | 2 | Create complex number from real and imaginary parts |
+| CONJ(z) | 1 | Complex conjugate |
+| COMP(a, b) | 2 | Three-way comparison (-1 if a < b, 0 if a = b, 1 if a > b) |
+| COS(x) | 1 | Cosine (radians) |
+| COSH(x) | 1 | Hyperbolic cosine |
+| CPOW(z, n) | 2 | Complex power (z^n) |
+| CSNG(x) | 1 | Convert to single-precision |
+| CSQR(z) | 1 | Complex square root |
+| CSRLIN | 0 | Current cursor row position |
+| CVD(s$) | 1 | Convert 8-byte string to double |
+| CVI(s$) | 1 | Convert 2-byte string to integer |
+| CVS(s$) | 1 | Convert 4-byte string to single |
+| EOF(ch) | 1 | End-of-file check (-1 at EOF, 0 otherwise) |
+| ERDEV | 0 | Device error code |
+| EXIST(file$) | 1 | Check if file or directory exists |
+| EXISTS(file$) | 1 | Check if file or directory exists (alias) |
+| EXTERR(x) | 1 | Extended error information (DOS) |
+| EXP(x) | 1 | Natural exponential (e^x) |
+| FILELEN(file$) | 1 | File size in bytes |
+| FILESIZE(ch) | 1 | Query file size via channel (ECMA-116) |
+| FIX(x) | 1 | Truncate toward zero: FIX(-3.7) = -3 |
+| FRE(x) | 1 | Query free memory |
+| HI(x) | 1 | High 8 bits (byte) of integer |
+| IMAG(z) | 1 | Get imaginary component of complex number |
+| INP(port) | 1 | Read byte from CPU I/O port |
+| INT(x) | 1 | Round down to nearest integer |
+| LOC(ch) | 1 | Current position in file channel |
+| LOF(ch) | 1 | Length of file in bytes |
+| LOG(x) | 1 | Natural logarithm (base e) |
+| LOG10(x) | 1 | Common logarithm (base 10) |
+| LOG2(x) | 1 | Binary logarithm (base 2) |
+| LGT(x) | 1 | Common logarithm base 10 (alias) |
+| LO(x) | 1 | Low 8 bits (byte) of integer |
+| LPOS(x) | 1 | Printer head column position |
+| MAX(a, b, ...) | 2-16 | Maximum value |
+| MED(values...) | 1-16 | Median of values |
+| MIN(a, b, ...) | 2-16 | Minimum value |
+| NCONNECTED(ch) | 1 | Network channel connection state |
+| NEOF(ch) | 1 | Network EOF flag |
+| NERROR(ch) | 1 | Last network channel error |
+| NBYTESWAITING(ch)| 1 | Network bytes available |
+| NHTTPSTATUS(ch) | 1 | Network HTTP response code |
+| NSTATUS(ch) | 1 | Network channel status |
+| NUM(s$) | 1 | Convert string to number (DEC VAX, alias of VAL) |
+| PDIF(a, b) | 2 | Positive difference: MAX(a - b, 0) |
+| PEEK(addr) | 1 | Read byte from memory address |
+| PEEKB(bank, addr)| 2 | Read byte from specific RAMBANK address |
+| PMAP(coord, fn) | 2 | Map physical/view coordinates |
+| POINT(x, y) | 1-2 | Read pixel color at coordinates |
+| PRETRIEVE(key$) | 1 | Retrieve persistent numeric variable (MUMPS) |
+| PSTORE(key$, val) | 2 | Store persistent variable (MUMPS) |
+| POS(x) | 1 | Current cursor column position |
+| REAL(z) | 1 | Get real component of complex number |
+| RND[(x)] | 1 | Generate random float in range [0, 1) |
+| ROUND(x[, n]) | 1-2 | Round to n decimal places |
+| SGN(x) | 1 | Sign of value (-1, 0, or 1) |
+| SIN(x) | 1 | Sine (radians) |
+| SINH(x) | 1 | Hyperbolic sine |
+| SIZE | 0 | Free memory in bytes |
+| SQR(x) | 1 | Square root |
+| STICK(n) | 1 | Joystick position |
+| SYS addr | 1 | Call machine language routine (C64) |
+| TAN(x) | 1 | Tangent (radians) |
+| TANH(x) | 1 | Hyperbolic tangent |
+| TIM(x) | 1 | Time components (0=min, 1=hr, 2=yday, 3=yr) |
+| TIMER | 0 | Seconds since midnight |
+| TXNSTATUS | 0 | Current transaction state |
+| VARPTR(x) | 1 | Get numeric variable pointer |
 
 ---
 
 String Functions
 
-| Function | Description |
-|----------|-------------|
-| CHR$(n) | ASCII code to character |
-| COMMAND$ | Command line arguments |
-| DATE$ | Current date |
-| ENVIRON$(name$) | Environment variable |
-| HEX$(n) | Hex representation |
-| INKEY$ | Non-blocking key read |
-| INPUT$(n [, #chan]) | Read n characters |
-| IOCTL$(#n) | Device status string |
-| LCASE$(s$) | Convert to lowercase |
-| LEFT$(s$, n) | First n characters |
-| LTRIM$(s$) | Remove leading spaces |
-| MID$(s$, start [, n]) | Substring |
-| MKD$(n) | Double to 8-byte string |
-| MKI$(n) | Integer to 2-byte string |
-| MKS$(n) | Single to 4-byte string |
-| OCT$(n) | Octal representation |
-| RIGHT$(s$, n) | Last n characters |
-| RTRIM$(s$) | Remove trailing spaces |
-| SHELL$(cmd$) | Capture command output |
-| SPACE$(n) | String of n spaces |
-| SPC(n) | Print n spaces |
-| STR$(n) | Number to string |
-| STRING$(n, ch) | Repeated character |
-| TAB(n) | Move to column n |
-| TIME$ | Current time |
-| UCASE$(s$) | Convert to uppercase |
-| VARPTR$(var) | Variable address string |
+| Function | Args | Description |
+|:---|:---|:---|
+| ALARM$ | 0 | Get alarm time string |
+| ALIAS$(idx) | 1 | Get alias introspection name |
+| ASC(x$) | 1 | ASCII code of first character |
+| BIN$(x) | 1 | Convert integer to binary string |
+| CHR$(x) | 1 | Convert ASCII code to string |
+| CLOCK$ | 0 | Access current system NTP clock string |
+| CURDIR$ | 0 | Current working directory (alias for CWD$) |
+
+> [!WARNING]
+> PLANNED / FUTURE — This feature is not yet implemented.
+
+| CWD$ | 0 | Current working directory |
+| DATE$ | 0 | Get current system date |
+| EDIT$(s$, code) | 2 | Format string using mask (DEC VAX) |
+| DIALECT$ | 0 | Current dialect name |
+| ENVIRON$(key$) | 1 | Get environment variable value |
+| ERR$(code) | 0-1 | Error message string for error code |
+| FILEMOD$(f$) | 1 | File last-modified date/time |
+| HASH$(s$) | 1 | Compute hash of string |
+| HEX$(x) | 1 | Convert integer to hexadecimal string |
+| HOSTNAME$ | 0 | System hostname |
+| ICASE$(s$) | 1 | Invert case (swap upper/lower) |
+| INKEY$ | 0 | Non-blocking keyboard character read |
+| INPUT$(n[, ch]) | 2 | Read n characters from channel/keyboard |
+| INSTR([start,] s$, p$)| 3 | Find pattern index in string |
+| IOCTL$(#ch) | 1 | Read I/O control string from device |
+| LCASE$(s$) | 1 | Convert string to lowercase |
+| LEFT$(s$, n) | 2 | Get left n characters of string |
+| LEN(s$) | 1 | String length |
+| LTRIM$(s$) | 1 | Trim leading spaces from string |
+| MEMMAP$ | 0 | Get active memory map profile name |
+| MID$(s$, start[, len])| 3 | Get substring |
+| MCASE$(s$) | 1 | Convert string to Mixed Case |
+| MKD$(x) | 1 | Convert double to string buffer |
+| MKI$(x) | 1 | Convert integer to string buffer |
+| MKS$(x) | 1 | Convert single to string buffer |
+| NINFO$(key$) | 1 | Network adapter information |
+| NJSONQUERY$(ch, path$) | 2 | JSON path query on network channel |
+| NUM$(x) | 1 | Convert number to string without space (DEC VAX) |
+| OCT$(x) | 1 | Convert integer to octal string |
+| ONKEY$(ch) | 1 | Key-triggered string lookup |
+| PRETRIEVE$(key$) | 1 | Retrieve persistent string variable (MUMPS) |
+| REPLACE$(s$, p$, r$) | 3 | Replace substring pattern |
+| REVERSE$(s$) | 1 | Reverse string characters |
+| RIGHT$(s$, n) | 2 | Get right n characters of string |
+| RTRIM$(s$) | 1 | Trim trailing spaces from string |
+| SHELL$(cmd$) | 1 | Execute shell command and capture stdout |
+| SPACE$(n) | 1 | Generate string of spaces |
+| STR$(x) | 1 | Convert number to string |
+| STRING$(n, char$) | 2 | Generate repeating character string |
+| TCASE$(s$) | 1 | Convert string to Title Case |
+| TIME$ | 0 | Get current system time |
+| TRIM$(s$) | 1 | Trim leading and trailing spaces |
+| UCASE$(s$) | 1 | Convert string to uppercase |
+| USERNAME$ | 0 | Current user name |
+| VAL(s$) | 1 | Convert string to number |
+| VARPTR$(var) | 1 | Variable pointer as string |
+| VPATH$ | 0 | Current virtual path |
 
 ---
 
-Operators (Precedence Order)
+Stream I/O (SIO) Functions
 
-| Operator | Description |
-|----------|-------------|
-| ^ | Exponentiation |
-| - (unary), NOT | Negation |
-| *, /, \ | Multiply, divide, int-divide |
-| MOD | Modulo |
-| +, - | Add, subtract, concatenate |
-| =, <>, <, >, <=, >= | Comparison |
-| AND | Bitwise/logical AND |
-| OR, XOR | Bitwise/logical OR, XOR |
-| EQV, IMP | Equivalence, implication |
+| Function | Args | Description |
+|:---|:---|:---|
+| SIOAVAIL(ch) | 1 | Get bytes available on stream channel |
+| SIOFLUSH(ch) | 1 | Flush stream channel buffers |
+| SIOREAD(ch, len) | 2 | Read binary data from stream channel |
+| SIOREADLN(ch) | 1 | Read line from stream channel |
+| SIOSEEK(ch, pos) | 2 | Seek on stream channel |
+| SIOSTATUS(ch) | 1 | Get stream channel status |
+| SIOWRITE(ch, data$)| 2 | Write binary data to stream channel |
+
+---
+
+Block I/O (BIO) Functions
+
+| Function | Args | Description |
+|:---|:---|:---|
+| BIOCHECKSUM(data$)| 1 | Compute CRC-16 checksum of data |
+| BIOCOMPARE(ch, pos, data$)| 3 | Compare block data on channel |
+| BIOCOPY(ch, src, dest, len)| 4 | Copy blocks within file/device |
+| BIOFILL(ch, pos, len, val)| 4 | Fill blocks with byte value |
+| BIOREAD(ch, pos, len)| 3 | Read block from block channel |
+| BIOSIZE(ch) | 1 | Get block device size |
+| BIOSTATUS(ch) | 1 | Get block channel status |
+| BIOWRITE(ch, pos, data$)| 3 | Write block to block channel |
+
+---
+
+Operators
+
+| Operator | Precedence | Description |
+|:---|:---|:---|
+| ^ | 1 (Highest) | Exponentiation |
+| - | 2 | Unary minus |
+| *, / | 3 | Multiplication, division |
+| \ | 4 | Integer division |
+| MOD | 5 | Modulo |
+| +, - | 6 | Addition, subtraction |
+| =, <>, <, >, <=, >= | 7 | Comparisons |
+| NOT | 8 | Bitwise / logical NOT |
+| AND | 9 | Bitwise / logical AND |
+| OR | 10 | Bitwise / logical OR |
+| XOR | 11 | Bitwise / logical XOR |
+| EQV | 12 | Bitwise / logical equivalence |
+| IMP | 13 (Lowest) | Bitwise / logical implication |
+| LIKE | 7 | Glob pattern matching |
 
 ---
 
 Special Symbols
 
 | Symbol | Description |
-|--------|-------------|
+|:---|:---|
+| ? | Alias for PRINT |
+| ' | Start inline comment |
 | : | Statement separator |
-| ; | Print suppressor |
-| , | Print tab zone / list separator |
-| # | File channel prefix |
-| ? | Shorthand for PRINT |
-| ' | Shorthand for REM |
-| &H | Hex prefix (&HFF = 255) |
-| &O | Octal prefix (&O77 = 63) |
-| &B | Binary prefix (&B1010 = 10) |
-| > | Redirect to file (overwrite) |
-| >> | Redirect to file (append) |
-| \| | Pipe to command |
+| ; | Print separator (no spacing) |
+| , | Print separator (move to next print zone) |
+| _ | Shebang indicator (shebang on line 1) |
+
+---
+
+System Variables
+
+| Variable | Type | Description |
+|:---|:---|:---|
+| ERL | Integer | Line number where last error occurred |
+| ERR | Integer | Last error code |
+| ERRORLEVEL| Integer | Exit code of last executed shell command |
+| PI | Float | Mathematical constant π |
+| SCOPE$ | String | Name of keyword that triggered the most recent SCOPE hook |
+| TIMER | Float | Seconds since midnight |
+| TRUE | Integer | Boolean constant (-1) |
+| FALSE | Integer | Boolean constant (0) |
+
+---
+
+Line Numbers & Bases
+
+BASIC++ supports decimal, hexadecimal, octal, and binary line numbers.
+
+- Decimal: 1 to 65529 (default).
+- Hexadecimal: prefixed with &H/&h or 0x/0X (e.g. &H10 or 0x10 = 16). Range up to 4294967295.
+- Octal: prefixed with &O/&o, 0o/0O, or & (e.g. &O10 or &10 = 8). Range up to 4294967295.
+- Binary: prefixed with &B/&b or 0b/0B (e.g. &B10 or 0b10 = 2). Range up to 4294967295.
+
+Note: The original input base prefix is preserved on LIST. Jump targets (e.g., GOTO, GOSUB, RESTORE) can resolve line numbers using base prefixes in expressions.

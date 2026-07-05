@@ -1,7 +1,7 @@
 BASIC++ SOURCE TREE MAP
 ========================
-Version 4.1.1
-Last Updated: 2026-06-23
+Version 4.9.7
+Last Updated: 2026-07-04 (Exhaustive Warning & Error Elimination)
 
 This document describes every source file in the BASIC++ interpreter,
 its purpose, and which files are required for different build
@@ -134,7 +134,8 @@ source/
   CORE  core/memory.c
         Memory pool management: bump-allocated pools for variables,
         arrays, and program storage.  No module calls malloc()
-        directly except through this subsystem.
+        directly except through this subsystem. Also implements the
+        program_list_search filter logic and wildcard matchers.
 
   CORE  core/errors.c
         Classic Tiny BASIC error model (WHAT/HOW/SORRY).  Global
@@ -168,6 +169,11 @@ source/
         INI-style configuration file parser.  Reads basicpp.cfg
         at boot.  Supports dialect, security, prompt, memory,
         color, and module settings.
+
+  CORE  core/pcode_cache.c
+        Opcode block cache manager. Coordinates linear bytecode
+        compilation triggers and global invalidation upon program edits
+        or dialect changes when executing in hybrid VM/AST mode.
 
 
 --- 3.2  lexer/ — Tokenizer ---
@@ -408,7 +414,8 @@ source/
         COMPILE, BSAVE, BLOAD.
 
   CORE  progmgmt/parser_cmds.c
-        System commands: LIST, RUN, NEW, SAVE, LOAD, MERGE, CHAIN,
+        System commands: LIST (including substring, identifier token, and
+        label/func searches), RUN, NEW, SAVE, LOAD, MERGE, CHAIN,
         DIALECT.  Operates on the stored program.
 
   CORE  progmgmt/compiler.c
@@ -460,90 +467,11 @@ source/
 
 --- 3.25  dialect/ — Dialect Profiles ---
 
-  The dialect system uses a registry architecture.  Each dialect lives
-  in its own source file and registers itself at boot time.
-
-  CORE  dialect/dialect.c
-        Dialect registry: dialect_register_all(), lookup, switching.
-        ** EDIT THIS FILE when adding/removing a dialect. **
-
-  The following dialect files are individually OPTIONAL.  To build a
-  custom interpreter with only specific dialects, include only the
-  ones you need (plus dialect/dialect.c which is always required).
-  You must also remove the register call from dialect_register_all()
-  in dialect.c for any dialect you omit.
-
-  OPT   dialect/dialect_patb.c      Palo Alto Tiny BASIC (1976)
-        CLI flag: -d PATB              Li-Chen Wang. Integer-only,
-        Dialect ID: DIALECT_TINY_BASIC  26 vars, no strings. 2KB.
-
-  OPT   dialect/dialect_trs1.c      TRS-80 Level I BASIC (1977)
-        CLI flag: -d TRS1              Steve Leininger / Radio Shack.
-        Dialect ID: DIALECT_TRS80_L1   Z80, 4KB ROM, 64x16 text.
-
-  OPT   dialect/dialect_trs2.c      TRS-80 Level II BASIC (1978)
-        CLI flag: -d TRS2              Microsoft. 12KB ROM.  Float,
-        Dialect ID: DIALECT_TRS80_L2   DEF FN, WHILE/WEND, ON ERROR.
-                                       Also covers Model III/4.
-
-  OPT   dialect/dialect_gwbs.c      GW-BASIC / BASICA (1983)
-        CLI flag: -d GWBS              Microsoft. "Ok" prompt.
-        Dialect ID: DIALECT_GW_BASIC   Default for David Ahl's games.
-
-  OPT   dialect/dialect_ecma55.c    ECMA-55 Minimal BASIC (1984)
-        CLI flag: -d EC55              ISO 6373. Portable standard
-        Dialect ID: DIALECT_ECMA55     subset. LET mandatory.
-
-  OPT   dialect/dialect_ecma116.c   ECMA-116 Full BASIC (1991)
-        CLI flag: -d E116              ISO 10279. Gold standard:
-        Dialect ID: DIALECT_ECMA116    SUB/FUNCTION, WHEN/USE, MAT.
-
-  OPT   dialect/dialect_qbasic.c    QBasic (1991)
-        CLI flag: -d QBAS              Microsoft. MS-DOS 5.0+.
-        Dialect ID: DIALECT_QBASIC     Line numbers optional, SUB,
-                                       SELECT CASE, DO/LOOP.
-
-  OPT   dialect/dialect_aint.c      Apple II Integer BASIC (1977)
-        CLI flag: -d AINT              Wozniak. 8KB ROM, integer-only.
-        Dialect ID: DIALECT_APPLE_INT  '>' prompt, LET mandatory.
-
-  OPT   dialect/dialect_asft.c      Applesoft BASIC (1978)
-        CLI flag: -d ASFT              Microsoft for Apple II+.
-        Dialect ID: DIALECT_APPLESOFT  12KB ROM, ']' prompt.
-
-  OPT   dialect/dialect_atari.c     Atari BASIC (1979)
-        CLI flag: -d ATAR              Shepardson. NOT Microsoft.
-        Dialect ID: DIALECT_ATARI_MS   Cartridge ROM, 10-col zones,
-                                       A$(5,10) substring syntax.
-
-  OPT   dialect/dialect_c64.c       Commodore BASIC v2 (1982)
-        CLI flag: -d C64               Microsoft (1977 vintage).
-        Dialect ID: DIALECT_COMMODORE  "READY." prompt, POKE-heavy.
-
-  OPT   dialect/dialect_coco.c      Color Computer BASIC (1980)
-        CLI flag: -d COCO              Microsoft. Motorola 6809.
-        Dialect ID: DIALECT_COCO       "OK" prompt, actual graphics
-                                       commands (unlike C64).
-
-  OPT   dialect/dialect_mbasic.c    MBASIC / BASIC-80 (1978-1981)
-        CLI flag: -d MBAS              Microsoft CP/M. Pure text/
-        Dialect ID: DIALECT_MBASIC     computation, no graphics.
-                                       "Ok" prompt, 14-col zones.
-
-  OPT   dialect/dialect_sinclair.c  Sinclair BASIC (ZX Spectrum, 1982)
-        CLI flag: -d SINC              Nine Tiles. LET required,
-        Dialect ID: DIALECT_SINCLAIR   GO TO / GO SUB spaced,
-                                       unique colour/sound commands.
-
-  OPT   dialect/dialect_superbasic.c  Sinclair QL SuperBASIC (1984)
-        CLI flag: -d QLSB              Jan Jones. Structured: named
-        Dialect ID: DIALECT_SUPERBASIC  procedures, local variables,
-                                        REPeat/END REPeat, SELect ON.
-
-  OPT   dialect/dialect_sbasic.c    Tymshare SUPER BASIC (1968)
-        CLI flag: -d SBAS              Mark Alexander & Dan Streng.
-        Dialect ID: DIALECT_SBASIC     SDS 940. Complex numbers,
-                                       JOSS-style IF/UNLESS postfix.
+  The dialect profiles have been unified under a single uniform dialect engine
+  to ensure consistent runtime execution across all target platforms. Individual
+  dialect files under this directory have been removed in favor of this single-engine
+  architecture. All dialect features (such as specialized string parsing, structured programming,
+  and bios console mappings) are consolidated and fully enabled by default.
 
 
 --- 3.26  codegen/ — Code Generation & Bytecode ---
@@ -556,9 +484,16 @@ source/
         C89 code generator.  Walks the AST and emits a complete,
         self-contained ANSI C89 program with runtime shim.
 
+  CORE  codegen/target.c
+        Cross-compilation target platform profile configuration registry.
+
   CORE  codegen/bytecode.c
         Bytecode serializer/deserializer (.BPP format).  16-byte
         header + line records.  Stores source text verbatim.
+
+  CORE  codegen/archive.c
+        Execution archive (.EXE/.BPE) packager/extractor.  Creates
+        chunk-based portable files with version and CRC checks.
 
   CORE  codegen/detok.c
         Detokenizer.  Converts tokens back to human-readable text.
@@ -594,6 +529,32 @@ source/
         SOAP: virtual devices with VDCAP_EVENT.  Pure API framework.
         Activated via MODULE "UPNP".
 
+  OPT   modules/segmented_mem.c
+        Unified mock BIOS memory configuration and interrupt vector table
+        (IVT) subsystem. Emulates standard IBM BIOS registers, clocks, and
+        hardware cursor placement under Windows, Linux, and BSD targets.
+
+  OPT   modules/mbf_math.c
+        Single/double precision Microsoft Binary Format (MBF) float conversion logic.
+
+  OPT   modules/sdl2_emu.c
+        SDL2 window management, keyboard event routing, palette colors, and PC speaker tone generation.
+
+  OPT   modules/compat_plugin.c
+        State manager for custom virtual device plugin drivers.
+
+  OPT   modules/serial_compat.c
+        O/S agnostic serial COM port communications adapter.
+
+  OPT   modules/mod_legacy_compat.c
+        Legacy GW-BASIC dialect compatibility variable read/write hooks and segmented memory layout.
+
+  OPT   modules/mod_fsk_audio.c
+        FSK DSP tokenized/untokenized cassette tape encoder/decoder.
+
+  OPT   modules/mod_persist.c
+        Persistent key-value variable storage and virtual device (PSTORE, PRETRIEVE, PRETRIEVE$, and PERSIST:).
+
 
 --- 3.28  runtime/ — Runtime State & Execution ---
 
@@ -606,6 +567,15 @@ source/
         Program execution loop.  Iterates stored lines, tokenizes
         on-the-fly, dispatches to parser.  Event polling between
         statements.  Signal handler for Ctrl+C (ON BREAK).
+
+  CORE  runtime/ast_interpreter.c
+        AST Interpreter implementation. Evaluates abstract syntax trees
+        for statements and expressions directly on a shared stack
+        without recursive compiler call stack usage.
+
+  CORE  runtime/ast_interpreter.h
+        Header file containing prototypes and interfaces for AST
+        expression evaluation and statement execution.
 
 
 --- 3.29  misc/ — Miscellaneous Commands ---
@@ -703,8 +673,17 @@ source/
   CORE  codegen.h               Code generator interface.
                                 codegen_emit() entry point.
 
+  CORE  codegen/target.h        Cross-compilation target platform config types.
+
   CORE  compiler.h              Compiler driver interface.
                                 compiler_compile() pipeline.
+
+  CORE  codegen/archive.h       Execution archive system interface.
+                                bpe_save() and bpe_load() declarations.
+
+  CORE  codegen/bytecode_bpp.h  V2 compiled bytecode structure headers.
+
+  CORE  codegen/archive_bpe.h   Chunk-based BPE archive structure headers.
 
   CORE  bytecode.h              .BPP file format definition.
                                 Header structure, magic bytes.
@@ -737,6 +716,7 @@ source/
   OPT   mod_usb.h               USB module header.
   OPT   mod_fujinet.h           FujiNet module header.
   OPT   mod_upnp.h              UPnP module header.
+  OPT   mod_persist.h           Persistent storage module header.
 
 
 =====================================================================
@@ -770,9 +750,9 @@ To build with only specific dialects:
   dialect_c64.c            C64   DIALECT_COMMODORE     Microsoft
   dialect_coco.c           COCO  DIALECT_COCO          Microsoft
   dialect_mbasic.c         MBAS  DIALECT_MBASIC        Microsoft
-  dialect_sinclair.c       SINC  DIALECT_SINCLAIR      Sinclair
-  dialect_superbasic.c     QLSB  DIALECT_SUPERBASIC    Sinclair
-  dialect_sbasic.c         SBAS  DIALECT_SBASIC        Tymshare
+  dialect_sinclair.c       SPEC  DIALECT_SINCLAIR      Sinclair
+  dialect_superbasic.c     SQLB  DIALECT_SUPERBASIC    Sinclair
+  dialect_sbasic.c         SUPB  DIALECT_SBASIC        Tymshare
 
 Optional modules are similarly independent:
 
@@ -878,11 +858,25 @@ When adding a new source file to the project:
   9. Update tutorials (help/*.txt, docs/*.md) as appropriate.
 
 Checklist for new files:
-  [ ] .c file created in correct subdirectory
-  [ ] .h file created in source/ root (if needed)
-  [ ] Added to Makefile (all three targets: gcc, MSVC, watcom)
-  [ ] Registration call added (dialect.c or main.c)
-  [ ] help.c updated with new keywords
-  [ ] SOURCE_TREE.txt updated (this file)
-  [ ] Tutorials updated (if user-facing feature)
-  [ ] SELFTEST still passes
+  [x] .c file created in correct subdirectory
+  [x] .h file created in source/ root (if needed)
+  [x] Added to Makefile (all three targets: gcc, MSVC, watcom)
+  [x] Registration call added (dialect.c or main.c)
+  [x] help.c updated with new keywords
+  [x] SOURCE_TREE.txt updated (this file)
+  [x] Tutorials updated (if user-facing feature)
+  [x] SELFTEST still passes
+=====================================================================
+7. STANDALONE LEGACY INTERPRETERS (Root Directory)
+=====================================================================
+
+Alongside the main BASIC++ interpreter, the project includes several
+standalone, single-file legacy interpreters located in the root directory.
+These are designed as completely self-contained C89 educational references:
+
+  tinybasic.c   - Palo Alto Tiny BASIC clone.
+  level1.c      - TRS-80 Level I BASIC clone.
+  apple2.c      - Apple II Integer BASIC clone.
+  1964.c        - Original Dartmouth BASIC 1964 clone.
+
+Each file compiles standalone without dependencies on the source/ tree.

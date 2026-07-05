@@ -434,8 +434,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "memory.h"
 #include "errors.h"
+#include "task.h"
+#include "../console.h"
+#include "../lexer.h"
+
+#include "platform.h"
 
 // -----------------------------------------------------------------
 // Pool Management -- Internal Helpers
@@ -535,6 +541,60 @@ static void free_pool(MemoryPool *pool)
 //
 int mem_init(MemorySystem *mem)
 {
+    long var_size;
+    long scr_size;
+    long gfx_size = 0;
+    (void)gfx_size;
+    int max_lines;
+
+#ifdef BPP_LITE_BUILD
+    {
+        long long avail = platform_get_available_ram();
+        long long budget = avail / 100; // exactly 1%
+        if (budget < 262144L) { // 256 KB safety guard
+            budget = 262144L;
+        }
+
+        var_size = (long)(budget * 20L / 100L); // 20%
+        scr_size = (long)(budget * 5L / 100L);   // 5%
+        gfx_size = 0;
+        
+        long long prg_budget = budget * 50L / 100L;
+        max_lines = (int)(prg_budget / sizeof(ProgramLine));
+        if (max_lines < 128) max_lines = 128;
+        if (max_lines > MAX_PROGRAM_LINES) max_lines = MAX_PROGRAM_LINES;
+    }
+#else
+    {
+        extern int g_cli_lite;
+        long long avail = platform_get_available_ram();
+        long long budget;
+        if (g_cli_lite) {
+            budget = avail * 5L / 100L; // exactly 5% of available RAM
+        } else {
+            budget = avail * 10L / 100L; // exactly 10% of available RAM
+        }
+        long long min_budget = avail / 100L;  // 1% min limit
+        if (budget < min_budget) {
+            budget = min_budget;
+        }
+        // Standard floor of 5 MB (or 2.5 MB under --lite)
+        long long floor_limit = g_cli_lite ? 2621440L : 5242880L;
+        if (budget < floor_limit) {
+            budget = floor_limit;
+        }
+
+        var_size = (long)(budget * 15L / 100L); // 15%
+        scr_size = (long)(budget * 5L / 100L);   // 5%
+        gfx_size = (long)(budget * 15L / 100L); // 15%
+        
+        long long prg_budget = budget * 50L / 100L;
+        max_lines = (int)(prg_budget / sizeof(ProgramLine));
+        if (max_lines < 128) max_lines = 128;
+        if (max_lines > MAX_PROGRAM_LINES) max_lines = MAX_PROGRAM_LINES;
+    }
+#endif
+
     // Initialize all fields to safe defaults before any malloc.
     // This ensures mem_shutdown() is safe even if we fail early.
     mem->variable.base = NULL;
@@ -543,20 +603,34 @@ int mem_init(MemorySystem *mem)
     mem->scratch.base = NULL;
     mem->scratch.size = 0;
     mem->scratch.used = 0;
+    mem->graphics.base = NULL;
+    mem->graphics.size = 0;
+    mem->graphics.used = 0;
     mem->program.lines = NULL;
     mem->program.count = 0;
     mem->program.capacity = 0;
+    mem->program.bulk_buffer = NULL;
+    mem->program.bulk_size = 0;
 
     // Allocate variable pool
-    if (init_pool(&mem->variable, VARIABLE_MEMORY_SIZE) != 0) {
+    if (init_pool(&mem->variable, var_size) != 0) {
         return -1;
     }
 
     // Allocate scratch pool
-    if (init_pool(&mem->scratch, SCRATCH_MEMORY_SIZE) != 0) {
+    if (init_pool(&mem->scratch, scr_size) != 0) {
         free_pool(&mem->variable);
         return -1;
     }
+
+#ifdef BPP_SUPPORT_GRAPHICS
+    // Allocate graphics pool (15% of budget)
+    if (init_pool(&mem->graphics, gfx_size) != 0) {
+        free_pool(&mem->scratch);
+        free_pool(&mem->variable);
+        return -1;
+    }
+#endif
 
     // Allocate program line array.
     //
@@ -565,21 +639,28 @@ int mem_init(MemorySystem *mem)
     // relatively large (~260 bytes each) and the array needs
     // to be contiguous for memmove operations during insert/delete.
     mem->program.lines = (ProgramLine *)malloc(
-        (size_t)MAX_PROGRAM_LINES * sizeof(ProgramLine)
+        (size_t)max_lines * sizeof(ProgramLine)
     );
     if (mem->program.lines == NULL) {
+#ifdef BPP_SUPPORT_GRAPHICS
+        free_pool(&mem->graphics);
+#endif
         free_pool(&mem->scratch);
         free_pool(&mem->variable);
         return -1;
     }
     mem->program.count = 0;
-    mem->program.capacity = MAX_PROGRAM_LINES;
+    mem->program.capacity = max_lines;
+    mem->program.bulk_buffer = NULL;
+    mem->program.bulk_size = 0;
 
     // Zero the line array for clean initial state.
     // All line_number fields start at 0 and all text buffers
     // start as empty strings.
     memset(mem->program.lines, 0,
-        (size_t)MAX_PROGRAM_LINES * sizeof(ProgramLine));
+        (size_t)max_lines * sizeof(ProgramLine));
+
+    rambank_init(mem);
 
     return 0;
 }
@@ -596,13 +677,34 @@ void mem_shutdown(MemorySystem *mem)
 {
     free_pool(&mem->variable);
     free_pool(&mem->scratch);
+#ifdef BPP_SUPPORT_GRAPHICS
+    free_pool(&mem->graphics);
+#endif
 
     if (mem->program.lines != NULL) {
+        int i;
+        for (i = 0; i < mem->program.count; i++) {
+            char *txt = mem->program.lines[i].text;
+            if (txt != NULL) {
+                if (mem->program.bulk_buffer == NULL ||
+                    txt < mem->program.bulk_buffer ||
+                    txt >= mem->program.bulk_buffer + mem->program.bulk_size) {
+                    free(txt);
+                }
+            }
+        }
         free(mem->program.lines);
         mem->program.lines = NULL;
     }
+    if (mem->program.bulk_buffer != NULL) {
+        free(mem->program.bulk_buffer);
+        mem->program.bulk_buffer = NULL;
+    }
+    mem->program.bulk_size = 0;
     mem->program.count = 0;
     mem->program.capacity = 0;
+
+    rambank_shutdown(mem);
 }
 
 // mem_pool_alloc - Bump-allocate bytes from a pool.
@@ -638,17 +740,21 @@ void mem_shutdown(MemorySystem *mem)
 void *mem_pool_alloc(MemoryPool *pool, long nbytes)
 {
     char *ptr;
+    long aligned_nbytes;
 
     if (nbytes <= 0) {
         return NULL;
     }
 
-    if (pool->used + nbytes > pool->size) {
+    // Align to 8-byte boundary
+    aligned_nbytes = (nbytes + 7L) & ~7L;
+
+    if (pool->used + aligned_nbytes > pool->size) {
         return NULL;  // insufficient space
     }
 
     ptr = pool->base + pool->used;
-    pool->used += nbytes;
+    pool->used += aligned_nbytes;
     return (void *)ptr;
 }
 
@@ -736,7 +842,7 @@ long mem_pool_available(MemoryPool *pool)
 //   If an exact match exists, returns the index of the match.
 //   If no match, returns the insertion point.
 //
-static int find_insert_pos(ProgramStore *store, int line_number)
+static int find_insert_pos(ProgramStore *store, double line_number)
 {
     int low = 0;
     int high = store->count - 1;
@@ -754,6 +860,106 @@ static int find_insert_pos(ProgramStore *store, int line_number)
     }
 
     return low;  // insertion point
+}
+
+double program_parse_line_number(const char *input, int *end_pos, int *is_non_decimal)
+{
+    int pos = 0;
+    if (is_non_decimal) {
+        *is_non_decimal = 0;
+    }
+
+    // Skip leading whitespace
+    while (input[pos] == ' ' || input[pos] == '\t') {
+        pos++;
+    }
+
+    // Check for prefixes
+    int base = 10;
+    int has_prefix = 0;
+    (void)has_prefix;
+
+    if (input[pos] == '&') {
+        char next = input[pos + 1];
+        if (next == 'h' || next == 'H') {
+            base = 16;
+            pos += 2;
+            has_prefix = 1;
+        } else if (next == 'o' || next == 'O') {
+            base = 8;
+            pos += 2;
+            has_prefix = 1;
+        } else if (next == 'b' || next == 'B') {
+            base = 2;
+            pos += 2;
+            has_prefix = 1;
+        } else if (next >= '0' && next <= '7') {
+            base = 8;
+            pos += 1; // consume '&'
+            has_prefix = 1;
+        }
+    } else if (input[pos] == '0') {
+        char next = input[pos + 1];
+        if (next == 'x' || next == 'X') {
+            base = 16;
+            pos += 2;
+            has_prefix = 1;
+        } else if (next == 'o' || next == 'O') {
+            base = 8;
+            pos += 2;
+            has_prefix = 1;
+        } else if (next == 'b' || next == 'B') {
+            base = 2;
+            pos += 2;
+            has_prefix = 1;
+        }
+    }
+
+    double val = 0.0;
+    if (base == 10) {
+        char *endptr;
+        val = strtod(input + pos, &endptr);
+        if (endptr == input + pos) {
+            *end_pos = pos;
+            return 0.0;
+        }
+        // Enforce up to 2 decimal places by rounding
+        val = ((int)(val * 100.0 + (val >= 0.0 ? 0.5 : -0.5))) / 100.0;
+        pos = (int)(endptr - input);
+    } else {
+        int start_pos = pos;
+        for (;;) {
+            char c = input[pos];
+            int digit_val = -1;
+
+            if (c >= '0' && c <= '9') {
+                digit_val = c - '0';
+            } else if (c >= 'A' && c <= 'F') {
+                digit_val = c - 'A' + 10;
+            } else if (c >= 'a' && c <= 'f') {
+                digit_val = c - 'a' + 10;
+            }
+
+            if (digit_val < 0 || digit_val >= base) {
+                break; // not a valid digit for this base
+            }
+
+            val = val * base + digit_val;
+            pos++;
+        }
+
+        if (pos == start_pos) {
+            *end_pos = pos;
+            return 0.0;
+        }
+    }
+
+    if (is_non_decimal && base != 10) {
+        *is_non_decimal = 1;
+    }
+
+    *end_pos = pos;
+    return val;
 }
 
 // program_insert - Insert or replace a program line.
@@ -782,8 +988,67 @@ static int find_insert_pos(ProgramStore *store, int line_number)
 //   To support more lines, increase MAX_PROGRAM_LINES in config.h
 //   (costs ~260 bytes per additional slot).
 //
-int program_insert(ProgramStore *store, int line_number,
+int program_insert(ProgramStore *store, double line_number,
     const char *full_text)
+{
+    int pos;
+    int i;
+    char *new_str;
+
+    pos = find_insert_pos(store, line_number);
+
+    // Check if this is a replacement of an existing line
+    if (pos < store->count &&
+        store->lines[pos].line_number == line_number) {
+        // Replace existing line text
+        char *old_txt = store->lines[pos].text;
+        new_str = (char *)malloc(strlen(full_text) + 1);
+        if (!new_str) {
+            error_raise(ERR_SORRY, 0);
+            return -1;
+        }
+        strcpy(new_str, full_text);
+
+        if (old_txt != NULL) {
+            if (store->bulk_buffer == NULL ||
+                old_txt < store->bulk_buffer ||
+                old_txt >= store->bulk_buffer + store->bulk_size) {
+                free(old_txt);
+            }
+        }
+        store->lines[pos].text = new_str;
+        return 0;
+    }
+
+    // Inserting a new line -- check capacity
+    if (store->count >= store->capacity) {
+        error_raise(ERR_SORRY, 0);
+        return -1;
+    }
+
+    new_str = (char *)malloc(strlen(full_text) + 1);
+    if (!new_str) {
+        error_raise(ERR_SORRY, 0);
+        return -1;
+    }
+    strcpy(new_str, full_text);
+
+    // Shift lines from pos..count-1 up by one position.
+    // We iterate backwards to avoid overwriting data.
+    for (i = store->count; i > pos; i--) {
+        store->lines[i] = store->lines[i - 1];
+    }
+
+    // Insert the new line at the correct sorted position
+    store->lines[pos].line_number = line_number;
+    store->lines[pos].text = new_str;
+    store->count++;
+
+    return 0;
+}
+
+int program_insert_pointer(ProgramStore *store, double line_number,
+    char *text_ptr)
 {
     int pos;
     int i;
@@ -793,9 +1058,15 @@ int program_insert(ProgramStore *store, int line_number,
     // Check if this is a replacement of an existing line
     if (pos < store->count &&
         store->lines[pos].line_number == line_number) {
-        // Replace existing line text
-        strncpy(store->lines[pos].text, full_text, MAX_LINE_LENGTH);
-        store->lines[pos].text[MAX_LINE_LENGTH] = '\0';
+        char *old_txt = store->lines[pos].text;
+        if (old_txt != NULL) {
+            if (store->bulk_buffer == NULL ||
+                old_txt < store->bulk_buffer ||
+                old_txt >= store->bulk_buffer + store->bulk_size) {
+                free(old_txt);
+            }
+        }
+        store->lines[pos].text = text_ptr;
         return 0;
     }
 
@@ -806,15 +1077,13 @@ int program_insert(ProgramStore *store, int line_number,
     }
 
     // Shift lines from pos..count-1 up by one position.
-    // We iterate backwards to avoid overwriting data.
     for (i = store->count; i > pos; i--) {
         store->lines[i] = store->lines[i - 1];
     }
 
-    // Insert the new line at the correct sorted position
+    // Insert the new line
     store->lines[pos].line_number = line_number;
-    strncpy(store->lines[pos].text, full_text, MAX_LINE_LENGTH);
-    store->lines[pos].text[MAX_LINE_LENGTH] = '\0';
+    store->lines[pos].text = text_ptr;
     store->count++;
 
     return 0;
@@ -834,7 +1103,7 @@ int program_insert(ProgramStore *store, int line_number,
 //  -1 if the line was not found (this is NOT an error in BASIC;
 //      deleting a nonexistent line is silently ignored)
 //
-int program_delete(ProgramStore *store, int line_number)
+int program_delete(ProgramStore *store, double line_number)
 {
     int pos;
     int i;
@@ -845,6 +1114,15 @@ int program_delete(ProgramStore *store, int line_number)
     if (pos >= store->count ||
         store->lines[pos].line_number != line_number) {
         return -1;  // line not found (silent, not an error)
+    }
+
+    char *txt = store->lines[pos].text;
+    if (txt != NULL) {
+        if (store->bulk_buffer == NULL ||
+            txt < store->bulk_buffer ||
+            txt >= store->bulk_buffer + store->bulk_size) {
+            free(txt);
+        }
     }
 
     // Shift lines down to fill the gap
@@ -868,7 +1146,7 @@ int program_delete(ProgramStore *store, int line_number)
 //   Index into store->lines[] if found.
 //  -1 if no line with that number exists.
 //
-int program_find(ProgramStore *store, int line_number)
+int program_find(ProgramStore *store, double line_number)
 {
     int pos;
 
@@ -901,7 +1179,7 @@ int program_find(ProgramStore *store, int line_number)
 //   Index of the first line with number >= line_number.
 //  -1 if no such line exists.
 //
-int program_find_next(ProgramStore *store, int line_number)
+int program_find_next(ProgramStore *store, double line_number)
 {
     int pos;
 
@@ -927,6 +1205,23 @@ int program_find_next(ProgramStore *store, int line_number)
 //
 void program_clear(ProgramStore *store)
 {
+    int i;
+    for (i = 0; i < store->count; i++) {
+        char *txt = store->lines[i].text;
+        if (txt != NULL) {
+            if (store->bulk_buffer == NULL ||
+                txt < store->bulk_buffer ||
+                txt >= store->bulk_buffer + store->bulk_size) {
+                free(txt);
+            }
+            store->lines[i].text = NULL;
+        }
+    }
+    if (store->bulk_buffer != NULL) {
+        free(store->bulk_buffer);
+        store->bulk_buffer = NULL;
+    }
+    store->bulk_size = 0;
     store->count = 0;
 }
 
@@ -951,7 +1246,7 @@ void program_clear(ProgramStore *store)
 //   modify this function. The stored text is in store->lines[i].text.
 //   The line number is in store->lines[i].line_number.
 //
-void program_list(ProgramStore *store, int from, int to)
+void program_list(ProgramStore *store, double from, double to)
 {
     int i;
 
@@ -965,3 +1260,554 @@ void program_list(ProgramStore *store, int from, int to)
         printf("%s\n", store->lines[i].text);
     }
 }
+
+static int match_wildcard_recursive(const char *pat, const char *str)
+{
+    if (*pat == '\0' && *str == '\0') return 1;
+    if (*pat == '*') {
+        while (*(pat + 1) == '*') pat++;
+        if (*(pat + 1) == '\0') return 1;
+        while (*str != '\0') {
+            if (match_wildcard_recursive(pat + 1, str)) return 1;
+            str++;
+        }
+        return 0;
+    }
+    if (*pat == '?' && *str != '\0') {
+        return match_wildcard_recursive(pat + 1, str + 1);
+    }
+    if (toupper((unsigned char)*pat) == toupper((unsigned char)*str)) {
+        return match_wildcard_recursive(pat + 1, str + 1);
+    }
+    return 0;
+}
+
+static int strcasecontains(const char *haystack, const char *needle)
+{
+    if (*needle == '\0') return 1;
+    for (; *haystack != '\0'; haystack++) {
+        if (toupper((unsigned char)*haystack) == toupper((unsigned char)*needle)) {
+            const char *h = haystack + 1;
+            const char *n = needle + 1;
+            while (*n != '\0' && toupper((unsigned char)*h) == toupper((unsigned char)*n)) {
+                h++;
+                n++;
+            }
+            if (*n == '\0') return 1;
+        }
+    }
+    return 0;
+}
+
+static int match_anywhere(const char *pat, const char *str)
+{
+    int has_wildcard = 0;
+    const char *p = pat;
+    while (*p != '\0') {
+        if (*p == '*' || *p == '?') {
+            has_wildcard = 1;
+            break;
+        }
+        p++;
+    }
+    
+    if (!has_wildcard) {
+        return strcasecontains(str, pat);
+    }
+    
+    if (*pat == '*') {
+        return match_wildcard_recursive(pat, str);
+    }
+    while (*str != '\0') {
+        if (match_wildcard_recursive(pat, str)) return 1;
+        str++;
+    }
+    return 0;
+}
+
+static int line_matches_identifier(const char *line_text, const char *pattern)
+{
+    Lexer lex;
+    lexer_init(&lex, line_text);
+    
+    if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
+        lexer_next(&lex);
+    }
+    
+    while (lex.current.type != TOK_EOF && lex.current.type != TOK_CR) {
+        TokenType curr_type = lex.current.type;
+        if (curr_type == TOK_VARIABLE || curr_type == TOK_STRING_VAR || 
+            curr_type == TOK_NAMED_VAR || curr_type == TOK_COMPLEX_VAR) {
+            char name_buf[64] = {0};
+            if (curr_type == TOK_VARIABLE) {
+                name_buf[0] = lex.current.value.var_name;
+            } else if (curr_type == TOK_STRING_VAR) {
+                name_buf[0] = lex.current.value.var_name;
+                name_buf[1] = '$';
+            } else if (curr_type == TOK_COMPLEX_VAR) {
+                name_buf[0] = lex.current.value.var_name;
+                name_buf[1] = '~';
+            } else {
+                int len = lex.current.str_length;
+                if (len > 63) len = 63;
+                strncpy(name_buf, lex.current.str_start, len);
+            }
+            
+            if (match_wildcard_recursive(pattern, name_buf)) {
+                return 1;
+            }
+        }
+        lexer_next(&lex);
+    }
+    return 0;
+}
+
+static int line_matches_label_or_func(const char *line_text, const char *pattern)
+{
+    Lexer lex;
+    lexer_init(&lex, line_text);
+    
+    if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
+        lexer_next(&lex);
+    }
+    
+    TokenType prev_type = TOK_EOF;
+    KeywordId prev_keyword = KW_COUNT;
+    int in_goto_list = 0;
+    
+    while (lex.current.type != TOK_EOF && lex.current.type != TOK_CR) {
+        TokenType curr_type = lex.current.type;
+        KeywordId curr_keyword = (curr_type == TOK_KEYWORD) ? lex.current.value.keyword : KW_COUNT;
+        
+        if (curr_keyword == KW_GOTO || curr_keyword == KW_GOSUB || 
+            curr_keyword == KW_RESTORE || curr_keyword == KW_RUN || 
+            curr_keyword == KW_RESUME) {
+            in_goto_list = 1;
+        } else if (curr_type == TOK_COLON) {
+            in_goto_list = 0;
+        }
+        
+        if (curr_type == TOK_NAMED_VAR || curr_type == TOK_VARIABLE) {
+            char name_buf[64] = {0};
+            if (curr_type == TOK_VARIABLE) {
+                name_buf[0] = lex.current.value.var_name;
+            } else {
+                int len = lex.current.str_length;
+                if (len > 63) len = 63;
+                strncpy(name_buf, lex.current.str_start, len);
+            }
+            
+            Lexer look = lex;
+            lexer_next(&look);
+            if (look.current.type == TOK_COLON) {
+                if (match_wildcard_recursive(pattern, name_buf)) return 1;
+            }
+            
+            if (in_goto_list) {
+                if (match_wildcard_recursive(pattern, name_buf)) return 1;
+            }
+            
+            if (prev_keyword == KW_SUB || prev_keyword == KW_FUNCTION) {
+                if (match_wildcard_recursive(pattern, name_buf)) return 1;
+            }
+            
+            if (prev_keyword == KW_CALL) {
+                if (match_wildcard_recursive(pattern, name_buf)) return 1;
+            }
+            
+            if ((prev_type == TOK_EOF || prev_type == TOK_COLON) && curr_type == TOK_NAMED_VAR) {
+                if (look.current.type != TOK_EQUALS && look.current.type != TOK_EOF && look.current.type != TOK_CR && look.current.type != TOK_COLON) {
+                    if (match_wildcard_recursive(pattern, name_buf)) return 1;
+                }
+            }
+            
+            if (strncmp(name_buf, "FN", 2) == 0 || strncmp(name_buf, "fn", 2) == 0) {
+                if (match_wildcard_recursive(pattern, name_buf + 2)) return 1;
+            }
+        }
+        
+        if (curr_keyword == KW_FN && prev_keyword == KW_DEF) {
+            Lexer look = lex;
+            lexer_next(&look);
+            char name_buf[64] = {0};
+            if (look.current.type == TOK_VARIABLE) {
+                name_buf[0] = look.current.value.var_name;
+            } else if (look.current.type == TOK_NAMED_VAR) {
+                int len = look.current.str_length;
+                if (len > 63) len = 63;
+                strncpy(name_buf, look.current.str_start, len);
+            }
+            const char *fname = name_buf;
+            if (strncmp(fname, "FN", 2) == 0 || strncmp(fname, "fn", 2) == 0) {
+                fname += 2;
+            }
+            if (match_wildcard_recursive(pattern, fname)) return 1;
+        }
+        
+        prev_type = curr_type;
+        prev_keyword = curr_keyword;
+        lexer_next(&lex);
+    }
+    return 0;
+}
+
+void program_list_search(ProgramStore *store, int search_type, const char *pattern)
+{
+    int i;
+    for (i = 0; i < store->count; i++) {
+        const char *text = store->lines[i].text;
+        int match = 0;
+        
+        if (search_type == SEARCH_SUBSTRING) {
+            match = match_anywhere(pattern, text);
+        } else if (search_type == SEARCH_IDENTIFIER) {
+            match = line_matches_identifier(text, pattern);
+        } else if (search_type == SEARCH_LABEL_OR_FUNC) {
+            match = line_matches_label_or_func(text, pattern);
+        }
+        
+        if (match) {
+            printf("%s\n", text);
+        }
+    }
+}
+
+#include "security.h"
+
+// --- RAMBANK Paging & Encryption Helper ---
+static void rambank_crypt(char *buffer, long size, int bank_id) {
+    // A3: hybrid encryption - only if security level is standard (2) or higher
+    if (security_get_level() >= SEC_STANDARD) {
+        unsigned char key = (unsigned char)(0x5A ^ bank_id);
+        for (long i = 0; i < size; i++) {
+            buffer[i] ^= key;
+        }
+    }
+}
+
+// Get file path for a bank's swap file
+static void rambank_get_swap_path(int bank_id, char *path_out) {
+    sprintf(path_out, "bank_swap_%d.tmp", bank_id);
+}
+
+// Evict Least Recently Used (LRU) resident bank to swap file
+static void rambank_evict_lru(MemorySystem *mem) {
+    int victim = -1;
+    long oldest_access = -1;
+
+    for (int i = 1; i < MAX_RAMBANKS; i++) {
+        if (mem->banks[i].resident && mem->banks[i].base != NULL) {
+            if (oldest_access == -1 || mem->banks[i].last_access < oldest_access) {
+                oldest_access = mem->banks[i].last_access;
+                victim = i;
+            }
+        }
+    }
+
+    if (victim != -1) {
+        RamBank *b = &mem->banks[victim];
+        // If modified, write to disk
+        if (b->dirty) {
+            char path[260];
+            rambank_get_swap_path(victim, path);
+            FILE *f = fopen(path, "wb");
+            if (f != NULL) {
+                // Crypt if security warrants it
+                rambank_crypt(b->base, RAMBANK_SIZE, victim);
+                fwrite(b->base, 1, RAMBANK_SIZE, f);
+                fclose(f);
+                // Uncrypt it back in case we keep it or read it again
+                rambank_crypt(b->base, RAMBANK_SIZE, victim);
+                b->dirty = 0;
+            }
+        }
+        // Free resident memory of victim
+        free(b->base);
+        b->base = NULL;
+        b->resident = 0;
+    }
+}
+
+// Bring bank into resident memory (page fault handler)
+void rambank_ensure_resident(MemorySystem *mem, int bank_id) {
+    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) return;
+    RamBank *b = &mem->banks[bank_id];
+    
+    // Increment global access counter
+    mem->access_counter++;
+    b->last_access = mem->access_counter;
+
+    if (b->resident && b->base != NULL) {
+        return; // Already resident
+    }
+
+    // Count currently resident banks
+    int resident_count = 0;
+    for (int i = 1; i < MAX_RAMBANKS; i++) {
+        if (mem->banks[i].resident) {
+            resident_count++;
+        }
+    }
+
+    // Evict if we exceed limit
+    if (resident_count >= MAX_RESIDENT_BANKS) {
+        rambank_evict_lru(mem);
+    }
+
+    // Allocate memory for bank
+    b->base = (char *)malloc(RAMBANK_SIZE);
+    if (b->base == NULL) {
+        // Safe fallback - VM out of memory
+        error_raise(ERR_SORRY, 0);
+        return;
+    }
+    memset(b->base, 0, RAMBANK_SIZE);
+    b->resident = 1;
+    b->dirty = 0;
+
+    // Check if swap file exists, read from it
+    char path[260];
+    rambank_get_swap_path(bank_id, path);
+    FILE *f = fopen(path, "rb");
+    if (f != NULL) {
+        size_t read_bytes = fread(b->base, 1, RAMBANK_SIZE, f);
+        fclose(f);
+        if (read_bytes == RAMBANK_SIZE) {
+            // Decrypt buffer
+            rambank_crypt(b->base, RAMBANK_SIZE, bank_id);
+        }
+    }
+}
+
+void rambank_init(MemorySystem *mem) {
+    mem->access_counter = 0;
+    for (int i = 0; i < MAX_RAMBANKS; i++) {
+        mem->banks[i].base = NULL;
+        mem->banks[i].id = i;
+        mem->banks[i].resident = 0;
+        mem->banks[i].dirty = 0;
+        mem->banks[i].shared = 0;
+        mem->banks[i].last_access = 0;
+    }
+}
+
+void rambank_shutdown(MemorySystem *mem) {
+    for (int i = 0; i < MAX_RAMBANKS; i++) {
+        RamBank *b = &mem->banks[i];
+        if (b->base != NULL) {
+            free(b->base);
+            b->base = NULL;
+        }
+        b->resident = 0;
+        // Clean up swap file from disk (regression prevention / cleanup)
+        char path[260];
+        rambank_get_swap_path(i, path);
+        remove(path); // Silently try to delete
+    }
+}
+
+unsigned char rambank_peek(MemorySystem *mem, int bank_id, long offset, int line_num) {
+    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+        error_raise(ERR_HOW, line_num);
+        return 0;
+    }
+    if (offset < 0 || offset >= RAMBANK_SIZE) {
+        error_raise(ERR_HOW, line_num);
+        return 0;
+    }
+
+    MemorySystem *main_mem = task_get_main_mem();
+    int is_shared = (main_mem != NULL && main_mem->banks[bank_id].shared);
+
+    // Memory isolation check: Background task access validation
+    if (mem != main_mem) {
+        BasicTask *curr = task_get_current();
+        if (curr != NULL && curr->pid != 0) {
+            int allowed = (bank_id == curr->active_bank_id || is_shared);
+            if (!allowed) {
+                error_raise(ERR_HOW, line_num); // Memory Access Violation
+                return 0;
+            }
+        }
+    }
+
+    MemorySystem *target_mem = mem;
+    if (is_shared && main_mem != NULL) {
+        target_mem = main_mem;
+    }
+
+    if (is_shared) {
+        task_mutex_lock();
+    }
+    rambank_ensure_resident(target_mem, bank_id);
+    RamBank *b = &target_mem->banks[bank_id];
+    unsigned char ret = 0;
+    if (b->base != NULL) {
+        ret = (unsigned char)b->base[offset];
+    }
+    if (is_shared) {
+        task_mutex_unlock();
+    }
+    return ret;
+}
+
+void rambank_poke(MemorySystem *mem, int bank_id, long offset, unsigned char value, int line_num) {
+    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+    if (offset < 0 || offset >= RAMBANK_SIZE) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+
+    MemorySystem *main_mem = task_get_main_mem();
+    int is_shared = (main_mem != NULL && main_mem->banks[bank_id].shared);
+
+    // Memory isolation check: Background task access validation
+    if (mem != main_mem) {
+        BasicTask *curr = task_get_current();
+        if (curr != NULL && curr->pid != 0) {
+            int allowed = (bank_id == curr->active_bank_id || is_shared);
+            if (!allowed) {
+                error_raise(ERR_HOW, line_num); // Memory Access Violation
+                return;
+            }
+        }
+    }
+
+    MemorySystem *target_mem = mem;
+    if (is_shared && main_mem != NULL) {
+        target_mem = main_mem;
+    }
+
+    if (is_shared) {
+        task_mutex_lock();
+    }
+    rambank_ensure_resident(target_mem, bank_id);
+    RamBank *b = &target_mem->banks[bank_id];
+    if (b->base != NULL) {
+        b->base[offset] = (char)value;
+        b->dirty = 1;
+    }
+    if (is_shared) {
+        task_mutex_unlock();
+    }
+}
+
+long rambank_free_space(MemorySystem *mem, int bank_id) {
+    (void)mem;
+    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+        return 0;
+    }
+    return RAMBANK_SIZE;
+}
+
+void rambank_set_shared(MemorySystem *mem, int bank_id, int shared) {
+    if (bank_id > 0 && bank_id < MAX_RAMBANKS) {
+        mem->banks[bank_id].shared = shared;
+    }
+}
+
+void rambank_copy(MemorySystem *mem, int src_bank, long src_offset, int dst_bank, long dst_offset, long length, int line_num) {
+    if (src_bank <= 0 || src_bank >= MAX_RAMBANKS || dst_bank <= 0 || dst_bank >= MAX_RAMBANKS) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+    if (src_offset < 0 || src_offset + length > RAMBANK_SIZE || dst_offset < 0 || dst_offset + length > RAMBANK_SIZE || length < 0) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+    if (length == 0) return;
+
+    MemorySystem *main_mem = task_get_main_mem();
+    int src_shared = (main_mem != NULL && main_mem->banks[src_bank].shared);
+    int dst_shared = (main_mem != NULL && main_mem->banks[dst_bank].shared);
+
+    // Memory isolation check
+    if (mem != main_mem) {
+        BasicTask *curr = task_get_current();
+        if (curr != NULL && curr->pid != 0) {
+            if (!(src_bank == curr->active_bank_id || src_shared)) {
+                error_raise(ERR_HOW, line_num);
+                return;
+            }
+            if (!(dst_bank == curr->active_bank_id || dst_shared)) {
+                error_raise(ERR_HOW, line_num);
+                return;
+            }
+        }
+    }
+
+    MemorySystem *src_target_mem = mem;
+    if (src_shared && main_mem != NULL) src_target_mem = main_mem;
+    MemorySystem *dst_target_mem = mem;
+    if (dst_shared && main_mem != NULL) dst_target_mem = main_mem;
+
+    // Mutex locking
+    if (src_shared || dst_shared) {
+        task_mutex_lock();
+    }
+
+    // Ensure residency
+    rambank_ensure_resident(src_target_mem, src_bank);
+    rambank_ensure_resident(dst_target_mem, dst_bank);
+
+    RamBank *sb = &src_target_mem->banks[src_bank];
+    RamBank *db = &dst_target_mem->banks[dst_bank];
+
+    if (sb->base != NULL && db->base != NULL) {
+        memmove(db->base + dst_offset, sb->base + src_offset, length);
+        db->dirty = 1;
+    }
+
+    if (src_shared || dst_shared) {
+        task_mutex_unlock();
+    }
+}
+
+void rambank_fill(MemorySystem *mem, int bank_id, long offset, long length, unsigned char value, int line_num) {
+    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+    if (offset < 0 || offset + length > RAMBANK_SIZE || length < 0) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+    if (length == 0) return;
+
+    MemorySystem *main_mem = task_get_main_mem();
+    int is_shared = (main_mem != NULL && main_mem->banks[bank_id].shared);
+
+    // Memory isolation check
+    if (mem != main_mem) {
+        BasicTask *curr = task_get_current();
+        if (curr != NULL && curr->pid != 0) {
+            if (!(bank_id == curr->active_bank_id || is_shared)) {
+                error_raise(ERR_HOW, line_num);
+                return;
+            }
+        }
+    }
+
+    MemorySystem *target_mem = mem;
+    if (is_shared && main_mem != NULL) target_mem = main_mem;
+
+    if (is_shared) {
+        task_mutex_lock();
+    }
+
+    rambank_ensure_resident(target_mem, bank_id);
+    RamBank *b = &target_mem->banks[bank_id];
+
+    if (b->base != NULL) {
+        memset(b->base + offset, value, length);
+        b->dirty = 1;
+    }
+
+    if (is_shared) {
+        task_mutex_unlock();
+    }
+}
+

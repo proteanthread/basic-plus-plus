@@ -1,6 +1,6 @@
 CREATING AND USING MEMORY MAPS
 ==============================
-Version 4.1.1
+Version 4.2.3
 
 BASIC++ includes a pluggable memory map system that emulates
 the 64 KB address space of classic 8-bit and 16-bit computers.
@@ -26,6 +26,7 @@ TABLE OF CONTENTS
       3.9   APPLE2 (Apple II / IIe)
       3.10  TRS80 (TRS-80 Model I/III)
       3.11  SPECTRUM (ZX Spectrum 48K)
+      3.12  QL (Sinclair QL)
   4.  Creating a Custom Memory Map (Step-by-Step)
   5.  Blueprints for Uncovered Machines
       5.1   MSX / MSX2
@@ -99,6 +100,7 @@ Key points:
   APPLE2     Apple II / IIe           6502   Soft switches, text pages
   TRS80      TRS-80 Model I/III       Z80    Video at $3C00, keyboard map
   SPECTRUM   ZX Spectrum 48K          Z80    Bitmap screen, attributes
+  QL         Sinclair QL              68008  QDOS system variables, Screen RAM
 
 Commands:
   MEMMAP "C64"             Switch to Commodore 64 map
@@ -1298,6 +1300,40 @@ expect to find there.
     OUT 254, border*8      Set border color (via ULA port)
 
 
+---------------------------------------------------------------------
+3.12  QL (Sinclair QL)
+---------------------------------------------------------------------
+
+  CPU: Motorola 68008 (7.5 MHz)
+  Video: Custom ZX8301, 512x256 (4 colors) or 256x256 (8 colors)
+  Audio: Custom ZX8302
+  RAM: 128 KB base (expandable to 640 KB)
+
+  Since Sinclair QL uses a Motorola 68008 CPU with flat addressing,
+  BASIC++ maps key memory markers within the 64 KB address space:
+
+  ROM VECTOR AREA ($0000-$0100):
+  ---------------------------------------------------------------
+  $0000-$0003   $0008    Reset Supervisor Stack Pointer
+  $0004-$0007   $0030    Reset Program Counter
+
+  QDOS SYSTEM VARIABLES ($0100-$015F):
+  ---------------------------------------------------------------
+  $0100         $02      SV.IDENT: QL type identifier
+  $0102-$0103   $0001    SV.VERSN: QDOS version major/minor
+  $0104-$0105   128      Available RAM size in KB
+  $0110         $00      Display mode (0 = mode 4, 8 = mode 8)
+
+  KEYBOARD & INPUT STATUS ($0140-$015F):
+  ---------------------------------------------------------------
+  $0140         $FF      IPC (8049) keyboard controller status
+  $0160-$017F   $00      Microdrive control block area
+
+  SCREEN RAM ($2000-$3FFF):
+  ---------------------------------------------------------------
+  $2000-$3FFF   $00      Screen display buffer (partial emulation)
+
+
 =====================================================================
 4. CREATING A CUSTOM MEMORY MAP (STEP-BY-STEP)
 =====================================================================
@@ -2279,8 +2315,8 @@ the matching dialect:
   DIALECT "COCO" : MEMMAP "TRS80"     ' CoCo BASIC + TRS-80 memory
   DIALECT "GWBS" : MEMMAP "MSDOS"     ' GW-BASIC + PC memory
   DIALECT "BPP"  : MEMMAP "C64"       ' Full BASIC++ + C64 memory
-  DIALECT "C64"  : MEMMAP "C64"       ' CBM BASIC V2 + C64 memory
-  DIALECT "SPEC" : MEMMAP "SPECTRUM"  ' Sinclair BASIC + Spectrum memory
+  DIALECT "C64B" : MEMMAP "C64"       ' CBM BASIC V2 + C64 memory
+  DIALECT "SINC" : MEMMAP "SPECTRUM"  ' Sinclair BASIC + Spectrum memory
   DIALECT "MSX"  : MEMMAP "MSX"       ' MSX-BASIC + MSX memory
   DIALECT "BBC"  : MEMMAP "BBC"       ' BBC BASIC + Acorn memory
 

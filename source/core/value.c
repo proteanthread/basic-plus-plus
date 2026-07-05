@@ -163,6 +163,21 @@ BValue bval_int(long val)
     return r;
 }
 
+int g_arithmetic_decimal = 0;
+
+double bval_decimal_round(double val)
+{
+    if (val != val) return val; /* NaN check */
+    if (isinf(val)) return val;
+    if (val == 0.0) return 0.0;
+    
+    double abs_val = fabs(val);
+    double log10_val = log10(abs_val);
+    double exp_val = floor(log10_val);
+    double scale = pow(10.0, 12.0 - 1.0 - exp_val);
+    return round(val * scale) / scale;
+}
+
 // bval_float - Create a floating-point BValue.
 //
 // Parameters:
@@ -175,6 +190,9 @@ BValue bval_float(double val)
 {
     BValue r;
     r.type = VAL_FLOAT;
+    if (g_arithmetic_decimal) {
+        val = bval_decimal_round(val);
+    }
     r.v.fval = val;
     return r;
 }
@@ -449,6 +467,7 @@ static void get_complex(const BValue *v,
 //
 static int should_use_float(const BValue *a, const BValue *b)
 {
+    
     return (a->type == VAL_FLOAT || b->type == VAL_FLOAT);
 }
 

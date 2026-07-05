@@ -71,7 +71,7 @@
 //   VFS_MAX_MOUNTS   -- maximum simultaneous mount points (default 8)
 //   VFS_MAX_PREFIX   -- max prefix string length (default 16)
 //   VFS_MAX_TARGET   -- max target path length (default 512)
-//   VFS_MAX_VPATH    -- max VPATH string length (default 2048)
+//   VFS_MAX_VPATH    -- max VPATH string length (default 1024)
 //
 // TROUBLESHOOTING:
 //   - "Mount prefix must end with ':'":
@@ -127,6 +127,7 @@
 #include "vfs.h"
 #include "errors.h"
 
+#include "../console.h"
 #ifdef _WIN32
 #include <io.h>
 #define VFS_ACCESS(f) (_access((f), 0) == 0)

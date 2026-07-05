@@ -43,6 +43,8 @@
 
 #include "parser_internal.h"
 
+#ifndef BPP_LITE_BUILD
+
  // pi_parse_option - Handle OPTION command.
 void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
 {
@@ -151,7 +153,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
     rt->zone_override = -1;
     printf("ZONE: dialect default"
      " (%d)\n",
-     dialect_get_zone_width());
+     14);
    } else {
     if (zw > 255) zw = 255;
     rt->zone_override = zw;
@@ -198,15 +200,15 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  lex->current.str_start != NULL &&
  (lex->current.str_start[0]=='O'||
  lex->current.str_start[0]=='o')) {
- dialect_set_strict(0);
+ 
  printf("Strict mode: OFF"
  " (union)\n");
  lexer_next(lex);
  } else {
- dialect_set_strict(1);
+ 
  printf("Strict mode: ON"
  " (%s only)\n",
- dialect_get_short_name());
+ "BPP");
  }
  return;
  }
@@ -232,7 +234,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
   lex->current.str_start != NULL &&
   (lex->current.str_start[0]=='O'||
   lex->current.str_start[0]=='o')) {
-  dialect_clear_mixed();
+  
   printf("Mixed mode: OFF\n");
   lexer_next(lex);
   return;
@@ -257,23 +259,23 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
   (size_t)slen);
   spec[slen] = '\0';
   lexer_next(lex);
-  mask = dialect_build_mask(spec);
+  mask = 0xFFFF;
   if (mask == 0) {
   printf("WHAT? No valid dialects"
   " in \"%s\"\n", spec);
   error_raise(ERR_WHAT, line_num);
   return;
   }
-  dialect_set_mixed(mask);
+  
   printf("Mixed mode: ON"
   " (mask 0x%04X)\n", mask);
   return;
   }
   // Bare OPTION MIXED: show status
-  if (dialect_is_mixed()) {
+  if (0) {
   printf("Mixed mode: ON"
   " (mask 0x%04X)\n",
-  dialect_get_mixed_mask());
+  0);
   } else {
   printf("Mixed mode: OFF\n");
   }
@@ -285,7 +287,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
   // Check raw source to handle OPTION STRICT / OPTION STRICT OFF.
  if (lex->current.type == TOK_VARIABLE &&
   lex->current.value.var_name == 'S' &&
-  !dialect_get_config()->has_extended_vars) {
+  !1) {
   int p = lex->pos;
   if (p + 4 < lex->length &&
    (lex->source[p]=='T'||lex->source[p]=='t') &&
@@ -298,16 +300,15 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
     lex->source[p+5]=='\0' || lex->source[p+5]=='\r' ||
     lex->source[p+5]=='\n')) {
    // Skip past "TRICT" and re-prime lexer
-   lex->pos = p + 5;
-   lexer_next(lex);
+   lexer_rewind_to(lex, p + 5);
    // Check for OFF keyword (KW_OFF is not defined, check ON)
    if (lex->current.type == TOK_KEYWORD &&
     lex->current.value.keyword == KW_ON) {
     // OPTION STRICT ON
-    dialect_set_strict(1);
+    
     printf("Strict mode: ON"
      " (%s only)\n",
-     dialect_get_short_name());
+     "BPP");
     lexer_next(lex);
    } else if (lex->current.type == TOK_VARIABLE &&
     lex->current.value.var_name == 'O' &&
@@ -320,7 +321,7 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
     // OPTION STRICT OFF (raw parse)
     lex->pos += 2;
     lexer_next(lex);
-    dialect_set_strict(0);
+    
     printf("Strict mode: OFF"
      " (union)\n");
    } else if (lex->current.type == TOK_NAMED_VAR &&
@@ -329,16 +330,16 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
     (lex->current.str_start[0]=='O'||
      lex->current.str_start[0]=='o')) {
     // OFF as named var (extended vars dialect)
-    dialect_set_strict(0);
+    
     printf("Strict mode: OFF"
      " (union)\n");
     lexer_next(lex);
    } else {
     // Bare OPTION STRICT - enable
-    dialect_set_strict(1);
+    
     printf("Strict mode: ON"
      " (%s only)\n",
-     dialect_get_short_name());
+     "BPP");
    }
    return;
   }
@@ -448,25 +449,23 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
  != NULL) {
  const char *m =
  lex->current.str_start;
- if ((m[0]=='N'||m[0]=='n') &&
- (m[1]=='A'||m[1]=='a') &&
- (m[2]=='T'||m[2]=='t')) {
- // NATIVE - no-op (default)
- lexer_next(lex);
- } else if (
- (m[0]=='D'||m[0]=='d') &&
- (m[1]=='E'||m[1]=='e') &&
- (m[2]=='C'||m[2]=='c')) {
- // DECIMAL - not supported
- printf("SORRY. Decimal"
- " arithmetic is not"
- " implemented.\n");
- error_raise(ERR_SORRY,
- line_num);
- } else {
- error_raise(ERR_WHAT,
- line_num);
- }
+                    if ((m[0]=='N'||m[0]=='n') &&
+                        (m[1]=='A'||m[1]=='a') &&
+                        (m[2]=='T'||m[2]=='t')) {
+                        rt->arithmetic_decimal = 0;
+                        g_arithmetic_decimal = 0;
+                        lexer_next(lex);
+                    } else if (
+                        (m[0]=='D'||m[0]=='d') &&
+                        (m[1]=='E'||m[1]=='e') &&
+                        (m[2]=='C'||m[2]=='c')) {
+                        rt->arithmetic_decimal = 1;
+                        g_arithmetic_decimal = 1;
+                        lexer_next(lex);
+                    } else {
+                        error_raise(ERR_WHAT,
+                                    line_num);
+                    }
  } else {
  error_raise(ERR_WHAT, line_num);
  }
@@ -1204,6 +1203,7 @@ void pi_parse_scope(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_keyword - Handle KEYWORD command.
 void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
   // KEYWORD kw PROP value - set property
   // KEYWORD kw PROP OFF   - remove property
   // KEYWORD kw             - show properties
@@ -1413,6 +1413,7 @@ void pi_parse_keyword(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_override - Handle OVERRIDE command.
 void pi_parse_override(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
   // OVERRIDE keyword "text"  - change interpretation
   // OVERRIDE keyword CLEAR   - restore default
   // OVERRIDE LIST             - show active
@@ -1546,6 +1547,7 @@ void pi_parse_override(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_security - Handle SECURITY command.
 void pi_parse_security(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
   // SECURITY "level"   - Set by name
   // SECURITY n         - Set by number (0/1/2)
   // SECURITY LEVEL n   - Set by number
@@ -1951,4 +1953,5 @@ void pi_parse_module(Lexer *lex, RuntimeState *rt, int line_num)
 
  // ===== Security =====
 }
+#endif
 

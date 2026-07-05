@@ -1,6 +1,6 @@
 # BASIC++ FujiNet Module — User Guide
 
-**Version 4.1.1** · Module: `FUJINET` · Devices: `N:` `FUJI:` `CLOCK:`
+**Version 4.2.3** · Module: `FUJINET` · Devices: `N:` `FUJI:` `CLOCK:`
 
 
 ---

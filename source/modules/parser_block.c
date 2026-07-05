@@ -60,6 +60,7 @@
 #include "parser_block.h"
 #include "../lexer.h"
 #include "../errors.h"
+#include "../console.h"
 
 // --- Block parse state ---
 typedef enum {

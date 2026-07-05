@@ -67,6 +67,7 @@
 #include "vdev_net.h"
 #include "device_alias.h"
 #include "module.h"
+#include "../console.h"
 
  // fileio_save - Write the program to a text file.
  //
@@ -97,6 +98,35 @@ int fileio_save(ProgramStore *store, const char *filename)
  return 0;
 }
 
+static char *find_continuation_ampersand(char *start, char *end)
+{
+    char *p = end - 1;
+    // Skip trailing spaces, tabs, CR, LF
+    while (p >= start && (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')) {
+        p--;
+    }
+    char *comment_pos = NULL;
+    int in_quotes = 0;
+    for (char *c = start; c <= p; c++) {
+        if (*c == '"') {
+            in_quotes = !in_quotes;
+        } else if (*c == '!' && !in_quotes) {
+            comment_pos = c;
+            break;
+        }
+    }
+    if (comment_pos != NULL) {
+        p = comment_pos - 1;
+        while (p >= start && (*p == ' ' || *p == '\t')) {
+            p--;
+        }
+    }
+    if (p >= start && *p == '&') {
+        return p;
+    }
+    return NULL;
+}
+
  // fileio_load - Read a program from a text file.
  //
  // Reads the file line by line. Each line must start with a line
@@ -109,73 +139,154 @@ int fileio_save(ProgramStore *store, const char *filename)
  // be comments or blank lines in the file).
 int fileio_load(ProgramStore *store, const char *filename)
 {
- FILE *fp;
- char buf[INPUT_BUFFER_SIZE];
- char resolved[512];
+    FILE *fp;
+    char resolved[512];
+    long file_size;
+    char *buf;
+    size_t bytes_read;
+    char *p, *line_start;
 
- if (vfs_resolve(filename, resolved, sizeof(resolved), 0) != 0) {
-  error_raise(ERR_HOW, 0);
-  return -1;
- }
+    // First clear any existing program in the store
+    program_clear(store);
 
- fp = fopen(resolved, "r");
- if (fp == NULL) {
- error_raise(ERR_HOW, 0);
- return -1;
- }
+    if (vfs_resolve(filename, resolved, sizeof(resolved), 0) != 0) {
+        printf("[DEBUG] fileio_load: vfs_resolve failed for '%s'\n", filename);
+        error_raise(ERR_HOW, 0);
+        return -1;
+    }
 
- while (fgets(buf, INPUT_BUFFER_SIZE, fp) != NULL) {
- int line_num;
- int i;
- int len;
- char *endptr;
+    fp = fopen(resolved, "rb");
+    if (fp == NULL) {
+        printf("[DEBUG] fileio_load: fopen failed for '%s' (resolved: '%s')\n", filename, resolved);
+        error_raise(ERR_HOW, 0);
+        return -1;
+    }
 
- // Strip trailing newline/carriage return
- len = (int)strlen(buf);
- while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
- buf[--len] = '\0';
- }
+    // Check size
+    fseek(fp, 0, SEEK_END);
+    file_size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
 
- // Skip empty lines
- if (len == 0) {
- continue;
- }
+    if (file_size < 0) {
+        fclose(fp);
+        error_raise(ERR_HOW, 0);
+        return -1;
+    }
 
- // Skip shebang line (#!/usr/bin/env basicpp)
- if (buf[0] == '#' && buf[1] == '!') {
- continue;
- }
+    // Handle empty file
+    if (file_size == 0) {
+        fclose(fp);
+        return 0;
+    }
 
- // Skip leading whitespace
- i = 0;
- while (i < len && (buf[i] == ' ' || buf[i] == '\t')) {
- i++;
- }
+    // Allocate bulk buffer
+    buf = (char *)malloc((size_t)file_size + 2);
+    if (!buf) {
+        fclose(fp);
+        error_raise(ERR_SORRY, 0);
+        return -1;
+    }
 
- // Parse line number
- if (!isdigit((unsigned char)buf[i])) {
- continue; // skip lines without line numbers
- }
+    bytes_read = fread(buf, 1, (size_t)file_size, fp);
+    fclose(fp);
 
- line_num = (int)strtol(buf + i, &endptr, 10);
- if (endptr == buf + i) {
- continue; // no valid number
- }
+    buf[bytes_read] = '\0';
+    buf[bytes_read + 1] = '\0';
 
- // Validate line number range
- if (line_num < LINE_NUMBER_MIN || line_num > LINE_NUMBER_MAX) {
- continue; // out of range - skip
- }
+    // Store bulk buffer in store
+    store->bulk_buffer = buf;
+    store->bulk_size = bytes_read + 2;
 
- // Insert the line (using the full text as-is)
- if (program_insert(store, line_num, buf) != 0) {
- fclose(fp);
- return -1; // store full - ERR_SORRY already raised
- }
- }
+    // Check for binary EOF/Ctrl-Z in the first few chars
+    if (bytes_read > 0 && ((unsigned char)buf[0] == 0xFF || (unsigned char)buf[0] == 0x1A || buf[0] == '\0')) {
+        return 0;
+    }
 
- fclose(fp);
- return 0;
+    // Parse lines in-place
+    p = buf;
+    line_start = p;
+    while (*p != '\0') {
+        // Find end of line
+        while (*p != '\0' && *p != '\n' && *p != '\r') {
+            p++;
+        }
+
+        // Check for ampersand line continuation
+        char *amp = find_continuation_ampersand(line_start, p);
+        if (amp != NULL) {
+            char *next_line = p;
+            while (*next_line == '\r' || *next_line == '\n') {
+                next_line++;
+            }
+            for (char *c = amp; c < next_line; c++) {
+                *c = ' ';
+            }
+            p = next_line;
+            continue;
+        }
+
+        // Remember termination char, and null-terminate this line
+        char term = *p;
+        *p = '\0';
+
+        char *line = line_start;
+
+        // Advance line_start for next line
+        if (term != '\0') {
+            p++;
+            // Handle \r\n or \n\r
+            if ((*p == '\n' || *p == '\r') && *p != term) {
+                p++;
+            }
+            line_start = p;
+        }
+
+        // Process the line: strip trailing space / carriage returns if any
+        int len = (int)strlen(line);
+        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+            line[--len] = '\0';
+        }
+
+        if (len == 0) {
+            continue;
+        }
+
+        // Skip shebang
+        if (line[0] == '#' && line[1] == '!') {
+            continue;
+        }
+
+        // Skip leading whitespace
+        int i = 0;
+        while (i < len && (line[i] == ' ' || line[i] == '\t')) {
+            i++;
+        }
+
+        // Parse line number
+        int is_non_decimal = 0;
+        int end_pos = 0;
+        double line_num = program_parse_line_number(line + i, &end_pos, &is_non_decimal);
+        if (line_num <= 0.0) {
+            continue; // skip lines without line numbers
+        }
+
+        double max_limit = is_non_decimal ? 4294967295.0 : (double)LINE_NUMBER_MAX;
+        if (line_num < (double)LINE_NUMBER_MIN || line_num > max_limit) {
+            continue;
+        }
+
+        char *final_line = line;
+
+        // Insert the line pointer directly into the sorted store index
+        if (program_insert_pointer(store, line_num, final_line) != 0) {
+            if (final_line != line) {
+                free(final_line);
+            }
+            return -1; // store full
+        }
+    }
+
+    return 0;
 }
 
  // fileio_merge - Merge a file into the existing program.
@@ -202,40 +313,46 @@ int fileio_merge(ProgramStore *store, const char *filename)
  return -1;
  }
 
- while (fgets(buf, INPUT_BUFFER_SIZE, fp) != NULL) {
- int line_num;
- int i;
- int len;
- char *endptr;
+  while (fgets(buf, INPUT_BUFFER_SIZE, fp) != NULL) {
+  double line_num = 0.0;
+  int i;
+  int len;
 
- // Strip trailing newline/carriage return
- len = (int)strlen(buf);
- while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
- buf[--len] = '\0';
- }
+  // Strip trailing newline/carriage return
+  len = (int)strlen(buf);
+  while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
+  buf[--len] = '\0';
+  }
 
- if (len == 0) continue;
+  if (len == 0) continue;
 
- // Skip leading whitespace
- i = 0;
- while (i < len && (buf[i] == ' ' || buf[i] == '\t')) {
- i++;
- }
+  // Skip leading whitespace
+  i = 0;
+  while (i < len && (buf[i] == ' ' || buf[i] == '\t')) {
+  i++;
+  }
 
- if (!isdigit((unsigned char)buf[i])) continue;
+  // Parse line number
+  int is_non_decimal = 0;
+  int end_pos = 0;
+  line_num = program_parse_line_number(buf + i, &end_pos, &is_non_decimal);
+  if (line_num <= 0.0) {
+      continue; // skip lines without line numbers
+  }
 
- line_num = (int)strtol(buf + i, &endptr, 10);
- if (endptr == buf + i) continue;
- if (line_num < LINE_NUMBER_MIN || line_num > LINE_NUMBER_MAX) continue;
+  double max_limit = is_non_decimal ? 4294967295.0 : (double)LINE_NUMBER_MAX;
+  if (line_num < (double)LINE_NUMBER_MIN || line_num > max_limit) {
+      continue;
+  }
 
- if (program_insert(store, line_num, buf) != 0) {
- fclose(fp);
- return -1;
- }
- }
+  if (program_insert(store, line_num, buf) != 0) {
+      fclose(fp);
+      return -1;
+  }
+  }
 
- fclose(fp);
- return 0;
+  fclose(fp);
+  return 0;
 }
 
  // fileio_chain - Load a program and prepare for execution.
@@ -993,6 +1110,8 @@ int fileio_put_binary(int chan, long pos,
 int fileio_lock(int chan, long start, long end,
  int line_num)
 {
+    (void)start;
+    (void)end;
  int idx = chan - 1;
  if (idx < 0 || idx >= MAX_FILE_CHANNELS ||
  channels[idx].fp == NULL) {
@@ -1018,6 +1137,8 @@ int fileio_lock(int chan, long start, long end,
 int fileio_unlock(int chan, long start, long end,
  int line_num)
 {
+    (void)start;
+    (void)end;
  int idx = chan - 1;
  if (idx < 0 || idx >= MAX_FILE_CHANNELS ||
  channels[idx].fp == NULL) {

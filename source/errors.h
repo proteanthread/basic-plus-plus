@@ -78,7 +78,9 @@ typedef enum ErrorCode {
  // code - the error category (ERR_WHAT, ERR_HOW, ERR_SORRY)
  // line_num - the BASIC line number where the error occurred,
  // or 0 for immediate mode errors.
-void error_raise(ErrorCode code, int line_num);
+extern double g_current_executing_line;
+
+void error_raise(ErrorCode code, double line_num);
 
  // error_clear - Reset the error state.
  //

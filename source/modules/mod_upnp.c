@@ -242,8 +242,7 @@ static int upnp_parse_response(const char *resp, int len,
  }
 
  if (entry->name[0] == '\0' && entry->st[0] != '\0') {
-  strncpy(entry->name, entry->st,
-   UPNP_NAME_MAX - 1);
+  snprintf(entry->name, UPNP_NAME_MAX, "%s", entry->st);
  }
 
  return got_location ? 0 : -1;

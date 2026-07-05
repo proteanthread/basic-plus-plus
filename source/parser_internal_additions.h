@@ -166,6 +166,8 @@ void pi_parse_endif(Lexer *lex, RuntimeState *rt,
     int line_num);
 
 // parser_graphics.c
+void pi_parse_graphics(Lexer *lex, RuntimeState *rt,
+    int line_num);
 void pi_parse_screen(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_console(Lexer *lex, RuntimeState *rt,
@@ -219,6 +221,10 @@ void pi_parse_clr(Lexer *lex, RuntimeState *rt,
 void pi_parse_reset(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_poke(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_pokeb(Lexer *lex, RuntimeState *rt,
+    int line_num);
+void pi_parse_task(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_memmap(Lexer *lex, RuntimeState *rt,
     int line_num);
@@ -340,6 +346,8 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt,
     int line_num);
 
 // parser_virtual.c
+void pi_parse_bank(Lexer *lex, RuntimeState *rt,
+    int line_num);
 void pi_parse_vdev(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_vmem(Lexer *lex, RuntimeState *rt,

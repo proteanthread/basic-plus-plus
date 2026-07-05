@@ -36,9 +36,11 @@
 //   Safe to exclude from MSVC and GCC builds (they never call this).
 //
 // ---
+#ifdef __WATCOMC__
 #pragma aux _LDisDouble_ "*";
 int _LDisDouble_(long double *ld)
 {
     (void)ld;
     return 1;  // long double == double on OpenWatcom x86
 }
+#endif

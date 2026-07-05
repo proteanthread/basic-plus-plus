@@ -1,6 +1,6 @@
 SCOPE: KEYWORD ACCESS CONTROL AND BEHAVIOR HOOKS
 ==================================================
-Version 4.1.1
+Version 4.2.3
 
 SCOPE is a metaprogramming statement that controls how built-in
 keywords behave at runtime.  With SCOPE you can:
@@ -615,6 +615,36 @@ E. Restricting a loaded program:
   * You cannot disable SCOPE itself or REM.
 
   * Presets only disable keywords; they never set hooks.
+
+
+=====================================================================
+14b. THE SCOPE$ SPECIAL VARIABLE
+=====================================================================
+
+When a SCOPE hook is executing, the read-only special variable SCOPE$
+contains the name of the keyword that triggered the hook.
+
+This allows a single hook subroutine to handle multiple keywords:
+
+    SCOPE BEFORE PRINT GOSUB 9000
+    SCOPE BEFORE INPUT GOSUB 9000
+
+    10 PRINT "Hello"
+    20 INPUT A$
+    30 END
+    9000 PRINT "[Hook: "; SCOPE$; "] ";
+    9010 RETURN
+
+Output:
+
+    [Hook: PRINT] Hello
+    [Hook: INPUT] ? test
+
+SCOPE$ returns "" (empty string) when no hook is active.
+
+Internally, SCOPE$ is backed by scope_get_last_kw_name() and
+scope_set_last_kw() in scope.h.  It is set automatically when
+the exec loop dispatches a hook and cleared when the hook returns.
 
 
 =====================================================================

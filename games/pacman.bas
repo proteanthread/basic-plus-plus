@@ -3,7 +3,7 @@
 30 REM  Arrow keys to move, ESC to quit
 40 REM =============================================
 50 RANDOMIZE TIMER
-60 CURSOR OFF
+60 PRINT CHR$(27);"[?25l";
 70 REM --- Maze definition (20x20 inside border) ---
 80 DIM M$(25)
 90 M$(1) = "XXXXXXXXXXXXXXXXXXXX"
@@ -32,7 +32,7 @@
 320 REM
 330 REM --- Game state ---
 340 PX = 10: PY = 16: PDIR = 0
-350 SC = 0: LV = 3: DOTS = 0: TOTAL.DOTS = 0
+350 SC = 0: LV = 3: DOTS = 0: TOTAL_DOTS = 0
 360 POWER = 0: PTIME = 0
 370 REM Ghost positions
 380 DIM GX(4), GY(4), GD(4), GC(4)
@@ -45,10 +45,10 @@
 450 FOR R = 1 TO 21
 460   FOR C = 1 TO 20
 470     CH$ = MID$(M$(R), C, 1)
-480     IF CH$ = "." OR CH$ = "O" THEN TOTAL.DOTS = TOTAL.DOTS + 1
+480     IF CH$ = "." OR CH$ = "O" THEN TOTAL_DOTS = TOTAL_DOTS + 1
 490   NEXT C
 500 NEXT R
-510 DOTS = TOTAL.DOTS
+510 DOTS = TOTAL_DOTS
 520 REM
 530 REM --- Draw initial maze ---
 540 CLS
@@ -79,7 +79,7 @@
 790 REM --- Read input ---
 800 K$ = INKEY$
 810 IF K$ = CHR$(27) THEN 2000
-820 IF LEN(K$) = 2 THEN SK = ASC(MID$(K$, 2, 1)) ELSE SK = 0
+820 SK = 0 : IF LEN(K$) = 2 THEN SK = ASC(MID$(K$, 2, 1))
 830 IF SK = 72 THEN PDIR = 1
 840 IF SK = 80 THEN PDIR = 2
 850 IF SK = 75 THEN PDIR = 3
@@ -131,7 +131,7 @@
 1260   COLOR 0, 0: PRINT " ";
 1270   GX(G) = NX: GY(G) = NY
 1280   REM Draw ghost
-1290   IF POWER = 1 THEN COLOR 9, 0 ELSE COLOR GC(G), 0
+1290   COLOR GC(G), 0 : IF POWER = 1 THEN COLOR 9, 0
 1300   LOCATE MY0 + GY(G) - 1, MX0 + GX(G) - 1
 1310   PRINT CHR$(2);
 1320   REM Check ghost-pacman collision
@@ -176,11 +176,11 @@
 1730 PRINT "LEVEL CLEAR!"
 1740 SOUND 800, 2
 1750 DELAY 2000
-1760 DOTS = TOTAL.DOTS
+1760 DOTS = TOTAL_DOTS
 1770 REM Reset dots in maze
 1780 RETURN
 2000 REM === GAME OVER ===
-2010 CURSOR ON
+2010 PRINT CHR$(27);"[?25h";
 2020 CLS
 2030 COLOR 14, 0
 2040 LOCATE 10, 30
@@ -193,3 +193,4 @@
 2110 WHILE K$ = "": K$ = INKEY$: WEND
 2120 CLS
 2130 END
+

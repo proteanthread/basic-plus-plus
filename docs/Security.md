@@ -1,6 +1,6 @@
 # Security and Sandboxing in BASIC++
 
-**Version 4.1.1**
+**Version 4.2.3**
 
 
 ---
@@ -279,6 +279,30 @@ Key components:
   - security_check_path():  path traversal/extension validation
   - security_check_mem():   hardware memory bounds
   - security_check_port():  port I/O gate (explicit port whitelist)
+
+The 19 SecOperations (columns in the permission matrix) are:
+
+| Category             | SecOperation          | Index |
+|----------------------|-----------------------|:-----:|
+| **File Operations**  | SECOP_FILE_READ       |   0   |
+|                      | SECOP_FILE_WRITE      |   1   |
+|                      | SECOP_FILE_MGMT       |   2   |
+|                      | SECOP_FILE_BLOCK      |   3   |
+|                      | SECOP_FILE_STREAM     |   4   |
+| **Code Execution**   | SECOP_COMPILE         |   5   |
+|                      | SECOP_CHAIN           |   6   |
+|                      | SECOP_EVAL            |  13   |
+| **System Access**    | SECOP_SYSTEM          |   7   |
+|                      | SECOP_MODULE          |   8   |
+|                      | SECOP_USB             |   9   |
+| **Virtual Devices**  | SECOP_VDEV            |  10   |
+|                      | SECOP_VTERM           |  11   |
+|                      | SECOP_VCON            |  12   |
+| **Network**          | SECOP_NETWORK         |  14   |
+| **Memory Access**    | SECOP_MEM_READ        |  15   |
+|                      | SECOP_MEM_WRITE       |  16   |
+| **Program Mgmt**     | SECOP_PROG_MGMT       |  17   |
+| **Extension Loading**| SECOP_EXT_LOAD        |  18   |
 
 For C module authors: set the appropriate FSAFE_* level on your
 registered functions.  Set required_level on your ModuleInfo to

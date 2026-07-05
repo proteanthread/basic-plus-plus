@@ -40,8 +40,11 @@
 
 #include "config.h"
 
+struct MemorySystem;
+
 // Initialize framebuffer (clear to color 0)
 void gfxbuf_init(void);
+void gfxbuf_init_pool(struct MemorySystem *memory);
 
 // Clear framebuffer to a color
 void gfxbuf_clear(int color);
@@ -63,7 +66,7 @@ void gfxbuf_box(int x1, int y1, int x2, int y2,
 void gfxbuf_circle(int cx, int cy, int r, int color);
 
 // Flood fill
-void gfxbuf_paint(int x, int y, int fill_color,
+void gfxbuf_paint(struct MemorySystem *memory, int x, int y, int fill_color,
  int border_color);
 
 // Remap palette entry

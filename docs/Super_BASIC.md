@@ -1,6 +1,6 @@
 # SUPER BASIC (Tymshare SDS-940) Dialect Reference
 
-**Version 4.1.1**
+**Version 4.2.3**
 
 ---
 
@@ -26,7 +26,7 @@
 
 ---
 
-**Dialect Code:** `SBAS`
+**Dialect Code:** `SUPB`
 
 ---
 
@@ -54,14 +54,14 @@ The SDS 940 was a 24-bit computer with hardware paging and memory protection —
 ## Activation
 
 ```basic
-DIALECT "SBAS"
+DIALECT "SUPB"
 ```
 
 This changes:
 - Statement separator to `:` (colon)
 - `LET` is mandatory (like ECMA-55)
 - Maximum line number extends to 99999
-- Ready prompt: `Ready.`
+- Ready prompt: `READY`
 - `CLS` is not available (mainframes used teletype output)
 
 ---
@@ -264,27 +264,27 @@ Complex numbers support standard arithmetic (`+`, `-`, `*`, `/`) and can be used
 | Property | Value |
 |----------|-------|
 | Dialect ID | `DIALECT_SBASIC` |
-| Short code | `"SBAS"` |
+| Short code | `"SUPB"` |
 | Dialect flag | `DFLAG_SBAS` (bit 15) |
 | Separator | `:` (colon) |
 | LET required | Yes |
 | THEN required | Yes |
 | Max line number | 99999 |
-| Ready prompt | `"Ready."` |
-| Print zone width | 14 |
+| Ready prompt | `"READY"` |
+| Print zone width | 15 |
 | CLS available | No (teletype output) |
 | Floating point | Yes |
 | Strings | Yes |
 | Arrays | Yes |
 | FOR/NEXT | Yes |
-| WHILE/WEND | Yes |
-| DO/LOOP | Yes |
+| WHILE/WEND | No |
+| DO/LOOP | No |
 | DATA/READ | Yes |
 | DEF FN | Yes |
 | Extended variables | Yes |
-| ON ERROR | Yes |
+| ON ERROR | No |
 | TRON/TROFF | Yes |
-| MERGE/CHAIN | Yes |
+| MERGE/CHAIN | No |
 
 ---
 

@@ -1,6 +1,6 @@
 # BASIC++ Debugging and Testing
 
-**Version 4.1.1**
+**Version 4.2.3**
 
 
 ---
@@ -80,7 +80,7 @@ Break at line 100
 
 You can examine variables with `VARS` or `PRINT`, then resume with `CONT`.
 
-Multiple breakpoints are supported (up to **16** simultaneously). Breakpoints survive `RUN` but are cleared by `NEW`.
+Multiple breakpoints are supported (up to **256** simultaneously). Breakpoints survive `RUN` but are cleared by `NEW`.
 
 ---
 
@@ -201,20 +201,34 @@ You can have multiple `TEST` blocks in a single program:
 
 ## Built-in Self-Test (SELFTEST)
 
-`SELFTEST` runs the interpreter's internal validation suite. This tests the core subsystems:
+`SELFTEST` runs the interpreter's internal validation suite. It tests 12 core subsystems and reports build configuration before running:
 
 ```
 > SELFTEST
 === BASIC++ SELF-TEST ===
+Build type........ Console (text-only / terminal)
+SDL2 support...... Enabled
 Lexer............. PASS
 Value system...... PASS
 String pool....... PASS
 Function registry. PASS
 Memory pool....... PASS
-=== 5 passed, 0 failed ===
+Dialect Config.... PASS
+Parser Precedence. PASS (X = 14, expected 14)
+Loop Control Flow. PASS (Y = 15, expected 15)
+VFS File I/O...... PASS
+Device Aliases.... PASS
+Graphics/SDL2..... PASS (Subsystems initialized, hidden renderer operational)
+Multitask & VM.... PASS
+=== SELF-TEST COMPLETE ===
 ```
 
 `SELFTEST` is a direct-mode command. It does not affect the current program or variables. Use it after building from source to verify the interpreter is working correctly.
+
+**Notes:**
+- Build type reports **Console** (text-only / terminal) or **GUI** (SDL-based window).
+- The Graphics/SDL2 test may show **DISABLED** on builds compiled with `NO_SDL2`.
+- When run with `--log`, detailed diagnostic output is written to the log file with the `[SELFTEST]` tag, including SDL version info, renderer details, and memory pool diagnostics.
 
 ---
 

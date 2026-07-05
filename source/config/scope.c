@@ -48,6 +48,7 @@
 #include <string.h>
 #include "scope.h"
 #include "lexer.h"
+#include "../console.h"
 
 // --- Scope Table ---
 static ScopeEntry scope_table[KW_COUNT];

@@ -130,7 +130,7 @@ CORE_OBJS = &
     memmap.obj builtins_memory.obj &
     builtins_system.obj builtins_io.obj &
     dialect.obj &
-    ast.obj codegen.obj bytecode.obj detok.obj &
+    ast.obj codegen.obj target.obj bytecode.obj detok.obj &
     module.obj &
     runtime.obj exec.obj &
     parser_misc.obj
@@ -508,6 +508,8 @@ dialect_sbasic.obj: dialect\dialect_sbasic.c .AUTODEPEND
 ast.obj:           codegen\ast.c .AUTODEPEND
     $(CC) $(CFLAGS) -fo=$@ $<
 codegen.obj:       codegen\codegen.c .AUTODEPEND
+    $(CC) $(CFLAGS) -fo=$@ $<
+target.obj:        codegen\target.c .AUTODEPEND
     $(CC) $(CFLAGS) -fo=$@ $<
 bytecode.obj:      codegen\bytecode.c .AUTODEPEND
     $(CC) $(CFLAGS) -fo=$@ $<

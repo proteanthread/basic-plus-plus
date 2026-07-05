@@ -92,6 +92,10 @@
 #define BPL_OP_STR_REF  3
 #define BPL_OP_OFFSET   4
 
+// --- Obfuscation Constants ---
+#define BPL_FLAG_OBFUSCATED 0x01
+#define BPL_XOR_KEY         0x5A
+
 // --- BPL Header (in-memory representation) ---
 typedef struct BplHeader {
     unsigned char magic[4]; // "BPL\x1A"

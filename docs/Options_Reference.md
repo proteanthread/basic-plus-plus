@@ -1,6 +1,6 @@
 # OPTION Statement Reference
 
-**Version 4.1.1**
+**Version 4.2.3**
 
 
 ---
@@ -174,7 +174,7 @@ OPTION ALIASES
 Displays the current alias system capacity — how many keyword aliases are defined vs. the maximum allowed.
 
 ```
-Alias capacity: 5 / 256
+Alias capacity: 5 / 128
 ```
 
 This is a diagnostic command. To manage aliases themselves, use the `ALIAS` command. See [Using_Aliases](Using_Aliases.md) for complete alias documentation.
@@ -224,6 +224,36 @@ Controls the arithmetic mode as defined by ECMA-116.
 |---------|-------------|
 | **Native** *(default)* | Uses hardware IEEE 754 floating-point arithmetic. Fast and compatible with all dialects. |
 | **Decimal** | Base-10 decimal arithmetic for exact representation of values like `0.1`. Defined in ECMA-116 but **not currently implemented** — raises a `SORRY` error. |
+
+---
+
+## 9. Configuration File
+
+BASIC++ reads user-configurable defaults from a platform-specific INI-style configuration file at boot time.
+
+### Config File Names
+
+| Platform | Filename |
+|----------|----------|
+| Linux | `baspp.cfg` |
+| Windows | `basicpp.cfg` |
+| FreeDOS | `bpp.cfg` |
+
+### Config File Search Order
+
+1. Current working directory
+2. Home directory (`~/` on Linux, `%USERPROFILE%` on Windows)
+
+### Configuration Priority Chain
+
+Settings are applied in this order (highest priority last):
+
+1. **Compiled defaults** (built into the interpreter binary)
+2. **Config file** (`baspp.cfg` / `basicpp.cfg` / `bpp.cfg`)
+3. **Command-line switches** (`-d`, `-s`, `-S`, `-f`)
+4. **Runtime commands** (`DIALECT`, `SECURITY`, `OPTION STRICT`)
+
+Each level overrides the one before it. Runtime commands always have the final say.
 
 ---
 

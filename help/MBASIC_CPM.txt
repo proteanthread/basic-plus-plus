@@ -1,6 +1,6 @@
 MBASIC (Microsoft BASIC for CP/M) Dialect Reference
 
-Version 4.1.1
+Version 4.2.3
 
 ---
 
@@ -66,7 +66,7 @@ This changes:
 - Maximum line number: 65529
 - Ready prompt: Ok
 - Print zone width: 14
-- CLS available
+- No CLS (terminal-independent)
 - WHILE/WEND available (added in MBASIC 5.x)
 - No DO/LOOP (came later with GW-BASIC)
 - Extended variable names
@@ -133,14 +133,14 @@ Dialect Configuration
 |----------|-------|
 | Dialect ID | DIALECT_MBASIC |
 | Short code | "MBAS" |
-| Dialect flag | DFLAG_MBAS (bit 14) |
+| Dialect flag | DFLAG_MBAS (bit 12) |
 | Separator | : (colon) |
 | LET required | No |
 | THEN required | Yes |
 | Max line number | 65529 |
 | Ready prompt | "Ok" |
 | Print zone width | 14 |
-| CLS available | Yes |
+| CLS available | No |
 | Floating point | Yes |
 | Strings | Yes |
 | Arrays | Yes (DIM) |
@@ -152,7 +152,7 @@ Dialect Configuration
 | Extended variables | Yes |
 | ON ERROR | Yes |
 | TRON/TROFF | Yes |
-| MERGE/CHAIN | No |
+| MERGE/CHAIN | Yes |
 
 ---
 

@@ -1,6 +1,6 @@
 # Graphics and Sound in BASIC++
 
-**Version 4.1.1**
+**Version 4.2.3**
 
 
 ---
@@ -9,6 +9,9 @@
 
 - Screen Modes
 - COLOR
+- PALETTE
+  - PALETTE attribute, color
+  - PALETTE USING array%()
 - Drawing Primitives
   - PSET / PRESET
   - LINE
@@ -17,10 +20,13 @@
 - DRAW Command
 - GET and PUT (Graphics)
 - Screen Management
+- VIEW (Viewport Clipping)
+- Multi-Page Support
 - Sound
   - BEEP
   - SOUND
   - PLAY (Music Macro Language)
+  - PLAY(0) — Music Status
 - Graphics Buffer
 - Limitations
 
@@ -83,7 +89,56 @@ PRINT "Warning!"
 
 ---
 
-## 3. Drawing Primitives
+## 3. PALETTE
+
+Remap hardware color attributes to display colors. Available in graphics modes that support palette manipulation (SCREEN 7–13).
+
+### PALETTE attribute, color
+
+```basic
+PALETTE attribute, color
+```
+
+Remaps a single color attribute to a new display color.
+
+- **attribute** — the logical color number used by drawing commands (0–15 in EGA modes, 0–255 in SCREEN 13).
+- **color** — the physical display color to map it to.
+
+```basic
+SCREEN 9
+PALETTE 1, 63        ' Remap attribute 1 to bright white
+LINE (0,0)-(639,349), 1  ' Draws in bright white instead of blue
+```
+
+To reset all palette entries to their defaults:
+
+```basic
+PALETTE              ' Reset palette to mode defaults
+```
+
+### PALETTE USING array%()
+
+> [!WARNING]
+> **PLANNED / FUTURE** — This feature is not yet implemented.
+
+```basic
+PALETTE USING array%(start_index)
+```
+
+Sets the entire palette from an integer array in a single call. Each element of the array corresponds to one attribute and holds the desired color value. Use `-1` in any element to leave that attribute unchanged.
+
+```basic
+SCREEN 9
+DIM PAL%(15)
+FOR I = 0 TO 15 : PAL%(I) = I * 4 : NEXT
+PALETTE USING PAL%(0)  ' Apply entire palette at once
+```
+
+**Internals:** `PALETTE attribute, color` calls `gfxbuf_palette(int attr, int color)` which updates the palette lookup table in the graphics framebuffer.
+
+---
+
+## 4. Drawing Primitives
 
 ### PSET / PRESET
 
@@ -124,7 +179,7 @@ PAINT (160, 100), 2, 1            ' Fill green, stop at blue
 
 ---
 
-## 4. DRAW Command
+## 5. DRAW Command
 
 `DRAW` uses a mini-language for turtle graphics:
 
@@ -157,7 +212,7 @@ DRAW "R40 E20 L40 G20 R40 BD20 R10 U10 L10 D10"
 
 ---
 
-## 5. GET and PUT (Graphics)
+## 6. GET and PUT (Graphics)
 
 Capture and redraw screen regions:
 
@@ -194,7 +249,7 @@ NEXT X
 
 ---
 
-## 6. Screen Management
+## 7. Screen Management
 
 | Command | Description |
 |---------|-------------|
@@ -214,7 +269,91 @@ NEXT X
 
 ---
 
-## 7. Sound
+## 8. VIEW (Viewport Clipping)
+
+Define a rectangular clipping region on the screen. All subsequent drawing commands are clipped to this viewport.
+
+```basic
+VIEW (x1, y1)-(x2, y2) [, fill_color [, border_color]]
+VIEW SCREEN (x1, y1)-(x2, y2) [, fill_color [, border_color]]
+```
+
+- When `VIEW` is used without `SCREEN`, coordinates in subsequent drawing commands become **relative** to the viewport's top-left corner.
+- When `VIEW SCREEN` is used, subsequent drawing commands use **absolute** screen coordinates, but clipping still applies to the viewport boundaries.
+
+- **(x1, y1)** — top-left corner of the viewport in screen coordinates.
+- **(x2, y2)** — bottom-right corner of the viewport.
+- **fill_color** — optional; fills the viewport interior with this color.
+- **border_color** — optional; draws a 1-pixel border around the viewport.
+
+After `VIEW` is set, graphics coordinates are relative to the viewport's top-left corner. Drawing outside the viewport is clipped.
+
+```basic
+SCREEN 9
+VIEW (50, 20)-(300, 180), 0, 15   ' Viewport with black fill, white border
+LINE (0, 0)-(250, 160), 4         ' Draws inside viewport only
+```
+
+To reset the viewport to the full screen:
+
+```basic
+VIEW                              ' Reset to full screen
+```
+
+**Internals:**
+
+| Function | Description |
+|----------|-------------|
+| `gfxbuf_set_viewport(x1, y1, x2, y2)` | Set clipping region |
+| `gfxbuf_reset_viewport()` | Reset to full screen |
+| `gfxbuf_get_viewport()` | Query current viewport bounds |
+| `gfxbuf_fill_viewport(fill_color, border_color)` | Fill and/or border the viewport |
+
+---
+
+## 9. Multi-Page Support
+
+BASIC++ supports up to **4 video pages** (0–3), matching EGA/VGA hardware paging. Pages allow off-screen drawing and smooth animation via page flipping.
+
+```basic
+SCREEN mode, , active_page, visual_page
+```
+
+- **active_page** — the page that drawing commands write to (0–3).
+- **visual_page** — the page currently displayed on screen (0–3).
+
+```basic
+SCREEN 7, , 1, 0     ' Draw on page 1, display page 0
+LINE (0,0)-(319,199), 4  ' Draw on hidden page 1
+SCREEN 7, , 1, 1     ' Flip: now display page 1
+```
+
+### PCOPY
+
+Copy the contents of one video page to another:
+
+```basic
+PCOPY src_page, dst_page
+```
+
+```basic
+PCOPY 1, 0           ' Copy page 1 to page 0
+```
+
+**Internals:**
+
+| Constant / Function | Description |
+|---------------------|-------------|
+| `GFX_MAX_PAGES` (= 4) | Maximum number of video pages |
+| `gfxbuf_set_active_page(page)` | Set which page receives drawing commands |
+| `gfxbuf_set_visual_page(page)` | Set which page is displayed |
+| `gfxbuf_pcopy(src, dst)` | Copy pixel data from one page to another |
+| `gfxbuf_get_active_page()` | Query current active page |
+| `gfxbuf_get_visual_page()` | Query current visual page |
+
+---
+
+## 10. Sound
 
 ### BEEP
 
@@ -260,9 +399,34 @@ PLAY "T120 O4 L8 EEGGEECCEDD"  ' Simple melody
 PLAY "MF T180 O3 L4 C.E.G."    ' Staccato
 ```
 
+### PLAY(0) — Music Status
+
+The `PLAY(0)` function returns the number of notes remaining in the background music queue. Use it to check whether music is still playing.
+
+```basic
+PLAY "MB T120 O4 L4 CDEFGAB>C"    ' Start background music
+WHILE PLAY(0) > 0                  ' Wait until music finishes
+  ' ...do other work...
+WEND
+PRINT "Music finished!"
+```
+
+| Expression | Result |
+|------------|--------|
+| `PLAY(0) > 0` | Music is still playing |
+| `PLAY(0) = 0` | Music has finished or no music queued |
+
+To stop music playback immediately:
+
+```basic
+PLAY ""               ' Stop all music playback
+```
+
+**Internals:** `PLAY(0)` calls `gw_sdl2_music_playing()` which returns `1` if the MML player is active, `0` otherwise. Stopping music calls `gw_sdl2_stop_music()`.
+
 ---
 
-## 8. Graphics Buffer
+## 11. Graphics Buffer
 
 The graphics framebuffer (`gfxbuf`) stores pixel data internally. It supports:
 
@@ -275,11 +439,9 @@ The buffer is allocated when `SCREEN` is called and freed on `SCREEN 0` or progr
 
 ---
 
-## 9. Limitations
+## 12. Limitations
 
 - Graphics are buffered, not immediately displayed (terminal output is text-only)
 - No mouse support currently
-- `PALETTE` not yet implemented
-- `VIEW` coordinates are approximate
 - `CIRCLE` aspect ratio is approximate
 - Maximum resolution limited by buffer memory

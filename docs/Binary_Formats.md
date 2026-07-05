@@ -24,6 +24,12 @@
 - Custom Detokenizer Hook
   - Supported Formats (via modules)
   - C API
+- PCode VM Internals
+  - Opcode Ranges
+  - Core Opcode Listing
+  - Sentinel Opcodes
+  - PCodeProgram Structure
+  - PCodeInstr and PCodeOperand
 - Round-Trip Workflows
   - Program Round-Trip
   - Library Round-Trip
@@ -234,6 +240,148 @@ typedef int (*DetokenizerFn)(
 );
 /* Return >= 0 on success, -1 on failure */
 ```
+
+---
+
+## PCode VM Internals
+
+The `BRUN` command compiles the in-memory program into a compact PCode
+representation and executes it via the bytecode virtual machine. The PCode
+format is purely in-memory — it is **never** serialized to disk.
+
+### Opcode Ranges
+
+| Range   | Constant             | Value | Purpose                        |
+|---------|----------------------|-------|--------------------------------|
+| Core    | `0`–`79`             | 0–79  | Built-in interpreter opcodes   |
+| Extended| `PCODE_EXTENDED_BASE`| 80    | Extended opcodes (80–127)      |
+| Module  | `PCODE_MODULE_BASE`  | 128   | Module-provided opcodes (128–191) |
+| JIT     | `PCODE_JIT_BASE`     | 192   | JIT hint opcodes (192–255)     |
+
+### Core Opcode Listing
+
+| Opcode | Name          | Description                              |
+|--------|---------------|------------------------------------------|
+| 0      | `NOP`         | No operation                             |
+| 1      | `HALT`        | Terminate program                        |
+| 2      | `STOP`        | Stop execution (can be resumed)          |
+| 3      | `REM`         | Comment (skipped)                        |
+| 4      | `DATA`        | Inline DATA values                       |
+| 5      | `LINE`        | Line number marker                       |
+| 6      | `POP`         | Discard top of stack                     |
+| 8      | `PUSH_INT`    | Push integer literal                     |
+| 9      | `PUSH_FLOAT`  | Push float literal                       |
+| 10     | `PUSH_STRING` | Push string literal (pool offset+len)    |
+| 11     | `PUSH_ZERO`   | Push constant 0                          |
+| 12     | `PUSH_ONE`    | Push constant 1                          |
+| 16     | `LOAD_VAR`    | Load numeric variable                    |
+| 17     | `LOAD_STRVAR` | Load string variable                     |
+| 18     | `LOAD_NAMED`  | Load named variable                      |
+| 19     | `LOAD_AT`     | Load array element (computed index)      |
+| 20     | `LOAD_DIM`    | Load DIM array element                   |
+| 24     | `STORE_VAR`   | Store numeric variable                   |
+| 25     | `STORE_STRVAR`| Store string variable                    |
+| 26     | `STORE_NAMED` | Store named variable                     |
+| 27     | `STORE_AT`    | Store array element (computed index)     |
+| 28     | `STORE_DIM`   | Store DIM array element                  |
+| 32     | `ADD`         | Arithmetic addition                      |
+| 33     | `SUB`         | Arithmetic subtraction                   |
+| 34     | `MUL`         | Arithmetic multiplication                |
+| 35     | `DIV`         | Arithmetic division                      |
+| 36     | `MOD`         | Modulo                                   |
+| 37     | `POW`         | Exponentiation                           |
+| 38     | `NEG`         | Unary negation                           |
+| 39     | `CONCAT`      | String concatenation                     |
+| 40     | `CMP_EQ`      | Compare equal                            |
+| 41     | `CMP_NE`      | Compare not equal                        |
+| 42     | `CMP_LT`      | Compare less than                        |
+| 43     | `CMP_GT`      | Compare greater than                     |
+| 44     | `CMP_LE`      | Compare less than or equal               |
+| 45     | `CMP_GE`      | Compare greater than or equal            |
+| 48     | `AND`         | Logical AND                              |
+| 49     | `OR`          | Logical OR                               |
+| 50     | `NOT`         | Logical NOT                              |
+| 52     | `JUMP`        | Unconditional jump                       |
+| 53     | `JUMP_FALSE`  | Jump if top of stack is false            |
+| 54     | `JUMP_TRUE`   | Jump if top of stack is true             |
+| 55     | `GOSUB`       | Subroutine call (push return address)    |
+| 56     | `RETURN`      | Return from subroutine                   |
+| 57     | `ON_GOTO`     | Computed GOTO (ON n GOTO)                |
+| 58     | `ON_GOSUB`    | Computed GOSUB (ON n GOSUB)              |
+| 60     | `PRINT_EXPR`  | Print expression value                   |
+| 61     | `PRINT_NL`    | Print newline                            |
+| 62     | `PRINT_TAB`   | Print TAB spacing                        |
+| 63     | `PRINT_SPC`   | Print SPC spacing                        |
+| 64     | `INPUT_VAR`   | Input numeric variable                   |
+| 65     | `INPUT_STRVAR`| Input string variable                    |
+| 66     | `INPUT_PROMPT`| Input with prompt string                 |
+| 68     | `FUNC1`       | Call 1-argument built-in function        |
+| 69     | `FUNC2`       | Call 2-argument built-in function        |
+| 70     | `FUNC3`       | Call 3-argument built-in function        |
+| 72     | `FOR_INIT`    | Initialize FOR loop                      |
+| 73     | `FOR_CHECK`   | Check FOR loop condition                 |
+| 74     | `NEXT`        | Advance FOR loop iterator                |
+| 75     | `DIM_ALLOC`   | Allocate DIM array                       |
+| 76     | `READ_NUM`    | READ numeric value from DATA             |
+| 77     | `READ_STR`    | READ string value from DATA              |
+| 78     | `RESTORE`     | Reset DATA pointer                       |
+
+> **Note:** Opcodes 7, 13–15, 23, 29–31, 46–47, 51, 59, 67, 71, and 79
+> are reserved for future use within the core range.
+
+### Sentinel Opcodes
+
+| Opcode | Name                  | Description                       |
+|--------|-----------------------|-----------------------------------|
+| 80     | `PCODE_EXTENDED_BASE` | First extended opcode             |
+| 128    | `PCODE_MODULE_BASE`   | First module-provided opcode      |
+| 192    | `PCODE_JIT_BASE`      | First JIT hint opcode             |
+
+### PCodeProgram Structure
+
+The compiled program is held in a `PCodeProgram` struct:
+
+```c
+typedef struct {
+    PCodeInstr *instrs;      /* Dynamic array of instructions     */
+    int         count;       /* Number of instructions emitted    */
+    int         capacity;    /* Allocated instruction slots        */
+    char       *str_pool;    /* String literal pool (packed)       */
+    int         str_used;    /* Bytes used in string pool          */
+    int         str_capacity;/* Allocated string pool size         */
+    int        *line_map;    /* Instruction index → source line    */
+    int        *on_tables;   /* ON GOTO/GOSUB target tables        */
+    int         on_table_count;    /* Number of ON table entries   */
+    int         on_table_capacity; /* Allocated ON table slots     */
+} PCodeProgram;
+```
+
+### PCodeInstr and PCodeOperand
+
+Each instruction is a `PCodeInstr` containing an opcode and an operand union:
+
+```c
+typedef struct {
+    unsigned char op;        /* Opcode (0–255)                     */
+    PCodeOperand  operand;   /* Operand payload (union)            */
+} PCodeInstr;
+
+typedef union {
+    long   ival;             /* Integer literal                    */
+    double fval;             /* Float literal                      */
+    int    offset;           /* Jump target / variable index       */
+    struct { int idx; int len; } str;  /* String pool ref          */
+    struct {
+        char name[MAX_VAR_NAME_LEN + 1];
+        int  ndims;
+    } dim;                   /* DIM array descriptor               */
+} PCodeOperand;
+```
+
+The `op` field selects the operation; the operand union carries the payload
+appropriate to that opcode. String literals reference a `(idx, len)` slice
+into the `str_pool` buffer rather than storing pointers, making the PCode
+representation position-independent within a single session.
 
 ---
 

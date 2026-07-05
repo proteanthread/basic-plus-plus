@@ -106,7 +106,7 @@ static const DialectConfig superbasic_config = {
     1, // has_on_error (WHEN ERRor)
     1, // has_cls
     1, // has_tron_troff
-    "SUPB", // short_name
+    "SQLB", // short_name
     DFLAG_SUPA, // dialect_flag
     superbasic_apply // apply_fn
 };

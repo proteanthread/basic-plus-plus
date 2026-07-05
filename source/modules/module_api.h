@@ -30,22 +30,34 @@
  // for the BASIC++ interpreter.
  //
  // HOW TO WRITE EXTERNAL EXTENSIONS:
- // 1. Include this header in your C project.
- // 2. Define `bpp_module_init` (which must be exported, e.g. __declspec(dllexport) on Windows).
- // 3. Inside `bpp_module_init`, you MUST call `module_register` with a `ModuleInfo` structure.
- // 4. To register custom functions, call `funcreg_register_ext` from your `init` callback.
- // 5. Define `bpp_module_cleanup` if you need to free resources when the module is unloaded.
+ // 1. Use the unified `BPP_EXPORT` macro to define the entry point `bpp_module_init`.
+ // 2. Platform-specific dynamic loading (wlink option eliminate / GCC -flto) is abstracted internally.
+ //    Avoid platform-specific dynamic loading functions (like raw Windows LoadLibrary or Linux dlopen) to
+ //    prevent Shared Library Divergence.
+ // 3. Never allocate memory using raw standard `malloc`, `free`, or `realloc`. To prevent Memory Corruption
+ //    from raw allocations, always use the interpreter-managed allocators `rt_malloc(rt, size)` and `rt_free(rt, ptr)`
+ //    passed in via the RuntimeState pointer.
+ // 4. Do not attempt to bypass safety checks by passing raw host pointers to BASIC variables.
+ // 5. Do not modify core instruction definitions or bytecode structures (to keep VM engine execution deterministic).
  //
- // HOW TO ACCESS EXTERNAL MODULES IN BASIC++:
- // - Load them: `LOAD MODULE "my_extension.dll"`
- // - Execute them: `EXEC MODULE "my_extension.dll"` (triggers their logic)
- // - Unload them: `UNLOAD MODULE "my_extension.dll"` (frees memory/prevents leaks)
+ // HOW TO WRITE EXTERNAL FUNCTIONS:
+ // 1. Prefix all function names with your module name (e.g. `MYMOD_ADD`) to avoid Symbol Collisions.
+ // 2. Register functions inside your module's `init` callback using the Function Registry.
+ // 3. Use soft runtime arguments signature matching (e.g., "SD" -> String, Double). The runtime engine validates
+ //    types dynamically when executing calls, trapping signature mismatches without crashing the interpreter.
  //
- // SECURITY:
- // Modules specify their capability needs. The interpreter dynamically
- // matches these against the host environment. If your module requires 
- // CAP_FILE but the interpreter is running in RESTRICTED mode, your 
- // module's `init` callback may be denied or downgraded dynamically.
+ // HOW TO WRITE EXTERNAL MODULES:
+ // 1. Statically declare a metadata block using the `ModuleInfo` structure.
+ // 2. Use capability bitfields (`CAP_MATH`, `CAP_FILE`, etc.) to specify needed system access.
+ // 3. The loading pipeline (Validation -> Capability Verification -> Sandbox Allocation -> Registration -> Activation)
+ //    will reject or isolate the module if it demands capabilities forbidden by the active security Sandbox mode.
+ // 4. Implement cleanup callbacks to ensure full resource cleanup during dynamic reloading (`UNLOAD MODULE` / `LOAD MODULE`).
+ //
+ // HOW TO WRITE EXTERNAL PLUGINS (VIRTUAL DEVICES):
+ // 1. Set your `mod_class` to `MOD_DEVICE`.
+ // 2. Map virtual address space blocks (e.g., historical console or hardware buffers) inside the virtual device.
+ // 3. Interface with the VM using the PEEK and POKE virtual device wrappers in `vdev.c`. Standard BASIC programs
+ //    will interact with your device driver via safe virtualization boundaries, leaving the host OS protected.
  //
  // ---
 

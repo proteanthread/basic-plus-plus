@@ -1,6 +1,6 @@
 Sinclair BASIC (ZX Spectrum) Dialect Reference
 
-Version 4.1.1
+Version 4.2.3
 
 ---
 
@@ -35,7 +35,7 @@ The ZX Spectrum sold over 5 million units and was the dominant home computer in 
 
 - Keyword entry via single keypress (each key mapped to a keyword)
 - LET is mandatory for all assignments
-- No CLS command (BASIC++ provides CLS for convenience)
+- CLS available
 - GO TO and GO SUB as two-word forms (mapped to GOTO/GOSUB)
 - BORDER, INK, PAPER for color control
 - BEEP duration, pitch (note reversed parameter order)
@@ -54,12 +54,12 @@ DIALECT "SINC"
 
 This changes:
 - Statement separator: : (colon)
-- LET is optional (relaxed from original for usability)
+- LET is required (historically accurate)
 - THEN is required in IF statements
 - Maximum line number: 9999
-- Ready prompt: 0 OK, 0:1
-- Print zone width: 14
-- CLS is not available in strict mode
+- Ready prompt: 0 OK
+- Print zone width: 16
+- CLS is available
 - No WHILE/WEND or DO/LOOP (original had none)
 
 To combine with the ZX Spectrum memory map:
@@ -139,14 +139,14 @@ Dialect Configuration
 |----------|-------|
 | Dialect ID | DIALECT_SINCLAIR |
 | Short code | "SINC" |
-| Dialect flag | DFLAG_SINC (bit 12) |
+| Dialect flag | DFLAG_SINC (bit 13) |
 | Separator | : (colon) |
-| LET required | No (relaxed from original) |
+| LET required | Yes |
 | THEN required | Yes |
 | Max line number | 9999 |
-| Ready prompt | "0 OK, 0:1" |
-| Print zone width | 14 |
-| CLS available | No (strict mode) |
+| Ready prompt | "0 OK" |
+| Print zone width | 16 |
+| CLS available | Yes |
 | Floating point | Yes |
 | Strings | Yes |
 | Arrays | Yes (DIM) |
@@ -155,10 +155,10 @@ Dialect Configuration
 | DO/LOOP | No |
 | DATA/READ | Yes |
 | DEF FN | Yes |
-| Extended variables | No (short names) |
+| Extended variables | Yes |
 | ON ERROR | No |
 | TRON/TROFF | No |
-| MERGE/CHAIN | No |
+| MERGE/CHAIN | Yes |
 
 ---
 

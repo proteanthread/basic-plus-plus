@@ -189,6 +189,7 @@
 #include "security.h"
 #include "module.h"
 #include "platform.h"
+#include "../console.h"
 
 // -----------------------------------------------------------------
 // Module State

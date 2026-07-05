@@ -56,6 +56,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "bpl_format.h"
+#include "../console.h"
 
 // --- Little-endian helpers ---
 static void bpl_write_le16(unsigned char *buf, unsigned int val)
@@ -80,7 +81,6 @@ static unsigned int bpl_crc16_update(unsigned int seed,
                                      int len)
 {
     unsigned int crc = seed;
-    int j;
     for (int i = 0; i < len; i++) {
         crc ^= (unsigned int)data[i] << 8;
         for (int j = 0; j < 8; j++) {
@@ -128,7 +128,7 @@ int bpl_save(const LoadedLibrary *lib, const char *filename)
     header[4] = BPL_FORMAT_VER;
     header[5] = (unsigned char)lib->required_level;
     header[6] = (unsigned char)lib->ext_type;
-    header[7] = 0; // flags
+    header[7] = BPL_FLAG_OBFUSCATED; // flags
     bpl_write_le16(&header[8],
                    (unsigned int)lib->symbol_count);
     bpl_write_le16(&header[10],
@@ -138,14 +138,18 @@ int bpl_save(const LoadedLibrary *lib, const char *filename)
     // Compute CRC over all source lines (accumulated)
     crc = 0xFFFF;
     for (int i = 0; i < lib->src_line_count; i++) {
-        if (lib->src_lines[i].text) {
+        if (lib->src_lines[i].text[0] != '\0') {
             crc = bpl_crc16_update(crc,
                 (const unsigned char *)lib->src_lines[i].text,
                 (int)strlen(lib->src_lines[i].text));
         }
     }
     bpl_write_le16(&header[14], crc);
-    strncpy((char *)&header[16], lib->name, 16);
+    {
+        int name_len = (int)strlen(lib->name);
+        if (name_len > 16) name_len = 16;
+        memcpy(&header[16], lib->name, (size_t)name_len);
+    }
 
     if (fwrite(header, 1, BPL_HEADER_SIZE, fp) !=
         BPL_HEADER_SIZE) {
@@ -180,7 +184,7 @@ int bpl_save(const LoadedLibrary *lib, const char *filename)
     // Write source lines
     for (int i = 0; i < lib->src_line_count; i++) {
         const LibSourceLine *sl = &lib->src_lines[i];
-        int text_len = sl->text ? (int)strlen(sl->text) : 0;
+        int text_len = (int)strlen(sl->text);
         unsigned char line_hdr[4];
 
         bpl_write_le16(&line_hdr[0],
@@ -194,10 +198,20 @@ int bpl_save(const LoadedLibrary *lib, const char *filename)
             return -1;
         }
         if (text_len > 0) {
-            if ((int)fwrite(sl->text, 1,
-                            (size_t)text_len, fp)
-                != text_len) {
-                printf("Write error at line %d text.\n", i);
+            unsigned char *temp_text = (unsigned char *)malloc((size_t)text_len);
+            if (temp_text) {
+                for (int k = 0; k < text_len; k++) {
+                    temp_text[k] = (unsigned char)(sl->text[k] ^ BPL_XOR_KEY);
+                }
+                if ((int)fwrite(temp_text, 1, (size_t)text_len, fp) != text_len) {
+                    free(temp_text);
+                    printf("Write error at line %d text.\n", i);
+                    fclose(fp);
+                    return -1;
+                }
+                free(temp_text);
+            } else {
+                printf("Out of memory for XOR buffer.\n");
                 fclose(fp);
                 return -1;
             }
@@ -257,7 +271,7 @@ int bpl_load(const char *filename, LoadedLibrary *lib)
     lib->ext_type = (LibExtType)header[6];
     sym_count = bpl_read_le16(&header[8]);
     line_count = bpl_read_le16(&header[10]);
-    strncpy(lib->name, (const char *)&header[16], 16);
+    memcpy(lib->name, &header[16], 16);
     lib->name[16] = '\0';
 
     // Read symbol table
@@ -329,6 +343,11 @@ int bpl_load(const char *filename, LoadedLibrary *lib)
                 free(text);
                 fclose(fp);
                 return -1;
+            }
+            if (header[7] & BPL_FLAG_OBFUSCATED) {
+                for (int k = 0; k < text_len; k++) {
+                    text[k] ^= BPL_XOR_KEY;
+                }
             }
         }
         text[text_len] = '\0';

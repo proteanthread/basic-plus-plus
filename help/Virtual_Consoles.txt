@@ -79,6 +79,12 @@
   | STDLOG   | LOG:   |  3+ | All messages, timestamped (new)   |
   +----------+--------+-----+-----------------------------------+
 
+> [!WARNING]
+> PLANNED / FUTURE — The LOG: device is not yet implemented as a
+> built-in device. LOG: is a user-creatable pattern that can be registered
+> via vdev_register() in a user slot (VDEV_USER+). It is NOT a built-in
+> device like CON: or ERR:.
+
   WHY THREE STREAMS?
 
   In the 1970s and 1980s, BASIC programs mixed output and error

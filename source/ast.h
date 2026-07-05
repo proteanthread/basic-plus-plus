@@ -87,7 +87,12 @@ typedef enum AstFuncId {
  FUNC_CHR, FUNC_STR,
  FUNC_LEFT, FUNC_RIGHT, FUNC_MID,
  FUNC_TAB, // TAB(n) - PRINT column position
- FUNC_FN_USER // User-defined FN (DEF FN)
+ FUNC_FN_USER, // User-defined FN (DEF FN)
+ FUNC_BUILTIN, // Dynamic registered function
+ FUNC_MEMMAP, // MEMMAP$
+ FUNC_VPATH, // VPATH$
+ FUNC_CWD, // CWD$
+ FUNC_PWD // PWD
 } AstFuncId;
 
 // Forward declaration
@@ -135,6 +140,7 @@ struct AstExpr {
  AstExpr *args[3]; // up to 3 arguments
  int arg_count;
  char fn_letter; // For FUNC_FN_USER: A-Z
+ int builtin_kw; // For FUNC_BUILTIN
  } func_call; // EXPR_FUNC_CALL
  } v;
 };
@@ -165,7 +171,14 @@ typedef enum AstStmtType {
  STMT_DO,
  STMT_LOOP,
  STMT_ON_GOTO, // ON expr GOTO line1,line2,...
- STMT_DEF_FN // DEF FNA(X) = expr
+ STMT_DEF_FN, // DEF FNA(X) = expr
+ STMT_WHEN, // WHEN EXCEPTION IN
+ STMT_USE, // USE
+ STMT_END_WHEN, // END WHEN
+ STMT_RETRY, // RETRY
+ STMT_CONTINUE, // CONTINUE
+ STMT_INT, // INT interrupt_number
+ STMT_DIRECT_EXEC // execute raw statement via direct interpreter
 } AstStmtType;
 
 // Forward declaration
@@ -194,12 +207,14 @@ struct AstStmt {
  // STMT_LET
  struct {
  char var_name;
+ char name[MAX_VAR_NAME_LEN + 1];
  AstExpr *value;
  } let;
 
  // STMT_LET_STRVAR
  struct {
  char var_name;
+ char name[MAX_VAR_NAME_LEN + 1];
  AstExpr *value;
  } let_strvar;
 
@@ -237,6 +252,7 @@ struct AstStmt {
  // STMT_FOR
  struct {
  char var_name;
+ char name[MAX_VAR_NAME_LEN + 1];
  AstExpr *init;
  AstExpr *limit;
  AstExpr *step; // NULL = default step 1
@@ -245,13 +261,13 @@ struct AstStmt {
  // STMT_NEXT
  struct {
  char var_name;
+ char name[MAX_VAR_NAME_LEN + 1];
  } next;
 
  // STMT_INPUT
  struct {
  AstExpr *prompt; // NULL or string literal
- char var_names[26]; // variables to read into
- int var_types[26]; // 0=int, 1=string
+ AstExpr *vars[26]; // variables to read into
  int var_count;
  } input;
 
@@ -308,9 +324,10 @@ struct AstStmt {
 
  // STMT_ON_GOTO
  struct {
- AstExpr *selector; // ON <selector> GOTO ...
- int targets[64]; // target line numbers
+ AstExpr *selector; // ON <selector> GOTO/GOSUB ...
+ double targets[64]; // target line numbers
  int target_count;
+ int is_gosub; // 1 if GOSUB, 0 if GOTO
  } on_goto;
 
  // STMT_DEF_FN
@@ -320,12 +337,22 @@ struct AstStmt {
  AstExpr *body; // expression body
  } def_fn;
 
+ // STMT_INT
+ struct {
+ AstExpr *interrupt_number;
+ } int_stmt;
+
+ // STMT_DIRECT_EXEC
+ struct {
+ char *text;
+ } direct_exec;
+
  } v;
 };
 
 // --- AstLine - One parsed program line. ---
 typedef struct AstLine {
- int line_number;
+ double line_number;
  AstStmt *stmts; // linked list of statements
 } AstLine;
 

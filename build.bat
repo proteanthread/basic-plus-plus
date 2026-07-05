@@ -37,12 +37,20 @@ call "%VCVARS%" x64
 :: Navigate to the source directory and run nmake
 cd /d "%~dp0source"
 
-echo [INFO] Running nmake msvc...
-nmake /f Makefile msvc
-
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] MSVC build failed.
-    exit /b %ERRORLEVEL%
+if "%1"=="lite" (
+    echo [INFO] Running nmake msvc-lite...
+    nmake /f Makefile msvc-lite
+    if !ERRORLEVEL! neq 0 (
+        echo [ERROR] MSVC Lite build failed.
+        exit /b !ERRORLEVEL!
+    )
+) else (
+    echo [INFO] Running nmake msvc...
+    nmake /f Makefile msvc
+    if !ERRORLEVEL! neq 0 (
+        echo [ERROR] MSVC Standard build failed.
+        exit /b !ERRORLEVEL!
+    )
 )
 
 cd /d "%~dp0"
@@ -53,33 +61,61 @@ echo Build complete! Windows executable: basicpp.exe
 echo ========================================================
 echo.
 
-:: Build legacy prototypes (disabled — build separately if needed)
-:: echo [INFO] Building legacy prototypes...
-::
-:: cd /d "%~dp0"
-::
-:: cl /TC /W3 /O2 /D_CRT_SECURE_NO_WARNINGS /Fe:int-bas.exe int-bas.c
-:: if %ERRORLEVEL% neq 0 (
-::     echo [WARN] int-bas.exe build failed.
-:: ) else (
-::     echo [OK] int-bas.exe built.
-:: )
-::
-:: cl /TC /W3 /O2 /D_CRT_SECURE_NO_WARNINGS /Fe:core-bas.exe core-bas.c
-:: if %ERRORLEVEL% neq 0 (
-::     echo [WARN] core-bas.exe build failed.
-:: ) else (
-::     echo [OK] core-bas.exe built.
-:: )
-::
-:: cl /TC /W3 /O2 /D_CRT_SECURE_NO_WARNINGS /Fe:tinybasic.exe tinybasic.c
-:: if %ERRORLEVEL% neq 0 (
-::     echo [WARN] tinybasic.exe build failed.
-:: ) else (
-::     echo [OK] tinybasic.exe built.
-:: )
-::
-:: Clean up MSVC intermediates in root
+:: Build legacy prototypes
+echo [INFO] Building legacy prototypes...
+
+cd /d "%~dp0"
+
+cl /TC /W3 /O2 /D_CRT_SECURE_NO_WARNINGS /Fe:apple2.exe standalone\source\apple2.c
+if %ERRORLEVEL% neq 0 (
+    echo [WARN] apple2.exe build failed.
+) else (
+    echo [OK] apple2.exe built.
+)
+
+cl /TC /W3 /O2 /D_CRT_SECURE_NO_WARNINGS /Fe:level1.exe standalone\source\level1.c
+if %ERRORLEVEL% neq 0 (
+    echo [WARN] level1.exe build failed.
+) else (
+    echo [OK] level1.exe built.
+)
+
+cl /TC /W3 /O2 /D_CRT_SECURE_NO_WARNINGS /Fe:tinybasic.exe standalone\source\tinybasic.c
+if %ERRORLEVEL% neq 0 (
+    echo [WARN] tinybasic.exe build failed.
+) else (
+    echo [OK] tinybasic.exe built.
+)
+
+cl /TC /W3 /O2 /D_CRT_SECURE_NO_WARNINGS /Fe:1964.exe standalone\source\1964.c
+if %ERRORLEVEL% neq 0 (
+    echo [WARN] 1964.exe build failed.
+) else (
+    echo [OK] 1964.exe built.
+)
+
+:: Build trans.exe and bppc.exe
+echo [INFO] Building trans.exe and bppc.exe...
+cd /d "%~dp0source"
+
+nmake /f Makefile trans
+if %ERRORLEVEL% neq 0 (
+    echo [WARN] trans.exe build failed.
+) else (
+    echo [OK] trans.exe built.
+    move /Y trans.exe ..\trans.exe >nul
+)
+
+nmake /f Makefile bppc
+if %ERRORLEVEL% neq 0 (
+    echo [WARN] bppc.exe build failed.
+) else (
+    echo [OK] bppc.exe built.
+    move /Y bppc.exe ..\bppc.exe >nul
+)
+
+cd /d "%~dp0"
+del /q source\*.obj 2>nul
 del /q *.obj 2>nul
 
 echo.

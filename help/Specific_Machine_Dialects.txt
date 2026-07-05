@@ -174,10 +174,10 @@ Here's a summary of each dialect's personality:
           commands (PSET, LINE, CIRCLE). PMODE for modes.
 
   SINC  - Sinclair BASIC (1982). ZX Spectrum, Z80 CPU.
-          Integer and float, ":" separator. No CLS.
+          Integer and float, ":" separator. CLS available.
           RANDOMIZE USR address, BEEP duration, pitch.
 
-  SBLQ  - SuperBASIC (1984). Sinclair QL, 68008 CPU.
+  SQLB  - SuperBASIC (1984). Sinclair QL, 68008 CPU.
           Structured programming: DEF PROCedure, DEF
           FuNction, IF/END IF, FOR/END FOR, REPeat/
           END REPeat, SELect ON.
@@ -186,7 +186,7 @@ Here's a summary of each dialect's personality:
           The original Microsoft BASIC. Ran on 8080/Z80.
           LET optional, ':' separator, 65529 max line.
 
-  SBAS  - SUPER BASIC (1968). Tymshare SDS-940 mainframe.
+  SUPB  - SUPER BASIC (1968). Tymshare SDS-940 mainframe.
           One of the most advanced BASICs of the 1960s.
           Extended math (ASIN, ACOS, SINH, COSH, TANH,
           LOG10, LOG2, COMP, PDIF, PI), JOSS-style
@@ -396,13 +396,17 @@ The bitmask flags (defined in dialect.h) are:
     DFLAG_ATRI    Atari BASIC
     DFLAG_C64B    Commodore BASIC v2
     DFLAG_COCO    CoCo BASIC
+    DFLAG_MBAS    MBASIC (CP/M)
+    DFLAG_SINC    Sinclair BASIC
+    DFLAG_SUPA    SuperBASIC (QL)
+    DFLAG_SBAS    SUPER BASIC (Tymshare)
 
 And convenience groups:
 
     DFLAG_MSALL     All Microsoft BASIC family + TRS-80
-    DFLAG_MSBASIC   TRS2+GWBS+QBAS+ASFT+C64B+COCO
+    DFLAG_MSBASIC   TRS2+GWBS+QBAS+ASFT+C64B+COCO+MBAS
     DFLAG_GWQB      GW-BASIC + QBasic
-    DFLAG_STRUCT    GWBS + QBAS + E116 (structured flow)
+    DFLAG_STRUCT    GWBS + QBAS + E116 + MBAS + SUPA (structured flow)
 
 HOW IT WORKS:
 

@@ -1,3 +1,12 @@
+1 REM =============================================
+2 REM  MODEL1GW.BAS - TRS-80 Model 1 Emulator
+3 REM  for BASIC++ v4.4 (GWBS dialect)
+4 REM =============================================
+5 REM
+6 REM  WHAT CAN BE CHANGED:
+7 REM   - Screen refresh delay (KD variable)
+8 REM   - Display dimensions and colors
+9 REM   - RAM size (M variable, 160 or 256 pages)
 10 DIM R(9), RP(7), SS(3), PT(255), RM$(255), FT$(255)
 20 ON KEY(1) GOSUB 8140: KEY(1) ON
 30 ON KEY(2) GOSUB 8120: KEY(2) ON

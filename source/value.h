@@ -201,4 +201,8 @@ BValue bval_mid(const BValue *s, const BValue *start,
 BValue bval_concat(const BValue *a, const BValue *b, int line_num,
  void *pool);
 
+// --- Decimal Arithmetic ---
+extern int g_arithmetic_decimal;
+double bval_decimal_round(double val);
+
 #endif // BASICPP_VALUE_H

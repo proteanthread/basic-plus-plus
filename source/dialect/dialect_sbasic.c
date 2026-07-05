@@ -118,7 +118,7 @@ static const DialectConfig sbasic_config = {
     0, // has_on_error -- predates ON ERROR
     0, // has_cls -- mainframe terminal
     1, // has_tron_troff
-    "SBAS", // short_name
+    "SUPB", // short_name
     DFLAG_SBAS, // dialect_flag
     sbasic_apply // apply_fn
 };

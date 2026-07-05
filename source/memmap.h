@@ -54,6 +54,10 @@
 typedef enum MemMapType {
  MMAP_NONE = 0, // Bare 64K, no presets
  MMAP_MSDOS, // MS-DOS (default)
+ MMAP_IBM_PC, // IBM PC 5150
+ MMAP_IBM_PCJR, // IBM PCjr 4860
+ MMAP_IBM_XT, // IBM PC/XT 5160
+ MMAP_IBM_AT, // IBM PC/AT 5170
  MMAP_C64, // Commodore 64
  MMAP_C128, // Commodore 128
  MMAP_VIC20, // VIC-20
@@ -88,6 +92,8 @@ void memmap_list(void);
  //
  // Returns the MemMapType, or MMAP_COUNT if not recognized.
  // Case-insensitive matching.
+// memmap_default_for_dialect - Return default memory map for a dialect.
+MemMapType memmap_default_for_dialect(int dialect_id);
 MemMapType memmap_from_string(const char *name, int len);
 
 #endif // BASICPP_MEMMAP_H

@@ -2,7 +2,7 @@ BASIC++ Internals and Architecture
 ====================================
 A Technical Guide to the Interpreter's Design
 
-Version 4.1.1
+Version 4.2.3
 
 TABLE OF CONTENTS
 -----------------
@@ -617,7 +617,7 @@ temporary locals within functions).
 =====================================================================
 
 BASIC++ uses a bounded, type-checked stack for flow control.
-The stack depth is MAX_STACK_DEPTH (256 frames).
+The stack depth is MAX_STACK_DEPTH (1,024 frames).
 
 11.1  Pushing
 
@@ -862,7 +862,7 @@ built-in functions, statements, and operators.
 
   The handler function has the signature:
 
-    BValue my_func(RuntimeState *rt, BValue *args, int argc);
+    BValue my_func(BValue *args, int argc, void *rt);
 
 
 =====================================================================
@@ -971,23 +971,27 @@ functions, statements, and device drivers.
 17. SECURITY MODEL (security.h / security.c)
 =====================================================================
 
-BASIC++ implements a three-tier security model that controls
+BASIC++ implements a six-tier security model that controls
 what operations programs can perform.
 
 17.1  Security Levels
 
-  SEC_OPEN        No restrictions (default)
-                  All operations allowed
-  SEC_STANDARD    Moderate restrictions
-                  File I/O limited to current directory
-                  SHELL disabled
-                  Network access limited
-  SEC_RESTRICTED  Maximum restrictions
-                  No file I/O
-                  No SHELL
-                  No network
-                  No device access
-                  No module loading
+  SEC_OPEN (0)          No restrictions (default).
+                        All operations allowed.
+  SEC_SAFE (1)          Secure but functional.
+                        Hardware memory ops blocked;
+                        PEEK/POKE virtual only.
+  SEC_STANDARD (2)      Controlled sandbox.
+                        No SHELL, no EXEC.
+                        File I/O limited to current directory.
+  SEC_EDUCATIONAL (3)   Classroom mode.
+                        STANDARD restrictions plus
+                        no external code loading.
+  SEC_RESTRICTED (4)    Very limited.
+                        No file I/O, no graphics,
+                        no sound, no network.
+  SEC_PARANOID (5)      Pure computation only.
+                        Math and strings only.
 
 17.2  Capability Gating
 
@@ -1003,12 +1007,16 @@ what operations programs can perform.
 
   From BASIC:
     SECURITY OPEN           ' no restrictions
-    SECURITY STANDARD       ' moderate restrictions
-    SECURITY RESTRICTED     ' maximum restrictions
+    SECURITY SAFE           ' secure but functional
+    SECURITY STANDARD       ' controlled sandbox
+    SECURITY EDUCATIONAL    ' classroom mode
+    SECURITY RESTRICTED     ' very limited
+    SECURITY PARANOID       ' pure computation only
 
-  Once RESTRICTED is set, it cannot be lowered from BASIC code
-  (only from the command line or by restarting the interpreter).
-  This prevents untrusted programs from escalating privileges.
+  Security levels ratchet upward: once a higher level is set,
+  it cannot be lowered from BASIC code (only from the command
+  line or by restarting the interpreter).  This prevents
+  untrusted programs from escalating privileges.
 
 
 =====================================================================
@@ -1025,7 +1033,7 @@ execution engine.
 
     * An opcode dispatch table (for future bytecode)
     * An expression evaluation stack (eval_items/eval_top)
-    * State machine hooks (VM_IDLE, VM_RUNNING, VM_PAUSED, etc.)
+    * State machine hooks (VM_STOPPED, VM_RUNNING, VM_PAUSED, etc.)
 
   The expression evaluation stack is used by some built-in
   functions and the compiler subsystem.  The main interpreter
@@ -1035,7 +1043,7 @@ execution engine.
 
   The eval stack is a fixed-size array of BValue items:
 
-    BValue eval_items[VM_EVAL_STACK_SIZE];  /* 128 entries */
+    BValue eval_items[VM_EVAL_STACK_SIZE];  /* 64 entries */
     int    eval_top;                        /* -1 = empty  */
 
   Push/pop operations are used for postfix expression evaluation
@@ -1044,9 +1052,10 @@ execution engine.
 
 18.3  VM States
 
-  VM_IDLE       Not executing (at REPL prompt)
+  VM_STOPPED    Not executing (at REPL prompt)
   VM_RUNNING    Executing a program (RUN)
   VM_PAUSED     Paused (STOP, breakpoint)
+  VM_HALTED     Halted (END, fatal error)
   VM_ERROR      Error state (after unhandled error)
 
 18.4  Future Direction
@@ -1170,44 +1179,44 @@ and feature flags.
 21.1  Key Constants
 
   Identity:
-    BASICPP_VERSION       "0.21.0"
+    BASICPP_VERSION       "4.2.3"
     BASICPP_NAME          "BASIC++"
     BASICPP_PROMPT        "> "
     BASICPP_READY         "Ready."
 
   Memory Pool Sizes:
-    PROGRAM_MEMORY_SIZE   65536L    (64K)
-    VARIABLE_MEMORY_SIZE  65536L    (64K)
-    SCRATCH_MEMORY_SIZE   65536L    (64K)
+    PROGRAM_MEMORY_SIZE   8388608L  (8 MB)
+    VARIABLE_MEMORY_SIZE  1048576L  (1 MB)
+    SCRATCH_MEMORY_SIZE   524288L   (512 KB)
 
   Program Limits:
-    MAX_PROGRAM_LINES     4096
+    MAX_PROGRAM_LINES     65536
     MAX_LINE_LENGTH       255
-    MAX_STACK_DEPTH       256
+    MAX_STACK_DEPTH       1024
 
   Language Limits:
     LINE_NUMBER_MIN       1
-    LINE_NUMBER_MAX       32767
+    LINE_NUMBER_MAX       65529
     MAX_VARIABLES         26        (A-Z)
     MAX_FILE_CHANNELS     8
 
   Extended Variables:
     MAX_VAR_NAME_LEN      31
-    MAX_NAMED_VARS        256
+    MAX_NAMED_VARS        4096
     MAX_STRING_VARS       26
 
   Arrays:
-    MAX_DIM_ARRAYS        64
-    MAX_ARRAY_DIMS        2         (1D and 2D)
-    MAX_ARRAY_ELEMENTS    8192
+    MAX_DIM_ARRAYS        1024
+    MAX_ARRAY_DIMS        3         (1D, 2D, and 3D)
+    MAX_ARRAY_ELEMENTS    4194304
 
   Other:
-    MAX_USER_FUNCS        64
-    MAX_USER_TYPES        32
-    MAX_TYPED_VARS        64
-    MAX_DATA_ITEMS        4096
-    MAX_BREAKPOINTS       32
-    INPUT_BUFFER_SIZE     1024
+    MAX_USER_FUNCS        256
+    MAX_USER_TYPES        64
+    MAX_TYPED_VARS        512
+    MAX_DATA_ITEMS        65536
+    MAX_BREAKPOINTS       256
+    INPUT_BUFFER_SIZE     257
 
 21.2  Tuning for Constrained Targets
 
@@ -1215,7 +1224,7 @@ and feature flags.
 
     #define PROGRAM_MEMORY_SIZE   32768L
     #define VARIABLE_MEMORY_SIZE  16384L
-    #define SCRATCH_MEMORY_SIZE   4096L
+    #define SCRATCH_MEMORY_SIZE   16384L
     #define MAX_PROGRAM_LINES     1024
     #define MAX_STACK_DEPTH       64
 
@@ -1437,36 +1446,50 @@ This shows which subsystems depend on which.  An arrow means
 
   Resource                    Limit       Defined In
   --------                    -----       ----------
-  Program lines               4096        config.h
+  Program lines               65536       config.h
   Line length (chars)         255         config.h
-  Stack depth (frames)        256         config.h
+  Stack depth (frames)        1024        config.h
   Single-letter variables     26          config.h
   String variables            26          config.h
-  Named variables             256         config.h
+  Named variables             4096        config.h
   Variable name length        31          config.h
-  DIM arrays                  64          config.h
-  Array dimensions            2           config.h
-  Array elements (pool)       8192        config.h
-  DATA items                  4096        config.h
-  User functions (DEF FN)     64          config.h
-  SUB/FUNCTION definitions    64          runtime.h
+  DIM arrays                  1024        config.h
+  Array dimensions            3           config.h
+  Array elements (pool)       4194304     config.h
+  DATA items                  65536       config.h
+  User functions (DEF FN)     256         config.h
+  SUB/FUNCTION definitions    256         config.h
   SUB parameters              8           runtime.h
-  User-defined types          32          config.h
-  Typed variable instances    64          config.h
+  User-defined types          64          config.h
+  Typed variable instances    512         config.h
   Constants (CONST)           64          runtime.h
   Line labels                 128         runtime.h
-  Breakpoints                 32          config.h
+  Breakpoints                 256         config.h
   File channels               8           config.h
   Virtual devices             64          vdev.h
   Function key macros         48          runtime.h
   F-key macro length          15          runtime.h
-  VM eval stack               128         vm.h
-  Variable pool               64K         config.h
-  Scratch pool                64K         config.h
-  Program store               64K         config.h
-  Virtual memory segment      64K         config.h
-  Input buffer                1024        config.h
-  Line number range           1-32767     config.h
+  VM eval stack               64          config.h
+  Variable pool               1 MB        config.h
+  Scratch pool                512 KB      config.h
+  Program store               8 MB        config.h
+  Virtual memory segment      64 KB       config.h
+  Input buffer                257         config.h
+  Line number range           1-65529     config.h
+  Graphics memory (bytes)     4194304     config.h
+  Registered modules          64          config.h
+  External functions          32          config.h
+  External libraries          8           config.h
+  External features           16          config.h
+  External plugins            8           config.h
+  Graphics width (pixels)     320         config.h
+  Graphics height (pixels)    200         config.h
+  Graphics colors             16          config.h
+  Stdlib core enabled         1 (yes)     config.h
+  Stdlib dialect enabled      1 (yes)     config.h
+  Stdlib max overrides        64          config.h
+  Default PRINT width         6           config.h
+  Max function arguments      4           config.h
 
 All limits are configurable by editing config.h and rebuilding.
 No limit requires dynamic allocation to change -- they all

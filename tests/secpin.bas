@@ -4,34 +4,34 @@
 1030 REM
 1040 REM  PURPOSE:
 1050 REM  Tests the 6-level security model and module security
-1060 REM  pinning system. Verifies that:
+1060 REM  pinning system.
 1070 REM
-1080 REM  1. All 6 security levels are recognized by name:
-1090 REM     OPEN (0), SAFE (1), STANDARD (2), EDUCATIONAL (3),
-1100 REM     RESTRICTED (4), PARANOID (5)
-1110 REM
-1120 REM  2. SECURITY <name> and SECURITY <number> both work,
-1130 REM     with names being the preferred syntax.
-1140 REM
-1150 REM  3. Operations are correctly permitted or denied at
-1160 REM     each security level per the permission matrix.
-1170 REM
-1180 REM  4. Module security pinning enforces strict matching:
-1190 REM     a module pinned to SAFE only loads at SAFE.
-1200 REM
-1210 REM  5. SPEC security pinning enforces strict matching:
-1220 REM     a spec pinned to STANDARD only executes at STANDARD.
-1230 REM
-1240 REM  6. Program management (LIST, LOAD, SAVE, RUN, NEW)
-1250 REM     works at ALL levels including PARANOID.
-1260 REM
-1270 REM  EXPECTED RESULTS:
-1280 REM  - Named level tests: all 6 names recognized
-1290 REM  - Permission tests: correct allow/deny per matrix
-1300 REM  - Pinning tests: strict-match enforcement
-1310 REM  - PROG_MGMT: always allowed at every level
+1080 REM  WHAT CAN BE CHANGED:
+1090 REM   - Security level test order
+1100 REM   - Permission matrix display format
+1110 REM   - Additional security level tests
+1120 REM
+1130 REM  WHAT CANNOT BE CHANGED:
+1140 REM   - tests/basicpp.cfg must have security = OPEN
+1150 REM     (this test manages its own security levels)
+1160 REM   - SECURITY command names (OPEN, SAFE, STANDARD,
+1170 REM     EDUCATIONAL, RESTRICTED, PARANOID)
+1180 REM   - Must end with SECURITY OPEN before exit
+1190 REM
+1200 REM  WHAT TO EXPECT:
+1210 REM   - All 6 security level names recognized
+1220 REM   - Permission matrix printed for reference
+1230 REM   - Module pinning behavior documented
+1240 REM   - SPEC pinning behavior documented
+1250 REM
+1260 REM  TROUBLESHOOTING:
+1270 REM   - SORRY? SPEC requires security level SAFE:
+1280 REM     check tests/basicpp.cfg security setting
+1290 REM     (must be OPEN, not STANDARD or higher)
+1300 REM   - Security commands not recognized: ensure
+1310 REM     GW-BASIC dialect is active
 1320 REM
-1330 REM  REQUIRES: SECURITY OPEN to start (default)
+1330 REM  REQUIRES: tests/basicpp.cfg with security = OPEN
 1340 REM
 1350 REM =====================================================
 1360 REM
@@ -226,7 +226,7 @@
 7190 PRINT
 7200 PRINT "  A spec pinned to SAFE will only execute at SAFE."
 7210 PRINT "  At any other level, execution is denied with:"
-7220 PRINT "    SORRY? SPEC requires security level SAFE"
+7220 PRINT "    Error msg: [SORRY] SPEC requires security level SAFE"
 7230 PRINT
 7240 SECURITY OPEN
 8000 REM =====================================================

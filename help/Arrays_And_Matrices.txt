@@ -3,7 +3,7 @@ ARRAYS AND MATRICES IN BASIC++
 A Complete Tutorial on DIM Arrays, MAT Operations,
 String Arrays, and Advanced Techniques
 
-Version 4.1.1
+Version 4.2.3
 
 TABLE OF CONTENTS
 -----------------
@@ -132,6 +132,32 @@ every non-trivial program uses them.
     DIM Students(30) AS StudentRec
 
   See User_Defined_Types.txt for complete typed array coverage.
+
+2.6  Typed Array Internals
+
+  When you declare a typed array with DIM AS, the DimArray
+  structure stores a type_index that links each array element
+  to a UserTypeDef:
+
+    typedef struct DimArray {
+        char name[MAX_VAR_NAME_LEN + 1];
+        int dims;
+        int size[MAX_ARRAY_DIMS];
+        BValue *elements;
+        int total;
+        int type_index;  / -1=normal, >=0=typed (UserTypeDef index) /
+    } DimArray;
+
+  For typed arrays, elements are stored in field-stride layout:
+  element[i * field_count + field_index].  Access a field with
+  runtime_get_typed_array_field():
+
+    BValue runtime_get_typed_array_field(RuntimeState rt,
+        DimArray *arr, int elem_index, int field_index);
+
+  A type_index of -1 means a normal (untyped) numeric or string
+  array.  A value >= 0 indexes into user_types[] to find the
+  type definition.
 
 
 =====================================================================
@@ -1476,10 +1502,10 @@ instead of a large 2D array:
 
   Limit                    Value       Notes
   -----                    -----       -----
-  Max arrays               64          Increase MAX_DIM_ARRAYS
-  Max dimensions           2           Cannot be changed
-  Max elements (total)     8192        Shared across all arrays
-  Max subscript value      32767       Same as max line number
+  Max arrays               1024        Increase MAX_DIM_ARRAYS
+  Max dimensions           3           Max dimensions allowed
+  Max elements (total)     4194304     Shared across all arrays
+  Max subscript value      65529       Same as max line number
   Max array name length    31 chars    Same as variable names
 
 31.2  Common Errors

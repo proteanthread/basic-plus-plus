@@ -48,7 +48,8 @@
 #include <stdarg.h>
 #include "vdev.h"
 #include "io/vfs.h"
-#include "gw_sdl2.h"
+#include "sdl2_emu.h"
+#include "platform.h"
 
 struct GW_Memory;
 extern struct GW_Memory *g_gw_mem;
@@ -58,7 +59,67 @@ extern struct GW_Memory *g_gw_mem;
 #include <windows.h>
 #include <conio.h>
 #endif
+#include "console.h"
+#include "standalone/mock_bios/mock_bios_core.h"
 
+MockBiosContext global_mock_bios = { 0 };
+static MockBiosRegs g_vhal_regs = { 0 };
+
+static void vhal_get_registers(void *user_data, uint32_t *ax, uint32_t *bx, uint32_t *cx, uint32_t *dx, uint32_t *flags) {
+    (void)user_data;
+    *ax = g_vhal_regs.ax;
+    *bx = g_vhal_regs.bx;
+    *cx = g_vhal_regs.cx;
+    *dx = g_vhal_regs.dx;
+    *flags = g_vhal_regs.flags;
+}
+
+static void vhal_set_registers(void *user_data, uint32_t ax, uint32_t bx, uint32_t cx, uint32_t dx, uint32_t flags) {
+    (void)user_data;
+    g_vhal_regs.ax = ax;
+    g_vhal_regs.bx = bx;
+    g_vhal_regs.cx = cx;
+    g_vhal_regs.dx = dx;
+    g_vhal_regs.flags = flags;
+}
+
+static uint8_t vhal_read_mem(void *user_data, uint32_t addr) {
+    (void)user_data;
+    static uint8_t bda[256];
+    if (addr >= 0x0400 && addr < 0x0500) return bda[addr - 0x0400];
+    return 0;
+}
+
+static void vhal_write_mem(void *user_data, uint32_t addr, uint8_t val) {
+    (void)user_data;
+    static uint8_t bda[256];
+    (void)bda;
+    if (addr >= 0x0400 && addr < 0x0500) bda[addr - 0x0400] = val;
+}
+
+static void vhal_sleep(void *user_data, int ms) {
+    (void)ms;
+    (void)user_data;
+    // wait for ms, not strictly needed for this mock but good for completeness
+}
+
+static int vhal_ioctl_callback(void *user_data, int cmd, void *arg) {
+    (void)user_data;
+    if (cmd == VDEV_IOCTL_INT10) {
+        MockBiosRegs *r = (MockBiosRegs *)arg;
+        uint8_t al = r->ax & 0xFF;
+        uint8_t ah = (r->ax >> 8) & 0xFF;
+        if (ah == 0x0E || ah == 0x09) {
+            putchar(al);
+        }
+        return 1;
+    } else if (cmd == VDEV_IOCTL_INT16) {
+        MockBiosRegs *r = (MockBiosRegs *)arg;
+        r->ax = gw_console_read_char();
+        return 1;
+    }
+    return 0;
+}
 // --- Device Table ---
  // Static table of all registered devices. Slots 0-2 are reserved
  // for built-in devices. Slots 3-63 are available for user devices.
@@ -73,40 +134,56 @@ static int device_used = 0;
 
 static int con_putc(VDev *d, int ch)
 {
- (void)d;
- return (putchar(ch) == EOF) ? -1 : 0;
+    (void)d;
+    if (global_mock_bios.model != BIOS_MODEL_NONE) {
+        g_vhal_regs.ax = 0x0E00 | (ch & 0xFF);
+        mock_bios_interrupt(&global_mock_bios, 0x10);
+        return 0;
+    }
+    return (putchar(ch) == EOF) ? -1 : 0;
 }
 
 static int con_puts(VDev *d, const char *s)
 {
- (void)d;
- return (fputs(s, stdout) == EOF) ? -1 : 0;
+    while (*s) {
+        if (con_putc(d, *s++) == -1) return -1;
+    }
+    return 0;
 }
 
 static int con_flush(VDev *d)
 {
  (void)d;
- fflush(stdout);
+ extern int g_screen_lock;
+ if (!g_screen_lock) {
+     fflush(stdout);
+ }
  return 0;
 }
 
 static int con_cls(VDev *d)
 {
  (void)d;
-#if defined(_WIN32) || defined(_WIN64) || \
- defined(__MSDOS__) || defined(__DOS__) || defined(MSDOS)
- system("cls");
-#else
+#ifndef NO_SDL2
+ if (gw_sdl2_is_active()) {
+     gw_sdl2_clear_screen(gw_sdl2_get_text_bg());
+     return 0;
+ }
+#endif
  printf("\033[2J\033[H");
  fflush(stdout);
-#endif
  return 0;
 }
 
 static int con_getc(VDev *d)
 {
- (void)d;
- return getchar();
+    (void)d;
+    if (global_mock_bios.model != BIOS_MODEL_NONE) {
+        g_vhal_regs.ax = 0x0000;
+        mock_bios_interrupt(&global_mock_bios, 0x16);
+        return g_vhal_regs.ax & 0xFF;
+    }
+    return getchar();
 }
 
 static int con_gets(VDev *d, char *buf, int max)
@@ -220,73 +297,249 @@ static long file_seek(VDev *d, long offset, int whence)
  return ftell((FILE *)d->user_data);
 }
 
+// --- NULL: device ---
+static int null_putc(VDev *d, int ch)
+{
+    (void)d;
+    (void)ch;
+    return 0;
+}
+
+static int null_puts(VDev *d, const char *s)
+{
+    (void)d;
+    (void)s;
+    return 0;
+}
+
+static int null_getc(VDev *d)
+{
+    (void)d;
+    return -1; // EOF
+}
+
+static int null_gets(VDev *d, char *buf, int max)
+{
+    (void)d;
+    if (max > 0) buf[0] = '\0';
+    return 0;
+}
+
+static int null_read(VDev *d, void *buf, int len)
+{
+    (void)d;
+    (void)buf;
+    (void)len;
+    return 0; // EOF
+}
+
+static int null_write(VDev *d, const void *buf, int len)
+{
+    (void)d;
+    (void)buf;
+    return len;
+}
+
+// --- TIMER: device ---
+static int timer_getc(VDev *d)
+{
+    (void)d;
+    return -1;
+}
+
+// System time helpers
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+#else
+#include <time.h>
+#include <sys/time.h>
+#endif
+
+static double mock_time_sec = 0.0;
+static int mock_time_active = 0;
+
+void vdev_set_mock_time_active(int active)
+{
+    mock_time_active = active;
+    mock_time_sec = 0.0;
+}
+
+void vdev_increment_mock_time(double amt)
+{
+    mock_time_sec += amt;
+}
+
+double vdev_get_time(void)
+{
+    if (mock_time_active) {
+        return mock_time_sec;
+    }
+#if defined(_WIN32) || defined(_WIN64)
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    return (double)(st.wHour * 3600 + st.wMinute * 60 + st.wSecond) + (double)st.wMilliseconds / 1000.0;
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    time_t t = tv.tv_sec;
+    struct tm *tm = localtime(&t);
+    if (tm) {
+        return (double)(tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec) + (double)tv.tv_usec / 1000000.0;
+    }
+    return 0.0;
+#endif
+}
+
+static int timer_read(VDev *d, void *buf, int len)
+{
+    (void)d;
+    if (len >= (int)sizeof(double)) {
+        double t = vdev_get_time();
+        memcpy(buf, &t, sizeof(double));
+        return (int)sizeof(double);
+    }
+    return -1;
+}
+
+static int timer_ioctl(VDev *d, int cmd, void *arg)
+{
+    (void)d;
+    if (cmd == VDIO_RESET) {
+        vdev_set_mock_time_active(0);
+        return 0;
+    }
+    if (cmd == 10) { // Set deterministic/mock mode
+        int active = arg ? *(int*)arg : 0;
+        vdev_set_mock_time_active(active);
+        return 0;
+    }
+    if (cmd == 11) { // Increment mock time
+        double amt = arg ? *(double*)arg : 0.0;
+        vdev_increment_mock_time(amt);
+        return 0;
+    }
+    return -1;
+}
+
 // --- Device System Functions ---
 
 void vdev_init(void)
 {
- // Clear entire device table
- memset(device_table, 0, sizeof(device_table));
- device_used = 0;
+    // Clear entire device table
+    memset(device_table, 0, sizeof(device_table));
+    device_used = 0;
 
- // --- CON: device (slot 0) ---
- device_table[VDEV_CON].name = "CON:";
- device_table[VDEV_CON].dev_putc = con_putc;
- device_table[VDEV_CON].dev_puts = con_puts;
- device_table[VDEV_CON].dev_flush = con_flush;
- device_table[VDEV_CON].dev_cls = con_cls;
- device_table[VDEV_CON].dev_getc = con_getc;
- device_table[VDEV_CON].dev_gets = con_gets;
- device_table[VDEV_CON].dev_open = NULL;
- device_table[VDEV_CON].dev_close = NULL;
- device_table[VDEV_CON].user_data = NULL;
- // metadata
- device_table[VDEV_CON].dev_class = VDCLASS_CONSOLE;
- device_table[VDEV_CON].dev_caps = VDCAP_READ | VDCAP_WRITE;
- device_table[VDEV_CON].dev_version = "1.0";
- device_table[VDEV_CON].dev_description = "Console (stdout + stdin)";
- device_table[VDEV_CON].dev_req_caps = 0;
+    // Initialize Mock BIOS globally
+    global_mock_bios.model = BIOS_MODEL_MSDOS;
+    global_mock_bios.get_registers = vhal_get_registers;
+    global_mock_bios.set_registers = vhal_set_registers;
+    global_mock_bios.read_mem = vhal_read_mem;
+    global_mock_bios.write_mem = vhal_write_mem;
+    global_mock_bios.vdev_sleep = vhal_sleep;
+    global_mock_bios.vdev_ioctl = vhal_ioctl_callback;
 
- // --- ERR: device (slot 1) ---
- device_table[VDEV_ERR].name = "ERR:";
- device_table[VDEV_ERR].dev_putc = err_putc;
- device_table[VDEV_ERR].dev_puts = err_puts;
- device_table[VDEV_ERR].dev_flush = err_flush;
- device_table[VDEV_ERR].dev_cls = NULL;
- device_table[VDEV_ERR].dev_getc = NULL;
- device_table[VDEV_ERR].dev_gets = NULL;
- device_table[VDEV_ERR].dev_open = NULL;
- device_table[VDEV_ERR].dev_close = NULL;
- device_table[VDEV_ERR].user_data = NULL;
- // metadata
- device_table[VDEV_ERR].dev_class = VDCLASS_CONSOLE;
- device_table[VDEV_ERR].dev_caps = VDCAP_WRITE;
- device_table[VDEV_ERR].dev_version = "1.0";
- device_table[VDEV_ERR].dev_description = "Error output (stderr)";
- device_table[VDEV_ERR].dev_req_caps = 0;
+    // --- CON: device (slot 0) ---
+    device_table[VDEV_CON].name = "CON:";
+    device_table[VDEV_CON].dev_putc = con_putc;
+    device_table[VDEV_CON].dev_puts = con_puts;
+    device_table[VDEV_CON].dev_flush = con_flush;
+    device_table[VDEV_CON].dev_cls = con_cls;
+    device_table[VDEV_CON].dev_getc = con_getc;
+    device_table[VDEV_CON].dev_gets = con_gets;
+    device_table[VDEV_CON].dev_open = NULL;
+    device_table[VDEV_CON].dev_close = NULL;
+    device_table[VDEV_CON].user_data = NULL;
+    // metadata
+    device_table[VDEV_CON].dev_class = VDCLASS_CONSOLE;
+    device_table[VDEV_CON].dev_caps = VDCAP_READ | VDCAP_WRITE;
+    device_table[VDEV_CON].dev_version = "1.0";
+    device_table[VDEV_CON].dev_description = "Console (stdout + stdin)";
+    device_table[VDEV_CON].dev_req_caps = 0;
 
- // --- FILE: device (slot 2) ---
- device_table[VDEV_FILE].name = "FILE:";
- device_table[VDEV_FILE].dev_putc = file_putc;
- device_table[VDEV_FILE].dev_puts = file_puts;
- device_table[VDEV_FILE].dev_flush = file_flush;
- device_table[VDEV_FILE].dev_cls = NULL;
- device_table[VDEV_FILE].dev_getc = file_getc;
- device_table[VDEV_FILE].dev_gets = file_gets;
- device_table[VDEV_FILE].dev_open = file_open;
- device_table[VDEV_FILE].dev_close = file_close;
- device_table[VDEV_FILE].user_data = NULL;
- // metadata
- device_table[VDEV_FILE].dev_class = VDCLASS_FILE;
- device_table[VDEV_FILE].dev_caps = VDCAP_FILELIKE;
- device_table[VDEV_FILE].dev_version = "1.0";
- device_table[VDEV_FILE].dev_description = "File I/O (stdio)";
- device_table[VDEV_FILE].dev_req_caps = 0;
- // binary I/O
- device_table[VDEV_FILE].dev_read = file_read;
- device_table[VDEV_FILE].dev_write = file_write;
- device_table[VDEV_FILE].dev_seek = file_seek;
+    // --- ERR: device (slot 1) ---
+    device_table[VDEV_ERR].name = "ERR:";
+    device_table[VDEV_ERR].dev_putc = err_putc;
+    device_table[VDEV_ERR].dev_puts = err_puts;
+    device_table[VDEV_ERR].dev_flush = err_flush;
+    device_table[VDEV_ERR].dev_cls = NULL;
+    device_table[VDEV_ERR].dev_getc = NULL;
+    device_table[VDEV_ERR].dev_gets = NULL;
+    device_table[VDEV_ERR].dev_open = NULL;
+    device_table[VDEV_ERR].dev_close = NULL;
+    device_table[VDEV_ERR].user_data = NULL;
+    // metadata
+    device_table[VDEV_ERR].dev_class = VDCLASS_CONSOLE;
+    device_table[VDEV_ERR].dev_caps = VDCAP_WRITE;
+    device_table[VDEV_ERR].dev_version = "1.0";
+    device_table[VDEV_ERR].dev_description = "Error output (stderr)";
+    device_table[VDEV_ERR].dev_req_caps = 0;
 
- device_used = VDEV_USER;
+    // --- FILE: device (slot 2) ---
+    device_table[VDEV_FILE].name = "FILE:";
+    device_table[VDEV_FILE].dev_putc = file_putc;
+    device_table[VDEV_FILE].dev_puts = file_puts;
+    device_table[VDEV_FILE].dev_flush = file_flush;
+    device_table[VDEV_FILE].dev_cls = NULL;
+    device_table[VDEV_FILE].dev_getc = file_getc;
+    device_table[VDEV_FILE].dev_gets = file_gets;
+    device_table[VDEV_FILE].dev_open = file_open;
+    device_table[VDEV_FILE].dev_close = file_close;
+    device_table[VDEV_FILE].user_data = NULL;
+    // metadata
+    device_table[VDEV_FILE].dev_class = VDCLASS_FILE;
+    device_table[VDEV_FILE].dev_caps = VDCAP_FILELIKE;
+    device_table[VDEV_FILE].dev_version = "1.0";
+    device_table[VDEV_FILE].dev_description = "File I/O (stdio)";
+    device_table[VDEV_FILE].dev_req_caps = 0;
+    // binary I/O
+    device_table[VDEV_FILE].dev_read = file_read;
+    device_table[VDEV_FILE].dev_write = file_write;
+    device_table[VDEV_FILE].dev_seek = file_seek;
+
+    // --- NULL: device (slot 3) ---
+    device_table[VDEV_NULL].name = "NULL:";
+    device_table[VDEV_NULL].dev_putc = null_putc;
+    device_table[VDEV_NULL].dev_puts = null_puts;
+    device_table[VDEV_NULL].dev_flush = NULL;
+    device_table[VDEV_NULL].dev_cls = NULL;
+    device_table[VDEV_NULL].dev_getc = null_getc;
+    device_table[VDEV_NULL].dev_gets = null_gets;
+    device_table[VDEV_NULL].dev_open = NULL;
+    device_table[VDEV_NULL].dev_close = NULL;
+    device_table[VDEV_NULL].user_data = NULL;
+    // metadata
+    device_table[VDEV_NULL].dev_class = VDCLASS_UNKNOWN;
+    device_table[VDEV_NULL].dev_caps = VDCAP_READ | VDCAP_WRITE | VDCAP_BINARY;
+    device_table[VDEV_NULL].dev_version = "1.0";
+    device_table[VDEV_NULL].dev_description = "Null device";
+    device_table[VDEV_NULL].dev_req_caps = 0;
+    // binary I/O
+    device_table[VDEV_NULL].dev_read = null_read;
+    device_table[VDEV_NULL].dev_write = null_write;
+
+    // --- TIMER: device (slot 4) ---
+    device_table[VDEV_TIMER].name = "TIMER:";
+    device_table[VDEV_TIMER].dev_putc = NULL;
+    device_table[VDEV_TIMER].dev_puts = NULL;
+    device_table[VDEV_TIMER].dev_flush = NULL;
+    device_table[VDEV_TIMER].dev_cls = NULL;
+    device_table[VDEV_TIMER].dev_getc = timer_getc;
+    device_table[VDEV_TIMER].dev_gets = NULL;
+    device_table[VDEV_TIMER].dev_open = NULL;
+    device_table[VDEV_TIMER].dev_close = NULL;
+    device_table[VDEV_TIMER].user_data = NULL;
+    // metadata
+    device_table[VDEV_TIMER].dev_class = VDCLASS_TIMER;
+    device_table[VDEV_TIMER].dev_caps = VDCAP_READ | VDCAP_BINARY | VDCAP_CONTROL;
+    device_table[VDEV_TIMER].dev_version = "1.0";
+    device_table[VDEV_TIMER].dev_description = "Timer device";
+    device_table[VDEV_TIMER].dev_req_caps = 0;
+    // binary I/O
+    device_table[VDEV_TIMER].dev_read = timer_read;
+    device_table[VDEV_TIMER].dev_write = NULL;
+    device_table[VDEV_TIMER].dev_ioctl = timer_ioctl;
+
+    device_used = VDEV_USER;
 }
 
 VDev *vdev_get(int id)
@@ -437,7 +690,8 @@ int vdev_printf(VDev *d, const char *fmt, ...)
  if (d == NULL || d->dev_puts == NULL) return -1;
 
  va_start(ap, fmt);
- vsprintf(buf, fmt, ap);
+ /* vsnprintf prevents buffer overflow -- always use bounded writes */
+ vsnprintf(buf, sizeof(buf), fmt, ap);
  va_end(ap);
 
  return d->dev_puts(d, buf);
@@ -528,12 +782,12 @@ const char *vdev_info(VDev *d, const char *key)
 
 void vdev_beep(void)
 {
-    if (g_gw_mem != NULL) {
 #ifndef NO_SDL2
+    if (gw_sdl2_is_active()) {
         gw_sdl2_beep();
         return;
-#endif
     }
+#endif
 #if defined(_WIN32) || defined(_WIN64)
  Beep(800, 200);
 #else
@@ -544,12 +798,12 @@ void vdev_beep(void)
 
 void vdev_sound(int freq_hz, int duration_ms)
 {
-    if (g_gw_mem != NULL) {
 #ifndef NO_SDL2
+    if (gw_sdl2_is_active()) {
         gw_sdl2_play_tone((float)freq_hz, duration_ms, 1);
         return;
-#endif
     }
+#endif
  if (freq_hz < 37) freq_hz = 37;
  if (freq_hz > 32767) freq_hz = 32767;
  if (duration_ms < 1) duration_ms = 1;
@@ -576,21 +830,23 @@ void vdev_sleep(int duration_ms)
 {
  if (duration_ms < 1) return;
  if (duration_ms > 30000) duration_ms = 30000;
-#if defined(_WIN32) || defined(_WIN64)
- Sleep((DWORD)duration_ms);
-#else
- (void)duration_ms;
+#ifndef NO_SDL2
+ if (gw_sdl2_is_active()) {
+     gw_sdl2_delay(duration_ms);
+     return;
+ }
 #endif
+ platform_sleep_ms(duration_ms);
 }
 
 int vdev_inkey(void)
 {
-    if (g_gw_mem != NULL) {
 #ifndef NO_SDL2
+    if (gw_sdl2_is_active()) {
         gw_sdl2_poll_events();
         return gw_sdl2_get_key();
-#endif
     }
+#endif
 #if defined(_WIN32) || defined(_WIN64)
  if (_kbhit()) {
  return _getch();

@@ -47,6 +47,7 @@
 #include <string.h>
 #include "lexer.h"
 #include "alias_lang.h"
+#include "../console.h"
 
 // --- Language Pack Entry ---
 typedef struct {

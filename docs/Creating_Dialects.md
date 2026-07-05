@@ -1,6 +1,6 @@
 CREATING YOUR OWN DIALECTS
 ===========================
-Version 4.1.1
+Version 4.2.3
 
 BASIC++ has a configurable dialect engine that controls which
 keywords are accepted, how variables work, what syntax rules
@@ -159,17 +159,17 @@ are needed in the parser — it just reads the config.
    9  ATRI   Atari BASIC               1979   Yes    Yes      DIM
   10  C64B   Commodore BASIC v2        1982   Yes    Yes      DIM
   11  COCO   Color Computer BASIC      1980   Yes    Yes      DIM
-  12  SINC   Sinclair BASIC            1982   Yes    Yes      DIM
-  13  SUPB   SuperBASIC (Sinclair QL)  1984   Yes    Yes      DIM
-  14  MBAS   MBASIC (CP/M)             1977   Yes    Yes      DIM
-  15  SBAS   SUPER BASIC (Tymshare)    1968   Yes    Yes      DIM
+  12  MBAS   MBASIC (CP/M)             1977   Yes    Yes      DIM
+  13  SINC   Sinclair BASIC            1982   Yes    Yes      DIM
+  14  SQLB   SuperBASIC (Sinclair QL)  1984   Yes    Yes      DIM
+  15  SUPB   SUPER BASIC (Tymshare)    1968   Yes    Yes      DIM
 
   ID  Separator  THEN   LET opt  Prompt     Zone  WHILE  DO/LOOP
   --  ---------  ----   -------  ------     ----  -----  -------
    0  ;          No     Yes      READY        8    Yes*   Yes*
    1  :          Yes    Yes      READY       16    No     No
    2  :          Yes    Yes      READY       14    Yes    No
-   3  :          Yes    Yes      Ok          14    Yes    Yes
+   3  :          Yes    Yes      Ok          14    Yes    No
    4  :          Yes    No       READY       14    No     No
    5  :          Yes    Yes      READY       14    Yes    Yes
    6  :          Yes    Yes      Ok          14    Yes    Yes
@@ -178,10 +178,10 @@ are needed in the parser — it just reads the config.
    9  :          Yes    Yes      READY       10    No     No
   10  :          Yes    Yes      READY.      10    No     No
   11  :          Yes    Yes      OK          16    No     No
-  12  :          Yes    Yes      0 OK,0:1    14    No     No
-  13  :          Yes    Yes      Ready.      14    Yes    Yes
-  14  :          Yes    Yes      Ok          14    Yes    No
-  15  :          Yes    No       Ready.      14    Yes    Yes
+  12  :          Yes    Yes      Ok          14    Yes    No
+  13  :          Yes    No       0 OK        16    No     No
+  14  :          Yes    Yes      SuperBASIC  16    No     No
+  15  :          Yes    No       READY       15    No     No
 
   * PATB: WHILE/DO are BASIC++ extensions added for convenience.
 
@@ -212,12 +212,16 @@ which dialects support it.  The bitmask is a 16-bit unsigned:
   DFLAG_ATRI   bit 9    Atari BASIC
   DFLAG_C64B   bit 10   Commodore BASIC
   DFLAG_COCO   bit 11   Tandy CoCo
+  DFLAG_MBAS   bit 12   MBASIC (CP/M)
+  DFLAG_SINC   bit 13   Sinclair BASIC
+  DFLAG_SUPA   bit 14   SuperBASIC (QL)
+  DFLAG_SBAS   bit 15   SUPER BASIC (Tymshare)
   DFLAG_ALL    0xFFFF   All dialects (BASIC++ native)
 
   Convenience macros:
-  DFLAG_MSBASIC  = TRS2|GWBS|QBAS|ASFT|C64B|COCO  (Microsoft family)
+  DFLAG_MSBASIC  = TRS2|GWBS|QBAS|ASFT|C64B|COCO|MBAS  (Microsoft family)
   DFLAG_MSALL    = TRS1|MSBASIC  (all Microsoft including Level I)
-  DFLAG_STRUCT   = GWBS|QBAS|E116  (structured BASICs)
+  DFLAG_STRUCT   = GWBS|QBAS|E116|MBAS|SUPA  (structured BASICs)
   DFLAG_GWQB     = GWBS|QBAS  (GW/QBasic pair)
 
   Example keyword bitmask:

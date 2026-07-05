@@ -47,6 +47,7 @@
 #include <string.h>
 #include "override.h"
 #include "lexer.h"
+#include "../console.h"
 
 // --- Override Table ---
 static struct {

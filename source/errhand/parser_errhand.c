@@ -192,6 +192,7 @@ void pi_parse_when(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_use - Handle USE command.
 void pi_parse_use(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
  // USE - ECMA-116 exception handler marker.
  //
  // If reached by fall-through (no error or
@@ -263,6 +264,7 @@ void pi_parse_use(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_retry - Handle RETRY command.
 void pi_parse_retry(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
  // RETRY - ECMA-116: Re-enter protected block.
  //
  // Only valid inside a USE handler. Jumps back
@@ -288,6 +290,7 @@ void pi_parse_retry(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_continue - Handle CONTINUE command.
 void pi_parse_continue(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
  // CONTINUE - ECMA-116: Resume after error.
  //
  // Only valid inside a USE handler. Jumps to the

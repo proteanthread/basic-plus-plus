@@ -4,7 +4,7 @@
 40 REM  D to draw from deck, ESC quit
 50 REM =============================================
 60 RANDOMIZE TIMER
-70 CURSOR OFF
+70 PRINT CHR$(27);"[?25l";
 80 REM --- Card representation ---
 90 REM Card = suit*13 + rank (0-51)
 100 REM Suit: 0=Spades, 1=Hearts, 2=Diamonds, 3=Clubs
@@ -19,8 +19,8 @@
 190 DIM WASTE(24), WASTESZ
 200 DIM STOCK(24), STOCKSZ
 210 REM Cursor position
-220 CUR.X = 1: CUR.Y = 1
-230 SEL.C = -1: SEL.R = -1
+220 CUR_X = 1: CUR_Y = 1
+230 SEL_C = -1: SEL_R = -1
 240 MOVES = 0
 250 REM
 260 REM --- Initialize deck ---
@@ -64,12 +64,12 @@
 640 K$ = INKEY$
 650 IF K$ = "" THEN 640
 660 IF K$ = CHR$(27) THEN 2000
-670 IF LEN(K$) = 2 THEN SK = ASC(MID$(K$, 2, 1)) ELSE SK = 0
+670 SK = 0 : IF LEN(K$) = 2 THEN SK = ASC(MID$(K$, 2, 1))
 680 REM Navigate
-690 IF SK = 75 AND CUR.X > 1 THEN CUR.X = CUR.X - 1
-700 IF SK = 77 AND CUR.X < 7 THEN CUR.X = CUR.X + 1
-710 IF SK = 72 AND CUR.Y > 1 THEN CUR.Y = CUR.Y - 1
-720 IF SK = 80 AND CUR.Y < 13 THEN CUR.Y = CUR.Y + 1
+690 IF SK = 75 AND CUR_X > 1 THEN CUR_X = CUR_X - 1
+700 IF SK = 77 AND CUR_X < 7 THEN CUR_X = CUR_X + 1
+710 IF SK = 72 AND CUR_Y > 1 THEN CUR_Y = CUR_Y - 1
+720 IF SK = 80 AND CUR_Y < 13 THEN CUR_Y = CUR_Y + 1
 730 REM Draw card
 740 IF K$ = "d" OR K$ = "D" THEN GOSUB 1500
 750 REM Select / Place
@@ -88,10 +88,11 @@
 1010 REM Draw stock
 1020 COLOR 7, 0
 1030 LOCATE 3, 2
-1040 IF STOCKSZ > 0 THEN COLOR 2, 0: PRINT "[##]"; ELSE PRINT "[  ]";
+1040 CH$ = "[  ]" : IF STOCKSZ > 0 THEN COLOR 2, 0: CH$ = "[##]"
+1041 PRINT CH$;
 1050 REM Draw waste
 1060 LOCATE 3, 8
-1070 IF WASTESZ > 0 THEN GOSUB 1100 ELSE PRINT "[  ]";
+1070 PRINT "[  ]"; : IF WASTESZ > 0 THEN GOSUB 1100
 1080 REM Draw foundations
 1090 FOR I = 1 TO 4
 1091   LOCATE 3, 20 + I * 7
@@ -122,10 +123,10 @@
 1116 NEXT C
 1117 REM Draw cursor
 1118 COLOR 15, 0
-1119 IF CUR.Y = 1 THEN
-1120   LOCATE 3, CUR.X * 9 - 4
+1119 IF CUR_Y = 1 THEN
+1120   LOCATE 3, CUR_X * 9 - 4
 1121 ELSE
-1122   LOCATE 5 + CUR.Y - 1, CUR.X * 9 - 4
+1122   LOCATE 5 + CUR_Y - 1, CUR_X * 9 - 4
 1123 END IF
 1124 PRINT ">";
 1125 REM Update moves
@@ -138,7 +139,7 @@
 1130 RETURN
 1200 REM === Draw a card (CV=card value) ===
 1210 SU = CV \ 13: RK = CV MOD 13
-1220 IF SU = 1 OR SU = 2 THEN COLOR 12, 0 ELSE COLOR 15, 0
+1220 COLOR 15, 0 : IF SU = 1 OR SU = 2 THEN COLOR 12, 0
 1230 REM Rank chars
 1240 IF RK = 0 THEN R$ = "A"
 1250 IF RK >= 1 AND RK <= 8 THEN R$ = STR$(RK + 1)
@@ -170,13 +171,13 @@
 1640 RETURN
 1600 REM === Select / Place card ===
 1610 REM Simplified: toggle selection
-1620 IF SEL.C = -1 THEN
-1630   SEL.C = CUR.X: SEL.R = CUR.Y
+1620 IF SEL_C = -1 THEN
+1630   SEL_C = CUR_X: SEL_R = CUR_Y
 1640   RETURN
 1650 END IF
 1660 REM Try to place
 1670 MOVES = MOVES + 1
-1680 SEL.C = -1: SEL.R = -1
+1680 SEL_C = -1: SEL_R = -1
 1690 RETURN
 1700 REM === Auto-move to foundation ===
 1710 FOR C = 1 TO 7
@@ -204,3 +205,4 @@
 2020 PRINT "Thanks for playing Solitaire!"
 2030 PRINT "Moves:"; MOVES
 2040 END
+

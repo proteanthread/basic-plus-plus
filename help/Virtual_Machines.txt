@@ -1,6 +1,6 @@
 VIRTUAL MACHINES, VIRTUAL CONSOLES, AND VIRTUAL TERMINALS
 ==========================================================
-Version 4.1.1
+Version 4.2.3
 
 BASIC++ provides three layers of virtualization that together
 emulate complete 8-bit and 16-bit computer environments
@@ -1852,7 +1852,7 @@ automatically.
   - No true serial port emulation (use external modules)
 
   VDEV LAYER:
-  - Maximum 16 device slots (3 built-in + 13 user)
+  - Maximum 64 device slots (3 built-in + 61 user)
   - Devices registered from C code only (not from BASIC)
   - Maximum 8 simultaneous file channels (#1-#8)
   - Maximum 1024 characters per vdev_printf() call

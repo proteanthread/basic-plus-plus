@@ -1,6 +1,9 @@
 THE BASIC++ VIRTUAL NETWORK
 =============================
-Version 4.1.1
+Version 4.2.3
+
+> [!WARNING]
+> Implementation Status Notice: The extensive suite of high-level protocols (FTP, SSH, Telnet, IRC, SMTP, POP3, IMAP, NTP, DNS, Wi-Fi control) and raw socket commands described in this document are currently protocol specifications / aspirational. The actual networking implementation primarily routes queries and connections through the FujiNet adapter module (mod_fujinet.c) or standard network built-in status functions (NSTATUS, NCONNECTED, NHTTPSTATUS).
 
 This manual explains how BASIC++ programs access networks —
 local area networks, the Internet, and every protocol from

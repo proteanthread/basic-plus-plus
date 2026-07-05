@@ -249,10 +249,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "config.h"
 #include "dialect.h"
 #include "security.h"
 #include "device_alias.h"
+#include "../console.h"
+#include "../memory.h"
 
 // -----------------------------------------------------------------
 // Dialect Registry Table
@@ -319,7 +322,10 @@ void dialect_register_all(void)
     dialect_table_count = 0;
 
     // Register each dialect.
-    // Order doesn't matter -- each goes into its indexed slot.
+#ifdef BPP_LITE_BUILD
+    dialect_register_gwbs();       // GW-BASIC (1983)
+    dialect_register_ecma116();    // ECMA-116 Full BASIC (1986)
+#else
 #ifndef BPP_FREEDOS
     dialect_register_patb();       // Palo Alto Tiny BASIC (1976)
     dialect_register_trs1();       // TRS-80 Level I BASIC (1977)
@@ -341,6 +347,7 @@ void dialect_register_all(void)
     dialect_register_sinclair();   // Sinclair ZX Spectrum (1982)
     dialect_register_superbasic(); // Sinclair QL SuperBASIC (1984)
     dialect_register_sbasic();     // Tymshare SUPER BASIC (1968)
+#endif
 #endif
 }
 
@@ -616,7 +623,9 @@ void dialect_apply(void)
 
     // Load device aliases for the active dialect
     if (active_dialect) {
+#ifndef BPP_LITE_BUILD
         device_alias_load_dialect(active_dialect->id);
+#endif
     }
 }
 
@@ -910,4 +919,38 @@ int dialect_default_security(DialectId id)
         return SEC_RESTRICTED;
     }
     return SEC_STANDARD;
+}
+
+void dialect_detect_and_apply_header(ProgramStore *program)
+{
+    if (program && program->count > 0) {
+        int limit = program->count;
+        if (limit > 5) limit = 5;
+        int idx;
+        for (idx = 0; idx < limit; idx++) {
+            const char *text = program->lines[idx].text;
+            const char *lang_ptr = strstr(text, "$lang");
+            if (lang_ptr) {
+                lang_ptr += 5;
+                while (*lang_ptr == ':' || *lang_ptr == ' ' || *lang_ptr == '\t') {
+                    lang_ptr++;
+                }
+                char lang_name[32];
+                int name_len = 0;
+                while (name_len < 31 && (isalnum((unsigned char)lang_ptr[name_len]) || lang_ptr[name_len] == '_' || lang_ptr[name_len] == '-' || lang_ptr[name_len] == '+')) {
+                    lang_name[name_len] = lang_ptr[name_len];
+                    name_len++;
+                }
+                lang_name[name_len] = '\0';
+                
+                int detected = dialect_find_by_name(lang_name);
+                if (detected >= 0) {
+                    dialect_init((DialectId)detected);
+                    dialect_apply();
+                    dialect_set_strict(1);
+                    break;
+                }
+            }
+        }
+    }
 }

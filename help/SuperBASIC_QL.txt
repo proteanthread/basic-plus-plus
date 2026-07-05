@@ -1,6 +1,6 @@
 SuperBASIC (Sinclair QL) Dialect Reference
 
-Version 4.1.1
+Version 4.2.3
 
 ---
 
@@ -25,7 +25,7 @@ Table of Contents
 
 ---
 
-Dialect Code: SBLQ
+Dialect Code: SQLB
 
 ---
 
@@ -53,7 +53,7 @@ Key Innovations
 Activation
 
 
-DIALECT "SBLQ"
+DIALECT "SQLB"
 
 
 This changes:
@@ -61,16 +61,16 @@ This changes:
 - LET is optional
 - THEN is required in IF statements
 - Maximum line number: 32767
-- Ready prompt: Ready.
-- Print zone width: 14
+- Ready prompt: SuperBASIC
+- Print zone width: 16
 - CLS available
-- WHILE/WEND and DO/LOOP available
+- WHILE/WEND and DO/LOOP not available (uses REPeat/END REPeat)
 - Extended variable names
 
 To combine with the Sinclair QL memory map:
 
 
-DIALECT "SBLQ"
+DIALECT "SQLB"
 MEMMAP "QL"
 
 
@@ -98,7 +98,7 @@ FOR I = 1 TO 10
 END FOR I
 
 
-SuperBASIC used END FOR instead of NEXT. Both are accepted in BASIC++ when in SBLQ dialect.
+SuperBASIC used END FOR instead of NEXT. Both are accepted in BASIC++ when in SQLB dialect.
 
 REPeat / END REPeat
 
@@ -170,28 +170,28 @@ Dialect Configuration
 
 | Property | Value |
 |----------|-------|
-| Dialect ID | DIALECT_SUPER_BASIC_QL |
-| Short code | "SBLQ" |
-| Dialect flag | DFLAG_SBLQ (bit 13) |
-| Separator | : (colon) |
-| LET required | No |
-| THEN required | Yes |
+| Dialect ID | DIALECT_SUPERBASIC |
+| Dialect code | SQLB |
+| Dialect flag | DFLAG_SUPA (bit 14) |
+| Statement separator | : (colon) |
+| Optional LET | Yes |
+| Required THEN | Yes |
 | Max line number | 32767 |
-| Ready prompt | "Ready." |
-| Print zone width | 14 |
+| Ready prompt | "SuperBASIC" |
+| Print zone width | 16 |
 | CLS available | Yes |
 | Floating point | Yes |
 | Strings | Yes |
 | Arrays | Yes (DIM) |
 | FOR/NEXT | Yes |
-| WHILE/WEND | Yes |
-| DO/LOOP | Yes |
+| WHILE/WEND | No |
+| DO/LOOP | No |
 | DATA/READ | Yes |
 | DEF FN | Yes |
 | Extended variables | Yes |
 | ON ERROR | Yes |
 | TRON/TROFF | Yes |
-| MERGE/CHAIN | Yes |
+| MERGE/CHAIN | No |
 
 ---
 
@@ -200,7 +200,7 @@ Example Programs
 Fibonacci sequence (structured)
 
 
-10 DIALECT "SBLQ"
+10 DIALECT "SQLB"
 20 LET A = 0
 30 LET B = 1
 40 FOR I = 1 TO 20
@@ -216,7 +216,7 @@ Fibonacci sequence (structured)
 Using SELECT CASE
 
 
-10 DIALECT "SBLQ"
+10 DIALECT "SQLB"
 20 INPUT "Enter a grade (A-F): "; G$
 30 SELECT CASE UCASE$(G$)
 40   CASE "A"

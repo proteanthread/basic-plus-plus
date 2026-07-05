@@ -1,6 +1,6 @@
 # Compiling BASIC++ Programs
 
-**Version 4.1.1**
+**Version 4.2.3**
 
 
 ---
@@ -56,6 +56,39 @@ The generated `.c` file:
 - Includes an embedded runtime shim with all helpers
 - Uses goto-based flow control (matching BASIC semantics)
 - Runs standalone — does **not** require the interpreter
+
+### Target Parameter
+
+The `COMPILE` command accepts an optional **target** parameter that specifies the compilation target:
+
+```basic
+COMPILE "output.c", "target_name"
+```
+
+If omitted, the default target is used (standard C89 output). The target parameter allows the transpiler to tailor code generation for specific platforms or runtime configurations.
+
+**Examples:**
+
+```
+> COMPILE "myprog.c"              ' Default target
+> COMPILE "myprog.c", "freedos"   ' FreeDOS-specific target
+> COMPILE "myprog.c", "embedded"  ' Embedded/bare-metal target
+```
+
+### Internal API (`compiler.h`)
+
+The underlying C function signature is:
+
+```c
+int compiler_compile(ProgramStore *program, const char *filename, const char *target);
+```
+
+| Parameter | Description |
+|---|---|
+| `program` | Pointer to the `ProgramStore` containing the tokenized BASIC program |
+| `filename` | Output filename for the generated C source file |
+| `target` | Compilation target string (may be `NULL` for the default target) |
+| **Returns** | `0` on success, `-1` on error |
 
 ---
 

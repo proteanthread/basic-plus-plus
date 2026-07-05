@@ -18,37 +18,37 @@
  *    Check memory pool margins, look for segmentation faults, and trace parameter values via a debugger.
  * ===================================================================== */
 
- // ---
- // BASIC++ Interpreter - builtins_memory.c
- // ---
- //
- // Memory function handlers for the built-in function registry.
- //
- // Contains handlers for virtual memory access and memory
- // size queries.
- //
+// ---
+// BASIC++ Interpreter - builtins_memory.c
+// ---
 //
-// HOW TO EXTEND:
-//   To add a new built-in function:
-//   1. Write a handler: BValue my_func(BValue *args, int argc, void *ctx)
-//   2. Register it in the init function with funcreg_add().
-//   3. Specify min/max argument counts and return type.
+// Memory function handlers for the built-in function registry.
 //
-// TROUBLESHOOTING:
-//   - Wrong arg count: check min_args/max_args in registration.
-//   - Type mismatch: use bval_to_float/bval_to_int for conversion.
- // ---
+// Contains handlers for virtual memory access and memory
+// size queries.
 
 #include "builtins.h"
 #include "runtime.h"
 #include "config.h"
 #include "value.h"
-#include "gw_memory.h"
 
+#ifdef BPP_LITE_BUILD
+BValue builtin_peek(BValue *args, int argc, void *rt)
+{
+    (void)args; (void)argc; (void)rt;
+    return bval_int(0);
+}
+
+BValue builtin_peekb(BValue *args, int argc, void *rt)
+{
+    (void)args; (void)argc; (void)rt;
+    return bval_int(0);
+}
+#else
+#include "segmented_mem.h"
 extern struct GW_Memory *g_gw_mem;
 
  // PEEK(address) - Read a byte from the virtual memory segment.
- // Category: FCAT_UTIL | Safety: FSAFE_STATE
 BValue builtin_peek(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;
@@ -66,12 +66,22 @@ BValue builtin_peek(BValue *args, int argc, void *rt)
  return bval_int((long)state->mem_segment[offset]);
 }
 
+// PEEKB(bank, offset) - Read a byte from a virtual memory RAMBANK.
+BValue builtin_peekb(BValue *args, int argc, void *rt)
+{
+    RuntimeState *state = (RuntimeState *)rt;
+    int bank;
+    long offset;
+    (void)argc;
+
+    bank = (int)bval_to_int(&args[0]);
+    offset = bval_to_int(&args[1]);
+
+    return bval_int((long)rambank_peek(state->memory, bank, offset, 0));
+}
+#endif
+
  // SIZE - Available memory.
- //
- // Returns the number of available bytes in the program memory pool.
- // Takes no arguments (argc=0).
- //
- // Category: FCAT_UTIL | Safety: FSAFE_PURE
 BValue builtin_size(BValue *args, int argc, void *rt)
 {
  RuntimeState *state = (RuntimeState *)rt;

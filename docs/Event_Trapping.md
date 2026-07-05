@@ -247,6 +247,55 @@ The device event infrastructure is in place.  Specific device-level
 `ON DEVICE` syntax will be exposed in a future version when individual
 VDev drivers implement `dev_poll()`.
 
+### 3.5b ON FILEIO — File I/O Events
+
+Intercept file I/O completion or error events:
+
+```basic
+10 ON FILEIO GOSUB 800
+20 FILEIO ON
+30 REM ... program continues ...
+800 PRINT "File I/O event fired"
+810 RETURN
+```
+
+Internally, the runtime tracks:
+- `on_fileio_line` — GOSUB target line number (0 = disabled)
+- `fileio_event_state` — ON/OFF/STOP (same three-state as TIMER)
+- `fileio_pending` — set to 1 when a disk event occurs
+
+### 3.5c Event Queue System
+
+When an event fires while its state is STOP (suspended), the event
+is queued instead of being discarded.  When the state changes back
+to ON, queued events fire in order.
+
+The event queue is a fixed-size circular buffer:
+
+```c
+#define EVENT_QUEUE_SIZE 16
+struct {
+    int event_type;   /* EVTYPE_xxx (1-9) */
+    int event_id;     /* device index or key number */
+    int handler_line; /* target GOSUB line */
+} event_queue[EVENT_QUEUE_SIZE];
+int evq_head, evq_tail, evq_count;
+```
+
+Event type constants (from runtime.h):
+
+| Constant       | Value | Event Source              |
+|----------------|-------|---------------------------|
+| `EVTYPE_TIMER` | 1     | ON TIMER                  |
+| `EVTYPE_KEY`   | 2     | ON KEY                    |
+| `EVTYPE_COM`   | 3     | ON COM                    |
+| `EVTYPE_PEN`   | 4     | ON PEN                    |
+| `EVTYPE_PLAY`  | 5     | ON PLAY                   |
+| `EVTYPE_STRIG` | 6     | ON STRIG                  |
+| `EVTYPE_DEVICE`| 7     | ON DEVICE                 |
+| `EVTYPE_BREAK` | 8     | ON BREAK                  |
+| `EVTYPE_FILEIO`| 9     | ON FILEIO                 |
+
 ### 3.6 UPnP / Network Events (Tier 5)
 
 The UPnP module (`MODULE "UPNP"`) registers `UPNP:` and `SOAP:` virtual
@@ -296,8 +345,9 @@ ON TRAP(n) GOSUB line       Set trap for event class n as subroutine
 | 4     | PEN     | Light pen activated                        |
 | 5     | STRIG   | Joystick button pressed                    |
 | 6     | PLAY    | Music buffer needs filling                 |
-| 7     | SIGNAL  | OS signal (SIGINT, SIGTERM)                |
-| 8     | USER    | User-defined event (CAUSE TRAP n)          |
+| 7     | DEVICE  | Device I/O event (VDev Tier 2)             |
+| 8     | BREAK   | OS signal / Ctrl+C (SIGINT, SIGTERM)       |
+| 9     | FILEIO  | File I/O completion event                  |
 
 ### 4.3 Examples
 
@@ -378,15 +428,25 @@ from a specific source to a handler.
 When a trap fires due to an error, the `ERR` variable holds the
 error code.  Common codes:
 
-| ERR Code | Meaning                         |
-|----------|---------------------------------|
-| 1        | WHAT — syntax / parse error     |
-| 2        | HOW — runtime / math error      |
-| 3        | SORRY — out of memory / stack   |
-| 4        | File not found                  |
-| 5        | Device I/O error                |
-| 6        | Permission denied               |
-| 7        | Out of data (READ past DATA)    |
+| ERR Code | Meaning                          |
+|----------|----------------------------------|
+| 1        | NEXT without FOR                 |
+| 2        | Syntax error                     |
+| 3        | RETURN without GOSUB             |
+| 4        | Out of DATA                      |
+| 5        | Illegal function call            |
+| 6        | Overflow                         |
+| 7        | Out of memory                    |
+| 8        | Undefined line number            |
+| 9        | Subscript out of range           |
+| 11       | Division by zero                 |
+| 13       | Type mismatch                    |
+| 53       | File not found                   |
+| 57       | Device I/O error                 |
+| 70       | Permission denied                |
+| 77       | Advanced feature not available   |
+
+See Error_Handling.md for the complete error code table (codes 1-76, plus user-defined 200-255).
 
 The `ERL` variable holds the line number where the error occurred.
 
@@ -462,5 +522,7 @@ ERR                     Last error code (read-only)
 ERL                     Last error line (read-only)
 ON BREAK GOSUB line     Intercept Ctrl+C / OS signal
 ON BREAK GOTO 0         Restore default Ctrl+C behavior
+ON FILEIO GOSUB line    Intercept file I/O events
+FILEIO ON | OFF | STOP  Enable/disable/suspend FILEIO events
 MODULE "UPNP"           Activate UPnP device discovery
 ```

@@ -56,7 +56,6 @@
 #ifndef BASICPP_DEVICE_ALIAS_H
 #define BASICPP_DEVICE_ALIAS_H
 
-#include "dialect.h"
 
 // Maximum number of device aliases
 #define MAX_DEVICE_ALIASES 32
@@ -77,7 +76,7 @@ typedef struct DeviceAlias {
     char alias[16]; // source device name (upper-cased)
     char target[16]; // target VDev name
     int direction; // DEVALIAS_* flags
-    DialectId dialect; // owning dialect (or -1 for manual)
+    int dialect; // owning dialect (or -1 for manual)
     int active; // 1 = active, 0 = disabled
 } DeviceAlias;
 
@@ -86,6 +85,7 @@ typedef struct DeviceAlias {
  // Must be called once during boot, before any dialect
  // initialization. Zeros all entries and sets count to 0.
 void device_alias_init(void);
+int device_alias_load_dialect(int id);
 
  // device_alias_register - Add a single alias mapping.
  //
@@ -124,13 +124,13 @@ const DeviceAlias *device_alias_resolve(const char *name);
  //   id - the dialect to load aliases for
  //
  // Returns the number of aliases loaded.
-int device_alias_load_dialect(DialectId id);
+int device_alias_load_dialect(int id);
 
  // device_alias_clear_dialect - Remove all aliases for a dialect.
  //
  // Parameters:
  //   id - the dialect whose aliases to remove
-void device_alias_clear_dialect(DialectId id);
+void device_alias_clear_dialect(int id);
 
  // device_alias_clear_all - Remove all aliases (reset).
 void device_alias_clear_all(void);

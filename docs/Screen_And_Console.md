@@ -1,6 +1,6 @@
 THE BASIC++ SCREEN AND CONSOLE SYSTEM
 ========================================
-Version 4.1.1
+Version 4.2.3
 
 This manual explains how BASIC++ programs control the
 text-mode terminal — cursor positioning, colors, screen
@@ -195,6 +195,36 @@ The runtime tracks these console-related fields:
   screen_lines     int    25        Rows (WIDTH)
   fkey_macros[]    char   ""        KEY macro strings
   fkey_display     int    0         KEY bar on/off
+
+
+4b. CONSOLE I/O REDIRECTION (SDL MODE)
+-----------------------------------------
+
+All statement parsers, dialect profiles, built-ins, and help
+routines MUST include "console.h" and use the redirected output
+macros instead of calling raw C standard library functions.
+
+When BASIC++ runs in SDL mode (basicpp.exe / baspp), console
+output is routed to the SDL graphical text console buffer.
+Direct calls to printf, putchar, or fflush bypass this buffer
+and produce invisible output or corruption.
+
+The redirection macros in console.h are:
+
+  Macro               Replaces       Purpose
+  ------------------  -------------- ---------------------------------
+  printf(...)         gw_printf()    Route to active console buffer
+  vprintf(...)        gw_vprintf()   Route variadic output
+  fflush(stream)      gw_fflush()    Flush active console buffer
+  putchar(c)          gw_console_write_char()  Write single char
+
+These macros are defined in console.h with #define directives.
+The guard CONSOLE_C_INTERNAL prevents the macros from replacing
+the actual function definitions inside console.c itself.
+
+RULE: Raw printf, putchar, fflush, and vprintf must NEVER be
+called directly in statement or command parsers.  Always include
+"console.h" and use the macro-redirected versions.
 
 
 ======================================================================

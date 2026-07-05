@@ -1,6 +1,6 @@
 BASIC++ Help System — User & Developer Tutorial
 
-Version 4.1.1 | C17 \| ECMA-116 Compliant
+Version 4.2.3 | C17 \| ECMA-116 Compliant
 
 ---
 
@@ -98,6 +98,9 @@ Output format:
 
 
 Keywords within each category are sorted alphabetically. The final line shows total counts.
+
+> [!NOTE]
+> The CATALOG command is unavailable in BASIC++ Lite builds. It is excluded by the BPP_LITE_BUILD preprocessor guard in help.h. In Lite builds, use HELP for keyword reference.
 
 ---
 
