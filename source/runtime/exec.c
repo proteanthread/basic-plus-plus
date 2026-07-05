@@ -381,7 +381,8 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                                 lexer_next(&cl);
                             if (cl.current.type == TOK_KEYWORD &&
                                 (cl.current.value.keyword == KW_SUB ||
-                                 cl.current.value.keyword == KW_FUNCTION)) {
+                                 cl.current.value.keyword == KW_FUNCTION ||
+                                 cl.current.value.keyword == KW_DEFINE)) {
                                 rt->current_index = idx;
                                 rt->next_index = -1;
                                 parser_execute_line(&cl, rt, ln);
@@ -395,10 +396,10 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                         }
                     }
                     rt->current_index = 0;
-                    rt->next_index = -1;
-                    rt->resume_index = 0;
-                    continue;
+                    continue; // re-evaluate start of new program
                 } else {
+                    rt->chain_pending = 0;
+                    error_raise(ERR_HOW, 0);
                     vm_set_state(rt, VM_ERROR);
                     break;
                 }
@@ -453,7 +454,8 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                      lexer_next(&cl);
                  if (cl.current.type == TOK_KEYWORD &&
                      (cl.current.value.keyword == KW_SUB ||
-                      cl.current.value.keyword == KW_FUNCTION)) {
+                      cl.current.value.keyword == KW_FUNCTION ||
+                      cl.current.value.keyword == KW_DEFINE)) {
                      rt->current_index = idx;
                      rt->next_index = -1;
                      parser_execute_line(&cl, rt, ln);
@@ -471,6 +473,8 @@ static void exec_run_from(RuntimeState *rt, int start_index)
          skip_first_break = 1;
          continue;
      } else {
+         rt->chain_pending = 0;
+         error_raise(ERR_HOW, 0);
          vm_set_state(rt, VM_ERROR);
          break;
      }
@@ -921,7 +925,9 @@ void exec_run(RuntimeState *rt)
  lexer_next(&cl);
  if (cl.current.type == TOK_KEYWORD &&
  (cl.current.value.keyword == KW_SUB ||
- cl.current.value.keyword == KW_FUNCTION)) {
+ cl.current.value.keyword == KW_FUNCTION ||
+ cl.current.value.keyword == KW_DEFINE)) {
+ printf("DEBUG: exec_run_from prescanned DEFINE on line %.0f\n", ln);
  // Execute this line to register the
  // SUB/FUNCTION definition 
  rt->current_index = idx;
@@ -998,7 +1004,8 @@ void exec_chain_run(RuntimeState *rt)
  lexer_next(&cl);
  if (cl.current.type == TOK_KEYWORD &&
  (cl.current.value.keyword == KW_SUB ||
- cl.current.value.keyword == KW_FUNCTION)) {
+ cl.current.value.keyword == KW_FUNCTION ||
+ cl.current.value.keyword == KW_DEFINE)) {
  rt->current_index = idx;
  rt->next_index = -1;
  parser_execute_line(&cl, rt, ln);

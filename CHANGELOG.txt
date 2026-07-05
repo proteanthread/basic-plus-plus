@@ -8,6 +8,10 @@ BASIC++ CHANGELOG
   - Ensured 100% clean compilation on both Windows (MSVC) and Linux (GCC) for BASIC++ Standard, BASIC++ Lite, BASIC++ SDL, 'trans', and 'compile'.
   - Added safe string handling limits using precision specifiers and bounds checking in `codegen.c`, `platform.c`, `builtins_fileio.c`, `ext_feature.c`, `ext_plugin.c`, `mod_usb.c`, and `mod_fujinet.c`.
   - Added unused variable pragmas and casts (`(void)var`, `MAYBE_UNUSED`) to safely suppress platform-specific variables without functional regressions.
+  - Implemented 'SHARED' and 'PUBLIC' keyword tracking in variable system.
+  - Fixed variable clearing logic in 'CHAIN' to preserve only 'COMMON' variables.
+  - Hardened runtime execution to correctly trap file I/O errors ('ERR_HOW') in 'RUN', 'LOAD', 'MERGE', and 'CHAIN'.
+  - Added support for 'SAVE' to include flags for Protected and Obfuscated output.
   - Successfully verified execution of internal interpreter SELFTEST diagnostics for parser precedence, flow control, variable assignment, and string pooling on both console and SDL builds.
 
 4.9.6  (2026-07-04) -- Implicit Shell Fallback and REFORMAT keyword

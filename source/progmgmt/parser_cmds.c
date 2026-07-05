@@ -359,17 +359,25 @@ void pi_parse_run_cmd(Lexer *lex, RuntimeState *rt, int line_num)
   int is_embedded_load = (g_embedded_offset > 0 && strcmp(filename, g_argv_0) == 0);
 
   if (is_embedded_load) {
-      if (bpe_load_from_offset(filename, g_embedded_offset, &rt->memory->program, rt) != 0)
+      if (bpe_load_from_offset(filename, g_embedded_offset, &rt->memory->program, rt) != 0) {
+          error_raise(ERR_HOW, line_num);
           return;
+      }
   } else if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'E' && magic[3] == '\x1A') {
-      if (bpe_load(filename, &rt->memory->program, rt) != 0)
+      if (bpe_load(filename, &rt->memory->program, rt) != 0) {
+          error_raise(ERR_HOW, line_num);
           return;
+      }
   } else if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'P' && (magic[3] == '\x1B' || magic[3] == '\x1A')) {
-      if (bpp_load(&rt->memory->program, filename, rt) != 0)
+      if (bpp_load(&rt->memory->program, filename, rt) != 0) {
+          error_raise(ERR_HOW, line_num);
           return;
+      }
   } else {
-      if (fileio_load(&rt->memory->program, filename) != 0)
+      if (fileio_load(&rt->memory->program, filename) != 0) {
+          error_raise(ERR_HOW, line_num);
           return; // load failed
+      }
   }
 #endif
   }
@@ -429,16 +437,39 @@ void pi_parse_run_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  // Clears the program store and resets runtime state.
 void pi_parse_new_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
- (void)lex;
- (void)line_num;
+    (void)line_num;
 
- program_clear(&rt->memory->program);
- runtime_reset(rt);
+    if (lex->current.type == TOK_STRING) {
+        // NEW "filename"
+        char filename[MAX_LINE_LENGTH + 1];
+        int flen = lex->current.str_length;
+        if (flen >= MAX_LINE_LENGTH) {
+            error_raise(ERR_WHAT, line_num);
+            return;
+        }
+        memcpy(filename, lex->current.str_start, (size_t)flen);
+        filename[flen] = '\0';
+        lexer_next(lex);
 
- pcode_cache_invalidate(rt);
- rt->bytecode_only = 0;
+        pi_ensure_bas_ext(filename, flen, MAX_LINE_LENGTH);
 
- lexer_clear_scope(ASCOPE_PROGRAM);
+        FILE *fp = fopen(filename, "wb");
+        if (fp) {
+            fclose(fp);
+            printf("Created empty file: %s\n", filename);
+        } else {
+            error_raise(ERR_HOW, line_num);
+            return;
+        }
+    }
+
+    program_clear(&rt->memory->program);
+    runtime_reset(rt);
+
+    pcode_cache_invalidate(rt);
+    rt->bytecode_only = 0;
+
+    lexer_clear_scope(ASCOPE_PROGRAM);
 }
 
  // parse_save_cmd - Parse SAVE command.
@@ -499,7 +530,10 @@ void pi_parse_merge_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  // Auto-append .BAS if no extension
  pi_ensure_bas_ext(filename, flen, MAX_LINE_LENGTH);
 
- fileio_merge(&rt->memory->program, filename);
+ if (fileio_merge(&rt->memory->program, filename) != 0) {
+  error_raise(ERR_HOW, line_num);
+  return;
+ }
 
  // MERGE may shift line positions in the program store.
  // Invalidate SubDef body_index entries so that SUB/FUNCTION
@@ -594,7 +628,41 @@ void pi_parse_chain_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  rt->fn_return_value = bval_int(0);
  rt->in_sub_index = -1;
 
- // Reset execution state (but NOT variables)
+ // Reset execution state (but NOT COMMON variables)
+ {
+     int i;
+     // Clear non-COMMON single-letter variables
+     for (i = 0; i < MAX_VARIABLES; i++) {
+         if (!(rt->var_flags[i] & 1)) {
+             rt->variables[i] = bval_int(0);
+             rt->var_flags[i] = 0;
+         }
+     }
+     // Clear non-COMMON string variables
+     for (i = 0; i < MAX_STRING_VARS; i++) {
+         if (!(rt->string_var_flags[i] & 1)) {
+             rt->string_vars[i] = bval_int(0);
+             rt->string_var_flags[i] = 0;
+         }
+     }
+     // Clear non-COMMON named variables
+     for (i = 0; i < rt->named_count; i++) {
+         if (!(rt->named_vars[i].flags & 1)) {
+             rt->named_vars[i].value = bval_int(0);
+             rt->named_vars[i].flags = 0;
+         }
+     }
+     // Note: We don't shrink named_count to preserve indices if compiled,
+     // or we could compact it. Setting to 0 is safer for now.
+     
+     // Clear non-COMMON arrays
+     for (i = 0; i < rt->dim_count; i++) {
+         if (!(rt->dim_arrays[i].flags & 1)) {
+             rt->dim_arrays[i].name[0] = '\0';
+             rt->dim_arrays[i].flags = 0;
+         }
+     }
+ }
  rt->stack_top = 0; // clear FOR/WHILE/GOSUB stack
  rt->current_index = 0;
  rt->next_index = -1;
@@ -825,6 +893,8 @@ void pi_parse_save_cmd(Lexer *lex, RuntimeState *rt, int line_num)
     return;
 #endif
  char filename[MAX_LINE_LENGTH + 1];
+ int flag_p = 0;
+ int flag_o = 0;
 
  if (lex->current.type == TOK_STRING) {
  // SAVE "filename"
@@ -833,10 +903,30 @@ void pi_parse_save_cmd(Lexer *lex, RuntimeState *rt, int line_num)
   error_raise(ERR_WHAT, line_num);
   return;
  }
- memcpy(filename, lex->current.str_start,
-  (size_t)flen);
+ memcpy(filename, lex->current.str_start, (size_t)flen);
  filename[flen] = '\0';
  lexer_next(lex);
+
+ lexer_next(lex);
+ while (lex->current.type == TOK_COMMA) {
+     lexer_next(lex);
+     if (lex->current.type == TOK_VARIABLE && toupper(lex->current.value.var_name) == 'P') {
+         flag_p = 1;
+         lexer_next(lex);
+     } else if (lex->current.type == TOK_NAMED_VAR && lex->current.str_length == 1 && toupper(lex->current.str_start[0]) == 'P') {
+         flag_p = 1;
+         lexer_next(lex);
+     } else if (lex->current.type == TOK_VARIABLE && toupper(lex->current.value.var_name) == 'O') {
+         flag_o = 1;
+         lexer_next(lex);
+     } else if (lex->current.type == TOK_NAMED_VAR && lex->current.str_length == 1 && toupper(lex->current.str_start[0]) == 'O') {
+         flag_o = 1;
+         lexer_next(lex);
+     } else {
+         error_raise(ERR_WHAT, line_num);
+         return;
+     }
+ }
 
  // Auto-append .BAS if no extension
  pi_ensure_bas_ext(filename, flen,
@@ -856,7 +946,19 @@ void pi_parse_save_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  printf("Saving to %s\n", filename);
  }
 
- fileio_save(&rt->memory->program, filename);
+ if (flag_p) {
+     // Save as protected BPE binary
+     if (bpe_save(filename, filename, filename) != 0) {
+         error_raise(ERR_HOW, line_num);
+     }
+ } else if (flag_o) {
+     // Save as obfuscated BPP bytecode
+     if (bpp_save(&rt->memory->program, filename) != 0) {
+         error_raise(ERR_HOW, line_num);
+     }
+ } else {
+     fileio_save(&rt->memory->program, filename);
+ }
 
  // Track for UNSAVE
  {
@@ -955,9 +1057,10 @@ void pi_parse_load_cmd(Lexer *lex, RuntimeState *rt, int line_num)
     }
 
     char filename[MAX_LINE_LENGTH + 1];
+    int flag_run = 0;
 
     if (lex->current.type == TOK_STRING) {
-        // LOAD "filename"
+        // LOAD "filename" [,R]
         int flen = lex->current.str_length;
         if (flen >= MAX_LINE_LENGTH) {
             error_raise(ERR_WHAT, line_num);
@@ -969,6 +1072,18 @@ void pi_parse_load_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 
         // Auto-append .BAS if no extension
         pi_ensure_bas_ext(filename, flen, MAX_LINE_LENGTH);
+
+        if (lex->current.type == TOK_COMMA) {
+            lexer_next(lex);
+            if ((lex->current.type == TOK_VARIABLE && toupper(lex->current.value.var_name) == 'R') || 
+                (lex->current.type == TOK_NAMED_VAR && lex->current.str_length == 1 && toupper(lex->current.str_start[0]) == 'R')) {
+                flag_run = 1;
+                lexer_next(lex);
+            } else {
+                error_raise(ERR_WHAT, line_num);
+                return;
+            }
+        }
     } else {
         // Bare LOAD - try common startup filenames.
         static const char *try_names[] = {
@@ -1008,11 +1123,24 @@ void pi_parse_load_cmd(Lexer *lex, RuntimeState *rt, int line_num)
     }
 
     if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'E' && magic[3] == '\x1A') {
-        bpe_load(filename, &rt->memory->program, rt);
+        if (bpe_load(filename, &rt->memory->program, rt) != 0) {
+            error_raise(ERR_HOW, line_num);
+            return;
+        }
     } else if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'P' && (magic[3] == '\x1B' || magic[3] == '\x1A')) {
-        bpp_load(&rt->memory->program, filename, rt);
+        if (bpp_load(&rt->memory->program, filename, rt) != 0) {
+            error_raise(ERR_HOW, line_num);
+            return;
+        }
     } else {
-        fileio_load(&rt->memory->program, filename);
+        if (fileio_load(&rt->memory->program, filename) != 0) {
+            error_raise(ERR_HOW, line_num);
+            return;
+        }
+    }
+
+    if (flag_run) {
+        exec_run(rt);
     }
 }
 #endif

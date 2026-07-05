@@ -450,6 +450,7 @@ void pi_parse_do(Lexer *lex, RuntimeState *rt, int line_num)
 
     frame.type = FRAME_DO;
     frame.data.do_loop.body_index = rt->current_index + 1;
+    printf("DEBUG: pi_parse_do at line %d, rt->current_index=%d\n", line_num, rt->current_index);
 
  // Check for optional WHILE or UNTIL keyword
  if (lexer_match_keyword(lex, KW_WHILE)) {
@@ -581,9 +582,10 @@ void pi_parse_loop(Lexer *lex, RuntimeState *rt, int line_num)
  StackFrame frame;
  int do_index;
 
- if (runtime_pop(rt, FRAME_DO, &frame) != 0) {
- return; // ERR_HOW: no matching DO
- }
+    printf("DEBUG: pi_parse_loop at line %d, stack_top=%d\n", line_num, rt->stack_top);
+    if (runtime_pop(rt, FRAME_DO, &frame) != 0) {
+        return; // ERR_HOW: no matching DO
+    }
 
  do_index = frame.data.do_loop.body_index - 1;
 

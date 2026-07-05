@@ -354,6 +354,7 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "SHELL", KW_SHELL, DFLAG_GWQB },
  { "REDIM", KW_REDIM, DFLAG_QBAS },
  { "SHARED", KW_SHARED, DFLAG_QBAS },
+ { "PUBLIC", KW_PUBLIC, DFLAG_ALL },
  { "BANK", KW_BANK, DFLAG_ALL },
  { "STATIC", KW_STATIC, DFLAG_QBAS },
  { "RESUME", KW_RESUME, DFLAG_GWQB | DFLAG_E116 },

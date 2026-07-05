@@ -1154,13 +1154,22 @@ static KeywordId postfix_scan(Lexer *lex, int *mod_pos)
   } else if (depth == 0 &&
   lex->current.type == TOK_KEYWORD) {
   KeywordId kw = lex->current.value.keyword;
-    if ((kw == KW_IF || kw == KW_UNLESS || kw == KW_WHILE || kw == KW_UNTIL ||
-    (kw == KW_FOR && !(save_lex.current.type == TOK_KEYWORD && save_lex.current.value.keyword == KW_OPEN))) && prev_kw != KW_END) {
-     // Don't match prefix IF/UNLESS/FOR -
-     // they appear at the START of a statement.
-     // A postfix modifier always has some
-     // tokens before it.
-    if (lex->pos != save_lex.pos ||
+  if ((kw == KW_IF || kw == KW_UNLESS || kw == KW_WHILE || kw == KW_UNTIL ||
+  (kw == KW_FOR && !(save_lex.current.type == TOK_KEYWORD && save_lex.current.value.keyword == KW_OPEN))) && prev_kw != KW_END) {
+      // Exclude DO WHILE, DO UNTIL, LOOP WHILE, LOOP UNTIL
+      int is_do_loop_part = 0;
+      if ((kw == KW_WHILE || kw == KW_UNTIL) && 
+          save_lex.current.type == TOK_KEYWORD && 
+          (save_lex.current.value.keyword == KW_DO || save_lex.current.value.keyword == KW_LOOP)) {
+          is_do_loop_part = 1;
+      }
+      
+      if (!is_do_loop_part) {
+       // Don't match prefix IF/UNLESS/FOR -
+       // they appear at the START of a statement.
+       // A postfix modifier always has some
+       // tokens before it.
+      if (lex->pos != save_lex.pos ||
     lex->current.type != save_lex.current.type ||
     (save_lex.current.type == TOK_KEYWORD &&
      save_lex.current.value.keyword != kw)) {
@@ -1218,6 +1227,7 @@ static KeywordId postfix_scan(Lexer *lex, int *mod_pos)
             // Found - stop scanning
             break;
         }
+      }
     }
    }
   // Stop scanning at statement separator

@@ -146,6 +146,8 @@ void stmtreg_register_builtins(void) {
     stmtreg_register("OVERRIDE", KW_OVERRIDE, pi_parse_override);
     stmtreg_register("SECURITY", KW_SECURITY, pi_parse_security);
     stmtreg_register("MODULE", KW_MODULE, pi_parse_module);
+    stmtreg_register("SHARED", KW_SHARED, pi_parse_shared_cmd);
+    stmtreg_register("PUBLIC", KW_PUBLIC, pi_parse_public_cmd);
 
     // Virtual Introspection & VM
     stmtreg_register("VDEV", KW_VDEV, pi_parse_vdev);

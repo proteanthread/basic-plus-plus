@@ -257,6 +257,9 @@ BValue ast_call_function(RuntimeState *rt, int func_id, BValue *args, int arg_co
 PARSER_STUB(pi_parse_class)
 PARSER_STUB(pi_parse_endclass)
 
+PARSER_STUB(pi_parse_shared_cmd)
+PARSER_STUB(pi_parse_public_cmd)
+
 int ext_lib_unload(const char *name) { (void)name; return -1; }
 int ext_func_unload(const char *name) { (void)name; return -1; }
 int ext_feature_unload(const char *name) { (void)name; return -1; }
