@@ -560,6 +560,7 @@ int format_using_numeric(FILE *fp, const char *fmt, int flen,
 static int format_using_radix(FILE *fp, const char *fmt, int flen,
          int *pos, double value, int rep)
 {
+    (void)flen;
  char spec = fmt[*pos];
  long ival = (long)value;
  char buf[68]; // enough for 64-bit binary

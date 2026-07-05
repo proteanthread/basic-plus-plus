@@ -42,7 +42,7 @@
  // ---
 
 #include "parser_internal.h"
-#include "gw_memory.h"
+#include "segmented_mem.h"
 extern struct GW_Memory *g_gw_mem;
 
  // parse_def_fn - Parse a DEF FN statement.
@@ -428,7 +428,7 @@ BValue pi_eval_user_fn(Lexer *outer_lex, RuntimeState *rt,
  while (fi < pgm->count &&
  !error_occurred()) {
  Lexer fl;
- int fln;
+ double fln;
  ProgramLine *fline =
  &pgm->lines[fi];
  fln = fline->line_number;

@@ -86,16 +86,16 @@
 #include "pcode.h"
 #endif
 #include "scope.h"
-#include "gw_memory.h"
+#include "segmented_mem.h"
 #include "keyword_props.h"
 #include "override.h"
 #include "config_file.h"
 #include "boot.h"
-#include "mod_gwbasic.h"
+#include "mod_legacy_compat.h"
 #include "console.h"
 #include "memmap.h"
 #ifndef NO_SDL2
-#include "gw_sdl2.h"
+#include "sdl2_emu.h"
 #endif
 #include "memmap.h"
 
@@ -103,8 +103,13 @@ FILE *g_out_fp = NULL;
 int cli_trace = 0;
 int g_cli_lite = 0;
 
+// Globals used by archive.c and parser_cmds.c
+char g_argv_0[512] = "";
+char g_runner_path[512] = "";
+long g_embedded_offset = 0;
+#if 0
 static struct RuntimeState *g_main_runtime_ptr = NULL;
-
+#endif
 // --- Input Classification ---
 
  // parse_line_number - Extract a line number from the start of input.
@@ -141,10 +146,9 @@ static int parse_line_number(const char *input, int *end_pos)
  return num;
 }
 
- // is_blank_after - Check if the rest of the line is blank.
- //
- // Returns 1 if input[pos..] contains only whitespace, 0 otherwise.
- // Used to detect "line number only" input (delete line).
+#ifdef __GNUC__
+__attribute__((unused))
+#endif
 static int is_blank_after(const char *input, int pos)
 {
  while (input[pos] != '\0') {
@@ -156,9 +160,9 @@ static int is_blank_after(const char *input, int pos)
  return 1;
 }
 
- // strip_newline - Remove trailing \n and \r from a string.
- //
- // Modifies the string in place.
+#ifdef __GNUC__
+__attribute__((unused))
+#endif
 static void strip_newline(char *str)
 {
  int len = (int)strlen(str);
@@ -167,7 +171,9 @@ static void strip_newline(char *str)
  }
 }
 
-// --- Usage / Help ---
+#ifdef __GNUC__
+__attribute__((unused))
+#endif
 static void print_usage(const char *prog)
 {
     printf("Usage: %s [options] [program.bas]\n\n", prog);
@@ -225,6 +231,7 @@ static void print_usage(const char *prog)
 #define TokenType WinTokenType
 #include <windows.h>
 #undef TokenType
+#if 0
 static LONG WINAPI crash_handler(EXCEPTION_POINTERS *ExceptionInfo) {
     if (g_main_runtime_ptr && g_main_runtime_ptr->log_fp) {
         fprintf((FILE*)g_main_runtime_ptr->log_fp, "[FATAL] Process crashed! Exception code: 0x%08X at address %p\n", 
@@ -238,8 +245,10 @@ static LONG WINAPI crash_handler(EXCEPTION_POINTERS *ExceptionInfo) {
     fflush(stderr);
     return EXCEPTION_EXECUTE_HANDLER;
 }
+#endif
 #else
 #include <signal.h>
+#if 0
 static void crash_handler(int sig) {
     if (g_main_runtime_ptr && g_main_runtime_ptr->log_fp) {
         fprintf((FILE*)g_main_runtime_ptr->log_fp, "[FATAL] Process crashed! Received signal: %d\n", sig);
@@ -250,11 +259,12 @@ static void crash_handler(int sig) {
     exit(1);
 }
 #endif
+#endif
 
 #include <time.h>
 
 #ifdef BPP_LITE_BUILD
-#include "gwbasic.h"
+#include "legacy_compat.h"
 int g_gw_machine_type = 0;
 int g_cga_snow = 0;
 char g_mda_color[16] = "";
@@ -313,6 +323,7 @@ static void get_default_log_filename(const char *prog_path, const char *script_p
 
 // --- Main Entry Point ---
 
+#ifndef BPP_TRANS_BUILD
 int main(int argc, char *argv[])
 {
  MemorySystem memory;
@@ -350,6 +361,8 @@ int main(int argc, char *argv[])
     const char *cli_redirect_in = NULL;
     const char *cli_redirect_out = NULL;
     const char *cli_redirect_append = NULL;
+    (void)cli_config_file;
+    (void)cli_cmd_str;
 
     // --- Config file ---
     ConfigFile cfg = {0};
@@ -361,6 +374,12 @@ int main(int argc, char *argv[])
     int eff_quiet = 0;
 
     int i;
+
+    // Save executable name for embedded binaries
+    if (argc > 0 && argv[0]) {
+        strncpy(g_argv_0, argv[0], sizeof(g_argv_0) - 1);
+        g_argv_0[sizeof(g_argv_0) - 1] = '\0';
+    }
 
     // ----- Parse command-line arguments -----
     for (i = 1; i < argc; i++) {
@@ -744,11 +763,11 @@ int main(int argc, char *argv[])
  if (cli_quiet)
   eff_quiet = 1;
 
-  // Run file from positional arg
-  if (cli_program != NULL && cli_run_file == NULL)
-   cli_run_file = cli_program;
+ // Run file from positional arg
+ if (cli_program != NULL && cli_run_file == NULL)
+  cli_run_file = cli_program;
 
-  {
+ {
       time_t shared_time = time(NULL);
       if (cli_trace) {
           runtime.log_fp = stderr;
@@ -987,7 +1006,7 @@ int main(int argc, char *argv[])
  {
  char full_line[INPUT_BUFFER_SIZE + 16];
  sprintf(full_line, "%d %s",
- runtime.auto_line, input_buf);
+  (int)runtime.auto_line, input_buf);
  lexer_normalize_line(full_line);
  program_insert(&memory.program,
  runtime.auto_line, full_line);
@@ -1163,3 +1182,4 @@ int main(int argc, char *argv[])
   }
   return 0;
 }
+#endif

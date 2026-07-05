@@ -44,6 +44,72 @@
 
 #include "parser_internal.h"
 
+BValue perform_substring_assignment(RuntimeState *rt, BValue base_val, int start, int end, BValue repl_val, int line_num)
+{
+    const char *base_data = "";
+    int base_len = 0;
+    if (base_val.type == VAL_STRING && base_val.v.sval.data != NULL) {
+        base_data = base_val.v.sval.data;
+        base_len = base_val.v.sval.length;
+    }
+    
+    const char *repl_data = "";
+    int repl_len = 0;
+    if (repl_val.type == VAL_STRING && repl_val.v.sval.data != NULL) {
+        repl_data = repl_val.v.sval.data;
+        repl_len = repl_val.v.sval.length;
+    }
+    
+    if (start < 1) start = 1;
+    if (end < 0) end = base_len;
+    if (end < start) end = start; // e.g. A$[3, 2] -> slice of length 1 at 3
+    
+    int slice_len = end - start + 1;
+    
+    // final length of the string:
+    int final_len = base_len;
+    if (start + slice_len - 1 > final_len) {
+        final_len = start + slice_len - 1;
+    }
+    
+    char *buf = strpool_alloc(&rt->strpool, final_len);
+    if (buf == NULL) {
+        error_raise(ERR_SORRY, line_num);
+        return bval_string(NULL, 0);
+    }
+    
+    // Copy base data up to start - 1, padding with spaces if base_len < start - 1
+    int i;
+    for (i = 0; i < start - 1; i++) {
+        if (i < base_len) {
+            buf[i] = base_data[i];
+        } else {
+            buf[i] = ' ';
+        }
+    }
+    
+    // Copy replacement data into the slice, padding with spaces or truncating
+    for (i = 0; i < slice_len; i++) {
+        if (i < repl_len) {
+            buf[start - 1 + i] = repl_data[i];
+        } else {
+            buf[start - 1 + i] = ' ';
+        }
+    }
+    
+    // Copy remainder of base string if any
+    int remainder_start = start + slice_len - 1;
+    for (i = remainder_start; i < final_len; i++) {
+        if (i < base_len) {
+            buf[i] = base_data[i];
+        } else {
+            buf[i] = ' ';
+        }
+    }
+    
+    return bval_string(buf, final_len);
+}
+
  // parse_let - Parse and execute LET (or bare assignment).
  //
  // Syntax:
@@ -171,7 +237,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
 
  // Check for DIM array assignment: A(i) = expr
  if (lex->current.type == TOK_LPAREN &&
- dialect_get_config()->has_dim_arrays) {
+ 1) {
  int idx1, idx2 = 0, idx3 = 0;
  BValue val;
  lexer_next(lex); // consume (
@@ -314,6 +380,30 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
 
  lexer_next(lex); // consume named variable
 
+ // Substring slice assignment for named variables: e.g. ABC$[start, end] = expr
+ if (lex->current.type == TOK_LBRACKET && name_len > 0 && name[name_len - 1] == '$') {
+     lexer_next(lex); // consume [
+     BValue start_val = parse_expression_bval(lex, rt, line_num);
+     if (error_occurred()) return;
+     int start_idx = (int)bval_to_int(&start_val);
+     int end_idx = -1;
+     if (lex->current.type == TOK_COMMA) {
+         lexer_next(lex); // consume ,
+         BValue end_val = parse_expression_bval(lex, rt, line_num);
+         if (error_occurred()) return;
+         end_idx = (int)bval_to_int(&end_val);
+     }
+     if (!lexer_expect(lex, TOK_RBRACKET)) return;
+     if (!lexer_expect(lex, TOK_EQUALS)) return;
+     bv = parse_expression_bval(lex, rt, line_num);
+     if (error_occurred()) return;
+     
+     BValue base_val = runtime_get_named_var_bval(rt, name, name_len);
+     BValue new_val = perform_substring_assignment(rt, base_val, start_idx, end_idx, bv, line_num);
+     runtime_set_named_var_bval(rt, name, name_len, new_val);
+     return;
+ }
+
  // Dot-access for scalar TypedVar: Player.HP = 100
  // Must check before DIM array check.
  if (lex->current.type == TOK_DOT) {
@@ -388,7 +478,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  // Check if DIM array exists and is typed, then
  // handle subscript + dot + field.
  if (lex->current.type == TOK_LPAREN &&
-     dialect_get_config()->has_dim_arrays) {
+     1) {
  DimArray *arr = runtime_find_dim(rt, name, name_len);
  if (arr != NULL && arr->type_index >= 0) {
   // Typed array: parse subscript, expect dot
@@ -477,7 +567,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
 
  // Check for DIM array assignment: Arr(i) = expr
  if (lex->current.type == TOK_LPAREN &&
- dialect_get_config()->has_dim_arrays &&
+ 1 &&
  runtime_find_dim(rt, name, name_len) != NULL) {
  int idx1, idx2 = 0, idx3 = 0;
  BValue dval;
@@ -634,7 +724,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
 
  runtime_set_named_var_bval(rt, name, name_len, bv);
  } else if (lex->current.type == TOK_KEYWORD &&
- dialect_get_config()->has_extended_vars) {
+ 1) {
   // GW-BASIC keyword-as-variable: RUNNING, DELAY, etc.
   // The lexer split it into a keyword prefix. Reconstruct
   // the full variable name from keyword + trailing chars.
@@ -645,6 +735,7 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
   int klen = (int)strlen(kn);
   int flen = klen;
   int saved_pos;
+    (void)saved_pos;
   BValue bv;
 
   if (klen > MAX_VAR_NAME_LEN) klen = MAX_VAR_NAME_LEN;
@@ -673,16 +764,39 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
   return;
  }
  error_raise(ERR_WHAT, line_num);
- } else if (lex->current.type == TOK_STRING_VAR) {
- // String variable or string array assignment
- char var_name = lex->current.value.var_name;
- BValue val;
- lexer_next(lex); // consume string variable
+  } else if (lex->current.type == TOK_STRING_VAR) {
+  // String variable or string array assignment
+  char var_name = lex->current.value.var_name;
+  BValue val;
+  lexer_next(lex); // consume string variable
+  
+  if (lex->current.type == TOK_LBRACKET) {
+      lexer_next(lex); // consume [
+      BValue start_val = parse_expression_bval(lex, rt, line_num);
+      if (error_occurred()) return;
+      int start_idx = (int)bval_to_int(&start_val);
+      int end_idx = -1;
+      if (lex->current.type == TOK_COMMA) {
+          lexer_next(lex); // consume ,
+          BValue end_val = parse_expression_bval(lex, rt, line_num);
+          if (error_occurred()) return;
+          end_idx = (int)bval_to_int(&end_val);
+      }
+      if (!lexer_expect(lex, TOK_RBRACKET)) return;
+      if (!lexer_expect(lex, TOK_EQUALS)) return;
+      val = parse_expression_bval(lex, rt, line_num);
+      if (error_occurred()) return;
+      
+      BValue base_val = runtime_get_string_var(rt, var_name);
+      BValue new_val = perform_substring_assignment(rt, base_val, start_idx, end_idx, val, line_num);
+      runtime_set_string_var(rt, var_name, new_val);
+      return;
+  }
 
- // Check for DIM string array assignment: A$(idx) = expr
- // The DIM name is "A$" (2 chars).
- if (lex->current.type == TOK_LPAREN &&
- dialect_get_config()->has_dim_arrays) {
+  // Check for DIM string array assignment: A$(idx) = expr
+  // The DIM name is "A$" (2 chars).
+  if (lex->current.type == TOK_LPAREN &&
+  1) {
  char sname[3];
  sname[0] = var_name;
  sname[1] = '$';
@@ -734,19 +848,89 @@ void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  // DIM name(size1,size2) - 2D array
 void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
 {
- if (!dialect_get_config()->has_dim_arrays) {
+ if (!1) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
 
- // DIM supports comma-separated declarations:
- // DIM A(10), B(20), RM$(255)
- // DIM Player AS Enemy         (scalar typed var)
- // DIM Enemies(5) AS Enemy     (typed array)
- //
- // Each declaration is: name[(subscripts)] [AS TypeName]
- // Name can be TOK_VARIABLE (A), TOK_NAMED_VAR (RM, RM$),
- // or TOK_STRING_VAR (A$).
+ if (lex->current.type == TOK_HASH) {
+     int chan;
+     lexer_next(lex); // consume #
+     if (lex->current.type != TOK_NUMBER) {
+         error_raise(ERR_WHAT, line_num);
+         return;
+     }
+     chan = (int)lex->current.value.num_value;
+     lexer_next(lex); // consume number
+     
+     if (!lexer_expect(lex, TOK_COMMA)) return;
+     
+     char name[MAX_VAR_NAME_LEN + 1];
+     int name_len;
+     int dim1;
+     int elem_size;
+     
+     if (lex->current.type == TOK_NAMED_VAR) {
+         name_len = lex->current.str_length;
+         if (name_len > MAX_VAR_NAME_LEN) name_len = MAX_VAR_NAME_LEN;
+         memcpy(name, lex->current.str_start, (size_t)name_len);
+         name[name_len] = '\0';
+         lexer_next(lex);
+     } else if (lex->current.type == TOK_VARIABLE) {
+         name[0] = lex->current.value.var_name;
+         name[1] = '\0';
+         name_len = 1;
+         lexer_next(lex);
+     } else {
+         error_raise(ERR_WHAT, line_num);
+         return;
+     }
+     
+     if (!lexer_expect(lex, TOK_LPAREN)) return;
+     dim1 = (int)parse_expression(lex, rt, line_num);
+     if (error_occurred()) return;
+     if (!lexer_expect(lex, TOK_RPAREN)) return;
+     
+     if (!lexer_expect(lex, TOK_EQUALS)) return;
+     
+     elem_size = (int)parse_expression(lex, rt, line_num);
+     if (error_occurred()) return;
+     
+     int total = dim1 + 1 - rt->option_base;
+     if (rt->dim_count >= MAX_DIM_ARRAYS) {
+         error_raise(ERR_SORRY, line_num);
+         return;
+     }
+     
+     if (runtime_find_dim(rt, name, name_len) != NULL) {
+         error_raise(ERR_HOW, line_num);
+         return;
+     }
+     
+     DimArray *arr = &rt->dim_arrays[rt->dim_count];
+     int copy_len = name_len;
+     if (copy_len > MAX_VAR_NAME_LEN) copy_len = MAX_VAR_NAME_LEN;
+     memcpy(arr->name, name, (size_t)copy_len);
+     arr->name[copy_len] = '\0';
+     for (int i = 0; i < copy_len; i++) {
+         if (arr->name[i] >= 'a' && arr->name[i] <= 'z')
+             arr->name[i] = (char)(arr->name[i] - 32);
+     }
+     
+     arr->dims = 1;
+     arr->size[0] = dim1 + 1 - rt->option_base;
+     arr->size[1] = 0;
+     arr->size[2] = 0;
+     arr->elements = NULL;
+     arr->total = total;
+     arr->type_index = -1;
+     arr->v_channel = chan;
+     arr->v_elem_size = elem_size;
+     
+     rt->dim_count++;
+     return;
+ }
+
  do {
  char name[MAX_VAR_NAME_LEN + 1];
  int name_len;
@@ -843,24 +1027,57 @@ void pi_parse_dim(Lexer *lex, RuntimeState *rt, int line_num)
  goto dim_next;
  }
 
- if (!lexer_expect(lex, TOK_LPAREN)) return;
- has_subscripts = 1;
+  TokenType open_token = lex->current.type;
+  if (open_token != TOK_LPAREN && open_token != TOK_LBRACKET) {
+      error_raise(ERR_WHAT, line_num);
+      return;
+  }
+  lexer_next(lex); // consume ( or [
+  has_subscripts = 1;
 
- dim1 = (int)parse_expression(lex, rt, line_num);
- if (error_occurred()) return;
+  dim1 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
 
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex); // consume comma
- dim2 = (int)parse_expression(lex, rt, line_num);
- if (error_occurred()) return;
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex); // consume comma
- dim3 = (int)parse_expression(lex, rt, line_num);
- if (error_occurred()) return;
- }
- }
+  if (lex->current.type == TOK_COMMA) {
+  lexer_next(lex); // consume comma
+  dim2 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+  if (lex->current.type == TOK_COMMA) {
+  lexer_next(lex); // consume comma
+  dim3 = (int)parse_expression(lex, rt, line_num);
+  if (error_occurred()) return;
+  }
+  }
 
- if (!lexer_expect(lex, TOK_RPAREN)) return;
+  TokenType close_token = (open_token == TOK_LPAREN) ? TOK_RPAREN : TOK_RBRACKET;
+  if (!lexer_expect(lex, close_token)) return;
+
+  // Capacity-backed scalar/array string variable detection
+  {
+      int is_bracket_dim = (open_token == TOK_LBRACKET);
+      int is_string_var = (name_len > 0 && name[name_len - 1] == '$');
+      if (is_bracket_dim && is_string_var) {
+          if (dim2 == 0 && dim3 == 0) {
+              // Scalar capacity-backed string
+              runtime_set_string_capacity(rt, name, name_len, dim1);
+              goto dim_next;
+          } else if (dim2 > 0 && dim3 == 0) {
+              // 1D string array of size dim1 with element capacity dim2
+              runtime_dim(rt, name, name_len, dim1, 0, 0, line_num);
+              if (error_occurred()) return;
+              DimArray *arr = runtime_find_dim(rt, name, name_len);
+              if (arr != NULL) arr->capacity = dim2;
+              goto dim_next;
+          } else if (dim2 > 0 && dim3 > 0) {
+              // 2D string array of size dim1 x dim2 with element capacity dim3
+              runtime_dim(rt, name, name_len, dim1, dim2, 0, line_num);
+              if (error_occurred()) return;
+              DimArray *arr = runtime_find_dim(rt, name, name_len);
+              if (arr != NULL) arr->capacity = dim3;
+              goto dim_next;
+          }
+      }
+  }
 
  // Check for AS TypeName after subscripts.
  // e.g. DIM Enemies(5) AS Enemy

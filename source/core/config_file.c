@@ -168,6 +168,16 @@ static void parse_line(ConfigFile *cfg, const char *key,
         } else {
             cfg->quiet = 0;
         }
+    } else if (ci_equal(key, "implicitshellfallback")) {
+        if (ci_equal(value, "on") || ci_equal(value, "yes") ||
+            ci_equal(value, "1") || ci_equal(value, "true")) {
+            cfg->implicit_shell_fallback = 1;
+        } else {
+            cfg->implicit_shell_fallback = 0;
+        }
+    } else if (ci_equal(key, "profile")) {
+        strncpy(cfg->profile_script, value, sizeof(cfg->profile_script) - 1);
+        cfg->profile_script[sizeof(cfg->profile_script) - 1] = '\0';
     } else if (strlen(key) > 8 && (strncmp(key, "keyword.", 8) == 0 || strncmp(key, "KEYWORD.", 8) == 0)) {
         if (ci_equal(key + 8, "case")) {
             if (ci_equal(value, "upper")) lexer_set_keyword_case(KWCASE_UPPER);
@@ -355,6 +365,8 @@ int config_file_load(ConfigFile *cfg, const char *exe_path)
     cfg->quiet = -1;
     cfg->found = 0;
     cfg->filepath[0] = '\0';
+    cfg->implicit_shell_fallback = -1;
+    cfg->profile_script[0] = '\0';
 
     filename = config_file_get_name(exe_path);
 
@@ -430,6 +442,8 @@ int config_file_load_path(ConfigFile *cfg, const char *path)
     cfg->quiet = -1;
     cfg->found = 0;
     cfg->filepath[0] = '\0';
+    cfg->implicit_shell_fallback = -1;
+    cfg->profile_script[0] = '\0';
 
     if (path == NULL || path[0] == '\0') {
         return -1;

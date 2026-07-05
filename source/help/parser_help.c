@@ -52,6 +52,8 @@
  // pi_parse_help - Handle HELP command.
 void pi_parse_help(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
+    (void)line_num;
  {
  // HELP - Show command summary
  // HELP "keyword" - Show help for keyword
@@ -158,6 +160,9 @@ void pi_parse_help(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_catalog - Handle CATALOG command.
 void pi_parse_catalog(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)rt;
+    (void)line_num;
   // CATALOG - List registered functions.
   help_catalog();
   return;

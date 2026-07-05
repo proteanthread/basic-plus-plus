@@ -44,7 +44,6 @@
 #include "memmap.h"
 #include "config.h"
 #include "../console.h"
-#include "../dialect.h"
 
 // --- Helper: fill a range of memory with a value ---
 static void mem_fill(unsigned char *mem, int start, int len,
@@ -693,37 +692,4 @@ MemMapType memmap_from_string(const char *name, int len)
  return MMAP_COUNT; // Not found
 }
 
-MemMapType memmap_default_for_dialect(int dialect_id)
-{
-    switch (dialect_id) {
-        case DIALECT_TINY_BASIC:
-            return MMAP_NONE;
-        case DIALECT_TRS80_L1:
-        case DIALECT_TRS80_L2:
-            return MMAP_TRS80;
-        case DIALECT_GW_BASIC:
-            return MMAP_MSDOS;
-        case DIALECT_ECMA55:
-        case DIALECT_ECMA116:
-        case DIALECT_QBASIC:
-            return MMAP_MSDOS;
-        case DIALECT_APPLE_INT:
-        case DIALECT_APPLESOFT:
-            return MMAP_APPLE2;
-        case DIALECT_ATARI_MS:
-            return MMAP_ATARI8;
-        case DIALECT_COMMODORE:
-            return MMAP_C64;
-        case DIALECT_COCO:
-            return MMAP_NONE;
-        case DIALECT_MBASIC:
-            return MMAP_MSDOS;
-        case DIALECT_SINCLAIR:
-            return MMAP_SPECTRUM;
-        case DIALECT_SUPERBASIC:
-            return MMAP_QL;
-        case DIALECT_SBASIC:
-        default:
-            return MMAP_NONE;
-    }
-}
+MemMapType memmap_default_for_dialect(int dialect_id) { (void)dialect_id; return MMAP_MSDOS; }

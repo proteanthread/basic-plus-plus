@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include "spec.h"
-#include "dialect.h"
 #include "runtime.h"
 #include "console.h"
 
@@ -131,6 +130,8 @@ int spec_load_file(const char *filename) {
 }
 
 void pi_parse_custom_statement(Lexer *lex, RuntimeState *rt, int line_num, int kw_id) {
+    (void)rt;
+    (void)line_num;
     int i;
     for (i = 0; i < spec_count; i++) {
         if (spec_registry[i].kw_id == kw_id) {

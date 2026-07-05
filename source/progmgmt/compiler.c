@@ -47,6 +47,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "compiler.h"
 #include "ast.h"
 #include "codegen.h"
@@ -118,18 +119,24 @@ int compiler_compile(ProgramStore *program, const char *filename, const char *ta
  lexer_init(&lex, pl->text);
 
  // Skip the line number token
- if (lex.current.type == TOK_NUMBER) {
+ if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
  lexer_next(&lex);
  }
 
  // Clear error state for each line
  error_clear();
 
+ g_current_executing_line = pl->line_number;
+
  // Build AST
- ast_lines[i].stmts = ast_build_line(&lex, pl->line_number);
+ ast_lines[i].stmts = ast_build_line(&lex, (int)pl->line_number);
 
  if (error_occurred()) {
- printf("Compile error at line %d\n", pl->line_number);
+ if (floor(pl->line_number) == pl->line_number) {
+     printf("Compile error at line %.0f\n", pl->line_number);
+ } else {
+     printf("Compile error at line %.2f\n", pl->line_number);
+ }
  success = 0;
  error_clear();
  // Continue to free everything cleanly
@@ -145,6 +152,7 @@ int compiler_compile(ProgramStore *program, const char *filename, const char *ta
   }
 
  // Cleanup
+ g_current_executing_line = 0.0;
  for (i = 0; i < program->count; i++) {
  ast_free_line(ast_lines[i].stmts);
  }

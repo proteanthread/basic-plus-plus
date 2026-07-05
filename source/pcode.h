@@ -150,6 +150,7 @@ typedef enum PCodeOp {
     PCODE_DIM_ALLOC, // DIM: operand.dim has name+dims, sizes on stack
     PCODE_READ_NUM, // READ into numeric var: operand.var_id
     PCODE_READ_STR, // READ into string var: operand.var_id
+    PCODE_READ_NAMED, // READ into named var: operand.name
     PCODE_RESTORE, // RESTORE data pointer
 
     // === Extended Range (80-127): future file I/O, events ===
@@ -227,12 +228,12 @@ typedef struct PCodeProgram {
 
     // Line number map: line_map[instr_idx] = BASIC line number.
      // Used for error reporting and debug output. 
-    int        *line_map;
+    double     *line_map;
 
     // ON GOTO/GOSUB jump tables.
      // on_tables[table_base + selector] = target instruction index.
      // Multiple tables packed sequentially. 
-    int        *on_tables;
+    double     *on_tables;
     int         on_table_count;
     int         on_table_capacity;
 } PCodeProgram;
@@ -243,48 +244,28 @@ typedef struct PCodeProgram {
 
  // pcode_compile - Compile a program store into bytecode.
  //
- // Walks each line in the program store, builds AST via ast_build_line(),
- // and emits PCode instructions. Jump targets are resolved after all
- // lines are processed.
- //
- // Returns 0 on success, -1 on error.
+ // Translates AST statements to flat instructions and handles jumps.
 int pcode_compile(ProgramStore *program, PCodeProgram *out_pcode);
 
- // pcode_free - Release all memory owned by a PCodeProgram.
-void pcode_free(PCodeProgram *pcode);
+ // pcode_free - Release PCodeProgram buffers.
+void pcode_free(PCodeProgram *prog);
 
-// ===================================================================
- // PCODE VM EXECUTOR API
- // ===================================================================
-
- // vm_exec_pcode - Execute a compiled PCodeProgram.
- //
- // Stack-based interpreter loop. Uses the RuntimeState for variable
- // storage, GOSUB stack, and error state. Returns 0 on normal halt,
- // -1 on error.
-int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode);
-
-// ===================================================================
- // PCODE EMITTER API (used by pcode_compiler.c)
- // ===================================================================
-
- // pcode_emit_init - Initialize a PCodeProgram for emission.
+ // pcode_emit_init - Initialize PCodeProgram memory.
 void pcode_emit_init(PCodeProgram *prog);
 
- // pcode_emit_instr - Append an instruction to the program.
- // Returns the index of the emitted instruction (for backpatching).
+ // pcode_emit_instr - Emit instruction with operand.
 int pcode_emit_instr(PCodeProgram *prog, PCodeOp op, PCodeOperand operand);
 
- // pcode_emit_simple - Emit a no-operand instruction.
+ // pcode_emit_simple - Emit instruction with no operand.
 int pcode_emit_simple(PCodeProgram *prog, PCodeOp op);
 
- // pcode_emit_int - Emit a PUSH_INT or similar with integer operand.
+ // pcode_emit_int - Emit instruction with integer operand.
 int pcode_emit_int(PCodeProgram *prog, PCodeOp op, long ival);
 
- // pcode_emit_float - Emit a PUSH_FLOAT with float operand.
+ // pcode_emit_float - Emit instruction with float operand.
 int pcode_emit_float(PCodeProgram *prog, PCodeOp op, double fval);
 
- // pcode_emit_offset - Emit a JUMP or similar with offset operand.
+ // pcode_emit_offset - Emit instruction with offset operand.
 int pcode_emit_offset(PCodeProgram *prog, PCodeOp op, int offset);
 
  // pcode_add_string - Add a string to the constant pool.
@@ -297,7 +278,7 @@ const char *pcode_get_string(PCodeProgram *prog, int idx, int *out_len);
 
  // pcode_set_line - Set the current BASIC line number for
  // subsequent emitted instructions.
-void pcode_set_line(PCodeProgram *prog, int line_num);
+void pcode_set_line(PCodeProgram *prog, double line_num);
 
  // pcode_patch_offset - Backpatch a jump target.
  // Sets prog->instrs[instr_idx].operand.u.offset = target.
@@ -309,5 +290,12 @@ void pcode_emit_expr(PCodeProgram *prog, AstExpr *expr);
  // pcode_emit_stmt - Emit bytecode for an AST statement.
 void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
                      RuntimeState *rt);
+
+// ===================================================================
+ // PCODE VM EXECUTOR API
+ // ===================================================================
+
+ // vm_exec_pcode - Execute a compiled PCodeProgram.
+int vm_exec_pcode(RuntimeState *rt, PCodeProgram *pcode);
 
 #endif // BASICPP_PCODE_H

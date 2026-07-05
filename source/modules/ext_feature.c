@@ -157,11 +157,11 @@ int ext_feature_load(const char *spec_path, void *rt)
     }
 
     if (spec) {
-        strncpy(temp.name, spec->name, 63);
-        strncpy(temp.version, spec->version, 15);
+        snprintf(temp.name, 64, "%s", spec->name);
+        snprintf(temp.version, 16, "%s", spec->version);
         temp.required_level = spec->required_level;
         if (spec->lib_path[0])
-            strncpy(temp.lib_path, spec->lib_path, 255);
+            snprintf(temp.lib_path, 256, "%s", spec->lib_path);
     } else {
         // Derive name from filename
         const char *base = spec_path;

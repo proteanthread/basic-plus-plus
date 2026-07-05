@@ -85,7 +85,6 @@
 #include "parser.h"
 #include "console.h"
 #include "exec.h"
-#include "dialect.h"
 #include "fileio.h"
 #include "errors.h"
 #include "compiler.h"
@@ -556,6 +555,10 @@ void pi_parse_bsave(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_bload(Lexer *lex, RuntimeState *rt, int line_num);
 void pi_parse_brun(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_csave(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_cload(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_crun(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_motor(Lexer *lex, RuntimeState *rt, int line_num);
 
 // parser_struct.c - Structured programming
 void pi_parse_select(Lexer *lex, RuntimeState *rt,

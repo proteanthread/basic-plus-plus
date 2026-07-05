@@ -121,6 +121,7 @@
 // ---
 
 #include <stdio.h>
+#include <math.h>
 #include "errors.h"
 #include "txn.h"
 #include "../console.h"
@@ -140,6 +141,7 @@
 // current_error: The active error code, or ERR_NONE if no error.
 // Set by error_raise(), cleared by error_clear().
 static ErrorCode current_error = ERR_NONE;
+double g_current_executing_line = 0.0;
 
 // suppress_output: When non-zero, error_raise() sets the flag
 // but does NOT print the message. Used by ON ERROR GOTO so that
@@ -208,7 +210,7 @@ const char *error_message(ErrorCode code)
 //   code     - error code (ERR_WHAT, ERR_HOW, or ERR_SORRY)
 //   line_num - line number for context (0 = immediate mode)
 //
-void error_raise(ErrorCode code, int line_num)
+void error_raise(ErrorCode code, double line_num)
 {
     if (code == ERR_NONE) {
         return;
@@ -216,11 +218,16 @@ void error_raise(ErrorCode code, int line_num)
 
     current_error = code;
 
+    double print_line = line_num;
+    if (line_num > 0.0 && g_current_executing_line > 0.0) {
+        print_line = g_current_executing_line;
+    }
+
 #ifdef BPP_SUPPORT_TXN
     // Auto-rollback ATOMIC blocks on error.
     // If a transaction is in progress, this rolls it back
     // before the error message is printed.
-    txn_on_error(line_num);
+    txn_on_error((int)print_line);
 #endif
 
     // If ON ERROR GOTO is active, suppress the message.
@@ -237,8 +244,12 @@ void error_raise(ErrorCode code, int line_num)
     }
 
     // Print the error message with optional line number.
-    if (line_num > 0) {
-        printf("%s AT LINE %d\n", error_message(code), line_num);
+    if (print_line > 0.0) {
+        if (floor(print_line) == print_line) {
+            printf("%s AT LINE %.0f\n", error_message(code), print_line);
+        } else {
+            printf("%s AT LINE %.2f\n", error_message(code), print_line);
+        }
     } else {
         printf("%s\n", error_message(code));
     }
@@ -250,9 +261,11 @@ void error_raise(ErrorCode code, int line_num)
 // each statement during program execution (exec.c). After this
 // call, error_occurred() returns 0.
 //
+//
 void error_clear(void)
 {
     current_error = ERR_NONE;
+    g_current_executing_line = 0.0;
 }
 
 // error_occurred - Check if an error is currently active.

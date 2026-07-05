@@ -117,7 +117,7 @@ int device_alias_register(const char *alias, const char *target,
     if (idx >= 0) {
         da_copy_upper(alias_table[idx].target, target, 16);
         alias_table[idx].direction = direction;
-        alias_table[idx].dialect = (DialectId)dialect;
+        alias_table[idx].dialect = (int)dialect;
         alias_table[idx].active = 1;
         return 0;
     }
@@ -129,7 +129,7 @@ int device_alias_register(const char *alias, const char *target,
     da_copy_upper(alias_table[idx].alias, alias, 16);
     da_copy_upper(alias_table[idx].target, target, 16);
     alias_table[idx].direction = direction;
-    alias_table[idx].dialect = (DialectId)dialect;
+    alias_table[idx].dialect = (int)dialect;
     alias_table[idx].active = 1;
     alias_count++;
     return 0;
@@ -151,7 +151,7 @@ const DeviceAlias *device_alias_resolve(const char *name)
 }
 
 // --- device_alias_clear_dialect ---
-void device_alias_clear_dialect(DialectId id)
+void device_alias_clear_dialect(int id)
 {
     int i;
     for (i = 0; i < alias_count; i++) {
@@ -208,7 +208,7 @@ void device_alias_list(void)
 
     for (i = 0; i < alias_count; i++) {
         const char *dir_str;
-        const DialectConfig *dc;
+        
 
         if (!alias_table[i].active) continue;
         found++;
@@ -220,30 +220,10 @@ void device_alias_list(void)
         default:              dir_str = "?";     break;
         }
 
-        if (alias_table[i].dialect >= 0 &&
-            alias_table[i].dialect < DIALECT_COUNT) {
-            dc = dialect_get_config();
-            // We just show the dialect short name if it
-             // matches the owning dialect, else "(manual)" 
-            if (alias_table[i].dialect == dc->id) {
-                printf("%-10s %-10s %-8s %s\n",
-                       alias_table[i].alias,
-                       alias_table[i].target,
-                       dir_str,
-                       dc->short_name);
-            } else {
-                printf("%-10s %-10s %-8s (dialect %d)\n",
-                       alias_table[i].alias,
-                       alias_table[i].target,
-                       dir_str,
-                       alias_table[i].dialect);
-            }
-        } else {
-            printf("%-10s %-10s %-8s (manual)\n",
-                   alias_table[i].alias,
-                   alias_table[i].target,
-                   dir_str);
-        }
+        printf("%-10s %-10s %-8s (manual)\\n",
+               alias_table[i].alias,
+               alias_table[i].target,
+               dir_str);
     }
 
     if (!found) {
@@ -283,7 +263,7 @@ typedef struct {
 } AliasEntry;
 
 static int da_load_table(const AliasEntry *entries, int count,
-                         DialectId id)
+                         int id)
 {
     int i, loaded = 0;
     for (i = 0; i < count; i++) {
@@ -515,82 +495,26 @@ static const AliasEntry trs2_aliases[] = {
 // ===================================================================
  // device_alias_load_dialect - Master loader
  // =================================================================== 
-int device_alias_load_dialect(DialectId id)
+int device_alias_load_dialect(int id)
 {
     // Clear previous aliases from this dialect
     device_alias_clear_dialect(id);
 
-    switch (id) {
-    case DIALECT_ATARI_MS:
-        return da_load_table(atari_aliases,
-            (int)(sizeof(atari_aliases) /
-                  sizeof(atari_aliases[0])), id);
-
-    case DIALECT_COMMODORE:
-        return da_load_table(c64_aliases,
-            (int)(sizeof(c64_aliases) /
-                  sizeof(c64_aliases[0])), id);
-
-    case DIALECT_COCO:
-        return da_load_table(coco_aliases,
-            (int)(sizeof(coco_aliases) /
-                  sizeof(coco_aliases[0])), id);
-
-    case DIALECT_SINCLAIR:
-        return da_load_table(sinclair_aliases,
-            (int)(sizeof(sinclair_aliases) /
-                  sizeof(sinclair_aliases[0])), id);
-
-    case DIALECT_GW_BASIC:
-        return da_load_table(gwbasic_aliases,
-            (int)(sizeof(gwbasic_aliases) /
-                  sizeof(gwbasic_aliases[0])), id);
-
-    case DIALECT_QBASIC:
-        return da_load_table(qbasic_aliases,
-            (int)(sizeof(qbasic_aliases) /
-                  sizeof(qbasic_aliases[0])), id);
-
-    case DIALECT_MBASIC:
-        return da_load_table(mbasic_aliases,
-            (int)(sizeof(mbasic_aliases) /
-                  sizeof(mbasic_aliases[0])), id);
-
-    case DIALECT_APPLESOFT:
-        return da_load_table(applesoft_aliases,
-            (int)(sizeof(applesoft_aliases) /
-                  sizeof(applesoft_aliases[0])), id);
-
-    case DIALECT_APPLE_INT:
-        return da_load_table(applesoft_aliases,
-            (int)(sizeof(applesoft_aliases) /
-                  sizeof(applesoft_aliases[0])), id);
-
-    case DIALECT_ECMA116:
-        return da_load_table(ecma116_aliases,
-            (int)(sizeof(ecma116_aliases) /
-                  sizeof(ecma116_aliases[0])), id);
-
-    case DIALECT_SUPERBASIC:
-        return da_load_table(superbasic_aliases,
-            (int)(sizeof(superbasic_aliases) /
-                  sizeof(superbasic_aliases[0])), id);
-
-    case DIALECT_SBASIC:
-        return da_load_table(sbasic_aliases,
-            (int)(sizeof(sbasic_aliases) /
-                  sizeof(sbasic_aliases[0])), id);
-
-    case DIALECT_TRS80_L2:
-        return da_load_table(trs2_aliases,
-            (int)(sizeof(trs2_aliases) /
-                  sizeof(trs2_aliases[0])), id);
-
-    // Dialects with no special device names
-    case DIALECT_TINY_BASIC:
-    case DIALECT_TRS80_L1:
-    case DIALECT_ECMA55:
-    default:
-        return 0;
-    }
+    return da_load_table(gwbasic_aliases, (int)(sizeof(gwbasic_aliases) / sizeof(gwbasic_aliases[0])), id);
+}
+#ifdef __GNUC__
+__attribute__((unused))
+#endif
+static void suppress_unused_aliases(void) {
+    (void)atari_aliases;
+    (void)c64_aliases;
+    (void)coco_aliases;
+    (void)sinclair_aliases;
+    (void)qbasic_aliases;
+    (void)mbasic_aliases;
+    (void)applesoft_aliases;
+    (void)ecma116_aliases;
+    (void)superbasic_aliases;
+    (void)sbasic_aliases;
+    (void)trs2_aliases;
 }

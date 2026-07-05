@@ -52,6 +52,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <signal.h>
 #include <time.h>
 #include "exec.h"
@@ -67,7 +68,6 @@
 #include "task.h"
 #include "../console.h"
 #include "fileio.h"
-#include "dialect.h"
 #include "ast.h"
 #include "ast_interpreter.h"
 
@@ -100,7 +100,7 @@ static void signal_handler(int sig)
  // Tier 4 - File I/O
  //
  // STOP-mode: events in state==EVT_STOP are queued instead of fired.
-static void event_poll(RuntimeState *rt, int line_num)
+static void event_poll(RuntimeState *rt, double line_num)
 {
  // Guard: don't fire events inside event handlers
  if (rt->event_in_handler) return;
@@ -127,8 +127,11 @@ static void event_poll(RuntimeState *rt, int line_num)
   }
   // No handler: default behavior (stop program)
   if (rt->on_break_line == 0) {
-   printf("\n[BREAK - Ctrl+C at line %d]\n",
-    line_num);
+   if (floor(line_num) == line_num) {
+       printf("\n[BREAK - Ctrl+C at line %.0f]\n", line_num);
+   } else {
+       printf("\n[BREAK - Ctrl+C at line %.2f]\n", line_num);
+   }
    vm_set_state(rt, VM_PAUSED);
    rt->resume_index = rt->current_index;
    return;
@@ -236,7 +239,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                         while (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
                             lexer_next(&lex);
                         }
-                        rt->line_asts[i] = ast_build_line(&lex, rt->program->lines[i].line_number);
+                        rt->line_asts[i] = ast_build_line(&lex, (int)rt->program->lines[i].line_number);
                     }
                 }
 
@@ -249,7 +252,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                        !error_occurred()) {
                     int idx = rt->current_index;
                     AstStmt *stmt = rt->line_asts[idx];
-                    int line_num = rt->program->lines[idx].line_number;
+                    double line_num = rt->program->lines[idx].line_number;
 
                     int trigger_compile = 0;
                     AstStmt *s = stmt;
@@ -288,7 +291,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                     rt->next_index = rt->current_index + 1;
                     AstStmt *curr = stmt;
                     while (curr && vm_get_state(rt) == VM_RUNNING && !error_occurred()) {
-                        ast_interpret_stmt(rt, curr, line_num);
+                        ast_interpret_stmt(rt, curr, (int)line_num);
                         curr = curr->next;
                     }
                     rt->current_index = rt->next_index;
@@ -321,11 +324,11 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                 rt->loaded_pcode = pcode;
                 rt->has_loaded_pcode = 1;
 
-                int resume_line = 0;
+                double resume_line = 0.0;
                 if (rt->current_index >= 0 && rt->current_index < rt->program->count) {
                     resume_line = rt->program->lines[rt->current_index].line_number;
                 }
-                if (resume_line > 0) {
+                if (resume_line > 0.0) {
                     int i;
                     int found_pc = -1;
                     for (i = 0; i < pcode->count; i++) {
@@ -343,7 +346,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
             p = (PCodeProgram *)rt->loaded_pcode;
 
             if (rt->resume_index < 0 && start_index > 0 && start_index < rt->program->count) {
-                int target_line = rt->program->lines[start_index].line_number;
+                double target_line = rt->program->lines[start_index].line_number;
                 int i;
                 for (i = 0; i < p->count; i++) {
                     if (p->line_map && p->line_map[i] == target_line) {
@@ -362,7 +365,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                     rt->chain_pending = 0;
                     rt->chain_file[0] = '\0';
                     pcode_cache_invalidate(rt);
-                    dialect_detect_and_apply_header(rt->program);
+                    
                     runtime_pre_scan_external_declarations(rt);
                     runtime_collect_data(rt);
                     runtime_collect_labels(rt);
@@ -372,9 +375,9 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                         for (idx = 0; idx < pgm->count; idx++) {
                             Lexer cl;
                             const char *text = pgm->lines[idx].text;
-                            int ln = pgm->lines[idx].line_number;
+                            double ln = pgm->lines[idx].line_number;
                             lexer_init(&cl, text);
-                            if (cl.current.type == TOK_NUMBER)
+                            if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT || cl.current.type == TOK_FLOAT_LIT)
                                 lexer_next(&cl);
                             if (cl.current.type == TOK_KEYWORD &&
                                 (cl.current.value.keyword == KW_SUB ||
@@ -427,14 +430,14 @@ static void exec_run_from(RuntimeState *rt, int start_index)
  rt->current_index < rt->program->count &&
  !error_occurred()) {
  ProgramLine *line;
- int line_num;
+ double line_num;
 
  if (rt->chain_pending) {
      if (fileio_chain(&rt->memory->program, rt->chain_file) == 0) {
          rt->chain_pending = 0;
          rt->chain_file[0] = '\0';
          pcode_cache_invalidate(rt);
-         dialect_detect_and_apply_header(rt->program);
+         
          runtime_pre_scan_external_declarations(rt);
          runtime_collect_data(rt);
          runtime_collect_labels(rt);
@@ -444,9 +447,9 @@ static void exec_run_from(RuntimeState *rt, int start_index)
              for (idx = 0; idx < pgm->count; idx++) {
                  Lexer cl;
                  const char *text = pgm->lines[idx].text;
-                 int ln = pgm->lines[idx].line_number;
+                 double ln = pgm->lines[idx].line_number;
                  lexer_init(&cl, text);
-                 if (cl.current.type == TOK_NUMBER)
+                 if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT || cl.current.type == TOK_FLOAT_LIT)
                      lexer_next(&cl);
                  if (cl.current.type == TOK_KEYWORD &&
                      (cl.current.value.keyword == KW_SUB ||
@@ -473,37 +476,49 @@ static void exec_run_from(RuntimeState *rt, int start_index)
      }
  }
 
- // Get the current line
- line = &rt->program->lines[rt->current_index];
- line_num = line->line_number;
+  // Get the current line
+  line = &rt->program->lines[rt->current_index];
+  line_num = line->line_number;
+  g_current_executing_line = line_num;
 
- // Breakpoint / single-step check.
- // If we hit a breakpoint or single_step is on,
- // pause and return to REPL so user can inspect.
- // Skip the check on the first line after CONT.
- if (!skip_first_break) {
- if (rt->single_step ||
- (rt->breakpoint_count > 0 &&
- runtime_is_breakpoint(rt, line_num))) {
- printf("[BREAK at line %d]\n", line_num);
- vm_set_state(rt, VM_PAUSED);
- rt->resume_index = rt->current_index;
- return;
- }
- }
- skip_first_break = 0;
-
-  // Trace output (TRON/TROFF).
-  if (rt->trace_on) {
-  vdev_printf(rt->dev_con, "[%d]", line_num);
+  // Breakpoint / single-step check.
+  // If we hit a breakpoint or single_step is on,
+  // pause and return to REPL so user can inspect.
+  // Skip the check on the first line after CONT.
+  if (!skip_first_break) {
+  if (rt->single_step ||
+  (rt->breakpoint_count > 0 &&
+  runtime_is_breakpoint(rt, line_num))) {
+  if (floor(line_num) == line_num) {
+      printf("[BREAK at line %.0f]\n", line_num);
+  } else {
+      printf("[BREAK at line %.2f]\n", line_num);
   }
-
-  // Verbose trace output (DEBUG ON/OFF).
-  // Shows [line] followed by the full source text.
-  if (rt->debug_on) {
-  vdev_printf(rt->dev_con, "[%d] %s\n",
-   line_num, line->text);
+  vm_set_state(rt, VM_PAUSED);
+  rt->resume_index = rt->current_index;
+  return;
   }
+  }
+  skip_first_break = 0;
+
+   // Trace output (TRON/TROFF).
+   if (rt->trace_on) {
+       if (floor(line_num) == line_num) {
+           vdev_printf(rt->dev_con, "[%.0f]", line_num);
+       } else {
+           vdev_printf(rt->dev_con, "[%.2f]", line_num);
+       }
+   }
+
+   // Verbose trace output (DEBUG ON/OFF).
+   // Shows [line] followed by the full source text.
+   if (rt->debug_on) {
+       if (floor(line_num) == line_num) {
+           vdev_printf(rt->dev_con, "[%.0f] %s\n", line_num, line->text);
+       } else {
+           vdev_printf(rt->dev_con, "[%.2f] %s\n", line_num, line->text);
+       }
+   }
 
   // Initialize lexer on the line text
   if (rt->resumed) {
@@ -513,7 +528,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
   lexer_init(&lex, line->text);
 
   // Skip the line number.
-  if (lex.current.type == TOK_NUMBER) {
+  if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
   lexer_next(&lex);
   }
   }
@@ -812,7 +827,7 @@ scope_done:
  // ON ERROR GOTO handler.
  // (Only reached if no WHEN EXCEPTION frame handled it.)
  if (error_occurred() && rt->on_error_line > 0) {
- int target_line = rt->on_error_line;
+ double target_line = rt->on_error_line;
 
  // Save error info for ERL/ERR.
  // If CAUSE EXCEPTION already set last_err_code
@@ -868,7 +883,7 @@ scope_done:
  // exec_run - Start program execution from the beginning.
 void exec_run(RuntimeState *rt)
 {
-    dialect_detect_and_apply_header(rt->program);
+    
 
     // Reset execution state for fresh run
     runtime_reset(rt);
@@ -900,9 +915,9 @@ void exec_run(RuntimeState *rt)
  for (idx = 0; idx < pgm->count; idx++) {
  Lexer cl;
  const char *text = pgm->lines[idx].text;
- int ln = pgm->lines[idx].line_number;
+ double ln = pgm->lines[idx].line_number;
  lexer_init(&cl, text);
- if (cl.current.type == TOK_NUMBER)
+ if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  if (cl.current.type == TOK_KEYWORD &&
  (cl.current.value.keyword == KW_SUB ||
@@ -954,7 +969,7 @@ void exec_chain_run(RuntimeState *rt)
        rt->has_loaded_pcode = 0;
    }
 #endif
-    dialect_detect_and_apply_header(rt->program);
+    
 
     // Pre-scan and load external declarations first
     runtime_pre_scan_external_declarations(rt);
@@ -977,9 +992,9 @@ void exec_chain_run(RuntimeState *rt)
  for (idx = 0; idx < pgm->count; idx++) {
  Lexer cl;
  const char *text = pgm->lines[idx].text;
- int ln = pgm->lines[idx].line_number;
+ double ln = pgm->lines[idx].line_number;
  lexer_init(&cl, text);
- if (cl.current.type == TOK_NUMBER)
+ if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  if (cl.current.type == TOK_KEYWORD &&
  (cl.current.value.keyword == KW_SUB ||
@@ -1098,7 +1113,7 @@ void exec_run_step_cooperative(RuntimeState *rt)
         }
 
         ProgramLine *line = &rt->program->lines[rt->current_index];
-        int line_num = line->line_number;
+        double line_num = line->line_number;
 
         // Initialize lexer
         lexer_init(&lex, line->text);
@@ -1110,7 +1125,7 @@ void exec_run_step_cooperative(RuntimeState *rt)
             lexer_next(&lex); 
         } else {
             // Skip line number
-            if (lex.current.type == TOK_NUMBER) {
+            if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
                 lexer_next(&lex);
             }
             rt->next_index = -1;
@@ -1163,7 +1178,7 @@ void exec_run_step_cooperative(RuntimeState *rt)
     } else {
         Lexer lex;
         lexer_init(&lex, line->text);
-        if (lex.current.type == TOK_NUMBER) {
+        if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
             lexer_next(&lex);
         }
         parser_execute_line(&lex, rt, line->line_number);

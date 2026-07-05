@@ -158,6 +158,7 @@ void pi_parse_sound(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_play - Handle PLAY command.
 void pi_parse_play(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
  // PLAY string$ - Music macro language.
  //
  // GW-BASIC music commands:

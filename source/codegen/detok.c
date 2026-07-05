@@ -105,6 +105,9 @@ static const char *keyword_names[] = {
  "ASC", // KW_ASC
  "STR$", // KW_STR_FUNC
  "VAL", // KW_VAL_FUNC
+ "EDIT$", // KW_EDIT_FUNC
+ "NUM", // KW_NUM
+ "NUM$", // KW_NUM_FUNC
  "COMPILE", // KW_COMPILE
  "CLS", // KW_CLS
  "CLEAR", // KW_CLEAR
@@ -363,6 +366,10 @@ static const char *keyword_names[] = {
  "TANH", // KW_TANH_FUNC
  "LOG10", // KW_LOG10_FUNC
  "LOG2", // KW_LOG2_FUNC
+ "LGT", // KW_LGT_FUNC
+ "TIM", // KW_TIM_FUNC
+ "HI", // KW_HI_FUNC
+ "LO", // KW_LO_FUNC
  "COMP", // KW_COMP_FUNC
  "PDIF", // KW_PDIF_FUNC
  "PI", // KW_PI_FUNC

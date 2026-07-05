@@ -63,9 +63,9 @@ modules/ext_lib.c modules/ext_func.c \
 modules/ext_feature.c modules/ext_plugin.c \
 modules/lib_space.c modules/bpl_format.c \
 modules/parser_block.c \
-modules/gw_math_mbf.c modules/gw_memory.c \
-modules/gw_sdl2.c modules/gw_plugin.c \
-modules/gw_serial.c modules/mod_gwbasic.c \
+modules/mbf_math.c modules/segmented_mem.c \
+modules/sdl2_emu.c modules/compat_plugin.c \
+modules/serial_compat.c modules/mod_legacy_compat.c \
 runtime/runtime.c runtime/exec.c \
 misc/parser_misc.c"
 
@@ -89,8 +89,18 @@ make TARGET=../baspp clean
 make -j$NUM_CORES TARGET=../baspp LINUX_CFLAGS="-std=c17 -Wall -Wextra -O2 -I. -D_POSIX_C_SOURCE=200809L $(sdl2-config --cflags)" LDFLAGS="$(sdl2-config --libs)" all
 echo "[OK] baspp built."
 
+echo "[INFO] Building legacy standalone prototypes..."
+gcc -ansi -Wall -Wextra -O2 -o ../tinybasic ../standalone/source/tinybasic.c || echo "[WARN] tinybasic build failed."
+gcc -ansi -Wall -Wextra -O2 -o ../level1 ../standalone/source/level1.c || echo "[WARN] level1 build failed."
+gcc -ansi -Wall -Wextra -O2 -o ../apple2 ../standalone/source/apple2.c || echo "[WARN] apple2 build failed."
+gcc -ansi -Wall -Wextra -O2 -o ../1964 ../standalone/source/1964.c -lm || echo "[WARN] 1964 build failed."
+echo "[INFO] Building trans and bppc..."
+make trans-linux || echo "[WARN] trans build failed."
+make bppc-linux || echo "[WARN] bppc build failed."
+
 echo "========================================================"
 echo "All builds complete."
+echo "========================================================"
 echo "  baspp         — BASIC++ GUI interpreter"
 echo "  baspp-console — BASIC++ Console interpreter"
 echo "  blite         — BASIC++ Lite interpreter"

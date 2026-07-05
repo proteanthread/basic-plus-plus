@@ -207,12 +207,14 @@ struct AstStmt {
  // STMT_LET
  struct {
  char var_name;
+ char name[MAX_VAR_NAME_LEN + 1];
  AstExpr *value;
  } let;
 
  // STMT_LET_STRVAR
  struct {
  char var_name;
+ char name[MAX_VAR_NAME_LEN + 1];
  AstExpr *value;
  } let_strvar;
 
@@ -250,6 +252,7 @@ struct AstStmt {
  // STMT_FOR
  struct {
  char var_name;
+ char name[MAX_VAR_NAME_LEN + 1];
  AstExpr *init;
  AstExpr *limit;
  AstExpr *step; // NULL = default step 1
@@ -258,13 +261,13 @@ struct AstStmt {
  // STMT_NEXT
  struct {
  char var_name;
+ char name[MAX_VAR_NAME_LEN + 1];
  } next;
 
  // STMT_INPUT
  struct {
  AstExpr *prompt; // NULL or string literal
- char var_names[26]; // variables to read into
- int var_types[26]; // 0=int, 1=string
+ AstExpr *vars[26]; // variables to read into
  int var_count;
  } input;
 
@@ -322,7 +325,7 @@ struct AstStmt {
  // STMT_ON_GOTO
  struct {
  AstExpr *selector; // ON <selector> GOTO/GOSUB ...
- int targets[64]; // target line numbers
+ double targets[64]; // target line numbers
  int target_count;
  int is_gosub; // 1 if GOSUB, 0 if GOTO
  } on_goto;
@@ -349,7 +352,7 @@ struct AstStmt {
 
 // --- AstLine - One parsed program line. ---
 typedef struct AstLine {
- int line_number;
+ double line_number;
  AstStmt *stmts; // linked list of statements
 } AstLine;
 

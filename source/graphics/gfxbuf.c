@@ -54,9 +54,8 @@
 #include <string.h>
 #include "gfxbuf.h"
 #include "memory.h"
-#include "gw_memory.h"
-#include "gw_sdl2.h"
-#include "dialect.h"
+#include "segmented_mem.h"
+#include "sdl2_emu.h"
 #include "../console.h"
 
 extern struct GW_Memory *g_gw_mem;
@@ -137,6 +136,7 @@ void gfxbuf_clear(int color)
  // When SDL is active, clear the SDL pixel buffer using the palette color
  if (gw_sdl2_is_active()) {
      uint32_t argb = GW_PALETTE[color % 256];
+     (void)argb;
      gw_sdl2_clear(argb);
      gw_sdl2_present_force();
  }
@@ -157,6 +157,7 @@ void gfxbuf_pset(int x, int y, int color)
         if (x < 0 || x >= w || y < 0 || y >= h) return;
         if (color < 0) color = 0;
         uint32_t argb = GW_PALETTE[color % 256];
+        (void)argb;
         gw_sdl2_set_pixel(x, y, argb);
         return;
     }

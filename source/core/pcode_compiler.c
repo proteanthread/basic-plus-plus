@@ -61,6 +61,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "pcode.h"
 #include "ast.h"
 #include "lexer.h"
@@ -129,7 +130,7 @@ static int loop_pop(LoopType expected, LoopEntry *out)
  // a negative operand (which is -(target_line_number)).
 
 typedef struct {
-    int line_num;
+    double line_num;
     int instr_idx;
 } LineMapEntry;
 
@@ -147,7 +148,7 @@ static void linemap_reset(void)
     s_line_map_capacity = 0;
 }
 
-static void linemap_add(int line_num, int instr_idx)
+static void linemap_add(double line_num, int instr_idx)
 {
     if (s_line_map_count >= s_line_map_capacity) {
         s_line_map_capacity = (s_line_map_capacity == 0)
@@ -160,7 +161,7 @@ static void linemap_add(int line_num, int instr_idx)
     s_line_map_count++;
 }
 
-static int linemap_resolve(int line_num)
+static int linemap_resolve(double line_num)
 {
     int i;
     for (i = 0; i < s_line_map_count; i++) {
@@ -186,12 +187,15 @@ static int resolve_line_jumps(PCodeProgram *pcode)
         // JUMP and GOSUB with negative operand = -(line number)
         if ((inst->op == (unsigned char)PCODE_JUMP ||
              inst->op == (unsigned char)PCODE_GOSUB) &&
-            inst->operand.u.ival < 0) {
-            int target_line = (int)(-(inst->operand.u.ival));
+            inst->operand.u.fval < 0.0) {
+            double target_line = -(inst->operand.u.fval);
             int target_idx = linemap_resolve(target_line);
             if (target_idx < 0) {
-                printf("PCODE: Undefined line %d at instruction %d\n",
-                       target_line, i);
+                if (floor(target_line) == target_line) {
+                    printf("PCODE: Undefined line %.0f at instruction %d\n", target_line, i);
+                } else {
+                    printf("PCODE: Undefined line %.2f at instruction %d\n", target_line, i);
+                }
                 errors++;
             } else {
                 inst->operand.u.offset = target_idx;
@@ -201,15 +205,18 @@ static int resolve_line_jumps(PCodeProgram *pcode)
 
     // Also resolve ON GOTO tables
     for (i = 0; i < pcode->on_table_count; i++) {
-        if (pcode->on_tables[i] < 0) {
-            int target_line = -(pcode->on_tables[i]);
+        if (pcode->on_tables[i] < 0.0) {
+            double target_line = -(pcode->on_tables[i]);
             int target_idx = linemap_resolve(target_line);
             if (target_idx < 0) {
-                printf("PCODE: Undefined line %d in ON GOTO table\n",
-                       target_line);
+                if (floor(target_line) == target_line) {
+                    printf("PCODE: Undefined line %.0f in ON GOTO table\n", target_line);
+                } else {
+                    printf("PCODE: Undefined line %.2f in ON GOTO table\n", target_line);
+                }
                 errors++;
             } else {
-                pcode->on_tables[i] = target_idx;
+                pcode->on_tables[i] = (double)target_idx;
             }
         }
     }
@@ -238,9 +245,11 @@ int pcode_compile(ProgramStore *program, PCodeProgram *out_pcode)
         ProgramLine *pl = &program->lines[i];
         Lexer lex;
         AstStmt *stmts;
-        int line_num = pl->line_number;
+        double line_num = pl->line_number;
         int instr_before;
         int instr_after;
+
+        g_current_executing_line = line_num;
 
         // Record line -> instruction mapping
         instr_before = out_pcode->count;
@@ -249,7 +258,7 @@ int pcode_compile(ProgramStore *program, PCodeProgram *out_pcode)
 
         // Initialize lexer and skip line number
         lexer_init(&lex, pl->text);
-        if (lex.current.type == TOK_NUMBER) {
+        if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
             lexer_next(&lex);
         }
 
@@ -263,7 +272,7 @@ int pcode_compile(ProgramStore *program, PCodeProgram *out_pcode)
         error_clear();
 
         // Build AST
-        stmts = ast_build_line(&lex, line_num);
+        stmts = ast_build_line(&lex, (int)line_num);
 
         if (error_occurred() || !stmts) {
             // Parse error -- skip this line
@@ -363,6 +372,7 @@ int pcode_compile(ProgramStore *program, PCodeProgram *out_pcode)
 
     // Clean up
     linemap_reset();
+    g_current_executing_line = 0.0;
 
     if (compile_errors > 0) {
         printf("PCODE: %d compile error(s).\n", compile_errors);

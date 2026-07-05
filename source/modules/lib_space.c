@@ -62,11 +62,10 @@
 #include "../lexer.h"
 #include "../errors.h"
 #include "../scope_stack.h"
-#include "../dialect.h"
 
 // Interpreter entry point for executing a line
 extern void parser_execute_line(Lexer *lex, RuntimeState *rt,
-                                int line_num);
+                                double line_num);
 #include "../security.h"
 #include <stdbool.h>
 #include "../console.h"
@@ -770,7 +769,7 @@ int lib_space_invoke(LoadedLibrary *lib, LibSymbol *sym,
             error_set_suppress(1);
             lexer_init(&lex, text);
             // Skip line number if present
-            if (lex.current.type == TOK_NUMBER)
+            if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT || lex.current.type == TOK_FLOAT_LIT)
                 lexer_next(&lex);
 
             error_clear();

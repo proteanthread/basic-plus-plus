@@ -108,7 +108,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  int name_a_len;
 
  // MAT requires a dialect with DIM array support
- if (!dialect_get_config()->has_dim_arrays) {
+ if (!1) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
@@ -119,6 +119,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  DimArray *arr;
  int r, c;
  int use_tab = 1; // default: tabbed
+    (void)use_tab;
  int use_compact = 0;
  char fmt_buf[64];
  int has_using = 0;

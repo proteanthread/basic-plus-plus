@@ -1,0 +1,138 @@
+
+Segmented Virtual Memory (RAMBANKs) in BASIC++
+==============================================
+
+BASIC++ features a robust Segmented Virtual Memory Management subsystem that enables the execution of memory-heavy programs beyond the constraints of physical host memory. By abstracting the physical hardware memory layer into discrete, virtual memory pages, BASIC++ provides page-isolated memory spaces for multitasking processes.
+
+---
+
+
+Architecture Overview
+---------------------
+
+At its core, the Virtual Memory Manager (VMM) organizes memory into segmented pages called RAMBANKs:
+
+      +----------------------------------------------------+
+      |            Virtual Memory Manager (VMM)            |
+      +----------------------------------------------------+
+           /                  |                       \
+          /                   |                        \
+  +--------------+    +--------------+          +--------------+
+  |  RAMBANK 1   |    |  RAMBANK 2   |   ...    | RAMBANK 254  |
+  |  (Active)    |    |  (Active)    |          |  (Swapped)   |
+  +--------------+    +--------------+          +--------------+
+         |                   |                          ^
+         v                   v                          | LRU Swap
+  [ Task 1 Memory ]   [ Task 2 Memory ]           +------------+
+                                                  | Disk Page  |
+                                                  |   Swaps    |
+                                                  +------------+
+
+
+Key Specifications:
+~~~~~~~~~~~~~~~~~~~
+   Bank Size: Each RAMBANK is exactly 1 Megabyte ($1,048,576$ bytes) in size, mirroring the design patterns of classic IBM PC BIOS and expanded memory architectures.
+   Capacity Limit: The VMM supports up to 254 RAMBANKs (Bank IDs 1 to 254), providing up to 254 MB of virtual address space.
+   Memory Swapping: Active RAMBANKs are resident in the host process's physical heap. Inactive banks are serialized and swapped to disk pages to reclaim system resources when memory capacity limits are reached.
+   Eviction Policy: The memory manager uses a Least Recently Used (LRU) cache replacement algorithm. The bank that has not been read from or written to for the longest time is selected for disk eviction when a new bank request cannot be satisfied in-heap.
+*   Resident Bank Limit: Only 8 RAMBANKs (MAX_RESIDENT_BANKS = 8) can be resident in physical RAM at any given time. When a 9th bank is accessed, the LRU bank among the 8 residents is evicted (serialized to a .swp disk page) to make room. This keeps the interpreter's physical memory footprint bounded to approximately 8 MB of RAMBANK data regardless of how many virtual banks are in use.
+
+
+Internal Data Structure (RamBank)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each RAMBANK slot is tracked internally via the RamBank struct:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| base | char * | Pointer to the 1 MB memory block (NULL if swapped to disk) |
+| id | int | Bank identifier (1–254) |
+| resident | int | Non-zero if the bank is currently in physical RAM |
+| dirty | int | Non-zero if modified since last swap-out (requires write-back) |
+| shared | int | Non-zero if shared across processes |
+| last_access | long | Timestamp of last read/write (used by LRU eviction) |
+
+---
+
+
+Memory Security & Encryption
+----------------------------
+
+The VMM implements page-level encryption for swapped disk files to protect active code and variables from inspection on the host machine. The swap behavior adapts dynamically based on the system's active SECURITY level:
+
+1.  SEC_OPEN (Level 0): Swap pages are written as raw, unencrypted binary files (.swp files in the temporary directory) for maximum I/O performance.
+2.  SEC_STANDARD (Level 1) and Higher: Swap pages are obfuscated using a dynamic XOR-encryption cipher block during write serialization and decrypted on-the-fly during read deserialization.
+
+---
+
+
+Process Memory Isolation & Sharing
+----------------------------------
+
+To ensure system stability under multitasking, the VMM isolates memory segments on a per-task basis:
+   Memory Isolation: By default, a task or background process can only write to or read from its own designated home bank.
+   Shared Memory: Multiple processes can synchronize or share memory through explicitly declared shared banks. Using the BANK bank_id SHARED statement, a memory segment can be unlocked for cross-task reads and writes.
+   Synchronization Guards: All read/write operations on shared RAMBANKs are wrapped with Win32 Critical Sections or POSIX Mutexes. This guarantees thread-safety and prevents race conditions under the native multi-threaded scheduler.
+
+---
+
+
+Keywords & Introspection
+------------------------
+
+
+1. PEEKB(bank_id, offset)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+Reads a single byte (8-bit value) from a specific RAMBANK at the given offset.
+   Syntax: val = PEEKB(bank_id, offset)
+*   Constraints: bank_id must be between 1 and 254. offset must be between 0 and 1,048,575 ($1\text{MB} - 1$).
+*   Example:
+        10 REM Read byte 5000 from Shared Memory Bank 5
+    20 BANK 5 SHARED
+    30 VALUE = PEEKB(5, 5000)
+    40 PRINT "Value is "; VALUE
+    ```
+
+
+2. POKEB bank_id, offset, value
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Writes a single byte (8-bit value) to a specific RAMBANK at the given offset.
+*   Syntax: POKEB bank_id, offset, value
+*   Constraints: bank_id must be between 1 and 254. offset must be between 0 and 1,048,575. value must be between 0 and 255.
+*   Example:
+        10 REM Write value 42 to Bank 12 offset 100
+    20 BANK 12 SHARED
+    30 POKEB 12, 100, 42
+    ```
+
+
+3. FRE(bank_id)
+~~~~~~~~~~~~~~~
+Queries the free memory capacity in bytes of a specific RAMBANK, or of the system memory pool.
+*   Syntax: free_bytes = FRE(bank_id)
+*   Constraints: If bank_id is 0, returns the total free system memory. If bank_id is between 1 and 254, returns the available memory inside that specific bank.
+*   Example:
+        10 REM Query free space in Bank 2
+    20 PRINT "Bank 2 free space: "; FRE(2); " bytes"
+    ```
+
+
+4. BANK bank_id [modifier] / BANK LIST
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Manages Segmented Virtual Memory banks.
+   Modifiers:
+       BANK bank_id SHARED: Mark a bank as shared across processes.
+    *   BANK bank_id PRIVATE: Mark a bank as private (unshare it).
+    *   BANK bank_id CLEAR: Zero-out the memory contents of a bank.
+    *   BANK bank_id STATUS: Display status diagnostics of a specific bank.
+    *   BANK bank_id: Switch/set the current process's active home bank.
+    *   BANK LIST: Display a list of all active/allocated virtual banks.
+    *   BANK COPY src_bank, src_offset [TO] dst_bank, dst_offset, length: Fast bulk memory copy between segments.
+    *   BANK FILL bank_id, offset, length, value: Fast bulk memory initialization/fill inside a segment.
+*   Example:
+        10 BANK 8 SHARED : REM Authorize shared access to Bank 8
+    20 BANK FILL 8, 0, 1000, 255 : REM Fill first 1000 bytes with 255
+    30 BANK COPY 8, 0 TO 9, 0, 1000 : REM Copy filled bytes from Bank 8 to Bank 9
+    40 BANK 8 STATUS : REM Query Bank 8 status
+    50 BANK LIST     : REM List all active banks
+    ```

@@ -188,6 +188,10 @@ typedef enum VDevClass {
 #define VDIO_SET_TIMEOUT 6 // set I/O timeout (ms)
 #define VDIO_GET_ERROR 7 // get last error code
 #define VDIO_ENUMERATE 8 // list sub-devices
+#define VDEV_IOCTL_INT10 9 // BIOS Video Services
+#define VDEV_IOCTL_INT15 10 // BIOS System/Cassette Services
+#define VDEV_IOCTL_INT16 11 // BIOS Keyboard Services
+#define VDEV_IOCTL_INT21 12 // DOS Services
 #define VDIO_USER 256 // first user-defined command
 
 // Forward declaration

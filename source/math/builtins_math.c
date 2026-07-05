@@ -40,9 +40,9 @@
  // ---
 
 #include <math.h>
+#include <time.h>
 #include "builtins.h"
 #include "runtime.h"
-#include "dialect.h"
 #include "value.h"
 
 #ifndef M_PI
@@ -576,7 +576,7 @@ BValue builtin_rnd(BValue *args, int argc, void *rt)
  // GW-BASIC: bare RND is equivalent to RND(1)
  n = (argc > 0) ? bval_to_int(&args[0]) : 1;
 
- if (dialect_get_config()->has_float) {
+ if (1) {
  // GW-BASIC mode: return float 0..1
  //
  // RND(n>0) = advance seed, return 0..1
@@ -593,11 +593,59 @@ BValue builtin_rnd(BValue *args, int argc, void *rt)
  // ECMA-55: 0 < RND < 1 (exclusive).
  if (state->rnd_seed == 0)
  state->rnd_seed = 1;
- }
+}
  return bval_float(
  (double)state->rnd_seed / 2147483648.0);
  }
 
  // PATB mode: return integer 1..n
  return bval_int(runtime_rnd(state, n));
+}
+
+// LGT(x) - Logarithm base 10 (HP BASIC).
+// Category: FCAT_MATH | Safety: FSAFE_PURE
+BValue builtin_lgt(BValue *args, int argc, void *rt)
+{
+    (void)argc; (void)rt;
+    return bval_float(log10(bval_to_float(&args[0])));
+}
+
+// TIM(x) - Time components (HP BASIC).
+// TIM(0)=minute (0-59), TIM(1)=hour (0-23), TIM(2)=day of year (1-366), TIM(3)=year (e.g. 2026).
+// Category: FCAT_MATH | Safety: FSAFE_PURE
+BValue builtin_tim(BValue *args, int argc, void *rt)
+{
+    (void)argc; (void)rt;
+    int mode = (int)bval_to_int(&args[0]);
+    time_t rawtime;
+    struct tm *info;
+    time(&rawtime);
+    info = localtime(&rawtime);
+    if (info == NULL) return bval_float(0.0);
+    
+    switch (mode) {
+    case 0: return bval_float((double)info->tm_min);
+    case 1: return bval_float((double)info->tm_hour);
+    case 2: return bval_float((double)(info->tm_yday + 1));
+    case 3: return bval_float((double)(info->tm_year + 1900));
+    default: return bval_float((double)rawtime);
+    }
+}
+
+// HI(x) - High byte of 16-bit integer.
+// Category: FCAT_MATH | Safety: FSAFE_PURE
+BValue builtin_hi(BValue *args, int argc, void *rt)
+{
+    (void)argc; (void)rt;
+    long val = bval_to_int(&args[0]);
+    return bval_int((val >> 8) & 0xFF);
+}
+
+// LO(x) - Low byte of 16-bit integer.
+// Category: FCAT_MATH | Safety: FSAFE_PURE
+BValue builtin_lo(BValue *args, int argc, void *rt)
+{
+    (void)argc; (void)rt;
+    long val = bval_to_int(&args[0]);
+    return bval_int(val & 0xFF);
 }

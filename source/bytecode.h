@@ -32,7 +32,7 @@
  // Header (16 bytes):
  //   0-3:   Magic "BPP\x1A" (Ctrl-Z EOF marker)
  //   4:     Format version (1)
- //   5:     DialectId that created this file
+ //   5:     int that created this file
  //   6-7:   Flags (reserved)
  //   8-9:   Line count (LE uint16)
  //   10-15: Reserved
@@ -87,7 +87,7 @@
 typedef struct BppHeader {
  unsigned char magic[4]; // "BPP\x1A"
  unsigned char version; // format version (1)
- unsigned char dialect; // DialectId that created this
+ unsigned char dialect; // int that created this
  unsigned char flags[2]; // reserved (0)
  unsigned char line_count[2]; // little-endian line count
  unsigned char reserved[6]; // padding to 16 bytes

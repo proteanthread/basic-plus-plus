@@ -321,7 +321,7 @@ void pi_parse_if(Lexer *lex, RuntimeState *rt, int line_num)
 
  // Consume optional THEN keyword (GW-BASIC uses THEN,
  // PATB does not).
- if (dialect_get_config()->has_then_keyword) {
+ if (1) {
  if (lexer_match_keyword(lex, KW_THEN)) {
  lexer_next(lex); // consume THEN
  }
@@ -502,7 +502,7 @@ void pi_parse_unless(Lexer *lex, RuntimeState *rt, int line_num)
  condition = (bval_to_int(&cond_val) == 0);
 
  // Consume optional THEN
- if (dialect_get_config()->has_then_keyword) {
+ if (1) {
  if (lexer_match_keyword(lex, KW_THEN)) {
  lexer_next(lex);
  }
@@ -567,13 +567,15 @@ void pi_parse_goto(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- {
- long target;
- target = parse_expression(lex, rt, line_num);
- if (error_occurred()) return;
-
- // Use VM control flow primitive
- vm_jump(rt, (int)target, line_num);
+  {
+  BValue target_val;
+  double target;
+  target_val = parse_expression_bval(lex, rt, line_num);
+  if (error_occurred()) return;
+  target = bval_to_float(&target_val);
+ 
+  // Use VM control flow primitive
+  vm_jump(rt, target, line_num);
 
  // ECMA-55 s10.4: GOTO must not transfer control
  // into the body of a FOR..NEXT loop. In strict
@@ -581,7 +583,7 @@ void pi_parse_goto(Lexer *lex, RuntimeState *rt, int line_num)
  // Warn if the target falls within a FOR body
  // that was entered from a different context.
  // Warning only - execution continues normally.
- if (!error_occurred() && dialect_is_strict()) {
+ if (!error_occurred() && 0) {
  int fi;
  int tgt_idx = rt->next_index;
  for (fi = 0; fi < rt->stack_top; fi++) {
@@ -649,13 +651,15 @@ void pi_parse_gosub(Lexer *lex, RuntimeState *rt, int line_num)
  }
  }
 
- {
- long target;
- target = parse_expression(lex, rt, line_num);
- if (error_occurred()) return;
-
- // Use VM control flow primitive
- vm_call(rt, (int)target, line_num);
+  {
+  BValue target_val;
+  double target;
+  target_val = parse_expression_bval(lex, rt, line_num);
+  if (error_occurred()) return;
+  target = bval_to_float(&target_val);
+ 
+  // Use VM control flow primitive
+  vm_call(rt, target, line_num);
  }
 
  // GOSUB must be last - skip to end of line
@@ -888,9 +892,7 @@ void pi_parse_on(Lexer *lex, RuntimeState *rt, int line_num)
   KW_ERROR) {
   // ON ERROR GOTO n
   long target;
-  if (!dialect_check_feature("ON ERROR",
-  dialect_get_config()->has_on_error,
-  line_num))
+  if (!1)
   return;
   lexer_next(lex); // consume ERROR
   if (lex->current.type != TOK_KEYWORD
@@ -1155,6 +1157,8 @@ void pi_parse_elseif(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_endif - Handle ENDIF in control flow.
 void pi_parse_endif(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)line_num;
  // ENDIF (single word) - end of block IF.
  // Decrement depth if inside a true block.
  if (rt->block_if_depth > 0)

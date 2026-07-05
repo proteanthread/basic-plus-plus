@@ -45,7 +45,7 @@ BValue builtin_peekb(BValue *args, int argc, void *rt)
     return bval_int(0);
 }
 #else
-#include "gw_memory.h"
+#include "segmented_mem.h"
 extern struct GW_Memory *g_gw_mem;
 
  // PEEK(address) - Read a byte from the virtual memory segment.

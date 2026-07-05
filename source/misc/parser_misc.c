@@ -45,7 +45,7 @@
 
 #include "parser_internal.h"
 #include "task.h"
-#include "gw_memory.h"
+#include "segmented_mem.h"
 #include "../memmap.h"
 extern struct GW_Memory *g_gw_mem;
 
@@ -270,6 +270,8 @@ void pi_parse_clear(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_clr - Handle CLR command.
 void pi_parse_clr(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)line_num;
  // CLR - Clear the runtime stack only.
  //
  // Resets GOSUB return addresses and FOR/WHILE/DO
@@ -288,6 +290,9 @@ void pi_parse_clr(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_reset - Handle RESET command.
 void pi_parse_reset(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)rt;
+    (void)line_num;
  // RESET
  // Close all open files.
  // GW-BASIC: closes all files and writes
@@ -416,6 +421,7 @@ void pi_parse_task(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_memmap - Handle MEMMAP command.
 void pi_parse_memmap(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)line_num;
  // MEMMAP "platform"
  // MEMMAP LIST
  //
@@ -1021,6 +1027,8 @@ void pi_parse_strig(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_access - Handle ACCESS command.
 void pi_parse_access(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
+    (void)line_num;
  // ACCESS READ | WRITE | READ WRITE
  //
  // Standalone ACCESS statement reports or
@@ -1080,6 +1088,8 @@ void pi_parse_access(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_image - Handle IMAGE command.
 void pi_parse_image(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
+    (void)line_num;
  // IMAGE format-string
  //
  // HP-style format definition line. Like DATA and

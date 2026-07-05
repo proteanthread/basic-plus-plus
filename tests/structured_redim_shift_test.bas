@@ -1,0 +1,17 @@
+10 ' $DYNAMIC
+20 DIM A(5)
+30 DIM B(5)
+40 A(1) = 111 : A(5) = 555
+50 B(1) = 222 : B(5) = 666
+60 PRINT "Before REDIM:"
+70 PRINT "A(1)=";A(1);" A(5)=";A(5)
+80 PRINT "B(1)=";B(1);" B(5)=";B(5)
+90 REDIM PRESERVE A(10)
+100 PRINT "After REDIM PRESERVE A(10):"
+110 PRINT "A(1)=";A(1);" A(5)=";A(5);" A(10)=";A(10)
+120 PRINT "B(1)=";B(1);" B(5)=";B(5)
+130 REDIM PRESERVE B(10)
+140 B(10) = 999
+150 PRINT "After REDIM PRESERVE B(10):"
+160 PRINT "B(1)=";B(1);" B(5)=";B(5);" B(10)=";B(10)
+170 END

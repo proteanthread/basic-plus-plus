@@ -17,6 +17,17 @@
  * 5. TROUBLESHOOTING & FAILURE MODES:
  *    Check config.h pool sizes (e.g. increase PROGRAM_MEMORY_SIZE). If security level is ratcheted, check security level enforcement policies.
  * ===================================================================== */
+#ifndef _WIN32
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#endif
 
 // ---
 // BASIC++ Interpreter - platform.c
@@ -120,12 +131,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <time.h>
+
 #include "platform.h"
 #include "config.h"
 #include "runtime.h"
 #include "module.h"
 #include "security.h"
-#include <string.h>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -466,8 +480,8 @@ int platform_list_env_user(void)
 
 // platform_list_env_system - List system-scope environment variables.
 //
-// On Windows, reads from HKLM\SYSTEM\CurrentControlSet\Control\
-// Session Manager\Environment. Requires read access (usually
+// On Windows, reads from HKLM\SYSTEM\CurrentControlSet\Control
+// ComputerName\ComputerNamer\Environment. Requires read access (usually
 // available to all users).
 //
 int platform_list_env_system(void)
@@ -729,8 +743,7 @@ void platform_cleanup_logs(int full_cleanup)
             if (dup) continue;
 
             if (count < 1000) {
-                strncpy(files[count].name, name, 255);
-                files[count].name[255] = '\0';
+                snprintf(files[count].name, 256, "%s", name);
                 files[count].mtime = st.st_mtime;
                 files[count].is_log = is_log;
                 files[count].is_output = is_output;
@@ -973,6 +986,9 @@ void platform_sleep_ms(int duration_ms)
 #ifdef _WIN32
     Sleep((DWORD)duration_ms);
 #else
-    usleep((useconds_t)duration_ms * 1000);
+    struct timespec req;
+    req.tv_sec = duration_ms / 1000;
+    req.tv_nsec = (duration_ms % 1000) * 1000000;
+    nanosleep(&req, NULL);
 #endif
 }

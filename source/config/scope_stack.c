@@ -187,6 +187,7 @@ int scope_stack_push(ScopeStack *ss, struct RuntimeState *rt,
 }
 
  // is_shared - Check if a variable name is in the SHARED list.
+#if 0
 static int is_shared_named(ScopeSnapshot *snap,
                            const char *name, int name_len)
 {
@@ -200,6 +201,7 @@ static int is_shared_named(ScopeSnapshot *snap,
     }
     return 0;
 }
+#endif
 
  // scope_stack_pop - Restore saved variable state and pop scope.
  //
