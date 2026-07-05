@@ -46,9 +46,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
-#include "dialect.h"
 #include "funcreg.h"
 #include "errors.h"
+#include <ctype.h>
 
 // --- Internal forward declarations ---
 static AstStmt *build_statement(Lexer *lex, int line_num);
@@ -509,13 +509,12 @@ AstExpr *ast_build_expr(Lexer *lex, int line_num)
             } else if (tok.type == TOK_KEYWORD) {
                 KeywordId kw = tok.value.keyword;
                 AstFuncId fid;
-                int argc = 1;
                 int has_args = 1;
                 
                 switch (kw) {
                     case KW_ABS: fid = FUNC_ABS; break;
                     case KW_RND: fid = FUNC_RND; break;
-                    case KW_SIZE: fid = FUNC_SIZE; argc = 0; has_args = 0; break;
+                    case KW_SIZE: fid = FUNC_SIZE; has_args = 0; break;
                     case KW_SIN: fid = FUNC_SIN; break;
                     case KW_COS: fid = FUNC_COS; break;
                     case KW_TAN: fid = FUNC_TAN; break;
@@ -530,20 +529,19 @@ AstExpr *ast_build_expr(Lexer *lex, int line_num)
                     case KW_VAL_FUNC: fid = FUNC_VAL; break;
                     case KW_CHR: fid = FUNC_CHR; break;
                     case KW_STR_FUNC: fid = FUNC_STR; break;
-                    case KW_LEFT: fid = FUNC_LEFT; argc = 2; break;
-                    case KW_RIGHT: fid = FUNC_RIGHT; argc = 2; break;
-                    case KW_MID: fid = FUNC_MID; argc = 3; break;
+                    case KW_LEFT: fid = FUNC_LEFT; break;
+                    case KW_RIGHT: fid = FUNC_RIGHT; break;
+                    case KW_MID: fid = FUNC_MID; break;
                     case KW_TAB_FUNC: fid = FUNC_TAB; break;
-                    case KW_MEMMAP_FUNC: fid = FUNC_MEMMAP; argc = 0; has_args = 0; break;
-                    case KW_VPATH_FUNC: fid = FUNC_VPATH; argc = 0; has_args = 0; break;
-                    case KW_CWD_FUNC: fid = FUNC_CWD; argc = 0; has_args = 0; break;
-                    case KW_PWD: fid = FUNC_PWD; argc = 0; has_args = 0; break;
+                    case KW_MEMMAP_FUNC: fid = FUNC_MEMMAP; has_args = 0; break;
+                    case KW_VPATH_FUNC: fid = FUNC_VPATH; has_args = 0; break;
+                    case KW_CWD_FUNC: fid = FUNC_CWD; has_args = 0; break;
+                    case KW_PWD: fid = FUNC_PWD; has_args = 0; break;
                     default:
                     {
                         const FunctionEntry *fn = funcreg_find_by_keyword(kw);
                         if (fn != NULL) {
                             fid = FUNC_BUILTIN;
-                            argc = fn->min_args;
                             has_args = (fn->max_args > 0) ? 1 : 0;
                         } else {
                             error_raise(ERR_WHAT, line_num);
@@ -730,7 +728,7 @@ static AstStmt *build_print(Lexer *lex, int line_num)
  AstPrintItem *items = NULL;
  int count = 0;
  int capacity = 8;
- char sep = dialect_get_separator();
+ char sep = ':';
 
  if (!s) return NULL;
 
@@ -895,17 +893,19 @@ static AstStmt *build_let(Lexer *lex, int line_num)
  return s;
  }
 
- // Simple variable assignment
- {
- AstStmt *s = stmt_new(STMT_LET);
- AstExpr *val;
- if (!lexer_expect(lex, TOK_EQUALS)) { free(s); return NULL; }
- val = ast_build_expr(lex, line_num);
- if (error_occurred()) { free(s); return NULL; }
- s->v.let.var_name = name;
- s->v.let.value = val;
- return s;
- }
+ 	// Simple variable assignment
+	{
+		AstStmt *s = stmt_new(STMT_LET);
+		AstExpr *val;
+		if (!lexer_expect(lex, TOK_EQUALS)) { free(s); return NULL; }
+		val = ast_build_expr(lex, line_num);
+		if (error_occurred()) { free(s); return NULL; }
+		s->v.let.var_name = name;
+		s->v.let.name[0] = name;
+		s->v.let.name[1] = '\0';
+		s->v.let.value = val;
+		return s;
+	}
  }
 
  // Named variable
@@ -952,30 +952,34 @@ static AstStmt *build_let(Lexer *lex, int line_num)
  return s;
  }
 
- // Simple named variable assignment
- {
- int is_str = (nlen > 0 && nm[nlen - 1] == '$');
- if (is_str) {
- // String named var: X0$ = expr
- AstStmt *s = stmt_new(STMT_LET_STRVAR);
- AstExpr *val;
- s->v.let_strvar.var_name = nm[0];
- if (!lexer_expect(lex, TOK_EQUALS)) { free(s); return NULL; }
- val = ast_build_expr(lex, line_num);
- if (error_occurred()) { free(s); return NULL; }
- s->v.let_strvar.value = val;
- return s;
- } else {
- AstStmt *s = stmt_new(STMT_LET);
- AstExpr *val;
- s->v.let.var_name = nm[0];
- if (!lexer_expect(lex, TOK_EQUALS)) { free(s); return NULL; }
- val = ast_build_expr(lex, line_num);
- if (error_occurred()) { free(s); return NULL; }
- s->v.let.value = val;
- return s;
- }
- }
+ 	// Simple named variable assignment
+	{
+		int is_str = (nlen > 0 && nm[nlen - 1] == '$');
+		if (is_str) {
+			// String named var: X0$ = expr
+			AstStmt *s = stmt_new(STMT_LET_STRVAR);
+			AstExpr *val;
+			s->v.let_strvar.var_name = nm[0];
+			strncpy(s->v.let_strvar.name, nm, MAX_VAR_NAME_LEN);
+			s->v.let_strvar.name[MAX_VAR_NAME_LEN] = '\0';
+			if (!lexer_expect(lex, TOK_EQUALS)) { free(s); return NULL; }
+			val = ast_build_expr(lex, line_num);
+			if (error_occurred()) { free(s); return NULL; }
+			s->v.let_strvar.value = val;
+			return s;
+		} else {
+			AstStmt *s = stmt_new(STMT_LET);
+			AstExpr *val;
+			s->v.let.var_name = nm[0];
+			strncpy(s->v.let.name, nm, MAX_VAR_NAME_LEN);
+			s->v.let.name[MAX_VAR_NAME_LEN] = '\0';
+			if (!lexer_expect(lex, TOK_EQUALS)) { free(s); return NULL; }
+			val = ast_build_expr(lex, line_num);
+			if (error_occurred()) { free(s); return NULL; }
+			s->v.let.value = val;
+			return s;
+		}
+	}
  }
 
  // String variable
@@ -1029,30 +1033,54 @@ static AstStmt *build_let(Lexer *lex, int line_num)
  // (AND, OR, NOT) are handled by the expression parser.
 static AstStmt *build_if(Lexer *lex, int line_num)
 {
- AstStmt *s = stmt_new(STMT_IF);
+	AstStmt *s = stmt_new(STMT_IF);
 
- if (!s) return NULL;
+	if (!s) return NULL;
 
- // Parse the full condition expression
- s->v.if_stmt.condition = ast_build_expr(lex, line_num);
- if (error_occurred()) { free(s); return NULL; }
+	// Parse the full condition expression
+	s->v.if_stmt.condition = ast_build_expr(lex, line_num);
+	if (error_occurred()) { free(s); return NULL; }
 
- // Optional THEN keyword
- if (dialect_get_config()->has_then_keyword &&
- lexer_match_keyword(lex, KW_THEN)) {
- lexer_next(lex);
- }
+	// Optional THEN keyword
+	if (1 &&
+		lexer_match_keyword(lex, KW_THEN)) {
+		lexer_next(lex);
+	}
 
- // IF cond THEN <linenumber> - synthesize GOTO
- if (lex->current.type == TOK_NUMBER) {
- AstStmt *g = stmt_new(STMT_GOTO);
- g->v.goto_stmt.target = ast_build_expr(lex, line_num);
- s->v.if_stmt.then_stmt = g;
- return s;
- }
+	AstStmt *then_head = NULL;
+	AstStmt *then_tail = NULL;
 
- s->v.if_stmt.then_stmt = build_statement(lex, line_num);
- return s;
+	// IF cond THEN <linenumber> - synthesize GOTO
+	if (lex->current.type == TOK_NUMBER) {
+		AstStmt *g = stmt_new(STMT_GOTO);
+		g->v.goto_stmt.target = ast_build_expr(lex, line_num);
+		then_head = g;
+		then_tail = g;
+	} else {
+		then_head = build_statement(lex, line_num);
+		then_tail = then_head;
+	}
+
+	// Chain any remaining colon-separated statements on this line
+	while (!error_occurred() &&
+		   lex->current.type == TOK_COLON) {
+		lexer_next(lex); // consume the colon
+		if (lex->current.type == TOK_EOF || lex->current.type == TOK_CR) {
+			break;
+		}
+		AstStmt *stmt = build_statement(lex, line_num);
+		if (!stmt) break;
+		if (then_head == NULL) {
+			then_head = stmt;
+			then_tail = stmt;
+		} else {
+			then_tail->next = stmt;
+			then_tail = stmt;
+		}
+	}
+
+	s->v.if_stmt.then_stmt = then_head;
+	return s;
 }
 
  // build_for - Parse FOR statement.
@@ -1062,15 +1090,20 @@ static AstStmt *build_for(Lexer *lex, int line_num)
  if (!s) return NULL;
 
  if (lex->current.type == TOK_VARIABLE) {
- s->v.for_stmt.var_name = lex->current.value.var_name;
- lexer_next(lex);
+	s->v.for_stmt.var_name = lex->current.value.var_name;
+	s->v.for_stmt.name[0] = lex->current.value.var_name;
+	s->v.for_stmt.name[1] = '\0';
+	lexer_next(lex);
  } else if (lex->current.type == TOK_NAMED_VAR) {
- // Multi-char var (R1, Q4, DELAY) - use first letter
- s->v.for_stmt.var_name = (char)(lex->current.str_start[0]);
- lexer_next(lex);
+	s->v.for_stmt.var_name = (char)(lex->current.str_start[0]);
+	int nlen = lex->current.str_length;
+	if (nlen > MAX_VAR_NAME_LEN) nlen = MAX_VAR_NAME_LEN;
+	memcpy(s->v.for_stmt.name, lex->current.str_start, (size_t)nlen);
+	s->v.for_stmt.name[nlen] = '\0';
+	lexer_next(lex);
  } else {
- error_raise(ERR_WHAT, line_num);
- free(s); return NULL;
+	error_raise(ERR_WHAT, line_num);
+	free(s); return NULL;
  }
 
  if (!lexer_expect(lex, TOK_EQUALS)) { free(s); return NULL; }
@@ -1110,51 +1143,112 @@ static AstStmt *build_for(Lexer *lex, int line_num)
  // build_input - Parse INPUT statement.
 static AstStmt *build_input(Lexer *lex, int line_num)
 {
- AstStmt *s = stmt_new(STMT_INPUT);
- (void)line_num; // used by ast_build_expr below
- if (!s) return NULL;
+	AstStmt *s = stmt_new(STMT_INPUT);
+	if (!s) return NULL;
 
- s->v.input.prompt = NULL;
- s->v.input.var_count = 0;
+	s->v.input.prompt = NULL;
+	s->v.input.var_count = 0;
 
- // Optional prompt string
- if (lex->current.type == TOK_STRING) {
- s->v.input.prompt = expr_string(lex->current.str_start,
- lex->current.str_length);
- lexer_next(lex);
- if (lex->current.type == TOK_COMMA) lexer_next(lex);
- }
+	// Optional prompt string
+	if (lex->current.type == TOK_STRING) {
+		s->v.input.prompt = expr_string(lex->current.str_start,
+										lex->current.str_length);
+		lexer_next(lex);
+		if (lex->current.type == TOK_COMMA || lex->current.type == TOK_SEMICOLON) lexer_next(lex);
+	}
 
- // Variable list
- while (!error_occurred()) {
- int idx = s->v.input.var_count;
- if (idx >= 26) break;
+	// Variable list
+	while (!error_occurred()) {
+		int idx = s->v.input.var_count;
+		if (idx >= 26) break;
 
- if (lex->current.type == TOK_VARIABLE) {
- s->v.input.var_names[idx] = lex->current.value.var_name;
- s->v.input.var_types[idx] = 0;
- s->v.input.var_count++;
- lexer_next(lex);
- } else if (lex->current.type == TOK_STRING_VAR) {
- s->v.input.var_names[idx] = lex->current.value.var_name;
- s->v.input.var_types[idx] = 1;
- s->v.input.var_count++;
- lexer_next(lex);
- } else {
- break;
- }
+		AstExpr *var_expr = ast_build_expr(lex, line_num);
+		if (!var_expr) break;
 
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex);
- } else {
- break;
- }
- }
+		s->v.input.vars[idx] = var_expr;
+		s->v.input.var_count++;
 
- return s;
+		if (lex->current.type == TOK_COMMA) {
+			lexer_next(lex);
+		} else {
+			break;
+		}
+	}
+
+	return s;
 }
 
- // build_dim - Parse DIM statement.
+// build_def_fn - Parse DEF FN statement.
+static AstStmt *build_def_fn(Lexer *lex, int line_num)
+{
+    AstStmt *s = stmt_new(STMT_DEF_FN);
+    if (!s) return NULL;
+
+    char fn_name = '\0';
+    char param_name = '\0';
+
+    // Check if it's a named var starting with "FN"
+    if (lex->current.type == TOK_NAMED_VAR &&
+        lex->current.str_start != NULL &&
+        lex->current.str_length >= 3 &&
+        (lex->current.str_start[0] == 'F' || lex->current.str_start[0] == 'f') &&
+        (lex->current.str_start[1] == 'N' || lex->current.str_start[1] == 'n')) {
+        
+        fn_name = (char)toupper((unsigned char)lex->current.str_start[2]);
+        lexer_next(lex);
+    } else if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_FN) {
+        lexer_next(lex); // consume FN
+        if (lex->current.type != TOK_VARIABLE) {
+            error_raise(ERR_WHAT, line_num);
+            free(s);
+            return NULL;
+        }
+        fn_name = lex->current.value.var_name;
+        lexer_next(lex);
+    } else {
+        error_raise(ERR_WHAT, line_num);
+        free(s);
+        return NULL;
+    }
+
+    // parameter list: expect (
+    if (!lexer_expect(lex, TOK_LPAREN)) {
+        free(s);
+        return NULL;
+    }
+
+    if (lex->current.type != TOK_VARIABLE) {
+        error_raise(ERR_WHAT, line_num);
+        free(s);
+        return NULL;
+    }
+    param_name = lex->current.value.var_name;
+    lexer_next(lex);
+
+    if (!lexer_expect(lex, TOK_RPAREN)) {
+        free(s);
+        return NULL;
+    }
+
+    if (!lexer_expect(lex, TOK_EQUALS)) {
+        free(s);
+        return NULL;
+    }
+
+    AstExpr *body = ast_build_expr(lex, line_num);
+    if (error_occurred()) {
+        free(s);
+        return NULL;
+    }
+
+    s->v.def_fn.func_name = fn_name;
+    s->v.def_fn.param_name = param_name;
+    s->v.def_fn.body = body;
+
+    return s;
+}
+
+// build_dim - Parse DIM statement.
 static AstStmt *build_dim(Lexer *lex, int line_num)
 {
  AstStmt *s = stmt_new(STMT_DIM);
@@ -1282,20 +1376,27 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
  return stmt_new(STMT_RETURN);
  case KW_FOR:
  return build_for(lex, line_num);
- case KW_NEXT:
- {
- AstStmt *s = stmt_new(STMT_NEXT);
- if (lex->current.type == TOK_VARIABLE) {
- s->v.next.var_name = lex->current.value.var_name;
- lexer_next(lex);
- } else if (lex->current.type == TOK_NAMED_VAR) {
- s->v.next.var_name = (char)(lex->current.str_start[0]);
- lexer_next(lex);
- } else {
- s->v.next.var_name = '\0';
- }
- return s;
- }
+	case KW_NEXT:
+	{
+		AstStmt *s = stmt_new(STMT_NEXT);
+		if (lex->current.type == TOK_VARIABLE) {
+			s->v.next.var_name = lex->current.value.var_name;
+			s->v.next.name[0] = lex->current.value.var_name;
+			s->v.next.name[1] = '\0';
+			lexer_next(lex);
+		} else if (lex->current.type == TOK_NAMED_VAR) {
+			s->v.next.var_name = (char)(lex->current.str_start[0]);
+			int nlen = lex->current.str_length;
+			if (nlen > MAX_VAR_NAME_LEN) nlen = MAX_VAR_NAME_LEN;
+			memcpy(s->v.next.name, lex->current.str_start, (size_t)nlen);
+			s->v.next.name[nlen] = '\0';
+			lexer_next(lex);
+		} else {
+			s->v.next.var_name = '\0';
+			s->v.next.name[0] = '\0';
+		}
+		return s;
+	}
  case KW_END:
  {
      if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_WHEN) {
@@ -1315,6 +1416,8 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
  case KW_REM:
  // Handled before lexer_next above; unreachable
  break;
+ case KW_DEF:
+ return build_def_fn(lex, line_num);
  case KW_DIM:
  return build_dim(lex, line_num);
  case KW_DATA:
@@ -1459,19 +1562,20 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
  lexer_next(lex);
  s->v.on_goto.is_gosub = is_gosub;
  s->v.on_goto.target_count = 0;
- while (!error_occurred()) {
- int ti = s->v.on_goto.target_count;
- if (ti >= 64) break;
- if (lex->current.type != TOK_NUMBER) break;
- s->v.on_goto.targets[ti] =
- (int)lex->current.value.num_value;
- s->v.on_goto.target_count++;
- lexer_next(lex);
- if (lex->current.type == TOK_COMMA)
- lexer_next(lex);
- else
- break;
- }
+  while (!error_occurred()) {
+  int ti = s->v.on_goto.target_count;
+  if (ti >= 64) break;
+  if (lex->current.type != TOK_NUMBER && lex->current.type != TOK_FLOAT_LIT) break;
+  s->v.on_goto.targets[ti] = (lex->current.type == TOK_NUMBER)
+                             ? (double)lex->current.value.num_value
+                             : lex->current.value.fval;
+  s->v.on_goto.target_count++;
+  lexer_next(lex);
+  if (lex->current.type == TOK_COMMA)
+  lexer_next(lex);
+  else
+  break;
+  }
  return s;
  }
  case KW_WHEN:
@@ -1539,7 +1643,7 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
  lex->current.type == TOK_NAMED_VAR ||
  lex->current.type == TOK_STRING_VAR ||
  lex->current.type == TOK_AT) &&
- dialect_get_config()->has_let_optional) {
+ 1) {
  return build_let(lex, line_num);
  }
 
@@ -1573,7 +1677,7 @@ AstStmt *ast_build_line(Lexer *lex, int line_num)
 {
  AstStmt *head = NULL;
  AstStmt *tail = NULL;
- char sep = dialect_get_separator();
+ char sep = ':';
 
  while (!error_occurred() &&
  lex->current.type != TOK_EOF &&
@@ -1690,9 +1794,15 @@ void ast_free_stmt(AstStmt *stmt)
  ast_free_expr(stmt->v.for_stmt.limit);
  ast_free_expr(stmt->v.for_stmt.step);
  break;
- case STMT_INPUT:
- ast_free_expr(stmt->v.input.prompt);
- break;
+ 	case STMT_INPUT:
+		{
+			int vi;
+			ast_free_expr(stmt->v.input.prompt);
+			for (vi = 0; vi < stmt->v.input.var_count; vi++) {
+				ast_free_expr(stmt->v.input.vars[vi]);
+			}
+		}
+		break;
  case STMT_DIM:
  ast_free_expr(stmt->v.dim.dim1);
  ast_free_expr(stmt->v.dim.dim2);

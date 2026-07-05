@@ -138,7 +138,6 @@
 #include "value.h"
 #include "errors.h"
 #include "stringpool.h"
-#include "dialect.h"
 
 // -----------------------------------------------------------------
 // Constructors
@@ -468,10 +467,7 @@ static void get_complex(const BValue *v,
 //
 static int should_use_float(const BValue *a, const BValue *b)
 {
-    const DialectConfig *cfg = dialect_get_config();
-    if (cfg && !cfg->has_float) {
-        return 0;
-    }
+    
     return (a->type == VAL_FLOAT || b->type == VAL_FLOAT);
 }
 

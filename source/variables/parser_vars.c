@@ -132,7 +132,7 @@ void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  // Check for array element: A(i)
  if (lex->current.type == TOK_LPAREN &&
- dialect_get_config()->has_dim_arrays &&
+ 1 &&
  runtime_find_dim(rt, &vn, 1) != NULL) {
  int i1, i2 = 0, i3 = 0;
  lexer_next(lex); // consume (
@@ -170,7 +170,7 @@ void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  // Check for string array: A$(i)
  if (lex->current.type == TOK_LPAREN &&
- dialect_get_config()->has_dim_arrays) {
+ 1) {
  char sn[3];
  sn[0] = vn; sn[1] = '$'; sn[2] = '\0';
  if (runtime_find_dim(rt, sn, 2) != NULL) {
@@ -220,7 +220,7 @@ void pi_parse_swap(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
  // Check for named array: Arr(i)
  if (lex->current.type == TOK_LPAREN &&
- dialect_get_config()->has_dim_arrays &&
+ 1 &&
  runtime_find_dim(rt, nm, nl) != NULL) {
  int i1, i2 = 0, i3 = 0;
  lexer_next(lex); // (
@@ -349,7 +349,7 @@ void pi_parse_redim(Lexer *lex, RuntimeState *rt, int line_num)
  // REDIM array(size)          -- erase and re-DIM
  // REDIM PRESERVE array(size) -- resize keeping data
  int preserve = 0;
- char rname[MAX_VAR_NAME_LEN + 1];
+ char rname[MAX_VAR_NAME_LEN + 1] = {0};
  int rlen = 0, ri;
  DimArray *existing;
  // Static buffer for PRESERVE: max 4096 elements
@@ -603,6 +603,8 @@ void pi_parse_static(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_common - Handle COMMON command.
 void pi_parse_common(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
+    (void)line_num;
  // COMMON [SHARED] var1, var2, ...
  //
  // GW-BASIC/QBasic: declares variables that
@@ -855,6 +857,7 @@ static void deftype_parse_range(Lexer *lex,
  RuntimeState *rt, int line_num,
  unsigned char dtype)
 {
+    (void)line_num;
  for (;;) {
   char start_ch, end_ch;
   int si, ei;
@@ -966,6 +969,7 @@ void pi_parse_defstr(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_vars - Handle VARS command.
 void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)line_num;
  {
   // VARS [ENV | SYSTEM | ALL]
   //
@@ -1286,7 +1290,7 @@ void pi_parse_vars(Lexer *lex, RuntimeState *rt, int line_num)
      printf(" VERSION=%s\n", BASICPP_VERSION);
      printf(" NAME=%s\n", BASICPP_NAME);
      printf(" DIALECT=%s\n",
-         dialect_get_name());
+         "BASIC++");
      printf(" PLATFORM=%s\n",
          platform_name());
      printf(" PLATFORM_SHORT=%s\n",

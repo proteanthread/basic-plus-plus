@@ -48,7 +48,7 @@
 #include <stdarg.h>
 #include "vdev.h"
 #include "io/vfs.h"
-#include "gw_sdl2.h"
+#include "sdl2_emu.h"
 #include "platform.h"
 
 struct GW_Memory;
@@ -58,9 +58,68 @@ extern struct GW_Memory *g_gw_mem;
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #include <conio.h>
-#include "../console.h"
 #endif
+#include "console.h"
+#include "standalone/mock_bios/mock_bios_core.h"
 
+MockBiosContext global_mock_bios = { 0 };
+static MockBiosRegs g_vhal_regs = { 0 };
+
+static void vhal_get_registers(void *user_data, uint32_t *ax, uint32_t *bx, uint32_t *cx, uint32_t *dx, uint32_t *flags) {
+    (void)user_data;
+    *ax = g_vhal_regs.ax;
+    *bx = g_vhal_regs.bx;
+    *cx = g_vhal_regs.cx;
+    *dx = g_vhal_regs.dx;
+    *flags = g_vhal_regs.flags;
+}
+
+static void vhal_set_registers(void *user_data, uint32_t ax, uint32_t bx, uint32_t cx, uint32_t dx, uint32_t flags) {
+    (void)user_data;
+    g_vhal_regs.ax = ax;
+    g_vhal_regs.bx = bx;
+    g_vhal_regs.cx = cx;
+    g_vhal_regs.dx = dx;
+    g_vhal_regs.flags = flags;
+}
+
+static uint8_t vhal_read_mem(void *user_data, uint32_t addr) {
+    (void)user_data;
+    static uint8_t bda[256];
+    if (addr >= 0x0400 && addr < 0x0500) return bda[addr - 0x0400];
+    return 0;
+}
+
+static void vhal_write_mem(void *user_data, uint32_t addr, uint8_t val) {
+    (void)user_data;
+    static uint8_t bda[256];
+    (void)bda;
+    if (addr >= 0x0400 && addr < 0x0500) bda[addr - 0x0400] = val;
+}
+
+static void vhal_sleep(void *user_data, int ms) {
+    (void)ms;
+    (void)user_data;
+    // wait for ms, not strictly needed for this mock but good for completeness
+}
+
+static int vhal_ioctl_callback(void *user_data, int cmd, void *arg) {
+    (void)user_data;
+    if (cmd == VDEV_IOCTL_INT10) {
+        MockBiosRegs *r = (MockBiosRegs *)arg;
+        uint8_t al = r->ax & 0xFF;
+        uint8_t ah = (r->ax >> 8) & 0xFF;
+        if (ah == 0x0E || ah == 0x09) {
+            putchar(al);
+        }
+        return 1;
+    } else if (cmd == VDEV_IOCTL_INT16) {
+        MockBiosRegs *r = (MockBiosRegs *)arg;
+        r->ax = gw_console_read_char();
+        return 1;
+    }
+    return 0;
+}
 // --- Device Table ---
  // Static table of all registered devices. Slots 0-2 are reserved
  // for built-in devices. Slots 3-63 are available for user devices.
@@ -75,14 +134,21 @@ static int device_used = 0;
 
 static int con_putc(VDev *d, int ch)
 {
- (void)d;
- return (putchar(ch) == EOF) ? -1 : 0;
+    (void)d;
+    if (global_mock_bios.model != BIOS_MODEL_NONE) {
+        g_vhal_regs.ax = 0x0E00 | (ch & 0xFF);
+        mock_bios_interrupt(&global_mock_bios, 0x10);
+        return 0;
+    }
+    return (putchar(ch) == EOF) ? -1 : 0;
 }
 
 static int con_puts(VDev *d, const char *s)
 {
- (void)d;
- return (fputs(s, stdout) == EOF) ? -1 : 0;
+    while (*s) {
+        if (con_putc(d, *s++) == -1) return -1;
+    }
+    return 0;
 }
 
 static int con_flush(VDev *d)
@@ -111,8 +177,13 @@ static int con_cls(VDev *d)
 
 static int con_getc(VDev *d)
 {
- (void)d;
- return getchar();
+    (void)d;
+    if (global_mock_bios.model != BIOS_MODEL_NONE) {
+        g_vhal_regs.ax = 0x0000;
+        mock_bios_interrupt(&global_mock_bios, 0x16);
+        return g_vhal_regs.ax & 0xFF;
+    }
+    return getchar();
 }
 
 static int con_gets(VDev *d, char *buf, int max)
@@ -357,6 +428,15 @@ void vdev_init(void)
     // Clear entire device table
     memset(device_table, 0, sizeof(device_table));
     device_used = 0;
+
+    // Initialize Mock BIOS globally
+    global_mock_bios.model = BIOS_MODEL_MSDOS;
+    global_mock_bios.get_registers = vhal_get_registers;
+    global_mock_bios.set_registers = vhal_set_registers;
+    global_mock_bios.read_mem = vhal_read_mem;
+    global_mock_bios.write_mem = vhal_write_mem;
+    global_mock_bios.vdev_sleep = vhal_sleep;
+    global_mock_bios.vdev_ioctl = vhal_ioctl_callback;
 
     // --- CON: device (slot 0) ---
     device_table[VDEV_CON].name = "CON:";

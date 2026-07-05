@@ -86,6 +86,8 @@ typedef enum TokenType {
  TOK_NOT_EQ, // <> or # (as relop)
  TOK_LPAREN, // (
  TOK_RPAREN, // )
+ TOK_LBRACKET, // [
+ TOK_RBRACKET, // ]
  TOK_COMMA, // ,
  TOK_SEMICOLON, // ; (statement separator in PATB)
  TOK_COLON, // : (statement separator in most dialects)
@@ -532,12 +534,29 @@ enum {
  KW_BIOS, // BIOS - switch BIOS emulation
  KW_CURSOR, // CURSOR - text cursor control
  KW_TICKS, // TICKS - system uptime ticks
+ KW_CRUN,
+ KW_MOTOR,
+ KW_NUM,
+ KW_NUM_FUNC,
+ KW_EDIT_FUNC,
+ KW_CSAVE,
+ KW_CLOAD,
+ KW_PRETRIEVE,
+ KW_PRETRIEVE_STR,
+ KW_DEMAND,
+ KW_REFORMAT,
+ KW_PSTORE,
+ KW_LGT_FUNC,
+ KW_TIM_FUNC,
+ KW_HI_FUNC,
+ KW_LO_FUNC,
  KW_COUNT // sentinel - must be last
 };
 
 // The lexer now uses a dynamic KeywordId (integer) instead of a static enum.
 typedef int KeywordId;
 #define KW_CUSTOM_START 1000
+#include "dialect.h"
 #define KW_COUNT 9999 // Sentinel for invalid keyword
 
 // --- Dynamic Keyword Registry API ---

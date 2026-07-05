@@ -141,6 +141,7 @@ static void emit_byte(JitEmitter *e, unsigned char b)
     }
 }
 
+#if 0
 static void emit_bytes(JitEmitter *e, const unsigned char *data,
                         int count)
 {
@@ -148,6 +149,7 @@ static void emit_bytes(JitEmitter *e, const unsigned char *data,
     for (i = 0; i < count; i++)
         emit_byte(e, data[i]);
 }
+#endif
 
 static void emit_u32(JitEmitter *e, unsigned int v)
 {

@@ -49,7 +49,6 @@
 #include "vm.h"
 #include "runtime.h"
 #include "errors.h"
-#include "dialect.h"
 
 // --- Opcode Name Table ---
  // Human-readable names for trace output and debug logging.
@@ -260,23 +259,23 @@ void vm_set_state(void *rt_ptr, VMState state)
  case VM_PAUSED:
  rt->running = 0;
  rt->stopped = 1;
- dialect_clear_mixed();
+ 
  break;
  case VM_HALTED:
  rt->running = 0;
  rt->stopped = 1;
- dialect_clear_mixed();
+ 
  break;
  case VM_ERROR:
  rt->running = 0;
  rt->stopped = 0;
- dialect_clear_mixed();
+ 
  break;
  case VM_STOPPED:
  default:
  rt->running = 0;
  rt->stopped = 0;
- dialect_clear_mixed();
+ 
  break;
  }
 }
@@ -335,16 +334,13 @@ int vm_eval_depth(VMEvalStack *stk)
  //
  // Resolves the BASIC line number to a program store index and
  // sets rt->next_index. Raises ERR_HOW if line not found.
-void vm_jump(void *rt_ptr, int target_line, int line_num)
+void vm_jump(void *rt_ptr, double target_line, double line_num)
 {
  RuntimeState *rt = (RuntimeState *)rt_ptr;
- int i;
-
- for (i = 0; i < rt->program->count; i++) {
- if (rt->program->lines[i].line_number == target_line) {
- rt->next_index = i;
- return;
- }
+ int idx = program_find(rt->program, target_line);
+ if (idx >= 0) {
+     rt->next_index = idx;
+     return;
  }
 
  // Line not found
@@ -355,7 +351,7 @@ void vm_jump(void *rt_ptr, int target_line, int line_num)
  //
  // Pushes a FRAME_GOSUB onto the stack with the return address
  // (current_index + 1), then jumps to the target line.
-void vm_call(void *rt_ptr, int target_line, int line_num)
+void vm_call(void *rt_ptr, double target_line, double line_num)
 {
  RuntimeState *rt = (RuntimeState *)rt_ptr;
  StackFrame frame;
@@ -374,7 +370,7 @@ void vm_call(void *rt_ptr, int target_line, int line_num)
  //
  // Pops the top GOSUB frame and sets next_index to the
  // saved return address.
-void vm_return_sub(void *rt_ptr, int line_num)
+void vm_return_sub(void *rt_ptr, double line_num)
 {
  RuntimeState *rt = (RuntimeState *)rt_ptr;
  StackFrame frame;

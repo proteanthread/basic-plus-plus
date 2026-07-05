@@ -41,7 +41,6 @@
 #include "value.h"
 #include <string.h>
 #include "error_registry.h"
-#include "dialect.h"
 
  // PCG32 Pseudo-Random Number Generator
  // Deterministic, cross-platform, massive period, non-repeating
@@ -63,7 +62,7 @@ BValue stdlib_core_rnd(BValue *args, int argc, void *rt)
     // GW-BASIC: bare RND is equivalent to RND(1)
     n = (argc > 0) ? bval_to_int(&args[0]) : 1;
 
-    if (dialect_get_config()->has_float) {
+    if (1) {
         if (n < 0) {
             state->rnd_seed = (uint64_t)(-n);
         }

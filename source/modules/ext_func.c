@@ -313,7 +313,7 @@ void ext_func_list(void)
                     func_table[i].desc.required_level),
                 func_table[i].desc.help_text ?
                     func_table[i].desc.help_text : "");
-            found++;
+            found = true;
         }
     }
     if (!found) printf("  (none)\n");

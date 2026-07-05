@@ -62,7 +62,6 @@
 #include "help.h"
 #include "config.h"
 #include "funcreg.h"
-#include "dialect.h"
 #include "security.h"
 #include "module.h"
 #include "memmap.h"
@@ -209,6 +208,8 @@ static const HelpEntry help_db[] = {
     "CAUSE EXCEPTION 1000", HCAT_FLOW },
   { "CONTINUE", "Resume execution of loop",
     "CONTINUE FOR or CONTINUE DO", HCAT_FLOW },
+  { "DATA", "Store numeric and string constants used by READ",
+    "DATA 10, 20, \"hello\"", HCAT_FLOW },
   { "DECLARE", "Forward-declare a SUB or FUNCTION",
     "DECLARE SUB MySub(x, y$)", HCAT_FLOW },
   { "DEF", "Define a user function (one-line)",
@@ -217,6 +218,8 @@ static const HelpEntry help_db[] = {
     "DEFINE FUNCTION my_fn(x) ... ENDDEFINE", HCAT_FLOW },
   { "DO", "Begin a DO loop",
     "DO ... LOOP WHILE cond", HCAT_FLOW },
+  { "ELSE", "Alternate branch in block IF or single-line IF",
+    "IF X > 5 THEN PRINT X ELSE PRINT Y", HCAT_FLOW },
   { "ELSEIF", "Additional condition in block IF",
     "ELSEIF X>10 THEN ...", HCAT_FLOW },
   { "END", "Terminate program execution",
@@ -249,6 +252,8 @@ static const HelpEntry help_db[] = {
     "GOTO 100", HCAT_FLOW },
   { "IN", "Check containment in list or array",
     "IF X IN (1, 2, 3) THEN ...", HCAT_FLOW },
+  { "IF", "Conditional decision structure",
+    "IF X > 10 THEN PRINT X ELSE PRINT Y", HCAT_FLOW },
   { "IS", "Case selector comparison operator",
     "CASE IS > 10", HCAT_FLOW },
   { "LOOP", "End of a DO loop (with condition)",
@@ -323,12 +328,16 @@ static const HelpEntry help_db[] = {
     "K = INKEY", HCAT_IO },
   { "INKEY$", "Non-blocking keyboard read",
     "K$=INKEY$", HCAT_IO },
+  { "INPUT", "Prompt user for input and store in variables",
+    "INPUT \"Enter age: \", A", HCAT_IO },
   { "INPUT$", "Read N chars from keyboard/file",
     "A$ = INPUT$(5) or A$ = INPUT$(10, #1)", HCAT_IO },
   { "LINE", "Read entire line (LINE INPUT)",
     "LINE INPUT A$ or LINE INPUT #1, A$", HCAT_IO },
   { "LOCATE", "Move cursor to row,column",
     "LOCATE 10,20", HCAT_IO },
+  { "PRINT", "Display text or variable values on console or file",
+    "PRINT \"hello\" or PRINT A, B or PRINT #1, A", HCAT_IO },
   { "WIDTH", "Set screen width",
     "WIDTH 80 or WIDTH 80,25", HCAT_IO },
   { "WRITE", "Write comma-delimited data",
@@ -371,6 +380,14 @@ static const HelpEntry help_db[] = {
     "PRINT LOG10(100) ' 2", HCAT_MATH },
   { "LOG2", "Binary logarithm base 2 (SBASIC)",
     "PRINT LOG2(8) ' 3", HCAT_MATH },
+  { "LGT", "Common logarithm base 10 (HP BASIC)",
+    "PRINT LGT(100) ' 2", HCAT_MATH },
+  { "TIM", "Time components mode (HP BASIC, 0=min,1=hr,2=yday,3=yr)",
+    "PRINT TIM(1)", HCAT_MATH },
+  { "HI", "High 8 bits (byte) of integer",
+    "PRINT HI(256) ' 1", HCAT_MATH },
+  { "LO", "Low 8 bits (byte) of integer",
+    "PRINT LO(257) ' 1", HCAT_MATH },
   { "PDIF", "Positive difference (SBASIC, MAX(a-b,0))",
     "PRINT PDIF(5,3) ' 2", HCAT_MATH },
   { "PI", "Constant PI (SBASIC, 3.14159...)",
@@ -403,6 +420,8 @@ static const HelpEntry help_db[] = {
     "PRINT CHR(65)", HCAT_STRING },
   { "CHR$", "Character from ASCII code",
     "PRINT CHR$(65) ' A", HCAT_STRING },
+  { "EDIT$", "Format/manipulate string using a bitmask (DEC VAX)",
+    "PRINT EDIT$(\"  abc [123]  \", 8+32+64+128) ' prints \"ABC (123)\"", HCAT_STRING },
   { "HASH", "Compute FNV-1a hash of string/data",
     "PRINT HASH(\"input\")", HCAT_STRING },
   { "HEX", "Convert number to hex representation",
@@ -421,6 +440,10 @@ static const HelpEntry help_db[] = {
     "PRINT MCASE(\"hello\")", HCAT_STRING },
   { "MID", "Extract or replace substring",
     "PRINT MID(\"HELLO\", 2, 2)", HCAT_STRING },
+  { "NUM", "Convert string to number (DEC VAX, alias of VAL)",
+    "PRINT NUM(\"42\") ' prints 42", HCAT_STRING },
+  { "NUM$", "Convert number to string without space (DEC VAX)",
+    "PRINT NUM$(42) ' prints \"42\"", HCAT_STRING },
   { "OCT", "Convert number to octal representation",
     "PRINT OCT(255)", HCAT_STRING },
   { "OCT$", "Convert to octal string",
@@ -477,6 +500,8 @@ static const HelpEntry help_db[] = {
     "PRINT FRE(0)", HCAT_VARMEM },
   { "LBOUND", "Array lower bound index",
     "PRINT LBOUND(A, 1)", HCAT_VARMEM },
+  { "LET", "Assign value to variable (optional in most dialects)",
+    "LET A = 5 or A = 5", HCAT_VARMEM },
   { "LOCAL", "Declare local variables in sub/fn",
     "LOCAL X, Y$", HCAT_VARMEM },
   { "MAT", "Matrix operations",
@@ -569,6 +594,12 @@ static const HelpEntry help_db[] = {
     "MOUNTS", HCAT_FILEIO },
   { "POINTER", "Query/set file position pointer",
     "POINTER #1, offset", HCAT_FILEIO },
+  { "PRETRIEVE", "Retrieve persistent variable (MUMPS)",
+    "N = PRETRIEVE(\"key\")", HCAT_FILEIO },
+  { "PRETRIEVE$", "Retrieve persistent string variable (MUMPS)",
+    "S$ = PRETRIEVE$(\"key\")", HCAT_FILEIO },
+  { "PSTORE", "Store persistent variable (MUMPS)",
+    "R = PSTORE(\"key\", val)", HCAT_FILEIO },
   { "PUT", "Write a record to random file",
     "PUT #1, recnum", HCAT_FILEIO },
   { "RESET", "Close all open files",
@@ -1075,8 +1106,8 @@ void help_info(RuntimeState *rt)
  printf(" Version: %s\n", BASICPP_VERSION);
  printf(" Name: %s\n", BASICPP_NAME);
  printf(" Dialect: %s [%s]\n",
- dialect_get_name(),
- dialect_get_short_name());
+ "BASIC++",
+ "BPP");
  printf(" Memmap: %s\n",
  memmap_get_name(
  (MemMapType)rt->memmap_type));

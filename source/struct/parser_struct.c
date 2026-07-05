@@ -70,7 +70,8 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  int is_str;
  long sel_num;
  int found = 0;
- int pline, idx, depth;
+ int pline;
+ int idx, depth;
  ProgramStore *pgm = rt->program;
 
  sel_val = parse_expression_bval(
@@ -87,12 +88,12 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  Lexer cl;
  const char *cline =
  pgm->lines[idx].text;
- pline = pgm->lines[idx].line_number;
+ pline = (int)pgm->lines[idx].line_number;
  lexer_init(&cl, cline);
  lexer_next(&cl);
 
  // Skip line number
- if (cl.current.type == TOK_NUMBER)
+ if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
 
  if (cl.current.type == TOK_KEYWORD) {
@@ -289,6 +290,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_case - Handle CASE command.
 void pi_parse_case(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
  // CASE inside executed SELECT block.
  // We've finished the matched block.
  // Skip to END SELECT.
@@ -302,7 +304,7 @@ void pi_parse_case(Lexer *lex, RuntimeState *rt, int line_num)
  pgm->lines[idx].text;
  lexer_init(&cl, cline);
  lexer_next(&cl);
- if (cl.current.type == TOK_NUMBER)
+ if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  if (cl.current.type == TOK_KEYWORD) {
  KeywordId kk =
@@ -355,7 +357,7 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_init(&cl, cl2);
  lexer_next(&cl);
  if (cl.current.type ==
- TOK_NUMBER)
+ TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  if (cl.current.type ==
  TOK_KEYWORD &&
@@ -388,7 +390,7 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_init(&cl, cl2);
  lexer_next(&cl);
  if (cl.current.type ==
- TOK_NUMBER)
+ TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  if (cl.current.type ==
  TOK_KEYWORD &&
@@ -474,7 +476,7 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
       const char *cl2 = pgm->lines[idx].text;
       lexer_init(&cl, cl2);
       lexer_next(&cl);
-      if (cl.current.type == TOK_NUMBER)
+      if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
        lexer_next(&cl);
       if (cl.current.type == TOK_KEYWORD) {
        KeywordId ek = cl.current.value.keyword;
@@ -840,7 +842,7 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_init(&cl,
  pgm->lines[idx].text);
  // Skip line number
- if (cl.current.type == TOK_NUMBER)
+ if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  // Check for END
  if (cl.current.type ==
@@ -1135,7 +1137,7 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_init(&cl,
  pgm->lines[idx].text);
  // Skip line number
- if (cl.current.type == TOK_NUMBER)
+ if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  // Check for END
  if (cl.current.type ==
@@ -1400,8 +1402,8 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  {
  int smode = SCOPE_FULL;
  // QBasic dialect uses fresh scope
- if (dialect_get_config()->id ==
-  DIALECT_QBASIC)
+ if (3 ==
+  3)
   smode = SCOPE_FRESH;
  scope_stack_push(&rt->scope_stack, rt,
   smode, (int)(sd - rt->subs),
@@ -1565,6 +1567,8 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_procedure - Handle PROCEDURE command.
 void pi_parse_procedure(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)rt;
   // PROCedure - only valid after DEFine.
   // If encountered standalone, that's an error.
  error_raise(ERR_WHAT, line_num);
@@ -1595,6 +1599,7 @@ void pi_parse_define(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_enddefine - Handle ENDDEFINE command.
 void pi_parse_enddefine(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
  // Acts like END SUB / END FUNCTION return
  StackFrame frame;
  if (runtime_pop(rt, FRAME_SUB, &frame) != 0) {

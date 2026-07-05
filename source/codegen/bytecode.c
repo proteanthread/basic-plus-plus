@@ -49,7 +49,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bytecode.h"
-#include "dialect.h"
 #include "config.h"
 #include "pcode.h"
 #include "bytecode_bpp.h"
@@ -219,10 +218,11 @@ static int get_operand_category(unsigned char op)
 
         case PCODE_LOAD_NAMED:
         case PCODE_STORE_NAMED:
+        case PCODE_READ_NAMED:
         case PCODE_LOAD_DIM:
         case PCODE_STORE_DIM:
         case PCODE_DIM_ALLOC:
-            return 5; // Array reference
+            return 5; // Array/Named reference
 
         default:
             return 0;
@@ -286,7 +286,7 @@ int bpp_save(const ProgramStore *prog, const char *filename)
     header.vm_minor = 2;
     header.vm_patch = 6;
     write_le16(header.instruction_ver, 1);
-    header.dialect_id = (unsigned char)dialect_get_config()->id;
+    header.dialect_id = (unsigned char)3;
     write_le16(header.dependency_count, 0);
     write_le16(header.flags, 0);
     write_le32(header.instr_count, (unsigned long)pcode.count);
@@ -356,28 +356,38 @@ int bpp_save(const ProgramStore *prog, const char *filename)
 
     // Write line map
     for (i = 0; i < pcode.count; i++) {
-        unsigned char map_buf[4];
-        write_le32(map_buf, (unsigned long)pcode.line_map[i]);
-        if (fwrite(map_buf, 1, 4, fp) != 4) {
+        unsigned char map_buf[8];
+        union {
+            double d;
+            unsigned long long u;
+        } temp;
+        temp.d = (double)pcode.line_map[i];
+        write_le64(map_buf, temp.u);
+        if (fwrite(map_buf, 1, 8, fp) != 8) {
             printf("Write error at line map.\n");
             fclose(fp);
             pcode_free(&pcode);
             return -1;
         }
-        payload_crc = bpp_crc16_update(payload_crc, map_buf, 4);
+        payload_crc = bpp_crc16_update(payload_crc, map_buf, 8);
     }
 
     // Write ON tables
     for (i = 0; i < pcode.on_table_count; i++) {
-        unsigned char tbl_buf[4];
-        write_le32(tbl_buf, (unsigned long)pcode.on_tables[i]);
-        if (fwrite(tbl_buf, 1, 4, fp) != 4) {
+        unsigned char tbl_buf[8];
+        union {
+            double d;
+            unsigned long long u;
+        } temp;
+        temp.d = (double)pcode.on_tables[i];
+        write_le64(tbl_buf, temp.u);
+        if (fwrite(tbl_buf, 1, 8, fp) != 8) {
             printf("Write error at ON tables.\n");
             fclose(fp);
             pcode_free(&pcode);
             return -1;
         }
-        payload_crc = bpp_crc16_update(payload_crc, tbl_buf, 4);
+        payload_crc = bpp_crc16_update(payload_crc, tbl_buf, 8);
     }
 
     // Patch header CRC-16
@@ -392,7 +402,7 @@ int bpp_save(const ProgramStore *prog, const char *filename)
 
     printf("BSAVE: Saved %d instructions to '%s' (%s)\n",
            (int)read_le32(header.instr_count),
-           filename, dialect_get_config()->short_name);
+           filename, "BPP");
     return 0;
 }
 
@@ -481,11 +491,9 @@ int bpp_load(ProgramStore *prog, const char *filename, void *rt_ptr)
 
         // Optionally switch dialect to match the file
         int file_dialect = (int)header[5];
-        int curr_dialect = (int)dialect_get_config()->id;
-        if (file_dialect != curr_dialect && file_dialect >= 0 && file_dialect < DIALECT_COUNT) {
-            dialect_init((DialectId)file_dialect);
-            dialect_apply();
-            printf("Dialect: %s [%s]\n", dialect_get_config()->name, dialect_get_config()->short_name);
+        int curr_dialect = (int)3;
+        if (file_dialect != curr_dialect && file_dialect >= 0 && file_dialect < 1) {
+            printf("Dialect: %s [%s]\n", "BASIC++", "BPP");
         }
 
         if (rt) {
@@ -526,11 +534,9 @@ int bpp_load(ProgramStore *prog, const char *filename, void *rt_ptr)
     }
 
     int file_dialect = (int)header.dialect_id;
-    int curr_dialect = (int)dialect_get_config()->id;
-    if (file_dialect != curr_dialect && file_dialect >= 0 && file_dialect < DIALECT_COUNT) {
-        dialect_init((DialectId)file_dialect);
-        dialect_apply();
-        printf("Dialect changed to: %s [%s]\n", dialect_get_config()->name, dialect_get_config()->short_name);
+    int curr_dialect = (int)3;
+    if (file_dialect != curr_dialect && file_dialect >= 0 && file_dialect < 1) {
+        printf("Dialect changed to: %s [%s]\n", "BASIC++", "BPP");
     }
 
     int instr_count = (int)read_le32(header.instr_count);
@@ -557,8 +563,8 @@ int bpp_load(ProgramStore *prog, const char *filename, void *rt_ptr)
     pcode->str_pool = str_pool_size > 0 ? (char *)malloc((size_t)str_pool_size) : NULL;
     pcode->str_used = str_pool_size;
     pcode->str_capacity = str_pool_size;
-    pcode->line_map = (int *)malloc((size_t)instr_count * sizeof(int));
-    pcode->on_tables = on_table_size > 0 ? (int *)malloc((size_t)on_table_size * sizeof(int)) : NULL;
+    pcode->line_map = (double *)malloc((size_t)instr_count * sizeof(double));
+    pcode->on_tables = on_table_size > 0 ? (double *)malloc((size_t)on_table_size * sizeof(double)) : NULL;
     pcode->on_table_count = on_table_size;
     pcode->on_table_capacity = on_table_size;
 
@@ -619,18 +625,28 @@ int bpp_load(ProgramStore *prog, const char *filename, void *rt_ptr)
 
     // Read line map
     for (int i = 0; i < instr_count; i++) {
-        unsigned char map_buf[4];
-        if (fread(map_buf, 1, 4, fp) != 4) goto read_err;
-        pcode->line_map[i] = (int)read_le32(map_buf);
-        payload_crc = bpp_crc16_update(payload_crc, map_buf, 4);
+        unsigned char map_buf[8];
+        if (fread(map_buf, 1, 8, fp) != 8) goto read_err;
+        union {
+            double d;
+            unsigned long long u;
+        } temp;
+        temp.u = read_le64(map_buf);
+        pcode->line_map[i] = temp.d;
+        payload_crc = bpp_crc16_update(payload_crc, map_buf, 8);
     }
 
     // Read ON tables
     for (int i = 0; i < on_table_size; i++) {
-        unsigned char tbl_buf[4];
-        if (fread(tbl_buf, 1, 4, fp) != 4) goto read_err;
-        pcode->on_tables[i] = (int)read_le32(tbl_buf);
-        payload_crc = bpp_crc16_update(payload_crc, tbl_buf, 4);
+        unsigned char tbl_buf[8];
+        if (fread(tbl_buf, 1, 8, fp) != 8) goto read_err;
+        union {
+            double d;
+            unsigned long long u;
+        } temp;
+        temp.u = read_le64(tbl_buf);
+        pcode->on_tables[i] = temp.d;
+        payload_crc = bpp_crc16_update(payload_crc, tbl_buf, 8);
     }
 
     fclose(fp);

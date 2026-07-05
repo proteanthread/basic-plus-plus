@@ -219,23 +219,19 @@ BValue exec_func3(int func_id, BValue *a1, BValue *a2, BValue *a3, int line_num,
  // operations that were previously scattered across parser.c and
  // exec.c. All control flow goes through these functions.
 
- // vm_jump - Unconditional jump to a target line number.
- //
- // Resolves the line number to an index in the program store
- // and sets rt->next_index. Raises ERR_HOW if the line is not found.
-void vm_jump(void *rt, int target_line, int line_num);
+void vm_jump(void *rt, double target_line, double line_num);
 
  // vm_call - Subroutine call (GOSUB).
  //
  // Pushes a GOSUB frame with the return address, then jumps
  // to the target line. Raises ERR_SORRY if the stack is full.
-void vm_call(void *rt, int target_line, int line_num);
+void vm_call(void *rt, double target_line, double line_num);
 
  // vm_return_sub - Return from subroutine (RETURN).
  //
  // Pops the top GOSUB frame and jumps to the return address.
  // Raises ERR_HOW if the stack is empty or the frame is not GOSUB.
-void vm_return_sub(void *rt, int line_num);
+void vm_return_sub(void *rt, double line_num);
 
  // vm_halt - Halt execution (END statement).
  //

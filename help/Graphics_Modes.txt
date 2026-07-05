@@ -1,0 +1,65 @@
+
+BASIC++ Graphics Modes Reference
+================================
+
+This document catalogs every display, text, and graphics mode available in BASIC++ under both the GW-BASIC SCREEN command and the Atari 8-bit GRAPHICS command. Modes are sorted by resolution (lowest resolution to highest resolution, measured in total pixel count).
+
+---
+
+
+Display Configuration Modifiers (Atari GRAPHICS)
+------------------------------------------------
+The 64 Atari 8-bit graphics modes come from the sixteen base GRAPHICS modes (0–15), each with four screen configuration modifiers:
+   Normal / Split Screen (+0): Graphics mode on top, 4-line text window on bottom. (Split screen text width is 40 columns for standard modes, and 80 columns for 256-color modes 64-127).
+   No Text Window (+16): Full-screen graphics.
+   Split Screen (+32): (Same as +0; keeps graphics memory available below the screen).
+   No Text Window + Split Screen (+48): (Same as +16).
+
+Thus, modes 0–15, 16–31 (= mode +16), 32–47 (= mode +32), and 48–63 (= mode +48).
+Custom 256-color modes are mapped to modes 64–127 (base + 64).
+
+---
+
+
+Graphics Modes Map (Sorted by Resolution)
+-----------------------------------------
+
+| Command | Mode ID | Resolution | Total Pixels | Colors / Mode Type | Description |
+|:---|:---|:---|:---|:---|:---|
+| GRAPHICS | 3, 19, 35, 51 | 40 × 24 | 960 | 2 colors | Atari Mode 3 (Very low-res blocks) |
+| GRAPHICS | 4, 20, 36, 52 | 80 × 48 | 3,840 | 4 colors | Atari Mode 4 (Low-res blocks / character grid) |
+| GRAPHICS | 6, 22, 38, 54 | 160 × 48 | 7,680 | 4 colors | Atari Mode 6 (Wide medium-res blocks) |
+| GRAPHICS | 5, 21, 37, 53 | 80 × 96 | 7,680 | 4 colors | Atari Mode 5 (Low-res graphics) |
+| GRAPHICS | 7, 23, 39, 55 | 160 × 96 | 15,360 | 4 colors | Atari Mode 7 (Medium-res graphics) |
+| GRAPHICS | 9, 25, 41, 57 | 80 × 192 | 15,360 | 9 colors | Atari Mode 9 (GTIA Mode / 16 hues of 1 luma) |
+| GRAPHICS | 10, 26, 42, 58 | 80 × 192 | 15,360 | 9 colors | Atari Mode 10 (GTIA Mode / 8 colors + background) |
+| GRAPHICS | 11, 27, 43, 59 | 80 × 192 | 15,360 | 16 colors | Atari Mode 11 (GTIA Mode / 16 lumas of 1 hue) |
+| GRAPHICS | 9+64, 25+64, ...| 80 × 192 | 15,360 | 256 colors | Custom 256-color GTIA modes (80x4 text window) |
+| GRAPHICS | 1, 17, 33, 49 | 160 × 192 | 30,720 | 5 colors | Atari Mode 1 (Text mode 20x24 grid) |
+| GRAPHICS | 2, 18, 34, 50 | 160 × 192 | 30,720 | 5 colors | Atari Mode 2 (Text mode 20x12 grid) |
+| GRAPHICS | 12, 28, 44, 60 | 160 × 192 | 30,720 | 2 colors | Atari Mode 12 (ANTIC 4 text-like resolution) |
+| GRAPHICS | 13, 29, 45, 61 | 160 × 192 | 30,720 | 2 colors | Atari Mode 13 (ANTIC 5 text-like resolution) |
+| GRAPHICS | 14, 30, 46, 62 | 160 × 192 | 30,720 | 4 colors | Atari Mode 14 (Medium-high res graphics) |
+| SCREEN | 3 | 160 × 200 | 32,000 | 16 colors | Tandy / PCjr Low-Res Mode |
+| GRAPHICS | 0, 16, 32, 48 | 320 × 192 | 61,440 | 2 colors | Atari Mode 0 (Text mode 40x24 grid) |
+| GRAPHICS | 8, 24, 40, 56 | 320 × 192 | 61,440 | 4 colors | Atari Mode 8 (High-resolution graphics) |
+| GRAPHICS | 15, 31, 47, 63 | 320 × 192 | 61,440 | 4 colors | Atari Mode 15 (High-resolution graphics / ANTIC F) |
+| SCREEN | 1, 4, 5, 13 | 320 × 200 | 64,000 | 4 / 256 colors | GW-BASIC CGA (1,4,5) / VGA (13) Modes |
+| SCREEN | 7 | 320 × 200 | 64,000 | 16 colors | GW-BASIC EGA Mode |
+| SCREEN | 14 | 320 × 200 | 64,000 | 16 colors | Plantronics High-Color Mode |
+| SCREEN | 2, 6 | 640 × 200 | 128,000 | 2 colors | GW-BASIC CGA High-Res Modes |
+| SCREEN | 8 | 640 × 200 | 128,000 | 16 colors | GW-BASIC EGA High-Res Mode |
+| SCREEN | 9 (Tandy) | 640 × 200 | 128,000 | 16 colors | Tandy High-Res Mode |
+| SCREEN | 14 (Amstrad) | 640 × 200 | 128,000 | 16 colors | Amstrad Color Mode |
+| SCREEN | 15 (Plantronics) | 640 × 200 | 128,000 | 4 colors | Plantronics High-Res Mode |
+| SCREEN | 9 (EGA/VGA) | 640 × 350 | 224,000 | 16 colors | GW-BASIC EGA High-Res Mode |
+| SCREEN | 10 | 640 × 350 | 224,000 | 4 colors | GW-BASIC EGA Monochrome Mode |
+| SCREEN | 15 (Others) | 640 × 350 | 224,000 | 2 colors | Monochrome EGA/VGA compatible mode |
+| SCREEN | 0 (HGC) | 720 × 348 | 250,560 | Monochrome | Hercules Graphics Card Text Mode |
+| SCREEN | 3 (HGC) | 720 × 348 | 250,560 | Monochrome | Hercules Graphics Card Graphics Mode |
+| SCREEN | 0 (VGA) | 640 × 400 | 256,000 | 16 colors | Standard Text Mode (80x25 grid) |
+| SCREEN | 0 (Tandy/PCjr)| 640 × 200 | 128,000 | 16 colors | Tandy Text Mode |
+| SCREEN | 14 (AT&T) | 640 × 400 | 256,000 | 16 colors | AT&T High-Res Mode |
+| SCREEN | 15 (PC98) | 640 × 400 | 256,000 | 16 colors | NEC PC-9801 Mode |
+| SCREEN | 11 | 640 × 480 | 307,200 | 2 colors | GW-BASIC VGA Mode |
+| SCREEN | 12 | 640 × 480 | 307,200 | 16 colors | GW-BASIC VGA Mode |

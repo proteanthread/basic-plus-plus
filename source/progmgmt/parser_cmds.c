@@ -47,12 +47,13 @@
 #include "../bytecode.h"
 #include "../codegen/archive.h"
 #include "../memmap.h"
-#include "../gw_memory.h"
+#include "../segmented_mem.h"
 
 extern struct GW_Memory *g_gw_mem;
 
 void pi_parse_list_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
+ extern int pi_ensure_bas_ext(char *fname, int len, int maxlen);
  (void)line_num;
 
  if (rt->bytecode_only) {
@@ -60,110 +61,246 @@ void pi_parse_list_cmd(Lexer *lex, RuntimeState *rt, int line_num)
      return;
  }
 
- // LIST "filename" - Display file from disk
- // without loading it into memory.
- // Auto-appends .BAS if no extension.
- if (lex->current.type == TOK_STRING) {
- char filename[MAX_LINE_LENGTH + 1];
- int flen = lex->current.str_length;
- char linebuf[MAX_LINE_LENGTH + 2];
- FILE *fp;
- int ll;
-
- if (flen >= MAX_LINE_LENGTH) {
-  error_raise(ERR_WHAT, line_num);
-  return;
- }
- memcpy(filename, lex->current.str_start,
-  (size_t)flen);
- filename[flen] = '\0';
- lexer_next(lex);
-
- // Auto-append .BAS if no extension
- pi_ensure_bas_ext(filename, flen,
-  MAX_LINE_LENGTH);
-
- fp = fopen(filename, "r");
- if (fp == NULL) {
-  printf("File not found: %s\n",
-  filename);
-  return;
- }
-
- printf("\n--- %s ---\n", filename);
- while (fgets(linebuf, sizeof(linebuf),
-  fp) != NULL) {
-  // Strip trailing newline
-  ll = (int)strlen(linebuf);
-  while (ll > 0 &&
-  (linebuf[ll-1] == '\n' ||
-  linebuf[ll-1] == '\r')) {
-  linebuf[--ll] = '\0';
-  }
-  printf("%s\n", linebuf);
- }
- printf("--- end ---\n\n");
- fclose(fp);
- return;
- }
-
  // No arguments: list everything
- if (lex->current.type != TOK_NUMBER &&
- lex->current.type != TOK_MINUS) {
- program_list(&rt->memory->program, 0, 0);
- return;
+ if (lex->current.type == TOK_EOF || lex->current.type == TOK_CR) {
+     program_list(&rt->memory->program, 0, 0);
+     return;
  }
 
  // Parse comma-separated segments.
  // Each segment is one of:
- // n -> single line (from=n, to=n)
- // n- -> from n to end (from=n, to=0)
- // n-m -> range (from=n, to=m)
- // -n -> from start to n (from=0, to=n)
+ // - Quoted string: "pattern" or "filename"
+ // - Colon followed by identifier: :name
+ // - Numeric ranges: n, n-, n-m, -n
+ // - Unquoted identifier/variable search (potentially with wildcards)
  for (;;) {
- int from = 0;
- int to = 0;
+     if (lex->current.type == TOK_STRING) {
+         char original_pattern[MAX_LINE_LENGTH + 1];
+         int flen = lex->current.str_length;
+         if (flen >= MAX_LINE_LENGTH) {
+             error_raise(ERR_WHAT, line_num);
+             return;
+         }
+         memcpy(original_pattern, lex->current.str_start, (size_t)flen);
+         original_pattern[flen] = '\0';
+         lexer_next(lex); // consume string
+         
+         char filename[MAX_LINE_LENGTH + 5];
+         strcpy(filename, original_pattern);
+         pi_ensure_bas_ext(filename, flen, MAX_LINE_LENGTH + 4);
+         
+         FILE *fp = fopen(filename, "r");
+         if (fp != NULL) {
+             char linebuf[MAX_LINE_LENGTH + 2];
+             printf("\n--- %s ---\n", filename);
+             while (fgets(linebuf, sizeof(linebuf), fp) != NULL) {
+                 int ll = (int)strlen(linebuf);
+                 while (ll > 0 && (linebuf[ll-1] == '\n' || linebuf[ll-1] == '\r')) {
+                     linebuf[--ll] = '\0';
+                 }
+                 printf("%s\n", linebuf);
+             }
+             printf("--- end ---\n\n");
+             fclose(fp);
+         } else {
+             program_list_search(&rt->memory->program, SEARCH_SUBSTRING, original_pattern);
+         }
+     }
+     else if (lex->current.type == TOK_COLON) {
+         Lexer temp_lex = *lex;
+         lexer_next(&temp_lex);
+         if (temp_lex.current.type == TOK_NAMED_VAR || temp_lex.current.type == TOK_VARIABLE) {
+             *lex = temp_lex; // commit advancement
+             
+             char pattern[64] = {0};
+             if (lex->current.type == TOK_VARIABLE) {
+                 pattern[0] = lex->current.value.var_name;
+             } else {
+                 int len = lex->current.str_length;
+                 if (len > 63) len = 63;
+                 strncpy(pattern, lex->current.str_start, len);
+             }
+             lexer_next(lex); // consume identifier
+             
+             program_list_search(&rt->memory->program, SEARCH_LABEL_OR_FUNC, pattern);
+         } else {
+             break; // statement separator, stop LIST
+         }
+     }
+     else if (lex->current.type == TOK_NUMBER || lex->current.type == TOK_FLOAT_LIT || lex->current.type == TOK_MINUS) {
+         double from = 0;
+         double to = 0;
+         
+         if (lex->current.type == TOK_MINUS) {
+             lexer_next(lex);
+             if (lex->current.type == TOK_NUMBER) {
+                 to = (double)lex->current.value.num_value;
+                 lexer_next(lex);
+             } else if (lex->current.type == TOK_FLOAT_LIT) {
+                 to = lex->current.value.fval;
+                 lexer_next(lex);
+             }
+             program_list(&rt->memory->program, from, to);
+         } else {
+             from = (lex->current.type == TOK_NUMBER) ? (double)lex->current.value.num_value : lex->current.value.fval;
+             lexer_next(lex);
+             
+             if (lex->current.type == TOK_MINUS) {
+                 lexer_next(lex);
+                 if (lex->current.type == TOK_NUMBER) {
+                     to = (double)lex->current.value.num_value;
+                     lexer_next(lex);
+                 } else if (lex->current.type == TOK_FLOAT_LIT) {
+                     to = lex->current.value.fval;
+                     lexer_next(lex);
+                 }
+                 program_list(&rt->memory->program, from, to);
+             } else {
+                 to = from;
+                 program_list(&rt->memory->program, from, to);
+             }
+         }
+     }
+     else if (lex->current.type != TOK_EOF && lex->current.type != TOK_CR) {
+         const char *arg_start = lex->source + lex->current.pos;
+         const char *p = arg_start;
+         while (*p != '\0' && *p != ',' && *p != ':' && *p != ' ' && *p != '\t') {
+             p++;
+         }
+         int len = (int)(p - arg_start);
+         if (len > 0) {
+             char pattern[64] = {0};
+             if (len > 63) len = 63;
+             memcpy(pattern, arg_start, len);
+             pattern[len] = '\0';
+             
+             lex->pos = lex->current.pos + len;
+             lexer_next(lex);
+             
+             program_list_search(&rt->memory->program, SEARCH_IDENTIFIER, pattern);
+         } else {
+             break;
+         }
+     }
+     else {
+         break;
+     }
 
- // Case: -n (start to line n)
- if (lex->current.type == TOK_MINUS) {
- lexer_next(lex); // consume '-'
- if (lex->current.type == TOK_NUMBER) {
- to = (int)lex->current.value.num_value;
- lexer_next(lex);
+     if (lex->current.type == TOK_COMMA) {
+         lexer_next(lex);
+     } else {
+         break;
+     }
  }
- program_list(&rt->memory->program, from, to);
- }
- // Case: starts with a number
- else if (lex->current.type == TOK_NUMBER) {
- from = (int)lex->current.value.num_value;
- lexer_next(lex);
+}
 
- if (lex->current.type == TOK_MINUS) {
- // n- or n-m
- lexer_next(lex); // consume '-'
- if (lex->current.type == TOK_NUMBER) {
- to = (int)lex->current.value.num_value;
- lexer_next(lex);
- }
- // else to=0 means "to end"
- program_list(&rt->memory->program, from, to);
- } else {
- // Single line: n
- to = from;
- program_list(&rt->memory->program, from, to);
- }
- } else {
- // Unexpected token, stop
- break;
- }
+void pi_parse_reformat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    int spaces_per_indent = 4;
+    (void)line_num;
 
- // Check for comma separator to continue
- if (lex->current.type == TOK_COMMA) {
- lexer_next(lex); // consume ','
- } else {
- break;
- }
- }
+    if (rt->bytecode_only) {
+        printf("REFORMAT: Prohibited in obfuscated/bytecode-only mode.\n");
+        return;
+    }
+
+    if (lex->current.type == TOK_NUMBER) {
+        spaces_per_indent = (int)lex->current.value.num_value;
+        if (spaces_per_indent < 0) spaces_per_indent = 0;
+        lexer_next(lex);
+    }
+
+    int indent_level = 0;
+    int i;
+    ProgramStore *store = &rt->memory->program;
+
+    for (i = 0; i < store->count; i++) {
+        ProgramLine *pl = &store->lines[i];
+        if (!pl->text) continue;
+
+        // Skip line number
+        const char *p = pl->text;
+        while (*p == ' ' || (*p >= '0' && *p <= '9')) p++;
+        while (*p == ' ') p++;
+
+        int is_unindent = 0;
+        int is_indent = 0;
+        
+        if (strncmp(p, "NEXT", 4) == 0 ||
+            strncmp(p, "WEND", 4) == 0 ||
+            strncmp(p, "LOOP", 4) == 0 ||
+            strncmp(p, "END IF", 6) == 0 ||
+            strncmp(p, "ENDIF", 5) == 0 ||
+            strncmp(p, "END SUB", 7) == 0 ||
+            strncmp(p, "END FUNCTION", 12) == 0) {
+            is_unindent = 1;
+        }
+
+        if (strncmp(p, "FOR ", 4) == 0 ||
+            strncmp(p, "WHILE ", 6) == 0 ||
+            (strncmp(p, "DO", 2) == 0 && (p[2]==' ' || p[2]=='\0' || p[2]=='\r' || p[2]=='\n')) ||
+            strncmp(p, "SUB ", 4) == 0 ||
+            strncmp(p, "FUNCTION ", 9) == 0) {
+            is_indent = 1;
+        } else if (strncmp(p, "IF ", 3) == 0) {
+            const char *then_ptr = strstr(p, " THEN");
+            if (then_ptr) {
+                const char *after_then = then_ptr + 5;
+                while (*after_then == ' ') after_then++;
+                if (*after_then == '\0' || *after_then == '\r' || *after_then == '\n' || *after_then == '\'') {
+                    is_indent = 1;
+                }
+            }
+        }
+
+        int temp_unindent = 0;
+        if (strncmp(p, "ELSE", 4) == 0) {
+            temp_unindent = 1;
+            is_indent = 1;
+        }
+
+        // Single line block check
+        if (is_indent && !temp_unindent) {
+            if (strstr(p, " NEXT") || strstr(p, " WEND") || strstr(p, " LOOP") || strstr(p, " END IF") || strstr(p, " ENDIF")) {
+                is_indent = 0;
+                is_unindent = 0;
+            }
+        }
+
+        if (is_unindent && indent_level > 0) indent_level--;
+        int current_indent = indent_level;
+        if (temp_unindent && current_indent > 0) current_indent--;
+
+        char new_text[MAX_LINE_LENGTH + 1];
+        char num_buf[32];
+        sprintf(num_buf, "%.0f", pl->line_number);
+        int pos = 0;
+        
+        strcpy(new_text, num_buf);
+        pos = (int)strlen(new_text);
+        new_text[pos++] = ' ';
+        
+        int s;
+        for (s = 0; s < current_indent * spaces_per_indent && pos < MAX_LINE_LENGTH; s++) {
+            new_text[pos++] = ' ';
+        }
+        
+        while (*p && pos < MAX_LINE_LENGTH) {
+            new_text[pos++] = *p++;
+        }
+        new_text[pos] = '\0';
+        
+        char *new_alloc = malloc(pos + 1);
+        if (new_alloc) {
+            strcpy(new_alloc, new_text);
+            if (store->bulk_buffer == NULL || pl->text < store->bulk_buffer || pl->text >= store->bulk_buffer + store->bulk_size) {
+                free(pl->text);
+            }
+            pl->text = new_alloc;
+        }
+
+        if (is_indent) indent_level++;
+    }
 }
 
 int pi_ensure_bas_ext(char *fname, int len, int maxlen);
@@ -215,7 +352,16 @@ void pi_parse_run_cmd(Lexer *lex, RuntimeState *rt, int line_num)
       fclose(mf);
   }
 
-  if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'E' && magic[3] == '\x1A') {
+  extern long g_embedded_offset;
+  extern char g_argv_0[512];
+  extern int bpe_load_from_offset(const char *filename, long offset, ProgramStore *prog, void *rt_ptr);
+
+  int is_embedded_load = (g_embedded_offset > 0 && strcmp(filename, g_argv_0) == 0);
+
+  if (is_embedded_load) {
+      if (bpe_load_from_offset(filename, g_embedded_offset, &rt->memory->program, rt) != 0)
+          return;
+  } else if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'E' && magic[3] == '\x1A') {
       if (bpe_load(filename, &rt->memory->program, rt) != 0)
           return;
   } else if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'P' && (magic[3] == '\x1B' || magic[3] == '\x1A')) {
@@ -252,7 +398,7 @@ void pi_parse_run_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 #else
   // ECMA-55: END must be the last line of the program.
   // Check in strict mode only. Warn but still execute.
-  if (dialect_is_strict()) {
+  if (0) {
   ProgramStore *ps = &rt->memory->program;
   int last = ps->count - 1;
   if (last >= 0) {
@@ -469,7 +615,7 @@ void pi_parse_chain_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  // DIALECT "name" (switch by name or short code)
  // DIALECT number (switch by ID)
  //
- // Calls dialect_apply() after switching to reconfigure
+ // Calls  after switching to reconfigure
  // the function registry and runtime for the new dialect.
 static void dialect_update_memmap_and_screen(RuntimeState *rt, int dialect_id)
 {
@@ -510,7 +656,7 @@ void pi_parse_dialect_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
  if (lex->current.type == TOK_EOF || lex->current.type == TOK_CR) {
  // No argument - list all dialects
- dialect_list_all();
+ 
  return;
  }
 
@@ -518,15 +664,13 @@ void pi_parse_dialect_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  // Switch by numeric ID
  int id = (int)lex->current.value.num_value;
  lexer_next(lex);
- if (id < 0 || id >= DIALECT_COUNT) {
+ if (id < 0 || id >= 1) {
  error_raise(ERR_HOW, line_num);
  return;
  }
- dialect_init((DialectId)id);
- dialect_apply();
  dialect_update_memmap_and_screen(rt, id);
  printf("Dialect: %s [%s]\n",
- dialect_get_name(), dialect_get_short_name());
+ "BASIC++", "BPP");
  return;
  }
 
@@ -544,16 +688,14 @@ void pi_parse_dialect_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  name[lex->current.str_length] = '\0';
  lexer_next(lex);
 
- found = dialect_find_by_name(name);
+ found = 0;
  if (found < 0) {
  error_raise(ERR_HOW, line_num);
  return;
  }
- dialect_init((DialectId)found);
- dialect_apply();
  dialect_update_memmap_and_screen(rt, found);
  printf("Dialect: %s [%s]\n",
- dialect_get_name(), dialect_get_short_name());
+ "BASIC++", "BPP");
  return;
  }
  // Handle DIALECT LIST (LIST is a keyword, not a string).
@@ -561,7 +703,7 @@ void pi_parse_dialect_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  if (lex->current.type == TOK_KEYWORD &&
  lex->current.value.keyword == KW_LIST) {
  lexer_next(lex);
- dialect_list_all();
+ 
  return;
  }
  if (lex->current.type == TOK_NAMED_VAR) {
@@ -576,17 +718,15 @@ void pi_parse_dialect_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  (size_t)lex->current.str_length);
  name[lex->current.str_length] = '\0';
  lexer_next(lex);
- found = dialect_find_by_name(name);
+ found = 0;
  if (found < 0) {
  error_raise(ERR_HOW, line_num);
  return;
  }
- dialect_init((DialectId)found);
- dialect_apply();
  dialect_update_memmap_and_screen(rt, found);
  printf("Dialect: %s [%s]\n",
- dialect_get_name(),
- dialect_get_short_name());
+ "BASIC++",
+ "BPP");
  return;
  }
 

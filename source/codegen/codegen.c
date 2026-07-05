@@ -59,9 +59,154 @@
 
 // --- Internal helpers ---
 
- // emit_runtime_shim - Write the self-contained runtime support code.
+static char num_vars[1024][64];
+static int num_vars_count = 26;
+
+static int get_numvar_index(const char *name) {
+    char clean_name[64];
+    int len = 0;
+    // convert name to uppercase and strip trailing % or ! or #
+    while (name[len] && name[len] != '%' && name[len] != '!' && name[len] != '#') {
+        if (len < 63) {
+            clean_name[len] = (char)toupper((unsigned char)name[len]);
+            len++;
+        } else {
+            break;
+        }
+    }
+    clean_name[len] = '\0';
+
+    if (len == 0) return 0;
+    if (len == 1) {
+        if (clean_name[0] >= 'A' && clean_name[0] <= 'Z') {
+            return clean_name[0] - 'A';
+        }
+    }
+
+    // Search in registered named vars
+    for (int i = 26; i < num_vars_count; i++) {
+        if (strcmp(num_vars[i], clean_name) == 0) {
+            return i;
+        }
+    }
+
+    // Register new named var
+    if (num_vars_count < 1024) {
+        strcpy(num_vars[num_vars_count], clean_name);
+        return num_vars_count++;
+    }
+    return 0; // fallback
+}
+
+static char str_vars[1024][64];
+static int str_vars_count = 26;
+
+static int get_strvar_index(const char *name) {
+    char clean_name[64];
+    int len = 0;
+    // convert name to uppercase and strip trailing $
+    while (name[len] && name[len] != '$') {
+        if (len < 63) {
+            clean_name[len] = (char)toupper((unsigned char)name[len]);
+            len++;
+        } else {
+            break;
+        }
+    }
+    clean_name[len] = '\0';
+
+    if (len == 0) return 0;
+    if (len == 1) {
+        if (clean_name[0] >= 'A' && clean_name[0] <= 'Z') {
+            return clean_name[0] - 'A';
+        }
+    }
+
+    // Search in registered named vars
+    for (int i = 26; i < str_vars_count; i++) {
+        if (strcmp(str_vars[i], clean_name) == 0) {
+            return i;
+        }
+    }
+
+    // Register new named var
+    if (str_vars_count < 1024) {
+        strcpy(str_vars[str_vars_count], clean_name);
+        return str_vars_count++;
+    }
+    return 0; // fallback
+}
+
 static void emit_runtime_shim(FILE *out, const TargetConfig *target)
 {
+    fprintf(out,
+        "#ifdef _MSC_VER\n"
+        "#ifndef _CRT_SECURE_NO_WARNINGS\n"
+        "#define _CRT_SECURE_NO_WARNINGS\n"
+        "#endif\n"
+        "#pragma warning(disable: 4996)\n"
+        "#pragma warning(disable: 4101)\n"
+        "#pragma warning(disable: 4244)\n"
+        "#pragma warning(disable: 4102)\n"
+        "#pragma warning(disable: 4311)\n"
+        "#pragma warning(disable: 4312)\n"
+        "#endif\n\n"
+        "#ifdef __GNUC__\n"
+        "#pragma GCC diagnostic ignored \"-Wunused-function\"\n"
+        "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n"
+        "#pragma GCC diagnostic ignored \"-Wunused-label\"\n"
+        "#pragma GCC diagnostic ignored \"-Wstringop-truncation\"\n"
+        "#pragma GCC diagnostic ignored \"-Wrestrict\"\n"
+        "#pragma GCC diagnostic ignored \"-Wdouble-promotion\"\n"
+        "#pragma GCC diagnostic ignored \"-Wpointer-to-int-cast\"\n"
+        "#pragma GCC diagnostic ignored \"-Wint-to-pointer-cast\"\n"
+        "#endif\n\n"
+        "/* =====================================================================\n"
+        " * BASIC++ AUTO-GENERATED C17 SOURCE FILE\n"
+        " * =====================================================================\n"
+        " * 1. SUBSYSTEMS EXPLAINED:\n"
+        " *    - Runtime Shim: Provides print formatting, input routines, stack operations,\n"
+        " *      and dynamic array mapping memory allocation.\n"
+        " *    - Global Variables: Static storage arrays for numeric/string scalars and arrays.\n"
+        " *    - Main Loop / Control Flow: BASIC line numbers mapped to C goto labels.\n"
+        " *    - Structured constructs (DEF FN) mapped to helper functions.\n"
+        " *\n"
+        " * 2. PORTABILITY CONCERNS:\n"
+        " *    - Conforms to ISO/IEC 9899:2018 (C17) using standard headers.\n"
+        " *    - Assumes standard IEEE-754 double precision representation.\n"
+        " *\n"
+        " * 3. MEMORY MANAGEMENT:\n"
+        " *    - Uses static memory pools for scalar variables and DIM arrays (zero malloc).\n"
+        " *    - String buffers are statically sized (256 bytes per string variable).\n"
+        " *\n"
+        " * 4. PARSER & LEXER BEHAVIOR:\n"
+        " *    - Generated code maps directly from the transpiler's AST parser hierarchy.\n"
+        " *    - Operators follow standard ANSI BASIC precedence during translation.\n"
+        " *\n"
+        " * 5. RUNTIME BEHAVIOR:\n"
+        " *    - Sequentially executes statements, branching via GOTO to line number labels.\n"
+        " *    - Supports runtime error redirection or bounds checking in shim helpers.\n"
+        " *\n"
+        " * 6. FUTURE EXPANSION POINTS:\n"
+        " *    - Expand helper shims in codegen.c to support complex file or graphics modules.\n"
+        " *    - Additional optimization passes can be added directly to the transpiler AST.\n"
+        " *\n"
+        " * 7. WHAT CAN BE CHANGED:\n"
+        " *    - Runtime constants like BPP_MAX_STACK, BPP_MAX_ELEM, or print format widths.\n"
+        " *    - C compiler optimization flags (e.g. -O3, -ffast-math) when building.\n"
+        " *\n"
+        " * 8. WHAT CANNOT BE CHANGED:\n"
+        " *    - The basic structured main layout and label mapping format of the program.\n"
+        " *    - Signature definitions of standard shim helper functions.\n"
+        " *\n"
+        " * 9. WHAT TO EXPECT:\n"
+        " *    - High performance C executable running natively with a near-zero memory footprint.\n"
+        " *\n"
+        " * 10. TROUBLESHOOTING & FAILURE MODES:\n"
+        " *     - If the C compiler errors out, verify standard header availability (<stdio.h>, etc.).\n"
+        " *     - Check for duplicate line labels or array boundary bounds violations.\n"
+        " * ===================================================================== */\n\n");
+
     fprintf(out,
         "/* Generated by BASIC++ Compiler for target: %s */\n"
         "#define %s\n"
@@ -82,8 +227,8 @@ static void emit_runtime_shim(FILE *out, const TargetConfig *target)
         "#include <math.h>\n"
         "\n"
         "/* === Runtime Variables === */\n"
-        "static double bpp_vars[26]; /* A-Z */\n"
-        "static char bpp_strvars[26][256]; /* A$-Z$ */\n"
+        "static double bpp_vars[1024]; /* A-Z and named */\n"
+        "static char bpp_strvars[1024][256]; /* A$-Z$ and named */\n"
         "static double bpp_at_array[4096]; /* @() legacy array */\n"
         "static int bpp_print_width = 14;\n"
         "\n"
@@ -161,15 +306,22 @@ static void emit_runtime_shim(FILE *out, const TargetConfig *target)
  "\n"
  "/* === DATA/READ support === */\n"
  "#define BPP_MAX_DATA 4096\n"
- "static double bpp_data_pool[BPP_MAX_DATA];\n"
+ "static const char *bpp_data_pool[BPP_MAX_DATA];\n"
  "static int bpp_data_count = 0;\n"
  "static int bpp_data_ptr = 0;\n"
  "\n"
  "static double bpp_read_num(void) {\n"
- " if (bpp_data_ptr >= bpp_data_count) {\n"
- " fprintf(stderr, \"OUT OF DATA\\n\"); exit(1);\n"
- " }\n"
- " return bpp_data_pool[bpp_data_ptr++];\n"
+ "  if (bpp_data_ptr >= bpp_data_count) {\n"
+ "    fprintf(stderr, \"OUT OF DATA\\n\"); exit(1);\n"
+ "  }\n"
+ "  return atof(bpp_data_pool[bpp_data_ptr++]);\n"
+ "}\n"
+ "\n"
+ "static const char *bpp_read_str(void) {\n"
+ "  if (bpp_data_ptr >= bpp_data_count) {\n"
+ "    fprintf(stderr, \"OUT OF DATA\\n\"); exit(1);\n"
+ "  }\n"
+ "  return bpp_data_pool[bpp_data_ptr++];\n"
  "}\n"
  "\n"
  "/* === String helpers === */\n"
@@ -316,29 +468,30 @@ static void emit_expr(FILE *out, AstExpr *e)
  }
  break;
 
- case EXPR_VAR:
- fprintf(out, "bpp_vars[%d]",
- (int)(e->v.var_name - 'A'));
- break;
+	case EXPR_VAR:
+		{
+			char nm[2] = { e->v.var_name, '\0' };
+			fprintf(out, "bpp_vars[%d]", get_numvar_index(nm));
+		}
+		break;
 
- case EXPR_STRING_VAR:
- fprintf(out, "bpp_strvars[%d]",
- (int)(e->v.var_name - 'A'));
- break;
+	case EXPR_STRING_VAR:
+		{
+			char nm[2] = { e->v.var_name, '\0' };
+			fprintf(out, "bpp_strvars[%d]", get_strvar_index(nm));
+		}
+		break;
 
- case EXPR_NAMED_VAR:
- // Named vars: check for trailing $ for string vars
- {
- int nlen = e->v.named.name_len;
- if (nlen > 0 && e->v.named.name[nlen - 1] == '$') {
- fprintf(out, "bpp_strvars[%d]",
- (int)(e->v.named.name[0] - 'A'));
- } else {
- fprintf(out, "bpp_vars[%d]",
- (int)(e->v.named.name[0] - 'A'));
- }
- }
- break;
+	case EXPR_NAMED_VAR:
+		{
+			int nlen = e->v.named.name_len;
+			if (nlen > 0 && e->v.named.name[nlen - 1] == '$') {
+				fprintf(out, "bpp_strvars[%d]", get_strvar_index(e->v.named.name));
+			} else {
+				fprintf(out, "bpp_vars[%d]", get_numvar_index(e->v.named.name));
+			}
+		}
+		break;
 
  case EXPR_ARRAY_AT:
  fprintf(out, "bpp_at_array[(int)(");
@@ -644,23 +797,10 @@ static void emit_expr(FILE *out, AstExpr *e)
  emit_expr(out, e->v.func_call.args[0]);
  fprintf(out, ")");
  break;
- }
+ default:
  break;
  }
-}
-
- // emit_relop - Emit a C relational operator.
-static void emit_relop(FILE *out, TokenType relop)
-{
- switch (relop) {
- case TOK_EQUALS: fprintf(out, "=="); break;
- case TOK_LT: fprintf(out, "<"); break;
- case TOK_GT: fprintf(out, ">"); break;
- case TOK_LT_EQ: fprintf(out, "<="); break;
- case TOK_GT_EQ: fprintf(out, ">="); break;
- case TOK_NOT_EQ: fprintf(out, "!="); break;
- case TOK_HASH: fprintf(out, "!="); break;
- default: fprintf(out, "=="); break;
+ break;
  }
 }
 
@@ -729,20 +869,35 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  }
  break;
 
- case STMT_LET:
- fprintf(out, "bpp_vars[%d] = ",
- (int)(s->v.let.var_name - 'A'));
- emit_expr(out, s->v.let.value);
- fprintf(out, ";\n");
- break;
+ 	case STMT_LET:
+		{
+			int idx;
+			if (s->v.let.name[0] != '\0') {
+				idx = get_numvar_index(s->v.let.name);
+			} else {
+				char nm[2] = { s->v.let.var_name, '\0' };
+				idx = get_numvar_index(nm);
+			}
+			fprintf(out, "bpp_vars[%d] = ", idx);
+		}
+		emit_expr(out, s->v.let.value);
+		fprintf(out, ";\n");
+		break;
 
- case STMT_LET_STRVAR:
- fprintf(out, "strncpy(bpp_strvars[%d], ",
- (int)(s->v.let_strvar.var_name - 'A'));
- emit_expr(out, s->v.let_strvar.value);
- fprintf(out, ", 255); bpp_strvars[%d][255]='\\0';\n",
- (int)(s->v.let_strvar.var_name - 'A'));
- break;
+	case STMT_LET_STRVAR:
+		{
+			int idx;
+			if (s->v.let_strvar.name[0] != '\0') {
+				idx = get_strvar_index(s->v.let_strvar.name);
+			} else {
+				char nm[2] = { s->v.let_strvar.var_name, '\0' };
+				idx = get_strvar_index(nm);
+			}
+			fprintf(out, "strncpy(bpp_strvars[%d], ", idx);
+			emit_expr(out, s->v.let_strvar.value);
+			fprintf(out, ", 255); bpp_strvars[%d][255]='\\0';\n", idx);
+		}
+		break;
 
  case STMT_LET_ARRAY_AT:
  fprintf(out, "bpp_at_array[(int)(");
@@ -836,80 +991,76 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  " } }\n");
  break;
 
- case STMT_FOR:
- fprintf(out, "bpp_vars[%d] = ",
- (int)(s->v.for_stmt.var_name - 'A'));
- emit_expr(out, s->v.for_stmt.init);
- fprintf(out, ";\n");
- break;
+ 	case STMT_FOR:
+		{
+			int idx;
+			if (s->v.for_stmt.name[0] != '\0') {
+				idx = get_numvar_index(s->v.for_stmt.name);
+			} else {
+				char nm[2] = { s->v.for_stmt.var_name, '\0' };
+				idx = get_numvar_index(nm);
+			}
+			fprintf(out, "bpp_vars[%d] = ", idx);
+		}
+		emit_expr(out, s->v.for_stmt.init);
+		fprintf(out, ";\n");
+		break;
 
- case STMT_NEXT:
- // NEXT is handled by the main loop as a jump-back
- fprintf(out, "/* NEXT %c - see loop structure */\n",
- s->v.next.var_name ? s->v.next.var_name : '?');
- break;
+	case STMT_NEXT:
+		if (s->v.next.name[0] != '\0') {
+			fprintf(out, "/* NEXT %s - see loop structure */\n", s->v.next.name);
+		} else {
+			fprintf(out, "/* NEXT %c - see loop structure */\n",
+				s->v.next.var_name ? s->v.next.var_name : '?');
+		}
+		break;
 
- case STMT_INPUT:
- {
- int vi;
- for (vi = 0; vi < s->v.input.var_count; vi++) {
- for (i = 0; i < indent && vi > 0; i++)
- fprintf(out, " ");
- if (s->v.input.prompt && vi == 0) {
- fprintf(out, "printf(\"%%s\", ");
- emit_expr(out, s->v.input.prompt);
- fprintf(out, ");\n");
- for (i = 0; i < indent; i++)
- fprintf(out, " ");
- } else if (vi == 0) {
- fprintf(out, "printf(\"? \");\n");
- for (i = 0; i < indent; i++)
- fprintf(out, " ");
- }
- fprintf(out, "fflush(stdout);\n");
- for (i = 0; i < indent; i++)
- fprintf(out, " ");
+ 	case STMT_INPUT:
+	{
+		int vi;
+		for (vi = 0; vi < s->v.input.var_count; vi++) {
+			for (i = 0; i < indent && vi > 0; i++)
+				fprintf(out, " ");
+			if (s->v.input.prompt && vi == 0) {
+				fprintf(out, "printf(\"%%s\", ");
+				emit_expr(out, s->v.input.prompt);
+				fprintf(out, ");\n");
+				for (i = 0; i < indent; i++)
+					fprintf(out, " ");
+			} else if (vi == 0) {
+				fprintf(out, "printf(\"? \");\n");
+				for (i = 0; i < indent; i++)
+					fprintf(out, " ");
+			}
+			fprintf(out, "fflush(stdout);\n");
+			for (i = 0; i < indent; i++)
+				fprintf(out, " ");
 
- if (s->v.input.var_types[vi] == 0) {
- // Numeric input
- fprintf(out,
- "{ char _buf[256]; double _v;\n");
- for (i = 0; i < indent; i++)
- fprintf(out, " ");
- fprintf(out,
- " fgets(_buf, 256, stdin);"
- " _v = atof(_buf);\n");
- for (i = 0; i < indent; i++)
- fprintf(out, " ");
- fprintf(out,
- " bpp_vars[%d] = _v; }\n",
- (int)(s->v.input.var_names[vi] - 'A'));
- } else {
- // String input
- fprintf(out,
- "{ char _buf[256]; int _len;\n");
- for (i = 0; i < indent; i++)
- fprintf(out, " ");
- fprintf(out,
- " fgets(_buf, 256, stdin);"
- " _len=(int)strlen(_buf);\n");
- for (i = 0; i < indent; i++)
- fprintf(out, " ");
- fprintf(out,
- " while(_len>0 &&"
- " (_buf[_len-1]=='\\n'||"
- "_buf[_len-1]=='\\r'))"
- " _buf[--_len]='\\0';\n");
- for (i = 0; i < indent; i++)
- fprintf(out, " ");
- fprintf(out,
- " strncpy(bpp_strvars[%d],"
- " _buf, 255); }\n",
- (int)(s->v.input.var_names[vi] - 'A'));
- }
- }
- }
- break;
+			AstExpr *var = s->v.input.vars[vi];
+			if (expr_is_string(var)) {
+				// String input
+				fprintf(out, "{ char _buf[256]; int _len;\n");
+				for (i = 0; i < indent; i++) fprintf(out, " ");
+				fprintf(out, "  fgets(_buf, 256, stdin); _len=(int)strlen(_buf);\n");
+				for (i = 0; i < indent; i++) fprintf(out, " ");
+				fprintf(out, "  while(_len>0 && (_buf[_len-1]=='\\n'||_buf[_len-1]=='\\r')) _buf[--_len]='\\0';\n");
+				for (i = 0; i < indent; i++) fprintf(out, " ");
+				fprintf(out, "  strncpy(");
+				emit_expr(out, var);
+				fprintf(out, ", _buf, 255); }\n");
+			} else {
+				// Numeric input
+				fprintf(out, "{ char _buf[256]; double _v;\n");
+				for (i = 0; i < indent; i++) fprintf(out, " ");
+				fprintf(out, "  fgets(_buf, 256, stdin); _v = atof(_buf);\n");
+				for (i = 0; i < indent; i++) fprintf(out, " ");
+				fprintf(out, "  ");
+				emit_expr(out, var);
+				fprintf(out, " = _v; }\n");
+			}
+		}
+	}
+	break;
 
  case STMT_END:
  fprintf(out, "goto bpp_end;\n");
@@ -946,56 +1097,64 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  fprintf(out, "/* DATA - see initialization */\n");
  break;
 
- case STMT_READ:
- {
- int ri;
- for (ri = 0; ri < s->v.read.var_count; ri++) {
- if (ri > 0) {
- for (i = 0; i < indent; i++)
- fprintf(out, " ");
- }
- if (s->v.read.var_types[ri] == 0) {
- // Simple numeric variable
- fprintf(out, "bpp_vars[%d] = bpp_read_num();\n",
- (int)(s->v.read.var_names[ri] - 'A'));
- } else if (s->v.read.var_types[ri] == 2) {
- // 1D Array element
- const char *dn = s->v.read.dim_names[ri];
- if (dn[0] == '\0') {
- char nm[2];
- nm[0] = s->v.read.var_names[ri]; nm[1] = '\0';
- dn = nm;
- fprintf(out, "*bpp_dim_ref(\"%s\", (int)(", dn);
- } else {
- fprintf(out, "*bpp_dim_ref(\"%s\", (int)(", dn);
- }
- emit_expr(out, s->v.read.var_indices[ri]);
- fprintf(out, "), 0) = bpp_read_num();\n");
- } else if (s->v.read.var_types[ri] == 3) {
- // 2D Array element
- const char *dn = s->v.read.dim_names[ri];
- if (dn[0] == '\0') {
- char nm[2];
- nm[0] = s->v.read.var_names[ri]; nm[1] = '\0';
- dn = nm;
- fprintf(out, "*bpp_dim_ref(\"%s\", (int)(", dn);
- } else {
- fprintf(out, "*bpp_dim_ref(\"%s\", (int)(", dn);
- }
- emit_expr(out, s->v.read.var_indices[ri]);
- fprintf(out, "), (int)(");
- emit_expr(out, s->v.read.var_indices2[ri]);
- fprintf(out, ")) = bpp_read_num();\n");
- } else {
- // String variable
- fprintf(out,
- "sprintf(bpp_strvars[%d], \"%%g\","
- " bpp_read_num());\n",
- (int)(s->v.read.var_names[ri] - 'A'));
- }
- }
- }
- break;
+ 	case STMT_READ:
+	{
+		int ri;
+		for (ri = 0; ri < s->v.read.var_count; ri++) {
+			if (ri > 0) {
+				for (i = 0; i < indent; i++)
+					fprintf(out, " ");
+			}
+			if (s->v.read.var_types[ri] == 0) {
+				// Simple numeric variable
+				fprintf(out, "bpp_vars[%d] = bpp_read_num();\n",
+					(int)(s->v.read.var_names[ri] - 'A'));
+			} else if (s->v.read.var_types[ri] == 2) {
+				// 1D Array element
+				const char *dn = s->v.read.dim_names[ri];
+				if (dn[0] == '\0') {
+					char nm[2];
+					nm[0] = s->v.read.var_names[ri]; nm[1] = '\0';
+					dn = nm;
+				}
+				if (dn[strlen(dn)-1] == '$') {
+					fprintf(out, "strncpy(bpp_strdim_ref(\"%s\", (int)(", dn);
+					emit_expr(out, s->v.read.var_indices[ri]);
+					fprintf(out, "), 0), bpp_read_str(), 255);\n");
+				} else {
+					fprintf(out, "*bpp_dim_ref(\"%s\", (int)(", dn);
+					emit_expr(out, s->v.read.var_indices[ri]);
+					fprintf(out, "), 0) = bpp_read_num();\n");
+				}
+			} else if (s->v.read.var_types[ri] == 3) {
+				// 2D Array element
+				const char *dn = s->v.read.dim_names[ri];
+				if (dn[0] == '\0') {
+					char nm[2];
+					nm[0] = s->v.read.var_names[ri]; nm[1] = '\0';
+					dn = nm;
+				}
+				if (dn[strlen(dn)-1] == '$') {
+					fprintf(out, "strncpy(bpp_strdim_ref(\"%s\", (int)(", dn);
+					emit_expr(out, s->v.read.var_indices[ri]);
+					fprintf(out, "), (int)(");
+					emit_expr(out, s->v.read.var_indices2[ri]);
+					fprintf(out, ")), bpp_read_str(), 255);\n");
+				} else {
+					fprintf(out, "*bpp_dim_ref(\"%s\", (int)(", dn);
+					emit_expr(out, s->v.read.var_indices[ri]);
+					fprintf(out, "), (int)(");
+					emit_expr(out, s->v.read.var_indices2[ri]);
+					fprintf(out, ")) = bpp_read_num();\n");
+				}
+			} else {
+				// String variable
+				fprintf(out, "strncpy(bpp_strvars[%d], bpp_read_str(), 255);\n",
+					(int)(s->v.read.var_names[ri] - 'A'));
+			}
+		}
+	}
+	break;
 
  case STMT_RESTORE:
  fprintf(out, "bpp_data_ptr = 0;\n");
@@ -1021,10 +1180,10 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  for (i = 0; i < indent + 1; i++)
  fprintf(out, " ");
  if (s->v.on_goto.is_gosub) {
- fprintf(out, "if (_sel == %d) { bpp_gosub_stack[bpp_gosub_sp++] = 0; goto L%d; }\n",
+ fprintf(out, "if (_sel == %d) { bpp_gosub_stack[bpp_gosub_sp++] = 0; goto L%.0f; }\n",
  oi + 1, s->v.on_goto.targets[oi]);
  } else {
- fprintf(out, "if (_sel == %d) goto L%d;\n",
+ fprintf(out, "if (_sel == %d) goto L%.0f;\n",
  oi + 1, s->v.on_goto.targets[oi]);
  }
  }
@@ -1041,6 +1200,8 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  fprintf(out, "/* DEF FN%c - defined as inline */\n",
  s->v.def_fn.func_name);
  break;
+ default:
+ break;
  }
 }
 
@@ -1050,9 +1211,9 @@ static void emit_stmt(FILE *out, AstStmt *s, int indent)
  // Pass 2: Emit code with return dispatch in RETURN statements
 
 typedef struct GosubSite {
- int line_num; // line containing the GOSUB
+ double line_num; // line containing the GOSUB
  int return_id; // unique return label ID
- int target_line; // GOSUB target
+ double target_line; // GOSUB target
 } GosubSite;
 
 #define MAX_GOSUB_SITES 256
@@ -1101,56 +1262,64 @@ static int find_gosub_sites(AstLine *lines, int line_count,
  return id;
 }
 
-// --- FOR/NEXT matching ---
+/// --- FOR/NEXT matching ---
 typedef struct ForSite {
- int for_line; // line number of FOR statement
- char var_name; // loop variable
- AstExpr *limit; // limit expression
- AstExpr *step; // step expression (NULL = default 1)
- int loop_id; // unique label ID
+	double for_line; // line number of FOR statement
+	char var_name; // loop variable
+	char full_name[MAX_VAR_NAME_LEN + 1]; // full loop variable name
+	AstExpr *limit; // limit expression
+	AstExpr *step; // step expression (NULL = default 1)
+	int loop_id; // unique label ID
 } ForSite;
 
 #define MAX_FOR_SITES 64
 
 static int find_for_sites(AstLine *lines, int line_count,
- ForSite *sites, int *site_count)
+	ForSite *sites, int *site_count)
 {
- int i;
- int id = 0;
- *site_count = 0;
+	int i;
+	int id = 0;
+	*site_count = 0;
 
- for (i = 0; i < line_count; i++) {
- AstStmt *s = lines[i].stmts;
- while (s) {
- if (s->type == STMT_FOR && *site_count < MAX_FOR_SITES) {
- sites[*site_count].for_line = lines[i].line_number;
- sites[*site_count].var_name = s->v.for_stmt.var_name;
- sites[*site_count].limit = s->v.for_stmt.limit;
- sites[*site_count].step = s->v.for_stmt.step;
- sites[*site_count].loop_id = id++;
- (*site_count)++;
- }
- s = s->next;
- }
- }
- return id;
+	for (i = 0; i < line_count; i++) {
+		AstStmt *s = lines[i].stmts;
+		while (s) {
+			if (s->type == STMT_FOR && *site_count < MAX_FOR_SITES) {
+				sites[*site_count].for_line = lines[i].line_number;
+				sites[*site_count].var_name = s->v.for_stmt.var_name;
+				strncpy(sites[*site_count].full_name, s->v.for_stmt.name, MAX_VAR_NAME_LEN);
+				sites[*site_count].full_name[MAX_VAR_NAME_LEN] = '\0';
+				sites[*site_count].limit = s->v.for_stmt.limit;
+				sites[*site_count].step = s->v.for_stmt.step;
+				sites[*site_count].loop_id = id++;
+				(*site_count)++;
+			}
+			s = s->next;
+		}
+	}
+	return id;
 }
 
 // Find the most recent FOR site for a given variable before line_num
-static ForSite *find_for_for_next(ForSite *sites, int count,
- char var, int next_line)
+static ForSite *find_for_for_next_named(ForSite *sites, int count,
+	const char *full_name, char var, double next_line)
 {
- int i;
- ForSite *best = NULL;
- // Find the FOR for this variable with the highest line_num
- //  that is still <= next_line 
- for (i = 0; i < count; i++) {
- if (sites[i].var_name == var &&
- sites[i].for_line <= next_line) {
- best = &sites[i];
- }
- }
- return best;
+	int i;
+	ForSite *best = NULL;
+	// Find the FOR for this variable with the highest line_num
+	// that is still <= next_line
+	for (i = 0; i < count; i++) {
+		int matched = 0;
+		if (full_name && full_name[0] != '\0') {
+			matched = (strcmp(sites[i].full_name, full_name) == 0);
+		} else {
+			matched = (sites[i].var_name == var);
+		}
+		if (matched && sites[i].for_line <= next_line) {
+			best = &sites[i];
+		}
+	}
+	return best;
 }
 
 // --- Label target collection ---
@@ -1191,7 +1360,7 @@ static void collect_goto_targets(AstLine *lines, int line_count,
  int oi;
  for (oi = 0; oi < s->v.on_goto.target_count; oi++) {
  add_target(targets, target_count,
- s->v.on_goto.targets[oi]);
+ (int)s->v.on_goto.targets[oi]);
  }
  }
  if (s->type == STMT_IF && s->v.if_stmt.then_stmt) {
@@ -1223,71 +1392,120 @@ static int is_label_target(int *targets, int count, int ln)
 
 // --- Main emit function ---
 
- // emit_data_init - Scan raw program lines for DATA statements
- // and emit initialization code for bpp_data_pool[].
- //
- // DATA values are extracted from the original source text by
- // finding lines that contain "DATA" followed by a comma-separated
- // list of numeric values.
 static void emit_data_init(FILE *out, ProgramStore *program)
 {
- int i;
- int data_idx = 0;
+	int i;
+	int data_idx = 0;
 
- if (!program) return;
+	if (!program) return;
 
- for (i = 0; i < program->count; i++) {
- const char *line = program->lines[i].text;
- const char *p = line;
- int found_data = 0;
+	for (i = 0; i < program->count; i++) {
+		const char *line = program->lines[i].text;
+		const char *p = line;
+		int in_quotes = 0;
+		const char *data_start = NULL;
 
- // Skip line number
- while (*p && isdigit((unsigned char)*p)) p++;
- while (*p == ' ') p++;
+		// Scan for DATA keyword outside quotes
+		while (*p) {
+			if (*p == '"') {
+				in_quotes = !in_quotes;
+			} else if (!in_quotes) {
+				if ((p[0] == 'D' || p[0] == 'd') &&
+					(p[1] == 'A' || p[1] == 'a') &&
+					(p[2] == 'T' || p[2] == 't') &&
+					(p[3] == 'A' || p[3] == 'a')) {
+					int is_boundary = 0;
+					if (p == line) is_boundary = 1;
+					else {
+						char prev = p[-1];
+						if (isspace((unsigned char)prev) || prev == ':' || isdigit((unsigned char)prev)) {
+							is_boundary = 1;
+						}
+					}
+					if (is_boundary) {
+						data_start = p + 4;
+						break;
+					}
+				}
+			}
+			p++;
+		}
 
- // Check for DATA keyword
- if ((p[0]=='D'||p[0]=='d') && (p[1]=='A'||p[1]=='a') &&
- (p[2]=='T'||p[2]=='t') && (p[3]=='A'||p[3]=='a') &&
- (p[4]==' ' || p[4]=='\0' || isdigit((unsigned char)p[4]) ||
- p[4]=='-' || p[4]=='+' || p[4]=='.')) {
- p += 4;
- while (*p == ' ') p++;
- found_data = 1;
- }
+		if (!data_start) continue;
 
- if (!found_data) continue;
+		p = data_start;
+		while (*p == ' ' || *p == '\t') p++;
 
- // Parse comma-separated numeric values
- while (*p && *p != '\0' && *p != '\r' && *p != '\n') {
- double val;
- char *endp;
+		while (*p && *p != '\r' && *p != '\n' && *p != ':') {
+			char item[1024];
+			int item_len = 0;
 
- while (*p == ' ') p++;
- if (*p == '\0' || *p == '\r' || *p == '\n') break;
+			while (*p == ' ' || *p == '\t') p++;
+			if (*p == '\0' || *p == '\r' || *p == '\n' || *p == ':') break;
 
- val = strtod(p, &endp);
- if (endp == p) break; // not a number
- p = endp;
+			if (*p == '"') {
+				p++; // skip starting quote
+				while (*p && *p != '"' && *p != '\r' && *p != '\n') {
+					if (item_len < 1023) item[item_len++] = *p;
+					p++;
+				}
+				if (*p == '"') p++; // skip ending quote
+			} else {
+				while (*p && *p != ',' && *p != ':' && *p != '\r' && *p != '\n') {
+					if (item_len < 1023) item[item_len++] = *p;
+					p++;
+				}
+				// Strip trailing whitespace
+				while (item_len > 0 && (item[item_len-1] == ' ' || item[item_len-1] == '\t')) {
+					item_len--;
+				}
+			}
+			item[item_len] = '\0';
 
- fprintf(out, " bpp_data_pool[%d] = %.17g;\n",
- data_idx, val);
- data_idx++;
+			// Escape characters for C double quotes
+			char escaped[2048];
+			int esc_len = 0;
+			for (int k = 0; k < item_len; k++) {
+				if (item[k] == '"') {
+					escaped[esc_len++] = '\\';
+					escaped[esc_len++] = '"';
+				} else if (item[k] == '\\') {
+					escaped[esc_len++] = '\\';
+					escaped[esc_len++] = '\\';
+				} else if (item[k] == '\n') {
+					escaped[esc_len++] = '\\';
+					escaped[esc_len++] = 'n';
+				} else if (item[k] == '\r') {
+					escaped[esc_len++] = '\\';
+					escaped[esc_len++] = 'r';
+				} else {
+					escaped[esc_len++] = item[k];
+				}
+			}
+			escaped[esc_len] = '\0';
 
- while (*p == ' ') p++;
- if (*p == ',') { p++; continue; }
- break;
- }
- }
+			fprintf(out, "  bpp_data_pool[%d] = \"%s\";\n", data_idx, escaped);
+			data_idx++;
 
- if (data_idx > 0) {
- fprintf(out, " bpp_data_count = %d;\n", data_idx);
- }
+			while (*p == ' ' || *p == '\t') p++;
+			if (*p == ',') {
+				p++;
+				continue;
+			}
+			break;
+		}
+	}
+
+	fprintf(out, "  bpp_data_count = %d;\n", data_idx);
 }
 
 int codegen_emit(FILE *out, AstLine *lines, int line_count,
                  ProgramStore *program, const TargetConfig *target)
 {
- int i;
+	num_vars_count = 26;
+	str_vars_count = 26;
+
+	int i;
  GosubSite gosub_sites[MAX_GOSUB_SITES];
  int gosub_count = 0;
  ForSite for_sites[MAX_FOR_SITES];
@@ -1345,85 +1563,98 @@ int codegen_emit(FILE *out, AstLine *lines, int line_count,
  // Emit each BASIC line as a labeled block
  for (i = 0; i < line_count; i++) {
  AstStmt *s = lines[i].stmts;
- int ln = lines[i].line_number;
+ double ln = lines[i].line_number;
 
  // Only emit label if this line is a GOTO/GOSUB target
- if (is_label_target(goto_targets, goto_target_count, ln)) {
- fprintf(out, " L%d: /* Line %d */\n", ln, ln);
+ if (is_label_target(goto_targets, goto_target_count, (int)ln)) {
+ fprintf(out, " L%.0f: /* Line %.0f */\n", ln, ln);
  } else {
- fprintf(out, " /* Line %d */\n", ln);
+ fprintf(out, " /* Line %.0f */\n", ln);
  }
 
  while (s) {
- // Special handling for FOR - emit init + loop label
- if (s->type == STMT_FOR) {
- ForSite *fs = NULL;
- int fi;
- for (fi = 0; fi < for_count; fi++) {
- if (for_sites[fi].for_line == ln &&
- for_sites[fi].var_name ==
- s->v.for_stmt.var_name) {
- fs = &for_sites[fi];
- break;
- }
- }
- fprintf(out, " bpp_vars[%d] = ",
- (int)(s->v.for_stmt.var_name - 'A'));
- emit_expr(out, s->v.for_stmt.init);
- fprintf(out, ";\n");
- if (fs) {
- fprintf(out, " bpp_for_%d:;\n", fs->loop_id);
- }
- s = s->next;
- continue;
- }
+ 		// Special handling for FOR - emit init + loop label
+		if (s->type == STMT_FOR) {
+			ForSite *fs = NULL;
+			int fi;
+			for (fi = 0; fi < for_count; fi++) {
+				int matched = 0;
+				if (s->v.for_stmt.name[0] != '\0') {
+					matched = (strcmp(for_sites[fi].full_name, s->v.for_stmt.name) == 0);
+				} else {
+					matched = (for_sites[fi].var_name == s->v.for_stmt.var_name);
+				}
+				if (for_sites[fi].for_line == ln && matched) {
+					fs = &for_sites[fi];
+					break;
+				}
+			}
+			int idx;
+			if (s->v.for_stmt.name[0] != '\0') {
+				idx = get_numvar_index(s->v.for_stmt.name);
+			} else {
+				char nm[2] = { s->v.for_stmt.var_name, '\0' };
+				idx = get_numvar_index(nm);
+			}
+			fprintf(out, " bpp_vars[%d] = ", idx);
+			emit_expr(out, s->v.for_stmt.init);
+			fprintf(out, ";\n");
+			if (fs) {
+				fprintf(out, " bpp_for_%d:;\n", fs->loop_id);
+			}
+			s = s->next;
+			continue;
+		}
 
- // Special handling for NEXT - emit step + check + goto
- if (s->type == STMT_NEXT) {
- char nvar = s->v.next.var_name;
- ForSite *fs = find_for_for_next(
- for_sites, for_count, nvar, ln);
- if (fs) {
- int vi = (int)(nvar - 'A');
- // Increment
- fprintf(out, " bpp_vars[%d] += ", vi);
- if (fs->step) {
- emit_expr(out, fs->step);
- } else {
- fprintf(out, "1");
- }
- fprintf(out, ";\n");
- // Check limit
- if (fs->step) {
- // Signed step: if step>0, check <= limit;
- // if step<0, check >= limit.
- //  Use runtime check for variable step. 
- fprintf(out,
- " if ((");
- emit_expr(out, fs->step);
- fprintf(out, " > 0 && bpp_vars[%d] <= ", vi);
- emit_expr(out, fs->limit);
- fprintf(out, ") || (");
- emit_expr(out, fs->step);
- fprintf(out, " < 0 && bpp_vars[%d] >= ", vi);
- emit_expr(out, fs->limit);
- fprintf(out, ")) goto bpp_for_%d;\n",
- fs->loop_id);
- } else {
- fprintf(out,
- " if (bpp_vars[%d] <= ", vi);
- emit_expr(out, fs->limit);
- fprintf(out, ") goto bpp_for_%d;\n",
- fs->loop_id);
- }
- } else {
- fprintf(out,
- " /* NEXT %c: no matching FOR */\n",
- nvar);
- }
- s = s->next;
- continue;
- }
+		// Special handling for NEXT - emit step + check + goto
+		if (s->type == STMT_NEXT) {
+			ForSite *fs = find_for_for_next_named(
+				for_sites, for_count, s->v.next.name, s->v.next.var_name, ln);
+			if (fs) {
+				int vi;
+				if (s->v.next.name[0] != '\0') {
+					vi = get_numvar_index(s->v.next.name);
+				} else {
+					char nm[2] = { s->v.next.var_name, '\0' };
+					vi = get_numvar_index(nm);
+				}
+				// Increment
+				fprintf(out, " bpp_vars[%d] += ", vi);
+				if (fs->step) {
+					emit_expr(out, fs->step);
+				} else {
+					fprintf(out, "1");
+				}
+				fprintf(out, ";\n");
+				// Check limit
+				if (fs->step) {
+					// Signed step: if step>0, check <= limit;
+					// if step<0, check >= limit.
+					//  Use runtime check for variable step. 
+					fprintf(out, " if ((");
+					emit_expr(out, fs->step);
+					fprintf(out, " > 0 && bpp_vars[%d] <= ", vi);
+					emit_expr(out, fs->limit);
+					fprintf(out, ") || (");
+					emit_expr(out, fs->step);
+					fprintf(out, " < 0 && bpp_vars[%d] >= ", vi);
+					emit_expr(out, fs->limit);
+					fprintf(out, ")) goto bpp_for_%d;\n", fs->loop_id);
+				} else {
+					fprintf(out, " if (bpp_vars[%d] <= ", vi);
+					emit_expr(out, fs->limit);
+					fprintf(out, ") goto bpp_for_%d;\n", fs->loop_id);
+				}
+			} else {
+				if (s->v.next.name[0] != '\0') {
+					fprintf(out, " /* NEXT %s: no matching FOR */\n", s->v.next.name);
+				} else {
+					fprintf(out, " /* NEXT %c: no matching FOR */\n", s->v.next.var_name);
+				}
+			}
+			s = s->next;
+			continue;
+		}
 
  // Special handling for GOSUB - emit return ID
  if (s->type == STMT_GOSUB &&

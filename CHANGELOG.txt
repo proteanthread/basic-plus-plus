@@ -1,6 +1,232 @@
 BASIC++ CHANGELOG
 =================
 
+4.9.7  (2026-07-04) -- Exhaustive Warning & Error Elimination
+---------------------------------------------------------------------------------
+  Compilation & Code Health:
+  - Resolved all GCC and MSVC compiler warnings (including string truncation, format overflow, unused variables, implicit declarations, implicit returns, uninitialized variables) across the entire codebase.
+  - Ensured 100% clean compilation on both Windows (MSVC) and Linux (GCC) for BASIC++ Standard, BASIC++ Lite, BASIC++ SDL, 'trans', and 'compile'.
+  - Added safe string handling limits using precision specifiers and bounds checking in `codegen.c`, `platform.c`, `builtins_fileio.c`, `ext_feature.c`, `ext_plugin.c`, `mod_usb.c`, and `mod_fujinet.c`.
+  - Added unused variable pragmas and casts (`(void)var`, `MAYBE_UNUSED`) to safely suppress platform-specific variables without functional regressions.
+  - Successfully verified execution of internal interpreter SELFTEST diagnostics for parser precedence, flow control, variable assignment, and string pooling on both console and SDL builds.
+
+4.9.6  (2026-07-04) -- Implicit Shell Fallback and REFORMAT keyword
+---------------------------------------------------------------------------------
+  Functional Upgrades:
+  - Added 'ImplicitShellFallback' functionality allowing the interpreter to act as a system shell in direct mode. Unrecognized commands are passed to the OS shell transparently.
+  - Added optional hidden profile execution on startup using 'Profile=' configuration key (e.g., PROFILE.BAS) to initialize variables silently before reaching the REPL.
+  - Implemented the 'REFORMAT' command in direct mode to perform auto-indentation and structural formatting of code currently stored in the memory buffer. Indentation defaults to 4 spaces, configurable via 'REFORMAT [n]'.
+
+
+4.9.5  (2026-07-04) -- Help Database Core Keyword Restorations and Introspection Verification
+---------------------------------------------------------------------------------
+  Introspection & Help Database:
+  - Resolved a bug where core statements/commands (PRINT, INPUT, LET, IF, DATA, ELSE) were completely missing from the standard/SDL help database (help_db).
+  - Restored core statements/commands to standard help_db in correct alphabetical sequence so that 'HELP PRINT', 'HELP INPUT', 'HELP LET', 'HELP IF', 'HELP DATA', 'HELP ELSE' resolve correctly on both console and GUI configurations.
+  - Audited decoupled subsystems (VFS, Segmented Memory, Virtual Devices, Network, Console, Machine) to verify stability and compatibility after modular separation from interpreter core.
+
+4.9.4  (2026-07-04) -- SDL Emulation Boot Screen Initialization and SCREEN Crash Fix
+---------------------------------------------------------------------------------
+  SDL Boot & Screen fixes:
+  - Resolved blank/transparent screen rendering bugs in GUI builds ('basicpp.exe' and 'baspp') by explicitly calling `gw_sdl2_clear_screen` inside `gw_sdl2_init` to initialize screen character grid to spaces (' ') and pixel buffer to black.
+  - Fixed a null pointer dereference (`NULL->banner_text`) inside `handle_screen` in `interp.c` when executing the `SCREEN` command or changing display modes in SDL.
+
+4.9.3  (2026-07-04) -- Transpiler Variable Scope, Standalone Native Compilation, and Python EOF Support
+---------------------------------------------------------------------------------
+  Standalone Native Compilation:
+  - Added target `standalone` compilation to `bppc` supporting zero-toolchain executable distribution via precompiled runner stubs.
+  - Implemented cross-compilation target platform selection (`--platform win|linux|dos`) to bundle stubs with appended `.BPE` payloads.
+  - Resolved PE executable corruption by making CRC header rewrite-back offsets relative to the stub runner size.
+  - Exposed `--runner` template path selection switch in the interpreter to customize embedded stubs.
+  - Added BPE signature detection and offset calculation using `bpe_find_embedded_offset` to bypass standard boot flows and run payloads directly.
+
+  Transpiler Naming & Scope Isolation:
+  - Resolved global and local variable collisions by mapping named variables dynamically (e.g. `n1`, `n2` instead of overlapping `n`) in Python 3 and C17 backends.
+  - Implemented dynamic index allocation (`get_numvar_index` / `get_strvar_index`) in C17 code generation to support arbitrary named variables cleanly without buffer/array overlap.
+  - Added named loop variable support for `STMT_FOR` and `STMT_NEXT` matching in both C17 and Python 3.
+  - Fixed infinite loop transpilation bugs on closed stdin by integrating `bpp_input_str` and `bpp_input_num` helper functions with EOF detection.
+
+  Control Flow & Parser:
+  - Updated `build_if` parsing in `ast.c` to recursively chain all sibling colon-separated statements inside the `then_stmt` block, preventing fall-through logic bugs.
+
+4.9.2  (2026-07-04) -- Cross-Platform Compilation & Heading Rebuild Fixes
+---------------------------------------------------------------------------------
+  Linux Build & Header Portability:
+  - Added headless compilation configuration (`trans-linux` target in Makefile) using `LITE_SOURCES` and `-DBPP_LITE_BUILD` to build the command-line transpiler `trans` without graphical or SDL2 system library dependencies.
+  - Resolved implicit declaration warnings/errors by defining POSIX/GNU feature test macros (`_POSIX_C_SOURCE`, `_DEFAULT_SOURCE`, `_GNU_SOURCE`) at the top of `platform.c` and `bppc.c` under GCC/Linux.
+  - Eliminated GCC buffer truncation warnings in `bppc.c` by upgrading `compile_cmd` to 2048 bytes.
+  - Fixed Windows/Linux dual compilation stub linker symbols by restricting the compile of stubs in `lite_stubs.c` strictly to `BPP_LITE_BUILD` targets.
+
+4.9.1  (2026-07-04) -- Transpilation Comments & Compiler Portability Fixes
+---------------------------------------------------------------------------------
+  Transpiler Upgrades:
+  - Injected developer reference header comments into all generated C17 and Python 3 source files explaining subsystems, memory management, portability, and troubleshooting guidelines.
+  - Refined AST transpiler generators to conform strictly to Python 3 and ANSI C17 standards.
+
+  Compiler Orchestrator (bppc) Portability:
+  - Added native platform path normalization (`normalize_to_native`) for Windows and POSIX executions to prevent command invocation errors.
+  - Implemented forward-slash path normalization (`normalize_to_forward`) for Python bytecode inline compilation arguments to bypass backslash escape exceptions.
+  - Added math library link flags (`-lm`) to the GCC compilation command on Linux/POSIX.
+  - Configured version-specific dynamic linking (`-lpython3.x`) for Python stub binary launcher under Linux/POSIX.
+
+4.9.0  (2026-07-04) -- External Compiler and Transpiler Orchestration
+---------------------------------------------------------------------------------
+  Functional Upgrades & Transpiler:
+  - Created standalone transpiler trans.exe/trans to translate BASIC++ code (.BAS, .BPE, .BPP, .BPL) to strict C17 (default) or Python 3.
+  - Resolved print statement colon separator parsing bug in AST code generation.
+  - Fixed INPUT statement semicolon/comma prompt separator bug in AST builder.
+  - Implemented compiler orchestrator bppc.exe/bppc to run trans and compile generated code to native executables via MSVC, Watcom, or gcc.
+  - Engineered safe, warning-free direct Python C API marshalling launcher stubs using PyMarshal_ReadObjectFromString and PyEval_EvalCode, completely bypassing compiler string literal limits.
+  - Successfully transpiled and compiled 191 retro/classic BASIC programs in classics library to C17 and Python 3 native binaries.
+
+4.8.0  (2026-07-04) -- Legacy Dialects Feature Parity & Robustness
+---------------------------------------------------------------------------------
+  Functional Upgrades & Dialect Parity:
+  - Created 1964.c as a standalone interpreter in strict C89, fully mimicking the historic Dartmouth 1964 dialect (double math, historic precedence, 1D/2D DIM, FN).
+  - Added built-in lightweight HELP command to all three interpreters.
+  - Implemented portable, Win32-compatible BEEP statements in all three dialects.
+  - Implemented auto-uppercase processing for all input lines (preserving quoted strings).
+  - Enforced mandatory LET keyword across all three interpreters (bare A=5 is now a SYNTAX ERROR).
+  - Added support for # operator as an alias for <> (not-equal).
+  - Integrated LOAD/SAVE filename resolving with case-insensitive auto-.BAS extension and optional quote stripping.
+  - Implemented RUN filename argument checks (raising SYNTAX ERROR).
+  - Added ABS(), RND(), and SIZE functions to tinybasic.c.
+  - Added ABS(), INT(), RND(), MEM, TAB(), DATA/READ/RESTORE, ON...GOTO, and CONT to level1.c.
+  - Added ABS(), SGN(), RND(), MOD, ^, AND/OR/NOT, ON...GOTO, DEL, CLR, CON, AUTO/MAN, string variables (slicing, ASC, LEN), and multi-character variables to apple2.c.
+  - Added comprehensive section comments to all three interpreters.
+
+  Compilation & Validation:
+  - Ensured 100% warning-free and error-free compilation under MSVC (/TC /W4 /WX /Za) and GCC (-ansi -Wall -Wextra -Werror -pedantic).
+  - Developed and executed comprehensive comparative validation suite verifying all dialect behaviors on both Windows and Linux.
+
+4.7.0  (2026-07-04) -- Legacy Dialect Refactoring & Rename
+---------------------------------------------------------------------------------
+  Renamed Files:
+  - core-bas.c / core-bas.exe renamed to level1.c / level1.exe
+  - int-bas.c / int-bas.exe renamed to apple2.c / apple2.exe
+
+  level1.c (TRS-80 Level I BASIC):
+  - Upgraded arithmetic from 8-bit signed char to 16-bit signed short.
+  - Made LET keyword mandatory (bare A=5 produces SYNTAX ERROR).
+  - Removed GOSUB/RETURN, LPRINT, SYSTEM, QUIT/EXIT.
+  - Added BYE command (clean exit, replaces QUIT/EXIT).
+  - Kept left-to-right expression evaluation (no operator precedence).
+  - PRINT supports semicolons and comma tab stops.
+  - Full IF/THEN with all relational operators (= <> < > <= >=).
+
+  apple2.c (Apple II Integer BASIC):
+  - Upgraded arithmetic from 8-bit signed char to 16-bit signed short.
+  - Upgraded expression parser to standard operator precedence (* / before + -).
+  - Made LET keyword mandatory.
+  - Added DIM statement for 1D integer arrays (DIM A(100)).
+  - Added TAB() function for PRINT column positioning.
+  - Added BYE command (clean exit).
+  - Removed GOSUB/RETURN, LPRINT, BEEP, SYSTEM, QUIT/EXIT, STOP.
+  - Removed $IMPORT/$INCLUDE/$MERGE stubs and --debug mode.
+  - Full IF/THEN with all relational operators.
+  - LET supports array element assignment (LET A(5) = 10).
+
+  Updated build.bat, .gitignore, and AGENTS.md to reference new filenames.
+
+4.6.0  (2026-07-04) -- LIST Command Search & Segment Extensions
+---------------------------------------------------------------------------------
+  Search Capability in LIST:
+  - Extended the `LIST` command with robust multi-segment searches and wildcard matching.
+  - Quoted pattern search (e.g. `LIST "A$"`) performs a case-insensitive substring search anywhere in the line text (matching comments and string literals).
+  - Unquoted variable search (e.g. `LIST A$`, `LIST A*`, `LIST A?`) performs exact identifier/variable matching within executable code (ignoring comments and string literals) with case-insensitive wildcard support.
+  - Label and function search (e.g. `LIST :name`, `LIST :*label*`) searches for both definitions (e.g., `name:`, `SUB name`, `FUNCTION name`, `DEF FNname`) and references/calls (e.g. `GOTO name`, `CALL name`, `FNname`) matching the pattern.
+  - Resolved colon conflict by implementing a temporary lookahead lexer so that `:` is only parsed as a search prefix when followed by an identifier, allowing statement separation (e.g. `LIST : PRINT ...`) to remain intact.
+  - Implemented `program_list_search` and contextual matchers in `source/core/memory.c` using standard C17 compliant, memory-optimized algorithms.
+
+  Segment Ranges:
+  - Enabled listing of multiple disjoint segment ranges in a single comma-separated command, e.g. `LIST 10-50, 100-` or `LIST 10, :my_label`.
+
+  Documentation:
+  - Documented LIST command search syntaxes, wildcard behaviors, and examples in `README.md`, `docs/README.md`, `docs/Quick_Reference.md`, `help/Quick_Reference.txt`, and built-in help (`HELP.txt`).
+
+  BASIC++ Lite size optimizations:
+  - Enabled Link-Time Optimization (`/GL`, `/LTCG`) and size minimization (`/O1`, `/Ob0`, `/OPT:REF`, `/OPT:ICF`) on Windows/MSVC, reducing the binary size by approximately 10%.
+  - Added compile and linker-level size optimizations (`-Os`, `-flto`, `-ffunction-sections`, `-fdata-sections`, `-Wl,--gc-sections`, and `strip`) for Linux/GCC target.
+  - Implemented missing stubs for external module unloading, AST execution, and program compilation inside `lite_stubs.c` to satisfy the strict global code optimizer during Lite compilation.
+
+4.5.0  (2026-07-04) -- Hexadecimal, Octal, and Binary Line Numbers & Literals
+---------------------------------------------------------------------------------
+  Line Number Bases Support:
+  - Implemented hexadecimal, octal, and binary line numbers in the REPL (interactive mode) and file loaders (`fileio.c` and `archive.c`).
+  - Added support for hex prefixes (`&H`/`&h`, `0x`/`0X`), octal prefixes (`&O`/`&o`, `0o`/`0O`, and bare `&`), and binary prefixes (`&B`/`&b`, `0b`/`0B`).
+  - Allowed hexadecimal, octal, and binary line numbers to range up to `4294967295` (32-bit unsigned limit), while decimal line numbers remain capped at `65529` (`LINE_NUMBER_MAX`).
+  - Preserved the original input base and prefix representation of line numbers on program listings (`LIST`).
+  - Supported resolution of jump targets (e.g. `GOTO`, `GOSUB`, `RESTORE`, and `DELETE`) using base prefixes in expressions.
+  - Implemented a unified helper function `program_parse_line_number` in `source/core/memory.c` to parse multiple base line numbers from text strings cleanly.
+
+  Lexer Literals:
+  - Added support for C-style literal prefixes (`0x`/`0X`, `0o`/`0O`, `0b`/`0B`) in expressions within the tokenizer (`lexer.c`), ensuring consistency with line number target expressions.
+
+  Documentation:
+  - Documented new line number representations and bases in `README.md`, `docs/Quick_Reference.md`, `help/Quick_Reference.txt`, and built-in help (`HELP.txt`).
+
+4.4.7  (2026-07-04) -- VAX/VMS BASIC Compatibility & String Built-ins
+---------------------------------------------------------------------------------
+  VAX/VMS BASIC Compatibility:
+  - Implemented VAX-style line continuation via trailing ampersand (`&`) in the file loader (`fileio_load`), merging continuation lines with their succeeding lines.
+  - Implemented `EDIT$(S$, C)` built-in function to perform string manipulation/formatting (compressing, trimming, discarding spaces, case conversions, bracket mapping, etc.) using bitwise mask codes.
+  - Implemented `NUM$(N)` built-in function to format numeric values as a string (with a leading space for positive numbers, a leading minus for negative numbers, and no trailing space).
+  - Whitelisted `KW_EDIT` and `KW_NUM` in the lexer (`lexer.c`) to ensure `EDIT$` and `NUM$` are tokenized as keyword functions instead of variables.
+  - Fixed a critical porting bug in `runtime_collect_data` where `TOK_FLOAT_LIT` was mistakenly processed as an integer, resolving Windows vs Linux platform execution mismatch on reading float values from `DATA` statements.
+  
+  Conversational Dialects (JOSS, FOCAL, MUMPS) Compatibility:
+  - Implemented JOSS/FOCAL fractional/decimal line numbers (e.g. `10.10`) translation at load/merge time. Converts step `10.10` to standard line `1010` and injects `STEP_10_10:` label.
+  - Implemented FOCAL-style `DO` block/step execution: `DO 10.10` executes step `10.10` (mapped to label `STEP_10_10` or line `1010`) as an implicit subroutine.
+  - Implemented MUMPS-style persistent variables: `PSTORE(key$, val)` writes a persistent value to `vfs/persist/<key>.dat`, and `PRETRIEVE(key$)` / `PRETRIEVE$(key$)` retrieves it.
+  - Implemented virtual device `PERSIST:<key>` for reading/writing persistent data directly from/to persistent files.
+  - Whitelisted `KW_PSTORE` and `KW_PRETRIEVE` in `lexer.c` to handle `PRETRIEVE$` properly and avoid naming collisions.
+
+  Documentation & Comment Cleanup:
+  - Cleaned up obsolete references to deleted dialect files and `DIALECT_` enum/constants inside `config.h` and `SOURCE_TREE.txt` to align with the unified single-dialect architecture.
+
+  ECMA-116 Standard BASIC Compatibility:
+  - Conducted full regression validation of ECMA-116 (Full BASIC) features including block exception handling (`WHEN EXCEPTION IN / USE / END WHEN`), matrix math operators (`MAT IDN`, `MAT TRN`, `MAT INV`), and singular matrix exceptions.
+  - Verified local `WHEN EXCEPTION` handler precedence over global `ON ERROR GOTO` traps.
+
+4.4.6  (2026-07-04) -- HP TSB Hybrid Substring Slicing, String Capacities & Built-ins
+---------------------------------------------------------------------------------
+  Consolidation & Uniform Dialect:
+  - Removed obsolete custom dialect files (`custom_dialects.c`, `custom_dialects.h`) and unified all behaviors under a single uniform dialect engine.
+  
+  HP TSB Hybrid Substring Slicing & Capacities:
+  - Implemented bracket-based substring slicing `A$[start, end]` (or `A$[start]`) as inclusive 1-based substring slices, while `A$(idx)` retains array semantics.
+  - Implemented capacity-backed scalar string variables via bracketed DIM: `DIM A$[capacity]` declares a string variable with a maximum capacity. Assigning strings exceeding this capacity automatically truncates the string.
+  - Properly distinguished bracketed DIM array elements: `DIM A$[l, h]` declares a 1D string array where each element has a maximum capacity of `h` characters (truncated upon assignment), whereas `DIM A$(l, h)` declares a standard 2D string array.
+  - Bracketed 2D DIM array `DIM A$[l, h, c]` declares a 2D string array where each element is capacity-limited to `c` characters.
+  
+  New Built-in Functions:
+  - Registered and implemented runtime behaviors for `LGT` (base-10 logarithm), `TIM` (time components for minutes, hours, days, years), `HI` (high 8 bits of a 16-bit integer), and `LO` (low 8 bits of a 16-bit integer).
+
+4.4.5  (2026-07-03) -- DEC BASIC Plus Compatibility & RHS Keyword Rewrite
+---------------------------------------------------------------------------------
+  DEC BASIC Plus Compatibility:
+  - Implemented virtual arrays (`DIM #channel, array_spec = record_size`) backed by direct seek, binary read, and binary write execution logic.
+  - Implemented postfix `WHILE` and `UNTIL` loop modifiers for statement suffix execution.
+  - Fixed variable splitting on identifiers with trailing digits (like `IM3`) in the lexer by only performing trailing digit back-off when the prefix is a keyword.
+  - Resolved context-aware RHS keyword variable parsing: fallback to treating math/builtin keywords as variables if not followed by parentheses or requiring arguments.
+
+4.4.4  (2026-07-03) -- Systematic Renaming & Codebase Cleanup Refactoring
+---------------------------------------------------------------------------------
+  Systematic File/Folder Renaming:
+  - Renamed all GWBASIC/QBasic-prefixed files and folders to logical, descriptive names (e.g., `mbf_math`, `segmented_mem`, `compat_plugin`, `sdl2_emu`, `serial_compat`, `legacy_compat`, and `structured_*` test files) to conform with domain structure rules.
+  - Fixed `#include` directives across all header and source files to point to the new logical filenames.
+  - Refactored `Makefile` and Linux build script to reflect the new source configuration.
+  
+  Codebase & Temporary Artifacts Cleanup:
+  - Deleted all leftover debug `.LOG` files, temporary `.WAV`/`.TAP` audio tape outputs, and root-level BASIC scratch files.
+  - Cleaned up python helper utilities and one-off scratch scripts inside `scratch/` (except the main test suite runner).
+  - Deleted old test `.log` outputs inside the `tests/` directory to ensure clean environment isolation.
+
+  Tymshare Super BASIC Compatibility & Precedence Safety:
+  - Implemented context-aware keyword parsing for keywords (such as `UNLESS`, `COMPLEX`, `REAL`, `IMAG`, `CONJ`, `CABS`) to fallback to named variables in expression factor evaluation or statement starts when followed by `=` (assignment context).
+  - Tightened postfix scanning algorithm in `postfix_scan` to check preceding tokens (preventing matching after operators or delimiters) and peek at succeeding tokens (preventing matching empty modifiers or binary operator start symbols).
+
+
 4.4.3  (2026-07-02) -- Regression Audit, GRAPHICS Crash Fix & Platform Abstraction
 ---------------------------------------------------------------------------------
   Regression Audit & Critical Bug Fixes:

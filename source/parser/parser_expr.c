@@ -60,9 +60,8 @@
 // ---
 
 #include "parser_internal.h"
-#include "dialect.h"
-#include "gw_math_mbf.h"
-#include "gw_sdl2.h"
+#include "mbf_math.h"
+#include "sdl2_emu.h"
 
 // --- Expression Parsing ---
  //
@@ -106,7 +105,7 @@ long pi_parse_factor(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
   // Check for DIM array access: A(idx) -- auto-DIMs
   if (lex->current.type == TOK_LPAREN &&
-  dialect_get_config()->has_dim_arrays) {
+  1) {
   int idx1, idx2 = 0, idx3 = 0;
   BValue dval;
   lexer_next(lex); // consume (
@@ -509,7 +508,7 @@ static BValue evaluate_variable_simple(Lexer *lex, RuntimeState *rt, Token var_t
     } else if (var_tok.type == TOK_STRING_VAR) {
         vname = var_tok.value.var_name;
         lexer_next(lex); // consume string var name
-        if (!dialect_check_feature("string variables", dialect_get_config()->has_string_vars, line_num))
+        if (!1)
             return bval_int(0);
         return runtime_get_string_var(rt, vname);
     } else if (var_tok.type == TOK_NAMED_VAR) {
@@ -557,7 +556,7 @@ static int apply_operator(RuntimeState *rt, int op, BValue *val_stack, int *val_
         switch (op) {
             case OP_ADD:
                 if (bval_is_string(&left) && bval_is_string(&right)) {
-                    if (dialect_is_strict()) {
+                    if (0) {
                         error_raise(ERR_WHAT, line_num);
                         return 0;
                     }
@@ -821,7 +820,7 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                 lexer_next(lex);
                 expect_operand = 0;
             } else if (tok.type == TOK_FLOAT_LIT) {
-                if (!dialect_check_feature("floating point", dialect_get_config()->has_float, line_num)) {
+                if (!1) {
                     val_stack[val_top++] = bval_int((long)tok.value.fval);
                 } else {
                     val_stack[val_top++] = bval_float(tok.value.fval);
@@ -917,10 +916,46 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                 op_entry_lp.op = OP_LPAREN;
                 op_stack[op_top++] = op_entry_lp;
             } else if (tok.type == TOK_VARIABLE || tok.type == TOK_STRING_VAR || tok.type == TOK_NAMED_VAR) {
-                // Peek if followed by (
+                // Peek if followed by ( or [
                 Lexer peek = *lex;
                 lexer_next(&peek);
-                if (peek.current.type == TOK_LPAREN) {
+                int is_str_var = (tok.type == TOK_STRING_VAR) || (tok.type == TOK_NAMED_VAR && tok.str_length > 0 && tok.str_start[tok.str_length - 1] == '$');
+                if (is_str_var && peek.current.type == TOK_LBRACKET) {
+                    BValue base_val = evaluate_variable_simple(lex, rt, tok, line_num);
+                    if (error_occurred()) return bval_int(0);
+                    
+                    lexer_next(lex); // consume [
+                    BValue start_val = parse_expression_bval(lex, rt, line_num);
+                    if (error_occurred()) return bval_int(0);
+                    int start_idx = (int)bval_to_int(&start_val);
+                    int end_idx = -1;
+                    if (lex->current.type == TOK_COMMA) {
+                        lexer_next(lex); // consume ,
+                        BValue end_val = parse_expression_bval(lex, rt, line_num);
+                        if (error_occurred()) return bval_int(0);
+                        end_idx = (int)bval_to_int(&end_val);
+                    }
+                    if (!lexer_expect(lex, TOK_RBRACKET)) return bval_int(0);
+                    
+                    if (base_val.type != VAL_STRING) {
+                        error_raise(ERR_WHAT, line_num);
+                        return bval_int(0);
+                    }
+                    const char *str_data = base_val.v.sval.data;
+                    int str_len = base_val.v.sval.length;
+                    if (start_idx < 1) start_idx = 1;
+                    if (end_idx < 0) end_idx = str_len;
+                    if (end_idx > str_len) end_idx = str_len;
+                    
+                    int slice_len = 0;
+                    const char *slice_start = "";
+                    if (start_idx <= str_len && start_idx <= end_idx) {
+                        slice_start = str_data + (start_idx - 1);
+                        slice_len = end_idx - start_idx + 1;
+                    }
+                    val_stack[val_top++] = bval_string((char *)slice_start, slice_len);
+                    expect_operand = 0;
+                } else if (peek.current.type == TOK_LPAREN) {
                     char name_buf[32];
                     int nlen = 0;
                     KeywordId kw = 0;
@@ -1297,7 +1332,7 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                     lexer_next(lex);
                     expect_operand = 0;
                 } else if (kw == KW_DATE_FUNC) {
-                    char buf[16];
+                    char buf[32];
                     time_t t = time(NULL);
                     struct tm *tm = localtime(&t);
                     sprintf(buf, "%02d-%02d-%04d", tm->tm_mon + 1, tm->tm_mday, tm->tm_year + 1900);
@@ -1334,13 +1369,7 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                     }
                     lexer_next(lex);
                     expect_operand = 0;
-                } else if (kw == KW_DIALECT_FUNC) {
-                    const char *dname = dialect_get_short_name();
-                    int len = (int)strlen(dname);
-                    char *ptr = strpool_store(&rt->strpool, dname, len);
-                    val_stack[val_top++] = bval_string(ptr, len);
-                    lexer_next(lex);
-                    expect_operand = 0;
+
                 } else if (kw == KW_MEMMAP_FUNC) {
                     const char *mname = memmap_get_name((MemMapType)rt->memmap_type);
                     int len = (int)strlen(mname);
@@ -1656,14 +1685,17 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                         lexer_next(lex);
                         BValue t1 = parse_expression_bval_internal(lex, rt, line_num, 0);
                         int row = (int)bval_to_int(&t1);
+    (void)row;
                         if (error_occurred()) { val_stack[val_top++] = bval_int(32); }
                         else {
                             if (lex->current.type == TOK_COMMA) lexer_next(lex);
                             BValue t2 = parse_expression_bval_internal(lex, rt, line_num, 0);
                             int col = (int)bval_to_int(&t2);
+    (void)col;
                             if (error_occurred()) { val_stack[val_top++] = bval_int(32); }
                             else {
                                 int flag = 0;
+    (void)flag;
                                 if (lex->current.type == TOK_COMMA) {
                                     lexer_next(lex);
                                     BValue t3 = parse_expression_bval_internal(lex, rt, line_num, 0);
@@ -1710,7 +1742,7 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                                     memcpy(buf, &sv, 2);
                                     blen = 2;
                                 } else if (kw == KW_MKS_FUNC) {
-                                    if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+                                    if (0) {
                                         gw_double_to_mbf32(mkval, (uint8_t *)buf);
                                     } else {
                                         float fv = (float)mkval;
@@ -1718,7 +1750,7 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                                     }
                                     blen = 4;
                                 } else {
-                                    if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+                                    if (0) {
                                         gw_double_to_mbf64(mkval, (uint8_t *)buf);
                                     } else {
                                         memcpy(buf, &mkval, 8);
@@ -1862,7 +1894,7 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                                 if (!bval_is_string(&sv) || sv.v.sval.data == NULL || sv.v.sval.length < 4) {
                                     val_stack[val_top++] = bval_int(0);
                                 } else {
-                                    if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+                                    if (0) {
                                         double val = gw_mbf32_to_double((const uint8_t *)sv.v.sval.data);
                                         val_stack[val_top++] = bval_float(val);
                                     } else {
@@ -1890,7 +1922,7 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                                 if (!bval_is_string(&sv) || sv.v.sval.data == NULL || sv.v.sval.length < 8) {
                                     val_stack[val_top++] = bval_int(0);
                                 } else {
-                                    if (dialect_get_config()->id == DIALECT_GW_BASIC) {
+                                    if (0) {
                                         double val = gw_mbf64_to_double((const uint8_t *)sv.v.sval.data);
                                         val_stack[val_top++] = bval_float(val);
                                     } else {
@@ -2178,7 +2210,19 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                     expect_operand = 0;
                 } else {
                     const FunctionEntry *fn = funcreg_find_by_keyword(kw);
+                    int is_fn_call = 0;
                     if (fn != NULL) {
+                        Lexer peek = *lex;
+                        lexer_next(&peek);
+                        if (peek.current.type == TOK_LPAREN) {
+                            is_fn_call = 1;
+                        } else if (fn->min_args == 0) {
+                            is_fn_call = 1;
+                        } else if (kw == KW_RND) {
+                            is_fn_call = 1;
+                        }
+                    }
+                    if (is_fn_call) {
                         lexer_next(lex);
                         if (lex->current.type == TOK_LPAREN) {
                             lexer_next(lex);
@@ -2225,6 +2269,20 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                                     expect_operand = 0;
                                     matched = 1;
                                     break;
+                                }
+                            }
+                        }
+                        if (!matched) {
+                            KeywordId kw = tok.value.keyword;
+                            if (kw == KW_UNLESS || kw == KW_COMPLEX || kw == KW_REAL_FUNC ||
+                                kw == KW_IMAG_FUNC || kw == KW_CONJ_FUNC || kw == KW_CABS_FUNC) {
+                                const char *kname = lexer_keyword_name(kw);
+                                int klen = kname ? (int)strlen(kname) : 0;
+                                if (klen > 0) {
+                                    lexer_next(lex); // consume keyword
+                                    val_stack[val_top++] = runtime_get_named_var_bval(rt, kname, klen);
+                                    expect_operand = 0;
+                                    matched = 1;
                                 }
                             }
                         }
@@ -2359,7 +2417,7 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                                     
                                     // Push scope
                                     int smode = SCOPE_FULL;
-                                    if (dialect_get_config()->id == DIALECT_QBASIC)
+                                    if (1)
                                         smode = SCOPE_FRESH;
                                     scope_stack_push(&rt->scope_stack, rt, smode, (int)(sd - rt->subs), rt->current_index);
                                     
@@ -2375,10 +2433,10 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                                     ProgramStore *pgm = rt->program;
                                     while (fi < pgm->count && !error_occurred()) {
                                         ProgramLine *fline = &pgm->lines[fi];
-                                        int fln = fline->line_number;
+                                        double fln = fline->line_number;
                                         Lexer fl;
                                         lexer_init(&fl, fline->text);
-                                        if (fl.current.type == TOK_NUMBER) lexer_next(&fl);
+                                        if (fl.current.type == TOK_NUMBER || fl.current.type == TOK_FLOAT_LIT || fl.current.type == TOK_FLOAT_LIT) lexer_next(&fl);
                                         
                                         rt->current_index = fi;
                                         rt->next_index = -1;

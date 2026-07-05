@@ -100,9 +100,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "lexer.h"
-#include "dialect.h"
 #include "errors.h"
-#include "dialect.h"
 #include "../console.h"
 #include "../platform.h"
 
@@ -130,10 +128,14 @@ static const KeywordEntry core_keyword_init_table[] = {
     { "GOTO", KW_GOTO, DFLAG_ALL },
     { "END", KW_END, DFLAG_ALL },
     { "REM", KW_REM, DFLAG_ALL },
-    { "RUN", KW_RUN, DFLAG_ALL },
-    { "LIST", KW_LIST, DFLAG_ALL },
-    { "NEW", KW_NEW, DFLAG_ALL },
-    { "STOP", KW_STOP, DFLAG_ALL },
+    { "BRUN", KW_BRUN, DFLAG_ALL },
+    { "MODULE", KW_MODULE, DFLAG_ALL },
+    { "CSAVE", KW_CSAVE, DFLAG_ALL },
+    { "CLOAD", KW_CLOAD, DFLAG_ALL },
+    { "CRUN", KW_CRUN, DFLAG_ALL },
+    { "MOTOR", KW_MOTOR, DFLAG_ALL },
+    { "HELP", KW_HELP, DFLAG_ALL },
+    { "INFO", KW_INFO, DFLAG_ALL },
     { "THEN", KW_THEN, DFLAG_ALL },
     { "FOR", KW_FOR, DFLAG_ALL },
     { "NEXT", KW_NEXT, DFLAG_ALL },
@@ -145,7 +147,6 @@ static const KeywordEntry core_keyword_init_table[] = {
     { "RESTORE", KW_RESTORE, DFLAG_ALL },
     { "DIM", KW_DIM, DFLAG_ALL },
     { "BEEP", KW_BEEP, DFLAG_ALL },
-    { "HELP", KW_HELP, DFLAG_ALL },
     { "VARS", KW_VARS, DFLAG_ALL },
     { "FRE", KW_FRE, DFLAG_ALL },
     { "TIMER", KW_TIMER, DFLAG_ALL },
@@ -203,6 +204,9 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "ASC", KW_ASC, DFLAG_MSBASIC | DFLAG_EC55 | DFLAG_E116 | DFLAG_ATRI | DFLAG_SUPA | DFLAG_SBAS },
  { "STR", KW_STR_FUNC, DFLAG_MSBASIC | DFLAG_EC55 | DFLAG_E116 | DFLAG_SINC | DFLAG_SUPA | DFLAG_SBAS },
  { "VAL", KW_VAL_FUNC, DFLAG_MSBASIC | DFLAG_EC55 | DFLAG_E116 | DFLAG_ATRI | DFLAG_SINC | DFLAG_SUPA | DFLAG_SBAS },
+ { "NUM", KW_NUM, DFLAG_ALL },
+ { "PSTORE", KW_PSTORE, DFLAG_ALL },
+ { "PRETRIEVE", KW_PRETRIEVE, DFLAG_ALL },
  // DATA/READ/RESTORE
  { "DATA", KW_DATA, DFLAG_MSALL | DFLAG_EC55 | DFLAG_E116 | DFLAG_ATRI | DFLAG_SINC | DFLAG_SUPA | DFLAG_SBAS },
  { "READ", KW_READ, DFLAG_MSALL | DFLAG_EC55 | DFLAG_E116 | DFLAG_ATRI | DFLAG_SINC | DFLAG_SUPA | DFLAG_SBAS },
@@ -245,7 +249,6 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "AS", KW_AS, DFLAG_GWQB | DFLAG_TRS2 | DFLAG_E116 },
  { "EOF", KW_EOF, DFLAG_GWQB | DFLAG_TRS2 | DFLAG_E116 },
  // BASIC++ native (always available)
- { "DIALECT", KW_DIALECT, DFLAG_ALL },
  { "COMPILE", KW_COMPILE, DFLAG_ALL },
  { "BSAVE", KW_BSAVE, DFLAG_ALL },
  { "BLOAD", KW_BLOAD, DFLAG_ALL },
@@ -255,11 +258,16 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "SYSTEM", KW_SYSTEM, DFLAG_ALL },
  { "BREAK", KW_BREAK, DFLAG_ALL },
  { "CONT", KW_CONT, DFLAG_ALL },
+ { "REFORMAT", KW_REFORMAT, DFLAG_ALL },
  { "VARS", KW_VARS, DFLAG_ALL },
  { "ASSERT", KW_ASSERT, DFLAG_ALL },
  { "TEST", KW_TEST, DFLAG_ALL },
  { "ENDTEST", KW_ENDTEST, DFLAG_ALL },
  { "SELFTEST", KW_SELFTEST, DFLAG_ALL },
+ { "CSAVE", KW_CSAVE, DFLAG_GWQB },
+ { "CLOAD", KW_CLOAD, DFLAG_GWQB },
+ { "CRUN", KW_CRUN, DFLAG_GWQB },
+ { "MOTOR", KW_MOTOR, DFLAG_GWQB },
  { "HELP", KW_HELP, DFLAG_ALL },
  { "INFO", KW_INFO, DFLAG_ALL },
  { "CATALOG", KW_CATALOG, DFLAG_ALL },
@@ -508,6 +516,10 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "TANH", KW_TANH_FUNC, DFLAG_ALL },
  { "LOG10", KW_LOG10_FUNC, DFLAG_ALL },
  { "LOG2", KW_LOG2_FUNC, DFLAG_ALL },
+ { "LGT", KW_LGT_FUNC, DFLAG_ALL },
+ { "TIM", KW_TIM_FUNC, DFLAG_ALL },
+ { "HI", KW_HI_FUNC, DFLAG_ALL },
+ { "LO", KW_LO_FUNC, DFLAG_ALL },
  { "COMP", KW_COMP_FUNC, DFLAG_ALL },
  { "PDIF", KW_PDIF_FUNC, DFLAG_ALL },
  { "PI", KW_PI_FUNC, DFLAG_ALL },
@@ -574,6 +586,7 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "BIOS", KW_BIOS, DFLAG_ALL },
  { "CURSOR", KW_CURSOR, DFLAG_ALL },
  { "TICKS", KW_TICKS, DFLAG_ALL },
+ { "DEMAND", KW_DEMAND, DFLAG_ALL },
  { NULL, 0, 0 } // sentinel
 };
 #endif
@@ -894,6 +907,7 @@ int lexer_keyword_needs_dollar(KeywordId kw)
     return (kw == KW_LEFT || kw == KW_RIGHT ||
     kw == KW_MID || kw == KW_CHR ||
     kw == KW_STR_FUNC ||
+    kw == KW_EDIT || kw == KW_NUM_FUNC ||
     kw == KW_SPACE_FUNC ||
     kw == KW_STRING_FUNC ||
     kw == KW_HEX_FUNC ||
@@ -915,7 +929,7 @@ int lexer_keyword_needs_dollar(KeywordId kw)
     kw == KW_BIN_FUNC ||
     kw == KW_CLOCK_FUNC ||
     kw == KW_ALARM_FUNC ||
-    kw == KW_DIALECT_FUNC ||
+    kw == 0 ||
     kw == KW_MEMMAP_FUNC ||
     kw == KW_ALIAS_FUNC ||
     kw == KW_CWD_FUNC ||
@@ -1490,10 +1504,48 @@ static void scan_next_raw_token_internal(Lexer *lex)
  lex->current.str_start = NULL;
  lex->current.str_length = 0;
  return;
- }
+  }
 
- // ----- Numeric literals (integer or float) -----
- if (isdigit((unsigned char)c) || (c == '.' &&
+  // ----- C-style Hex/Octal/Binary literals (0x, 0o, 0b) -----
+  if (c == '0' && lex->pos + 1 < lex->length) {
+      char next = lex->source[lex->pos + 1];
+      if (next == 'x' || next == 'X' || next == 'o' || next == 'O' || next == 'b' || next == 'B') {
+          int base = 10;
+          if (next == 'x' || next == 'X') base = 16;
+          else if (next == 'o' || next == 'O') base = 8;
+          else if (next == 'b' || next == 'B') base = 2;
+
+          lex->pos += 2; // consume '0' and the prefix character
+          long hval = 0;
+          int found = 0;
+
+          while (lex->pos < lex->length) {
+              char hc = lex->source[lex->pos];
+              int val = -1;
+              if (hc >= '0' && hc <= '9') val = hc - '0';
+              else if (hc >= 'A' && hc <= 'F') val = hc - 'A' + 10;
+              else if (hc >= 'a' && hc <= 'f') val = hc - 'a' + 10;
+
+              if (val < 0 || val >= base) {
+                  break;
+              }
+              hval = hval * base + val;
+              lex->pos++;
+              found = 1;
+          }
+
+          if (!found) hval = 0;
+
+          lex->current.type = TOK_NUMBER;
+          lex->current.value.num_value = hval;
+          lex->current.str_start = NULL;
+          lex->current.str_length = 0;
+          return;
+      }
+  }
+
+  // ----- Numeric literals (integer or float) -----
+  if (isdigit((unsigned char)c) || (c == '.' &&
  lex->pos + 1 < lex->length &&
  isdigit((unsigned char)lex->source[lex->pos + 1]))) {
  long ivalue = 0;
@@ -1620,21 +1672,19 @@ static void scan_next_raw_token_internal(Lexer *lex)
   kw = match_keyword(lex->source + start, len);
 
   if (kw == KW_COUNT) {
-  // No keyword match - back off trailing digits so
-   // they parse as a separate number token.
-   // e.g. "X1" -> identifier "X" + number "1" 
-  int alpha_end = lex->pos;
-  while (alpha_end > start &&
-  isdigit((unsigned char)
-  lex->source[alpha_end - 1])) {
-  alpha_end--;
-  }
-  if (alpha_end > start && alpha_end < lex->pos) {
-  lex->pos = alpha_end;
-  len = lex->pos - start;
-  // Re-check after stripping digits
-  kw = match_keyword(lex->source + start, len);
-  }
+      int alpha_end = lex->pos;
+      while (alpha_end > start && isdigit((unsigned char)lex->source[alpha_end - 1])) {
+          alpha_end--;
+      }
+      if (alpha_end > start && alpha_end < lex->pos) {
+          int try_len = alpha_end - start;
+          KeywordId stripped_kw = match_keyword(lex->source + start, try_len);
+          if (stripped_kw != KW_COUNT) {
+              lex->pos = alpha_end;
+              len = try_len;
+              kw = stripped_kw;
+          }
+      }
   }
 
   // GW-BASIC greedy keyword extraction:
@@ -1655,7 +1705,7 @@ static void scan_next_raw_token_internal(Lexer *lex)
    // WORDIN$, WORDOUT$). Reinterpret as TOK_NAMED_VAR.
   if (lex->pos < lex->length &&
   lex->source[lex->pos] == '$' &&
-  dialect_get_config()->has_extended_vars) {
+  1) {
   // Check if this is NOT a string function keyword
   if (!(kw == KW_LEFT || kw == KW_RIGHT ||
   kw == KW_MID || kw == KW_CHR ||
@@ -1669,11 +1719,12 @@ static void scan_next_raw_token_internal(Lexer *lex)
   kw == KW_ENVIRON || kw == KW_MKD_FUNC ||
   kw == KW_MKI_FUNC || kw == KW_MKS_FUNC ||
    kw == KW_SHELL || kw == KW_BIN_FUNC ||
-   kw == KW_INPUT || kw == KW_IOCTL ||
-   kw == KW_VARPTR || kw == KW_ERR_VAR || kw == KW_DIALECT ||
-   kw == KW_MEMMAP || kw == KW_ALIAS ||
-  kw == KW_CLOCK_FUNC || kw == KW_ALARM_FUNC ||
-  kw == KW_CWD_FUNC ||
+    kw == KW_INPUT || kw == KW_IOCTL ||
+    kw == KW_EDIT || kw == KW_NUM ||
+    kw == KW_VARPTR || kw == KW_ERR_VAR || kw == KW_DIALECT ||
+    kw == KW_MEMMAP || kw == KW_ALIAS ||
+   kw == KW_CLOCK_FUNC || kw == KW_ALARM_FUNC ||
+   kw == KW_CWD_FUNC ||
   kw == KW_HOSTNAME_FUNC ||
   kw == KW_USERNAME_FUNC ||
   kw == KW_PWD ||
@@ -1683,7 +1734,7 @@ static void scan_next_raw_token_internal(Lexer *lex)
   kw == KW_REPLACE || kw == KW_REVERSE ||
   kw == KW_MCASE || kw == KW_ICASE ||
   kw == KW_ONKEY || kw == KW_VPATH || kw == KW_VPATH_FUNC ||
-  kw == KW_HASH)) {
+  kw == KW_HASH || kw == KW_PRETRIEVE)) {
    // Not a string function -- this is a variable name
    lex->pos++; // consume $
    lex->current.type = TOK_NAMED_VAR;
@@ -1733,6 +1784,9 @@ static void scan_next_raw_token_internal(Lexer *lex)
  kw == KW_SIOREAD ||
  kw == KW_SIOREADLN ||
  kw == KW_BIOREAD ||
+ kw == KW_EDIT ||
+ kw == KW_NUM ||
+ kw == KW_PRETRIEVE ||
  kw == KW_NJSONQUERY ||
  kw == KW_NINFO ||
  kw == KW_REPLACE ||
@@ -1745,6 +1799,21 @@ static void scan_next_raw_token_internal(Lexer *lex)
  kw == KW_HASH) {
  lex->pos++; // consume '$'
  }
+  // EDIT$ -> KW_EDIT_FUNC
+  if (kw == KW_EDIT) {
+      kw = KW_EDIT_FUNC;
+      lex->current.value.keyword = kw;
+  }
+  // NUM$ -> KW_NUM_FUNC
+  if (kw == KW_NUM) {
+      kw = KW_NUM_FUNC;
+      lex->current.value.keyword = kw;
+  }
+  // PRETRIEVE$ -> KW_PRETRIEVE_STR
+  if (kw == KW_PRETRIEVE) {
+      kw = KW_PRETRIEVE_STR;
+      lex->current.value.keyword = kw;
+  }
  // INPUT$ -> KW_INPUT_FUNC
  if (kw == KW_INPUT) {
  lex->pos++;
@@ -1763,10 +1832,10 @@ static void scan_next_raw_token_internal(Lexer *lex)
  kw = KW_VARPTR_STR;
  lex->current.value.keyword = kw;
  }
- // DIALECT$ -> KW_DIALECT_FUNC
+ // DIALECT$ -> 0
  if (kw == KW_DIALECT) {
  lex->pos++;
- kw = KW_DIALECT_FUNC;
+ kw = 0;
  lex->current.value.keyword = kw;
  }
  // MEMMAP$ -> KW_MEMMAP_FUNC
@@ -1797,7 +1866,7 @@ static void scan_next_raw_token_internal(Lexer *lex)
  // Single letter that's not a keyword.
  // In extended-vars mode, check if digits follow (e.g., X1).
  // If so, scan them and emit TOK_NAMED_VAR.
- if (dialect_get_config()->has_extended_vars &&
+ if (1 &&
  lex->pos < lex->length &&
  isdigit((unsigned char)lex->source[lex->pos])) {
  while (lex->pos < lex->length &&
@@ -1858,8 +1927,8 @@ static void scan_next_raw_token_internal(Lexer *lex)
    {
     int prefix_len = 0;
     KeywordId prefix_kw = KW_COUNT;
-    if (dialect_get_config()->id != DIALECT_QBASIC &&
-        dialect_get_config()->id != DIALECT_ECMA116 &&
+    if (3 != 3 &&
+        3 != 2 &&
         !is_in_sub_decl(lex, start)) {
         prefix_kw = match_keyword_prefix(lex->source + start, len, &prefix_len);
     }
@@ -1874,29 +1943,33 @@ static void scan_next_raw_token_internal(Lexer *lex)
    // Handle $ suffix for string function keywords
    if (lex->pos < lex->length &&
    lex->source[lex->pos] == '$') {
-   if (prefix_kw == KW_LEFT ||
-    prefix_kw == KW_RIGHT ||
-    prefix_kw == KW_MID ||
-    prefix_kw == KW_CHR ||
-    prefix_kw == KW_STR_FUNC ||
-    prefix_kw == KW_SPACE_FUNC ||
-    prefix_kw == KW_STRING_FUNC ||
-    prefix_kw == KW_HEX_FUNC ||
-    prefix_kw == KW_OCT_FUNC ||
-    prefix_kw == KW_INKEY ||
-    prefix_kw == KW_HOSTNAME_FUNC ||
-    prefix_kw == KW_USERNAME_FUNC ||
-    prefix_kw == KW_PWD ||
-    prefix_kw == KW_CWD_FUNC ||
-    prefix_kw == KW_INPUT) {
-    lex->pos++;
-    if (prefix_kw == KW_INPUT) {
-    lex->current.value.keyword =
-     KW_INPUT_FUNC;
+    if (prefix_kw == KW_LEFT ||
+     prefix_kw == KW_RIGHT ||
+     prefix_kw == KW_MID ||
+     prefix_kw == KW_CHR ||
+     prefix_kw == KW_STR_FUNC ||
+     prefix_kw == KW_SPACE_FUNC ||
+     prefix_kw == KW_STRING_FUNC ||
+     prefix_kw == KW_HEX_FUNC ||
+     prefix_kw == KW_OCT_FUNC ||
+     prefix_kw == KW_INKEY ||
+     prefix_kw == KW_HOSTNAME_FUNC ||
+     prefix_kw == KW_USERNAME_FUNC ||
+     prefix_kw == KW_PWD ||
+     prefix_kw == KW_CWD_FUNC ||
+     prefix_kw == KW_INPUT ||
+     prefix_kw == KW_PRETRIEVE) {
+     lex->pos++;
+     if (prefix_kw == KW_INPUT) {
+     lex->current.value.keyword =
+      KW_INPUT_FUNC;
+     } else if (prefix_kw == KW_PRETRIEVE) {
+     lex->current.value.keyword =
+      KW_PRETRIEVE_STR;
+     }
     }
    }
-   }
-  } else if (dialect_get_config()->has_extended_vars) {
+  } else if (1) {
     // No keyword prefix - treat as named variable.
      // len is already correct from the initial scan +
      // back-off. Do NOT re-extend with trailing digits
@@ -2039,6 +2112,12 @@ static void scan_next_raw_token_internal(Lexer *lex)
  break;
  case '\\':
  lex->current.type = TOK_BACKSLASH;
+ break;
+ case '[':
+ lex->current.type = TOK_LBRACKET;
+ break;
+ case ']':
+ lex->current.type = TOK_RBRACKET;
  break;
  case '.':
  lex->current.type = TOK_DOT;

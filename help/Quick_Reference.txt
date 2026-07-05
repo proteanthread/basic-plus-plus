@@ -41,7 +41,7 @@ Commands (Direct Mode)
 | DUMP | Dump variables or memory state |
 | FILES [pattern] | List directory with sizes and details |
 | HELP [topic] | Show help reference for interpreter or keyword |
-| LIST [n1-n2] | Display program lines |
+| LIST [range/search] | Display program lines or search patterns |
 | LOAD "filename" | Load program from disk |
 | MEMMAP "name" | Select active memory map profile (e.g. "QL", "C64") |
 | MERGE "filename" | Merge program from disk into current program |
@@ -247,6 +247,7 @@ Numeric Functions
 | FILESIZE(ch) | 1 | Query file size via channel (ECMA-116) |
 | FIX(x) | 1 | Truncate toward zero: FIX(-3.7) = -3 |
 | FRE(x) | 1 | Query free memory |
+| HI(x) | 1 | High 8 bits (byte) of integer |
 | IMAG(z) | 1 | Get imaginary component of complex number |
 | INP(port) | 1 | Read byte from CPU I/O port |
 | INT(x) | 1 | Round down to nearest integer |
@@ -255,6 +256,8 @@ Numeric Functions
 | LOG(x) | 1 | Natural logarithm (base e) |
 | LOG10(x) | 1 | Common logarithm (base 10) |
 | LOG2(x) | 1 | Binary logarithm (base 2) |
+| LGT(x) | 1 | Common logarithm base 10 (alias) |
+| LO(x) | 1 | Low 8 bits (byte) of integer |
 | LPOS(x) | 1 | Printer head column position |
 | MAX(a, b, ...) | 2-16 | Maximum value |
 | MED(values...) | 1-16 | Median of values |
@@ -265,11 +268,14 @@ Numeric Functions
 | NBYTESWAITING(ch)| 1 | Network bytes available |
 | NHTTPSTATUS(ch) | 1 | Network HTTP response code |
 | NSTATUS(ch) | 1 | Network channel status |
+| NUM(s$) | 1 | Convert string to number (DEC VAX, alias of VAL) |
 | PDIF(a, b) | 2 | Positive difference: MAX(a - b, 0) |
 | PEEK(addr) | 1 | Read byte from memory address |
 | PEEKB(bank, addr)| 2 | Read byte from specific RAMBANK address |
 | PMAP(coord, fn) | 2 | Map physical/view coordinates |
 | POINT(x, y) | 1-2 | Read pixel color at coordinates |
+| PRETRIEVE(key$) | 1 | Retrieve persistent numeric variable (MUMPS) |
+| PSTORE(key$, val) | 2 | Store persistent variable (MUMPS) |
 | POS(x) | 1 | Current cursor column position |
 | REAL(z) | 1 | Get real component of complex number |
 | RND[(x)] | 1 | Generate random float in range [0, 1) |
@@ -283,6 +289,7 @@ Numeric Functions
 | SYS addr | 1 | Call machine language routine (C64) |
 | TAN(x) | 1 | Tangent (radians) |
 | TANH(x) | 1 | Hyperbolic tangent |
+| TIM(x) | 1 | Time components (0=min, 1=hr, 2=yday, 3=yr) |
 | TIMER | 0 | Seconds since midnight |
 | TXNSTATUS | 0 | Current transaction state |
 | VARPTR(x) | 1 | Get numeric variable pointer |
@@ -306,6 +313,7 @@ String Functions
 
 | CWD$ | 0 | Current working directory |
 | DATE$ | 0 | Get current system date |
+| EDIT$(s$, code) | 2 | Format string using mask (DEC VAX) |
 | DIALECT$ | 0 | Current dialect name |
 | ENVIRON$(key$) | 1 | Get environment variable value |
 | ERR$(code) | 0-1 | Error message string for error code |
@@ -330,8 +338,10 @@ String Functions
 | MKS$(x) | 1 | Convert single to string buffer |
 | NINFO$(key$) | 1 | Network adapter information |
 | NJSONQUERY$(ch, path$) | 2 | JSON path query on network channel |
+| NUM$(x) | 1 | Convert number to string without space (DEC VAX) |
 | OCT$(x) | 1 | Convert integer to octal string |
 | ONKEY$(ch) | 1 | Key-triggered string lookup |
+| PRETRIEVE$(key$) | 1 | Retrieve persistent string variable (MUMPS) |
 | REPLACE$(s$, p$, r$) | 3 | Replace substring pattern |
 | REVERSE$(s$) | 1 | Reverse string characters |
 | RIGHT$(s$, n) | 2 | Get right n characters of string |
@@ -426,3 +436,16 @@ System Variables
 | TIMER | Float | Seconds since midnight |
 | TRUE | Integer | Boolean constant (-1) |
 | FALSE | Integer | Boolean constant (0) |
+
+---
+
+Line Numbers & Bases
+
+BASIC++ supports decimal, hexadecimal, octal, and binary line numbers.
+
+- Decimal: 1 to 65529 (default).
+- Hexadecimal: prefixed with &H/&h or 0x/0X (e.g. &H10 or 0x10 = 16). Range up to 4294967295.
+- Octal: prefixed with &O/&o, 0o/0O, or & (e.g. &O10 or &10 = 8). Range up to 4294967295.
+- Binary: prefixed with &B/&b or 0b/0B (e.g. &B10 or 0b10 = 2). Range up to 4294967295.
+
+Note: The original input base prefix is preserved on LIST. Jump targets (e.g., GOTO, GOSUB, RESTORE) can resolve line numbers using base prefixes in expressions.

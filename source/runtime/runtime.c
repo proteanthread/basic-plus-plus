@@ -57,9 +57,9 @@ int g_screen_lock = 0; // 1=SCREEN LOCK active (no auto-flush)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "runtime.h"
 #include "lexer.h"
-#include "dialect.h"
 #include "errors.h"
 #include "boot.h"
 #ifndef BPP_LITE_BUILD
@@ -120,10 +120,11 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
  rt->data_count = 0;
  rt->data_ptr = 0;
 
- // String variables
- for (i = 0; i < MAX_STRING_VARS; i++) {
- rt->string_vars[i] = bval_string(NULL, 0);
- }
+  // String variables
+  for (i = 0; i < MAX_STRING_VARS; i++) {
+  rt->string_vars[i] = bval_string(NULL, 0);
+  rt->string_capacities[i] = 0;
+  }
 
  // DIM arrays
  rt->dim_count = 0;
@@ -411,6 +412,7 @@ void runtime_reset(RuntimeState *rt)
  // Reset string variables
  for (i = 0; i < MAX_STRING_VARS; i++) {
  rt->string_vars[i] = bval_string(NULL, 0);
+ rt->string_capacities[i] = 0;
  }
 
  // Reset DIM arrays
@@ -762,7 +764,7 @@ long runtime_size(RuntimeState *rt)
  // because it only happens when a loop condition is false (not on
  // every iteration).
 int runtime_find_matching(RuntimeState *rt, int start_index,
- int open_kw, int close_kw, int line_num)
+ int open_kw, int close_kw, double line_num)
 {
  int depth = 0;
  int i;
@@ -775,7 +777,7 @@ int runtime_find_matching(RuntimeState *rt, int start_index,
  lexer_init(&scan_lex, rt->program->lines[i].text);
 
  // Skip the line number token if present
- if (scan_lex.current.type == TOK_NUMBER) {
+ if (scan_lex.current.type == TOK_NUMBER || scan_lex.current.type == TOK_FLOAT_LIT || scan_lex.current.type == TOK_FLOAT_LIT) {
  lexer_next(&scan_lex);
  }
 
@@ -883,13 +885,19 @@ int runtime_set_named_var_bval(RuntimeState *rt, const char *name,
   }
  }
 
- // Look for existing variable
- for (i = 0; i < rt->named_count; i++) {
- if (str_eq_nocase(name, len, rt->named_vars[i].name)) {
- rt->named_vars[i].value = value;
- return 0;
- }
- }
+  // Look for existing variable
+  for (i = 0; i < rt->named_count; i++) {
+  if (str_eq_nocase(name, len, rt->named_vars[i].name)) {
+  if (value.type == VAL_STRING) {
+      int cap = rt->named_vars[i].capacity;
+      if (cap > 0 && value.v.sval.length > cap) {
+          value.v.sval.length = cap;
+      }
+  }
+  rt->named_vars[i].value = value;
+  return 0;
+  }
+  }
 
  // Create new variable
  if (rt->named_count >= MAX_NAMED_VARS) {
@@ -929,10 +937,51 @@ BValue runtime_get_string_var(RuntimeState *rt, char name)
 
 void runtime_set_string_var(RuntimeState *rt, char name, BValue value)
 {
- int index;
- if (name < 'A' || name > 'Z') return;
- index = name - 'A';
- rt->string_vars[index] = value;
+    int index;
+    if (name < 'A' || name > 'Z') return;
+    index = name - 'A';
+    if (value.type == VAL_STRING) {
+        int cap = rt->string_capacities[index];
+        if (cap > 0 && value.v.sval.length > cap) {
+            value.v.sval.length = cap;
+        }
+    }
+    rt->string_vars[index] = value;
+}
+
+void runtime_set_string_capacity(RuntimeState *rt, const char *name, int len, int capacity)
+{
+    if (len == 2 && name[1] == '$') {
+        char c = name[0];
+        if (c >= 'a' && c <= 'z') c = (char)(c - 32);
+        if (c >= 'A' && c <= 'Z') {
+            rt->string_capacities[c - 'A'] = capacity;
+            rt->string_vars[c - 'A'] = bval_string("", 0);
+            return;
+        }
+    }
+    // Check named vars
+    int i;
+    for (i = 0; i < rt->named_count; i++) {
+        if (str_eq_nocase(name, len, rt->named_vars[i].name)) {
+            rt->named_vars[i].capacity = capacity;
+            rt->named_vars[i].value = bval_string("", 0);
+            return;
+        }
+    }
+    // Create if not exists
+    if (rt->named_count < MAX_NAMED_VARS) {
+        int copy_len = len < MAX_VAR_NAME_LEN ? len : MAX_VAR_NAME_LEN;
+        memcpy(rt->named_vars[rt->named_count].name, name, (size_t)copy_len);
+        rt->named_vars[rt->named_count].name[copy_len] = '\0';
+        for (i = 0; i < copy_len; i++) {
+            char c = rt->named_vars[rt->named_count].name[i];
+            if (c >= 'a' && c <= 'z') rt->named_vars[rt->named_count].name[i] = (char)(c - 32);
+        }
+        rt->named_vars[rt->named_count].value = bval_string("", 0);
+        rt->named_vars[rt->named_count].capacity = capacity;
+        rt->named_count++;
+    }
 }
 
 // --- DIM Array Support ---
@@ -950,7 +999,7 @@ DimArray *runtime_find_dim(RuntimeState *rt, const char *name,
 }
 
 int runtime_dim(RuntimeState *rt, const char *name, int name_len,
- int dim1, int dim2, int dim3, int line_num)
+ int dim1, int dim2, int dim3, double line_num)
 {
  DimArray *arr;
  int total;
@@ -1008,6 +1057,9 @@ int runtime_dim(RuntimeState *rt, const char *name, int name_len,
  arr->elements = &rt->dim_elements[rt->dim_elements_used];
  arr->total = total;
  arr->type_index = -1; // normal (non-typed) array
+ arr->v_channel = 0;
+ arr->v_elem_size = 0;
+ arr->capacity = 0;
 
  // Initialize elements.
  // String arrays (name ends with '$') default to empty
@@ -1030,14 +1082,14 @@ int runtime_dim(RuntimeState *rt, const char *name, int name_len,
 }
 
 BValue runtime_get_dim(RuntimeState *rt, const char *name, int name_len,
- int idx1, int idx2, int idx3, int line_num)
+ int idx1, int idx2, int idx3, double line_num)
 {
  DimArray *arr = runtime_find_dim(rt, name, name_len);
  int offset;
 
  if (arr == NULL) {
  // GW-BASIC auto-DIM: create array with default size 10
- if (dialect_get_config()->has_dim_arrays) {
+ if (1) {
   runtime_dim(rt, name, name_len, 10, 0, 0, line_num);
   if (error_occurred()) return bval_int(0);
   arr = runtime_find_dim(rt, name, name_len);
@@ -1081,18 +1133,46 @@ BValue runtime_get_dim(RuntimeState *rt, const char *name, int name_len,
  + (idx3 - rt->option_base);
  }
 
+ if (arr->v_channel > 0) {
+     extern FILE *fileio_get_fp(int chan);
+     FILE *fp = fileio_get_fp(arr->v_channel);
+     if (fp == NULL) {
+         error_raise(ERR_HOW, line_num);
+         return bval_int(0);
+     }
+     long file_offset = (long)offset * arr->v_elem_size;
+     fseek(fp, file_offset, SEEK_SET);
+     if (arr->v_elem_size == 2) {
+         short val = 0;
+         if (fread(&val, 2, 1, fp) != 1) {
+             val = 0;
+         }
+         return bval_int(val);
+     } else if (arr->v_elem_size == 4) {
+         int val = 0;
+         if (fread(&val, 4, 1, fp) != 1) {
+             val = 0;
+         }
+         return bval_int(val);
+     } else {
+         int val = 0;
+         fread(&val, 1, (size_t)arr->v_elem_size, fp);
+         return bval_int(val);
+     }
+ }
+
  return arr->elements[offset];
 }
 
 void runtime_set_dim(RuntimeState *rt, const char *name, int name_len,
- int idx1, int idx2, int idx3, BValue val, int line_num)
+ int idx1, int idx2, int idx3, BValue val, double line_num)
 {
  DimArray *arr = runtime_find_dim(rt, name, name_len);
  int offset;
 
  if (arr == NULL) {
  // GW-BASIC auto-DIM: create array with default size 10
- if (dialect_get_config()->has_dim_arrays) {
+ if (1) {
   runtime_dim(rt, name, name_len, 10, 0, 0, line_num);
   if (error_occurred()) return;
   arr = runtime_find_dim(rt, name, name_len);
@@ -1136,6 +1216,34 @@ void runtime_set_dim(RuntimeState *rt, const char *name, int name_len,
  + (idx3 - rt->option_base);
  }
 
+ if (arr->v_channel > 0) {
+     extern FILE *fileio_get_fp(int chan);
+     FILE *fp = fileio_get_fp(arr->v_channel);
+     if (fp == NULL) {
+         error_raise(ERR_HOW, line_num);
+         return;
+     }
+     long file_offset = (long)offset * arr->v_elem_size;
+     fseek(fp, file_offset, SEEK_SET);
+     long int_val = bval_to_int(&val);
+     if (arr->v_elem_size == 2) {
+         short sval = (short)int_val;
+         fwrite(&sval, 2, 1, fp);
+     } else if (arr->v_elem_size == 4) {
+         int ival = (int)int_val;
+         fwrite(&ival, 4, 1, fp);
+     } else {
+         fwrite(&int_val, 1, (size_t)arr->v_elem_size, fp);
+     }
+     fflush(fp);
+     return;
+ }
+
+ if (val.type == VAL_STRING && arr->capacity > 0) {
+     if (val.v.sval.length > arr->capacity) {
+         val.v.sval.length = arr->capacity;
+     }
+ }
  arr->elements[offset] = val;
 }
 
@@ -1152,7 +1260,7 @@ void runtime_collect_data(RuntimeState *rt)
  lexer_init(&scan_lex, rt->program->lines[i].text);
 
  // Skip line number
- if (scan_lex.current.type == TOK_NUMBER) {
+ if (scan_lex.current.type == TOK_NUMBER || scan_lex.current.type == TOK_FLOAT_LIT || scan_lex.current.type == TOK_FLOAT_LIT) {
  lexer_next(&scan_lex);
  }
 
@@ -1214,7 +1322,7 @@ void runtime_collect_data(RuntimeState *rt)
  }
 }
 
-BValue runtime_read_data_bval(RuntimeState *rt, int line_num)
+BValue runtime_read_data_bval(RuntimeState *rt, double line_num)
 {
  if (rt->data_ptr >= rt->data_count) {
  error_raise(ERR_HOW, line_num);
@@ -1223,7 +1331,7 @@ BValue runtime_read_data_bval(RuntimeState *rt, int line_num)
  return rt->data_pool[rt->data_ptr++];
 }
 
-long runtime_read_data(RuntimeState *rt, int line_num)
+long runtime_read_data(RuntimeState *rt, double line_num)
 {
  BValue v = runtime_read_data_bval(rt, line_num);
  return bval_to_int(&v);
@@ -1338,7 +1446,7 @@ UserFunction *runtime_find_fn(RuntimeState *rt, const char *name,
 
  // runtime_breakpoint_add - Add a breakpoint at line_num.
  // Returns 0 on success, -1 if table full or already set.
-int runtime_breakpoint_add(RuntimeState *rt, int line_num)
+int runtime_breakpoint_add(RuntimeState *rt, double line_num)
 {
  int i;
 
@@ -1361,7 +1469,7 @@ int runtime_breakpoint_add(RuntimeState *rt, int line_num)
 
  // runtime_breakpoint_remove - Remove breakpoint at line_num.
  // Returns 0 on success, -1 if not found.
-int runtime_breakpoint_remove(RuntimeState *rt, int line_num)
+int runtime_breakpoint_remove(RuntimeState *rt, double line_num)
 {
  int i;
 
@@ -1388,7 +1496,7 @@ void runtime_breakpoint_clear(RuntimeState *rt)
 
  // runtime_is_breakpoint - Check if line_num has a breakpoint.
  // Returns 1 if breakpoint set, 0 otherwise.
-int runtime_is_breakpoint(RuntimeState *rt, int line_num)
+int runtime_is_breakpoint(RuntimeState *rt, double line_num)
 {
  int i;
 
@@ -1413,7 +1521,12 @@ void runtime_breakpoint_list(RuntimeState *rt)
 
  printf("Breakpoints:");
  for (i = 0; i < rt->breakpoint_count; i++) {
- printf(" %d", rt->breakpoints[i]);
+ double bp = rt->breakpoints[i];
+ if (floor(bp) == bp) {
+     printf(" %.0f", bp);
+ } else {
+     printf(" %.2f", bp);
+ }
  }
  printf("\n");
 }
@@ -1573,7 +1686,7 @@ SubDef *runtime_find_sub(RuntimeState *rt, const char *name,
 extern int bpp_load(ProgramStore *prog, const char *filename, void *rt_ptr);
 extern int bpe_load(const char *filename, ProgramStore *prog, void *rt_ptr);
 extern int fileio_load(ProgramStore *store, const char *filename);
-extern void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num);
+extern void parser_execute_line(Lexer *lex, RuntimeState *rt, double line_num);
 
 int runtime_load_external_sub(RuntimeState *rt, SubDef *sd)
 {
@@ -1581,9 +1694,9 @@ int runtime_load_external_sub(RuntimeState *rt, SubDef *sd)
     unsigned char magic[4] = {0};
     FILE *mf;
     int load_ok = 0;
-    int max_no = 0;
+    double max_no = 0.0;
     int l;
-    int start_line_no;
+    double start_line_no;
     int idx;
     int first_new_idx;
     int scan_idx;
@@ -1656,7 +1769,7 @@ int runtime_load_external_sub(RuntimeState *rt, SubDef *sd)
     if (start_line_no < 900000) start_line_no = 900000;
 
     for (idx = 0; idx < temp_prog.count; idx++) {
-        int target_line_no = start_line_no + idx * 10;
+        double target_line_no = start_line_no + idx * 10;
         const char *text = temp_prog.lines[idx].text;
         char new_text[MAX_LINE_LENGTH + 32];
         
@@ -1664,7 +1777,7 @@ int runtime_load_external_sub(RuntimeState *rt, SubDef *sd)
         while (*text >= '0' && *text <= '9') text++;
         while (*text == ' ' || *text == '\t') text++;
         
-        snprintf(new_text, sizeof(new_text), "%d %s", target_line_no, text);
+        snprintf(new_text, sizeof(new_text), "%.0f %s", target_line_no, text);
         if (program_insert(rt->program, target_line_no, new_text) != 0) {
             program_clear(&temp_prog);
             free(temp_prog.lines);
@@ -1685,9 +1798,9 @@ int runtime_load_external_sub(RuntimeState *rt, SubDef *sd)
     for (scan_idx = first_new_idx; scan_idx < pgm->count; scan_idx++) {
         Lexer cl;
         const char *text = pgm->lines[scan_idx].text;
-        int ln = pgm->lines[scan_idx].line_number;
+        double ln = pgm->lines[scan_idx].line_number;
         lexer_init(&cl, text);
-        if (cl.current.type == TOK_NUMBER)
+        if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT || cl.current.type == TOK_FLOAT_LIT)
             lexer_next(&cl);
         if (cl.current.type == TOK_KEYWORD &&
             (cl.current.value.keyword == KW_SUB ||
@@ -1719,10 +1832,10 @@ void runtime_pre_scan_external_declarations(RuntimeState *rt)
         Lexer cl;
         const char *text = pgm->lines[idx].text;
         lexer_init(&cl, text);
-        if (cl.current.type == TOK_NUMBER)
+        if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT || cl.current.type == TOK_FLOAT_LIT)
             lexer_next(&cl);
         if (cl.current.type == TOK_KEYWORD && cl.current.value.keyword == KW_DECLARE) {
-            int ln = pgm->lines[idx].line_number;
+            double ln = pgm->lines[idx].line_number;
             parser_execute_line(&cl, rt, ln);
         }
     }

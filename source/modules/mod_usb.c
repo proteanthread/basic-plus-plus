@@ -510,7 +510,7 @@ static int usbser_open(VDev *d, const char *path, const char *mode)
  st->platform_handle = open(st->device_path,
  O_RDWR | O_NOCTTY | O_NONBLOCK);
  if (st->platform_handle < 0) {
- sprintf(st->last_error, "Cannot open %s", st->device_path);
+ snprintf(st->last_error, sizeof(st->last_error), "Cannot open %.110s", st->device_path);
  return -1;
  }
  // Default: 9600 baud, 8N1. Use IOCTL to change.
@@ -522,8 +522,8 @@ static int usbser_open(VDev *d, const char *path, const char *mode)
  0, NULL, OPEN_EXISTING,
  FILE_ATTRIBUTE_NORMAL, NULL);
  if (h == INVALID_HANDLE_VALUE) {
- sprintf(st->last_error, "Cannot open %s",
- st->device_path);
+ snprintf(st->last_error, sizeof(st->last_error), "Cannot open %.110s",
+  st->device_path);
  return -1;
  }
  st->platform_handle = (intptr_t)h;
