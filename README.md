@@ -1,7 +1,7 @@
 [![GitGem](https://gitgem.org/api/badge/github/proteanthread/basic-plus-plus.svg)](https://gitgem.org/github/proteanthread/basic-plus-plus)
 
-# BASIC++ (protoBASIC) Interpreter
-**Version 4.9.7**
+# BASIC++ Interpreter
+## Version 4.9.7
 
 I don't care what you do with my code, just don't take my code and sell it and/or don't take my code, modify my code, and sell it. This code is not for sale.
 
