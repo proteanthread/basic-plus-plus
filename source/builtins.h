@@ -95,6 +95,10 @@ BValue builtin_cosh(BValue *args, int argc, void *rt);
 BValue builtin_tanh(BValue *args, int argc, void *rt);
 BValue builtin_log10(BValue *args, int argc, void *rt);
 BValue builtin_log2(BValue *args, int argc, void *rt);
+BValue builtin_lgt(BValue *args, int argc, void *rt);
+BValue builtin_tim(BValue *args, int argc, void *rt);
+BValue builtin_hi(BValue *args, int argc, void *rt);
+BValue builtin_lo(BValue *args, int argc, void *rt);
 BValue builtin_comp(BValue *args, int argc, void *rt);
 BValue builtin_pdif(BValue *args, int argc, void *rt);
 BValue builtin_pi(BValue *args, int argc, void *rt);
@@ -115,6 +119,8 @@ BValue builtin_string_func(BValue *args, int argc, void *rt);
 BValue builtin_hex(BValue *args, int argc, void *rt);
 BValue builtin_oct(BValue *args, int argc, void *rt);
 BValue builtin_bin(BValue *args, int argc, void *rt);
+BValue builtin_edit(BValue *args, int argc, void *rt);
+BValue builtin_num_str(BValue *args, int argc, void *rt);
 
 // --- File Input-Output (builtins_fileio.c) ---
 BValue builtin_eof(BValue *args, int argc, void *rt);
@@ -131,6 +137,7 @@ BValue builtin_csrlin(BValue *args, int argc, void *rt);
 
 // --- Memory (builtins_memory.c) ---
 BValue builtin_peek(BValue *args, int argc, void *rt);
+BValue builtin_peekb(BValue *args, int argc, void *rt);
 BValue builtin_size(BValue *args, int argc, void *rt);
 
 // --- System / Environment (builtins_system.c) ---

@@ -55,9 +55,9 @@ typedef struct StringPool {
 
  // strpool_init - Allocate the string pool.
  //
- // Allocates MAX_STRING_POOL bytes via malloc.
+ // Allocates specified bytes via malloc.
  // Returns 0 on success, -1 on failure.
-int strpool_init(StringPool *pool);
+int strpool_init(StringPool *pool, long size);
 
  // strpool_shutdown - Free the string pool.
 void strpool_shutdown(StringPool *pool);

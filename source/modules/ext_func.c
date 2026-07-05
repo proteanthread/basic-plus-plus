@@ -65,6 +65,7 @@
 #elif !defined(BPP_FREEDOS) && !defined(BPP_EMBEDDED)
 #include <dlfcn.h>
 #include <stdbool.h>
+#include "../console.h"
 #endif
 
 // --- Slot ---
@@ -312,7 +313,7 @@ void ext_func_list(void)
                     func_table[i].desc.required_level),
                 func_table[i].desc.help_text ?
                     func_table[i].desc.help_text : "");
-            found++;
+            found = true;
         }
     }
     if (!found) printf("  (none)\n");

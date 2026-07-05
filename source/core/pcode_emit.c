@@ -38,25 +38,27 @@
  //   record its index, then patch it once the target is known.
  // - String constants are interned into the string pool.
  //
- // C89 COMPLIANCE:
- // - No VLAs, no C99 declarations-after-statements.
- // - All variables declared at block top.
+ // C17 COMPLIANCE:
+ // - ISO/IEC 9899:2018 guidelines
+ // - All variables declared at top block scope.
  //
  // ---
 
+#ifndef BPP_LITE_BUILD
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "pcode.h"
 #include "errors.h"
 #include "config.h"
+#include "../console.h"
 
 // ===================================================================
  // PCODE PROGRAM INITIALIZATION & MEMORY
  // ===================================================================
 
 // Current line number for line_map tracking
-static int s_current_line = 0;
+static double s_current_line = 0.0;
 
 void pcode_emit_init(PCodeProgram *prog)
 {
@@ -64,13 +66,13 @@ void pcode_emit_init(PCodeProgram *prog)
     prog->capacity = 256;
     prog->instrs = (PCodeInstr *)malloc(
         sizeof(PCodeInstr) * (size_t)prog->capacity);
-    prog->line_map = (int *)malloc(
-        sizeof(int) * (size_t)prog->capacity);
+    prog->line_map = (double *)malloc(
+        sizeof(double) * (size_t)prog->capacity);
     prog->str_capacity = 1024;
     prog->str_pool = (char *)malloc((size_t)prog->str_capacity);
     prog->on_table_capacity = 64;
-    prog->on_tables = (int *)malloc(
-        sizeof(int) * (size_t)prog->on_table_capacity);
+    prog->on_tables = (double *)malloc(
+        sizeof(double) * (size_t)prog->on_table_capacity);
 
     if (!prog->instrs || !prog->line_map ||
         !prog->str_pool || !prog->on_tables) {
@@ -86,8 +88,8 @@ static void pcode_ensure_capacity(PCodeProgram *prog, int needed)
         prog->capacity *= 2;
     prog->instrs = (PCodeInstr *)realloc(prog->instrs,
         sizeof(PCodeInstr) * (size_t)prog->capacity);
-    prog->line_map = (int *)realloc(prog->line_map,
-        sizeof(int) * (size_t)prog->capacity);
+    prog->line_map = (double *)realloc(prog->line_map,
+        sizeof(double) * (size_t)prog->capacity);
 }
 
 // ===================================================================
@@ -137,7 +139,7 @@ int pcode_emit_offset(PCodeProgram *prog, PCodeOp op, int offset)
     return pcode_emit_instr(prog, op, o);
 }
 
-void pcode_set_line(PCodeProgram *prog, int line_num)
+void pcode_set_line(PCodeProgram *prog, double line_num)
 {
     (void)prog;
     s_current_line = line_num;
@@ -337,6 +339,8 @@ void pcode_emit_expr(PCodeProgram *prog, AstExpr *expr)
             // Pack: high byte = fn_letter, low byte = FUNC_FN_USER
             o.u.ival = (long)expr->v.func_call.func |
                        ((long)expr->v.func_call.fn_letter << 8);
+        } else if (expr->v.func_call.func == FUNC_BUILTIN) {
+            o.u.ival = (long)expr->v.func_call.builtin_kw;
         } else {
             o.u.ival = (long)expr->v.func_call.func;
         }
@@ -453,11 +457,12 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
          // stored as an expression (usually a constant). We store
          // the line number in the operand and resolve later. 
         if (stmt->v.goto_stmt.target &&
-            stmt->v.goto_stmt.target->type == EXPR_INT_LIT) {
-            // Store negative line number as marker for
-             // line-number-based jump (resolved after full compile) 
-            pcode_emit_int(prog, PCODE_JUMP,
-                           -(stmt->v.goto_stmt.target->v.ival));
+            (stmt->v.goto_stmt.target->type == EXPR_INT_LIT ||
+             stmt->v.goto_stmt.target->type == EXPR_FLOAT_LIT)) {
+            double target_line = (stmt->v.goto_stmt.target->type == EXPR_INT_LIT)
+                                 ? (double)stmt->v.goto_stmt.target->v.ival
+                                 : stmt->v.goto_stmt.target->v.fval;
+            pcode_emit_float(prog, PCODE_JUMP, -target_line);
         } else {
             // Computed GOTO -- emit expression, not supported yet
             pcode_emit_simple(prog, PCODE_HALT);
@@ -468,10 +473,14 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
     case STMT_GOSUB:
     {
         if (stmt->v.gosub.target &&
-            stmt->v.gosub.target->type == EXPR_INT_LIT) {
-            pcode_emit_int(prog, PCODE_GOSUB,
-                           -(stmt->v.gosub.target->v.ival));
+            (stmt->v.gosub.target->type == EXPR_INT_LIT ||
+             stmt->v.gosub.target->type == EXPR_FLOAT_LIT)) {
+            double target_line = (stmt->v.gosub.target->type == EXPR_INT_LIT)
+                                 ? (double)stmt->v.gosub.target->v.ival
+                                 : stmt->v.gosub.target->v.fval;
+            pcode_emit_float(prog, PCODE_GOSUB, -target_line);
         } else {
+            // Computed GOSUB
             pcode_emit_simple(prog, PCODE_HALT);
         }
         break;
@@ -528,14 +537,19 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
         }
         // Input each variable
         for (vi = 0; vi < stmt->v.input.var_count; vi++) {
-            if (stmt->v.input.var_types[vi] == 1) {
+            AstExpr *var = stmt->v.input.vars[vi];
+            if (var->type == EXPR_STRING_VAR) {
                 // String variable
                 pcode_emit_int(prog, PCODE_INPUT_STRVAR,
-                    (long)(stmt->v.input.var_names[vi] - 'A'));
-            } else {
+                    (long)(var->v.var_name - 'A'));
+            } else if (var->type == EXPR_VAR) {
                 // Numeric variable
                 pcode_emit_int(prog, PCODE_INPUT_VAR,
-                    (long)(stmt->v.input.var_names[vi] - 'A'));
+                    (long)(var->v.var_name - 'A'));
+            } else {
+                // Complex variable type (like named variable or array element)
+                // VM bytecode only supports simple variables, so emit a HALT for safety.
+                pcode_emit_simple(prog, PCODE_HALT);
             }
         }
         break;
@@ -569,7 +583,12 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
     {
         int ri;
         for (ri = 0; ri < stmt->v.read.var_count; ri++) {
-            if (stmt->v.read.var_types[ri] == 1) {
+            if (strlen(stmt->v.read.dim_names[ri]) > 1) {
+                PCodeOperand o;
+                memset(&o, 0, sizeof(o));
+                strncpy(o.u.dim.name, stmt->v.read.dim_names[ri], sizeof(o.u.dim.name) - 1);
+                pcode_emit_instr(prog, PCODE_READ_NAMED, o);
+            } else if (stmt->v.read.var_types[ri] == 1) {
                 pcode_emit_int(prog, PCODE_READ_STR,
                     (long)(stmt->v.read.var_names[ri] - 'A'));
             } else {
@@ -700,17 +719,17 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
     case STMT_ON_GOTO:
     {
         int ti;
-        // ON expr GOTO line1, line2, ...
+        // ON expr GOTO/GOSUB line1, line2, ...
         pcode_emit_expr(prog, stmt->v.on_goto.selector);
         // Store jump table base in on_tables
         o.u.ival = (long)prog->on_table_count;
-        pcode_emit_instr(prog, PCODE_ON_GOTO, o);
+        pcode_emit_instr(prog, stmt->v.on_goto.is_gosub ? PCODE_ON_GOSUB : PCODE_ON_GOTO, o);
         // Append target line numbers to on_tables (resolved later)
         for (ti = 0; ti < stmt->v.on_goto.target_count; ti++) {
             if (prog->on_table_count >= prog->on_table_capacity) {
                 prog->on_table_capacity *= 2;
-                prog->on_tables = (int *)realloc(prog->on_tables,
-                    sizeof(int) * (size_t)prog->on_table_capacity);
+                prog->on_tables = (double *)realloc(prog->on_tables,
+                    sizeof(double) * (size_t)prog->on_table_capacity);
             }
             // Store as negative line number for later resolution
             prog->on_tables[prog->on_table_count++] =
@@ -719,10 +738,54 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
         // Sentinel: 0 marks end of table
         if (prog->on_table_count >= prog->on_table_capacity) {
             prog->on_table_capacity *= 2;
-            prog->on_tables = (int *)realloc(prog->on_tables,
-                sizeof(int) * (size_t)prog->on_table_capacity);
+            prog->on_tables = (double *)realloc(prog->on_tables,
+                sizeof(double) * (size_t)prog->on_table_capacity);
         }
-        prog->on_tables[prog->on_table_count++] = 0;
+        prog->on_tables[prog->on_table_count++] = 0.0;
+        break;
+    }
+
+    case STMT_WHEN:
+        pcode_emit_offset(prog, PCODE_WHEN_BEGIN, 0);
+        break;
+
+    case STMT_USE:
+        pcode_emit_simple(prog, PCODE_POP_EXCEPTION);
+        pcode_emit_offset(prog, PCODE_JUMP, 0);
+        break;
+
+    case STMT_END_WHEN:
+        pcode_emit_simple(prog, PCODE_POP_EXCEPTION);
+        break;
+
+    case STMT_RETRY:
+        pcode_emit_offset(prog, PCODE_JUMP, 0);
+        break;
+
+    case STMT_CONTINUE:
+        pcode_emit_simple(prog, PCODE_CONTINUE);
+        break;
+
+    case STMT_INT:
+    {
+        long int_val = 0;
+        if (stmt->v.int_stmt.interrupt_number) {
+            AstExpr *ex = stmt->v.int_stmt.interrupt_number;
+            if (ex->type == EXPR_INT_LIT) {
+                int_val = ex->v.ival;
+            }
+        }
+        pcode_emit_int(prog, PCODE_INT, int_val);
+        break;
+    }
+
+    case STMT_DIRECT_EXEC:
+    {
+        int pool_idx = pcode_add_string(prog,
+            stmt->v.direct_exec.text, (int)strlen(stmt->v.direct_exec.text));
+        o.u.str.idx = pool_idx;
+        o.u.str.len = (int)strlen(stmt->v.direct_exec.text);
+        pcode_emit_instr(prog, PCODE_DIRECT_EXEC, o);
         break;
     }
 
@@ -737,3 +800,4 @@ void pcode_emit_stmt(PCodeProgram *prog, AstStmt *stmt,
         pcode_emit_stmt(prog, stmt->next, rt);
     }
 }
+#endif

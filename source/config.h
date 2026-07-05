@@ -62,12 +62,23 @@
  // These strings are printed at startup and embedded in SAVE file
  // headers (if applicable in future versions).
 #define BASICPP_VERSION_MAJOR 4
-#define BASICPP_VERSION_MINOR 1
-#define BASICPP_VERSION_PATCH 1
-#define BASICPP_VERSION "4.1.1"
-#define BASICPP_NAME "BASIC++ (Stable)"
+#define BASICPP_VERSION_MINOR 9
+#define BASICPP_VERSION_PATCH 7
+#define BASICPP_VERSION "4.9.7"
+
+#ifdef BPP_LITE_BUILD
+  #define BASICPP_NAME "BASIC++ Lite"
+  #define BASICPP_PROMPT "] "
+#else
+  #ifdef INPUT_CONSOLE
+    #define BASICPP_NAME "BASIC++ Standard"
+  #else
+    #define BASICPP_NAME "BASIC++ SDL"
+  #endif
+  #define BASICPP_PROMPT "> "
+#endif
+
 #define BASICPP_COPYRIGHT "@COPYLEFT ALL WRONGS RESERVED"
-#define BASICPP_PROMPT "> "
 #define BASICPP_READY "Ready."
 
 // ===================================================================
@@ -143,37 +154,20 @@
  // Memory estimates for FreeDOS settings:
  //   Program memory:     32 KB
  //   Variable memory:    16 KB
- //   Scratch memory:     16 KB
- //   String pool:        32 KB
- //   Array pool:        ~64 KB (4096 elements x 16 bytes)
- //   --------------------------
- //   Approximate total: ~160 KB  (fits within 512 KB)
 
-#ifdef BPP_FREEDOS
+#if defined(BPP_FREEDOS) && defined(BPP_LITE_BUILD)
 // ===================================================================
- // FREEDOS BUILD -- 512K conventional memory limit
- // ===================================================================
- // Default dialect: Palo Alto Tiny BASIC (PATB).
- // Only PATB is compiled in by default. To add GW-BASIC (GWBS) or
- // other dialects, see docs/FreeDOS_Compilation_Guide.md.
- //
- // No optional modules (USB, FujiNet, UPnP) or JIT.
- // No JIT (JIT requires Windows or Linux).
- //
- // To change the default dialect, edit BPP_FREEDOS_DEFAULT_DIALECT:
- //   DIALECT_TINY_BASIC  (PATB - default, smallest footprint)
- //   DIALECT_GW_BASIC    (GWBS - add dialect_gwbs.c to build)
- //   DIALECT_TRS80_I     (TRS1 - add dialect_trs1.c to build)
- //   etc.
- //
- // To add a dialect back to the FreeDOS build, you must also add
- // its source file to makefd and register it in dialect.c.
+// FREEDOS LITE BUILD -- 16-bit Watcom Lite (Conventional Memory constraints)
+// ===================================================================
+// Fits within FreeDOS's 640 KB conventional memory.
+// Defaults to GW-BASIC.
 #undef BASICPP_DEFAULT_DIALECT
 #define BASICPP_DEFAULT_DIALECT DIALECT_GW_BASIC
 
-#define PROGRAM_MEMORY_SIZE   32768L
-#define VARIABLE_MEMORY_SIZE  16384L
-#define SCRATCH_MEMORY_SIZE   16384L
+#define PROGRAM_MEMORY_SIZE   32768L // 32 KB
+#define VARIABLE_MEMORY_SIZE  16384L // 16 KB
+#define SCRATCH_MEMORY_SIZE   16384L // 16 KB
+#define GRAPHICS_MEMORY_SIZE  16384L // 16 KB
 
 #define MAX_PROGRAM_LINES     1024
 #define MAX_STACK_DEPTH       64
@@ -181,26 +175,26 @@
 #define MAX_NAMED_VARS        128
 #define MAX_DATA_ITEMS        1024
 
-#define MAX_STRING_POOL       32768L
+#define MAX_STRING_POOL       16384L // 16 KB
 
 #define MAX_DIM_ARRAYS        32
-#define MAX_ARRAY_ELEMENTS    4096
+#define MAX_ARRAY_ELEMENTS    2048
 
 #define MAX_USER_FUNCS        32
 #define MAX_MODULES           8
 #define MAX_BREAKPOINTS       16
 
-#define MAX_EXT_FUNCS         4 // loaded ext functions
-#define MAX_EXT_LIBS          2 // loaded BASIC++ libs
-#define MAX_EXT_FEATURES      4 // loaded spec features
-#define MAX_EXT_PLUGINS       2 // loaded plugin pkgs
+#define MAX_EXT_FUNCS         4
+#define MAX_EXT_LIBS          2
+#define MAX_EXT_FEATURES      4
+#define MAX_EXT_PLUGINS       2
 
 #define MAX_USER_TYPES        8
 #define MAX_TYPE_FIELDS       16
 #define MAX_TYPED_VARS        32
 
-#define GFX_WIDTH             160
-#define GFX_HEIGHT            100
+#define GFX_WIDTH             80
+#define GFX_HEIGHT            25
 
 #elif defined(BPP_EMBEDDED)
 // ===================================================================
@@ -240,6 +234,7 @@
 #define PROGRAM_MEMORY_SIZE   8192L // 8 KB
 #define VARIABLE_MEMORY_SIZE  4096L // 4 KB
 #define SCRATCH_MEMORY_SIZE   2048L // 2 KB
+#define GRAPHICS_MEMORY_SIZE  8192L  // 8 KB
 
 #define MAX_PROGRAM_LINES     256
 #define MAX_STACK_DEPTH       32
@@ -295,6 +290,7 @@
 #define PROGRAM_MEMORY_SIZE   8388608L // 8 MB
 #define VARIABLE_MEMORY_SIZE  1048576L // 1 MB
 #define SCRATCH_MEMORY_SIZE   524288L // 512 KB
+#define GRAPHICS_MEMORY_SIZE  4194304L // 4 MB
 
 #define MAX_PROGRAM_LINES     65536
 #define MAX_STACK_DEPTH       1024
@@ -323,7 +319,7 @@
 #define GFX_WIDTH             320
 #define GFX_HEIGHT            200
 
-#endif // BPP_FREEDOS / BPP_EMBEDDED
+#endif // BPP_EMBEDDED
 
 // ===================================================================
  // SHARED CONSTANTS -- same on all platforms
@@ -386,10 +382,46 @@
 #if defined(BPP_EMBEDDED)
 #define MAX_MEM_SEGMENT 4096
 #else
-#define MAX_MEM_SEGMENT 65536
+#define MAX_MEM_SEGMENT 1048576
 #endif
 
 // Graphics color palette size
 #define GFX_MAX_COLORS 16
+
+#ifdef BPP_LITE_BUILD
+  // Limit settings for Lite profile
+  #undef MAX_NAMED_VARS
+  #define MAX_NAMED_VARS 64
+  #undef MAX_ARRAY_ELEMENTS
+  #define MAX_ARRAY_ELEMENTS 512
+  #undef LINE_NUMBER_MAX
+  #define LINE_NUMBER_MAX 16384
+
+  // Feature gates for blite
+  #undef BPP_SUPPORT_GRAPHICS
+  #undef BPP_SUPPORT_SOUND
+  #undef BPP_SUPPORT_FILEMGMT
+  #undef BPP_SUPPORT_MAT
+  #undef BPP_SUPPORT_STRUCT
+  #undef BPP_SUPPORT_ERRHAND
+  #undef BPP_SUPPORT_SHELL
+  #undef BPP_SUPPORT_DEBUG
+  #undef BPP_SUPPORT_COMPILER
+  #undef BPP_SUPPORT_VFS
+  #undef BPP_SUPPORT_TXN
+#else
+  // Standard compile parameters
+  #define BPP_SUPPORT_GRAPHICS
+  #define BPP_SUPPORT_SOUND
+  #define BPP_SUPPORT_FILEMGMT
+  #define BPP_SUPPORT_MAT
+  #define BPP_SUPPORT_STRUCT
+  #define BPP_SUPPORT_ERRHAND
+  #define BPP_SUPPORT_SHELL
+  #define BPP_SUPPORT_DEBUG
+  #define BPP_SUPPORT_COMPILER
+  #define BPP_SUPPORT_VFS
+  #define BPP_SUPPORT_TXN
+#endif
 
 #endif // BASICPP_CONFIG_H

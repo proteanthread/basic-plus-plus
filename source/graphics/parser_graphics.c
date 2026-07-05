@@ -42,8 +42,8 @@
  // ---
 
 #include "parser_internal.h"
-#include "gw_memory.h"
-#include "gw_sdl2.h"
+#include "segmented_mem.h"
+#include "sdl2_emu.h"
 extern struct GW_Memory *g_gw_mem;
 extern int g_gw_machine_type;
 
@@ -65,6 +65,19 @@ void pi_parse_screen(Lexer *lex, RuntimeState *rt, int line_num)
  // text-based via DRAW character canvas.
  {
  int mode = 0;
+ extern int g_screen_lock;
+ 
+ if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_LOCK) {
+     g_screen_lock = 1;
+     lexer_next(lex);
+     return;
+ } else if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_UNLOCK) {
+     g_screen_lock = 0;
+     lexer_next(lex);
+     vdev_flush(vdev_get(VDEV_CON));
+     return;
+ }
+
  mode = (int)parse_expression(
  lex, rt, line_num);
  if (error_occurred()) return;
@@ -90,53 +103,88 @@ void pi_parse_screen(Lexer *lex, RuntimeState *rt, int line_num)
  parse_expression(lex, rt, line_num);
  }
 
-   // Activate/deactivate gfx buffer
-   if (mode > 0) {
-       if (g_gw_mem != NULL) {
+    // Activate/deactivate gfx buffer
 #ifndef NO_SDL2
-           int cols = 80;
-           if (mode == 3) {
-               if (g_gw_machine_type == 1) { // MACHINE_HERCULES
-                   cols = 90;
-               } else if (g_gw_machine_type == 2 || g_gw_machine_type == 3) { // MACHINE_TANDY || MACHINE_PCJR
-                   cols = 20;
-               } else {
-                   cols = 80;
-               }
-           } else if (mode == 14) {
-               if (g_gw_machine_type == 4) { // MACHINE_PLANTRONICS
-                   cols = 40;
-               } else {
-                   cols = 80;
-               }
-           } else if (mode == 15) {
-               cols = 80;
-           } else if (mode == 1 || mode == 7 || mode == 13 || mode == 4 || mode == 5) {
-               cols = 40;
-           } else {
-               cols = 80;
-           }
-           gw_sdl2_init(640, 400, "GW-BASIC Emulation", 0);
-           gw_sdl2_set_mode(mode, cols);
-           rt->screen_width = cols;
-           printf("[SCREEN: Graphics Mode %d]\n", mode);
+    {
+        int cols = 80;
+        if (mode == 3) {
+            if (g_gw_machine_type == 1) { // MACHINE_HERCULES
+                cols = 90;
+            } else if (g_gw_machine_type == 2 || g_gw_machine_type == 3) { // MACHINE_TANDY || MACHINE_PCJR
+                cols = 20;
+            } else {
+                cols = 80;
+            }
+        } else if (mode == 14) {
+            if (g_gw_machine_type == 4) { // MACHINE_PLANTRONICS
+                cols = 40;
+            } else {
+                cols = 80;
+            }
+        } else if (mode == 15) {
+            cols = 80;
+        } else if (mode == 1 || mode == 7 || mode == 13 || mode == 4 || mode == 5) {
+            cols = 40;
+        } else {
+            cols = 80;
+        }
+        gw_sdl2_init(640, 400, "GW-BASIC Emulation", 0);
+        gw_sdl2_set_mode(mode, cols);
+        rt->screen_width = cols;
+        if (mode > 0) {
+            printf("[SCREEN: Graphics Mode %d]\n", mode);
+        } else {
+            printf("[SCREEN: Text mode 80x25]\n");
+        }
+    }
 #endif
-       }
-       gfxbuf_set_active(1);
-   } else {
-       if (g_gw_mem != NULL) {
-#ifndef NO_SDL2
-           gw_sdl2_cleanup();
-           printf("[SCREEN: Text mode 80x25]\n");
-#endif
-       }
+    if (mode > 0) {
+        gfxbuf_set_active(1);
+    } else {
         gfxbuf_set_active(0);
     }
   }
   return;
 }
 
- // pi_parse_console - Handle CONSOLE command.
+void pi_parse_graphics(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    // GRAPHICS mode
+    // Keyword already consumed by parser dispatch.
+    int mode = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+
+    if (mode < 0 || mode > 127) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+
+    rt->is_atari_graphics = 1;
+    rt->atari_graphics_mode = mode;
+    rt->screen_mode = mode;
+
+    int base_mode = mode % 16;
+    int is_text_mode = (base_mode == 0 || base_mode == 1 || base_mode == 2);
+    int cols = 40;
+    if (base_mode == 0) {
+        cols = 40;
+    } else if (base_mode == 1 || base_mode == 2) {
+        cols = 20;
+    } else {
+        cols = 80;
+    }
+
+    rt->screen_width = cols;
+    rt->draw_x = cols / 2;
+    rt->draw_y = 12;
+
+#ifndef NO_SDL2
+    gw_sdl2_init(640, 400, "Atari 8-bit Emulation", 0);
+    gw_sdl2_set_atari_graphics(1, mode);
+#endif
+
+    gfxbuf_set_active(!is_text_mode);
+} // pi_parse_console - Handle CONSOLE command.
 void pi_parse_console(Lexer *lex, RuntimeState *rt, int line_num)
 {
     // CONSOLE [scroll_start][, [scroll_lines][, [fn_keys][, [mono]]]]
@@ -188,6 +236,11 @@ void pi_parse_console(Lexer *lex, RuntimeState *rt, int line_num)
             if (error_occurred()) return;
         }
     }
+    
+    (void)start;
+    (void)lines;
+    (void)fn_keys;
+    (void)mono;
 
 #ifndef NO_SDL2
     if (g_gw_mem != NULL) {
@@ -822,7 +875,7 @@ void pi_parse_paint(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred()) return;
  }
  if (border < 0) border = fill;
- gfxbuf_paint(px, py, fill, border);
+ gfxbuf_paint(rt->memory, px, py, fill, border);
  gfxbuf_render();
  }
  return;
@@ -945,6 +998,8 @@ void pi_parse_pcopy(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_view - Handle VIEW command.
 void pi_parse_view(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
+    (void)line_num;
  // VIEW [[SCREEN] (x1,y1)-(x2,y2) [,c[,b]]]
    // VIEW PRINT [top TO bottom]
    //

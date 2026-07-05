@@ -106,7 +106,9 @@ typedef enum VDevId {
  VDEV_CON = 0, // Console device - stdout + stdin
  VDEV_ERR = 1, // Error device - stderr
  VDEV_FILE = 2, // File I/O device
- VDEV_USER = 3, // First user-registerable slot
+ VDEV_NULL = 3, // Null device
+ VDEV_TIMER = 4, // Timer device
+ VDEV_USER = 5, // First user-registerable slot
  VDEV_MAX = 64 // Maximum device slots (was 16)
 } VDevId;
 
@@ -186,6 +188,10 @@ typedef enum VDevClass {
 #define VDIO_SET_TIMEOUT 6 // set I/O timeout (ms)
 #define VDIO_GET_ERROR 7 // get last error code
 #define VDIO_ENUMERATE 8 // list sub-devices
+#define VDEV_IOCTL_INT10 9 // BIOS Video Services
+#define VDEV_IOCTL_INT15 10 // BIOS System/Cassette Services
+#define VDEV_IOCTL_INT16 11 // BIOS Keyboard Services
+#define VDEV_IOCTL_INT21 12 // DOS Services
 #define VDIO_USER 256 // first user-defined command
 
 // Forward declaration
@@ -366,5 +372,9 @@ void vdev_beep(void);
 void vdev_sound(int freq_hz, int duration_ms);
 void vdev_sleep(int duration_ms);
 int vdev_inkey(void);
+
+double vdev_get_time(void);
+void vdev_set_mock_time_active(int active);
+void vdev_increment_mock_time(double amt);
 
 #endif // BASICPP_VDEV_H

@@ -64,6 +64,7 @@
 #include "ext_lib_api.h"
 #include "lib_space.h"
 #include "../security.h"
+#include "../console.h"
 
 // --- Slot ---
 static BppExtLib lib_table[MAX_EXT_LIBS];

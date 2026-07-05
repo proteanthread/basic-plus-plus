@@ -1,7 +1,7 @@
 [![GitGem](https://gitgem.org/api/badge/github/proteanthread/basic-plus-plus.svg)](https://gitgem.org/github/proteanthread/basic-plus-plus)
 
 # BASIC++ (protoBASIC) Interpreter
-**Version 4.1.1 (Stable)**
+**Version 4.2.3**
 
 
 ---
@@ -37,7 +37,8 @@
 - Section 6: Operational Use
   - 1. Direct Mode
   - 2. Program Mode
-  - 3. Program Execution
+  - 3. Command-Line Switches
+  - 4. Program Execution
 - Section 7: Halting Non-Terminating Execution
 - Section 8: Virtual Device Layer
   - 1. Built-In Devices
@@ -95,8 +96,8 @@ The variable system provides three tiers of storage:
 | Tier | Capacity | Scope | Description |
 |:-----|:---------|:------|:------------|
 | Single-letter | 26 numeric (`A`–`Z`), 26 string (`A$`–`Z$`) | Global | Direct array-index lookup, zero overhead |
-| Named variables | Up to 256 identifiers, 31 characters max | Global | Hash-based lookup (e.g., `SCORE`, `PLAYER_NAME$`) |
-| DIM arrays | Up to 64 arrays, 2 dimensions max, 8,192 total elements | Global | Row-major flat pool, supports numeric and string arrays |
+| Named variables | Up to 4,096 identifiers, 31 characters max | Global | Hash-based lookup (e.g., `SCORE`, `PLAYER_NAME$`) |
+| DIM arrays | Up to 1,024 arrays, 3 dimensions max, 4,194,304 total elements | Global | Row-major flat pool, supports numeric and string arrays |
 
 All variables are initialized to zero (numeric) or empty string (string) upon `RUN`. The `CLEAR` command resets all variable storage without affecting the stored program.
 
@@ -161,7 +162,7 @@ A distinct set of directives, which operate at the "edit" level outside stored p
 | Command | Function |
 |:--------|:---------|
 | `RUN [line]` | Execute program (optionally from a specific line) |
-| `LIST [n1[-n2]]` | Display stored program lines |
+| `LIST [range/search]` | Display stored program lines or search patterns |
 | `NEW` | Clear program memory and variables |
 | `SAVE "filename"` | Persist program to disk |
 | `LOAD "filename"` | Retrieve program from disk |
@@ -240,6 +241,14 @@ ALIAS CLEAR ALL               ' Remove all aliases
 ```
 
 
+### 2.5. Conversational Dialect Features
+
+BASIC++ integrates features from classic conversational dialects (JOSS, FOCAL, MUMPS):
+- **Decimal Line Steps (JOSS/FOCAL)**: Supports load-time translation of decimal step numbers (e.g. `10.10 PRINT "Hi"`) which translate to standard line `1010` and label `STEP_10_10:`.
+- **Step Execution (FOCAL)**: The `DO` command supports step calls (e.g. `DO 10.10`) executing that single step as an implicit subroutine.
+- **Persistent Key-Value Store (MUMPS)**: Provides built-in functions `PSTORE(key$, val)` and `PRETRIEVE(key$)`/`PRETRIEVE$(key$)` as well as the virtual device `PERSIST:<key>` to save and load persistent data to `/vfs/persist/<key>.dat`.
+
+
 ---
 
 
@@ -307,17 +316,17 @@ The interpreter is organized into 29 compilation units:
 
 All interpreter memory is defined by static, fixed-size pools. Dimensions are established at compile-time via `#define` constants in `config.h`, ensuring a predictable and verifiable memory footprint.
 
-| Memory Area | Constant | Default Size | Description |
-|:------------|:---------|:-------------|:------------|
-| Program Storage | `MAX_PROGRAM_LINES` | 4,096 lines | Stored BASIC program lines |
-| Program Pool | `PROGRAM_MEMORY_SIZE` | 64 KB | Raw program text storage |
-| Variable Pool | `VARIABLE_MEMORY_SIZE` | 64 KB | Variable and array storage |
-| Scratch Pool | `SCRATCH_MEMORY_SIZE` | 64 KB | Temporary token/expression buffers |
-| String Pool | `MAX_STRING_POOL` | 32 KB | Runtime string allocations |
-| Array Elements | `MAX_ARRAY_ELEMENTS` | 8,192 | Flat pool shared across all arrays |
-| Virtual Memory | `MAX_MEM_SEGMENT` | 64 KB | PEEK/POKE address space |
-| Call Stack | `MAX_STACK_DEPTH` | 256 levels | GOSUB, FOR/NEXT, SUB/FUNCTION frames |
-| File Channels | `MAX_FILE_CHANNELS` | 8 | Simultaneous open files |
+| Memory Area | Constant | Modern | Lite (FreeDOS) | Embedded | Description |
+|:------------|:---------|:-------|:---------------|:---------|:------------|
+| Program Storage | `MAX_PROGRAM_LINES` | 65,536 lines | 1,024 lines | 256 lines | Stored BASIC program lines |
+| Program Pool | `PROGRAM_MEMORY_SIZE` | 8 MB | 32 KB | 8 KB | Raw program text storage |
+| Variable Pool | `VARIABLE_MEMORY_SIZE` | 1 MB | 16 KB | 4 KB | Variable and array storage |
+| Scratch Pool | `SCRATCH_MEMORY_SIZE` | 512 KB | 16 KB | 2 KB | Temporary token/expression buffers |
+| String Pool | `MAX_STRING_POOL` | 16 MB | 16 KB | 8 KB | Runtime string allocations |
+| Array Elements | `MAX_ARRAY_ELEMENTS` | 4,194,304 | 2,048 | 1,024 | Flat pool shared across all arrays |
+| Virtual Memory | `MAX_MEM_SEGMENT` | 64 KB | 64 KB | 4 KB | PEEK/POKE address space |
+| Call Stack | `MAX_STACK_DEPTH` | 1,024 levels | 64 levels | 32 levels | GOSUB, FOR/NEXT, SUB/FUNCTION frames |
+| File Channels | `MAX_FILE_CHANNELS` | 8 | 8 | 8 | Simultaneous open files |
 
 ### 4.3. Adjustment of Memory Allocations
 
@@ -407,6 +416,15 @@ Now in QBasic mode
 
 The "stored program" context is invoked when directives are entered with a preceding line number. Such lines are not executed; instead, they are inserted into the Program Storage array, maintained in sorted order by line number.
 
+By default, decimal line numbers must be between 1 and `LINE_NUMBER_MAX` (65529).
+
+BASIC++ also supports hexadecimal, octal, and binary line numbers. These line numbers are allowed to go up to `4294967295` (32-bit unsigned):
+*   **Hexadecimal**: Prefixed with `&H`/`&h` or `0x`/`0X` (e.g., `&H10 PRINT` or `0x10 PRINT` stores under line number 16).
+*   **Octal**: Prefixed with `&O`/`&o`, `0o`/`0O`, or a bare `&` followed by octal digits (e.g., `&O10 PRINT` or `&10 PRINT` stores under line number 8).
+*   **Binary**: Prefixed with `&B`/`&b` or `0b`/`0B` (e.g., `&B10 PRINT` or `0b10 PRINT` stores under line number 2).
+
+When listed using `LIST`, the original prefix format and base are preserved exactly as entered by the programmer. Directives that reference line numbers (such as `GOTO`, `GOSUB`, `RESTORE`, and `DELETE`) can use any base representation in their expressions (e.g., `GOTO &H10`).
+
 ```
 > 10 PRINT "Hello, World!"
 > 20 FOR I = 1 TO 5
@@ -424,7 +442,19 @@ Hello, World!
  1  2  3  4  5
 ```
 
-### 6.3. Program Execution
+### 6.3. Command-Line Switches
+
+The interpreter executable supports several switches when launched from the command line:
+
+*   `-q` / `--quiet` — Quiet mode; suppresses the startup banner and prompts.
+*   `-c "command"` — Run the specified BASIC command in batch mode and exit.
+*   `-r "file.bas"` — Load and run the specified BASIC script file and exit.
+*   `--log [filename]` — Enable session logging. Saves boot phase diagnostics and runtime warnings/trace to the specified file. If no filename is provided, a dynamic name like `[script]-yyyy-mm-dd-hh-mm-ss.LOG` is generated.
+*   `--out [filename]` — Echo all console program output and keyboard inputs to the specified file. If no filename is provided, a dynamic name like `[script]-yyyy-mm-dd-hh-mm-ss.OUT` is generated, using the same timestamp as the log file.
+*   `--clean-up` / `--cleanup` — Sweep intermediate files (logs, object files, stub modules, etc.) in the workspace, but preserve the most recently modified `.LOG` file and `.OUT` file.
+*   `--full-clean-up` / `--full-cleanup` — Sweep all intermediate files including all `.LOG` and `.OUT` files.
+
+### 6.4. Program Execution
 
 The `RUN` directive initiates sequential execution of the stored program. This directive first clears Variable Storage and the Call Stack to a zeroed state, ensuring that the program executes in a clean, predictable environment. Execution begins at the lowest extant line number. The `BYE` command exits the interpreter entirely, returning control to the operating system.
 
@@ -581,7 +611,7 @@ A comprehensive documentation suite of 36 reference manuals and tutorials is inc
 ## Section 13: Example Session
 
 ```
-BASIC++ 4.1.1
+BASIC++ 4.2.3
 @COPYLEFT ALL WRONGS RESERVED
 Jun  8 2026
 

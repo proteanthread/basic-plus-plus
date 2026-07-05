@@ -1,6 +1,6 @@
 THE BASIC++ SUBROUTINE AND FUNCTION SYSTEM
 ============================================
-Version 4.1.1
+Version 4.2.3
 
 This manual explains every way BASIC++ programs organize
 reusable code — from classic GOSUB/RETURN subroutines to
@@ -284,7 +284,7 @@ Output:
   Back to Level 2
   Back to Level 1
 
-Maximum nesting depth is 256 (MAX_STACK_DEPTH).
+Maximum nesting depth is 1024 (MAX_STACK_DEPTH).
 
 
 10.  ON...GOSUB — COMPUTED GOSUB
@@ -973,7 +973,7 @@ Every GOSUB, SUB call, FOR loop, WHILE loop, and DO
 loop pushes a StackFrame onto the runtime stack.  The
 stack is a fixed-size array:
 
-  StackFrame stack[MAX_STACK_DEPTH];  / 256 frames /
+  StackFrame stack[MAX_STACK_DEPTH];  / 1,024 frames /
   int        stack_top;               / 0 = empty /
 
 Push adds a frame at stack[stack_top++].
@@ -1186,7 +1186,7 @@ The is_function flag distinguishes them.
 
 From runtime.h (for DEF FN):
 
-  #define MAX_USER_FUNCS 64
+  #define MAX_USER_FUNCS 256
   #define MAX_FN_PARAMS  4
   #define MAX_FN_BODY    MAX_LINE_LENGTH
 
@@ -1255,11 +1255,11 @@ Approximate size per FRAME_SUB:
   int      in_sub_index;          / -1 = not in SUB /
 
   / DEF FN table /
-  UserFunction user_funcs[MAX_USER_FUNCS];  / 64 slots /
+  UserFunction user_funcs[MAX_USER_FUNCS];  / 256 slots /
   int          user_func_count;
 
   / Call stack /
-  StackFrame stack[MAX_STACK_DEPTH];  / 256 frames /
+  StackFrame stack[MAX_STACK_DEPTH];  / 1024 frames /
   int        stack_top;
 
 
@@ -1268,12 +1268,12 @@ Approximate size per FRAME_SUB:
 
   Constant            Value   What It Limits
   ──────────────────  ──────  ────────────────────────
-  MAX_SUBS            64      Total SUB + FUNCTION defs
+  MAX_SUBS            256     Total SUB + FUNCTION defs
   MAX_SUB_PARAMS      8       Parameters per SUB/FUNC
-  MAX_USER_FUNCS      64      Total DEF FN definitions
+  MAX_USER_FUNCS      256     Total DEF FN definitions
   MAX_FN_PARAMS       4       Parameters per DEF FN
   MAX_FN_BODY         255     Body expression length
-  MAX_STACK_DEPTH     256     Total stack frames
+  MAX_STACK_DEPTH     1024    Total stack frames
   MAX_VAR_NAME_LEN    31      Name length (SUBs, params)
 
 
@@ -1592,8 +1592,8 @@ Part IX:  REFERENCE
   ERR_HOW     Runtime     SUB/FUNCTION not found,
                           RETURN without GOSUB,
                           missing END SUB/FUNCTION
-  ERR_SORRY   Memory      Too many SUBs (>64),
-                          stack overflow (>256 frames)
+  ERR_SORRY   Memory      Too many SUBs (>256),
+                          stack overflow (>1024 frames)
 
 
 58.  LIMITS TABLE
@@ -1601,12 +1601,12 @@ Part IX:  REFERENCE
 
   Limit                     Value   What Happens
   ────────────────────────  ──────  ───────────────────
-  MAX_SUBS (SUB+FUNCTION)  64      ERR_SORRY
+  MAX_SUBS (SUB+FUNCTION)  256     ERR_SORRY
   MAX_SUB_PARAMS            8      Extra params ignored
-  MAX_USER_FUNCS (DEF FN)  64      ERR_SORRY
+  MAX_USER_FUNCS (DEF FN)  256     ERR_SORRY
   MAX_FN_PARAMS             4      Extra params ignored
   MAX_FN_BODY              255     Body text truncated
-  MAX_STACK_DEPTH          256     ERR_SORRY (overflow)
+  MAX_STACK_DEPTH          1024    ERR_SORRY (overflow)
   MAX_VAR_NAME_LEN          31     Names truncated
 
 

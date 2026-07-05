@@ -600,6 +600,7 @@ static int fn_tnfs_mount(FnChannel *ch)
 
  // Open a file on a TNFS share.
  // TNFS CMD 0x29 = OPEN
+#if 0
 static int fn_tnfs_open(FnChannel *ch, const char *filename, int mode)
 {
     unsigned char payload[256];
@@ -630,6 +631,7 @@ static int fn_tnfs_open(FnChannel *ch, const char *filename, int mode)
     ch->tnfs_fd = resp[5];
     return FN_ERR_OK;
 }
+#endif
 
  // Read from a TNFS file.
  // TNFS CMD 0x21 = READ
@@ -1243,8 +1245,7 @@ static int fn_ssh_connect(FnChannel *ch)
         banner[--n] = '\0';
 
     // Store server SSH version
-    strncpy(ch->ssh_version, banner, sizeof(ch->ssh_version) - 1);
-    ch->ssh_version[sizeof(ch->ssh_version) - 1] = '\0';
+    snprintf(ch->ssh_version, sizeof(ch->ssh_version), "%s", banner);
     ch->ssh_exchanged = 1;
 
     // Send our version string
@@ -1304,9 +1305,9 @@ static int fn_net_open(VDev *d, const char *path,
     if (rc != 0) return FN_ERR_INVALID_URL;
 
     ch->proto = proto;
-    strncpy(ch->host, host, sizeof(ch->host) - 1);
+    snprintf(ch->host, sizeof(ch->host), "%s", host);
     ch->port = port;
-    strncpy(ch->path, url_path, sizeof(ch->path) - 1);
+    snprintf(ch->path, sizeof(ch->path), "%s", url_path);
 
     // Parse mode string
     ch->mode = FN_MODE_READWRITE;
@@ -1900,8 +1901,8 @@ static void fn_fuji_save_slots(void)
     {
         const char *home = getenv("USERPROFILE");
         if (!home) home = ".";
-        sprintf(dir, "%s\\.basicpp", home);
-        sprintf(path, "%s\\fujinet_slots.cfg", dir);
+        snprintf(dir, sizeof(dir), "%s\\.basicpp", home);
+        snprintf(path, sizeof(path), "%.230s\\fujinet_slots.cfg", dir);
         // Ensure directory exists
         CreateDirectoryA(dir, NULL);
     }
@@ -1909,8 +1910,8 @@ static void fn_fuji_save_slots(void)
     {
         const char *home = getenv("HOME");
         if (!home) home = ".";
-        sprintf(dir, "%s/.basicpp", home);
-        sprintf(path, "%s/fujinet_slots.cfg", dir);
+        snprintf(dir, sizeof(dir), "%s/.basicpp", home);
+        snprintf(path, sizeof(path), "%.230s/fujinet_slots.cfg", dir);
         mkdir(dir, 0755);
     }
 #endif
@@ -1936,7 +1937,7 @@ static void fn_appkey_path(unsigned int creator,
         if (!home) home = ".";
         sprintf(dir, "%s\\.basicpp\\appkeys", home);
         CreateDirectoryA(dir, NULL);
-        sprintf(path, "%s\\%04X_%04X.dat", dir, creator, app);
+        sprintf(path, "%s\\%04X_%04X.dat", dir, creator & 0xFFFF, app & 0xFFFF);
     }
 #else
     {
@@ -1944,7 +1945,7 @@ static void fn_appkey_path(unsigned int creator,
         if (!home) home = ".";
         sprintf(dir, "%s/.basicpp/appkeys", home);
         mkdir(dir, 0755);
-        sprintf(path, "%s/%04X_%04X.dat", dir, creator, app);
+        sprintf(path, "%s/%04X_%04X.dat", dir, creator & 0xFFFF, app & 0xFFFF);
     }
 #endif
     (void)max;
@@ -2506,9 +2507,9 @@ static int fn_clock_read(VDev *d, void *buf, int len)
     case FN_TIME_ISO_STRING:
     default: {
         // ISO 8601 string: YYYY-MM-DDTHH:MM:SS
-        char iso[32];
+        char iso[64];
         int iso_len;
-        sprintf(iso, "%04d-%02d-%02dT%02d:%02d:%02d",
+        snprintf(iso, sizeof(iso), "%04d-%02d-%02dT%02d:%02d:%02d",
             tm_ptr->tm_year + 1900,
             tm_ptr->tm_mon + 1,
             tm_ptr->tm_mday,

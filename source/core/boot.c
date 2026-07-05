@@ -100,7 +100,7 @@
 //
 //   - "Phase 6: Dialect & Config" shows wrong dialect:
 //     Check BootConfig.dialect (set from CLI -d flag or config file).
-//     Default: BASICPP_DEFAULT_DIALECT from config.h.
+//     Default: 0 from config.h.
 //
 //   Using boot diagnostics:
 //     Run with -v flag to see phase transitions:
@@ -138,6 +138,13 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <ctype.h>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define TokenType WinTokenType
+#include <windows.h>
+#undef TokenType
+#endif
 #include "boot.h"
 #include "memory.h"
 #include "errors.h"
@@ -157,17 +164,22 @@
 #include "security.h"
 #include "module.h"
 #include "mod_stdlib.h"
+#include "mod_persist.h"
 #ifndef BPP_FREEDOS
 #include "mod_usb.h"
 #include "mod_fujinet.h"
 #include "mod_upnp.h"
-#include "mod_gwbasic.h"
+#include "mod_legacy_compat.h"
 #endif
-#include "dialect.h"
+#ifndef NO_SDL2
+#include "sdl2_emu.h"
+#endif
 #include "device_alias.h"
 #include "txn.h"
 #include "runtime.h"
+#include "task.h"
 #include "builtins.h"
+#include "../console.h"
 
 // -----------------------------------------------------------------
 // Static Boot State
@@ -189,6 +201,8 @@ static const char *phase_names[PHASE_COUNT] = {
     "Dialect & Config",
     "Ready State"
 };
+
+static struct RuntimeState *g_boot_runtime = NULL;
 
 // Status names for diagnostic output
 static const char *status_names[] = {
@@ -215,14 +229,62 @@ static const char *status_names[] = {
 void boot_log(BootVerbosity level, const char *fmt, ...)
 {
     va_list args;
+    int max_verbosity = boot_state.verbosity;
 
-    if (level > boot_state.verbosity) return;
+    if (g_boot_runtime && g_boot_runtime->log_fp) {
+        if (g_boot_runtime->log_level > max_verbosity) {
+            max_verbosity = g_boot_runtime->log_level;
+        }
+    }
 
-    va_start(args, fmt);
-    fprintf(stderr, "[BOOT] ");
-    vfprintf(stderr, fmt, args);
-    fprintf(stderr, "\n");
-    va_end(args);
+    if (level > (BootVerbosity)max_verbosity) return;
+
+    if (level <= boot_state.verbosity || (g_boot_runtime && g_boot_runtime->log_fp)) {
+        va_start(args, fmt);
+        fprintf(stderr, "[BOOT] ");
+        vfprintf(stderr, fmt, args);
+        fprintf(stderr, "\n");
+        va_end(args);
+    }
+
+    if (g_boot_runtime && g_boot_runtime->log_fp && level <= (BootVerbosity)g_boot_runtime->log_level) {
+        va_start(args, fmt);
+        fprintf((FILE*)g_boot_runtime->log_fp, "[BOOT] ");
+        vfprintf((FILE*)g_boot_runtime->log_fp, fmt, args);
+        fprintf((FILE*)g_boot_runtime->log_fp, "\n");
+        va_end(args);
+        fflush((FILE*)g_boot_runtime->log_fp);
+    }
+}
+
+void boot_log_write(struct RuntimeState *rt, const char *fmt, ...)
+{
+    va_list args;
+    if (rt && rt->log_fp) {
+        va_start(args, fmt);
+        vfprintf((FILE*)rt->log_fp, fmt, args);
+        va_end(args);
+        fflush((FILE*)rt->log_fp);
+#ifdef _WIN32
+        HANDLE hOut = GetStdHandle(STD_ERROR_HANDLE);
+        if (hOut != INVALID_HANDLE_VALUE && hOut != NULL) {
+            va_start(args, fmt);
+            vfprintf(stderr, fmt, args);
+            va_end(args);
+            fflush(stderr);
+        }
+#else
+        va_start(args, fmt);
+        vfprintf(stderr, fmt, args);
+        va_end(args);
+        fflush(stderr);
+#endif
+    }
+}
+
+void boot_init_runtime(struct RuntimeState *runtime)
+{
+    g_boot_runtime = runtime;
 }
 
 // =================================================================
@@ -267,7 +329,7 @@ static BootStatus boot_phase0_host(const BootConfig *config)
 //
 // Failure mode: BOOT_CRITICAL if malloc fails.
 // =================================================================
-static BootStatus boot_phase1_memory(MemorySystem *memory)
+static BootStatus boot_phase1_memory(MemorySystem *memory, struct RuntimeState *runtime)
 {
     boot_log(BOOT_LOG, "Phase 1: Core Memory");
 
@@ -286,8 +348,14 @@ static BootStatus boot_phase1_memory(MemorySystem *memory)
     boot_log(BOOT_LOG,
         "  Scratch pool: %ld bytes", memory->scratch.size);
     boot_log(BOOT_LOG,
+        "  Graphics pool: %ld bytes", memory->graphics.size);
+    boot_log(BOOT_LOG,
         "  Program store: %d line capacity",
         memory->program.capacity);
+
+    // Initialize stack, string pools, variables, arrays in Phase 1 (A1)
+    runtime_init(runtime, &memory->program, memory);
+    boot_log(BOOT_DEBUG, "  Runtime memory (stack, string pool, variables) initialized in Phase 1");
 
     return BOOT_OK;
 }
@@ -336,7 +404,6 @@ static BootStatus boot_phase2_vm_core(void)
 // CON: and ERR: are critical. Others are non-critical.
 //
 // What it initializes:
-//   - Network socket layer (vdev_net)
 //   - Core device table (vdev: CON:, ERR:, FILE:)
 //   - File I/O channels (fileio)
 //   - Device alias table (cross-dialect device mapping)
@@ -345,39 +412,49 @@ static BootStatus boot_phase2_vm_core(void)
 //
 // Failure mode: BOOT_DEGRADED if non-critical device fails.
 // =================================================================
-static BootStatus boot_phase3_devices(void)
+static BootStatus boot_phase3_devices(MemorySystem *memory)
 {
+    (void)memory;
     BootStatus status = BOOT_OK;
 
     boot_log(BOOT_LOG, "Phase 3: Virtual Devices");
 
-    // Network socket layer (before vdev for NET: device)
-    vdev_net_init();
-    boot_log(BOOT_DEBUG, "  Network layer initialized");
+    // Network socket layer (vdev_net_init) is now lazily initialized on demand
 
     // Core device table (CON:, ERR:, FILE:)
     vdev_init();
     boot_log(BOOT_DEBUG, "  Device table initialized");
 
     // File I/O channels
+#ifndef BPP_LITE_BUILD
     fileio_channels_init();
     boot_log(BOOT_DEBUG, "  File channels initialized");
+#endif
 
     // Virtual Filesystem Layer
     vfs_init();
     boot_log(BOOT_DEBUG, "  Virtual Filesystem initialized");
 
     // Device alias table (for cross-dialect device mapping)
+#ifndef BPP_LITE_BUILD
     device_alias_init();
+    device_alias_load_dialect(0);
     boot_log(BOOT_DEBUG, "  Device alias table initialized");
+#endif
 
     // Transaction journal (ATOMIC/TXN support)
+#ifndef BPP_LITE_BUILD
+    boot_log_write(g_boot_runtime, "[TRACE3] before txn_init\n");
     txn_init();
+    boot_log_write(g_boot_runtime, "[TRACE3] after txn_init\n");
     boot_log(BOOT_DEBUG, "  Transaction journal initialized");
+#endif
 
     // Graphics framebuffer (non-critical)
-    gfxbuf_init();
-    boot_log(BOOT_DEBUG, "  Graphics framebuffer initialized");
+#ifndef BPP_LITE_BUILD
+    gfxbuf_init_pool(memory);
+    boot_log(BOOT_DEBUG, "  Graphics framebuffer initialized with dynamic pool");
+#endif
 
     return status;
 }
@@ -434,10 +511,13 @@ static BootStatus boot_phase5_modules(
 {
     BootStatus status = BOOT_OK;
 
+    boot_log_write(runtime, "[TRACE] inside boot_phase5_modules start\n");
     boot_log(BOOT_LOG, "Phase 5: Module System");
+    boot_log_write(runtime, "[TRACE] after boot_log in boot_phase5_modules\n");
 
     // Initialize security system BEFORE modules load
     // (modules check their capabilities against security level)
+    boot_log_write(runtime, "[TRACE] calling security_init(%d)\n", config->security);
     security_init(config->security);
     boot_log(BOOT_LOG, "  Security level: %s",
         security_level_name(config->security));
@@ -449,7 +529,7 @@ static BootStatus boot_phase5_modules(
     mod_stdlib_register();
     boot_log(BOOT_DEBUG, "  Registered: STDLIB");
 
-#ifndef BPP_FREEDOS
+#if !defined(BPP_FREEDOS) && !defined(BPP_LITE_BUILD)
     mod_usb_register();
     boot_log(BOOT_DEBUG, "  Registered: USB");
 
@@ -461,13 +541,17 @@ static BootStatus boot_phase5_modules(
 
     mod_gwbasic_register();
     boot_log(BOOT_DEBUG, "  Registered: GWBASIC");
+
+    mod_persist_register();
+    boot_log(BOOT_DEBUG, "  Registered: PERSIST");
 #endif
 
     // Activate STDLIB (always -- provides core math/string functions)
     module_activate("STDLIB", runtime);
 
-#ifndef BPP_FREEDOS
-    if (config->dialect == DIALECT_GW_BASIC) {
+#if !defined(BPP_FREEDOS) && !defined(BPP_LITE_BUILD)
+    module_activate("PERSIST", runtime);
+    if (config->dialect == 0) {
         module_activate("GWBASIC", runtime);
     }
 #endif
@@ -534,22 +618,54 @@ static BootStatus boot_phase5_modules(
 //
 // Failure mode: BOOT_OK (dialect always falls back to default).
 // =================================================================
-static BootStatus boot_phase6_dialect(const BootConfig *config)
+static BootStatus boot_phase6_dialect(const BootConfig *config, MemorySystem *memory)
 {
     boot_log(BOOT_LOG, "Phase 6: Dialect & Config");
 
+    int active_dialect = config->dialect;
+
+    // Check program lines for a dialect header (e.g. "'$lang: qbasic" or "10 REM $lang: c64")
+    if (memory && memory->program.count > 0) {
+        int limit = memory->program.count;
+        if (limit > 5) limit = 5;
+        int idx;
+        for (idx = 0; idx < limit; idx++) {
+            const char *text = memory->program.lines[idx].text;
+            const char *lang_ptr = strstr(text, "$lang");
+            if (lang_ptr) {
+                lang_ptr += 5;
+                while (*lang_ptr == ':' || *lang_ptr == ' ' || *lang_ptr == '\t') {
+                    lang_ptr++;
+                }
+                char lang_name[32];
+                int name_len = 0;
+                while (name_len < 31 && (isalnum((unsigned char)lang_ptr[name_len]) || lang_ptr[name_len] == '_' || lang_ptr[name_len] == '-' || lang_ptr[name_len] == '+')) {
+                    lang_name[name_len] = lang_ptr[name_len];
+                    name_len++;
+                }
+                lang_name[name_len] = '\0';
+                
+                int detected = 0;
+                if (detected >= 0) {
+                    active_dialect = (int)detected;
+                    boot_log(BOOT_LOG, "  Detected dialect header: %s", lang_name);
+                    break;
+                }
+            }
+        }
+    }
+
     // Initialize and select dialect
-    dialect_init(config->dialect);
-    boot_log(BOOT_LOG, "  Dialect: %s",
-        dialect_get_short_name());
+    
+    boot_log(BOOT_LOG, "  Dialect: %s (%s)",
+        "BASIC++", "BPP");
 
     // Apply dialect-specific function overrides and device aliases
-    dialect_apply();
+    
     boot_log(BOOT_DEBUG, "  Dialect overrides applied");
 
-    // Apply strict mode if configured via CLI or config file
-    if (config->strict) {
-        dialect_set_strict(1);
+    // Apply strict mode if configured via CLI or config file, or if dialect header detected
+    if (config->strict || active_dialect != config->dialect) {
         boot_log(BOOT_LOG, "  Strict mode: ON");
     }
 
@@ -569,25 +685,24 @@ static BootStatus boot_phase6_dialect(const BootConfig *config)
 // enter READY state. After this, the REPL can accept input.
 //
 // What it initializes:
-//   - RuntimeState (variables, stack, string pool, etc.)
-//   - RNG seed (deterministic = 1, override with RANDOMIZE)
+//   - TASK multitasking manager
+//   - Ready state flags, RNG seed
 //
-// Failure mode: BOOT_OK (runtime_init always succeeds).
+// Failure mode: BOOT_OK (always succeeds).
 // =================================================================
 static BootStatus boot_phase7_ready(
     MemorySystem *memory,
     struct RuntimeState *runtime)
 {
+    (void)memory;
     boot_log(BOOT_LOG, "Phase 7: Ready State");
 
-    // Initialize runtime state (variables, stack, etc.)
-    runtime_init(runtime, &memory->program, memory);
-    boot_log(BOOT_DEBUG, "  Runtime state initialized");
+    // Initialize TASK multitasking manager
+    task_mgr_init(runtime);
 
-    // RNG seed is set to 1 by runtime_init() -- deterministic by
-    // design. Users override with RANDOMIZE. This guarantees:
-    // identical configuration -> identical runtime state on all
-    // platforms.
+    // RNG seed is set to 1 -- deterministic by design.
+    runtime->running = 0;
+    runtime->rnd_seed = 1;
     boot_log(BOOT_DEBUG, "  RNG seed: deterministic (1)");
 
     // Print boot summary if boot-log mode is enabled
@@ -630,22 +745,26 @@ BootStatus boot_execute(const BootConfig *config,
     boot_state.verbosity = config->verbosity;
     boot_state.overall_status = BOOT_OK;
 
+    g_boot_runtime = runtime;
+
     // Phase 0: Host Entry
     boot_state.current_phase = PHASE_HOST;
     phase_result = boot_phase0_host(config);
     boot_state.phase_status[PHASE_HOST] = phase_result;
     if (phase_result == BOOT_CRITICAL) {
         boot_state.overall_status = BOOT_CRITICAL;
+        g_boot_runtime = NULL;
         return BOOT_CRITICAL;
     }
 
     // Phase 1: Core Memory (CRITICAL -- abort on failure)
     boot_state.current_phase = PHASE_MEMORY;
-    phase_result = boot_phase1_memory(memory);
+    phase_result = boot_phase1_memory(memory, runtime);
     boot_state.phase_status[PHASE_MEMORY] = phase_result;
     if (phase_result == BOOT_CRITICAL) {
         boot_state.overall_status = BOOT_CRITICAL;
         printf("SORRY. Cannot allocate memory.\n");
+        g_boot_runtime = NULL;
         return BOOT_CRITICAL;
     }
 
@@ -655,20 +774,24 @@ BootStatus boot_execute(const BootConfig *config,
     boot_state.phase_status[PHASE_VM_CORE] = phase_result;
     if (phase_result == BOOT_CRITICAL) {
         boot_state.overall_status = BOOT_CRITICAL;
+        g_boot_runtime = NULL;
         return BOOT_CRITICAL;
     }
 
     // Phase 3: Virtual Devices
     boot_state.current_phase = PHASE_DEVICES;
-    phase_result = boot_phase3_devices();
+    phase_result = boot_phase3_devices(memory);
     boot_state.phase_status[PHASE_DEVICES] = phase_result;
     if (phase_result == BOOT_DEGRADED) {
         boot_state.overall_status = BOOT_DEGRADED;
     }
     if (phase_result == BOOT_CRITICAL) {
         boot_state.overall_status = BOOT_CRITICAL;
+        g_boot_runtime = NULL;
         return BOOT_CRITICAL;
     }
+    runtime->dev_con = vdev_get(VDEV_CON);
+    runtime->dev_err = vdev_get(VDEV_ERR);
 
     // Phase 4: Standard Library
     boot_state.current_phase = PHASE_STDLIB;
@@ -676,12 +799,16 @@ BootStatus boot_execute(const BootConfig *config,
     boot_state.phase_status[PHASE_STDLIB] = phase_result;
     if (phase_result == BOOT_CRITICAL) {
         boot_state.overall_status = BOOT_CRITICAL;
+        g_boot_runtime = NULL;
         return BOOT_CRITICAL;
     }
 
     // Phase 5: Module System (non-critical failures OK)
+    boot_log_write(runtime, "[TRACE] before Phase 5\n");
     boot_state.current_phase = PHASE_MODULES;
+    boot_log_write(runtime, "[TRACE] calling boot_phase5_modules (config=%p, runtime=%p)\n", config, runtime);
     phase_result = boot_phase5_modules(config, runtime);
+    boot_log_write(runtime, "[TRACE] after boot_phase5_modules\n");
     boot_state.phase_status[PHASE_MODULES] = phase_result;
     if (phase_result == BOOT_DEGRADED) {
         boot_state.overall_status = BOOT_DEGRADED;
@@ -689,7 +816,7 @@ BootStatus boot_execute(const BootConfig *config,
 
     // Phase 6: Dialect & Config
     boot_state.current_phase = PHASE_DIALECT;
-    phase_result = boot_phase6_dialect(config);
+    phase_result = boot_phase6_dialect(config, memory);
     boot_state.phase_status[PHASE_DIALECT] = phase_result;
     if (phase_result == BOOT_DEGRADED) {
         boot_state.overall_status = BOOT_DEGRADED;
@@ -707,6 +834,7 @@ BootStatus boot_execute(const BootConfig *config,
         }
     }
 
+    // Keep g_boot_runtime active during interpreter runtime for continuous telemetry
     return boot_state.overall_status;
 }
 
@@ -739,12 +867,18 @@ void boot_shutdown(MemorySystem *memory)
 
     // Phase 3: Device cleanup -- close network sockets
     boot_log(BOOT_DEBUG, "  Closing network devices...");
+#ifndef BPP_LITE_BUILD
     vdev_net_cleanup();
+#endif
+#ifndef NO_SDL2
+    gw_sdl2_cleanup();
+#endif
 
     // Phase 2: VM cleanup (no-op -- static dispatch table)
 
     // Phase 1: Memory cleanup -- release all memory pools
     boot_log(BOOT_DEBUG, "  Releasing memory pools...");
+    task_mgr_shutdown();
     mem_shutdown(memory);
 
     // Phase 0: Host cleanup (no-op -- return from main)
@@ -763,6 +897,13 @@ void boot_shutdown(MemorySystem *memory)
 const BootState *boot_get_state(void)
 {
     return &boot_state;
+}
+
+void boot_downgrade_status(BootStatus status)
+{
+    if (status > boot_state.overall_status) {
+        boot_state.overall_status = status;
+    }
 }
 
 // boot_phase_name - Return the human-readable name for a phase.

@@ -1,307 +1,192 @@
-=====================================================================
-  BASIC++ on FreeDOS -- Build Guide and Memory Reference
-=====================================================================
+BASIC++ on FreeDOS — Compilation & Memory Reference
 
+Version 4.2.3
+
+This document serves as the single authoritative guide for compiling, configuring, and optimizing BASIC++ for the FreeDOS platform.
 
 ---
 
 Table of Contents
-
-- WHY A SLIM BUILD?
-- BUILDING FOR FREEDOS
-- MEMORY BUDGET
-- AVAILABLE DIALECTS
-- HOW TO CHANGE THE DEFAULT DIALECT
-- HOW TO CUSTOMIZE MEMORY POOLS
-- HOW TO ADD A DIALECT BACK
-- OPTIONAL MODULES
-- DIFFERENCES FROM WINDOWS/LINUX BUILD
-- TROUBLESHOOTING
+1. Why a Slim/Lite Build?
+2. Building for FreeDOS
+3. Memory Budgets & Gating
+4. Dialect Selection & Suitability
+5. Footprint Optimization Checklist
+6. How to Customize Dialects & Modules
+7. Differences from Windows/Linux
+8. Troubleshooting
 
 ---
 
-  NOTE: For the COMPLETE build tutorial including custom dialect
-  selection, module selection, section stripping, keyword
-  customization, and step-by-step instructions, see:
+1. Why a Slim/Lite Build?
 
-    docs/FreeDOS_Compilation_Guide.md  (markdown)
-    help/freedos_compilation.txt       (plaintext)
+FreeDOS runs in 16-bit real mode, which imposes a strict 640 KB conventional memory limit on all executables. The standard build profile of BASIC++ includes 16 dialects and multiple optional modules (USB, FujiNet, UPnP, etc.), which requires generous allocations (~90 MB) and will instantly crash on real-mode DOS.
 
-  This document is the quick-reference version.
+To run on FreeDOS, we compile:
+1. BASIC++ Standard Slim (BPP_FREEDOS): Excludes the 14 optional dialects and USB/FujiNet/UPnP modules to fit within conventional memory.
+2. BASIC++ Lite (BPP_LITE_BUILD): An ultra-minimal, integer-only version of the interpreter (blite.exe) with a strict 256 KB memory safety floor.
 
-  The FreeDOS build now defaults to Palo Alto Tiny BASIC (PATB).
-  See FreeDOS_Compilation_Guide.md for how to switch to GW-BASIC
-  or any other dialect.
+---
 
+2. Building for FreeDOS
 
-=====================================================================
-  1. WHY A SLIM BUILD?
-=====================================================================
+Prerequisites
+*   OpenWatcom C/C++ compiler (wcc for 16-bit, wcc386 for 32-bit).
+*   wmake or GNU make.
 
-  The full BASIC++ interpreter includes 16 BASIC dialects (Palo Alto
-  Tiny BASIC, TRS-80 Level I/II, GW-BASIC, ECMA-55, ECMA-116,
-  QBasic, Apple Integer, AppleSoft, Atari, Commodore 64, Color
-  Computer, MBASIC, Sinclair, SuperBASIC, and SUPER BASIC) plus
-  three optional modules (USB, FujiNet, UPnP).
+Cross-Compilation Targets (Makefile)
 
-  This full build exceeds 512K of conventional memory on FreeDOS.
+Compile from your development shell using the following targets:
 
-  The FreeDOS "slim build" includes only:
-    - GW-BASIC dialect (GWBS)
-    - ECMA-116 Full BASIC dialect (E116)
-    - STDLIB module only
 
-  This provides the two most capable and compatible BASIC dialects
-  while fitting comfortably within the 512K memory constraint.
+16-bit Real Mode Slim Build (default, compatible with 8086+)
+make watcom
 
-  Windows 11 and Linux builds are unaffected -- they include all
-  16 dialects, all modules, and use much larger memory pools.
+32-bit DOS/4GW Protected Mode Extender Build (requires 386+)
+make watcom386
 
+16-bit Real Mode BASIC++ Lite Build (gated ultra-slim)
+make watcom LITE=1
 
-=====================================================================
-  2. BUILDING FOR FREEDOS
-=====================================================================
 
-  Prerequisites:
-    - OpenWatcom C compiler (wcc for 16-bit, wcc386 for 32-bit)
-    - wmake or GNU make
+All targets generate the binary bpp.exe (or blite.exe for Lite) in the project root directory.
 
-  16-bit build (real mode, large memory model):
+Native FreeDOS Build Scripts
+If compiling directly on a FreeDOS machine, use the native scripts:
+*   build-fd.bat (16-bit default)
+*   build-fd 32 (32-bit DOS/4GW)
+*   build-fd clean (clean build artifacts)
 
-    make watcom
+Direct wmake usage on FreeDOS:
 
-  32-bit build (DOS/4GW protected mode extender):
+cd source
+wmake -f makefd
+wmake -f makefd BITS=32
+wmake -f makefd clean
 
-    make watcom386
 
-  Both produce "bpp.exe" in the project root directory.
+---
 
-  The Makefile automatically defines -dBPP_FREEDOS, which:
-    - Activates the slim memory pools in config.h
-    - Excludes 14 dialect registration functions
-    - Excludes USB, FujiNet, and UPnP module registration
-    - Removes 17 source files from compilation
+3. Memory Budgets & Gating
 
+> [!IMPORTANT]
+> FreeDOS Gating Rule: Under FreeDOS (BPP_FREEDOS), the highly constrained low-memory pools (32 KB program buffer, 16 KB string pool, etc.) are only enabled when compiling the Lite build (BPP_LITE_BUILD via make watcom LITE=1). 
+> 
+> Standard 16-bit (watcom) and 32-bit (watcom386) builds without LITE=1 use the modern default pool sizes (8 MB program, 16 MB string pool) and require conventional memory tuning or a DOS memory extender.
 
-=====================================================================
-  3. MEMORY BUDGET
-=====================================================================
+Memory Pools for FreeDOS Lite (BPP_FREEDOS + BPP_LITE_BUILD)
 
-  The FreeDOS slim build allocates approximately 160 KB:
+When both gates are active, the memory budget fits comfortably inside conventional RAM:
 
-    Pool                  Size       Purpose
-    --------------------  ---------  ---------------------------
-    Program memory        32 KB      Stored program text
-    Variable memory       16 KB      Runtime variable storage
-    Scratch memory        16 KB      Tokenizer/parser workspace
-    String pool           32 KB      String values during RUN
-    Array pool           ~64 KB      DIM array elements
-    --------------------  ---------  ---------------------------
-    Approximate total    ~160 KB     Fits within 512 KB
+| Pool | Size | Purpose |
+|------|------|---------|
+| Program memory | 32 KB | Stored program text |
+| Variable memory | 16 KB | Runtime variable storage |
+| Scratch memory | 16 KB | Tokenizer/parser workspace |
+| String pool | 16 KB | String values during RUN |
+| Array pool | ~32 KB | DIM array elements (2048 x 16B) |
+| Approximate Total | ~128 KB | Safely runs within 256 KB RAM |
 
-  Additional limits:
-    Program lines:        1,024
-    Stack depth:          64
-    Named variables:      128
-    DATA items:           1,024
-    DIM arrays:           32
-    Array elements:       4,096
-    User functions:       32
-    Modules:              8
-    Breakpoints:          16
-    User types:           8
-    Graphics:             160 x 100
+Capacity Limits (FreeDOS Lite)
+*   Maximum program lines: 1,024
+*   Maximum stack depth: 64
+*   Maximum named variables: 128
+*   Maximum DATA items: 1,024
+*   Maximum DIM arrays: 32
+*   Maximum user-defined functions: 32
+*   Maximum breakpoints: 16
+*   Graphics virtual resolution: 80 x 25
 
+---
 
-=====================================================================
-  4. AVAILABLE DIALECTS
-=====================================================================
+4. Dialect Selection & Suitability
 
-  At startup, BASIC++ defaults to GW-BASIC (GWBS).
+Dialect Suitability in FreeDOS Lite
 
-  To switch to ECMA-116 Full BASIC:
+Selecting the correct dialect profile is key to maximizing program capacity under memory constraints:
 
-    DIALECT "E116"
+*   Palo Alto Tiny BASIC (PATB) [Highly Suited]: Extremely lightweight. Instantly boots, has minimal startup allocations, and runs comfortably on any real-mode DOS system.
+*   TRS-80 Level I / II (TRS80) [Highly Suited]: Compact keyword processing and simple syntax rules.
+*   GW-BASIC (GWBS) [Moderate]: The standard dialect for FreeDOS application scripting. Fits comfortably alongside standard library modules.
+*   ECMA-116 (E116) / QBasic (QBAS) [Unsuited]: Not recommended for Lite. They rely heavily on float matrices and structured logic, which are stripped from the Lite compiler gates.
 
-  To switch back to GW-BASIC:
+Default Dialects on FreeDOS Slim
+At startup, the 16-bit/32-bit Slim FreeDOS builds default to GW-BASIC (GWBS) and also include ECMA-116 (E116).
 
-    DIALECT "GWBS"
+Switch dialects at runtime:
 
-  To see available dialects:
+DIALECT "E116"   ' Switch to ECMA-116
+DIALECT "GWBS"   ' Switch to GW-BASIC
 
-    DIALECT
 
-  On the FreeDOS build, this will list only GWBS and E116.
-  On Windows/Linux, it lists all 16 dialects.
+---
 
-  You can also set the dialect at startup:
+5. Footprint Optimization Checklist
 
-    bpp -d E116             (command-line switch)
-    dialect=E116            (in basicpp.cfg)
+To ensure the smallest memory allocation on DOS:
 
+1.  OpenWatcom Size Flags:
+    Compile with -os (optimize for size) and -bt=dos (target DOS).
+2.  Define Static Bounds (config.h):
+    Tighten pools in config.h under the BPP_FREEDOS + BPP_LITE_BUILD gate if fitting on extremely memory-constrained systems (e.g. 256 KB).
+3.  Dialect Pruning:
+    Only compile Palo Alto Tiny BASIC or GW-BASIC. Exclude other dialect files to let the linker strip unused dialect routines.
+4.  Watcom Linker Optimization Directives:
+    Include option eliminate in the OpenWatcom Linker (wlink) call. This enables linker dead-code elimination:
 
-=====================================================================
-  5. HOW TO CHANGE THE DEFAULT DIALECT
-=====================================================================
+    option quiet
+    option eliminate
 
-  The compile-time default dialect is set in config.h:
 
-    #define BASICPP_DEFAULT_DIALECT DIALECT_GW_BASIC
+---
 
-  To change this to ECMA-116 as the default:
+6. How to Customize Dialects & Modules
 
-    #define BASICPP_DEFAULT_DIALECT DIALECT_ECMA116
+If compiling a custom build (especially for 32-bit watcom386 with extended memory), you can restore dialects or modules:
 
-  On FreeDOS, only DIALECT_GW_BASIC and DIALECT_ECMA116 are valid
-  choices (other dialects are not compiled in).
+Adding a Dialect (e.g. QBasic)
 
+1.  dialect.h: Remove the #ifndef BPP_FREEDOS guard around the declaration:
 
-=====================================================================
-  6. HOW TO CUSTOMIZE MEMORY POOLS
-=====================================================================
+    void dialect_register_qbasic(void);
 
-  All memory pool sizes are in config.h under the BPP_FREEDOS
-  section.  You can adjust them for your specific hardware:
+2.  dialect.c: Remove the #ifndef BPP_FREEDOS guard around the registration call:
 
-  If you have more conventional memory available (e.g., UMBs loaded,
-  or a 32-bit DOS/4GW build with extended memory):
+    dialect_register_qbasic();
 
-    #define PROGRAM_MEMORY_SIZE   65536L    / 64 KB /
-    #define MAX_PROGRAM_LINES     2048
-    #define MAX_STRING_POOL       65536L    / 64 KB /
-    #define MAX_ARRAY_ELEMENTS    8192
+3.  Makefile: Add dialect_qbasic.obj to WATCOM_OBJS and add the compile directive:
 
-  If you are extremely memory-constrained (256K system):
+    $(WCC) $(WCFLAGS) -fo=dialect_qbasic.obj dialect/dialect_qbasic.c
 
-    #define PROGRAM_MEMORY_SIZE   16384L    / 16 KB /
-    #define MAX_PROGRAM_LINES     512
-    #define MAX_STRING_POOL       16384L    / 16 KB /
-    #define MAX_ARRAY_ELEMENTS    2048
 
-  After editing config.h, rebuild:
+Restoring Optional Modules
+Follow the same procedure:
+1.  Remove the #ifndef BPP_FREEDOS guard around the module registration in source/core/boot.c.
+2.  Add the module .obj file to WATCOM_OBJS in the Makefile.
+3.  Rebuild with make watcom / make watcom386.
 
-    make clean
-    make watcom
+---
 
+7. Differences from Windows/Linux
 
-=====================================================================
-  7. HOW TO ADD A DIALECT BACK
-=====================================================================
+| Feature | FreeDOS Lite | FreeDOS Slim | Windows/Linux |
+|---|---|---|---|
+| Dialects | 2 (PATB, TRS80) | 2 (GWBS, E116) | 16 (all) |
+| Optional Modules | 0 | 0 | 3 (USB, FujiNet, UPnP) |
+| Program Memory | 32 KB | 8 MB (default) | 8 MB |
+| String Pool | 16 KB | 16 MB (default) | 16 MB |
+| Max Program Lines | 1,024 | 65,536 | 65,536 |
+| Max Stack Depth | 64 | 1,024 | 1,024 |
 
-  If you have enough memory (especially with the 32-bit DOS/4GW
-  build), you can restore individual dialects:
+---
 
-  Example: Adding QBasic (QBAS) to the FreeDOS build:
+8. Troubleshooting
 
-  Step 1 - config.h (no changes needed if pools are large enough)
+"SORRY. Cannot allocate memory."
+The interpreter cannot allocate enough conventional memory at startup.
+*   If running the Standard Slim build, switch to the Lite build (blite.exe).
+*   Free up conventional memory on FreeDOS by unloading unused drivers or TSRs.
+*   Tighten pool sizes in config.h and rebuild.
 
-  Step 2 - dialect.h:
-    Remove the #ifndef BPP_FREEDOS guard around:
-      void dialect_register_qbasic(void);
-
-  Step 3 - dialect.c:
-    Remove the #ifndef BPP_FREEDOS guard around:
-      dialect_register_qbasic();
-
-  Step 4 - Makefile (watcom or watcom386 target):
-    Add to WATCOM_OBJS:
-      dialect_qbasic.obj
-    Add compile line:
-      $(WCC) $(WCFLAGS) -fo=dialect_qbasic.obj dialect/dialect_qbasic.c
-
-  Step 5 - Rebuild:
-    make clean
-    make watcom
-
-  Step 6 - Verify it still fits:
-    Run bpp.exe on FreeDOS.  If you get "SORRY. Cannot allocate
-    memory." at startup, you've exceeded available RAM.  Either
-    reduce pool sizes in config.h or remove the dialect.
-
-
-=====================================================================
-  8. OPTIONAL MODULES
-=====================================================================
-
-  The FreeDOS build excludes three optional modules:
-
-    mod_usb      - USB device support (requires USB hardware)
-    mod_fujinet  - FujiNet network adapter (Atari-era hardware)
-    mod_upnp     - UPnP/SSDP network discovery
-
-  These are excluded because:
-    1. They add significant code size
-    2. FreeDOS systems rarely have the hardware they support
-    3. They are not needed for GW-BASIC/ECMA-116 programs
-
-  To restore a module, follow the same procedure as adding a
-  dialect:
-    1. Remove its #ifndef BPP_FREEDOS guard in main.c
-    2. Add its .obj to WATCOM_OBJS in the Makefile
-    3. Add its compile line to the watcom target
-    4. Rebuild and verify memory usage
-
-
-=====================================================================
-  9. 16-BIT vs 32-BIT BUILD
-=====================================================================
-
-  16-bit build (make watcom):
-    - Runs in real mode with 640K conventional memory limit
-    - Broadest hardware compatibility (8086 and up)
-    - Recommended for old/original hardware
-
-  32-bit build (make watcom386):
-    - Runs with DOS/4GW protected mode extender
-    - Access to extended memory beyond 640K
-    - Requires 386 or better CPU
-    - You can increase pool sizes in config.h since the
-      DOS/4GW extender has more memory available
-
-
-=====================================================================
-  10. DIFFERENCES FROM WINDOWS/LINUX BUILD
-=====================================================================
-
-  Feature              FreeDOS          Windows/Linux
-  -------------------  ---------------  -----------------
-  Dialects             2 (GWBS, E116)   16 (all)
-  Optional modules     0                3 (USB, FujiNet, UPnP)
-  Program memory       32 KB            8 MB
-  String pool          32 KB            16 MB
-  Program lines        1,024            65,536
-  Array elements       4,096            4,194,304
-  Stack depth          64               1,024
-  Named variables      128              4,096
-  Graphics resolution  160 x 100        320 x 200
-
-  All BASIC language features (statements, functions, operators)
-  are identical.  The only difference is which dialects are
-  registered and how much memory is available for programs.
-
-
-=====================================================================
-  11. TROUBLESHOOTING
-=====================================================================
-
-  "SORRY. Cannot allocate memory."
-    The interpreter cannot malloc() enough memory at startup.
-    Reduce pool sizes in config.h or free conventional memory
-    by unloading TSRs and device drivers.
-
-  "Unknown dialect"
-    You tried to switch to a dialect that isn't compiled in.
-    On FreeDOS, only GWBS and E116 are available.
-
-  Program runs out of string space
-    The 32 KB string pool is exhausted.  Use shorter strings,
-    or increase MAX_STRING_POOL in config.h and rebuild.
-
-  Program runs out of array space
-    The 4,096 element limit is hit.  Use smaller arrays or
-    increase MAX_ARRAY_ELEMENTS in config.h and rebuild.
-
-
-=====================================================================
-  END OF DOCUMENT
-=====================================================================
+"Unknown dialect"
+You attempted to load a dialect not compiled into the DOS binary. Check your active build configuration.

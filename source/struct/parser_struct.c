@@ -70,7 +70,8 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  int is_str;
  long sel_num;
  int found = 0;
- int pline, idx, depth;
+ int pline;
+ int idx, depth;
  ProgramStore *pgm = rt->program;
 
  sel_val = parse_expression_bval(
@@ -87,12 +88,12 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  Lexer cl;
  const char *cline =
  pgm->lines[idx].text;
- pline = pgm->lines[idx].line_number;
+ pline = (int)pgm->lines[idx].line_number;
  lexer_init(&cl, cline);
  lexer_next(&cl);
 
  // Skip line number
- if (cl.current.type == TOK_NUMBER)
+ if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
 
  if (cl.current.type == TOK_KEYWORD) {
@@ -289,6 +290,7 @@ void pi_parse_select(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_case - Handle CASE command.
 void pi_parse_case(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
  // CASE inside executed SELECT block.
  // We've finished the matched block.
  // Skip to END SELECT.
@@ -302,7 +304,7 @@ void pi_parse_case(Lexer *lex, RuntimeState *rt, int line_num)
  pgm->lines[idx].text;
  lexer_init(&cl, cline);
  lexer_next(&cl);
- if (cl.current.type == TOK_NUMBER)
+ if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  if (cl.current.type == TOK_KEYWORD) {
  KeywordId kk =
@@ -355,7 +357,7 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_init(&cl, cl2);
  lexer_next(&cl);
  if (cl.current.type ==
- TOK_NUMBER)
+ TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  if (cl.current.type ==
  TOK_KEYWORD &&
@@ -388,7 +390,7 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_init(&cl, cl2);
  lexer_next(&cl);
  if (cl.current.type ==
- TOK_NUMBER)
+ TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  if (cl.current.type ==
  TOK_KEYWORD &&
@@ -474,7 +476,7 @@ void pi_parse_exit(Lexer *lex, RuntimeState *rt, int line_num)
       const char *cl2 = pgm->lines[idx].text;
       lexer_init(&cl, cl2);
       lexer_next(&cl);
-      if (cl.current.type == TOK_NUMBER)
+      if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
        lexer_next(&cl);
       if (cl.current.type == TOK_KEYWORD) {
        KeywordId ek = cl.current.value.keyword;
@@ -840,7 +842,7 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_init(&cl,
  pgm->lines[idx].text);
  // Skip line number
- if (cl.current.type == TOK_NUMBER)
+ if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  // Check for END
  if (cl.current.type ==
@@ -1135,7 +1137,7 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_init(&cl,
  pgm->lines[idx].text);
  // Skip line number
- if (cl.current.type == TOK_NUMBER)
+ if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT)
  lexer_next(&cl);
  // Check for END
  if (cl.current.type ==
@@ -1163,98 +1165,128 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_declare - Handle DECLARE command.
 void pi_parse_declare(Lexer *lex, RuntimeState *rt, int line_num)
 {
- // DECLARE [EXTERNAL] SUB name [(params)]
- // DECLARE [EXTERNAL] FUNCTION name [(params)]
- //
- // ECMA-116 / QBasic: Forward declaration.
- // Pre-registers the SUB/FUNCTION name in the
- // subs table with body_index = -1.
- // The actual definition fills in body_index.
- {
- int is_func;
- const char *nm;
- int nlen;
- char namebuf[MAX_VAR_NAME_LEN + 1];
- SubDef *sd;
+    // DECLARE [EXTERNAL] SUB name [(params)] [FROM "file"]
+    // DECLARE [EXTERNAL] FUNCTION name [(params)] [FROM "file"]
+    {
+        int is_func = 0;
+        int is_ext = 0;
+        const char *nm = NULL;
+        int nlen = 0;
+        char namebuf[MAX_VAR_NAME_LEN + 1];
+        SubDef *sd;
+        char ext_file[260] = {0};
 
- // Consume optional EXTERNAL
- if (lex->current.type == TOK_NAMED_VAR &&
- lex->current.str_length >= 3 &&
- lex->current.str_start != NULL &&
- (lex->current.str_start[0] == 'E' ||
- lex->current.str_start[0] == 'e')) {
- lexer_next(lex); // EXTERNAL
- }
+        // Consume optional EXTERNAL
+        if (lex->current.type == TOK_NAMED_VAR &&
+            lex->current.str_length >= 3 &&
+            lex->current.str_start != NULL &&
+            (lex->current.str_start[0] == 'E' ||
+             lex->current.str_start[0] == 'e')) {
+            lexer_next(lex); // EXTERNAL
+            is_ext = 1;
+        }
 
- // Expect SUB or FUNCTION
- if (lex->current.type != TOK_KEYWORD) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- if (lex->current.value.keyword == KW_SUB) {
- is_func = 0;
- } else if (lex->current.value.keyword ==
- KW_FUNCTION) {
- is_func = 1;
- } else {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- lexer_next(lex); // consume SUB/FUNCTION
+        // Expect SUB or FUNCTION
+        if (lex->current.type != TOK_KEYWORD) {
+            error_raise(ERR_WHAT, line_num);
+            return;
+        }
+        if (lex->current.value.keyword == KW_SUB) {
+            is_func = 0;
+        } else if (lex->current.value.keyword == KW_FUNCTION) {
+            is_func = 1;
+        } else {
+            error_raise(ERR_WHAT, line_num);
+            return;
+        }
+        lexer_next(lex); // consume SUB/FUNCTION
 
- // Parse name
- if (lex->current.type != TOK_NAMED_VAR &&
- lex->current.type != TOK_VARIABLE) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- nm = lex->current.str_start;
- nlen = lex->current.str_length;
- if (lex->current.type == TOK_VARIABLE) {
- namebuf[0] = lex->current.value
- .var_name;
- namebuf[1] = '\0';
- nm = namebuf;
- nlen = 1;
- }
+        // Parse name
+        if (lex->current.type != TOK_NAMED_VAR &&
+            lex->current.type != TOK_VARIABLE) {
+            error_raise(ERR_WHAT, line_num);
+            return;
+        }
+        nm = lex->current.str_start;
+        nlen = lex->current.str_length;
+        if (lex->current.type == TOK_VARIABLE) {
+            namebuf[0] = lex->current.value.var_name;
+            namebuf[1] = '\0';
+            nm = namebuf;
+            nlen = 1;
+        }
+        lexer_next(lex); // consume name
 
- // Skip if already declared
- if (runtime_find_sub(rt, nm, nlen)
- != NULL) {
- lexer_skip_to_end(lex);
- return;
- }
+        // Skip parameters if present
+        if (lex->current.type == TOK_LPAREN) {
+            int paren_depth = 1;
+            lexer_next(lex);
+            while (lex->current.type != TOK_EOF && paren_depth > 0) {
+                if (lex->current.type == TOK_LPAREN) paren_depth++;
+                else if (lex->current.type == TOK_RPAREN) paren_depth--;
+                lexer_next(lex);
+            }
+        }
 
- // Pre-register in subs table
- if (rt->sub_count >= MAX_SUBS) {
- error_raise(ERR_SORRY, line_num);
- return;
- }
- sd = &rt->subs[rt->sub_count];
- {
- int ci = nlen;
- int j;
- if (ci > MAX_VAR_NAME_LEN)
- ci = MAX_VAR_NAME_LEN;
- memcpy(sd->name, nm, (size_t)ci);
- sd->name[ci] = '\0';
- for (j = 0; j < ci; j++) {
- if (sd->name[j] >= 'a' &&
- sd->name[j] <= 'z')
- sd->name[j] =
- (char)(sd->name[j] - 32);
- }
- sd->name_len = ci;
- }
- sd->is_function = is_func;
- sd->param_count = 0;
- sd->body_index = -1;
- rt->sub_count++;
+        // Parse FROM / IN clause if external
+        if (is_ext) {
+            if (lex->current.type == TOK_NAMED_VAR &&
+                lex->current.str_length >= 2 &&
+                lex->current.str_start != NULL &&
+                ((lex->current.str_start[0] == 'F' || lex->current.str_start[0] == 'f') ||
+                 (lex->current.str_start[0] == 'I' || lex->current.str_start[0] == 'i'))) {
+                lexer_next(lex); // consume FROM / IN
+                if (lex->current.type == TOK_STRING) {
+                    int flen = lex->current.str_length;
+                    if (flen > 259) flen = 259;
+                    memcpy(ext_file, lex->current.str_start, (size_t)flen);
+                    ext_file[flen] = '\0';
+                    lexer_next(lex);
+                } else {
+                    error_raise(ERR_WHAT, line_num);
+                    return;
+                }
+            } else {
+                error_raise(ERR_WHAT, line_num);
+                return;
+            }
+        }
 
- // Skip rest of line (param list etc)
- lexer_skip_to_end(lex);
- }
- return;
+        // Register / Update in subs table
+        sd = runtime_find_sub(rt, nm, nlen);
+        if (sd == NULL) {
+            if (rt->sub_count >= MAX_SUBS) {
+                error_raise(ERR_SORRY, line_num);
+                return;
+            }
+            sd = &rt->subs[rt->sub_count++];
+            {
+                int ci = nlen;
+                int j;
+                if (ci > MAX_VAR_NAME_LEN) ci = MAX_VAR_NAME_LEN;
+                memcpy(sd->name, nm, (size_t)ci);
+                sd->name[ci] = '\0';
+                for (j = 0; j < ci; j++) {
+                    if (sd->name[j] >= 'a' && sd->name[j] <= 'z') {
+                        sd->name[j] = (char)(sd->name[j] - 32);
+                    }
+                }
+                sd->name_len = ci;
+            }
+        }
+        sd->is_function = is_func;
+        sd->param_count = 0;
+        sd->body_index = -1;
+        sd->is_external = is_ext;
+        if (is_ext) {
+            strncpy(sd->external_file, ext_file, sizeof(sd->external_file) - 1);
+            sd->external_file[sizeof(sd->external_file) - 1] = '\0';
+        } else {
+            sd->external_file[0] = '\0';
+        }
+
+        lexer_skip_to_end(lex);
+    }
 }
 
  // pi_parse_call - Handle CALL command.
@@ -1294,7 +1326,13 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  }
 
  sd = runtime_find_sub(rt, nm, nlen);
- if (sd == NULL) {
+ if (sd != NULL && sd->is_external && sd->body_index == -1) {
+      if (runtime_load_external_sub(rt, sd) != 0) {
+          error_raise(ERR_HOW, line_num);
+          return;
+      }
+  }
+  if (sd == NULL) {
       extern int lib_space_try_call(const char *name, int name_len,
                                     BValue *args, int argc,
                                     BValue *result, void *rt);
@@ -1364,8 +1402,8 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  {
  int smode = SCOPE_FULL;
  // QBasic dialect uses fresh scope
- if (dialect_get_config()->id ==
-  DIALECT_QBASIC)
+ if (3 ==
+  3)
   smode = SCOPE_FRESH;
  scope_stack_push(&rt->scope_stack, rt,
   smode, (int)(sd - rt->subs),
@@ -1529,6 +1567,8 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_procedure - Handle PROCEDURE command.
 void pi_parse_procedure(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)rt;
   // PROCedure - only valid after DEFine.
   // If encountered standalone, that's an error.
  error_raise(ERR_WHAT, line_num);
@@ -1559,9 +1599,9 @@ void pi_parse_define(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_enddefine - Handle ENDDEFINE command.
 void pi_parse_enddefine(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
  // Acts like END SUB / END FUNCTION return
  StackFrame frame;
- int i;
  if (runtime_pop(rt, FRAME_SUB, &frame) != 0) {
   error_raise(ERR_HOW, line_num);
   return;

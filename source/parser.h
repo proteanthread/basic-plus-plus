@@ -90,7 +90,7 @@
  // The lexer should already be initialized on the line text.
  // For stored program lines, the caller should advance past the
  // line number token before calling this function.
-void parser_execute_line(Lexer *lex, RuntimeState *rt, int line_num);
+void parser_execute_line(Lexer *lex, RuntimeState *rt, double line_num);
 
  // parse_expression - Parse and evaluate an integer expression.
  //

@@ -168,6 +168,16 @@ static void parse_line(ConfigFile *cfg, const char *key,
         } else {
             cfg->quiet = 0;
         }
+    } else if (ci_equal(key, "implicitshellfallback")) {
+        if (ci_equal(value, "on") || ci_equal(value, "yes") ||
+            ci_equal(value, "1") || ci_equal(value, "true")) {
+            cfg->implicit_shell_fallback = 1;
+        } else {
+            cfg->implicit_shell_fallback = 0;
+        }
+    } else if (ci_equal(key, "profile")) {
+        strncpy(cfg->profile_script, value, sizeof(cfg->profile_script) - 1);
+        cfg->profile_script[sizeof(cfg->profile_script) - 1] = '\0';
     } else if (strlen(key) > 8 && (strncmp(key, "keyword.", 8) == 0 || strncmp(key, "KEYWORD.", 8) == 0)) {
         if (ci_equal(key + 8, "case")) {
             if (ci_equal(value, "upper")) lexer_set_keyword_case(KWCASE_UPPER);
@@ -252,6 +262,7 @@ static FILE *try_open(const char *dir, const char *filename,
     return f;
 }
 
+#if 0
  // config_file_create_default - Creates a default, heavily-commented config file.
 static void config_file_create_default(const char *filename)
 {
@@ -283,14 +294,14 @@ static void config_file_create_default(const char *filename)
     fprintf(f, ";   GWBS   - Microsoft GW-BASIC\n");
     fprintf(f, ";   QBAS   - Microsoft QBasic\n");
     fprintf(f, ";   E116   - ECMA-116 Standard BASIC\n");
-    fprintf(f, ";   SUPA   - Sinclair QL SuperBASIC\n");
-    fprintf(f, ";   SBAS   - Tymshare SUPER BASIC\n");
+    fprintf(f, ";   SQLB   - Sinclair QL SuperBASIC\n");
+    fprintf(f, ";   SUPB   - Tymshare SUPER BASIC\n");
     fprintf(f, ";   (and many more like TRS1, TRS2, C64B, etc.)\n");
     fprintf(f, ";\n");
     if (is_freedos) {
         fprintf(f, "dialect = GWBS,QBAS\n\n");
     } else {
-        fprintf(f, "dialect = GWBS,SBAS,E116\n\n");
+        fprintf(f, "dialect = GWBS,SUPB,E116\n\n");
     }
 
     fprintf(f, "; --------------------------------------------------------------\n");
@@ -301,7 +312,7 @@ static void config_file_create_default(const char *filename)
     fprintf(f, ";   STANDARD   - Restricts shell access and limits file I/O to safe dirs\n");
     fprintf(f, ";   RESTRICTED - Completely disables file I/O, SHELL, and networking\n");
     fprintf(f, ";\n");
-    fprintf(f, "security = STANDARD\n\n");
+    fprintf(f, "security = OPEN\n\n");
 
     fprintf(f, "; --------------------------------------------------------------\n");
     fprintf(f, "; STRICT\n");
@@ -336,13 +347,13 @@ static void config_file_create_default(const char *filename)
     
     fclose(f);
 }
+#endif
 
  // config_file_load - Load configuration from the INI file.
 int config_file_load(ConfigFile *cfg, const char *exe_path)
 {
     FILE *f = NULL;
     char line[CFG_MAX_LINE];
-    char home_path[512];
     const char *filename;
     const char *home;
 
@@ -354,6 +365,8 @@ int config_file_load(ConfigFile *cfg, const char *exe_path)
     cfg->quiet = -1;
     cfg->found = 0;
     cfg->filepath[0] = '\0';
+    cfg->implicit_shell_fallback = -1;
+    cfg->profile_script[0] = '\0';
 
     filename = config_file_get_name(exe_path);
 
@@ -374,13 +387,9 @@ int config_file_load(ConfigFile *cfg, const char *exe_path)
     }
 
     if (f == NULL) {
-        // Auto-create in the current directory
-        config_file_create_default(filename);
-        f = try_open("", filename, cfg->filepath, 256);
-        if (f == NULL) {
-            cfg->filepath[0] = '\0';
-            return -1; // Still no config file found
-        }
+        cfg->filepath[0] = '\0';
+        cfg->found = 0;
+        return 0; // Optional, so missing file is not an error
     }
 
     cfg->found = 1;
@@ -433,6 +442,8 @@ int config_file_load_path(ConfigFile *cfg, const char *path)
     cfg->quiet = -1;
     cfg->found = 0;
     cfg->filepath[0] = '\0';
+    cfg->implicit_shell_fallback = -1;
+    cfg->profile_script[0] = '\0';
 
     if (path == NULL || path[0] == '\0') {
         return -1;

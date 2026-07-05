@@ -41,10 +41,18 @@
  // ---
 
 #include "parser_internal.h"
+#include "task.h"
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
+#endif
 
  // pi_parse_vdev - Handle VDEV command.
 void pi_parse_vdev(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)rt;
+    (void)line_num;
   // VDEV - List all registered virtual devices.
   //
   // Shows slot ID, name, class, capability flags,
@@ -57,6 +65,8 @@ void pi_parse_vdev(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_vmem - Handle VMEM command.
 void pi_parse_vmem(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)line_num;
  {
   // VMEM - Virtual memory status.
   //
@@ -103,9 +113,198 @@ void pi_parse_vmem(Lexer *lex, RuntimeState *rt, int line_num)
  }
 }
 
+void pi_parse_bank(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    // Get current token word and length dynamically
+    const char *word = NULL;
+    int word_len = 0;
+    if (lex->current.type == TOK_NAMED_VAR) {
+        word = lex->current.str_start;
+        word_len = lex->current.str_length;
+    } else if (lex->current.type == TOK_KEYWORD) {
+        word = lexer_keyword_name(lex->current.value.keyword);
+        if (word != NULL) word_len = (int)strlen(word);
+    }
+
+    // BANK LIST
+    if (word != NULL && word_len == 4 && strncasecmp(word, "LIST", 4) == 0) {
+        lexer_next(lex); // consume LIST
+        printf("=== RAMBANK LIST ===\n\n");
+        printf(" Bank  Status    Access   State\n");
+        printf(" ----  ------    ------   -----\n");
+        MemorySystem *main_mem = task_get_main_mem();
+        MemorySystem *target_mem = rt->memory;
+        if (main_mem == NULL) main_mem = target_mem;
+        
+        int count = 0;
+        for (int i = 1; i < MAX_RAMBANKS; i++) {
+            RamBank *b = &main_mem->banks[i];
+            char path[260];
+            sprintf(path, "bank_swap_%d.tmp", i);
+            FILE *f = fopen(path, "rb");
+            int has_swap = (f != NULL);
+            if (f != NULL) fclose(f);
+            
+            if (b->base != NULL || b->resident || b->shared || has_swap) {
+                const char *status = "FREE";
+                if (b->resident) status = "\x1b[32mRESIDENT\x1b[0m";
+                else if (has_swap) status = "\x1b[33mSWAPPED\x1b[0m";
+                
+                const char *access = b->shared ? "\x1b[36mSHARED\x1b[0m" : "PRIVATE";
+                const char *state = b->dirty ? "\x1b[31mDIRTY\x1b[0m" : "CLEAN";
+                
+                printf("  %3d  %-16s %-16s %-16s\n", i, status, access, state);
+                count++;
+            }
+        }
+        printf("\nTotal Active RAMBANKs: %d\n", count);
+        return;
+    }
+
+    // BANK COPY
+    if (word != NULL && word_len == 4 && strncasecmp(word, "COPY", 4) == 0) {
+        lexer_next(lex); // consume COPY
+        int src_bank = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        if (!lexer_expect(lex, TOK_COMMA)) return;
+        long src_offset = parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        if (!lexer_expect(lex, TOK_COMMA)) return;
+        
+        // Optionally allow "TO" keyword
+        if (lex->current.type == TOK_NAMED_VAR && 
+            lex->current.str_length == 2 && 
+            strncasecmp(lex->current.str_start, "TO", 2) == 0) {
+            lexer_next(lex); // consume TO
+        } else if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_TO) {
+            lexer_next(lex); // consume TO keyword
+        }
+        int dst_bank = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        if (!lexer_expect(lex, TOK_COMMA)) return;
+        long dst_offset = parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        if (!lexer_expect(lex, TOK_COMMA)) return;
+        long length = parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        
+        rambank_copy(rt->memory, src_bank, src_offset, dst_bank, dst_offset, length, line_num);
+        return;
+    }
+
+    // BANK FILL
+    if (word != NULL && word_len == 4 && strncasecmp(word, "FILL", 4) == 0) {
+        lexer_next(lex); // consume FILL
+        int bank_id = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        if (!lexer_expect(lex, TOK_COMMA)) return;
+        long offset = parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        if (!lexer_expect(lex, TOK_COMMA)) return;
+        long length = parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        if (!lexer_expect(lex, TOK_COMMA)) return;
+        int value = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        
+        rambank_fill(rt->memory, bank_id, offset, length, (unsigned char)value, line_num);
+        return;
+    }
+
+    // BANK bank_id
+    int bank_id = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+
+    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+
+    const char *mod = NULL;
+    int mod_len = 0;
+    if (lex->current.type == TOK_NAMED_VAR) {
+        mod = lex->current.str_start;
+        mod_len = lex->current.str_length;
+    } else if (lex->current.type == TOK_KEYWORD) {
+        mod = lexer_keyword_name(lex->current.value.keyword);
+        if (mod != NULL) mod_len = (int)strlen(mod);
+    }
+
+    if (mod != NULL) {
+        if (mod_len == 6 && strncasecmp(mod, "SHARED", 6) == 0) {
+            lexer_next(lex); // consume SHARED
+            MemorySystem *main_mem = task_get_main_mem();
+            if (main_mem != NULL) {
+                main_mem->banks[bank_id].shared = 1;
+            }
+            rt->memory->banks[bank_id].shared = 1;
+            return;
+        }
+        if (mod_len == 7 && strncasecmp(mod, "PRIVATE", 7) == 0) {
+            lexer_next(lex); // consume PRIVATE
+            MemorySystem *main_mem = task_get_main_mem();
+            if (main_mem != NULL) {
+                main_mem->banks[bank_id].shared = 0;
+            }
+            rt->memory->banks[bank_id].shared = 0;
+            return;
+        }
+        if (mod_len == 5 && strncasecmp(mod, "CLEAR", 5) == 0) {
+            lexer_next(lex); // consume CLEAR
+            MemorySystem *main_mem = task_get_main_mem();
+            int is_shared = (main_mem != NULL && main_mem->banks[bank_id].shared);
+            MemorySystem *target_mem = rt->memory;
+            if (is_shared && main_mem != NULL) {
+                target_mem = main_mem;
+            }
+            if (is_shared) {
+                task_mutex_lock();
+            }
+            rambank_ensure_resident(target_mem, bank_id);
+            RamBank *b = &target_mem->banks[bank_id];
+            if (b->base != NULL) {
+                memset(b->base, 0, RAMBANK_SIZE);
+                b->dirty = 1;
+            }
+            if (is_shared) {
+                task_mutex_unlock();
+            }
+            return;
+        }
+        if (mod_len == 6 && strncasecmp(mod, "STATUS", 6) == 0) {
+            lexer_next(lex); // consume STATUS
+            MemorySystem *main_mem = task_get_main_mem();
+            if (main_mem == NULL) main_mem = rt->memory;
+            RamBank *b = &main_mem->banks[bank_id];
+            
+            char path[260];
+            sprintf(path, "bank_swap_%d.tmp", bank_id);
+            FILE *f = fopen(path, "rb");
+            int has_swap = (f != NULL);
+            if (f != NULL) fclose(f);
+            
+            printf("Bank ID:      %d\n", bank_id);
+            printf("Status:       %s\n", b->resident ? "RESIDENT" : (has_swap ? "SWAPPED" : "FREE"));
+            printf("Sharing:      %s\n", b->shared ? "SHARED" : "PRIVATE");
+            printf("State:        %s\n", b->dirty ? "DIRTY" : "CLEAN");
+            printf("Last Access:  %ld\n", b->last_access);
+            return;
+        }
+    }
+
+    // Default BANK n: Switch current task's active_bank_id
+    BasicTask *curr = task_get_current();
+    if (curr != NULL) {
+        curr->active_bank_id = bank_id;
+    }
+}
+
  // pi_parse_vnet - Handle VNET command.
 void pi_parse_vnet(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)rt;
+    (void)line_num;
  {
   // VNET - Virtual network status.
   //
@@ -202,6 +401,9 @@ void pi_parse_vnet(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_vcon - Handle VCON command.
 void pi_parse_vcon(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)rt;
+    (void)line_num;
  {
   // VCON - Virtual console information.
   //
@@ -248,6 +450,8 @@ void pi_parse_vcon(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_vterm - Handle VTERM command.
 void pi_parse_vterm(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)line_num;
  {
   // VTERM - Virtual terminal information.
   //
@@ -256,7 +460,7 @@ void pi_parse_vterm(Lexer *lex, RuntimeState *rt, int line_num)
   // specific terminal behavior.
  printf("=== VIRTUAL TERMINAL ===\n\n");
  printf(" Dialect: %s\n",
-     dialect_get_name());
+     "BASIC++");
  printf(" Encoding: ASCII (7-bit)\n");
  printf(" Columns: %d\n",
      rt->screen_width > 0 ?
@@ -282,6 +486,8 @@ void pi_parse_vterm(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_vmach - Handle VMACH command.
 void pi_parse_vmach(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)line_num;
  {
   // VMACH - Virtual machine state.
   //
@@ -334,7 +540,7 @@ void pi_parse_vmach(Lexer *lex, RuntimeState *rt, int line_num)
      security_get_level() == 0 ?
          "UNRESTRICTED" : "RESTRICTED");
  printf(" Dialect: %s\n",
-     dialect_get_name());
+     "BASIC++");
  printf(" Trace: %s\n",
      rt->trace_on ? "ON (TRON)" : "OFF (TROFF)");
  return;
@@ -344,6 +550,7 @@ void pi_parse_vmach(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_devmap - Handle DEVMAP command.
 void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
  {
    // DEVMAP - Device slot mapping.
    //
@@ -374,17 +581,7 @@ void pi_parse_devmap(Lexer *lex, RuntimeState *rt, int line_num)
     return;
    }
 
-   // DEVMAP ALIAS DIALECT - reload from current dialect
-   if (lex->current.type == TOK_KEYWORD &&
-       lex->current.value.keyword == KW_DIALECT) {
-    int n;
-    lexer_next(lex);
-    n = device_alias_load_dialect(
-        dialect_get_config()->id);
-    printf("Loaded %d aliases for %s.\n",
-           n, dialect_get_name());
-    return;
-   }
+   
 
    // DEVMAP ALIAS "src" "tgt" - manual alias creation
    if (lex->current.type == TOK_STRING) {

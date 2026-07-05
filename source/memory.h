@@ -92,8 +92,8 @@ typedef struct MemoryPool {
  // text - the full line text including the line number prefix.
  // Null-terminated, max MAX_LINE_LENGTH characters.
 typedef struct ProgramLine {
- int line_number;
- char text[MAX_LINE_LENGTH + 1];
+ double line_number;
+ char *text;
 } ProgramLine;
 
 // --- ProgramStore - Indexed collection of program lines. ---
@@ -109,7 +109,22 @@ typedef struct ProgramStore {
  ProgramLine *lines;
  int count;
  int capacity;
+ char *bulk_buffer;
+ size_t bulk_size;
 } ProgramStore;
+
+#define RAMBANK_SIZE 1048576  // 1MB
+#define MAX_RAMBANKS 255      // 1 to 254 are valid banks
+#define MAX_RESIDENT_BANKS 8  // Resident limit for physical RAM paging simulation
+
+typedef struct RamBank {
+    char *base;          // Pointer to 1MB bank buffer if resident (otherwise NULL)
+    int id;              // Bank ID (1-254)
+    int resident;        // Is the bank loaded in resident memory?
+    int dirty;           // Has it been modified since loaded?
+    int shared;          // Is the bank shared/accessible across tasks?
+    long last_access;    // Counter for LRU paging eviction
+} RamBank;
 
 // --- MemorySystem - Top-level container for all memory pools. ---
  // Owns the variable pool and scratch pool. The program store is
@@ -118,7 +133,11 @@ typedef struct ProgramStore {
 typedef struct MemorySystem {
  MemoryPool variable;
  MemoryPool scratch;
+ MemoryPool graphics;
  ProgramStore program;
+ // Segmented Virtual Memory RAMBANKs
+ RamBank banks[MAX_RAMBANKS];
+ long access_counter;    // Incrementing counter for LRU
 } MemorySystem;
 
 // --- Pool Management Functions ---
@@ -163,6 +182,8 @@ long mem_pool_available(MemoryPool *pool);
 
 // --- Program Store Functions ---
 
+double program_parse_line_number(const char *input, int *end_pos, int *is_non_decimal);
+
  // program_insert - Insert or replace a program line.
  //
  // If a line with the given number already exists, it is replaced.
@@ -170,26 +191,30 @@ long mem_pool_available(MemoryPool *pool);
  // parameter is the complete line as entered (including line number).
  //
  // Returns 0 on success, -1 if the program store is full (ERR_SORRY).
-int program_insert(ProgramStore *store, int line_number,
+int program_insert(ProgramStore *store, double line_number,
  const char *full_text);
+
+ // program_insert_pointer - Insert or replace a program line using a pre-allocated pointer.
+int program_insert_pointer(ProgramStore *store, double line_number,
+ char *text_ptr);
 
  // program_delete - Delete a program line by number.
  //
  // Removes the line with the given number, shifting subsequent lines
  // down. Returns 0 on success, -1 if the line was not found.
-int program_delete(ProgramStore *store, int line_number);
+int program_delete(ProgramStore *store, double line_number);
 
  // program_find - Find a line by exact line number.
  //
  // Returns the index into the lines array, or -1 if not found.
  // Uses binary search for efficiency.
-int program_find(ProgramStore *store, int line_number);
+int program_find(ProgramStore *store, double line_number);
 
  // program_find_next - Find the first line with number >= target.
  //
  // Used by GOTO to find the target line. Returns the index, or -1
  // if no line has a number >= target. Uses binary search.
-int program_find_next(ProgramStore *store, int line_number);
+int program_find_next(ProgramStore *store, double line_number);
 
  // program_clear - Remove all stored lines (NEW command).
  //
@@ -201,6 +226,23 @@ void program_clear(ProgramStore *store);
  // Prints all lines with line numbers between 'from' and 'to'
  // (inclusive). If from <= 0, starts from the first line.
  // If to <= 0, continues to the last line.
-void program_list(ProgramStore *store, int from, int to);
+void program_list(ProgramStore *store, double from, double to);
+
+#define SEARCH_SUBSTRING      1
+#define SEARCH_IDENTIFIER     2
+#define SEARCH_LABEL_OR_FUNC  3
+
+void program_list_search(ProgramStore *store, int search_type, const char *pattern);
+
+// --- RAMBANK Segmented Virtual Memory Functions ---
+void rambank_init(MemorySystem *mem);
+void rambank_shutdown(MemorySystem *mem);
+void rambank_ensure_resident(MemorySystem *mem, int bank_id);
+unsigned char rambank_peek(MemorySystem *mem, int bank_id, long offset, int line_num);
+void rambank_poke(MemorySystem *mem, int bank_id, long offset, unsigned char value, int line_num);
+long rambank_free_space(MemorySystem *mem, int bank_id);
+void rambank_set_shared(MemorySystem *mem, int bank_id, int shared);
+void rambank_copy(MemorySystem *mem, int src_bank, long src_offset, int dst_bank, long dst_offset, long length, int line_num);
+void rambank_fill(MemorySystem *mem, int bank_id, long offset, long length, unsigned char value, int line_num);
 
 #endif // BASICPP_MEMORY_H

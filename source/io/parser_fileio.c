@@ -43,6 +43,7 @@
  // ---
 
 #include "parser_internal.h"
+#include "modules/mod_fsk_audio.h"
 
 void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
 {
@@ -783,7 +784,7 @@ void pi_parse_ask_file(Lexer *lex, RuntimeState *rt,
  rt->variables[vi] = bval_float((double)pos);
  lexer_next(lex);
  } else if (lex->current.type == TOK_NAMED_VAR &&
- dialect_get_config()->has_extended_vars) {
+ 1) {
  runtime_set_named_var_bval(rt,
  lex->current.str_start,
  lex->current.str_length,
@@ -806,7 +807,7 @@ void pi_parse_ask_file(Lexer *lex, RuntimeState *rt,
  rt->variables[vi] = bval_float((double)sz);
  lexer_next(lex);
  } else if (lex->current.type == TOK_NAMED_VAR &&
- dialect_get_config()->has_extended_vars) {
+ 1) {
  runtime_set_named_var_bval(rt,
  lex->current.str_start,
  lex->current.str_length,
@@ -1006,3 +1007,105 @@ void pi_parse_vpath(Lexer *lex, RuntimeState *rt, int line_num)
  // (parser_execute_line) handles the ';' separator for
  // multi-statement lines.
 
+
+static void get_tape_filename(Lexer *lex, RuntimeState *rt, int line_num, char *out_buf, size_t max_len) {
+    (void)rt;
+    (void)line_num;
+    out_buf[0] = '\0';
+    if (lex->current.type == TOK_STRING) {
+        snprintf(out_buf, max_len, "%s", lex->current.str_start);
+        out_buf[lex->current.str_length] = '\0';
+        lexer_next(lex);
+    }
+}
+
+static int file_exists(const char *filename) {
+    FILE *f = fopen(filename, "rb");
+    if (f) {
+        fclose(f);
+        return 1;
+    }
+    return 0;
+}
+
+void pi_parse_cload(Lexer *lex, RuntimeState *rt, int line_num) {
+    char filename[256];
+    get_tape_filename(lex, rt, line_num, filename, sizeof(filename));
+    
+    char load_file[256];
+    if (filename[0] == '\0') {
+        if (file_exists("TAPE.TAP")) strcpy(load_file, "TAPE.TAP");
+        else strcpy(load_file, "TAPE.WAV");
+    } else if (strchr(filename, '.') == NULL) {
+        snprintf(load_file, sizeof(load_file), "%s.TAP", filename);
+        if (!file_exists(load_file)) {
+            snprintf(load_file, sizeof(load_file), "%s.WAV", filename);
+        }
+    } else {
+        strcpy(load_file, filename);
+    }
+    
+    if (fsk_audio_cload(load_file, rt) != 0) {
+        error_raise(ERR_HOW, line_num);
+    }
+}
+
+void pi_parse_csave(Lexer *lex, RuntimeState *rt, int line_num) {
+    char filename[256];
+    get_tape_filename(lex, rt, line_num, filename, sizeof(filename));
+    
+    char save_file[256];
+    if (filename[0] == '\0') {
+        strcpy(save_file, "TAPE.TAP");
+    } else if (strchr(filename, '.') == NULL) {
+        snprintf(save_file, sizeof(save_file), "%s.TAP", filename);
+    } else {
+        strcpy(save_file, filename);
+    }
+    
+    if (fsk_audio_csave(save_file, rt) != 0) {
+        error_raise(ERR_HOW, line_num);
+    }
+}
+
+void pi_parse_crun(Lexer *lex, RuntimeState *rt, int line_num) {
+    char filename[256];
+    get_tape_filename(lex, rt, line_num, filename, sizeof(filename));
+    
+    char load_file[256];
+    if (filename[0] == '\0') {
+        if (file_exists("TAPE.TAP")) strcpy(load_file, "TAPE.TAP");
+        else strcpy(load_file, "TAPE.WAV");
+    } else if (strchr(filename, '.') == NULL) {
+        snprintf(load_file, sizeof(load_file), "%s.TAP", filename);
+        if (!file_exists(load_file)) {
+            snprintf(load_file, sizeof(load_file), "%s.WAV", filename);
+        }
+    } else {
+        strcpy(load_file, filename);
+    }
+    
+    if (fsk_audio_cload(load_file, rt) != 0) {
+        error_raise(ERR_HOW, line_num);
+        return;
+    }
+    
+    // Equivalent to RUN:
+    rt->next_index = 0; // jump to start
+}
+void pi_parse_motor(Lexer *lex, RuntimeState *rt, int line_num) {
+    int state = 1; // Default to ON
+    
+    if (lex->current.type != TOK_EOF && lex->current.type != TOK_CR && lex->current.type != TOK_COLON) {
+        if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_ON) {
+            state = 1;
+            lexer_next(lex);
+        } else {
+            BValue bv = parse_expression_bval(lex, rt, line_num);
+            if (error_occurred()) return;
+            state = (bval_to_float(&bv) != 0.0) ? 1 : 0;
+        }
+    }
+    
+    fsk_audio_motor(state);
+}

@@ -1,6 +1,6 @@
 OVERRIDE: KEYWORD INTERPRETATION OVERRIDES
 ============================================
-Version 4.1.1
+Version 4.2.3
 
 OVERRIDE changes how the interpreter processes a keyword's arguments
 at parse time.  It does NOT modify the user's stored source code
@@ -454,18 +454,21 @@ Result:
 14.  SECURITY RESTRICTIONS
 =====================================================================
 
-OVERRIDE is blocked at SECURITY LEVEL 2 (RESTRICTED) and above.
+OVERRIDE is blocked at SECURITY LEVEL 1 (SAFE) and above.
 When security is raised, attempting to use OVERRIDE results in:
 
-    SORRY? Security: system not permitted at level RESTRICTED
+    SORRY? Security: system not permitted at level SAFE
 
 This prevents untrusted programs from modifying keyword behavior.
 Once security is raised (the one-way ratchet prevents lowering
 it), OVERRIDE commands are rejected.
 
-At SECURITY LEVEL 0 (OPEN):      OVERRIDE is allowed
-At SECURITY LEVEL 1 (STANDARD):  OVERRIDE is blocked
-At SECURITY LEVEL 2 (RESTRICTED): OVERRIDE is blocked
+At SECURITY LEVEL 0 (OPEN):       OVERRIDE is allowed
+At SECURITY LEVEL 1 (SAFE):       OVERRIDE is blocked
+At SECURITY LEVEL 2 (STANDARD):   OVERRIDE is blocked
+At SECURITY LEVEL 3 (EDUCATIONAL): OVERRIDE is blocked
+At SECURITY LEVEL 4 (RESTRICTED):  OVERRIDE is blocked
+At SECURITY LEVEL 5 (PARANOID):    OVERRIDE is blocked
 
 
 =====================================================================

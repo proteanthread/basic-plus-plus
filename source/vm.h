@@ -80,6 +80,8 @@ struct RuntimeState_tag;
  // VM_PAUSED -> VM_RUNNING (CONT - future)
  // VM_ERROR -> VM_STOPPED (error handled, back to REPL)
  // VM_HALTED -> VM_STOPPED (program finished)
+struct RuntimeState;
+
 typedef enum VMState {
  VM_STOPPED = 0, // not running - idle at REPL
  VM_RUNNING, // normal execution in progress
@@ -135,7 +137,7 @@ typedef enum VMOpcode {
  // Every statement handler follows this uniform signature.
  // The handler receives:
  // lex - lexer positioned after the statement keyword
- // rt - runtime state (as opaque pointer for C89 compat)
+ // rt - runtime state (as opaque pointer for header decoupling)
  // line_num - current BASIC line number (for errors)
  //
  // Note: We use void* for rt to avoid circular includes between
@@ -208,28 +210,28 @@ BValue vm_eval_pop(VMEvalStack *stk);
 BValue vm_eval_peek(VMEvalStack *stk);
 int vm_eval_depth(VMEvalStack *stk);
 
+BValue exec_func1(int func_id, BValue *arg, int line_num, struct RuntimeState *rt);
+BValue exec_func2(int func_id, BValue *a1, BValue *a2, int line_num, struct RuntimeState *rt);
+BValue exec_func3(int func_id, BValue *a1, BValue *a2, BValue *a3, int line_num, struct RuntimeState *rt);
+
 // --- Control Flow Primitives ---
  // These encapsulate the line-number->index resolution and stack
  // operations that were previously scattered across parser.c and
  // exec.c. All control flow goes through these functions.
 
- // vm_jump - Unconditional jump to a target line number.
- //
- // Resolves the line number to an index in the program store
- // and sets rt->next_index. Raises ERR_HOW if the line is not found.
-void vm_jump(void *rt, int target_line, int line_num);
+void vm_jump(void *rt, double target_line, double line_num);
 
  // vm_call - Subroutine call (GOSUB).
  //
  // Pushes a GOSUB frame with the return address, then jumps
  // to the target line. Raises ERR_SORRY if the stack is full.
-void vm_call(void *rt, int target_line, int line_num);
+void vm_call(void *rt, double target_line, double line_num);
 
  // vm_return_sub - Return from subroutine (RETURN).
  //
  // Pops the top GOSUB frame and jumps to the return address.
  // Raises ERR_HOW if the stack is empty or the frame is not GOSUB.
-void vm_return_sub(void *rt, int line_num);
+void vm_return_sub(void *rt, double line_num);
 
  // vm_halt - Halt execution (END statement).
  //

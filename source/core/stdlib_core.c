@@ -41,7 +41,6 @@
 #include "value.h"
 #include <string.h>
 #include "error_registry.h"
-#include "dialect.h"
 
  // PCG32 Pseudo-Random Number Generator
  // Deterministic, cross-platform, massive period, non-repeating
@@ -53,7 +52,7 @@ static uint32_t pcg32_random(RuntimeState *state) {
     // Calculate output function (XSH RR) on the new state
     uint32_t xorshifted = (uint32_t)(((val >> 18u) ^ val) >> 27u);
     uint32_t rot = (uint32_t)(val >> 59u);
-    return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+    return (xorshifted >> rot) | (xorshifted << ((32 - rot) & 31));
 }
 
 BValue stdlib_core_rnd(BValue *args, int argc, void *rt)
@@ -63,7 +62,7 @@ BValue stdlib_core_rnd(BValue *args, int argc, void *rt)
     // GW-BASIC: bare RND is equivalent to RND(1)
     n = (argc > 0) ? bval_to_int(&args[0]) : 1;
 
-    if (dialect_get_config()->has_float) {
+    if (1) {
         if (n < 0) {
             state->rnd_seed = (uint64_t)(-n);
         }
@@ -78,7 +77,7 @@ BValue stdlib_core_rnd(BValue *args, int argc, void *rt)
         uint64_t oldstate = state->rnd_seed;
         uint32_t xorshifted = (uint32_t)(((oldstate >> 18u) ^ oldstate) >> 27u);
         uint32_t rot = (uint32_t)(oldstate >> 59u);
-        uint32_t r = (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+        uint32_t r = (xorshifted >> rot) | (xorshifted << ((32 - rot) & 31));
         return bval_float((double)r / 4294967296.0);
     }
     

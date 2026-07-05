@@ -53,6 +53,8 @@
 #include "ast.h"
 #include "memory.h"
 
+#include "codegen/target.h"
+
  // codegen_emit - Generate a complete C89 program from AST lines.
  //
  // Parameters:
@@ -60,9 +62,10 @@
  // lines - array of AstLine (line_number + statement chain)
  // line_count - number of lines
  // program - raw program store (for DATA extraction)
+ // target - target platform profile configuration
  //
  // Returns 0 on success, -1 on error.
 int codegen_emit(FILE *out, AstLine *lines, int line_count,
- ProgramStore *program);
+                 ProgramStore *program, const TargetConfig *target);
 
 #endif // BASICPP_CODEGEN_H

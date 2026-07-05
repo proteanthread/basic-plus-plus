@@ -109,7 +109,7 @@ int fileio_chain(ProgramStore *store, const char *filename);
  // - FCHAN_DEVICE routes I/O through a VDev instead of FILE*
  // - ANSI C stdio for file-backed channels, VDev for device-backed
  //
- // MAX_FILE_CHANNELS raised from 8 to 16.
+ // MAX_FILE_CHANNELS is 8 (channels #1 through #8, per config.h).
  // Channels can now be backed by virtual devices (FCHAN_DEVICE).
 
 // File channel modes

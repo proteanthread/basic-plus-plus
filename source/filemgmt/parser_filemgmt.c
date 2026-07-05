@@ -46,6 +46,8 @@
  // pi_parse_files - Handle FILES command.
 void pi_parse_files(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
+    (void)line_num;
  // FILES [pattern] - List directory (detailed).
  //
  // Native dir scanning -- no system() call.
@@ -164,6 +166,8 @@ void pi_parse_files(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_dir - Handle DIR command.
 void pi_parse_dir(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
+    (void)line_num;
  // DIR [pattern] - List filenames only.
  //
  // Native dir scanning -- no system() call.
@@ -238,10 +242,12 @@ void pi_parse_dir(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_kill - Handle KILL command.
 void pi_parse_kill(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
  // KILL "filename" - Delete a file (GW-BASIC).
  // Auto-appends .BAS if no extension given.
  {
  char fname[260];
+ char resolved[260];
  int flen;
 
  if (lex->current.type != TOK_STRING
@@ -261,9 +267,12 @@ void pi_parse_kill(Lexer *lex, RuntimeState *rt, int line_num)
  // Auto-append .BAS if no extension
  pi_ensure_bas_ext(fname, flen, 259);
 
- if (remove(fname) != 0) {
- printf("File not found: %s\n",
- fname);
+ if (vfs_resolve(fname, resolved, sizeof(resolved), 1) == 0) {
+  if (remove(resolved) != 0) {
+   printf("File not found: %s\n", fname);
+  }
+ } else {
+  printf("File not found: %s\n", fname);
  }
  }
  return;
@@ -272,6 +281,7 @@ void pi_parse_kill(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_scratch - Handle SCRATCH command.
 void pi_parse_scratch(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
  // SCRATCH filename$ -- SUPER BASIC alias for KILL.
  // Deletes a file from disk.
  {
@@ -325,6 +335,7 @@ void pi_parse_unsave(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_copy - Handle COPY command.
 void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
  // COPY "source" TO "dest"
  // Copy a file using binary fopen/fread/fwrite.
  // Pure C89 -- no SHELL needed.
@@ -408,6 +419,7 @@ void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_move - Handle MOVE command.
 void pi_parse_move(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
  // MOVE "source" TO "dest"
  // Move a file. Tries rename() first;
  // if that fails (cross-device), falls
@@ -498,6 +510,9 @@ void pi_parse_move(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_pwd - Handle PWD command.
 void pi_parse_pwd(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)lex;
+    (void)rt;
+    (void)line_num;
  // PWD - Print working directory.
  // No arguments. Prints the current
  // working directory path to stdout.
@@ -550,6 +565,7 @@ void pi_parse_chdir(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_mkdir - Handle MKDIR command.
 void pi_parse_mkdir(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
  // MKDIR path$
  // Create a directory.
  {
@@ -581,6 +597,7 @@ void pi_parse_mkdir(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_rmdir - Handle RMDIR command.
 void pi_parse_rmdir(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
  // RMDIR path$
  // Remove a directory.
  {
@@ -612,6 +629,7 @@ void pi_parse_rmdir(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_name - Handle NAME command.
 void pi_parse_name(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
  // NAME "oldname" AS "newname"
  // Rename a file (GW-BASIC compatible).
  {
@@ -667,6 +685,7 @@ void pi_parse_name(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_rename - Handle RENAME command.
 void pi_parse_rename(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    (void)rt;
  // RENAME "oldname" AS "newname"
  // Like NAME but auto-appends .bas/.bpp
  // extension if not present.

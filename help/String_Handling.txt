@@ -1,6 +1,6 @@
 THE BASIC++ STRING HANDLING SYSTEM
 =====================================
-Version 4.1.1
+Version 4.2.3
 
 This manual explains how BASIC++ programs create,
 manipulate, compare, and convert strings — from basic
@@ -126,7 +126,7 @@ known length.  Strings in BASIC++ are:
   - Stored in a pool (bump allocator)
   - Immutable once created (new operations create
     new strings)
-  - Maximum length limited by pool size (32K default)
+  - Maximum length limited by pool size (16 MB default)
 
 Examples:
 
@@ -192,10 +192,25 @@ How it works:
   4. The entire pool is reset at the start of each RUN:
      used = 0
 
-This design is fast (O(1) allocation), simple, and
-avoids garbage collection.  The tradeoff is that long-
-running programs that create many strings will eventually
-exhaust the pool (ERR_SORRY).
+  5. When the pool reaches 75% capacity, the auto-compaction
+     system activates.  strpool_compact() performs a
+     mark-sweep garbage collection pass:
+
+     a. MARK — Walk all live string references (variables,
+        arrays, DATA pool, named vars, string vars) and mark
+        them as reachable.
+     b. SWEEP — Copy all marked strings to a temporary buffer,
+        reset the pool (used = 0), then copy them back with
+        updated pointers.
+     c. The runtime state pointer is registered once during
+        runtime_init via strpool_set_runtime().
+
+     Returns bytes reclaimed, or 0 if nothing to do.
+
+This design is fast (O(1) allocation) with automatic
+reclamation when pressure builds.  The 75% threshold
+ensures compaction runs before the pool is fully
+exhausted, giving long-running programs more headroom.
 
 
 4.  STRING VARIABLES: A$-Z$ AND NAMED
@@ -560,7 +575,7 @@ Rules:
 This feature is useful for character-by-character
 processing without repeated MID$/ASC calls.
 
-  Added in Version 4.1.1.
+  Added in Version 4.2.3.
 
 
 18.  CHR$(n) — ASCII CODE TO CHARACTER
@@ -1173,10 +1188,10 @@ is safe because RUN reinitializes all variables.
 
   Constant            Default    Purpose
   ──────────────────  ─────────  ──────────────────────
-  MAX_STRING_POOL     32768      Total pool size (bytes)
+  MAX_STRING_POOL     16777216   Total pool size (bytes, 16 MB)
   MAX_LINE_LENGTH     255        Max single line length
   MAX_STRING_VARS     26         A$-Z$ variables
-  MAX_NAMED_VARS      256        Named variables (all)
+  MAX_NAMED_VARS      4096       Named variables (all)
 
 To increase the pool, change MAX_STRING_POOL in
 config.h and recompile.
@@ -1492,8 +1507,8 @@ Part XI:  REFERENCE
 
   Limit                     Value    What Happens
   ────────────────────────  ───────  ──────────────────
-  MAX_STRING_POOL           32768    ERR_SORRY
-  Max single string         32768    Pool limit
+  MAX_STRING_POOL           16777216 ERR_SORRY
+  Max single string         16777216 Pool limit
   LCASE$/UCASE$ max input  255      Truncated
   LTRIM$/RTRIM$ max input  255      Truncated
   MKI$ output              2 bytes  Fixed

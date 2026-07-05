@@ -55,6 +55,7 @@
 #include <windows.h>
 #elif !defined(BPP_FREEDOS)
 #include <dlfcn.h>
+#include "../console.h"
 #endif
 
 // --- Module Table ---

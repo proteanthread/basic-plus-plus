@@ -1,6 +1,6 @@
 THE BASIC++ VIRTUAL FILESYSTEM
 ================================
-Version 4.1.1
+Version 4.2.3
 
 This manual explains how BASIC++ programs access files on the
 local file system — how it works internally, why every layer
@@ -340,10 +340,10 @@ security gate checks whether it's allowed.
 =====================================================================
 
 The file channel table is the core data structure for all
-BASIC file I/O.  It is a static array of 16 FileChannel
-structures (channels 1-16, stored 0-indexed):
+BASIC file I/O.  It is a static array of 8 FileChannel
+structures (channels 1-8, stored 0-indexed):
 
-  static FileChannel channels[16];
+  static FileChannel channels[8];
 
   Each FileChannel contains:
 
