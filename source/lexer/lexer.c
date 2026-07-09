@@ -153,9 +153,16 @@ static const KeywordEntry core_keyword_init_table[] = {
     { "RND", KW_RND, DFLAG_ALL },
     { "VER", KW_VER, DFLAG_ALL },
     { "PWD", KW_PWD, DFLAG_ALL },
-    { "CWD", KW_CWD_FUNC, DFLAG_ALL },
-    { "HOSTNAME", KW_HOSTNAME_FUNC, DFLAG_ALL },
-    { "USERNAME", KW_USERNAME_FUNC, DFLAG_ALL },
+    { "CWD", KW_CWD, DFLAG_ALL },
+    { "HOSTNAME", KW_HOSTNAME, DFLAG_ALL },
+    { "USERNAME", KW_USERNAME, DFLAG_ALL },
+    { "DAY", KW_DAY, DFLAG_ALL },
+    { "MONTH", KW_MONTH, DFLAG_ALL },
+    { "YEAR", KW_YEAR, DFLAG_ALL },
+    { "HOURS", KW_HOURS, DFLAG_ALL },
+    { "MINUTES", KW_MINUTES, DFLAG_ALL },
+    { "SECONDS", KW_SECONDS, DFLAG_ALL },
+    { "JIFFIES", KW_JIFFIES, DFLAG_ALL },
     { NULL, 0, 0 } // sentinel
 };
 #else
@@ -456,8 +463,8 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "VMACH", KW_VMACH, DFLAG_ALL },
  { "DEVMAP", KW_DEVMAP, DFLAG_ALL },
  { "BIN", KW_BIN_FUNC, DFLAG_ALL },
- { "CLOCK", KW_CLOCK_FUNC, DFLAG_ALL },
- { "ALARM", KW_ALARM_FUNC, DFLAG_ALL },
+ { "CLOCK", KW_CLOCK, DFLAG_ALL },
+ { "ALARM", KW_ALARM, DFLAG_ALL },
  // Sinclair BASIC specific keywords
  { "LN", KW_LOG_FUNC, DFLAG_SINC }, // Sinclair uses LN for LOG
  { "BORDER", KW_BORDER, DFLAG_SINC }, // Border color 0-7
@@ -532,10 +539,10 @@ static const KeywordEntry core_keyword_init_table[] = {
  // File management (native, no SHELL)
  { "MOVE", KW_MOVE, DFLAG_ALL },
  { "PWD", KW_PWD, DFLAG_ALL },
- { "CWD", KW_CWD_FUNC, DFLAG_ALL },
- { "CURDIR", KW_CWD_FUNC, DFLAG_ALL }, // QBasic alias
- { "HOSTNAME", KW_HOSTNAME_FUNC, DFLAG_ALL },
- { "USERNAME", KW_USERNAME_FUNC, DFLAG_ALL },
+ { "CWD", KW_CWD, DFLAG_ALL },
+ { "CURDIR", KW_CWD, DFLAG_ALL }, // QBasic alias
+ { "HOSTNAME", KW_HOSTNAME, DFLAG_ALL },
+ { "USERNAME", KW_USERNAME, DFLAG_ALL },
  { "EXIST", KW_EXIST_FUNC, DFLAG_ALL },
  { "FILELEN", KW_FILELEN_FUNC, DFLAG_ALL },
  // Event trapping
@@ -588,6 +595,13 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "CURSOR", KW_CURSOR, DFLAG_ALL },
  { "TICKS", KW_TICKS, DFLAG_ALL },
  { "DEMAND", KW_DEMAND, DFLAG_ALL },
+ { "DAY", KW_DAY, DFLAG_ALL },
+ { "MONTH", KW_MONTH, DFLAG_ALL },
+ { "YEAR", KW_YEAR, DFLAG_ALL },
+ { "HOURS", KW_HOURS, DFLAG_ALL },
+ { "MINUTES", KW_MINUTES, DFLAG_ALL },
+ { "SECONDS", KW_SECONDS, DFLAG_ALL },
+ { "JIFFIES", KW_JIFFIES, DFLAG_ALL },
  { NULL, 0, 0 } // sentinel
 };
 #endif
@@ -918,6 +932,7 @@ int lexer_keyword_needs_dollar(KeywordId kw)
     kw == KW_LTRIM || kw == KW_RTRIM ||
     kw == KW_TRIM ||
     kw == KW_DATE_FUNC ||
+    kw == KW_DAY || kw == KW_MONTH || kw == KW_YEAR ||
     kw == KW_TIME_FUNC ||
     kw == KW_INKEY ||
     kw == KW_ENVIRON ||
@@ -928,14 +943,14 @@ int lexer_keyword_needs_dollar(KeywordId kw)
     kw == KW_IOCTL_FUNC ||
     kw == KW_SHELL ||
     kw == KW_BIN_FUNC ||
-    kw == KW_CLOCK_FUNC ||
-    kw == KW_ALARM_FUNC ||
+    kw == KW_CLOCK ||
+    kw == KW_ALARM ||
     kw == 0 ||
     kw == KW_MEMMAP_FUNC ||
     kw == KW_ALIAS_FUNC ||
-    kw == KW_CWD_FUNC ||
-    kw == KW_HOSTNAME_FUNC ||
-    kw == KW_USERNAME_FUNC ||
+    kw == KW_CWD ||
+    kw == KW_HOSTNAME ||
+    kw == KW_USERNAME ||
     kw == KW_SIOREAD ||
     kw == KW_SIOREADLN ||
     kw == KW_BIOREAD ||
@@ -1715,7 +1730,7 @@ static void scan_next_raw_token_internal(Lexer *lex)
   kw == KW_OCT_FUNC || kw == KW_LCASE ||
   kw == KW_UCASE || kw == KW_TCASE ||
   kw == KW_LTRIM || kw == KW_RTRIM ||
-  kw == KW_TRIM || kw == KW_DATE_FUNC || kw == KW_DATE ||
+  kw == KW_TRIM || kw == KW_DATE_FUNC || kw == KW_DATE || kw == KW_DAY || kw == KW_MONTH || kw == KW_YEAR ||
   kw == KW_TIME_FUNC || kw == KW_TIME || kw == KW_INKEY ||
   kw == KW_ENVIRON || kw == KW_MKD_FUNC ||
   kw == KW_MKI_FUNC || kw == KW_MKS_FUNC ||
@@ -1724,10 +1739,10 @@ static void scan_next_raw_token_internal(Lexer *lex)
     kw == KW_EDIT || kw == KW_NUM ||
     kw == KW_VARPTR || kw == KW_ERR_VAR || kw == KW_DIALECT ||
     kw == KW_MEMMAP || kw == KW_ALIAS ||
-   kw == KW_CLOCK_FUNC || kw == KW_ALARM_FUNC ||
-   kw == KW_CWD_FUNC ||
-  kw == KW_HOSTNAME_FUNC ||
-  kw == KW_USERNAME_FUNC ||
+   kw == KW_CLOCK || kw == KW_ALARM ||
+   kw == KW_CWD ||
+  kw == KW_HOSTNAME ||
+  kw == KW_USERNAME ||
   kw == KW_PWD ||
   kw == KW_SIOREAD ||
   kw == KW_SIOREADLN || kw == KW_BIOREAD ||
@@ -1766,7 +1781,7 @@ static void scan_next_raw_token_internal(Lexer *lex)
  kw == KW_LTRIM ||
  kw == KW_RTRIM ||
  kw == KW_TRIM ||
- kw == KW_DATE_FUNC || kw == KW_DATE ||
+ kw == KW_DATE_FUNC || kw == KW_DATE || kw == KW_DAY || kw == KW_MONTH || kw == KW_YEAR ||
  kw == KW_TIME_FUNC || kw == KW_TIME ||
  kw == KW_INKEY ||
  kw == KW_ENVIRON ||
@@ -1776,11 +1791,11 @@ static void scan_next_raw_token_internal(Lexer *lex)
   kw == KW_SHELL ||
   kw == KW_BIN_FUNC ||
   kw == KW_ERR_VAR ||
-  kw == KW_CLOCK_FUNC ||
-  kw == KW_ALARM_FUNC ||
- kw == KW_CWD_FUNC ||
- kw == KW_HOSTNAME_FUNC ||
- kw == KW_USERNAME_FUNC ||
+  kw == KW_CLOCK ||
+  kw == KW_ALARM ||
+ kw == KW_CWD ||
+ kw == KW_HOSTNAME ||
+ kw == KW_USERNAME ||
  kw == KW_PWD ||
  kw == KW_SIOREAD ||
  kw == KW_SIOREADLN ||
@@ -1805,6 +1820,31 @@ static void scan_next_raw_token_internal(Lexer *lex)
       kw = KW_DATE_FUNC;
       lex->current.value.keyword = kw;
   }
+  // DAY$ -> KW_DAY_FUNC
+  if (kw == KW_DAY) {
+      kw = KW_DAY_FUNC;
+      lex->current.value.keyword = kw;
+  }
+  // MONTH$ -> KW_MONTH_FUNC
+  if (kw == KW_MONTH) {
+      kw = KW_MONTH_FUNC;
+      lex->current.value.keyword = kw;
+  }
+  // YEAR$ -> KW_YEAR_FUNC
+  if (kw == KW_YEAR) {
+      kw = KW_YEAR_FUNC;
+      lex->current.value.keyword = kw;
+  }
+  // CLOCK$ -> KW_CLOCK_FUNC
+  if (kw == KW_CLOCK) { kw = KW_CLOCK_FUNC; lex->current.value.keyword = kw; }
+  // ALARM$ -> KW_ALARM_FUNC
+  if (kw == KW_ALARM) { kw = KW_ALARM_FUNC; lex->current.value.keyword = kw; }
+  // CWD$ -> KW_CWD_FUNC
+  if (kw == KW_CWD) { kw = KW_CWD_FUNC; lex->current.value.keyword = kw; }
+  // HOSTNAME$ -> KW_HOSTNAME_FUNC
+  if (kw == KW_HOSTNAME) { kw = KW_HOSTNAME_FUNC; lex->current.value.keyword = kw; }
+  // USERNAME$ -> KW_USERNAME_FUNC
+  if (kw == KW_USERNAME) { kw = KW_USERNAME_FUNC; lex->current.value.keyword = kw; }
   // TIME$ -> KW_TIME_FUNC
   if (kw == KW_TIME) {
       kw = KW_TIME_FUNC;
@@ -1964,10 +2004,10 @@ static void scan_next_raw_token_internal(Lexer *lex)
      prefix_kw == KW_HEX_FUNC ||
      prefix_kw == KW_OCT_FUNC ||
      prefix_kw == KW_INKEY ||
-     prefix_kw == KW_HOSTNAME_FUNC ||
-     prefix_kw == KW_USERNAME_FUNC ||
+     prefix_kw == KW_HOSTNAME ||
+     prefix_kw == KW_USERNAME ||
      prefix_kw == KW_PWD ||
-     prefix_kw == KW_CWD_FUNC ||
+     prefix_kw == KW_CWD ||
      prefix_kw == KW_INPUT ||
      prefix_kw == KW_PRETRIEVE) {
      lex->pos++;

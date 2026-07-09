@@ -569,6 +569,12 @@ enum {
  KW_JIFFIES,
  KW_DATE,
  KW_TIME,
+ KW_YEAR_FUNC,
+ KW_CLOCK,
+ KW_ALARM,
+ KW_CWD,
+ KW_HOSTNAME,
+ KW_USERNAME,
  KW_BUILTIN_MAX // sentinel - must be last
 };
 
