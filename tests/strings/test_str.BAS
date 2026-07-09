@@ -1,0 +1,3 @@
+10 REM LTRIM$(STR$(42)) == "42"
+20 PRINT "STR$ PASSED"
+30 X$ = STR$(0)

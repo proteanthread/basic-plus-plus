@@ -42,6 +42,7 @@ void gw_sdl2_present(void);
 void gw_sdl2_present_force(void);
 void gw_sdl2_poll_events(void);
 void gw_sdl2_update_palette(int screen_mode, int machine_type, int bg_color, int palette_idx);
+void gw_sdl2_set_video_standard(int standard);
 void *gw_sdl2_get_window_ptr(void);
 void *gw_sdl2_get_renderer_ptr(void);
 uint32_t gw_sdl2_get_audio_device_id(void);
@@ -49,6 +50,7 @@ uint32_t gw_sdl2_get_audio_device_id(void);
 // Keyboard/Event Status
 int gw_sdl2_get_key(void); // Returns ASCII character or custom key code (0 if none)
 int gw_sdl2_key_pressed(int scancode); // Returns 1 if pressed, 0 if not
+void gw_sdl2_get_pen(int *x, int *y, int *down, int *was_down, int *last_x, int *last_y);
 
 // Graphics Primitives
 void gw_sdl2_clear(uint32_t color);
@@ -96,11 +98,13 @@ void gw_sdl2_write_char_cursor(int visible);
 #define gw_sdl2_present_force() ((void)0)
 #define gw_sdl2_poll_events() ((void)0)
 #define gw_sdl2_update_palette(sm, mt, bg, pi) ((void)0)
+#define gw_sdl2_set_video_standard(s) ((void)0)
 #define gw_sdl2_get_window_ptr() ((void*)0)
 #define gw_sdl2_get_renderer_ptr() ((void*)0)
 #define gw_sdl2_get_audio_device_id() (0)
 #define gw_sdl2_get_key() (0)
 #define gw_sdl2_key_pressed(sc) (0)
+#define gw_sdl2_get_pen(x, y, d, w, lx, ly) ((void)0)
 #define gw_sdl2_clear(c) ((void)0)
 #define gw_sdl2_set_pixel(x, y, c) ((void)0)
 #define gw_sdl2_get_pixel(x, y) (0)

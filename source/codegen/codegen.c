@@ -413,16 +413,20 @@ static int expr_is_string(AstExpr *e)
  if (nlen > 0 && e->v.dim_access.name[nlen-1] == '$')
  return 1;
  }
- if (e->type == EXPR_FUNC_CALL) {
- switch (e->v.func_call.func) {
- case FUNC_CHR: case FUNC_STR:
- case FUNC_LEFT: case FUNC_RIGHT: case FUNC_MID:
- case FUNC_TAB:
- return 1;
- default:
- return 0;
- }
- }
+   if (e->type == EXPR_FUNC_CALL) {
+       switch (e->v.func_call.func) {
+           case FUNC_CHR: case FUNC_STR:
+           case FUNC_LEFT: case FUNC_RIGHT: case FUNC_MID:
+           case FUNC_TAB:
+           case FUNC_LCASES: case FUNC_UCASES: case FUNC_TCASES:
+           case FUNC_TRIMS: case FUNC_LTRIMS: case FUNC_RTRIMS:
+           case FUNC_REPLACES: case FUNC_REVERSES:
+           case FUNC_MCASES: case FUNC_ICASES:
+               return 1;
+           default:
+               return 0;
+       }
+   }
  if (e->type == EXPR_BINOP && e->v.binop.op == BOP_ADD) {
  return expr_is_string(e->v.binop.left) ||
  expr_is_string(e->v.binop.right);
@@ -763,6 +767,7 @@ static void emit_expr(FILE *out, AstExpr *e)
  emit_expr(out, e->v.func_call.args[0]);
  fprintf(out, ")");
  break;
+
  case FUNC_LEFT:
  fprintf(out, "bpp_left(");
  emit_expr(out, e->v.func_call.args[0]);
@@ -770,6 +775,61 @@ static void emit_expr(FILE *out, AstExpr *e)
  emit_expr(out, e->v.func_call.args[1]);
  fprintf(out, "))");
  break;
+ case FUNC_LCASES:
+ fprintf(out, "bpp_lcases(");
+ emit_expr(out, e->v.func_call.args[0]);
+ fprintf(out, ")");
+ break;
+ case FUNC_UCASES:
+ fprintf(out, "bpp_ucases(");
+ emit_expr(out, e->v.func_call.args[0]);
+ fprintf(out, ")");
+ break;
+ case FUNC_TCASES:
+ fprintf(out, "bpp_tcases(");
+ emit_expr(out, e->v.func_call.args[0]);
+ fprintf(out, ")");
+ break;
+ case FUNC_MCASES:
+ fprintf(out, "bpp_mcases(");
+ emit_expr(out, e->v.func_call.args[0]);
+ fprintf(out, ")");
+ break;
+ case FUNC_ICASES:
+ fprintf(out, "bpp_icases(");
+ emit_expr(out, e->v.func_call.args[0]);
+ fprintf(out, ")");
+ break;
+ case FUNC_TRIMS:
+ fprintf(out, "bpp_trims(");
+ emit_expr(out, e->v.func_call.args[0]);
+ fprintf(out, ")");
+ break;
+ case FUNC_LTRIMS:
+ fprintf(out, "bpp_ltrims(");
+ emit_expr(out, e->v.func_call.args[0]);
+ fprintf(out, ")");
+ break;
+ case FUNC_RTRIMS:
+ fprintf(out, "bpp_rtrims(");
+ emit_expr(out, e->v.func_call.args[0]);
+ fprintf(out, ")");
+ break;
+ case FUNC_REPLACES:
+ fprintf(out, "bpp_replaces(");
+ emit_expr(out, e->v.func_call.args[0]);
+ fprintf(out, ", ");
+ emit_expr(out, e->v.func_call.args[1]);
+ fprintf(out, ", ");
+ emit_expr(out, e->v.func_call.args[2]);
+ fprintf(out, ")");
+ break;
+ case FUNC_REVERSES:
+ fprintf(out, "bpp_reverses(");
+ emit_expr(out, e->v.func_call.args[0]);
+ fprintf(out, ")");
+ break;
+
  case FUNC_RIGHT:
  fprintf(out, "bpp_right(");
  emit_expr(out, e->v.func_call.args[0]);

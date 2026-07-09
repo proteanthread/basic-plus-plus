@@ -20,7 +20,7 @@ core/vm_exec.c core/boot.c core/rpn.c core/console.c core/task.c \
 lexer/lexer.c lexer/keyword_props.c lexer/alias_lang.c \
 parser/parser.c parser/parser_expr.c spec.c \
 flow/parser_flow.c flow/parser_loops.c \
-io/parser_io.c io/parser_fileio.c io/parser_blockio.c \
+io/parser_io.c io/parser_fileio.c io/parser_net.c io/parser_blockio.c \
 io/parser_streamio.c io/fileio.c io/builtins_fileio.c io/vdev_net.c \
 io/format_using.c io/format_input.c io/device_alias.c \
 io/builtins_sio.c io/builtins_bio.c io/builtins_txn.c \

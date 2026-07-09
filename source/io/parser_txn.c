@@ -65,7 +65,17 @@
  // must use END ATOMIC or COMMIT to end it.
 void pi_parse_atomic(Lexer *lex, RuntimeState *rt, int line_num)
 {
-    (void)lex; (void)rt;
+    (void)rt;
+    if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_COMMIT) {
+        lexer_next(lex);
+        pi_parse_commit(lex, rt, line_num);
+        return;
+    }
+    if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_ROLLBACK) {
+        lexer_next(lex);
+        pi_parse_rollback(lex, rt, line_num);
+        return;
+    }
 
     if (txn_is_active() != TXN_NONE) {
         printf("Transaction already active.\n");

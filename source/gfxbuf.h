@@ -71,6 +71,7 @@ void gfxbuf_paint(struct MemorySystem *memory, int x, int y, int fill_color,
 
 // Remap palette entry
 void gfxbuf_palette(int attr, int color);
+void gfxbuf_set_video_standard(int standard);
 
 // Render framebuffer to terminal
 void gfxbuf_render(void);
@@ -80,6 +81,13 @@ int gfxbuf_active(void);
 
 // Set graphics mode on/off
 void gfxbuf_set_active(int on);
+
+
+// Get current graphics cursor position
+void gfxbuf_get_cursor(int *x, int *y);
+
+// Set current graphics cursor position
+void gfxbuf_set_cursor(int x, int y);
 
 // --- Viewport Clipping (VIEW statement) ---
 

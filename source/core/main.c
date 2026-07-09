@@ -65,6 +65,9 @@
 #include <ctype.h>
 #include "config.h"
 #include "memory.h"
+
+int g_init_rambanks = 64;
+
 #include "lexer.h"
 #include "parser.h"
 #include "exec.h"
@@ -92,6 +95,9 @@
 #include "config_file.h"
 #include "boot.h"
 #include "mod_legacy_compat.h"
+#ifndef BPP_LITE_BUILD
+#include "mod_edlin.h"
+#endif
 #include "console.h"
 #include "memmap.h"
 #ifndef NO_SDL2
@@ -112,6 +118,7 @@ static struct RuntimeState *g_main_runtime_ptr = NULL;
 #endif
 // --- Input Classification ---
 
+#ifndef BPP_TRANS_BUILD
  // parse_line_number - Extract a line number from the start of input.
  //
  // If the input starts with digits, parses the line number and
@@ -145,6 +152,7 @@ static int parse_line_number(const char *input, int *end_pos)
  *end_pos = pos;
  return num;
 }
+#endif
 
 #ifdef __GNUC__
 __attribute__((unused))
@@ -184,6 +192,7 @@ static void print_usage(const char *prog)
     printf("  --list <file>    Load, list program, then exit\n");
     printf("  --dry-run <file> Load in debug/step-by-step mode (Disables File I/O)\n");
     printf("  --edit           Start in screen-editor mode\n");
+    printf("  --edlin [file]   Start the built-in line editor\n");
     printf("  -c \"CMD\"         Execute a command and exit\n");
     printf("\nInfo:\n");
     printf("  -h, --help       Print this help and exit\n");
@@ -271,6 +280,7 @@ char g_mda_color[16] = "";
 GW_State *g_state = NULL;
 #endif
 
+#ifndef BPP_TRANS_BUILD
 static int str_eq_nocase_ext(const char *s1, const char *s2) {
     while (*s1 && *s2) {
         char c1 = *s1;
@@ -318,8 +328,83 @@ static void get_default_log_filename(const char *prog_path, const char *script_p
     
     snprintf(out_buf, (size_t)buf_size, "%s-%s%s", base_name, time_str, ext);
 }
+#endif
 
 // Platform clean-up implementation moved to platform.c
+
+#ifndef BPP_LITE_BUILD
+// --- Edlin Execute Callback ---
+// Bridges the decoupled edlin module to the BASIC++ core.
+// Receives raw text lines from the editor buffer, loads them into
+// the program store (handling both numbered and unnumbered lines),
+// and executes via 'RUN'. The edlin module itself has no knowledge
+// of parser.h, exec.h, or runtime.h — this callback is the sole
+// integration seam.
+
+typedef struct {
+    RuntimeState *runtime;
+    MemorySystem *memory;
+} EdlinExecCtx;
+
+static void edlin_execute_buffer_cb(const char **lines, int line_count, void *ctx)
+{
+    EdlinExecCtx *ectx = (EdlinExecCtx *)ctx;
+    RuntimeState *rt = ectx->runtime;
+    MemorySystem *mem = ectx->memory;
+    Lexer lex;
+
+    // Clear the current program store before loading editor contents.
+    program_clear(&mem->program);
+    error_clear();
+
+    // Load each editor line into the program store.
+    // If a line starts with a digit, it has a user-supplied line number
+    // and is inserted as-is (e.g. "10 PRINT HELLO").
+    // If a line does NOT start with a digit, we auto-number it
+    // sequentially starting at 10 with step 10.
+    int auto_num = 10;
+    for (int i = 0; i < line_count; i++) {
+        const char *line = lines[i];
+        // Skip completely blank lines.
+        if (line[0] == '\0') {
+            auto_num += 10;
+            continue;
+        }
+
+        char full_line[1024];
+        // Check if the line starts with a digit (user-supplied line number).
+        if (isdigit((unsigned char)line[0])) {
+            snprintf(full_line, sizeof(full_line), "%s", line);
+        } else {
+            // Auto-number the line.
+            snprintf(full_line, sizeof(full_line), "%d %s", auto_num, line);
+            auto_num += 10;
+        }
+
+        // Parse the line number and insert into program store.
+        int pos = 0;
+        int num = 0;
+        while (isdigit((unsigned char)full_line[pos])) {
+            num = num * 10 + (full_line[pos] - '0');
+            pos++;
+        }
+        if (num > 0) {
+            lexer_normalize_line(full_line);
+            program_insert(&mem->program, num, full_line);
+        }
+    }
+
+    // Execute the loaded program via 'RUN'.
+    error_clear();
+    mem_pool_reset(&mem->scratch);
+    lexer_init(&lex, "RUN");
+    parser_execute_line(&lex, rt, 0);
+    fflush(stdout);
+
+    // Clear errors so the editor returns cleanly.
+    error_clear();
+}
+#endif /* BPP_LITE_BUILD */
 
 // --- Main Entry Point ---
 
@@ -341,6 +426,10 @@ int main(int argc, char *argv[])
     const char *cli_list_file = NULL;
     const char *cli_dry_run_file = NULL;
     int cli_edit = 0;
+#ifndef BPP_LITE_BUILD
+    int cli_edlin = 0;
+    const char *cli_edlin_file = NULL;
+#endif
     int cli_debug = 0;
     int cli_boot_log = 0;
     int cli_verbose = 0;
@@ -388,7 +477,7 @@ int main(int argc, char *argv[])
             if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "-s") == 0 ||
                 strcmp(argv[i], "-S") == 0 || strcmp(argv[i], "-f") == 0 ||
                 strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--command") == 0 ||
-                strcmp(argv[i], "--edit") == 0 || strcmp(argv[i], "--lib") == 0 ||
+                strcmp(argv[i], "--edit") == 0 || strcmp(argv[i], "--edlin") == 0 || strcmp(argv[i], "--lib") == 0 ||
                 strcmp(argv[i], "--bios") == 0 ||
                 strcmp(argv[i], "--mod") == 0 || strcmp(argv[i], "--func") == 0 ||
                 strcmp(argv[i], "--com") == 0 || strcmp(argv[i], "--files") == 0 ||
@@ -410,6 +499,15 @@ int main(int argc, char *argv[])
                 return 1;
             }
 #endif
+            if (strcmp(argv[i], "--init") == 0 || strncmp(argv[i], "--init-rambanks", 15) == 0) {
+                if (i + 1 < argc) {
+                    g_init_rambanks = atoi(argv[++i]);
+                    if (g_init_rambanks > 65535) g_init_rambanks = 65535;
+                    if (g_init_rambanks < 0) g_init_rambanks = 0;
+                }
+                else { printf("Error: --init-rambanks requires a number\n"); return 1; }
+                continue;
+            }
             if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
                 printf("%s %s\n", BASICPP_NAME, BASICPP_VERSION);
                 return 0;
@@ -448,6 +546,16 @@ int main(int argc, char *argv[])
                 cli_edit = 1;
                 continue;
             }
+#ifndef BPP_LITE_BUILD
+            if (strcmp(argv[i], "--edlin") == 0) {
+                cli_edlin = 1;
+                /* Optional filename argument: peek ahead. */
+                if (i + 1 < argc && argv[i + 1][0] != '-') {
+                    cli_edlin_file = argv[++i];
+                }
+                continue;
+            }
+#endif
             if (strcmp(argv[i], "-S") == 0) {
                 cli_strict = 1;
                 continue;
@@ -907,6 +1015,7 @@ int main(int argc, char *argv[])
   Lexer lex;
   error_clear();
   mem_pool_reset(&memory.scratch);
+  printf("cli_command = '%s'\n", cli_command);
   lexer_init(&lex, cli_command);
   parser_execute_line(&lex, &runtime, 0);
   fflush(stdout);
@@ -967,6 +1076,35 @@ int main(int argc, char *argv[])
    mem_shutdown(&memory);
    return 0;
   }
+
+ // ----- Handle --edlin (built-in line editor) -----
+#ifndef BPP_LITE_BUILD
+  if (cli_edlin) {
+   EdlinExecCtx edlin_ctx;
+   EdlinCallbacks edlin_cbs;
+
+   edlin_ctx.runtime = &runtime;
+   edlin_ctx.memory  = &memory;
+
+   memset(&edlin_cbs, 0, sizeof(edlin_cbs));
+   edlin_cbs.execute_buffer = edlin_execute_buffer_cb;
+   edlin_cbs.read_line      = gw_console_read_line;
+   edlin_cbs.write_str      = NULL;  /* Use default printf */
+   edlin_cbs.get_terminal_height = platform_get_console_height;
+   edlin_cbs.ctx            = &edlin_ctx;
+
+   edlin_start(cli_edlin_file, &edlin_cbs);
+
+   if (runtime.log_fp && runtime.log_fp != stderr && runtime.log_fp != stdout) {
+       fclose((FILE*)runtime.log_fp);
+   }
+   runtime.log_fp = NULL;
+   if (g_out_fp) { fclose(g_out_fp); g_out_fp = NULL; }
+   runtime_cleanup(&runtime);
+   mem_shutdown(&memory);
+   return 0;
+  }
+#endif
 
  // ----- REPL loop -----
  printf("%s\n", BASICPP_READY);

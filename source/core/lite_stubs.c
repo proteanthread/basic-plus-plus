@@ -58,6 +58,11 @@ PARSER_STUB(pi_parse_vnet)
 PARSER_STUB(pi_parse_vcon)
 PARSER_STUB(pi_parse_vterm)
 PARSER_STUB(pi_parse_vmach)
+
+PARSER_STUB(pi_parse_reverse)
+PARSER_STUB(pi_parse_drawto)
+PARSER_STUB(pi_parse_at_stmt)
+PARSER_STUB(pi_parse_plot)
 PARSER_STUB(pi_parse_devmap)
 PARSER_STUB(pi_parse_select)
 PARSER_STUB(pi_parse_case)
@@ -201,8 +206,9 @@ double gw_double_to_mbf64(double val) {
     return val;
 }
 
-int lib_space_try_call_func(const char *name, int name_len, int argc, void *args, void *ret, int line_num) {
-    (void)name; (void)name_len; (void)argc; (void)args; (void)ret; (void)line_num;
+struct ParseNode;
+int lib_space_try_call_func(const char *name, int name_len, void *lex_ptr, void *rt_ptr, int line_num, void *out_result) {
+    (void)name; (void)name_len; (void)lex_ptr; (void)rt_ptr; (void)line_num; (void)out_result;
     return 0;
 }
 
@@ -257,8 +263,7 @@ BValue ast_call_function(RuntimeState *rt, int func_id, BValue *args, int arg_co
 PARSER_STUB(pi_parse_class)
 PARSER_STUB(pi_parse_endclass)
 
-PARSER_STUB(pi_parse_shared_cmd)
-PARSER_STUB(pi_parse_public_cmd)
+
 
 int ext_lib_unload(const char *name) { (void)name; return -1; }
 int ext_func_unload(const char *name) { (void)name; return -1; }

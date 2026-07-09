@@ -397,7 +397,7 @@ const DialectConfig *dialect_get_config(void)
 //
 const char *dialect_get_name(void)
 {
-    return active_dialect->name;
+    return active_dialect ? active_dialect->name : "Unknown";
 }
 
 // dialect_get_separator - Return the statement separator character.
@@ -407,7 +407,7 @@ const char *dialect_get_name(void)
 //
 char dialect_get_separator(void)
 {
-    return active_dialect->stmt_separator;
+    return active_dialect ? active_dialect->stmt_separator : ':';
 }
 
 // dialect_get_ready_prompt - Return the ready prompt text.
@@ -425,7 +425,7 @@ char dialect_get_separator(void)
 //
 const char *dialect_get_ready_prompt(void)
 {
-    return active_dialect->ready_prompt;
+    return active_dialect ? active_dialect->ready_prompt : "READY";
 }
 
 // dialect_get_zone_width - Return PRINT zone width for commas.
@@ -437,7 +437,7 @@ const char *dialect_get_ready_prompt(void)
 //
 int dialect_get_zone_width(void)
 {
-    return active_dialect->print_zone_width;
+    return active_dialect ? active_dialect->print_zone_width : 14;
 }
 
 // dialect_get_short_name - Return the 4-character dialect code.
@@ -447,7 +447,7 @@ int dialect_get_zone_width(void)
 //
 const char *dialect_get_short_name(void)
 {
-    return active_dialect->short_name;
+    return active_dialect ? active_dialect->short_name : "UNKN";
 }
 
 // dialect_list_all - Print all registered dialect names.

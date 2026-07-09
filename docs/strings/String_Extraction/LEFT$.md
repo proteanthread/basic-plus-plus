@@ -1,0 +1,139 @@
+# LEFT$
+
+## 1. Syntax & Parameters
+
+```text
+LEFT$(string_expr$, length_expr)
+```
+
+* **string_expr$**: A valid string expression from which the leftmost characters will be extracted. Must evaluate to a string.
+* **length_expr**: A numeric expression specifying the number of characters to extract from the left side of `string_expr$`. Must evaluate to a numeric value. If the value is fractional, it is implicitly truncated or rounded to an integer before processing.
+
+## 2. Description & Usage
+
+The `LEFT$` keyword is a fundamental string extraction function that retrieves a specified number of characters starting from the absolute left (the beginning) of a given string. This operation is highly deterministic and designed to safely truncate or bound-check the requested length against the actual length of the source string. 
+
+**Behavioral Edge Cases & Execution Paths:**
+* **Length Exceeds Source:** If `length_expr` evaluates to a number greater than or equal to `LEN(string_expr$)`, the function will return the entire `string_expr$` unmodified, without generating an error. This boundary condition ensures that over-fetching is gracefully handled by capping the extraction limit at the string's logical length.
+* **Zero Length:** If `length_expr` evaluates exactly to 0, `LEFT$` returns a zero-length (empty) string `""`.
+* **Negative Length:** In our strict implementation, if `length_expr` evaluates to a negative number, the system internally treats it as 0, thus safely returning an empty string. This deviates from some historical BASIC interpreters that might throw an "Illegal function call" error, favoring a fail-safe execution path instead.
+* **Null or Uninitialized Strings:** If `string_expr$` is uninitialized, it behaves as an empty string `""`, and regardless of the requested length, the result will safely resolve to `""`.
+
+## 3. Code Examples
+
+**Example 1: Basic Extraction**
+```basic
+10 LET A$ = "BASIC++ ENVIRONMENT"
+20 PRINT LEFT$(A$, 7)
+```
+*Output:* `BASIC++`
+
+**Example 2: Length Exceeds String Length**
+```basic
+10 LET B$ = "HELLO"
+20 PRINT LEFT$(B$, 20)
+```
+*Output:* `HELLO`
+
+**Example 3: Dynamic Length Computation**
+```basic
+10 LET DATA$ = "USER: ADMIN"
+20 LET POS = INSTR(DATA$, ":")
+30 PRINT LEFT$(DATA$, POS - 1)
+```
+*Output:* `USER`
+
+**Example 4: Boundary Testing (Zero and Negative Limits)**
+```basic
+10 LET TEST$ = "BOUNDARY"
+20 PRINT "[" + LEFT$(TEST$, 0) + "]"
+30 PRINT "[" + LEFT$(TEST$, -5) + "]"
+```
+*Output:* 
+`[]`
+`[]`
+
+## 4. Internal C-Source Mapping
+
+* **Entry Point / Lexing:** The keyword `LEFT$` is lexed as a string-returning function.
+* **Parser Registration:** Handled in the built-in function registry under `FCAT_STRING`.
+* **Wrapper Implementation:** `builtin_left` in `source/strings/builtins_string.c`.
+* **Core Logic Engine:** `bval_left` in `source/core/value.c`.
+* **String Allocation:** Relies on `strpool_alloc` defined in `source/core/stringpool.c`.
+
+## 5. Implementation Details
+
+**Execution Pipeline & Memory Operations:**
+1. **Argument Type Validation:** The wrapper `builtin_left` passes the raw `BValue` arguments to `bval_left` inside `source/core/value.c`. The core logic first validates type safety via `bval_is_string(s)` and `bval_is_numeric(n)`. If validation fails, `error_raise(ERR_WHAT, line_num)` is triggered, safely aborting execution and returning an empty string.
+2. **Numeric Cast & Bounds Normalization:** The length argument is coerced via `bval_to_int(n)`. Boundary sanitization occurs immediately: if `count < 0`, it is forced to `0`. If `count > s->v.sval.length`, it is clamped to `s->v.sval.length`.
+3. **Memory Pool Allocation:** The function queries the active `StringPool` (via `strpool_alloc`) for contiguous memory exactly matching the clamped `count`. If the string pool is exhausted, `strpool_alloc` returns `NULL`. The core logic traps this by invoking `error_raise(ERR_SORRY, line_num)` to indicate an "Out of Memory" state and emits a zero-length default string.
+4. **Copy & Struct Mutation:** Using a highly optimized `memcpy`, exactly `count` bytes are streamed from `s->v.sval.data` into the newly allocated block. The final `BValue` struct is assembled and flagged as a `VAL_STRING` with its length explicitly recorded. No null-terminators are strictly relied upon for internal string logic, preventing embedded null (`\0`) vulnerabilities.
+
+**What to do if it breaks:**
+If `LEFT$` outputs garbage characters, verify that the `StringPool` has not been corrupted or artificially constrained. If it returns an unexpected empty string when arguments are seemingly valid, set a breakpoint in `bval_left` and inspect the `count` sanitization block to ensure large floats or large unsigned values aren't wrapping to negative integers.
+
+## 6. Cross-References / See Also
+
+* `RIGHT$` - Extracts characters from the right side of a string.
+* `MID$` - Extracts characters from an arbitrary middle section of a string.
+* `SEG$` - Extracts a segment of a string defined by absolute start and end boundaries.
+* `LEN` - Retrieves the total length of a string.
+* `INSTR` - Locates the starting position of a substring.
+
+## 7. Historical Context
+
+In legacy systems like GW-BASIC and QBASIC, `LEFT$` was strictly intolerant of negative length arguments, invariably halting execution with an "Illegal function call" (Error 5). BASIC++ consciously evolves this behavior; rather than violently halting the program, it implicitly rectifies negative length parameters to 0, emitting an empty string. This promotes robust, non-blocking fault tolerance during heavily dynamic or mathematical string parsing routines. Additionally, legacy interpreters typically capped maximum string lengths at 255 bytes; BASIC++ leverages a dynamic `StringPool`, supporting extensively longer text blocks up to `MAX_STRING_LENGTH` boundaries.
+
+## 8. Manual Testing Guide
+
+To manually test the bounds and functionality of the `LEFT$` keyword without the automated Python suite, perform the following steps:
+
+1. **Launch the Interface:**
+   - On Windows: Run `basicpp-console.exe`
+   - On Linux: Run `./baspp-console`
+
+2. **Execute Boundary Constraints (Interactive Mode):**
+   ```basic
+   PRINT LEFT$("BASIC++", 5)
+   ```
+   *Expect:* `BASIC`
+
+   ```basic
+   PRINT LEFT$("BASIC++", 100)
+   ```
+   *Expect:* `BASIC++` (Graceful bounds clamping)
+
+   ```basic
+   PRINT LEFT$("BASIC++", 0)
+   ```
+   *Expect:* A blank line (empty string).
+
+   ```basic
+   PRINT LEFT$("BASIC++", -3)
+   ```
+   *Expect:* A blank line (empty string), demonstrating the negative boundary fail-safe.
+
+3. **Verify Type-Safety Error Trapping:**
+   ```basic
+   PRINT LEFT$(42, 2)
+   ```
+   *Expect:* A `Type mismatch` or `WHAT?` error, as the first argument must strictly be a string expression.
+
+
+### 9. Memory Management & Garbage Collection Profile
+Under the hood, this keyword operates within the strict bounds of the BASIC++ deterministic memory manager (`core/memory.c`). When executed, any intermediate strings generated by this operation are routed to the Transient Memory Arena within the String Pool (`core/stringpool.c`). If the arena exceeds its high-water mark, an aggressive mark-and-sweep garbage collection pass is immediately triggered before the instruction completes. On embedded architectures (compiled with `-DBPP_LITE_BUILD`), this transient arena is statically clamped (default 4KB), meaning iterative loops invoking this keyword must be designed carefully to avoid `ERR_OUT_OF_MEMORY` traps. Developers porting to bare-metal systems must verify that the `memory.c` heap allocator correctly points to a continuous SRAM block without fragmentation.
+
+### 10. Portability & Hardware Porting Concerns
+Because BASIC++ is strictly C17 ISO/IEC 9899:2018 compliant, this keyword relies on zero proprietary OS APIs. When compiling for headless microcontrollers (such as the Arduino Mega or ESP32) using the `-DNO_SDL2` macro, this instruction routes all its graphical or I/O side effects through the Platform Abstraction Layer (PAL). Hardware implementers must ensure that `platform_sleep()` and `platform_get_ticks()` are properly mapped in `core/platform.c` if this keyword involves timing, yielding, or hardware-level interrupts. In cases where the underlying hardware lacks a floating-point unit (FPU), the lexer automatically maps numeric outputs to 32-bit fixed integer types if `-DBPP_NO_FLOAT` is enforced.
+
+### 11. Abstract Syntax Tree (AST) Life Cycle
+During the parsing phase, the Recursive Descent Parser encounters the token associated with this keyword. It allocates an `AST_Node` structure from the `AST_ARENA` and populates its operand pointers. At runtime, the `ast_interpreter.c` engine performs a post-order traversal to evaluate all child expression nodes before triggering the final execution hook. This two-pass system guarantees that syntax errors (like mismatched parentheses or missing commas) are caught globally before any destructive side-effects occur. Once parsed, the `AST_Node` resides in memory until `NEW` or `RUN` is executed, at which point the entire arena is zeroed out to prevent memory leaks.
+
+### 12. C17 Standard Safety & Security Boundaries
+Security and isolation are paramount. This keyword utilizes strict bounds-checking to prevent buffer overflows. Internally, any array indexing or string manipulation defaults to `size_t` for addressing, preventing negative index wraps. Stack-smashing protections are enforced virtually by the `MAX_CALL_STACK` limit defined in `config.h`. Any attempt by this keyword to access unallocated heap memory will trigger the interpreter's internal fault handler, raising a trappable BASIC error rather than causing a segmentation fault at the OS level.
+
+### 13. Deterministic Execution & Regression Prevention
+To prevent regressions across builds (Windows, Linux, or MCU), the execution of this keyword is entirely deterministic. It behaves identically regardless of the endianness of the host CPU (Little-Endian x64 vs Big-Endian legacy chips). The testing suite in `selftests_all.c` ensures that the byte-for-byte output of this operation remains identical. If a developer modifies the underlying C source code for this keyword, they MUST run the `SELFTEST` suite to verify that parsing precedence, token mapping, and garbage collection behavior have not drifted.
+
+### 14. Performance Profiling & Optimization Rules
+For developers writing performance-critical algorithms in BASIC++, be aware that calling this keyword inside a `FOR...NEXT` or `WHILE...WEND` loop incurs a minimal virtual dispatch overhead. Because the interpreter uses a switch-case dispatch engine in `exec.c`, the branch predictor on modern CPUs will optimize repeated calls. However, on 8-bit or 16-bit chips, minimizing the use of string-mutating variants of this keyword will drastically improve frame rates and execution speed.

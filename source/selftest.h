@@ -53,4 +53,29 @@
 //
 int selftest_run(RuntimeState *rt);
 
+// Signature for a keyword test function
+typedef void (*KeywordTestFunc)(RuntimeState *rt);
+
+// Register a keyword test function during boot/initialization
+void selftest_register(const char *keyword, const char *description, KeywordTestFunc func);
+
+// Execute a specific keyword test
+void selftest_run_keyword(RuntimeState *rt, const char *keyword);
+
+// Register all decoupled keyword tests
+void register_all_selftests(void);
+
+// Standardized assertion macro for keyword testing
+extern int _st_assert_failures;
+#define ST_ASSERT(rt, condition, expected_desc) \
+    do { \
+        if (!(condition)) { \
+            printf("  [FAIL] %s\n", expected_desc); \
+            printf("         -> File: %s, Line: %d\n", __FILE__, __LINE__); \
+            _st_assert_failures++; \
+        } else { \
+            printf("  [PASS] %s\n", expected_desc); \
+        } \
+    } while(0)
+
 #endif // BASICPP_SELFTEST_H

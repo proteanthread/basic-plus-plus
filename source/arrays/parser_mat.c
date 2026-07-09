@@ -301,7 +301,7 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  }
  lexer_next(lex); // consume '='
 
- // --- MAT A = ZER / CON / IDN ---
+ // --- MAT A = ZER / CON / IDN / RND ---
  if (pi_mat_match_ident(lex, "ZER")) {
  DimArray *arr = runtime_find_dim(rt, name_a, name_a_len);
  int i;
@@ -312,6 +312,23 @@ void pi_parse_mat_cmd(Lexer *lex, RuntimeState *rt, int line_num)
  // Works on 1D, 2D, and 3D arrays
  for (i = 0; i < arr->total; i++) {
   arr->elements[i] = bval_int(0);
+ }
+ lexer_next(lex);
+ return;
+ }
+
+ if (pi_mat_match_ident(lex, "RND")) {
+ DimArray *arr = runtime_find_dim(rt, name_a, name_a_len);
+ int i;
+ if (arr == NULL) {
+  error_raise(ERR_HOW, line_num);
+  return;
+ }
+ // Works on 1D, 2D, and 3D arrays
+ for (i = 0; i < arr->total; i++) {
+  rt->rnd_seed = (rt->rnd_seed * 1103515245UL + 12345UL) & 0x7FFFFFFFUL;
+  if (rt->rnd_seed == 0) rt->rnd_seed = 1;
+  arr->elements[i] = bval_float((double)rt->rnd_seed / 2147483648.0);
  }
  lexer_next(lex);
  return;

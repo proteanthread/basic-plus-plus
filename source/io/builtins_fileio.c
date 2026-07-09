@@ -247,11 +247,14 @@ BValue builtin_filemod(BValue *args, int argc, void *rt)
  (size_t)len);
  fname[len] = '\0';
 
- if (stat(fname, &st) != 0)
+ if (stat(fname, &st) != 0) {
  return bval_string(NULL, 0);
- tm = localtime(&st.st_mtime);
- if (tm == NULL)
+ }
+ time_t t = st.st_mtime;
+ tm = localtime(&t);
+ if (tm == NULL) {
  return bval_string(NULL, 0);
+ }
  sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d",
  tm->tm_year + 1900, tm->tm_mon + 1,
  tm->tm_mday, tm->tm_hour,

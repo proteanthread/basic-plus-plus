@@ -44,6 +44,7 @@
 
 #include "parser_internal.h"
 #include "modules/mod_fsk_audio.h"
+#include "console.h"
 
 void pi_parse_open(Lexer *lex, RuntimeState *rt, int line_num)
 {

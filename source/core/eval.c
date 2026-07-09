@@ -671,9 +671,9 @@ static void eval_primary(GW_State *state, GW_Value *result) {
         return;
     }
 
-    if (full_tok == TOK_LCASE || full_tok == TOK_UCASE || full_tok == TOK_TCASE ||
-        full_tok == TOK_MCASE || full_tok == TOK_ICASE || full_tok == TOK_REVERSE ||
-        full_tok == TOK_TRIM || full_tok == TOK_LTRIM || full_tok == TOK_RTRIM ||
+    if (full_tok == TOK_LCASES || full_tok == TOK_UCASES || full_tok == TOK_TCASES ||
+        full_tok == TOK_MCASES || full_tok == TOK_ICASES || full_tok == TOK_REVERSES ||
+        full_tok == TOK_TRIMS || full_tok == TOK_LTRIMS || full_tok == TOK_RTRIMS ||
         full_tok == TOK_HASH_FN) {
         state->ip += 2;
         if (*state->ip == '(') state->ip++;
@@ -700,20 +700,22 @@ static void eval_primary(GW_State *state, GW_Value *result) {
             return;
         }
 
-        char buf[256];
         int slen = val.str.len;
-        if (slen > 255) slen = 255;
+        char *buf = NULL;
+        if (full_tok != TOK_LTRIMS && full_tok != TOK_RTRIMS && full_tok != TOK_TRIMS) {
+            buf = (char*)malloc(slen > 0 ? slen : 1);
+        }
         const char *s = val.str.ptr;
         
         result->type = TYPE_STRING;
         
-        if (full_tok == TOK_LCASE) {
+        if (full_tok == TOK_LCASES) {
             for (int i=0; i<slen; i++) buf[i] = tolower(s[i]);
             result->str = gw_str_create(buf, slen);
-        } else if (full_tok == TOK_UCASE) {
+        } else if (full_tok == TOK_UCASES) {
             for (int i=0; i<slen; i++) buf[i] = toupper(s[i]);
             result->str = gw_str_create(buf, slen);
-        } else if (full_tok == TOK_TCASE) {
+        } else if (full_tok == TOK_TCASES) {
             int after_space = 1;
             for (int i=0; i<slen; i++) {
                 char c = s[i];
@@ -722,33 +724,34 @@ static void eval_primary(GW_State *state, GW_Value *result) {
                 else { buf[i] = tolower(c); }
             }
             result->str = gw_str_create(buf, slen);
-        } else if (full_tok == TOK_MCASE) {
+        } else if (full_tok == TOK_MCASES) {
             for (int i=0; i<slen; i++) buf[i] = (rand() % 2) ? toupper(s[i]) : tolower(s[i]);
             result->str = gw_str_create(buf, slen);
-        } else if (full_tok == TOK_ICASE) {
+        } else if (full_tok == TOK_ICASES) {
             for (int i=0; i<slen; i++) buf[i] = islower(s[i]) ? toupper(s[i]) : tolower(s[i]);
             result->str = gw_str_create(buf, slen);
-        } else if (full_tok == TOK_REVERSE) {
+        } else if (full_tok == TOK_REVERSES) {
             for (int i=0; i<slen; i++) buf[i] = s[slen - 1 - i];
             result->str = gw_str_create(buf, slen);
-        } else if (full_tok == TOK_LTRIM) {
+        } else if (full_tok == TOK_LTRIMS) {
             int i=0; while (i<slen && s[i]==' ') i++;
             result->str = gw_str_create(s+i, slen-i);
-        } else if (full_tok == TOK_RTRIM) {
+        } else if (full_tok == TOK_RTRIMS) {
             int i=slen; while (i>0 && s[i-1]==' ') i--;
             result->str = gw_str_create(s, i);
-        } else if (full_tok == TOK_TRIM) {
+        } else if (full_tok == TOK_TRIMS) {
             int left=0, right=slen;
             while (left<right && s[left]==' ') left++;
             while (right>left && s[right-1]==' ') right--;
             result->str = gw_str_create(s+left, right-left);
         }
         
+        if (buf) free(buf);
         gw_str_free(&val.str);
         return;
     }
     
-    if (full_tok == TOK_REPLACE) {
+    if (full_tok == TOK_REPLACES) {
         state->ip += 2;
         if (*state->ip == '(') state->ip++;
         GW_Value s1, s2, s3;
@@ -768,35 +771,40 @@ static void eval_primary(GW_State *state, GW_Value *result) {
             return;
         }
         
-        // Simple string replacement: replace first occurrence for basic compatibility
-        // (Full all-occurrences replace takes more logic, this suffices for core stub)
-        char buf[256];
-        int len = 0;
-        int found = -1;
-        
-        if (s2.str.len > 0 && s1.str.len >= s2.str.len) {
-            for (int i=0; i <= s1.str.len - s2.str.len; i++) {
+        // Fully robust all-occurrences replace
+        if (s2.str.len == 0 || s1.str.len == 0) {
+            result->type = TYPE_STRING;
+            result->str = gw_str_create(s1.str.ptr, s1.str.len);
+        } else {
+            // Count occurrences to calculate new length
+            int count = 0;
+            for (int i=0; i <= s1.str.len - s2.str.len; ) {
                 if (memcmp(s1.str.ptr + i, s2.str.ptr, s2.str.len) == 0) {
-                    found = i; break;
+                    count++;
+                    i += s2.str.len;
+                } else {
+                    i++;
                 }
             }
+            
+            int new_len = s1.str.len + count * (s3.str.len - s2.str.len);
+            char *buf = (char*)malloc(new_len > 0 ? new_len : 1);
+            
+            int p = 0;
+            for (int i=0; i < s1.str.len; ) {
+                if (i <= s1.str.len - s2.str.len && memcmp(s1.str.ptr + i, s2.str.ptr, s2.str.len) == 0) {
+                    memcpy(buf + p, s3.str.ptr, s3.str.len);
+                    p += s3.str.len;
+                    i += s2.str.len;
+                } else {
+                    buf[p++] = s1.str.ptr[i++];
+                }
+            }
+            
+            result->type = TYPE_STRING;
+            result->str = gw_str_create(buf, new_len);
+            free(buf);
         }
-        
-        if (found >= 0) {
-            memcpy(buf, s1.str.ptr, found);
-            len += found;
-            memcpy(buf + len, s3.str.ptr, s3.str.len);
-            len += s3.str.len;
-            int rem = s1.str.len - found - s2.str.len;
-            memcpy(buf + len, s1.str.ptr + found + s2.str.len, rem);
-            len += rem;
-        } else {
-            memcpy(buf, s1.str.ptr, s1.str.len);
-            len = s1.str.len;
-        }
-        
-        result->type = TYPE_STRING;
-        result->str = gw_str_create(buf, len);
         gw_str_free(&s1.str);
         gw_str_free(&s2.str);
         gw_str_free(&s3.str);

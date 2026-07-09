@@ -1,0 +1,85 @@
+# LCASE$
+
+### 1. Syntax & Parameters
+`LCASE$(string_expr$)`
+- `string_expr$`: The string expression to be converted to lowercase.
+
+### 2. Description & Usage
+Converts all uppercase alphabetic characters (A-Z) in a given string to their corresponding lowercase equivalents (a-z). Non-alphabetic characters (such as numbers, punctuation, and spaces) are completely unaffected and pass through identically.
+
+**Detailed Behavioral Edge Cases and Constraints:**
+- **Implicit Truncation at 255 Bytes:** The internal `builtin_lcases` processing buffer is clamped to a static 256-byte array (`char buf[256]`). Any string whose length exceeds 255 characters will be forcibly and silently truncated. Only the first 255 characters are converted and stored into the string pool, shedding all subsequent characters.
+- **Side Effects on Subsystems:** Evaluation inherently mutates the active statement's execution context by requesting heap allocations inside the string pool via `strpool_store`. Rapid iterative calls inside tight loops require continuous intermediate allocations in the transient memory arena, triggering aggressive garbage-collection passes if the memory ceiling is reached.
+- **Null or Empty Scenarios:** Passing empty strings (`""`) or uninitialized string variables immediately yields a safely constructed zero-length string (`NULL, 0`) without touching the transformation logic. If a non-string type somehow bypasses the parser type checking and reaches the builtin, it immediately defaults to an empty string.
+
+### 3. Code Examples
+```basic
+10 LET A$ = "HELLO WORLD! 123"
+20 PRINT LCASE$(A$)
+30 REM Output: hello world! 123
+```
+
+**Complex Integration Example:**
+```basic
+100 REM Case-insensitive string comparison
+110 INPUT "Enter 'YES' to continue: ", ANS$
+120 IF LCASE$(ANS$) = "yes" THEN PRINT "Continuing..." ELSE END
+```
+
+### 4. Internal C-Source Mapping
+- **Lexer**: `source/lexer.h` (`KW_LCASE`), `source/lexer/lexer.c`
+- **Tokenizer**: `source/core/tokenizer.c` (`TOK_LCASES`)
+- **AST Node**: `source/ast.h` (`FUNC_LCASES`)
+- **Parser**: `source/parser/parser_expr.c`
+- **Runtime Evaluation**: `source/strings/builtins_string.c` -> `builtin_lcases()`
+
+### 5. Implementation Details
+The runtime extracts the argument and immediately validates that it is a string via `bval_is_string`. If valid, it extracts the length and character payload.
+
+**In-Depth Architectural Narrative:**
+- **Struct Mutations:** During AST evaluation, `eval_expr()` visits the corresponding `AST_Node` struct. The operand is retrieved into the `BValue` union structure. For the operation, a temporary localized stack buffer (`char buf[256]`) is utilized to hold the mutated payload. A deterministic clamping limits the evaluated `len` to a maximum of 255. A fast standard `C` library `tolower((unsigned char)s[i])` is applied character-by-character. Finally, `strpool_store(&state->strpool, buf, len)` is called to dynamically provision heap space in the global string pool, taking ownership of the resultant string.
+- **Execution Paths:** 
+  - *Path A (Valid String):* Length and pointer confirmed valid. Clamped to 255. Transformed. Copied to `strpool`. Returned as `bval_string(ptr, len)`.
+  - *Path B (Invalid/Empty):* Length is 0, or `data` is NULL, or type is mismatch. Instantly returns `bval_string(NULL, 0)`.
+- **Error States & Fault Tolerance:** Failure points include `ERR_OUT_OF_MEMORY` if the string pool is exhausted during `strpool_store()`.
+- **Modification Constraints:** 
+  - *What CAN be changed:* Optimization routines inside the iterative C-loop can be changed (e.g. vectorization or SIMD intrinsics for mass conversion), provided regression tests pass and deterministic truncation behavior up to 255 bytes remains intact if required by memory layout.
+  - *What CANNOT be changed:* The strict maximum bound of 255 bytes and the `$` suffix on the token identifier must remain strictly enforced to prevent buffer overflows and to satisfy the `String Keyword Suffix Constraint`.
+
+### 6. Cross-References / See Also
+- `UCASE$`
+- `TCASE$`
+- `ICASE$`
+- `MCASE$`
+
+### 7. Historical Context
+`LCASE$` is standard across GW-BASIC and QBASIC dialects for ensuring user input normalization. While older systems sometimes allowed arbitrary string lengths, BASIC++ restricts this natively to 255 characters to mirror strict MS-DOS memory segment string limits, preserving deterministic portability across the internal VFS and runtime environments.
+
+### 8. Manual Testing Guide
+1. Launch `basicpp-console.exe` on Windows (or `./baspp-console` on Linux).
+2. Enter the following string normalization test:
+   `PRINT LCASE$("MiXed CAse 123!")`
+3. Press **ENTER**.
+4. Verify the console outputs exactly: `mixed case 123!`
+5. To test the 255-character truncation limit:
+   `PRINT LEN(LCASE$(REPEAT$("A", 300)))`
+6. Verify the console outputs exactly: `255`
+
+
+### 9. Memory Management & Garbage Collection Profile
+Under the hood, this keyword operates within the strict bounds of the BASIC++ deterministic memory manager (`core/memory.c`). When executed, any intermediate strings generated by this operation are routed to the Transient Memory Arena within the String Pool (`core/stringpool.c`). If the arena exceeds its high-water mark, an aggressive mark-and-sweep garbage collection pass is immediately triggered before the instruction completes. On embedded architectures (compiled with `-DBPP_LITE_BUILD`), this transient arena is statically clamped (default 4KB), meaning iterative loops invoking this keyword must be designed carefully to avoid `ERR_OUT_OF_MEMORY` traps. Developers porting to bare-metal systems must verify that the `memory.c` heap allocator correctly points to a continuous SRAM block without fragmentation.
+
+### 10. Portability & Hardware Porting Concerns
+Because BASIC++ is strictly C17 ISO/IEC 9899:2018 compliant, this keyword relies on zero proprietary OS APIs. When compiling for headless microcontrollers (such as the Arduino Mega or ESP32) using the `-DNO_SDL2` macro, this instruction routes all its graphical or I/O side effects through the Platform Abstraction Layer (PAL). Hardware implementers must ensure that `platform_sleep()` and `platform_get_ticks()` are properly mapped in `core/platform.c` if this keyword involves timing, yielding, or hardware-level interrupts. In cases where the underlying hardware lacks a floating-point unit (FPU), the lexer automatically maps numeric outputs to 32-bit fixed integer types if `-DBPP_NO_FLOAT` is enforced.
+
+### 11. Abstract Syntax Tree (AST) Life Cycle
+During the parsing phase, the Recursive Descent Parser encounters the token associated with this keyword. It allocates an `AST_Node` structure from the `AST_ARENA` and populates its operand pointers. At runtime, the `ast_interpreter.c` engine performs a post-order traversal to evaluate all child expression nodes before triggering the final execution hook. This two-pass system guarantees that syntax errors (like mismatched parentheses or missing commas) are caught globally before any destructive side-effects occur. Once parsed, the `AST_Node` resides in memory until `NEW` or `RUN` is executed, at which point the entire arena is zeroed out to prevent memory leaks.
+
+### 12. C17 Standard Safety & Security Boundaries
+Security and isolation are paramount. This keyword utilizes strict bounds-checking to prevent buffer overflows. Internally, any array indexing or string manipulation defaults to `size_t` for addressing, preventing negative index wraps. Stack-smashing protections are enforced virtually by the `MAX_CALL_STACK` limit defined in `config.h`. Any attempt by this keyword to access unallocated heap memory will trigger the interpreter's internal fault handler, raising a trappable BASIC error rather than causing a segmentation fault at the OS level.
+
+### 13. Deterministic Execution & Regression Prevention
+To prevent regressions across builds (Windows, Linux, or MCU), the execution of this keyword is entirely deterministic. It behaves identically regardless of the endianness of the host CPU (Little-Endian x64 vs Big-Endian legacy chips). The testing suite in `selftests_all.c` ensures that the byte-for-byte output of this operation remains identical. If a developer modifies the underlying C source code for this keyword, they MUST run the `SELFTEST` suite to verify that parsing precedence, token mapping, and garbage collection behavior have not drifted.
+
+### 14. Performance Profiling & Optimization Rules
+For developers writing performance-critical algorithms in BASIC++, be aware that calling this keyword inside a `FOR...NEXT` or `WHILE...WEND` loop incurs a minimal virtual dispatch overhead. Because the interpreter uses a switch-case dispatch engine in `exec.c`, the branch predictor on modern CPUs will optimize repeated calls. However, on 8-bit or 16-bit chips, minimizing the use of string-mutating variants of this keyword will drastically improve frame rates and execution speed.

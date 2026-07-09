@@ -1451,6 +1451,49 @@ static int line_matches_label_or_func(const char *line_text, const char *pattern
     return 0;
 }
 
+
+void program_list_complex(ProgramStore *store, ListRange *ranges, int range_count, int search_type, const char *pattern)
+{
+    int i, j;
+    for (i = 0; i < store->count; i++) {
+        double line_num = store->lines[i].line_number;
+        const char *text = store->lines[i].text;
+        
+        // 1. Check range filters (if any)
+        int in_range = (range_count == 0); // If no ranges, all lines pass range check
+        for (j = 0; j < range_count; j++) {
+            double from = ranges[j].from;
+            double to = ranges[j].to;
+            if ((from <= 0 || line_num >= from) && (to <= 0 || line_num <= to)) {
+                in_range = 1;
+                break;
+            }
+        }
+        
+        if (!in_range) continue;
+        
+        // 2. Check search filters (if any)
+        int match = 1; // Default to match if no search
+        if (search_type != 0 && pattern != NULL) {
+            match = 0;
+            if (search_type == SEARCH_SUBSTRING) {
+                match = match_anywhere(pattern, text);
+            } else if (search_type == SEARCH_SUBSTRING_CS) {
+                // Case sensitive exact substring
+                if (strstr(text, pattern) != NULL) match = 1;
+            } else if (search_type == SEARCH_IDENTIFIER) {
+                match = line_matches_identifier(text, pattern);
+            } else if (search_type == SEARCH_LABEL_OR_FUNC) {
+                match = line_matches_label_or_func(text, pattern);
+            }
+        }
+        
+        if (match) {
+            printf("%s\n", text);
+        }
+    }
+}
+
 void program_list_search(ProgramStore *store, int search_type, const char *pattern)
 {
     int i;
@@ -1495,7 +1538,7 @@ static void rambank_evict_lru(MemorySystem *mem) {
     int victim = -1;
     long oldest_access = -1;
 
-    for (int i = 1; i < MAX_RAMBANKS; i++) {
+    for (int i = 1; i < mem->num_rambanks; i++) {
         if (mem->banks[i].resident && mem->banks[i].base != NULL) {
             if (oldest_access == -1 || mem->banks[i].last_access < oldest_access) {
                 oldest_access = mem->banks[i].last_access;
@@ -1530,7 +1573,7 @@ static void rambank_evict_lru(MemorySystem *mem) {
 
 // Bring bank into resident memory (page fault handler)
 void rambank_ensure_resident(MemorySystem *mem, int bank_id) {
-    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) return;
+    if (bank_id <= 0 || bank_id >= mem->num_rambanks) return;
     RamBank *b = &mem->banks[bank_id];
     
     // Increment global access counter
@@ -1543,7 +1586,7 @@ void rambank_ensure_resident(MemorySystem *mem, int bank_id) {
 
     // Count currently resident banks
     int resident_count = 0;
-    for (int i = 1; i < MAX_RAMBANKS; i++) {
+    for (int i = 1; i < mem->num_rambanks; i++) {
         if (mem->banks[i].resident) {
             resident_count++;
         }
@@ -1579,20 +1622,36 @@ void rambank_ensure_resident(MemorySystem *mem, int bank_id) {
     }
 }
 
+extern int g_init_rambanks;
+
 void rambank_init(MemorySystem *mem) {
     mem->access_counter = 0;
-    for (int i = 0; i < MAX_RAMBANKS; i++) {
-        mem->banks[i].base = NULL;
+    
+    // Set from global config
+    if (g_init_rambanks > 0) {
+        mem->num_rambanks = g_init_rambanks;
+    } else {
+        mem->num_rambanks = 0;
+    }
+
+    mem->banks = NULL;
+    if (mem->num_rambanks > 0) {
+        mem->banks = (RamBank*)calloc(mem->num_rambanks, sizeof(RamBank));
+    }
+    for (int i = 0; i < mem->num_rambanks; i++) {
+        if (mem->banks) {
+            mem->banks[i].base = NULL;
         mem->banks[i].id = i;
         mem->banks[i].resident = 0;
         mem->banks[i].dirty = 0;
         mem->banks[i].shared = 0;
         mem->banks[i].last_access = 0;
+        }
     }
 }
 
 void rambank_shutdown(MemorySystem *mem) {
-    for (int i = 0; i < MAX_RAMBANKS; i++) {
+    for (int i = 0; i < mem->num_rambanks; i++) {
         RamBank *b = &mem->banks[i];
         if (b->base != NULL) {
             free(b->base);
@@ -1604,10 +1663,16 @@ void rambank_shutdown(MemorySystem *mem) {
         rambank_get_swap_path(i, path);
         remove(path); // Silently try to delete
     }
+
+    if (mem->banks) {
+        free(mem->banks);
+        mem->banks = NULL;
+    }
+
 }
 
 unsigned char rambank_peek(MemorySystem *mem, int bank_id, long offset, int line_num) {
-    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+    if (bank_id <= 0 || bank_id >= mem->num_rambanks) {
         error_raise(ERR_HOW, line_num);
         return 0;
     }
@@ -1652,7 +1717,7 @@ unsigned char rambank_peek(MemorySystem *mem, int bank_id, long offset, int line
 }
 
 void rambank_poke(MemorySystem *mem, int bank_id, long offset, unsigned char value, int line_num) {
-    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+    if (bank_id <= 0 || bank_id >= mem->num_rambanks) {
         error_raise(ERR_HOW, line_num);
         return;
     }
@@ -1697,20 +1762,20 @@ void rambank_poke(MemorySystem *mem, int bank_id, long offset, unsigned char val
 
 long rambank_free_space(MemorySystem *mem, int bank_id) {
     (void)mem;
-    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+    if (bank_id <= 0 || bank_id >= mem->num_rambanks) {
         return 0;
     }
     return RAMBANK_SIZE;
 }
 
 void rambank_set_shared(MemorySystem *mem, int bank_id, int shared) {
-    if (bank_id > 0 && bank_id < MAX_RAMBANKS) {
+    if (bank_id > 0 && bank_id < mem->num_rambanks) {
         mem->banks[bank_id].shared = shared;
     }
 }
 
 void rambank_copy(MemorySystem *mem, int src_bank, long src_offset, int dst_bank, long dst_offset, long length, int line_num) {
-    if (src_bank <= 0 || src_bank >= MAX_RAMBANKS || dst_bank <= 0 || dst_bank >= MAX_RAMBANKS) {
+    if (src_bank <= 0 || src_bank >= mem->num_rambanks || dst_bank <= 0 || dst_bank >= mem->num_rambanks) {
         error_raise(ERR_HOW, line_num);
         return;
     }
@@ -1767,7 +1832,7 @@ void rambank_copy(MemorySystem *mem, int src_bank, long src_offset, int dst_bank
 }
 
 void rambank_fill(MemorySystem *mem, int bank_id, long offset, long length, unsigned char value, int line_num) {
-    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+    if (bank_id <= 0 || bank_id >= mem->num_rambanks) {
         error_raise(ERR_HOW, line_num);
         return;
     }

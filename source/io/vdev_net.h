@@ -42,4 +42,11 @@ void vdev_net_cleanup(void);
  // Returns a dynamically allocated VDev on success, or NULL on failure.
 VDev *vdev_net_open(const char *uri);
 
+// Fetch full payload via Gemini protocol
+char *net_gemini_fetch(const char *url);
+
+// Fetch full payload via Gopher protocol
+char *net_gopher_fetch(const char *url);
+
+
 #endif // BASICPP_VDEV_NET_H

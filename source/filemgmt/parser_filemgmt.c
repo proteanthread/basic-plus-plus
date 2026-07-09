@@ -1,3 +1,9 @@
+#ifdef _WIN32
+#define PLAT_STRNICMP _strnicmp
+#else
+#include <strings.h>
+#define PLAT_STRNICMP strncasecmp
+#endif
 /* =====================================================================
  * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
  * File: parser_filemgmt.c
@@ -42,8 +48,24 @@
  // ---
 
 #include "parser_internal.h"
+#include "console.h"
 
  // pi_parse_files - Handle FILES command.
+
+static int is_basic_ext(const char *name) {
+    const char *ext = strrchr(name, '.');
+    if (!ext) return 0;
+    char e[5];
+    int i;
+    for (i = 0; i < 4 && ext[i]; i++) {
+        e[i] = (char)tolower((unsigned char)ext[i]);
+    }
+    e[i] = '\0';
+    if (strcmp(e, ".bas") == 0 || strcmp(e, ".bpl") == 0 ||
+        strcmp(e, ".bpp") == 0 || strcmp(e, ".bpe") == 0) return 1;
+    return 0;
+}
+
 void pi_parse_files(Lexer *lex, RuntimeState *rt, int line_num)
 {
     (void)rt;
@@ -70,7 +92,7 @@ void pi_parse_files(Lexer *lex, RuntimeState *rt, int line_num)
  have_pat = 1;
  lexer_next(lex);
  }
- printf("\n");
+ gw_printf("\n");
 #ifdef _WIN32
  {
  WIN32_FIND_DATAA fd;
@@ -79,25 +101,23 @@ void pi_parse_files(Lexer *lex, RuntimeState *rt, int line_num)
  if (!have_pat) strcpy(pattern, "*");
  hFind = FindFirstFileA(pattern, &fd);
  if (hFind == INVALID_HANDLE_VALUE) {
- printf("No files found.\n");
+ gw_printf("No files found.\n");
  } else {
  do {
  if (fd.dwFileAttributes &
  FILE_ATTRIBUTE_DIRECTORY) {
- printf("%-14s <DIR>  ", fd.cFileName);
+ gw_printf("%-12s <DIR> ", fd.cFileName);
  } else {
- printf("%-14s %7lu  ",
- fd.cFileName,
- (unsigned long)fd.nFileSizeLow);
+ gw_printf("%-18s ", fd.cFileName);
  }
  col++;
- if (col >= 3) {
- printf("\n");
+ if (col >= 4) {
+ gw_printf("\n");
  col = 0;
  }
  } while (FindNextFileA(hFind, &fd));
  FindClose(hFind);
- if (col > 0) printf("\n");
+ if (col > 0) gw_printf("\n");
  }
  }
 #else
@@ -122,7 +142,7 @@ void pi_parse_files(Lexer *lex, RuntimeState *rt, int line_num)
  }
  dp = opendir(dirpath);
  if (dp == NULL) {
- printf("No files found.\n");
+ gw_printf("No files found.\n");
  } else {
  while ((ep = readdir(dp)) != NULL) {
  char fullpath[560];
@@ -136,29 +156,25 @@ void pi_parse_files(Lexer *lex, RuntimeState *rt, int line_num)
  dirpath, ep->d_name);
  if (stat(fullpath, &st) == 0) {
  if (S_ISDIR(st.st_mode)) {
- printf("%-14s <DIR>  ",
- ep->d_name);
+ gw_printf("%-12s <DIR> ", ep->d_name);
  } else {
- printf("%-14s %7lu  ",
- ep->d_name,
- (unsigned long)st.st_size);
+ gw_printf("%-18s ", ep->d_name);
  }
  } else {
- printf("%-14s        ",
- ep->d_name);
+ gw_printf("%-18s ", ep->d_name);
  }
  col++;
- if (col >= 3) {
- printf("\n");
+ if (col >= 4) {
+ gw_printf("\n");
  col = 0;
  }
  }
  closedir(dp);
- if (col > 0) printf("\n");
+ if (col > 0) gw_printf("\n");
  }
  }
 #endif
- printf("\n");
+ gw_printf("\n");
  }
  return;
 }
@@ -187,26 +203,41 @@ void pi_parse_dir(Lexer *lex, RuntimeState *rt, int line_num)
  have_pat = 1;
  lexer_next(lex);
  }
- printf("\n");
+ gw_printf("\n");
 #ifdef _WIN32
  {
  WIN32_FIND_DATAA fd;
  HANDLE hFind;
+ int col = 0;
  if (!have_pat) strcpy(pattern, "*");
  hFind = FindFirstFileA(pattern, &fd);
  if (hFind == INVALID_HANDLE_VALUE) {
- printf("No files found.\n");
+ gw_printf("No files found.\n");
  } else {
  do {
- printf("%s\n", fd.cFileName);
+ if (have_pat || !is_basic_ext(fd.cFileName)) {
+ if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+ gw_printf("%-12s <DIR> ", fd.cFileName);
+ } else {
+ gw_printf("%-18s ", fd.cFileName);
+ }
+ col++;
+ if (col >= 4) {
+ gw_printf("\n");
+ col = 0;
+ }
+ }
  } while (FindNextFileA(hFind, &fd));
  FindClose(hFind);
+ if (col > 0) gw_printf("\n");
  }
  }
 #else
  {
  DIR *dp;
  struct dirent *ep;
+ struct stat st;
+ int col = 0;
  char dirpath[280];
  if (!have_pat) strcpy(pattern, ".");
  strcpy(dirpath, pattern);
@@ -220,21 +251,39 @@ void pi_parse_dir(Lexer *lex, RuntimeState *rt, int line_num)
  }
  dp = opendir(dirpath);
  if (dp == NULL) {
- printf("No files found.\n");
+ gw_printf("No files found.\n");
  } else {
  while ((ep = readdir(dp)) != NULL) {
+ char fullpath[560];
  if (ep->d_name[0] == '.' &&
  (ep->d_name[1] == '\0' ||
  (ep->d_name[1] == '.' &&
  ep->d_name[2] == '\0')))
  continue;
- printf("%s\n", ep->d_name);
+ if (have_pat || !is_basic_ext(ep->d_name)) {
+ sprintf(fullpath, "%s/%s", dirpath, ep->d_name);
+ if (stat(fullpath, &st) == 0) {
+ if (S_ISDIR(st.st_mode)) {
+ gw_printf("%-12s <DIR> ", ep->d_name);
+ } else {
+ gw_printf("%-18s ", ep->d_name);
+ }
+ } else {
+ gw_printf("%-18s ", ep->d_name);
+ }
+ col++;
+ if (col >= 4) {
+ gw_printf("\n");
+ col = 0;
+ }
+ }
  }
  closedir(dp);
+ if (col > 0) gw_printf("\n");
  }
  }
 #endif
- printf("\n");
+ gw_printf("\n");
  }
  return;
 }
@@ -269,10 +318,10 @@ void pi_parse_kill(Lexer *lex, RuntimeState *rt, int line_num)
 
  if (vfs_resolve(fname, resolved, sizeof(resolved), 1) == 0) {
   if (remove(resolved) != 0) {
-   printf("File not found: %s\n", fname);
+   gw_printf("File not found: %s\n", fname);
   }
  } else {
-  printf("File not found: %s\n", fname);
+  gw_printf("File not found: %s\n", fname);
  }
  }
  return;
@@ -303,7 +352,7 @@ void pi_parse_scratch(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
 
  if (remove(fname) != 0) {
- printf("File not found: %s\n",
+ gw_printf("File not found: %s\n",
  fname);
  }
  }
@@ -318,14 +367,14 @@ void pi_parse_unsave(Lexer *lex, RuntimeState *rt, int line_num)
  // prints an error message.
  (void)lex; (void)line_num;
  if (rt->last_save_file[0] == '\0') {
- printf("UNSAVE: No saved file to delete.\n");
+ gw_printf("UNSAVE: No saved file to delete.\n");
  return;
  }
  if (remove(rt->last_save_file) != 0) {
- printf("File not found: %s\n",
+ gw_printf("File not found: %s\n",
  rt->last_save_file);
  } else {
- printf("Deleted: %s\n",
+ gw_printf("Deleted: %s\n",
  rt->last_save_file);
  }
  rt->last_save_file[0] = '\0';
@@ -387,7 +436,7 @@ void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
  // Open source for binary reading
  fin = fopen(src, "rb");
  if (fin == NULL) {
- printf("File not found: %s\n",
+ gw_printf("File not found: %s\n",
  src);
  return;
  }
@@ -395,7 +444,7 @@ void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
  fout = fopen(dst, "wb");
  if (fout == NULL) {
  fclose(fin);
- printf("Cannot create: %s\n",
+ gw_printf("Cannot create: %s\n",
  dst);
  return;
  }
@@ -403,7 +452,7 @@ void pi_parse_copy(Lexer *lex, RuntimeState *rt, int line_num)
  while ((n = fread(buf, 1,
  sizeof(buf), fin)) > 0) {
  if (fwrite(buf, 1, n, fout) != n) {
- printf("Write error: %s\n",
+ gw_printf("Write error: %s\n",
  dst);
  fclose(fin);
  fclose(fout);
@@ -475,14 +524,14 @@ void pi_parse_move(Lexer *lex, RuntimeState *rt, int line_num)
  int ok = 1;
  fin = fopen(src, "rb");
  if (fin == NULL) {
- printf("File not found: %s\n",
+ gw_printf("File not found: %s\n",
  src);
  return;
  }
  fout = fopen(dst, "wb");
  if (fout == NULL) {
  fclose(fin);
- printf("Cannot create: %s\n",
+ gw_printf("Cannot create: %s\n",
  dst);
  return;
  }
@@ -499,7 +548,7 @@ void pi_parse_move(Lexer *lex, RuntimeState *rt, int line_num)
  if (ok) {
  remove(src);
  } else {
- printf("Move failed: %s\n",
+ gw_printf("Move failed: %s\n",
  src);
  }
  }
@@ -524,9 +573,9 @@ void pi_parse_pwd(Lexer *lex, RuntimeState *rt, int line_num)
  if (getcwd(cwd, sizeof(cwd)) != NULL)
 #endif
  {
- printf("%s\n", cwd);
+ gw_printf("%s\n", cwd);
  } else {
- printf("?\n");
+ gw_printf("?\n");
  }
  }
  return;
@@ -675,7 +724,7 @@ void pi_parse_name(Lexer *lex, RuntimeState *rt, int line_num)
  lexer_next(lex);
 
  if (rename(old_name, new_name) != 0) {
- printf("File not found: %s\n",
+ gw_printf("File not found: %s\n",
  old_name);
  }
  }
@@ -685,118 +734,132 @@ void pi_parse_name(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_rename - Handle RENAME command.
 void pi_parse_rename(Lexer *lex, RuntimeState *rt, int line_num)
 {
-    (void)rt;
- // RENAME "oldname" AS "newname"
- // Like NAME but auto-appends .bas/.bpp
- // extension if not present.
- {
- char old_name[260], new_name[260];
- char old_try[264], new_try[264];
- int olen, nlen;
- int has_ext_o, has_ext_n;
- int ok = 0;
+    if (rt->running) {
+        error_raise(ERR_WHAT, line_num);
+        return;
+    }
+    // Syntax: RENAME [SUB|FUNCTION|LABEL|VAR|ARRAY|MATRIX] <old_name> [AS] <new_name>
+    int obj_type = 0; // 1=SUB, 2=FUNCTION, 3=LABEL, 4=VAR/ARRAY/MATRIX, 0=Any
 
- // Old filename
- if (lex->current.type != TOK_STRING
- || lex->current.str_start == NULL
- || lex->current.str_length < 1) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- olen = lex->current.str_length;
- if (olen > 255) olen = 255;
- memcpy(old_name,
- lex->current.str_start,
- (size_t)olen);
- old_name[olen] = '\0';
- lexer_next(lex);
+    // Optional Type specifier
+    if (lex->current.type == TOK_KEYWORD) {
+        if (lex->current.value.keyword == KW_SUB) { obj_type = 1; lexer_next(lex); }
+        else if (lex->current.value.keyword == KW_FUNCTION) { obj_type = 2; lexer_next(lex); }
+    } else if (lex->current.type == TOK_NAMED_VAR) {
+        if (PLAT_STRNICMP(lex->current.str_start, "LABEL", lex->current.str_length) == 0 && lex->current.str_length == 5) { obj_type = 3; lexer_next(lex); }
+        else if (PLAT_STRNICMP(lex->current.str_start, "VAR", lex->current.str_length) == 0 && lex->current.str_length == 3) { obj_type = 4; lexer_next(lex); }
+        else if (PLAT_STRNICMP(lex->current.str_start, "ARRAY", lex->current.str_length) == 0 && lex->current.str_length == 5) { obj_type = 4; lexer_next(lex); }
+        else if (PLAT_STRNICMP(lex->current.str_start, "MATRIX", lex->current.str_length) == 0 && lex->current.str_length == 6) { obj_type = 4; lexer_next(lex); }
+    }
 
- // Expect AS keyword
- if (!lexer_match_keyword(lex,
- KW_AS)) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- lexer_next(lex);
+    // Get old_name
+    char old_name[256];
+    if (lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_STRING_VAR) {
+        int olen = lex->current.str_length;
+        if (olen > 255) olen = 255;
+        memcpy(old_name, lex->current.str_start, olen);
+        old_name[olen] = '\0';
+    } else if (lex->current.type == TOK_VARIABLE) {
+        old_name[0] = lex->current.value.var_name;
+        old_name[1] = '\0';
+    } else {
+        error_raise(ERR_WHAT, line_num);
+        return;
+    }
+    lexer_next(lex);
 
- // New filename
- if (lex->current.type != TOK_STRING
- || lex->current.str_start == NULL
- || lex->current.str_length < 1) {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- nlen = lex->current.str_length;
- if (nlen > 255) nlen = 255;
- memcpy(new_name,
- lex->current.str_start,
- (size_t)nlen);
- new_name[nlen] = '\0';
- lexer_next(lex);
+    // Optional AS
+    if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_AS) {
+        lexer_next(lex);
+    }
 
- // Check if names have extensions
- {
- int di;
- has_ext_o = 0;
- has_ext_n = 0;
- for (di = olen - 1; di >= 0;
- di--) {
- if (old_name[di] == '.') {
- has_ext_o = 1;
- break;
- }
- if (old_name[di] == '/' ||
- old_name[di] == '\\')
- break;
- }
- for (di = nlen - 1; di >= 0;
- di--) {
- if (new_name[di] == '.') {
- has_ext_n = 1;
- break;
- }
- if (new_name[di] == '/' ||
- new_name[di] == '\\')
- break;
- }
- }
+    // Get new_name
+    char new_name[256];
+    if (lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_STRING_VAR) {
+        int nlen = lex->current.str_length;
+        if (nlen > 255) nlen = 255;
+        memcpy(new_name, lex->current.str_start, nlen);
+        new_name[nlen] = '\0';
+    } else if (lex->current.type == TOK_VARIABLE) {
+        new_name[0] = lex->current.value.var_name;
+        new_name[1] = '\0';
+    } else {
+        error_raise(ERR_WHAT, line_num);
+        return;
+    }
+    lexer_next(lex);
 
- // Try with extensions if none given
- if (!has_ext_o && !has_ext_n) {
- // Try .bas first
- sprintf(old_try, "%s.bas",
- old_name);
- sprintf(new_try, "%s.bas",
- new_name);
- if (rename(old_try,
- new_try) == 0) {
- ok = 1;
- } else {
- // Try .bpp
- sprintf(old_try, "%s.bpp",
- old_name);
- sprintf(new_try, "%s.bpp",
- new_name);
- if (rename(old_try,
- new_try) == 0) {
- ok = 1;
- }
- }
- }
+    // Now loop over the program and replace occurrences of old_name with new_name
+    for (int i = 0; i < rt->program->count; i++) {
+        char *src = rt->program->lines[i].text;
+        char new_line_buf[4096];
+        new_line_buf[0] = '\0';
+        
+        Lexer lx;
+        lexer_init(&lx, src);
+        lexer_next(&lx);
+        
+        int last_pos = 0;
+        int buf_pos = 0;
+        
+        while (lx.current.type != TOK_EOF) {
+            int is_match = 0;
+            if (lx.current.type == TOK_NAMED_VAR || lx.current.type == TOK_STRING_VAR || lx.current.type == TOK_VARIABLE || (lx.current.type == TOK_KEYWORD && obj_type == 1 && lx.current.value.keyword == KW_SUB) || (lx.current.type == TOK_KEYWORD && obj_type == 2 && lx.current.value.keyword == KW_FUNCTION)) {
+                int match_len = 0;
+                const char* match_str = NULL;
+                char vname[2];
+                if (lx.current.type == TOK_VARIABLE) {
+                    vname[0] = lx.current.value.var_name;
+                    vname[1] = '\0';
+                    match_str = vname;
+                    match_len = 1;
+                } else if (lx.current.type == TOK_KEYWORD) {
+                    match_str = (lx.current.value.keyword == KW_SUB) ? "SUB" : "FUNCTION";
+                    match_len = (int)strlen(match_str);
+                } else {
+                    match_str = lx.current.str_start;
+                    match_len = lx.current.str_length;
+                }
 
- // Fall back to exact names
- if (!ok) {
- if (rename(old_name,
- new_name) != 0) {
- printf("File not found: "
- "%s\n", old_name);
- }
- }
- }
- return;
+                if ((int)strlen(old_name) == match_len && PLAT_STRNICMP(match_str, old_name, match_len) == 0) {
+                    is_match = 1;
+                }
+            }
+            if (is_match) {
+                const char* tk_start = (lx.current.type == TOK_VARIABLE || lx.current.type == TOK_KEYWORD) ? (src + last_pos) : lx.current.str_start; // Approximate start for simple tokens
+                if (lx.current.type == TOK_VARIABLE) {
+                    // find variable in source since str_start is not set for TOK_VARIABLE
+                    const char *p = src + last_pos;
+                    while (*p && toupper(*p) != lx.current.value.var_name) p++;
+                    tk_start = p;
+                }
+                
+                int prefix_len = (int)(tk_start - (src + last_pos));
+                if (prefix_len > 0) {
+                    memcpy(new_line_buf + buf_pos, src + last_pos, prefix_len);
+                    buf_pos += prefix_len;
+                }
+                int n_len = (int)strlen(new_name);
+                memcpy(new_line_buf + buf_pos, new_name, n_len);
+                buf_pos += n_len;
+                
+                int tk_len = (lx.current.type == TOK_VARIABLE) ? 1 : ((lx.current.type == TOK_KEYWORD) ? (lx.current.value.keyword == KW_SUB ? 3 : 8) : lx.current.str_length);
+                if (lx.current.type == TOK_STRING_VAR && tk_len < (int)strlen(old_name)) tk_len++; // Adjust for $
+                
+                last_pos = (int)((tk_start - src) + tk_len);
+            }
+            lexer_next(&lx);
+        }
+        strcpy(new_line_buf + buf_pos, src + last_pos);
+        
+        if (strcmp(src, new_line_buf) != 0) {
+            free(rt->program->lines[i].text);
+            rt->program->lines[i].text = plat_strdup(new_line_buf);
+        }
+    }
 }
 
- // pi_parse_erase - Handle ERASE command.
+// pi_parse_erase - Handle ERASE command.
 void pi_parse_erase(Lexer *lex, RuntimeState *rt, int line_num)
 {
  // ERASE # n - truncate file (ECMA-116)

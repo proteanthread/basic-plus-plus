@@ -137,7 +137,7 @@ void pi_parse_bank(Lexer *lex, RuntimeState *rt, int line_num)
         if (main_mem == NULL) main_mem = target_mem;
         
         int count = 0;
-        for (int i = 1; i < MAX_RAMBANKS; i++) {
+        for (int i = 1; i < main_mem->num_rambanks; i++) {
             RamBank *b = &main_mem->banks[i];
             char path[260];
             sprintf(path, "bank_swap_%d.tmp", i);
@@ -215,7 +215,7 @@ void pi_parse_bank(Lexer *lex, RuntimeState *rt, int line_num)
     int bank_id = (int)parse_expression(lex, rt, line_num);
     if (error_occurred()) return;
 
-    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+    if (bank_id <= 0 || bank_id >= rt->memory->num_rambanks) {
         error_raise(ERR_HOW, line_num);
         return;
     }

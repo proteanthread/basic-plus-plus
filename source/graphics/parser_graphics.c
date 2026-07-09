@@ -42,6 +42,7 @@
  // ---
 
 #include "parser_internal.h"
+#include "../console.h"
 #include "segmented_mem.h"
 #include "sdl2_emu.h"
 extern struct GW_Memory *g_gw_mem;
@@ -132,9 +133,9 @@ void pi_parse_screen(Lexer *lex, RuntimeState *rt, int line_num)
         gw_sdl2_set_mode(mode, cols);
         rt->screen_width = cols;
         if (mode > 0) {
-            printf("[SCREEN: Graphics Mode %d]\n", mode);
+            gw_printf("[SCREEN: Graphics Mode %d]\n", mode);
         } else {
-            printf("[SCREEN: Text mode 80x25]\n");
+            gw_printf("[SCREEN: Text mode 80x25]\n");
         }
     }
 #endif
@@ -295,16 +296,16 @@ void pi_parse_color(Lexer *lex, RuntimeState *rt, int line_num)
 
  if (fg < 0 && bg < 0) {
  // Reset to defaults
- printf("\033[0m");
+ gw_printf("\033[0m");
  } else {
  if (fg >= 0 && fg <= 15)
- printf("\033[%dm",
+ gw_printf("\033[%dm",
  ansi_fg[fg]);
  if (bg >= 0 && bg <= 15)
- printf("\033[%dm",
+ gw_printf("\033[%dm",
  ansi_bg[bg]);
  }
- fflush(stdout);
+ gw_fflush(stdout);
  }
  return;
 }
@@ -630,10 +631,10 @@ void pi_parse_draw(Lexer *lex, RuntimeState *rt, int line_num)
  }
  for (col = 0;
  col <= last; col++) {
- putchar(
+ gw_console_write_char(
  canvas[row][col]);
  }
- putchar('\n');
+ gw_console_write_char('\n');
  }
  }
 
@@ -676,7 +677,7 @@ void pi_parse_line(Lexer *lex, RuntimeState *rt, int line_num)
  if (file_chan == 0 &&
  lex->current.type ==
  TOK_STRING) {
- printf("%.*s",
+ gw_printf("%.*s",
  lex->current.str_length,
  lex->current.str_start);
  lexer_next(lex);
@@ -709,7 +710,7 @@ void pi_parse_line(Lexer *lex, RuntimeState *rt, int line_num)
  }
  len = (int)strlen(buf);
  } else {
- fflush(stdout);
+ gw_fflush(stdout);
  if (!fgets(buf, sizeof(buf),
  stdin)) {
  error_raise(ERR_HOW,
@@ -732,27 +733,29 @@ void pi_parse_line(Lexer *lex, RuntimeState *rt, int line_num)
  bval_string(ptr, len));
  }
  }
- } else if (lex->current.type == TOK_LPAREN) {
+ } else if (lex->current.type == TOK_LPAREN || lex->current.type == TOK_MINUS) {
  // LINE (x1,y1)-(x2,y2) [,color [,B[F]]]
  // Graphics line/box drawing.
  int x1, y1, x2, y2, clr = 15;
  int is_box = 0, is_filled = 0;
 
- lexer_next(lex); // consume (
- x1 = (int)parse_expression(
- lex, rt, line_num);
- if (error_occurred()) return;
- if (lex->current.type == TOK_COMMA)
- lexer_next(lex);
- y1 = (int)parse_expression(
- lex, rt, line_num);
- if (error_occurred()) return;
- if (!lexer_expect(lex, TOK_RPAREN))
- return;
+ 
+        if (lex->current.type == TOK_LPAREN) {
+            lexer_next(lex); // consume (
+            x1 = (int)parse_expression(lex, rt, line_num);
+            if (error_occurred()) return;
+            if (lex->current.type == TOK_COMMA) lexer_next(lex);
+            y1 = (int)parse_expression(lex, rt, line_num);
+            if (error_occurred()) return;
+            if (!lexer_expect(lex, TOK_RPAREN)) return;
+            // Expect - separator
+            if (lex->current.type == TOK_MINUS) lexer_next(lex);
+        } else {
+            // LINE -(x2,y2)
+            gfxbuf_get_cursor(&x1, &y1);
+            lexer_next(lex); // consume -
+        }
 
- // Expect - separator
- if (lex->current.type == TOK_MINUS)
- lexer_next(lex);
 
  if (!lexer_expect(lex, TOK_LPAREN))
  return;
@@ -1094,5 +1097,160 @@ void pi_parse_window(Lexer *lex, RuntimeState *rt, int line_num)
  rt->win_screen_flag = screen_flag;
  }
  return;
+}
+
+
+// ==========================================
+// Added Graphics Commands (DRAWTO, AT, etc)
+// ==========================================
+
+void pi_parse_drawto(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    // DRAWTO x,y
+    int x2, y2;
+    int clr = 15;
+    int cur_x = 0, cur_y = 0;
+    
+    x2 = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    
+    if (!lexer_expect(lex, TOK_COMMA)) return;
+    
+    y2 = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    
+    if (lex->current.type == TOK_COMMA) {
+        lexer_next(lex);
+        clr = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+    }
+    
+    gfxbuf_get_cursor(&cur_x, &cur_y);
+    gfxbuf_line(cur_x, cur_y, x2, y2, clr);
+    gfxbuf_render();
+}
+
+void pi_parse_at_stmt(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    // AT row, col (standalone, like LOCATE)
+    int row, col;
+    
+    row = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    
+    if (!lexer_expect(lex, TOK_COMMA)) return;
+    
+    col = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    
+    rt->cursor_row = row;
+    rt->cursor_col = col;
+    gw_printf("\033[%d;%dH", row, col);
+    gw_fflush(stdout);
+}
+
+void pi_parse_plot(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    // PLOT [AT] x,y or PLOT @ pos
+    int px, py, clr = 15;
+    
+    if (lex->current.type == TOK_AT) {
+        // PLOT @ abs_pos
+        int abs_pos;
+        lexer_next(lex);
+        abs_pos = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        px = abs_pos % GFX_WIDTH;
+        py = abs_pos / GFX_WIDTH;
+    } else {
+        if (lexer_match_keyword(lex, KW_AT)) {
+            lexer_next(lex);
+        }
+        px = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+        if (!lexer_expect(lex, TOK_COMMA)) return;
+        py = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+    }
+    
+    if (lex->current.type == TOK_COMMA) {
+        lexer_next(lex);
+        clr = (int)parse_expression(lex, rt, line_num);
+        if (error_occurred()) return;
+    }
+    
+    gfxbuf_pset(px, py, clr);
+    gfxbuf_render();
+}
+
+void pi_parse_display(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    // DISPLAY 0 or 1 (on/off)
+    int on = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    
+    if (on == 0) {
+        // blank
+        gw_printf("\033[2J");
+        gw_fflush(stdout);
+    } else {
+        // render
+        gfxbuf_render();
+    }
+}
+
+// Color and Boolean Modifiers (Border, Paper, Ink, etc.)
+void pi_parse_border(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    int c = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    rt->border_color = c;
+}
+
+void pi_parse_paper(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    int c = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    rt->bg_color = c;
+}
+
+void pi_parse_ink(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    int c = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    rt->fg_color = c;
+}
+
+void pi_parse_inverse(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    int on = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    rt->inverse_video = on ? 1 : 0;
+}
+
+void pi_parse_reverse(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    pi_parse_inverse(lex, rt, line_num);
+}
+
+void pi_parse_bright(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    int on = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    rt->bright_mode = on ? 1 : 0;
+}
+
+void pi_parse_flash(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    int on = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    rt->flash_mode = on ? 1 : 0;
+}
+
+void pi_parse_over(Lexer *lex, RuntimeState *rt, int line_num)
+{
+    int on = (int)parse_expression(lex, rt, line_num);
+    if (error_occurred()) return;
+    rt->overprint_mode = on ? 1 : 0;
 }
 

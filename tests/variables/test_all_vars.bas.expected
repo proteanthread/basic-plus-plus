@@ -1,0 +1,27 @@
+==== ALL VARS TEST ====
+CLOCK$ OK:    -1 
+CWD$ OK:      -1 
+DATE$ OK:     -1 
+DAY OK:       -1 
+DAY$ OK:      -1 
+ERL OK:       -1 
+ERR OK:       -1 
+FALSE OK:     -1 
+HOSTNAME$ OK: -1 
+HOURS OK:     -1 
+INKEY$ OK:    -1 
+MEM OK:       -1 
+MINUTES OK:   -1 
+MONTH OK:     -1 
+MONTH$ OK:    -1 
+ONKEY$ OK:    -1 
+PWD$ OK:      -1 
+SECONDS OK:   -1 
+SIZE OK:      -1 
+TIME$ OK:     -1 
+TIMER OK:     -1 
+TRUE OK:      -1 
+TI$ OK:       -1 
+TICKS OK:     -1 
+USERNAME$ OK: -1 
+VER:          WHAT? AT LINE 270

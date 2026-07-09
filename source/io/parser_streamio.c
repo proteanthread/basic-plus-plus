@@ -41,6 +41,7 @@
  // ---
 
 #include "parser_internal.h"
+#include "console.h"
 
  // pi_parse_lprint - Handle LPRINT command.
 void pi_parse_lprint(Lexer *lex, RuntimeState *rt, int line_num)
@@ -282,64 +283,6 @@ void pi_parse_write(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
- // pi_parse_display - Handle DISPLAY command.
- //
- // DISPLAY "filename"
- //
- // BBC BASIC-style file-to-screen output. Reads a file and
- // outputs its contents to stdout. For text files, prints
- // each line. This is a file display command, NOT a synonym
- // for PRINT.
- //
- // Usage:
- //   DISPLAY "readme.txt"    - show file on screen
- //   DISPLAY "data.csv"      - show CSV on screen
-void pi_parse_display(Lexer *lex, RuntimeState *rt, int line_num)
-{
- char fname[MAX_LINE_LENGTH + 1];
- FILE *fp;
- char line_buf[1024];
- int flen;
-
- (void)rt;
-
- // Expect filename
- if (lex->current.type == TOK_STRING) {
- flen = lex->current.str_length;
- if (flen > MAX_LINE_LENGTH) flen = MAX_LINE_LENGTH;
- memcpy(fname, lex->current.str_start, (size_t)flen);
- fname[flen] = '\0';
- lexer_next(lex);
- } else {
- BValue v = parse_expression_bval(lex, rt, line_num);
- if (error_occurred()) return;
- if (bval_is_string(&v) && v.v.sval.data) {
- flen = v.v.sval.length;
- if (flen > MAX_LINE_LENGTH) flen = MAX_LINE_LENGTH;
- memcpy(fname, v.v.sval.data, (size_t)flen);
- fname[flen] = '\0';
- } else {
- error_raise(ERR_WHAT, line_num);
- return;
- }
- }
-
- // Security check
- if (security_check(SECOP_FILE_READ, line_num))
- return;
-
- fp = fopen(fname, "r");
- if (fp == NULL) {
- error_raise(ERR_SORRY, line_num);
- return;
- }
-
- // Output file contents to stdout
- while (fgets(line_buf, sizeof(line_buf), fp) != NULL) {
- printf("%s", line_buf);
- }
- fclose(fp);
-}
 
  // pi_parse_type_cmd - Handle TYPE command.
  //

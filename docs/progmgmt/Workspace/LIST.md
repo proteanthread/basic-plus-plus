@@ -1,0 +1,116 @@
+# LIST
+
+## 1. Syntax & Parameters
+
+`LIST [line_range] [, "search_string"]`
+
+* **line_range** (Optional): Specifies the lines to list. Can be:
+  * `line_number`: Lists a single line (e.g., `LIST 10`).
+  * `start_line-`: Lists from `start_line` to the end of the program (e.g., `LIST 100-`).
+  * `-end_line`: Lists from the beginning to `end_line` (e.g., `LIST -100`).
+  * `start_line-end_line`: Lists an explicit range (e.g., `LIST 10-100`).
+* **search_string** (Optional): A string literal filtering the output. Only lines containing this exact string will be printed. Case-sensitive substring match.
+
+## 2. Description & Usage
+
+The `LIST` command outputs the currently loaded BASIC++ AST (Abstract Syntax Tree) back into human-readable source code. Because BASIC++ tokenizes the code upon entry, the output of `LIST` is reconstructed from the internal p-code tokens. This normalization ensures keywords are capitalized and whitespace is consistent.
+
+**Edge Cases & Behavior Constraints:**
+* **Empty Range:** If the specified range contains no lines, `LIST` silently returns to the prompt without error.
+* **Overlapping/Reversed Range:** If `start_line` is greater than `end_line`, `LIST` throws an `ERR_SYNTAX` or gracefully returns, depending on parser configuration.
+* **Search Filtering:** When a search string is appended (e.g., `LIST 10-100, "PRINT"`), the interpreter performs a case-sensitive substring match on the detokenized representation of each line before printing it.
+* **Interruption:** The user can abort a long `LIST` operation asynchronously by pressing `Ctrl+C`, which triggers the virtual console's break handler.
+* **Execution Context:** `LIST` is generally executed in direct mode. If executed from within a running program, it will print the requested lines and execution will continue, potentially disrupting console layout.
+
+## 3. Code Examples
+
+**Listing the entire program:**
+```basic
+LIST
+```
+
+**Listing a specific line:**
+```basic
+LIST 100
+```
+
+**Listing from the beginning up to line 50:**
+```basic
+LIST -50
+```
+
+**Listing from line 100 to the end:**
+```basic
+LIST 100-
+```
+
+**Listing a specific range of lines:**
+```basic
+LIST 10-100
+```
+
+**Filtering output by string content:**
+```basic
+LIST 10-1000, "GOTO"
+```
+
+## 4. Internal C-Source Mapping
+
+* **Lexer/Parser:** `source/progmgmt/parser_cmds.c` (`pi_parse_list()`).
+* **Runtime Execution:** `source/codegen/detok.c` (`detokenize_line()`), `source/core/vm_exec.c`.
+* **Structs Involved:** `RuntimeState->ast_root`, `LineNode`.
+
+## 5. Implementation Details
+
+When the `LIST` command is intercepted by the shell or parser (`pi_parse_list()`), the system parses the optional range boundaries into `start_line` and `end_line` integers. If no boundaries are provided, `start_line` defaults to 0 and `end_line` defaults to `UINT32_MAX`.
+
+During execution, the VM iterates through the linked list of `LineNode` structs anchored at `rt->ast_root`. For each node:
+1. The line number is bounds-checked against the requested range.
+2. If it falls within the range, the byte-code payload of the line is passed to `detokenize_line()`.
+3. The detokenizer recursively walks the bytecode, mapping `OP_*` tokens back to their string representations (from the keyword dictionary).
+4. If a search string was provided, `strstr()` is executed on the resulting detokenized buffer.
+5. If the line passes the filter, it is emitted to the virtual console buffer.
+
+**Execution Paths and Struct Mutations:** 
+The `LIST` command is generally a read-only operation regarding the AST. It traverses `LineNode` pointers but does not mutate them. It does mutate the state of the console buffer and UI state.
+
+**What can be changed:** The detokenizer spacing logic can be altered to adjust how tightly operators are clustered.
+**What cannot be changed:** The internal AST byte-code format must remain deterministic; any corruption in the `LineNode` payload will cause a segfault during the detokenization pass.
+**Troubleshooting:** If `LIST` prints gibberish, the bytecode payload inside the AST has been corrupted, likely by a rogue `POKE` into the AST memory segment. If `LIST` freezes, the `LineNode` linked list might contain a circular reference.
+
+## 6. Cross-References / See Also
+* `LLIST`
+* `DELETE`
+* `NEW`
+
+## 7. Historical Context
+In original GW-BASIC, `LIST` dumped the raw memory buffer. In BASIC++, `LIST` reconstructs the source from the AST p-code, guaranteeing that the source is always clean and syntax-checked.
+
+## 8. Manual Testing Guide
+
+1. Open a terminal or command prompt.
+2. Launch the interpreter directly by running `basicpp-console.exe`. Do not use the python testing script.
+3. Type `10 PRINT "HELLO"` and hit Enter.
+4. Type `20 GOTO 10` and hit Enter.
+5. Type `LIST` and hit Enter to verify the entire program is listed.
+6. Type `LIST 20` and hit Enter to verify only line 20 lists.
+7. Type `LIST 10-20, "PRINT"` and hit Enter to verify the substring filter isolates line 10.
+
+
+### 9. Memory Management & Garbage Collection Profile
+Under the hood, this keyword operates within the strict bounds of the BASIC++ deterministic memory manager (`core/memory.c`). When executed, any intermediate strings generated by this operation are routed to the Transient Memory Arena within the String Pool (`core/stringpool.c`). If the arena exceeds its high-water mark, an aggressive mark-and-sweep garbage collection pass is immediately triggered before the instruction completes. On embedded architectures (compiled with `-DBPP_LITE_BUILD`), this transient arena is statically clamped (default 4KB), meaning iterative loops invoking this keyword must be designed carefully to avoid `ERR_OUT_OF_MEMORY` traps. Developers porting to bare-metal systems must verify that the `memory.c` heap allocator correctly points to a continuous SRAM block without fragmentation.
+
+### 10. Portability & Hardware Porting Concerns
+Because BASIC++ is strictly C17 ISO/IEC 9899:2018 compliant, this keyword relies on zero proprietary OS APIs. When compiling for headless microcontrollers (such as the Arduino Mega or ESP32) using the `-DNO_SDL2` macro, this instruction routes all its graphical or I/O side effects through the Platform Abstraction Layer (PAL). Hardware implementers must ensure that `platform_sleep()` and `platform_get_ticks()` are properly mapped in `core/platform.c` if this keyword involves timing, yielding, or hardware-level interrupts. In cases where the underlying hardware lacks a floating-point unit (FPU), the lexer automatically maps numeric outputs to 32-bit fixed integer types if `-DBPP_NO_FLOAT` is enforced.
+
+### 11. Abstract Syntax Tree (AST) Life Cycle
+During the parsing phase, the Recursive Descent Parser encounters the token associated with this keyword. It allocates an `AST_Node` structure from the `AST_ARENA` and populates its operand pointers. At runtime, the `ast_interpreter.c` engine performs a post-order traversal to evaluate all child expression nodes before triggering the final execution hook. This two-pass system guarantees that syntax errors (like mismatched parentheses or missing commas) are caught globally before any destructive side-effects occur. Once parsed, the `AST_Node` resides in memory until `NEW` or `RUN` is executed, at which point the entire arena is zeroed out to prevent memory leaks.
+
+### 12. C17 Standard Safety & Security Boundaries
+Security and isolation are paramount. This keyword utilizes strict bounds-checking to prevent buffer overflows. Internally, any array indexing or string manipulation defaults to `size_t` for addressing, preventing negative index wraps. Stack-smashing protections are enforced virtually by the `MAX_CALL_STACK` limit defined in `config.h`. Any attempt by this keyword to access unallocated heap memory will trigger the interpreter's internal fault handler, raising a trappable BASIC error rather than causing a segmentation fault at the OS level.
+
+### 13. Deterministic Execution & Regression Prevention
+To prevent regressions across builds (Windows, Linux, or MCU), the execution of this keyword is entirely deterministic. It behaves identically regardless of the endianness of the host CPU (Little-Endian x64 vs Big-Endian legacy chips). The testing suite in `selftests_all.c` ensures that the byte-for-byte output of this operation remains identical. If a developer modifies the underlying C source code for this keyword, they MUST run the `SELFTEST` suite to verify that parsing precedence, token mapping, and garbage collection behavior have not drifted.
+
+### 14. Performance Profiling & Optimization Rules
+For developers writing performance-critical algorithms in BASIC++, be aware that calling this keyword inside a `FOR...NEXT` or `WHILE...WEND` loop incurs a minimal virtual dispatch overhead. Because the interpreter uses a switch-case dispatch engine in `exec.c`, the branch predictor on modern CPUs will optimize repeated calls. However, on 8-bit or 16-bit chips, minimizing the use of string-mutating variants of this keyword will drastically improve frame rates and execution speed.

@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <signal.h>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -47,7 +48,7 @@
 #include "../mod_legacy_compat.h"
 #include "../platform.h"
 
-static const uint32_t GW_IBM_PALETTE[16] = {
+static const uint32_t gw_base_palette_NTSC[16] = {
     0x000000FF, // 0: Black
     0x0000AAFF, // 1: Blue
     0x00AA00FF, // 2: Green
@@ -68,6 +69,11 @@ static const uint32_t GW_IBM_PALETTE[16] = {
 
 uint32_t GW_PALETTE[256];
 
+
+static const uint32_t *gw_get_base_palette(void) {
+    return gw_base_palette_NTSC;
+}
+
 static int g_is_atari_graphics = 0;
 static int g_atari_graphics_mode = 0;
 
@@ -86,6 +92,12 @@ static int g_cursor_y = 0;
 static uint32_t g_text_fg = 0xFFFFFFFF; // White
 static uint32_t g_text_bg = 0x000000FF; // Black
 static int g_machine_type = 0; // 0=VGA, 1=HGC, 2=Tandy, 3=PCjr, 4=Plantronics, 5=AT&T, 6=Amstrad, 7=PC98
+static int g_mouse_x = 0;
+static int g_mouse_y = 0;
+static int g_mouse_down = 0;
+static int g_pen_was_down = 0;
+static int g_pen_last_x = 0;
+static int g_pen_last_y = 0;
 #define MAX_GRID_ROWS 40
 #define MAX_GRID_COLS 100
 static char g_screen_chars[MAX_GRID_ROWS][MAX_GRID_COLS];
@@ -158,7 +170,7 @@ int gw_sdl2_init(int width, int height, const char *title, int fullscreen) {
     g_tex_height = height;
     g_pixels = (uint32_t *)calloc(width * height, sizeof(uint32_t));
     for (int i = 0; i < 16; i++) {
-        GW_PALETTE[i] = GW_IBM_PALETTE[i];
+        GW_PALETTE[i] = gw_get_base_palette()[i];
     }
 
 #ifndef NO_SDL2
@@ -405,7 +417,9 @@ void gw_sdl2_poll_events(void) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
-            exit(0);
+            gw_sdl2_cleanup();
+            raise(SIGINT);
+            return;
         } else if (event.type == SDL_WINDOWEVENT) {
             if (event.window.event == SDL_WINDOWEVENT_EXPOSED ||
                 event.window.event == SDL_WINDOWEVENT_RESIZED ||
@@ -422,6 +436,20 @@ void gw_sdl2_poll_events(void) {
                         g_key_tail = next;
                     }
                 }
+            }
+        } else if (event.type == SDL_MOUSEMOTION) {
+            g_mouse_x = event.motion.x;
+            g_mouse_y = event.motion.y;
+        } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+            if (event.button.button == SDL_BUTTON_LEFT) {
+                g_mouse_down = 1;
+                g_pen_was_down = 1;
+                g_pen_last_x = event.button.x;
+                g_pen_last_y = event.button.y;
+            }
+        } else if (event.type == SDL_MOUSEBUTTONUP) {
+            if (event.button.button == SDL_BUTTON_LEFT) {
+                g_mouse_down = 0;
             }
         } else if (event.type == SDL_KEYDOWN) {
             SDL_Keycode sym = event.key.keysym.sym;
@@ -470,6 +498,27 @@ int gw_sdl2_key_pressed(int scancode) {
     (void)scancode;
 #endif
     return 0;
+}
+
+void gw_sdl2_get_pen(int *x, int *y, int *down, int *was_down, int *last_x, int *last_y) {
+#ifndef NO_SDL2
+    if (x) *x = g_mouse_x;
+    if (y) *y = g_mouse_y;
+    if (down) *down = g_mouse_down ? -1 : 0;
+    if (was_down) {
+        *was_down = g_pen_was_down ? -1 : 0;
+        g_pen_was_down = 0; // Reset after read like GW-BASIC
+    }
+    if (last_x) *last_x = g_pen_last_x;
+    if (last_y) *last_y = g_pen_last_y;
+#else
+    if (x) *x = 0;
+    if (y) *y = 0;
+    if (down) *down = 0;
+    if (was_down) *was_down = 0;
+    if (last_x) *last_x = 0;
+    if (last_y) *last_y = 0;
+#endif
 }
 
 void gw_sdl2_clear(uint32_t color) {
@@ -615,7 +664,7 @@ void gw_sdl2_play_tone(float frequency, int duration_ms, int wait) {
         SDL_UnlockMutex(g_audio_mutex);
         
         if (wait) {
-            SDL_Delay(duration_ms);
+            gw_sdl2_delay(duration_ms);
             SDL_LockMutex(g_audio_mutex);
             g_audio_frequency = 0.0f;
             SDL_UnlockMutex(g_audio_mutex);
@@ -937,7 +986,7 @@ void gw_sdl2_update_palette(int screen_mode, int machine_type, int bg_color, int
     
     // Copy default IBM palette first
     for (int i = 0; i < 16; i++) {
-        GW_PALETTE[i] = GW_IBM_PALETTE[i];
+        GW_PALETTE[i] = gw_get_base_palette()[i];
     }
     
     if (machine_type == 1) { // HGC (Hercules Graphics Card)
@@ -965,15 +1014,15 @@ void gw_sdl2_update_palette(int screen_mode, int machine_type, int bg_color, int
             // Tandy, PCjr, Plantronics, AT&T: 16 colors in SCREEN 1
         } else {
             // Standard CGA SCREEN 1: 4 colors
-            GW_PALETTE[0] = GW_IBM_PALETTE[bg_color % 16];
+            GW_PALETTE[0] = gw_get_base_palette()[bg_color % 16];
             if (palette_idx == 0) {
-                GW_PALETTE[1] = GW_IBM_PALETTE[2]; // Green
-                GW_PALETTE[2] = GW_IBM_PALETTE[4]; // Red
-                GW_PALETTE[3] = GW_IBM_PALETTE[6]; // Brown
+                GW_PALETTE[1] = gw_get_base_palette()[2]; // Green
+                GW_PALETTE[2] = gw_get_base_palette()[4]; // Red
+                GW_PALETTE[3] = gw_get_base_palette()[6]; // Brown
             } else {
-                GW_PALETTE[1] = GW_IBM_PALETTE[3]; // Cyan
-                GW_PALETTE[2] = GW_IBM_PALETTE[5]; // Magenta
-                GW_PALETTE[3] = GW_IBM_PALETTE[7]; // Light Gray
+                GW_PALETTE[1] = gw_get_base_palette()[3]; // Cyan
+                GW_PALETTE[2] = gw_get_base_palette()[5]; // Magenta
+                GW_PALETTE[3] = gw_get_base_palette()[7]; // Light Gray
             }
         }
     } else if (screen_mode == 2) {
@@ -981,10 +1030,10 @@ void gw_sdl2_update_palette(int screen_mode, int machine_type, int bg_color, int
             // Tandy, PCjr, Plantronics, AT&T, Amstrad: SCREEN 2 has standard colors
         } else {
             // Standard CGA SCREEN 2: 2-color mode
-            GW_PALETTE[0] = GW_IBM_PALETTE[bg_color % 16];
-            GW_PALETTE[1] = GW_IBM_PALETTE[15]; // White
+            GW_PALETTE[0] = gw_get_base_palette()[bg_color % 16];
+            GW_PALETTE[1] = gw_get_base_palette()[15]; // White
             for (int i = 2; i < 16; i++) {
-                GW_PALETTE[i] = GW_IBM_PALETTE[15];
+                GW_PALETTE[i] = gw_get_base_palette()[15];
             }
         }
     }
@@ -1632,7 +1681,11 @@ uint32_t gw_sdl2_ticks(void) {
 
 void gw_sdl2_delay(int ms) {
 #ifndef NO_SDL2
-    SDL_Delay((uint32_t)ms);
+    uint32_t start = SDL_GetTicks();
+    while (SDL_GetTicks() - start < (uint32_t)ms) {
+        gw_sdl2_poll_events();
+        SDL_Delay(5);
+    }
 #endif
 }
 

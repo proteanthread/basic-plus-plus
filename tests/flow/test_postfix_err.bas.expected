@@ -1,0 +1,3 @@
+Testing Postfix Syntax Errors...
+Error caught: NEXT without FOR
+Postfix Syntax Error tests passed.

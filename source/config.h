@@ -61,10 +61,10 @@
  //
  // These strings are printed at startup and embedded in SAVE file
  // headers (if applicable in future versions).
-#define BASICPP_VERSION_MAJOR 4
-#define BASICPP_VERSION_MINOR 9
-#define BASICPP_VERSION_PATCH 7
-#define BASICPP_VERSION "4.9.7"
+#define BASICPP_VERSION_MAJOR 5
+#define BASICPP_VERSION_MINOR 0
+#define BASICPP_VERSION_PATCH 1
+#define BASICPP_VERSION "5.0.1"
 
 #ifdef BPP_LITE_BUILD
   #define BASICPP_NAME "BASIC++ Lite"

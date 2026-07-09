@@ -157,6 +157,24 @@ static void event_poll(RuntimeState *rt, double line_num)
   }
  }
 
+
+ // --- Tier 1.5: ALARM event ---
+ if (rt->on_alarm_line > 0 && rt->alarm_time > 0.0) {
+  double now = (double)time(NULL);
+  if (now >= rt->alarm_time) {
+   StackFrame tf;
+   // Reset alarm so it doesn't fire constantly
+   rt->alarm_time = 0.0;
+   rt->event_in_handler = 1;
+   tf.type = FRAME_GOSUB;
+   tf.data.gosub.return_index = rt->current_index + 1;
+   if (runtime_push(rt, &tf) == 0) {
+    vm_jump(rt, rt->on_alarm_line, line_num);
+   }
+   return;
+  }
+ }
+
  // --- Tier 2: Device I/O (VDev VDCAP_EVENT poll) ---
   // Walk registered devices. For any with VDCAP_EVENT
   // and ON state, call dev_poll(). Fire handler on
@@ -236,6 +254,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                     for (i = 0; i < rt->program->count; i++) {
                         Lexer lex;
                         lexer_init(&lex, rt->program->lines[i].text);
+                        lexer_next(&lex);
                         while (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
                             lexer_next(&lex);
                         }
@@ -377,6 +396,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                             const char *text = pgm->lines[idx].text;
                             double ln = pgm->lines[idx].line_number;
                             lexer_init(&cl, text);
+                            lexer_next(&cl);
                             if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT || cl.current.type == TOK_FLOAT_LIT)
                                 lexer_next(&cl);
                             if (cl.current.type == TOK_KEYWORD &&
@@ -450,6 +470,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
                  const char *text = pgm->lines[idx].text;
                  double ln = pgm->lines[idx].line_number;
                  lexer_init(&cl, text);
+                 lexer_next(&cl);
                  if (cl.current.type == TOK_NUMBER || cl.current.type == TOK_FLOAT_LIT || cl.current.type == TOK_FLOAT_LIT)
                      lexer_next(&cl);
                  if (cl.current.type == TOK_KEYWORD &&
@@ -530,6 +551,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
   lex = *(Lexer *)rt->restored_lexer;
   } else {
   lexer_init(&lex, line->text);
+  lexer_next(&lex);
 
   // Skip the line number.
   if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
@@ -712,6 +734,7 @@ static void exec_run_from(RuntimeState *rt, int start_index)
      rt->scope_hook_depth =
       rt->stack_top;
      lexer_init(&olex, splice);
+     lexer_next(&olex);
      parser_execute_line(
       &olex, rt, line_num);
      rt->scope_hook_depth =
@@ -1124,6 +1147,7 @@ void exec_run_step_cooperative(RuntimeState *rt)
 
         // Initialize lexer
         lexer_init(&lex, line->text);
+        lexer_next(&lex);
 
         // If we yielded, resume from the exact position
         if (rt->yielded) {
@@ -1185,6 +1209,7 @@ void exec_run_step_cooperative(RuntimeState *rt)
     } else {
         Lexer lex;
         lexer_init(&lex, line->text);
+        lexer_next(&lex);
         if (lex.current.type == TOK_NUMBER || lex.current.type == TOK_FLOAT_LIT) {
             lexer_next(&lex);
         }

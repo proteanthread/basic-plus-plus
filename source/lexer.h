@@ -551,7 +551,25 @@ enum {
  KW_TIM_FUNC,
  KW_HI_FUNC,
  KW_LO_FUNC,
- KW_COUNT // sentinel - must be last
+ KW_DRAWTO,
+ KW_PLOT,
+ KW_GEMINI,
+ KW_GOPHER,
+ KW_DAY,
+ KW_DAY_FUNC,
+ KW_MONTH,
+ KW_MONTH_FUNC,
+ KW_YEAR,
+ KW_HOURS,
+ KW_MINUTES,
+ KW_SECONDS,
+ KW_TI,
+ KW_TI_FUNC,
+ KW_TODAY_FUNC,
+ KW_JIFFIES,
+ KW_DATE,
+ KW_TIME,
+ KW_BUILTIN_MAX // sentinel - must be last
 };
 
 // The lexer now uses a dynamic KeywordId (integer) instead of a static enum.

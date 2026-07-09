@@ -548,7 +548,7 @@ void pi_parse_sub(Lexer *lex, RuntimeState *rt, int line_num)
 
  nm = lex->current.str_start;
  nlen = lex->current.str_length;
- if (lex->current.type == TOK_VARIABLE) {
+ if (lex->current.type == TOK_VARIABLE || lex->current.type == TOK_STRING_VAR) {
  namebuf[0] = lex->current.value
  .var_name;
  namebuf[1] = '\0';
@@ -903,7 +903,7 @@ void pi_parse_function(Lexer *lex, RuntimeState *rt, int line_num)
 
  nm = lex->current.str_start;
  nlen = lex->current.str_length;
- if (lex->current.type == TOK_VARIABLE) {
+ if (lex->current.type == TOK_VARIABLE || lex->current.type == TOK_STRING_VAR) {
  namebuf[0] = lex->current.value
  .var_name;
  namebuf[1] = '\0';
@@ -1213,54 +1213,20 @@ void pi_parse_declare(Lexer *lex, RuntimeState *rt, int line_num)
 
         // Parse name
         if (lex->current.type != TOK_NAMED_VAR &&
-            lex->current.type != TOK_VARIABLE) {
+            lex->current.type != TOK_VARIABLE &&
+            lex->current.type != TOK_STRING_VAR) {
             error_raise(ERR_WHAT, line_num);
             return;
         }
         nm = lex->current.str_start;
         nlen = lex->current.str_length;
-        if (lex->current.type == TOK_VARIABLE) {
+        if (lex->current.type == TOK_VARIABLE || lex->current.type == TOK_STRING_VAR) {
             namebuf[0] = lex->current.value.var_name;
             namebuf[1] = '\0';
             nm = namebuf;
             nlen = 1;
         }
         lexer_next(lex); // consume name
-
-        // Skip parameters if present
-        if (lex->current.type == TOK_LPAREN) {
-            int paren_depth = 1;
-            lexer_next(lex);
-            while (lex->current.type != TOK_EOF && paren_depth > 0) {
-                if (lex->current.type == TOK_LPAREN) paren_depth++;
-                else if (lex->current.type == TOK_RPAREN) paren_depth--;
-                lexer_next(lex);
-            }
-        }
-
-        // Parse FROM / IN clause if external
-        if (is_ext) {
-            if (lex->current.type == TOK_NAMED_VAR &&
-                lex->current.str_length >= 2 &&
-                lex->current.str_start != NULL &&
-                ((lex->current.str_start[0] == 'F' || lex->current.str_start[0] == 'f') ||
-                 (lex->current.str_start[0] == 'I' || lex->current.str_start[0] == 'i'))) {
-                lexer_next(lex); // consume FROM / IN
-                if (lex->current.type == TOK_STRING) {
-                    int flen = lex->current.str_length;
-                    if (flen > 259) flen = 259;
-                    memcpy(ext_file, lex->current.str_start, (size_t)flen);
-                    ext_file[flen] = '\0';
-                    lexer_next(lex);
-                } else {
-                    error_raise(ERR_WHAT, line_num);
-                    return;
-                }
-            } else {
-                error_raise(ERR_WHAT, line_num);
-                return;
-            }
-        }
 
         // Register / Update in subs table
         sd = runtime_find_sub(rt, nm, nlen);
@@ -1282,6 +1248,9 @@ void pi_parse_declare(Lexer *lex, RuntimeState *rt, int line_num)
                     }
                 }
                 sd->name_len = ci;
+                sd->body_index = -1;
+                sd->has_static_data = 0;
+                sd->static_vars = NULL;
             }
         }
         sd->is_function = is_func;
@@ -1297,6 +1266,83 @@ void pi_parse_declare(Lexer *lex, RuntimeState *rt, int line_num)
             sd->external_file[sizeof(sd->external_file) - 1] = '\0';
         } else {
             sd->external_file[0] = '\0';
+        }
+
+        // Parse parameters if present
+        if (lex->current.type == TOK_LPAREN) {
+            lexer_next(lex);
+            while (lex->current.type != TOK_RPAREN && lex->current.type != TOK_EOF) {
+                const char *pn;
+                int pl;
+                char pb[MAX_VAR_NAME_LEN+1];
+                int is_str = 0;
+                if (lex->current.type == TOK_NAMED_VAR) {
+                    pn = lex->current.str_start;
+                    pl = lex->current.str_length;
+                } else if (lex->current.type == TOK_VARIABLE || lex->current.type == TOK_STRING_VAR) {
+                    pb[0] = lex->current.value.var_name;
+                    pb[1] = '\0';
+                    pn = pb;
+                    pl = 1;
+                } else if (lex->current.type == TOK_STRING_VAR) {
+                    pb[0] = lex->current.value.var_name;
+                    pb[1] = '\0';
+                    pn = pb;
+                    pl = 1;
+                    is_str = 1;
+                } else {
+                    break;
+                }
+                if (sd->param_count < MAX_SUB_PARAMS) {
+                    int cpl = pl;
+                    int j;
+                    if (cpl > MAX_VAR_NAME_LEN) cpl = MAX_VAR_NAME_LEN;
+                    memcpy(sd->params[sd->param_count], pn, (size_t)cpl);
+                    sd->params[sd->param_count][cpl] = '\0';
+                    for (j = 0; j < cpl; j++){
+                        char c = sd->params[sd->param_count][j];
+                        if (c >= 'a' && c <= 'z')
+                            sd->params[sd->param_count][j] = (char)(c-32);
+                    }
+                    sd->param_is_string[sd->param_count] = is_str;
+                    sd->param_type_index[sd->param_count] = -1;
+                    sd->param_is_array[sd->param_count] = 0;
+                    lexer_next(lex);
+                    // Check for () = array param
+                    if (lex->current.type == TOK_LPAREN) {
+                        lexer_next(lex);
+                        if (lex->current.type == TOK_RPAREN) {
+                            sd->param_is_array[sd->param_count] = 1;
+                            lexer_next(lex);
+                        }
+                    }
+                    // Check for AS TypeName
+                    if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_AS) {
+                        lexer_next(lex);
+                        if (lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_VARIABLE) {
+                            const char *tn;
+                            int tl;
+                            if (lex->current.type == TOK_NAMED_VAR) {
+                                tn = lex->current.str_start;
+                                tl = lex->current.str_length;
+                            } else {
+                                pb[0] = lex->current.value.var_name;
+                                pb[1] = '\0';
+                                tn = pb;
+                                tl = 1;
+                            }
+                            UserTypeDef *utd = runtime_find_type(rt, tn, tl);
+                            if (utd != NULL) {
+                                sd->param_type_index[sd->param_count] = (int)(utd - rt->user_types);
+                            }
+                            lexer_next(lex);
+                        }
+                    }
+                    sd->param_count++;
+                }
+                if (lex->current.type == TOK_COMMA) lexer_next(lex);
+            }
+            if (lex->current.type == TOK_RPAREN) lexer_next(lex);
         }
 
         lexer_skip_to_end(lex);
@@ -1327,7 +1373,7 @@ void pi_parse_call(Lexer *lex, RuntimeState *rt, int line_num)
 
  nm = lex->current.str_start;
  nlen = lex->current.str_length;
- if (lex->current.type == TOK_VARIABLE) {
+ if (lex->current.type == TOK_VARIABLE || lex->current.type == TOK_STRING_VAR) {
  namebuf[0] = lex->current.value
  .var_name;
  namebuf[1] = '\0';
@@ -1594,7 +1640,7 @@ void pi_parse_define(Lexer *lex, RuntimeState *rt, int line_num)
 {
   // DEFine PROCedure name(params) -> acts like SUB
   // DEFine FuNction name(params) -> acts like FUNCTION
- if (lexer_match_keyword(lex, KW_PROCEDURE)) {
+ if (lexer_match_keyword(lex, KW_PROCEDURE) || lexer_match_keyword(lex, KW_SUB)) {
   lexer_next(lex);
   pi_parse_sub(lex, rt, line_num);
  } else if (lexer_match_keyword(lex, KW_FN) || lexer_match_keyword(lex, KW_FUNCTION)) {
@@ -1622,6 +1668,7 @@ void pi_parse_enddefine(Lexer *lex, RuntimeState *rt, int line_num)
  }
  // Pop scope stack (restores all vars including named)
  scope_stack_pop(&rt->scope_stack, rt);
+ rt->in_sub_index = -1;
 }
 
  // pi_parse_local - Handle LOCAL command.

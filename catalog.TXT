@@ -1,0 +1,278 @@
+[Advanced_Display]
+  GRAPHICS                  SCREEN                    VIEW                      WINDOW
+
+[Advanced_Drawing]
+  CIRCLE                    DRAW                      DRAWTO                    LINE
+  PAINT
+
+[Advanced_Math]
+  ACOS                      ASIN                      ATN                       AVG
+  CABS                      CARG                      CDBL                      CEXP
+  CLOG                      COMP                      COMPLEX                   CONJ
+  CPOW                      CSQR                      IMAG                      LGT
+  LOG10                     LOG2                      MAX                       MED
+  MIN                       PDIF                      PI                        REAL
+  RND                       ROUND                     SGN                       SQR
+  TANH
+
+[Arrays]
+  DIM                       ERASE                     LBOUND                    REDIM
+  UBOUND
+
+[Audio]
+  BEEP                      PLAY                      SOUND
+
+[Basic_Drawing]
+  AT                        PLOT                      POINT                     PRESET
+  PSET
+
+[Block_IO]
+  BIOCOMPARE                BIOCOPY                   BIOFILL                   BIOREAD_STR
+  BIOSIZE                   BIOSTATUS                 BIOWRITE
+
+[Branching]
+  GOSUB                     GOTO                      IF (POSTFIX)              ON_GOSUB
+  ON_GOTO                   RETURN                    UNLESS
+
+[Breakpoints_And_Flow]
+  CONT
+
+[Buffer_Management]
+  PCOPY
+
+[Color_Modifiers]
+  BORDER                    INK                       PALETTE                   PAPER
+
+[Config_Environment]
+  OPTION_VIDEO
+
+[Configuration]
+  ALIAS                     KEYWORD                   OPTION                    OVERRIDE
+  SCOPE
+
+[Console]
+  CSRLIN                    POS
+
+[Console_Display]
+  CLS                       COLOR                     CONSOLE                   HOME
+  LOCATE                    WIDTH
+
+[Conversion]
+  CVD                       CVI                       CVS                       MKDSTR
+  MKISTR                    MKSSTR
+
+[Data_Flow]
+  DATA                      READ                      RESTORE
+
+[Devices_Hardware]
+  LPOS
+
+[Diagnostics]
+  CHECK                     DUMP                      VARS                      VERIFY
+
+[Directory]
+  CHDIR                     CURDIRDOLLAR              CWDDOLLAR                 MKDIR
+  PWD                       PWDDOLLAR                 RMDIR
+
+[Display_Configuration]
+  DISPLAY
+
+[Environment]
+  CLOCK$                    DATE$                     ENVIRON                   ENVIRON$
+  ENVIRONSTR                HOSTNAME$                 SYSTEM                    TIME$
+  USERNAME$
+
+[Error_Handling]
+  ERL                       ERR                       ERROR                     ON_ERROR_GOTO
+  RESUME
+
+[Events_and_Interrupts]
+  KEY                       ON_KEY                    ON_PLAY                   ON_TIMER
+  TIMER
+
+[Execution]
+  END                       RUN                       STOP
+
+[Exponents_Logarithms]
+  EXP                       LOG
+
+[Filesystem]
+  DIR                       FILES                     NAME                      SCRATCH
+
+[Hardware_Ports]
+  INP                       OUT                       WAIT
+
+[Hyperbolic_Trigonometry]
+  COSH                      SINH
+
+[Input_Devices]
+  PEN
+
+[Introspection]
+  BIOS                      CATALOG                   CWD                       HELP
+  HOSTNAME                  INFO                      USERNAME                  VER
+
+[Key_Value_Storage]
+  PRETRIEVE$
+
+[Keyboard_Input]
+  INKEY                     INKEYDOLLAR               INPUT                     INPUTDOLLAR
+  ONKEYDOLLAR
+
+[Loops]
+  DO                        FOR                       LOOP                      NEXT
+  WEND                      WHILE
+
+[Matrix_Math]
+  MAT                       MAT_IDN                   MAT_INV                   MAT_RND
+  MAT_TRN
+
+[Memory]
+  BANK                      FRE                       PEEK                      POKE
+
+[Memory_Access]
+  MEMMAP                    PEEKB                     POKEB                     SEG
+  VARPTR
+
+[Memory_State]
+  CLR                       MEM                       SIZE
+
+[Metadata_Locks]
+  ACCESS                    ASK                       FILEMOD                   LOCK
+  SET                       UNLOCK
+
+[Multitasking]
+  TASK
+
+[Network_IO]
+  NBYTESWAITING             NCONNECTED                NEOF                      NERROR
+  NHTTPSTATUS               NINFO_STR                 NJSONQUERY_STR            NREAD_STR
+  NSTATUS                   NWRITE
+
+[Output_Formatting]
+  IMAGE                     PRINT                     SPC                       TAB
+  WRITE
+
+[Packing]
+  LSET                      RSET
+
+[Persistence]
+  LOAD                      SAVE
+
+[Persistent_IO]
+  PRETRIEVE                 PRETRIEVE_STR             PSTORE
+
+[Printer]
+  LLIST                     LPRINT
+
+[Procedures]
+  CALL                      DECLARE                   DEF_FN                    FUNCTION
+  SUB
+
+[Process_Ops]
+  EXEC                      SHELL                     SYS
+
+[Random_Access]
+  FIELD                     GET                       POINTER                   PUT
+  SEEK
+
+[Scope]
+  COMMON                    SHARED
+
+[Sequential_IO]
+  CLOSE                     EOF                       LOC                       LOF
+  OPEN                      RESET
+
+[Stream_IO]
+  SIOAVAIL                  SIOFLUSH                  SIOREADLN_STR             SIOREAD_STR
+  SIOSEEK                   SIOSTATUS                 SIOWRITE
+
+[String_Case_Conversion]
+  ICASE$                    LCASE$                    MCASE$                    TCASE$
+  UCASE$
+
+[String_Extraction]
+  LEFT$                     MID$                      RIGHT$                    SEG$
+
+[String_Formatting]
+  CHR$                      GUID$                     SPACE$
+  STRING$
+
+[String_Properties]
+  ASC                       INSTR                     LEN
+
+[String_Search_And_Replace]
+  EDIT$                     LTRIM$                    REPLACE$                  REVERSE$
+  RTRIM$                    TRIM$
+
+[String_Type_Conversion]
+  STR$                      VAL
+
+[System_Variables]
+  DATE                      DAY                       DAY$                      DOW
+  FALSE                     HOURS                     JIFFIES                   MINUTES
+  MONTH                     MONTH$                    SECONDS                   TI
+  TI$                       TICKS                     TIME                      TODAY$
+  TRUE                      YEAR
+
+[Tracing]
+  DEBUG                     TRACE                     TROFF                     TRON
+
+[Transaction_IO]
+  TXNSTATUS
+
+[Trigonometry]
+  COS                       SIN                       TAN
+
+[Type_Conversion]
+  BIN$                      HEX$                      NUM                       NUM$
+  OCT$
+
+[Types]
+  DEFDBL                    DEFINT                    DEFSNG                    DEFSTR
+
+[Unit_Testing]
+  ASSERT                    SELFTEST
+
+[Utility_Math]
+  ABS                       FIX                       INT
+
+[VFS]
+  MOUNT                     MOUNTS                    UMOUNT                    UNLOAD
+  VPATH
+
+[Variables]
+  LET                       REM                       SWAP
+
+[Variables_Memory]
+  CINT                      CSNG
+
+[Viewport_Mapping]
+  PMAP
+
+[Visual_Attributes]
+  BRIGHT                    FLASH                     INVERSE                   OVER
+  REVERSE
+
+[Workspace]
+  CLEAR                     LIST                      NEW
+
+[logic_and_bitwise]
+  AND                       EQV                       HI                        IMP
+  LO                        NOT                       OR                        XOR
+
+[math]
+  MOD                       TIM
+
+[progmgmt]
+  AUTO                      DELETE                    EDIT                      REFORMAT
+  RENAME                    RENUM
+
+[serial_bio]
+  IOCTL
+
+[virtual_dev]
+  VDEV
+
+[virtual_mach]
+  VMEM

@@ -209,10 +209,11 @@ BValue builtin_string_func(BValue *args, int argc, void *rt)
 
  if (bval_is_string(&args[1])) {
  if (args[1].v.sval.length > 0 &&
- args[1].v.sval.data != NULL)
- ch = args[1].v.sval.data[0];
- else
- ch = ' ';
+     args[1].v.sval.data != NULL) {
+     ch = args[1].v.sval.data[0];
+ } else {
+     return bval_string(NULL, 0);
+ }
  } else {
  ch = (char)bval_to_int(&args[1]);
  }

@@ -87,6 +87,7 @@ static const char *keyword_names[] = {
  "ABS", // KW_ABS
  "RND", // KW_RND
  "SIZE", // KW_SIZE
+ "MEM", // KW_MEM
  "DIM", // KW_DIM
  "SIN", // KW_SIN
  "COS", // KW_COS
@@ -184,17 +185,21 @@ static const char *keyword_names[] = {
  "XOR", // KW_XOR
  "EQV", // KW_EQV
  "IMP", // KW_IMP
- "LCASE$", // KW_LCASE
- "UCASE$", // KW_UCASE
- "LTRIM$", // KW_LTRIM
- "RTRIM$", // KW_RTRIM
+ "LCASE$", // KW_LCASES
+ "UCASE$", // KW_UCASES
+ "LTRIM$", // KW_LTRIMS
+ "RTRIM$", // KW_RTRIMS
  "CINT", // KW_CINT
  "TIMER", // KW_TIMER
  "SLEEP", // KW_SLEEP
  "LOCATE", // KW_LOCATE
  "LINE", // KW_LINE
  "DATE$", // KW_DATE_FUNC
+ "TODAY$", // KW_TODAY_FUNC
  "TIME$", // KW_TIME_FUNC
+ "TIME", // KW_TIME
+ "DATE", // KW_DATE
+ "DOW", // KW_DOW
  // QBasic compatibility - Tier 1
  "SELECT", // KW_SELECT
  "CASE", // KW_CASE
@@ -287,6 +292,8 @@ static const char *keyword_names[] = {
  "PRESET", // KW_PRESET
  "HOME", // KW_HOME
  "AT", // KW_AT
+ "DRAWTO", // KW_DRAWTO
+ "PLOT", // KW_PLOT
  "RESET", // KW_RESET
  "RMDIR", // KW_RMDIR
  "RSET", // KW_RSET
@@ -310,8 +317,8 @@ static const char *keyword_names[] = {
  "REWRITE", // KW_REWRITE
  "POINTER", // KW_POINTER
  "FILESIZE", // KW_FILESIZE
- "TCASE$", // KW_TCASE
- "TRIM$", // KW_TRIM
+ "TCASE$", // KW_TCASES
+ "TRIM$", // KW_TRIMS
  // Virtual subsystem introspection
  "VDEV", // KW_VDEV
  "VMEM", // KW_VMEM
@@ -441,11 +448,15 @@ static const char *keyword_names[] = {
  "NERROR", // KW_NERROR
  "NJSONQUERY$", // KW_NJSONQUERY
  "NINFO$", // KW_NINFO
+ "NWRITE", // KW_NWRITE
+ "NREAD$", // KW_NREAD
+ "GEMINI", // KW_GEMINI
+ "GOPHER", // KW_GOPHER
  // Advanced string functions (Milestone 19)
- "REPLACE$", // KW_REPLACE
- "REVERSE$", // KW_REVERSE
- "MCASE$", // KW_MCASE
- "ICASE$", // KW_ICASE
+ "REPLACE$", // KW_REPLACES
+ "REVERSE$", // KW_REVERSES
+ "MCASE$", // KW_MCASES
+ "ICASE$", // KW_ICASES
  "ONKEY$", // KW_ONKEY
  "LIKE", // KW_LIKE
  "HASH$", // KW_HASH
@@ -455,7 +466,21 @@ static const char *keyword_names[] = {
  "MOUNTS", // KW_MOUNTS
  "VPATH", // KW_VPATH
  "VPATH$", // KW_VPATH_FUNC
- "BIOS" // KW_BIOS
+ "BIOS", // KW_BIOS
+ "DAY", // KW_DAY
+ "DAY$", // KW_DAY_FUNC
+ "MONTH", // KW_MONTH
+ "MONTH$", // KW_MONTH_FUNC
+ "YEAR", // KW_YEAR
+ "HOURS", // KW_HOURS
+ "MINUTES", // KW_MINUTES
+ "SECONDS", // KW_SECONDS
+ "TI", // KW_TI
+ "TI$", // KW_TI_FUNC
+ "TODAY$", // KW_TODAY_FUNC
+ "JIFFIES", // KW_JIFFIES
+ "DATE", // KW_DATE
+ "TIME" // KW_TIME
 };
 
 // --- Token Type Names (for diagnostic output) ---

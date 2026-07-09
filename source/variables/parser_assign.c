@@ -44,6 +44,43 @@
 
 #include "parser_internal.h"
 
+
+BValue perform_mid_assignment(RuntimeState *rt, BValue base_val, int start, int length, BValue repl_val, int line_num)
+{
+    (void)line_num;
+    const char *base_data = "";
+    int base_len = 0;
+    if (base_val.type == VAL_STRING && base_val.v.sval.data != NULL) {
+        base_data = base_val.v.sval.data;
+        base_len = base_val.v.sval.length;
+    }
+    
+    const char *repl_data = "";
+    int repl_len = 0;
+    if (repl_val.type == VAL_STRING && repl_val.v.sval.data != NULL) {
+        repl_data = repl_val.v.sval.data;
+        repl_len = repl_val.v.sval.length;
+    }
+    
+    if (start < 1) start = 1;
+    if (start > base_len) return base_val; // MID$ beyond length does nothing in QBASIC
+    
+    // The number of characters to replace is MIN(length, repl_len, base_len - start + 1)
+    int replace_count = base_len - start + 1;
+    if (length >= 0 && length < replace_count) replace_count = length;
+    if (repl_len < replace_count) replace_count = repl_len;
+    
+    if (replace_count <= 0) return base_val;
+    
+    char *new_buf = strpool_alloc(&rt->strpool, base_len);
+    if (!new_buf) return base_val;
+    
+    for (int i=0; i<base_len; i++) new_buf[i] = base_data[i];
+    for (int i=0; i<replace_count; i++) new_buf[start - 1 + i] = repl_data[i];
+    
+    return bval_string(new_buf, base_len);
+}
+
 BValue perform_substring_assignment(RuntimeState *rt, BValue base_val, int start, int end, BValue repl_val, int line_num)
 {
     const char *base_data = "";
@@ -123,8 +160,75 @@ BValue perform_substring_assignment(RuntimeState *rt, BValue base_val, int start
 void pi_parse_let(Lexer *lex, RuntimeState *rt, int line_num,
  int has_let)
 {
+    if (has_let && lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_LET) {
+        lexer_next(lex);
+    }
  // Check for @() array assignment
- if (lex->current.type == TOK_AT) {
+ 
+    // Check for MID$ statement assignment: MID$(strvar$, start[, length]) = "string"
+    if (lex->current.type == TOK_KEYWORD && lex->current.value.keyword == KW_MID) {
+        lexer_next(lex); // consume MID
+        
+        if (!lexer_expect(lex, TOK_LPAREN)) return;
+        
+        if (lex->current.type == TOK_STRING_VAR) {
+            char var_name = lex->current.value.var_name;
+            lexer_next(lex);
+            if (!lexer_expect(lex, TOK_COMMA)) return;
+            BValue start_val = parse_expression_bval(lex, rt, line_num);
+            if (error_occurred()) return;
+            int start_idx = (int)bval_to_int(&start_val);
+            int len_idx = -1;
+            if (lex->current.type == TOK_COMMA) {
+                lexer_next(lex);
+                BValue len_val = parse_expression_bval(lex, rt, line_num);
+                if (error_occurred()) return;
+                len_idx = (int)bval_to_int(&len_val);
+            }
+            if (!lexer_expect(lex, TOK_RPAREN)) return;
+            if (!lexer_expect(lex, TOK_EQUALS)) return;
+            BValue repl_val = parse_expression_bval(lex, rt, line_num);
+            if (error_occurred()) return;
+            
+            BValue base_val = runtime_get_string_var(rt, var_name);
+            BValue new_val = perform_mid_assignment(rt, base_val, start_idx, len_idx, repl_val, line_num);
+            runtime_set_string_var(rt, var_name, new_val);
+            return;
+        } else if (lex->current.type == TOK_NAMED_VAR) {
+            const char *name = lex->current.str_start;
+            int name_len = lex->current.str_length;
+            if (name_len > 0 && name[name_len - 1] != '$') {
+                error_raise(ERR_HOW, line_num);
+                return;
+            }
+            lexer_next(lex);
+            if (!lexer_expect(lex, TOK_COMMA)) return;
+            BValue start_val = parse_expression_bval(lex, rt, line_num);
+            if (error_occurred()) return;
+            int start_idx = (int)bval_to_int(&start_val);
+            int len_idx = -1;
+            if (lex->current.type == TOK_COMMA) {
+                lexer_next(lex);
+                BValue len_val = parse_expression_bval(lex, rt, line_num);
+                if (error_occurred()) return;
+                len_idx = (int)bval_to_int(&len_val);
+            }
+            if (!lexer_expect(lex, TOK_RPAREN)) return;
+            if (!lexer_expect(lex, TOK_EQUALS)) return;
+            BValue repl_val = parse_expression_bval(lex, rt, line_num);
+            if (error_occurred()) return;
+            
+            BValue base_val = runtime_get_named_var_bval(rt, name, name_len);
+            BValue new_val = perform_mid_assignment(rt, base_val, start_idx, len_idx, repl_val, line_num);
+            runtime_set_named_var_bval(rt, name, name_len, new_val);
+            return;
+        } else {
+            error_raise(ERR_WHAT, line_num);
+            return;
+        }
+    }
+
+    if (lex->current.type == TOK_AT) {
  long index, value;
  lexer_next(lex); // consume @
  if (!lexer_expect(lex, TOK_LPAREN)) return;

@@ -58,6 +58,7 @@ int g_screen_lock = 0; // 1=SCREEN LOCK active (no auto-flush)
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 #include "runtime.h"
 #include "lexer.h"
 #include "errors.h"
@@ -206,6 +207,7 @@ void runtime_init(RuntimeState *rt, ProgramStore *program,
 
  // OPTION ANGLE
  rt->angle_degrees = 0; // radians (default)
+ rt->jiffies_multiplier = 60.0;
  rt->tab_mode = 0; // spaces (default)
  rt->zone_override = -1; // use dialect default
 
@@ -431,6 +433,8 @@ void runtime_reset(RuntimeState *rt)
       rt->log_fp = NULL;
   }
   rt->on_error_line = 0;
+  rt->on_timer_line = 0;
+  rt->ti_offset = 0.0;
 
   rt->line_asts = NULL;
   rt->line_asts_count = 0;
@@ -847,6 +851,25 @@ BValue runtime_get_named_var_bval(RuntimeState *rt, const char *name,
  int len)
 {
  int i;
+ if (len == 2 && str_eq_nocase(name, len, "TI")) {
+     time_t t = time(NULL);
+     struct tm *tm = localtime(&t);
+     double current_jiffies = (tm->tm_hour * 3600.0 + tm->tm_min * 60.0 + tm->tm_sec) * 60.0;
+     return bval_float(current_jiffies + rt->ti_offset);
+ }
+ if (len == 3 && str_eq_nocase(name, len, "TI$")) {
+     time_t t = time(NULL);
+     struct tm *tm = localtime(&t);
+     double current_jiffies = (tm->tm_hour * 3600.0 + tm->tm_min * 60.0 + tm->tm_sec) * 60.0;
+     double adjusted = current_jiffies + rt->ti_offset;
+     long sec_total = (long)(adjusted / 60.0);
+     int hr = (sec_total / 3600) % 24;
+     int min = (sec_total / 60) % 60;
+     int sec = sec_total % 60;
+     char buf[16];
+     sprintf(buf, "%02d%02d%02d", hr, min, sec);
+     return bval_string(strpool_store(&rt->strpool, buf, 6), 6);
+ }
  for (i = 0; i < rt->named_count; i++) {
  if (str_eq_nocase(name, len, rt->named_vars[i].name)) {
  return rt->named_vars[i].value;
@@ -872,6 +895,20 @@ int runtime_set_named_var_bval(RuntimeState *rt, const char *name,
 {
  int i;
  int copy_len;
+
+ if (len == 3 && str_eq_nocase(name, len, "TI$")) {
+     if (value.type == VAL_STRING && value.v.sval.length >= 6) {
+         int hr = (value.v.sval.data[0] - '0') * 10 + (value.v.sval.data[1] - '0');
+         int min = (value.v.sval.data[2] - '0') * 10 + (value.v.sval.data[3] - '0');
+         int sec = (value.v.sval.data[4] - '0') * 10 + (value.v.sval.data[5] - '0');
+         double new_jiffies = (hr * 3600.0 + min * 60.0 + sec) * 60.0;
+         time_t t = time(NULL);
+         struct tm *tm = localtime(&t);
+         double current_jiffies = (tm->tm_hour * 3600.0 + tm->tm_min * 60.0 + tm->tm_sec) * 60.0;
+         rt->ti_offset = new_jiffies - current_jiffies;
+     }
+     return 0; // successfully set
+ }
 
  // Type suffix enforcement
  if (len > 0) {
