@@ -71,8 +71,8 @@
   CHECK                     DUMP                      VARS                      VERIFY
 
 [Directory]
-  CHDIR                     CURDIRDOLLAR              CWDDOLLAR                 MKDIR
-  PWD                       PWDDOLLAR                 RMDIR
+  CHDIR                     CURDIR$                   CWD$                      MKDIR
+  PWD                       PWD$                      RMDIR
 
 [Display_Configuration]
   DISPLAY
@@ -116,8 +116,8 @@
   PRETRIEVE$
 
 [Keyboard_Input]
-  INKEY                     INKEYDOLLAR               INPUT                     INPUTDOLLAR
-  ONKEYDOLLAR
+  INKEY                     INKEY$                    INPUT                     INPUT$     
+  ONKEY$     
 
 [Loops]
   DO                        FOR                       LOOP                      NEXT
