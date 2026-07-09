@@ -1,0 +1,134 @@
+# TASK
+
+### 1. Syntax & Parameters
+`TASK <task_id>, <line_number | label>`
+`TASK <task_id> SUSPEND | RESUME | KILL`
+
+*   **`task_id`**: An integer expression evaluating to a valid task identifier (e.g., 1-16 depending on the configuration) representing the background thread or coroutine to be managed.
+*   **`line_number`**: An integer literal representing a valid, existing line number where the new task should begin execution.
+*   **`label`**: An alphanumeric label (which must be defined elsewhere in the code with a trailing colon, e.g., `MyTaskLabel:`) where the task should begin execution.
+*   **`SUSPEND`**: Keyword to pause a currently running task without destroying its state or call stack.
+*   **`RESUME`**: Keyword to resume a previously suspended task from where it was paused.
+*   **`KILL`**: Keyword to forcefully terminate a task, freeing its resources and call stack.
+
+### 2. Description & Usage
+The `TASK` command introduces cooperative or preemptive multitasking (depending on the target OS layer) to the BASIC++ ecosystem. It allows the programmer to spawn, suspend, resume, and kill secondary execution threads that run concurrently with the main program loop.
+
+**Usage:**
+In modern BASIC++, `TASK` is utilized for background processing, such as handling intense calculations, network polling, asynchronous file I/O, or independent sprite animations, without blocking the main event loop or user interface.
+
+**Edge Cases & Boundary Conditions:**
+*   **Invalid Task ID:** Providing a `task_id` out of the allowed range (e.g., negative or greater than `MAX_TASKS`) will result in an `ERR_ILLEGAL_FUNCTION_CALL` or `ERR_OUT_OF_RANGE`.
+*   **Task Limit Exceeded:** Attempting to spawn a new task when all task slots are currently active will throw an `ERR_OUT_OF_MEMORY` or `ERR_TOO_MANY_TASKS`.
+*   **Target Not Found:** If the target `line_number` or `label` for a new task does not exist, an `ERR_UNDEFINED_LINE` or `ERR_UNDEFINED_LABEL` is thrown at the time of task creation.
+*   **Modifying Non-Existent Tasks:** Attempting to `SUSPEND`, `RESUME`, or `KILL` a task that has already finished or was never started will typically fail silently or return a state warning, but will not crash the interpreter.
+*   **Shared State & Race Conditions:** Tasks share the same global variable space unless explicitly scoped. Modifying the same global strings or arrays simultaneously from multiple tasks without careful synchronization can lead to unpredictable string pool corruption or race conditions. 
+
+### 3. Code Examples
+
+**Spawning a Background Task:**
+```basic
+10 PRINT "Main Task Starting"
+20 TASK 1, 100
+30 FOR I = 1 TO 5
+40   PRINT "Main: "; I
+50   SLEEP 1
+60 NEXT I
+70 END
+100 ' Background Task 1
+110 FOR J = 1 TO 5
+120   PRINT "  Background: "; J
+130   SLEEP 1
+140 NEXT J
+150 RETURN
+```
+
+**Task Suspension and Resumption:**
+```basic
+10 TASK 1, TaskLoop
+20 SLEEP 2
+30 PRINT "Suspending Task 1"
+40 TASK 1 SUSPEND
+50 SLEEP 2
+60 PRINT "Resuming Task 1"
+70 TASK 1 RESUME
+80 SLEEP 2
+90 TASK 1 KILL
+100 END
+TaskLoop:
+  PRINT "Task 1 is running..."
+  SLEEP 1
+  GOTO TaskLoop
+```
+
+### 4. Internal C-Source Mapping
+*   `source/parser/parser_multitasking.c`
+*   `source/runtime/vm_task.c`
+*   `include/vm_task.h`
+
+### 5. Implementation Details
+The `TASK` instruction is identified in the Lexer by the `KW_TASK` token, followed optionally by `KW_SUSPEND`, `KW_RESUME`, or `KW_KILL`.
+
+**Parser Expectations:**
+The parser maps the first argument as an expression representing the `task_id`. If followed by a comma, it expects a target `line_number` or `label` and constructs an `AST_TASK_START` node. If followed by a state keyword, it constructs an `AST_TASK_STATE` node with the corresponding action flag.
+
+**Struct Mutations:**
+*   **`vm->tasks[task_id]`:** Mutated. The virtual machine maintains an array or linked list of `task_state` structures. 
+*   **`task_state->pc`:** Initialized to the target AST node when starting.
+*   **`task_state->status`:** Mutated between `TASK_RUNNING`, `TASK_SUSPENDED`, and `TASK_DEAD`.
+*   **Call Stack Allocation:** A new, separate call stack is allocated for the spawned task to handle its own `GOSUB`/`RETURN` operations independent of the main thread.
+
+**Execution Paths & Error Handling:**
+1. Evaluate `task_id`. Ensure `0 < task_id <= MAX_TASKS`.
+2. For creation: Verify target exists. Allocate stack. Set `status = TASK_RUNNING`. Set `pc = target`.
+3. For state changes: Find task in table. Mutate `status`. If `KILL`, deallocate stack and zero the entry.
+4. The VM's main execution loop (`vm_execute`) iterates over all active tasks (round-robin scheduling), executing a defined number of bytecode instructions or AST nodes per timeslice.
+5. If a task hits an unhandled error, only that task is killed, and the error may be reported to the main thread's `ERR` system.
+
+**What to do if it breaks:**
+If tasks are not executing, check the round-robin scheduler in `vm_task.c` inside `vm_execute()`. Ensure `vm_yield()` is correctly passing control to background tasks. If variables are being corrupted, investigate the thread-safety of the `string_pool` and variable lookup tables; you may need to introduce mutexes if the underlying implementation utilizes actual OS threads rather than VM-level coroutines.
+
+### 6. Cross-References / See Also
+*   `SLEEP`
+*   `YIELD`
+*   `ON TIMER`
+
+### 7. Historical Context
+Classic Microsoft BASICs (like GW-BASIC and QBASIC) did not have true multitasking or a `TASK` keyword; they relied on event trapping (like `ON TIMER` or `ON KEY`) which simulated concurrency by interrupting the main loop. Modern extended dialects and BASIC++ introduce explicit `TASK` control to take advantage of multi-core processors and modern OS threading models, while keeping the syntax approachable.
+
+### 8. Manual Testing Guide
+1. Launch `basicpp-console.exe` (Windows) or `baspp-console` (Linux).
+2. To test spawning, type:
+   ```
+   10 TASK 1, 50
+   20 PRINT "A" : SLEEP 1 : PRINT "B" : END
+   50 PRINT "1" : SLEEP 1 : PRINT "2" : RETURN
+   ```
+   Type `RUN`. Output should interleave "A", "1", "B", "2".
+3. To test killing, type:
+   ```
+   10 TASK 1, 50
+   20 PRINT "Main" : TASK 1 KILL : SLEEP 2 : END
+   50 PRINT "Task" : SLEEP 1 : GOTO 50
+   ```
+   Type `RUN`. The task should print once (or not at all depending on scheduling), but should not continue printing after the kill command.
+4. To test task limits, write a `FOR` loop spawning 100 tasks and verify the interpreter throws an expected error (e.g., `ERR_TOO_MANY_TASKS`) rather than crashing.
+
+
+### 9. Memory Management & Garbage Collection Profile
+Under the hood, this keyword operates within the strict bounds of the BASIC++ deterministic memory manager (`core/memory.c`). When executed, any intermediate strings generated by this operation are routed to the Transient Memory Arena within the String Pool (`core/stringpool.c`). If the arena exceeds its high-water mark, an aggressive mark-and-sweep garbage collection pass is immediately triggered before the instruction completes. On embedded architectures (compiled with `-DBPP_LITE_BUILD`), this transient arena is statically clamped (default 4KB), meaning iterative loops invoking this keyword must be designed carefully to avoid `ERR_OUT_OF_MEMORY` traps. Developers porting to bare-metal systems must verify that the `memory.c` heap allocator correctly points to a continuous SRAM block without fragmentation.
+
+### 10. Portability & Hardware Porting Concerns
+Because BASIC++ is strictly C17 ISO/IEC 9899:2018 compliant, this keyword relies on zero proprietary OS APIs. When compiling for headless microcontrollers (such as the Arduino Mega or ESP32) using the `-DNO_SDL2` macro, this instruction routes all its graphical or I/O side effects through the Platform Abstraction Layer (PAL). Hardware implementers must ensure that `platform_sleep()` and `platform_get_ticks()` are properly mapped in `core/platform.c` if this keyword involves timing, yielding, or hardware-level interrupts. In cases where the underlying hardware lacks a floating-point unit (FPU), the lexer automatically maps numeric outputs to 32-bit fixed integer types if `-DBPP_NO_FLOAT` is enforced.
+
+### 11. Abstract Syntax Tree (AST) Life Cycle
+During the parsing phase, the Recursive Descent Parser encounters the token associated with this keyword. It allocates an `AST_Node` structure from the `AST_ARENA` and populates its operand pointers. At runtime, the `ast_interpreter.c` engine performs a post-order traversal to evaluate all child expression nodes before triggering the final execution hook. This two-pass system guarantees that syntax errors (like mismatched parentheses or missing commas) are caught globally before any destructive side-effects occur. Once parsed, the `AST_Node` resides in memory until `NEW` or `RUN` is executed, at which point the entire arena is zeroed out to prevent memory leaks.
+
+### 12. C17 Standard Safety & Security Boundaries
+Security and isolation are paramount. This keyword utilizes strict bounds-checking to prevent buffer overflows. Internally, any array indexing or string manipulation defaults to `size_t` for addressing, preventing negative index wraps. Stack-smashing protections are enforced virtually by the `MAX_CALL_STACK` limit defined in `config.h`. Any attempt by this keyword to access unallocated heap memory will trigger the interpreter's internal fault handler, raising a trappable BASIC error rather than causing a segmentation fault at the OS level.
+
+### 13. Deterministic Execution & Regression Prevention
+To prevent regressions across builds (Windows, Linux, or MCU), the execution of this keyword is entirely deterministic. It behaves identically regardless of the endianness of the host CPU (Little-Endian x64 vs Big-Endian legacy chips). The testing suite in `selftests_all.c` ensures that the byte-for-byte output of this operation remains identical. If a developer modifies the underlying C source code for this keyword, they MUST run the `SELFTEST` suite to verify that parsing precedence, token mapping, and garbage collection behavior have not drifted.
+
+### 14. Performance Profiling & Optimization Rules
+For developers writing performance-critical algorithms in BASIC++, be aware that calling this keyword inside a `FOR...NEXT` or `WHILE...WEND` loop incurs a minimal virtual dispatch overhead. Because the interpreter uses a switch-case dispatch engine in `exec.c`, the branch predictor on modern CPUs will optimize repeated calls. However, on 8-bit or 16-bit chips, minimizing the use of string-mutating variants of this keyword will drastically improve frame rates and execution speed.

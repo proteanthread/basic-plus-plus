@@ -46,6 +46,7 @@
  // ---
 
 #include <string.h>
+#include "console.h"
 #include "vm.h"
 #include "runtime.h"
 #include "errors.h"

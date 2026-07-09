@@ -343,6 +343,13 @@ typedef struct VMForFrame {
     int    check_pc; // instruction index of FOR_CHECK
 } VMForFrame;
 
+
+typedef enum VideoStandard {
+    VIDEO_NTSC = 0,
+    VIDEO_PAL,
+    VIDEO_SECAM
+} VideoStandard;
+
 typedef struct RuntimeState {
  ProgramStore *program;
  MemorySystem *memory;
@@ -391,6 +398,7 @@ typedef struct RuntimeState {
   // error handler (ON ERROR GOTO)
   double on_error_line; // target line, 0 = disabled
   double on_timer_line; // ON TIMER target, 0 = off
+  double ti_offset; // TI and TI$ jiffy clock offset
   int last_err_code; // ERR - last error code
   double last_err_line; // ERL - line where error occurred
   // user-defined functions (DEF FN)
@@ -424,6 +432,8 @@ typedef struct RuntimeState {
   int jumped_to_else; // flag for IF scanner to signal ELSE/ELSEIF evaluation
  // OPTION ANGLE (ECMA-116)
  int angle_degrees; // 0=radians (default), 1=degrees
+ double jiffies_multiplier; // NTSC/PAL/SECAM
+    int video_standard;
  // OPTION TAB: 0=spaces (default), 1=real HT chars
  int tab_mode;
  // OPTION ZONE: -1=use dialect default, >0=override
@@ -436,7 +446,13 @@ typedef struct RuntimeState {
   int draw_x; // DRAW cursor X (0-79)
  int draw_y; // DRAW cursor Y (0-49)
   int draw_color; // DRAW pen character
-
+  int border_color;
+  int fg_color;
+  int bg_color;
+  int inverse_video;
+  int bright_mode;
+  int flash_mode;
+  int overprint_mode;
  // Cursor tracking for CSRLIN / POS(0)
  int cursor_row; // 1-based row (CSRLIN)
  int cursor_col; // 1-based column (POS)
@@ -551,7 +567,9 @@ typedef struct RuntimeState {
 #define EVT_OFF  0
 #define EVT_ON   1
 #define EVT_STOP 2
- int timer_event_state; // ON TIMER: ON/OFF/STOP
+ int timer_event_state;
+    int on_alarm_line;
+    double alarm_time; // ON TIMER: ON/OFF/STOP
  double timer_interval; // seconds between fires
  double timer_last_fire; // timestamp of last fire
  int key_event_state[MAX_KEY_TRAPS]; // per-key ON/OFF/STOP

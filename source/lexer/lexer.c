@@ -332,8 +332,8 @@ static const KeywordEntry core_keyword_init_table[] = {
  { "SLEEP", KW_SLEEP, DFLAG_QBAS },
  { "LOCATE", KW_LOCATE, DFLAG_GWQB },
  { "LINE", KW_LINE, DFLAG_GWQB | DFLAG_TRS2 | DFLAG_E116 },
- { "DATE", KW_DATE_FUNC, DFLAG_GWQB },
- { "TIME", KW_TIME_FUNC, DFLAG_GWQB },
+ { "DATE", KW_DATE, DFLAG_GWQB },
+ { "TIME", KW_TIME, DFLAG_GWQB },
  // QBasic structured features
  { "SELECT", KW_SELECT, DFLAG_QBAS | DFLAG_E116 },
  { "CASE", KW_CASE, DFLAG_QBAS | DFLAG_E116 },
@@ -1715,8 +1715,8 @@ static void scan_next_raw_token_internal(Lexer *lex)
   kw == KW_OCT_FUNC || kw == KW_LCASE ||
   kw == KW_UCASE || kw == KW_TCASE ||
   kw == KW_LTRIM || kw == KW_RTRIM ||
-  kw == KW_TRIM || kw == KW_DATE_FUNC ||
-  kw == KW_TIME_FUNC || kw == KW_INKEY ||
+  kw == KW_TRIM || kw == KW_DATE_FUNC || kw == KW_DATE ||
+  kw == KW_TIME_FUNC || kw == KW_TIME || kw == KW_INKEY ||
   kw == KW_ENVIRON || kw == KW_MKD_FUNC ||
   kw == KW_MKI_FUNC || kw == KW_MKS_FUNC ||
    kw == KW_SHELL || kw == KW_BIN_FUNC ||
@@ -1766,8 +1766,8 @@ static void scan_next_raw_token_internal(Lexer *lex)
  kw == KW_LTRIM ||
  kw == KW_RTRIM ||
  kw == KW_TRIM ||
- kw == KW_DATE_FUNC ||
- kw == KW_TIME_FUNC ||
+ kw == KW_DATE_FUNC || kw == KW_DATE ||
+ kw == KW_TIME_FUNC || kw == KW_TIME ||
  kw == KW_INKEY ||
  kw == KW_ENVIRON ||
  kw == KW_MKD_FUNC ||
@@ -1800,6 +1800,16 @@ static void scan_next_raw_token_internal(Lexer *lex)
  kw == KW_HASH) {
  lex->pos++; // consume '$'
  }
+  // DATE$ -> KW_DATE_FUNC
+  if (kw == KW_DATE) {
+      kw = KW_DATE_FUNC;
+      lex->current.value.keyword = kw;
+  }
+  // TIME$ -> KW_TIME_FUNC
+  if (kw == KW_TIME) {
+      kw = KW_TIME_FUNC;
+      lex->current.value.keyword = kw;
+  }
   // EDIT$ -> KW_EDIT_FUNC
   if (kw == KW_EDIT) {
       kw = KW_EDIT_FUNC;

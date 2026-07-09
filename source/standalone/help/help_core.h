@@ -44,6 +44,8 @@ typedef enum HelpCoreCatId {
     HCAT_CORE_OPER,
     HCAT_CORE_INTRO,
     HCAT_CORE_SYSVAR,
+    HCAT_CORE_MATRIX,
+    HCAT_CORE_ADV_MATH,
     HCAT_CORE_COUNT
 } HelpCoreCatId;
 

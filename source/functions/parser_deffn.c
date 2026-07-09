@@ -102,7 +102,7 @@ void pi_parse_def_fn(Lexer *lex, RuntimeState *rt, int line_num)
  // Also handle plain identifier USR after DEF.
  // In extended-vars mode, USR becomes TOK_NAMED_VAR.
  // In single-letter mode, USR becomes TOK_VARIABLE U.
- if (lex->current.type == TOK_NAMED_VAR &&
+ if ((lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_STRING_VAR) &&
  lex->current.str_length == 3 &&
  lex->current.str_start != NULL &&
  (lex->current.str_start[0] == 'U' ||
@@ -123,7 +123,7 @@ void pi_parse_def_fn(Lexer *lex, RuntimeState *rt, int line_num)
  // In extended-vars mode (GW-BASIC, QBasic, E116),
  // the lexer tokenizes "FNA" as TOK_NAMED_VAR
  // instead of KW_FN + TOK_VARIABLE. Handle both.
- if (lex->current.type == TOK_NAMED_VAR &&
+ if ((lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_STRING_VAR) &&
  lex->current.str_start != NULL &&
  lex->current.str_length >= 3 &&
  (lex->current.str_start[0] == 'F' ||

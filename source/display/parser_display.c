@@ -71,8 +71,8 @@ void pi_parse_home(Lexer *lex, RuntimeState *rt, int line_num)
  // and sends ANSI cursor-home escape.
  rt->cursor_row = 1;
  rt->cursor_col = 1;
- printf("\033[H");
- fflush(stdout);
+ gw_printf("\033[H");
+ gw_fflush(stdout);
  return;
 }
 
@@ -91,8 +91,8 @@ void pi_parse_locate(Lexer *lex, RuntimeState *rt, int line_num)
  if (error_occurred()) return;
  if (row < 1) row = 1;
  if (col < 1) col = 1;
- printf("\033[%d;%dH", row, col);
- fflush(stdout);
+ gw_printf("\033[%d;%dH", row, col);
+ gw_fflush(stdout);
  rt->cursor_row = row;
  rt->cursor_col = col;
  }
@@ -126,7 +126,7 @@ void pi_parse_width(Lexer *lex, RuntimeState *rt, int line_num)
  (lex->current.type ==
  TOK_SEMICOLON &&
  sep == ';')) {
- printf("WIDTH %d,%d\n",
+ gw_printf("WIDTH %d,%d\n",
  rt->screen_width,
  rt->screen_lines);
  return;
@@ -140,8 +140,8 @@ void pi_parse_width(Lexer *lex, RuntimeState *rt, int line_num)
 #ifndef NO_SDL2
       if (w == 40 || w == 80) {
           gw_sdl2_set_mode(rt->screen_mode, w);
-          printf("\033[2J\033[H"); // ANSI clear screen
-          fflush(stdout);
+          gw_printf("\033[2J\033[H"); // ANSI clear screen
+          gw_fflush(stdout);
           rt->screen_width = w;
       } else {
           error_raise(ERR_WHAT, line_num);
@@ -174,120 +174,10 @@ void pi_parse_width(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
- // pi_parse_ink - Handle INK command.
-void pi_parse_ink(Lexer *lex, RuntimeState *rt, int line_num)
-{
-  // INK n - Set foreground (ink) color 0-7.
-  //
-  // Sinclair Spectrum palette mapped to ANSI:
-  // 0=Black 1=Blue 2=Red 3=Magenta
-  // 4=Green 5=Cyan 6=Yellow 7=White
- {
-  static const int sinc_fg[] = {
-   30, 34, 31, 35, 32, 36, 33, 37
-  };
-  int c = (int)parse_expression(
-   lex, rt, line_num);
-  if (error_occurred()) return;
-  if (c >= 0 && c <= 7)
-   printf("\033[%dm", sinc_fg[c]);
-  fflush(stdout);
- }
- return;
-}
 
- // pi_parse_paper - Handle PAPER command.
-void pi_parse_paper(Lexer *lex, RuntimeState *rt, int line_num)
-{
-  // PAPER n - Set background (paper) color 0-7.
- {
-  static const int sinc_bg[] = {
-   40, 44, 41, 45, 42, 46, 43, 47
-  };
-  int c = (int)parse_expression(
-   lex, rt, line_num);
-  if (error_occurred()) return;
-  if (c >= 0 && c <= 7)
-   printf("\033[%dm", sinc_bg[c]);
-  fflush(stdout);
- }
- return;
-}
 
- // pi_parse_border - Handle BORDER command.
-void pi_parse_border(Lexer *lex, RuntimeState *rt, int line_num)
-{
-  // BORDER n - Set border color 0-7.
-  //
-  // No direct ANSI equivalent for border.
-  // We approximate by setting the background
-  // color for the entire terminal.
- {
-  static const int sinc_bg[] = {
-   40, 44, 41, 45, 42, 46, 43, 47
-  };
-  int c = (int)parse_expression(
-   lex, rt, line_num);
-  if (error_occurred()) return;
-  if (c >= 0 && c <= 7)
-   printf("\033[%dm", sinc_bg[c]);
-  fflush(stdout);
- }
- return;
-}
 
- // pi_parse_bright - Handle BRIGHT command.
-void pi_parse_bright(Lexer *lex, RuntimeState *rt, int line_num)
-{
-  // BRIGHT n - Bold/bright mode.
-  // 0 = normal, 1 = bright (ANSI bold).
- {
-  int n = (int)parse_expression(
-   lex, rt, line_num);
-  if (error_occurred()) return;
-  printf(n ? "\033[1m" : "\033[22m");
-  fflush(stdout);
- }
- return;
-}
 
- // pi_parse_flash - Handle FLASH command.
-void pi_parse_flash(Lexer *lex, RuntimeState *rt, int line_num)
-{
-  // FLASH n - Blink mode.
-  // 0 = off, 1 = blinking (ANSI blink).
- {
-  int n = (int)parse_expression(
-   lex, rt, line_num);
-  if (error_occurred()) return;
-  printf(n ? "\033[5m" : "\033[25m");
-  fflush(stdout);
- }
- return;
-}
 
- // pi_parse_inverse - Handle INVERSE command.
-void pi_parse_inverse(Lexer *lex, RuntimeState *rt, int line_num)
-{
-  // INVERSE n - Reverse video mode.
-  // 0 = normal, 1 = inverse (ANSI reverse).
- {
-  int n = (int)parse_expression(
-   lex, rt, line_num);
-  if (error_occurred()) return;
-  printf(n ? "\033[7m" : "\033[27m");
-  fflush(stdout);
- }
- return;
-}
 
- // pi_parse_over - Handle OVER command.
-void pi_parse_over(Lexer *lex, RuntimeState *rt, int line_num)
-{
-  // OVER n - Overprint mode.
-  // 0 = normal, 1 = overprint.
-  // No ANSI equivalent. Accept and ignore.
- (void)parse_expression(lex, rt, line_num);
- return;
-}
 

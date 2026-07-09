@@ -42,6 +42,18 @@
  // ---
 
 #include "parser_internal.h"
+#include "../console.h"
+
+#include "../vdev.h"
+#include "../errors.h"
+
+// Wrapper for fgets to handle BEEP ON during input wait
+static char* input_fgets(char* str, int n, FILE* stream) {
+    if (stream == stdin && error_get_beep()) {
+        vdev_beep();
+    }
+    return fgets(str, n, stream);
+}
 
  // print_margin_check - Auto-wrap when cursor exceeds margin.
  //
@@ -51,7 +63,7 @@
 void pi_print_margin_check(RuntimeState *rt)
 {
  if (rt->print_col > rt->screen_width) {
- printf("\n");
+ gw_printf("\n");
  rt->print_col = 1;
  rt->cursor_row++;
  }
@@ -63,7 +75,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  char sep;
  int file_chan = 0; // 0=stdout, 1-8=file channel
 
- sep = ';';
+ sep = ':';
 
  // PRINT #n, ...
  // If the first token is #, parse channel number then comma.
@@ -197,8 +209,8 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  if (at_col < 1) at_col = 1;
 
  // Move cursor
- printf("\033[%d;%dH", at_row, at_col);
- fflush(stdout);
+ gw_printf("\033[%d;%dH", at_row, at_col);
+ gw_fflush(stdout);
  rt->cursor_row = at_row;
  rt->cursor_col = at_col;
 
@@ -228,8 +240,8 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  at_col = (abs_pos % sw) + 1;
 
  // Move cursor
- printf("\033[%d;%dH", at_row, at_col);
- fflush(stdout);
+ gw_printf("\033[%d;%dH", at_row, at_col);
+ gw_fflush(stdout);
  rt->cursor_row = at_row;
  rt->cursor_col = at_col;
 
@@ -314,7 +326,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  format_using_process(target, fmt, flen,
  lex, rt, line_num);
  }
- printf("\n");
+ gw_printf("\n");
  return;
  }
 
@@ -326,7 +338,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  if (file_chan > 0) {
  fileio_print_newline(file_chan, line_num);
  } else {
- printf("\n");
+ gw_printf("\n");
  }
  return;
  }
@@ -349,28 +361,28 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
   zone = rt->zone_override;
   if (zone < 1) zone = 14;
   while ((rt->print_col - 1) % zone != 0) {
-  putchar(' ');
+  gw_console_write_char(' ');
   rt->print_col++;
   }
   // GW-BASIC: consecutive commas (,,) skip extra zones
   while (lex->current.type == TOK_COMMA) {
   lexer_next(lex);
   while ((rt->print_col - 1) % zone != 0) {
-   putchar(' ');
+   gw_console_write_char(' ');
    rt->print_col++;
   }
   // GW-BASIC: handle consecutive commas (,,)
   while (lex->current.type == TOK_COMMA) {
   lexer_next(lex);
   while ((rt->print_col - 1) % zone != 0) {
-   putchar(' ');
+   gw_console_write_char(' ');
    rt->print_col++;
   }
   // GW-BASIC: consecutive commas skip extra zones
   while (lex->current.type == TOK_COMMA) {
   lexer_next(lex);
   while ((rt->print_col - 1) % zone != 0) {
-   putchar(' ');
+   gw_console_write_char(' ');
    rt->print_col++;
   }
   }
@@ -394,7 +406,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  "PREFIX");
  if (pfx && pfx[0] != '\0' &&
  file_chan == 0) {
- printf("%s", pfx);
+ gw_printf("%s", pfx);
  }
  }
 
@@ -430,17 +442,17 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  // ECMA-55: move to absolute column col
  if (rt->tab_mode == 1) {
  // REAL: emit HT character
- putchar('\t');
+ gw_console_write_char('\t');
  rt->print_col = col;
  } else {
  // SPACES: pad with spaces
  if (rt->print_col > col) {
  // Past target: advance to next line
- printf("\n");
+ gw_printf("\n");
  rt->print_col = 1;
  }
  while (rt->print_col < col) {
- putchar(' ');
+ gw_console_write_char(' ');
  rt->print_col++;
  }
  }
@@ -467,7 +479,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  if (n > 0 && file_chan == 0) {
  int i;
  for (i = 0; i < n; i++)
- putchar(' ');
+ gw_console_write_char(' ');
  }
  }
  // Expression (numeric or string value via BValue)
@@ -514,7 +526,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  ch = (char)(ch - 32);
  else if (force_lo && ch >= 'A' && ch <= 'Z')
  ch = (char)(ch + 32);
- putchar(ch);
+ gw_console_write_char(ch);
  rt->print_col++;
  pi_print_margin_check(rt);
  }
@@ -523,33 +535,33 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  int nc;
  char cbuf[64];
  bval_to_string_buf(&val, cbuf, 64);
- nc = printf("%s", cbuf);
+ nc = gw_printf("%s", cbuf);
  rt->print_col += nc;
  pi_print_margin_check(rt);
  } else if (bval_is_float(&val)) {
  int nc;
  // ECMA-55: leading space for positive
  if (val.v.fval >= 0.0) {
- putchar(' ');
+ gw_console_write_char(' ');
  rt->print_col++;
  }
- nc = printf("%.14G", val.v.fval);
+ nc = gw_printf("%.14G", val.v.fval);
  rt->print_col += nc;
  // ECMA-55: trailing space
- putchar(' ');
+ gw_console_write_char(' ');
  rt->print_col++;
  pi_print_margin_check(rt);
  } else {
  int nc;
  // ECMA-55: leading space for positive
  if (val.v.ival >= 0) {
- putchar(' ');
+ gw_console_write_char(' ');
  rt->print_col++;
  }
- nc = printf("%ld", val.v.ival);
+ nc = gw_printf("%ld", val.v.ival);
  rt->print_col += nc;
  // ECMA-55: trailing space
- putchar(' ');
+ gw_console_write_char(' ');
  rt->print_col++;
  pi_print_margin_check(rt);
  }
@@ -572,14 +584,14 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  zone = rt->zone_override;
  if (zone < 1) zone = 14;
  while ((rt->print_col - 1) % zone != 0) {
- putchar(' ');
+ gw_console_write_char(' ');
  rt->print_col++;
  }
  // GW-BASIC: consecutive commas skip zones
  while (lex->current.type == TOK_COMMA) {
  lexer_next(lex);
  while ((rt->print_col - 1) % zone != 0) {
- putchar(' ');
+ gw_console_write_char(' ');
  rt->print_col++;
  }
  }
@@ -612,7 +624,7 @@ void pi_parse_print(Lexer *lex, RuntimeState *rt, int line_num)
  if (file_chan > 0) {
  fileio_print_newline(file_chan, line_num);
  } else {
- printf("\n");
+ gw_printf("\n");
  rt->print_col = 1;
  rt->cursor_row++;
  rt->cursor_col = 1;
@@ -761,7 +773,7 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  if (file_chan == 0 && lex->current.type == TOK_STRING) {
  int i;
  for (i = 0; i < lex->current.str_length; i++) {
- putchar(lex->current.str_start[i]);
+ gw_console_write_char(lex->current.str_start[i]);
  }
  lexer_next(lex); // consume string
  has_custom_prompt = 1;
@@ -823,10 +835,10 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
   } else {
   if (!has_custom_prompt) {
    const char *kp = keyword_prop_get(KW_INPUT, "PROMPT");
-   printf("%s", kp ? kp : "? ");
+   gw_printf("%s", kp ? kp : "? ");
   }
-  fflush(stdout);
-  if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+  gw_fflush(stdout);
+  if (input_fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
    error_raise(ERR_HOW, line_num); return;
   }
   }
@@ -873,10 +885,10 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  }
  } else {
  if (!has_custom_prompt) {
- printf("? ");
+ gw_printf("? ");
  }
- fflush(stdout);
- if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin)
+ gw_fflush(stdout);
+ if (input_fgets(input_buf, INPUT_BUFFER_SIZE, stdin)
  == NULL) {
  error_raise(ERR_HOW, line_num);
  return;
@@ -889,9 +901,9 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  return;
  }
- printf("?Redo from start\n? ");
- fflush(stdout);
- if (fgets(input_buf, INPUT_BUFFER_SIZE,
+ gw_printf("?Redo from start\n? ");
+ gw_fflush(stdout);
+ if (input_fgets(input_buf, INPUT_BUFFER_SIZE,
  stdin) == NULL) {
  error_raise(ERR_HOW, line_num);
  return;
@@ -946,10 +958,10 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
   } else {
   if (!has_custom_prompt) {
    const char *kp = keyword_prop_get(KW_INPUT, "PROMPT");
-   printf("%s", kp ? kp : "? ");
+   gw_printf("%s", kp ? kp : "? ");
   }
-  fflush(stdout);
-  if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+  gw_fflush(stdout);
+  if (input_fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
    error_raise(ERR_HOW, line_num); return;
   }
   }
@@ -994,10 +1006,10 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  const char *kp =
  keyword_prop_get(KW_INPUT,
  "PROMPT");
- printf("%s", kp ? kp : "? ");
+ gw_printf("%s", kp ? kp : "? ");
  }
- fflush(stdout);
- if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin)
+ gw_fflush(stdout);
+ if (input_fgets(input_buf, INPUT_BUFFER_SIZE, stdin)
  == NULL) {
  error_raise(ERR_HOW, line_num);
  return;
@@ -1069,10 +1081,10 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
    } else {
    if (!has_custom_prompt) {
     const char *kp = keyword_prop_get(KW_INPUT, "PROMPT");
-    printf("%s", kp ? kp : "? ");
+    gw_printf("%s", kp ? kp : "? ");
    }
-   fflush(stdout);
-   if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+   gw_fflush(stdout);
+   if (input_fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
     error_raise(ERR_HOW, line_num); return;
    }
    }
@@ -1120,10 +1132,10 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
   } else {
    if (!has_custom_prompt) {
    const char *kp = keyword_prop_get(KW_INPUT, "PROMPT");
-   printf("%s", kp ? kp : "? ");
+   gw_printf("%s", kp ? kp : "? ");
    }
-   fflush(stdout);
-   if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+   gw_fflush(stdout);
+   if (input_fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
    error_raise(ERR_HOW, line_num); return;
    }
   }
@@ -1156,10 +1168,10 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
   } else {
    if (!has_custom_prompt) {
    const char *kp = keyword_prop_get(KW_INPUT, "PROMPT");
-   printf("%s", kp ? kp : "? ");
+   gw_printf("%s", kp ? kp : "? ");
    }
-   fflush(stdout);
-   if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+   gw_fflush(stdout);
+   if (input_fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
    error_raise(ERR_HOW, line_num); return;
    }
   }
@@ -1169,8 +1181,8 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
    if (file_chan > 0) {
     error_raise(ERR_WHAT, line_num); return;
    }
-   printf("?Redo from start\n? "); fflush(stdout);
-   if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+   gw_printf("?Redo from start\n? "); gw_fflush(stdout);
+   if (input_fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
     error_raise(ERR_HOW, line_num); return;
    }
    dv = strtod(input_buf, &endp);
@@ -1218,12 +1230,12 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  const char *kp =
  keyword_prop_get(KW_INPUT,
  "PROMPT");
- printf("%s", kp ? kp : "? ");
+ gw_printf("%s", kp ? kp : "? ");
  }
- fflush(stdout);
+ gw_fflush(stdout);
 
  // Read input line
- if (fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
+ if (input_fgets(input_buf, INPUT_BUFFER_SIZE, stdin) == NULL) {
  error_raise(ERR_HOW, line_num);
  return;
  }
@@ -1239,9 +1251,9 @@ void pi_parse_input(Lexer *lex, RuntimeState *rt, int line_num)
  error_raise(ERR_WHAT, line_num);
  return;
  }
- printf("?Redo from start\n? ");
- fflush(stdout);
- if (fgets(input_buf, INPUT_BUFFER_SIZE,
+ gw_printf("?Redo from start\n? ");
+ gw_fflush(stdout);
+ if (input_fgets(input_buf, INPUT_BUFFER_SIZE,
  stdin) == NULL) {
  error_raise(ERR_HOW, line_num);
  return;
@@ -1538,8 +1550,9 @@ void pi_parse_line_input(Lexer *lex, RuntimeState *rt,
  // File LINE INPUT
  if (fileio_input_line(channel, buf,
   MAX_LINE_LENGTH, line_num) != 0) {
-  if (!error_occurred())
+  if (!error_occurred()) {
    error_raise(ERR_HOW, line_num);
+  }
   return;
  }
  blen = (int)strlen(buf);
@@ -1547,12 +1560,12 @@ void pi_parse_line_input(Lexer *lex, RuntimeState *rt,
  // Console LINE INPUT
  if (prompt && prompt_len > 0) {
  fwrite(prompt, 1, (size_t)prompt_len, stdout);
- fflush(stdout);
+ gw_fflush(stdout);
  } else if (!suppress_cr) {
- printf("? ");
- fflush(stdout);
+ gw_printf("? ");
+ gw_fflush(stdout);
  }
- if (!fgets(buf, MAX_LINE_LENGTH, stdin)) {
+ if (!input_fgets(buf, MAX_LINE_LENGTH, stdin)) {
  buf[0] = '\0';
  blen = 0;
  } else {

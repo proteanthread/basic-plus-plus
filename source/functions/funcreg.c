@@ -127,11 +127,11 @@ const FunctionEntry *funcreg_find_by_keyword(KeywordId kw)
 {
  int i;
  for (i = 0; i < reg_count; i++) {
- if (registry[i].keyword == kw && registry[i].name != NULL) {
- return &registry[i];
- }
- }
- return NULL;
+        if (registry[i].keyword == kw && registry[i].name != NULL) {
+            return &registry[i];
+        }
+    }
+    return NULL;
 }
 
 // ---

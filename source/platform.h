@@ -151,6 +151,14 @@ void platform_sleep_ms(int duration_ms);
 // platform_get_available_ram - Get currently available physical RAM.
 long long platform_get_available_ram(void);
 
+// platform_get_console_height - Query terminal/console height.
+// Returns height in rows, or -1 if unable to determine.
+int platform_get_console_height(void);
+
+// platform_get_console_width - Query terminal/console width.
+// Returns width in columns, or -1 if unable to determine.
+int platform_get_console_width(void);
+
 // plat_strdup - Portable string duplication avoiding MSVC deprecation warnings
 char *plat_strdup(const char *s);
 

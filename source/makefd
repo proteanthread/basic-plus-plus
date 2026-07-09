@@ -209,7 +209,7 @@ MODULE_OBJS = $(MODULE_OBJS) mod_jit.obj
 # CONDITIONAL: Sections (Feature Groups)
 # =====================================================================
 !ifdef INCLUDE_FILEIO
-SECTION_OBJS = $(SECTION_OBJS) parser_fileio.obj fileio.obj &
+SECTION_OBJS = $(SECTION_OBJS) parser_fileio.obj parser_net.obj fileio.obj &
     builtins_fileio.obj parser_filemgmt.obj &
     device_alias.obj builtins_sio.obj builtins_bio.obj &
     builtins_txn.obj builtins_net.obj txn.obj parser_txn.obj &
@@ -334,6 +334,7 @@ parser_loops.obj:  flow\parser_loops.c .AUTODEPEND
 parser_io.obj:     io\parser_io.c .AUTODEPEND
     $(CC) $(CFLAGS) -fo=$@ $<
 parser_fileio.obj: io\parser_fileio.c .AUTODEPEND
+parser_net.obj: io\parser_net.c .AUTODEPEND
     $(CC) $(CFLAGS) -fo=$@ $<
 parser_blockio.obj: io\parser_blockio.c .AUTODEPEND
     $(CC) $(CFLAGS) -fo=$@ $<

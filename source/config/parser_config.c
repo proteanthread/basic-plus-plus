@@ -100,6 +100,39 @@ void pi_parse_option(Lexer *lex, RuntimeState *rt, int line_num)
   // Set TAB function behavior: REAL emits
   // HT characters, SPACES (default) emits
   // space characters to reach the column.
+    // OPTION VIDEO PAL | SECAM | NTSC
+    if (lex->current.type == TOK_NAMED_VAR &&
+        lex->current.str_length == 5 &&
+        lex->current.str_start != NULL) {
+        const char *v = lex->current.str_start;
+        if ((v[0]=='V'||v[0]=='v') &&
+            (v[1]=='I'||v[1]=='i') &&
+            (v[2]=='D'||v[2]=='d') &&
+            (v[3]=='E'||v[3]=='e') &&
+            (v[4]=='O'||v[4]=='o')) {
+            lexer_next(lex); // consume VIDEO
+            if (lex->current.type == TOK_NAMED_VAR &&
+                lex->current.str_start != NULL) {
+                const char *m = lex->current.str_start;
+                int len = lex->current.str_length;
+                if (len == 3 && (m[0]=='P'||m[0]=='p') && (m[1]=='A'||m[1]=='a') && (m[2]=='L'||m[2]=='l')) {
+                    rt->jiffies_multiplier = 50.0;
+                    lexer_next(lex);
+                } else if (len == 5 && (m[0]=='S'||m[0]=='s') && (m[1]=='E'||m[1]=='e') && (m[2]=='C'||m[2]=='c') && (m[3]=='A'||m[3]=='a') && (m[4]=='M'||m[4]=='m')) {
+                    rt->jiffies_multiplier = 50.0;
+                    lexer_next(lex);
+                } else if (len == 4 && (m[0]=='N'||m[0]=='n') && (m[1]=='T'||m[1]=='t') && (m[2]=='S'||m[2]=='s') && (m[3]=='C'||m[3]=='c')) {
+                    rt->jiffies_multiplier = 60.0;
+                    lexer_next(lex);
+                } else {
+                    error_raise(ERR_WHAT, line_num);
+                }
+            } else {
+                error_raise(ERR_WHAT, line_num);
+            }
+            return;
+        }
+    }
  if (lex->current.type == TOK_KEYWORD &&
   lex->current.value.keyword == KW_TAB_FUNC) {
   lexer_next(lex); // consume TAB

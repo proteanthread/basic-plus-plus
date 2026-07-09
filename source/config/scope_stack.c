@@ -295,15 +295,17 @@ int scope_stack_pop(ScopeStack *ss, struct RuntimeState *rt)
     }
 
     // Restore named variables
-    if (snap->named_vars != NULL) {
-        NamedVariable *saved =
-            (NamedVariable *)snap->named_vars;
+    // Restore named variables
+    if (snap->named_vars != NULL || snap->shared_count > 0) {
+        NamedVariable *saved = (NamedVariable *)snap->named_vars;
 
         if (snap->shared_count == 0) {
             // No SHARED vars: simple bulk restore
-            memcpy(rt->named_vars, saved,
-                (size_t)snap->named_count *
-                sizeof(NamedVariable));
+            if (saved != NULL) {
+                memcpy(rt->named_vars, saved,
+                    (size_t)snap->named_count *
+                    sizeof(NamedVariable));
+            }
             rt->named_count = snap->named_count;
         } else {
              // SHARED vars present: restore all except shared.
@@ -330,9 +332,11 @@ int scope_stack_pop(ScopeStack *ss, struct RuntimeState *rt)
             }
 
             // Bulk restore
-            memcpy(rt->named_vars, saved,
-                (size_t)snap->named_count *
-                sizeof(NamedVariable));
+            if (saved != NULL) {
+                memcpy(rt->named_vars, saved,
+                    (size_t)snap->named_count *
+                    sizeof(NamedVariable));
+            }
             rt->named_count = snap->named_count;
 
             // Re-apply shared variable values
@@ -343,8 +347,10 @@ int scope_stack_pop(ScopeStack *ss, struct RuntimeState *rt)
             }
         }
 
-        free(snap->named_vars);
-        snap->named_vars = NULL;
+        if (snap->named_vars != NULL) {
+            free(snap->named_vars);
+            snap->named_vars = NULL;
+        }
     } else {
         rt->named_count = snap->named_count;
     }

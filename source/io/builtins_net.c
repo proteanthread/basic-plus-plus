@@ -216,6 +216,61 @@ BValue builtin_nerror(BValue *args, int argc, void *rt)
  return bval_int(0);
 }
 
+ // NWRITE(chan, data$) - Write string to network channel.
+BValue builtin_nwrite(BValue *args, int argc, void *rt)
+{
+ int chan, written;
+ const char *data;
+ int dlen;
+ VDev *dev;
+ (void)rt;
+
+ if (argc < 2) return bval_int(0);
+ chan = bval_to_int(&args[0]);
+ if (!bval_is_string(&args[1])) return bval_int(0);
+ data = args[1].v.sval.data;
+ dlen = args[1].v.sval.length;
+ if (data == NULL || dlen <= 0) return bval_int(0);
+
+ dev = net_get_channel_vdev(chan);
+ if (dev == NULL) return bval_int(0);
+
+ if (dev->dev_write != NULL) {
+  written = dev->dev_write(dev, data, dlen);
+  return bval_int((long)written);
+ }
+ return bval_int(0);
+}
+
+ // NREAD$(chan, bytes) - Read bytes from network channel.
+BValue builtin_nread(BValue *args, int argc, void *rt)
+{
+ int chan, req_bytes, read_bytes;
+ VDev *dev;
+ RuntimeState *state = (RuntimeState *)rt;
+ char tmpbuf[1024];
+ char *poolbuf;
+
+ if (argc < 2) return bval_string(NULL, 0);
+ chan = bval_to_int(&args[0]);
+ req_bytes = bval_to_int(&args[1]);
+ if (req_bytes <= 0) return bval_string(NULL, 0);
+ if (req_bytes > 1024) req_bytes = 1024;
+
+ dev = net_get_channel_vdev(chan);
+ if (dev == NULL) return bval_string(NULL, 0);
+
+ if (dev->dev_read != NULL) {
+  read_bytes = dev->dev_read(dev, tmpbuf, req_bytes);
+  if (read_bytes <= 0) return bval_string(NULL, 0);
+  poolbuf = strpool_alloc(&state->strpool, read_bytes);
+  if (poolbuf == NULL) return bval_string(NULL, 0);
+  memcpy(poolbuf, tmpbuf, (size_t)read_bytes);
+  return bval_string(poolbuf, read_bytes);
+ }
+ return bval_string(NULL, 0);
+}
+
  // NJSONQUERY$(ch, path$) - JSON path query.
  // Requires FujiNet module for JSON parsing.
  // Returns the value at the specified JSON path,

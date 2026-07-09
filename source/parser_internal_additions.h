@@ -166,6 +166,19 @@ void pi_parse_endif(Lexer *lex, RuntimeState *rt,
     int line_num);
 
 // parser_graphics.c
+
+void pi_parse_drawto(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_at_stmt(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_plot(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_display(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_border(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_paper(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_ink(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_inverse(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_reverse(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_bright(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_flash(Lexer *lex, RuntimeState *rt, int line_num);
+void pi_parse_over(Lexer *lex, RuntimeState *rt, int line_num);
 void pi_parse_graphics(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_screen(Lexer *lex, RuntimeState *rt,
@@ -364,3 +377,7 @@ void pi_parse_vmach(Lexer *lex, RuntimeState *rt,
 void pi_parse_devmap(Lexer *lex, RuntimeState *rt,
     int line_num);
 
+
+// Network Commands
+extern void pi_parse_gemini(Lexer *lex, RuntimeState *rt, int line_num);
+extern void pi_parse_gopher(Lexer *lex, RuntimeState *rt, int line_num);

@@ -114,8 +114,8 @@ typedef struct ProgramStore {
 } ProgramStore;
 
 #define RAMBANK_SIZE 1048576  // 1MB
-#define MAX_RAMBANKS 255      // 1 to 254 are valid banks
 #define MAX_RESIDENT_BANKS 8  // Resident limit for physical RAM paging simulation
+extern int g_init_rambanks;
 
 typedef struct RamBank {
     char *base;          // Pointer to 1MB bank buffer if resident (otherwise NULL)
@@ -136,7 +136,8 @@ typedef struct MemorySystem {
  MemoryPool graphics;
  ProgramStore program;
  // Segmented Virtual Memory RAMBANKs
- RamBank banks[MAX_RAMBANKS];
+ int num_rambanks;
+ RamBank *banks;
  long access_counter;    // Incrementing counter for LRU
 } MemorySystem;
 
@@ -232,7 +233,17 @@ void program_list(ProgramStore *store, double from, double to);
 #define SEARCH_IDENTIFIER     2
 #define SEARCH_LABEL_OR_FUNC  3
 
+
+#define SEARCH_SUBSTRING_CS   4
+
+typedef struct {
+    double from;
+    double to;
+} ListRange;
+
 void program_list_search(ProgramStore *store, int search_type, const char *pattern);
+void program_list_complex(ProgramStore *store, ListRange *ranges, int range_count, int search_type, const char *pattern);
+
 
 // --- RAMBANK Segmented Virtual Memory Functions ---
 void rambank_init(MemorySystem *mem);

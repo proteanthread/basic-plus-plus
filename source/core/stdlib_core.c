@@ -177,7 +177,8 @@ BValue stdlib_core_instr(BValue *args, int argc, void *rt) {
         h = args[0].v.sval.data; hl = args[0].v.sval.length;
         n = args[1].v.sval.data; nl = args[1].v.sval.length;
     }
-    if (!h || !n || nl > hl || nl == 0) return bval_int(0);
+      if (n == NULL || nl == 0) return bval_int(start_off + 1 <= hl + 1 ? start_off + 1 : 0);
+      if (h == NULL || nl > hl) return bval_int(0);
     if (start_off < 0) start_off = 0;
     if (start_off > hl - nl) return bval_int(0);
     for (i = start_off; i <= hl - nl; i++) {

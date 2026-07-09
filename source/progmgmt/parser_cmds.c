@@ -53,145 +53,157 @@ extern struct GW_Memory *g_gw_mem;
 
 void pi_parse_list_cmd(Lexer *lex, RuntimeState *rt, int line_num)
 {
- extern int pi_ensure_bas_ext(char *fname, int len, int maxlen);
- (void)line_num;
+    extern int pi_ensure_bas_ext(char *fname, int len, int maxlen);
+    (void)line_num;
 
- if (rt->bytecode_only) {
-     printf("LIST: Prohibited in obfuscated/bytecode-only mode.\n");
-     return;
- }
+    if (rt->bytecode_only) {
+        printf("LIST: Prohibited in obfuscated/bytecode-only mode.\n");
+        return;
+    }
 
- // No arguments: list everything
- if (lex->current.type == TOK_EOF || lex->current.type == TOK_CR) {
-     program_list(&rt->memory->program, 0, 0);
-     return;
- }
+    if (lex->current.type == TOK_EOF || lex->current.type == TOK_CR) {
+        program_list_complex(&rt->memory->program, NULL, 0, 0, NULL);
+        return;
+    }
 
- // Parse comma-separated segments.
- // Each segment is one of:
- // - Quoted string: "pattern" or "filename"
- // - Colon followed by identifier: :name
- // - Numeric ranges: n, n-, n-m, -n
- // - Unquoted identifier/variable search (potentially with wildcards)
- for (;;) {
-     if (lex->current.type == TOK_STRING) {
-         char original_pattern[MAX_LINE_LENGTH + 1];
-         int flen = lex->current.str_length;
-         if (flen >= MAX_LINE_LENGTH) {
-             error_raise(ERR_WHAT, line_num);
-             return;
-         }
-         memcpy(original_pattern, lex->current.str_start, (size_t)flen);
-         original_pattern[flen] = '\0';
-         lexer_next(lex); // consume string
-         
-         char filename[MAX_LINE_LENGTH + 5];
-         strcpy(filename, original_pattern);
-         pi_ensure_bas_ext(filename, flen, MAX_LINE_LENGTH + 4);
-         
-         FILE *fp = fopen(filename, "r");
-         if (fp != NULL) {
-             char linebuf[MAX_LINE_LENGTH + 2];
-             printf("\n--- %s ---\n", filename);
-             while (fgets(linebuf, sizeof(linebuf), fp) != NULL) {
-                 int ll = (int)strlen(linebuf);
-                 while (ll > 0 && (linebuf[ll-1] == '\n' || linebuf[ll-1] == '\r')) {
-                     linebuf[--ll] = '\0';
-                 }
-                 printf("%s\n", linebuf);
-             }
-             printf("--- end ---\n\n");
-             fclose(fp);
-         } else {
-             program_list_search(&rt->memory->program, SEARCH_SUBSTRING, original_pattern);
-         }
-     }
-     else if (lex->current.type == TOK_COLON) {
-         Lexer temp_lex = *lex;
-         lexer_next(&temp_lex);
-         if (temp_lex.current.type == TOK_NAMED_VAR || temp_lex.current.type == TOK_VARIABLE) {
-             *lex = temp_lex; // commit advancement
-             
-             char pattern[64] = {0};
-             if (lex->current.type == TOK_VARIABLE) {
-                 pattern[0] = lex->current.value.var_name;
-             } else {
-                 int len = lex->current.str_length;
-                 if (len > 63) len = 63;
-                 strncpy(pattern, lex->current.str_start, len);
-             }
-             lexer_next(lex); // consume identifier
-             
-             program_list_search(&rt->memory->program, SEARCH_LABEL_OR_FUNC, pattern);
-         } else {
-             break; // statement separator, stop LIST
-         }
-     }
-     else if (lex->current.type == TOK_NUMBER || lex->current.type == TOK_FLOAT_LIT || lex->current.type == TOK_MINUS) {
-         double from = 0;
-         double to = 0;
-         
-         if (lex->current.type == TOK_MINUS) {
-             lexer_next(lex);
-             if (lex->current.type == TOK_NUMBER) {
-                 to = (double)lex->current.value.num_value;
-                 lexer_next(lex);
-             } else if (lex->current.type == TOK_FLOAT_LIT) {
-                 to = lex->current.value.fval;
-                 lexer_next(lex);
-             }
-             program_list(&rt->memory->program, from, to);
-         } else {
-             from = (lex->current.type == TOK_NUMBER) ? (double)lex->current.value.num_value : lex->current.value.fval;
-             lexer_next(lex);
-             
-             if (lex->current.type == TOK_MINUS) {
-                 lexer_next(lex);
-                 if (lex->current.type == TOK_NUMBER) {
-                     to = (double)lex->current.value.num_value;
-                     lexer_next(lex);
-                 } else if (lex->current.type == TOK_FLOAT_LIT) {
-                     to = lex->current.value.fval;
-                     lexer_next(lex);
-                 }
-                 program_list(&rt->memory->program, from, to);
-             } else {
-                 to = from;
-                 program_list(&rt->memory->program, from, to);
-             }
-         }
-     }
-     else if (lex->current.type != TOK_EOF && lex->current.type != TOK_CR) {
-         const char *arg_start = lex->source + lex->current.pos;
-         const char *p = arg_start;
-         while (*p != '\0' && *p != ',' && *p != ':' && *p != ' ' && *p != '\t') {
-             p++;
-         }
-         int len = (int)(p - arg_start);
-         if (len > 0) {
-             char pattern[64] = {0};
-             if (len > 63) len = 63;
-             memcpy(pattern, arg_start, len);
-             pattern[len] = '\0';
-             
-             lex->pos = lex->current.pos + len;
-             lexer_next(lex);
-             
-             program_list_search(&rt->memory->program, SEARCH_IDENTIFIER, pattern);
-         } else {
-             break;
-         }
-     }
-     else {
-         break;
-     }
+    ListRange ranges[32];
+    int range_count = 0;
+    int search_type = 0;
+    char search_pattern[256] = {0};
+    int is_file_load = 0;
+    char filename_to_load[256] = {0};
 
-     if (lex->current.type == TOK_COMMA) {
-         lexer_next(lex);
-     } else {
-         break;
-     }
- }
+    while (lex->current.type != TOK_EOF && lex->current.type != TOK_CR) {
+        
+        if (lex->current.type == TOK_STRING) {
+            int flen = lex->current.str_length;
+            if (flen >= 250) {
+                error_raise(ERR_WHAT, line_num);
+                return;
+            }
+            
+            // Check quotes: double vs single
+            int is_double_quote = (lex->source[lex->current.pos - 1] == '"');
+            
+            memcpy(search_pattern, lex->current.str_start, (size_t)flen);
+            search_pattern[flen] = '\0';
+            lexer_next(lex);
+            
+            // If it's the very first parameter and looks like it could be a file? 
+            if (range_count == 0 && search_type == 0 && is_double_quote) {
+                strcpy(filename_to_load, search_pattern);
+                is_file_load = 1;
+            } else {
+                search_type = is_double_quote ? SEARCH_SUBSTRING_CS : SEARCH_SUBSTRING;
+            }
+        }
+        else if (lex->current.type == TOK_COLON) {
+            Lexer temp_lex = *lex;
+            lexer_next(&temp_lex);
+            if (temp_lex.current.type == TOK_NAMED_VAR || temp_lex.current.type == TOK_VARIABLE) {
+                *lex = temp_lex;
+                if (lex->current.type == TOK_VARIABLE) {
+                    search_pattern[0] = lex->current.value.var_name;
+                    search_pattern[1] = '\0';
+                } else {
+                    int len = lex->current.str_length;
+                    if (len > 63) len = 63;
+                    strncpy(search_pattern, lex->current.str_start, len);
+                    search_pattern[len] = '\0';
+                }
+                search_type = SEARCH_LABEL_OR_FUNC;
+                lexer_next(lex);
+            } else {
+                break; // statement separator
+            }
+        }
+        else if (lex->current.type == TOK_NUMBER || lex->current.type == TOK_FLOAT_LIT || lex->current.type == TOK_MINUS) {
+            double from = 0;
+            double to = 0;
+            
+            if (lex->current.type == TOK_MINUS) {
+                lexer_next(lex);
+                if (lex->current.type == TOK_NUMBER) {
+                    to = (double)lex->current.value.num_value;
+                    lexer_next(lex);
+                } else if (lex->current.type == TOK_FLOAT_LIT) {
+                    to = lex->current.value.fval;
+                    lexer_next(lex);
+                }
+            } else {
+                from = (lex->current.type == TOK_NUMBER) ? (double)lex->current.value.num_value : lex->current.value.fval;
+                lexer_next(lex);
+                
+                if (lex->current.type == TOK_MINUS) {
+                    lexer_next(lex);
+                    if (lex->current.type == TOK_NUMBER) {
+                        to = (double)lex->current.value.num_value;
+                        lexer_next(lex);
+                    } else if (lex->current.type == TOK_FLOAT_LIT) {
+                        to = lex->current.value.fval;
+                        lexer_next(lex);
+                    }
+                } else {
+                    to = from;
+                }
+            }
+            if (range_count < 32) {
+                ranges[range_count].from = from;
+                ranges[range_count].to = to;
+                range_count++;
+            }
+        }
+        else if (lex->current.type == TOK_NAMED_VAR || lex->current.type == TOK_VARIABLE) {
+            // Identifier filter (e.g. LIST A$)
+            if (lex->current.type == TOK_VARIABLE) {
+                search_pattern[0] = lex->current.value.var_name;
+                search_pattern[1] = '\0';
+            } else {
+                int len = lex->current.str_length;
+                if (len > 63) len = 63;
+                strncpy(search_pattern, lex->current.str_start, len);
+                search_pattern[len] = '\0';
+            }
+            search_type = SEARCH_IDENTIFIER;
+            lexer_next(lex);
+        }
+        else {
+            break;
+        }
+
+        if (lex->current.type == TOK_COMMA) {
+            lexer_next(lex);
+        } else {
+            break;
+        }
+    }
+
+    if (is_file_load && range_count == 0) {
+        char temp_filename[256];
+        strcpy(temp_filename, filename_to_load);
+        pi_ensure_bas_ext(temp_filename, (int)strlen(temp_filename), 250);
+        
+        FILE *fp = fopen(temp_filename, "r");
+        if (fp != NULL) {
+            char linebuf[MAX_LINE_LENGTH + 2];
+            printf("\n--- %s ---\n", temp_filename);
+            while (fgets(linebuf, sizeof(linebuf), fp) != NULL) {
+                int ll = (int)strlen(linebuf);
+                while (ll > 0 && (linebuf[ll-1] == '\n' || linebuf[ll-1] == '\r')) {
+                    linebuf[--ll] = '\0';
+                }
+                printf("%s\n", linebuf);
+            }
+            printf("--- end ---\n\n");
+            fclose(fp);
+            return;
+        } else {
+            // File failed to open, treat it as a case-sensitive substring search instead
+            search_type = SEARCH_SUBSTRING_CS;
+        }
+    }
+
+    program_list_complex(&rt->memory->program, ranges, range_count, search_type, search_type ? search_pattern : NULL);
 }
 
 void pi_parse_reformat_cmd(Lexer *lex, RuntimeState *rt, int line_num)

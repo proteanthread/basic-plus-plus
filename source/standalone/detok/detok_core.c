@@ -166,17 +166,21 @@ static const char *keyword_names[] = {
  "XOR", // KW_XOR
  "EQV", // KW_EQV
  "IMP", // KW_IMP
- "LCASE$", // KW_LCASE
- "UCASE$", // KW_UCASE
- "LTRIM$", // KW_LTRIM
- "RTRIM$", // KW_RTRIM
+ "LCASE$", // KW_LCASES
+ "UCASE$", // KW_UCASES
+ "LTRIM$", // KW_LTRIMS
+ "RTRIM$", // KW_RTRIMS
  "CINT", // KW_CINT
  "TIMER", // KW_TIMER
  "SLEEP", // KW_SLEEP
  "LOCATE", // KW_LOCATE
  "LINE", // KW_LINE
  "DATE$", // KW_DATE_FUNC
+ "TODAY$", // KW_TODAY_FUNC
  "TIME$", // KW_TIME_FUNC
+ "TIME", // KW_TIME
+ "DATE", // KW_DATE
+ "DOW", // KW_DOW
  // QBasic compatibility - Tier 1
  "SELECT", // KW_SELECT
  "CASE", // KW_CASE
@@ -293,8 +297,8 @@ static const char *keyword_names[] = {
  "REWRITE", // KW_REWRITE
  "POINTER", // KW_POINTER
  "FILESIZE", // KW_FILESIZE
- "TCASE$", // KW_TCASE
- "TRIM$", // KW_TRIM
+ "TCASE$", // KW_TCASES
+ "TRIM$", // KW_TRIMS
  // Virtual subsystem introspection
  "VDEV", // KW_VDEV
  "VMEM", // KW_VMEM
@@ -423,11 +427,13 @@ static const char *keyword_names[] = {
  "NERROR", // KW_NERROR
  "NJSONQUERY$", // KW_NJSONQUERY
  "NINFO$", // KW_NINFO
+ "NWRITE", // KW_NWRITE
+ "NREAD$", // KW_NREAD
  // Advanced string functions (Milestone 19)
- "REPLACE$", // KW_REPLACE
- "REVERSE$", // KW_REVERSE
- "MCASE$", // KW_MCASE
- "ICASE$", // KW_ICASE
+ "REPLACE$", // KW_REPLACES
+ "REVERSE$", // KW_REVERSES
+ "MCASE$", // KW_MCASES
+ "ICASE$", // KW_ICASES
  "ONKEY$", // KW_ONKEY
  "LIKE", // KW_LIKE
  "HASH$", // KW_HASH
@@ -440,12 +446,15 @@ static const char *keyword_names[] = {
  "BIOS", // KW_BIOS
  "CURSOR", // KW_CURSOR
  "TICKS", // KW_TICKS
+ "JIFFIES", // KW_JIFFIES
  "RECORD", // KW_RECORD
  "CLASS",  // KW_CLASS
  "ENDCLASS", // KW_ENDCLASS
  "ENDMODULE", // KW_ENDMODULE
  "PRIVATE", // KW_PRIVATE
- "PUBLIC" // KW_PUBLIC
+ "PUBLIC", // KW_PUBLIC
+ "DATE", // KW_DATE
+ "TIME" // KW_TIME
 };
 
 const char *detok_core_keyword_name(int keyword_id)

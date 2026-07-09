@@ -37,7 +37,7 @@ static void rambank_evict_lru(MemorySystem *mem) {
     int victim = -1;
     long oldest_access = -1;
 
-    for (int i = 1; i < MAX_RAMBANKS; i++) {
+    for (int i = 1; i < mem->num_rambanks; i++) {
         if (mem->banks[i].resident && mem->banks[i].base != NULL) {
             if (oldest_access == -1 || mem->banks[i].last_access < oldest_access) {
                 oldest_access = mem->banks[i].last_access;
@@ -68,7 +68,7 @@ static void rambank_evict_lru(MemorySystem *mem) {
 
 // Bring bank into resident memory (page fault handler)
 void rambank_ensure_resident(MemorySystem *mem, int bank_id) {
-    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) return;
+    if (bank_id <= 0 || bank_id >= mem->num_rambanks) return;
     RamBank *b = &mem->banks[bank_id];
     
     mem->access_counter++;
@@ -79,7 +79,7 @@ void rambank_ensure_resident(MemorySystem *mem, int bank_id) {
     }
 
     int resident_count = 0;
-    for (int i = 1; i < MAX_RAMBANKS; i++) {
+    for (int i = 1; i < mem->num_rambanks; i++) {
         if (mem->banks[i].resident) {
             resident_count++;
         }
@@ -112,7 +112,7 @@ void rambank_ensure_resident(MemorySystem *mem, int bank_id) {
 
 void rambank_init(MemorySystem *mem) {
     mem->access_counter = 0;
-    for (int i = 0; i < MAX_RAMBANKS; i++) {
+    for (int i = 0; i < mem->num_rambanks; i++) {
         mem->banks[i].base = NULL;
         mem->banks[i].id = i;
         mem->banks[i].resident = 0;
@@ -123,7 +123,7 @@ void rambank_init(MemorySystem *mem) {
 }
 
 void rambank_shutdown(MemorySystem *mem) {
-    for (int i = 0; i < MAX_RAMBANKS; i++) {
+    for (int i = 0; i < mem->num_rambanks; i++) {
         RamBank *b = &mem->banks[i];
         if (b->base != NULL) {
             free(b->base);
@@ -137,7 +137,7 @@ void rambank_shutdown(MemorySystem *mem) {
 }
 
 unsigned char rambank_peek(MemorySystem *mem, int bank_id, long offset, int line_num) {
-    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+    if (bank_id <= 0 || bank_id >= mem->num_rambanks) {
         error_raise(ERR_HOW, line_num);
         return 0;
     }
@@ -181,7 +181,7 @@ unsigned char rambank_peek(MemorySystem *mem, int bank_id, long offset, int line
 }
 
 void rambank_poke(MemorySystem *mem, int bank_id, long offset, unsigned char value, int line_num) {
-    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+    if (bank_id <= 0 || bank_id >= mem->num_rambanks) {
         error_raise(ERR_HOW, line_num);
         return;
     }
@@ -224,20 +224,20 @@ void rambank_poke(MemorySystem *mem, int bank_id, long offset, unsigned char val
 }
 
 long rambank_free_space(MemorySystem *mem, int bank_id) {
-    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+    if (bank_id <= 0 || bank_id >= mem->num_rambanks) {
         return 0;
     }
     return RAMBANK_SIZE;
 }
 
 void rambank_set_shared(MemorySystem *mem, int bank_id, int shared) {
-    if (bank_id > 0 && bank_id < MAX_RAMBANKS) {
+    if (bank_id > 0 && bank_id < mem->num_rambanks) {
         mem->banks[bank_id].shared = shared;
     }
 }
 
 void rambank_copy(MemorySystem *mem, int src_bank, long src_offset, int dst_bank, long dst_offset, long length, int line_num) {
-    if (src_bank <= 0 || src_bank >= MAX_RAMBANKS || dst_bank <= 0 || dst_bank >= MAX_RAMBANKS) {
+    if (src_bank <= 0 || src_bank >= mem->num_rambanks || dst_bank <= 0 || dst_bank >= mem->num_rambanks) {
         error_raise(ERR_HOW, line_num);
         return;
     }
@@ -291,7 +291,7 @@ void rambank_copy(MemorySystem *mem, int src_bank, long src_offset, int dst_bank
 }
 
 void rambank_fill(MemorySystem *mem, int bank_id, long offset, long length, unsigned char value, int line_num) {
-    if (bank_id <= 0 || bank_id >= MAX_RAMBANKS) {
+    if (bank_id <= 0 || bank_id >= mem->num_rambanks) {
         error_raise(ERR_HOW, line_num);
         return;
     }

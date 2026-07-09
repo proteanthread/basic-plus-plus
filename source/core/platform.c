@@ -154,6 +154,7 @@
 #include <sys/select.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #endif
 
 // -----------------------------------------------------------------
@@ -991,4 +992,38 @@ void platform_sleep_ms(int duration_ms)
     req.tv_nsec = (duration_ms % 1000) * 1000000;
     nanosleep(&req, NULL);
 #endif
+}
+
+int platform_get_console_height(void)
+{
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+        int height = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+        return height > 0 ? height : -1;
+    }
+#else
+    struct winsize w;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
+        return w.ws_row;
+    }
+#endif
+    return -1;
+}
+
+int platform_get_console_width(void)
+{
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+        int width = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+        return width > 0 ? width : -1;
+    }
+#else
+    struct winsize w;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
+        return w.ws_col;
+    }
+#endif
+    return -1;
 }

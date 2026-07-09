@@ -58,6 +58,9 @@
 #include "sdl2_emu.h"
 #include "../console.h"
 
+static int gfx_cursor_x = 0;
+static int gfx_cursor_y = 0;
+
 extern struct GW_Memory *g_gw_mem;
 
 // Multi-page pixel buffers: pointer mapped to dynamic graphics memory pool
@@ -145,6 +148,7 @@ void gfxbuf_clear(int color)
 
 void gfxbuf_pset(int x, int y, int color)
 {
+    gfxbuf_set_cursor(x, y);
 #ifndef NO_SDL2
     if (!gw_sdl2_is_active()) {
         gw_sdl2_init(640, 400, "BASIC++ Emulation", 0);
@@ -196,6 +200,7 @@ int gfxbuf_point(int x, int y)
  // Draws a line from (x1,y1) to (x2,y2) in the given color.
 void gfxbuf_line(int x1, int y1, int x2, int y2, int color)
 {
+    gfxbuf_set_cursor(x2, y2);
  int dx, dy, sx, sy, err, e2;
 
  dx = x2 - x1; if (dx < 0) dx = -dx;
@@ -521,4 +526,14 @@ int gfxbuf_get_active_page(void)
 int gfxbuf_get_visual_page(void)
 {
  return visual_page;
+}
+
+void gfxbuf_get_cursor(int *x, int *y) {
+    if (x) *x = gfx_cursor_x;
+    if (y) *y = gfx_cursor_y;
+}
+
+void gfxbuf_set_cursor(int x, int y) {
+    gfx_cursor_x = x;
+    gfx_cursor_y = y;
 }

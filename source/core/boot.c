@@ -163,6 +163,9 @@
 #include "error_registry.h"
 #include "security.h"
 #include "module.h"
+
+// Forward declarations for selftest registration
+void parser_expr_register_selftests(void);
 #include "mod_stdlib.h"
 #include "mod_persist.h"
 #ifndef BPP_FREEDOS
@@ -177,6 +180,7 @@
 #include "device_alias.h"
 #include "txn.h"
 #include "runtime.h"
+#include "selftest.h"
 #include "task.h"
 #include "builtins.h"
 #include "../console.h"
@@ -482,6 +486,12 @@ static BootStatus boot_phase4_stdlib(void)
     // Initialize error message registry
     error_registry_init();
     boot_log(BOOT_DEBUG, "  Error registry initialized");
+    
+    // Register keyword selftests
+#ifndef BPP_LITE_BUILD
+    register_all_selftests();
+    boot_log(BOOT_DEBUG, "  Exhaustive keyword selftests registered");
+#endif
 
     boot_state.functions_registered = funcreg_count();
     boot_log(BOOT_LOG, "  Functions registered: %d",

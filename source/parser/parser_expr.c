@@ -1335,18 +1335,39 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                     char buf[32];
                     time_t t = time(NULL);
                     struct tm *tm = localtime(&t);
-                    sprintf(buf, "%02d-%02d-%04d", tm->tm_mon + 1, tm->tm_mday, tm->tm_year + 1900);
+                    sprintf(buf, "%02d-%02d-%04d", tm->tm_mday, tm->tm_mon + 1, tm->tm_year + 1900);
                     char *ptr = strpool_store(&rt->strpool, buf, 10);
                     val_stack[val_top++] = bval_string(ptr, 10);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_DATE) {
+                    time_t t = time(NULL);
+                    struct tm *tm = localtime(&t);
+                    double d = (tm->tm_year + 1900) * 10000.0 + (tm->tm_mon + 1) * 100.0 + tm->tm_mday;
+                    val_stack[val_top++] = bval_float(d);
                     lexer_next(lex);
                     expect_operand = 0;
                 } else if (kw == KW_TIME_FUNC) {
                     char buf[16];
                     time_t t = time(NULL);
                     struct tm *tm = localtime(&t);
-                    sprintf(buf, "%02d:%02d:%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
-                    char *ptr = strpool_store(&rt->strpool, buf, 8);
-                    val_stack[val_top++] = bval_string(ptr, 8);
+                    int hr = tm->tm_hour;
+                    const char *ampm = "AM";
+                    if (hr >= 12) {
+                        ampm = "PM";
+                        if (hr > 12) hr -= 12;
+                    }
+                    if (hr == 0) hr = 12;
+                    sprintf(buf, "%02d:%02d:%02d %s", hr, tm->tm_min, tm->tm_sec, ampm);
+                    char *ptr = strpool_store(&rt->strpool, buf, 11);
+                    val_stack[val_top++] = bval_string(ptr, 11);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_TIME) {
+                    time_t t = time(NULL);
+                    struct tm *tm = localtime(&t);
+                    double d = tm->tm_hour * 10000.0 + tm->tm_min * 100.0 + tm->tm_sec;
+                    val_stack[val_top++] = bval_float(d);
                     lexer_next(lex);
                     expect_operand = 0;
                 } else if (kw == KW_CLOCK_FUNC) {

@@ -207,6 +207,7 @@ const char *error_registry_lookup(int error_code) {
         case 16: return "String formula too complex";
         case 17: return "Can't continue";
         case 18: return "Undefined user function";
+        case 80: return "Assertion failed";
     }
     return "Unknown Error";
 }

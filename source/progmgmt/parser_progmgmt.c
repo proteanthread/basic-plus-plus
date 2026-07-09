@@ -50,10 +50,12 @@
 #include "../bytecode.h"
 #include "../codegen/archive.h"
 #include "modules/bpl_format.h"
+#include "console.h"
 
  // pi_parse_renum - Handle RENUM command.
 void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    if (rt->running) { error_raise(ERR_WHAT, line_num); return; }
  if (rt->bytecode_only) {
      printf("RENUM: Prohibited in obfuscated/bytecode-only mode.\n");
      return;
@@ -228,6 +230,7 @@ void pi_parse_renum(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_delete - Handle DELETE command.
 void pi_parse_delete(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    if (rt->running) { error_raise(ERR_WHAT, line_num); return; }
  if (rt->bytecode_only) {
      printf("DELETE: Prohibited in obfuscated/bytecode-only mode.\n");
      return;
@@ -279,6 +282,7 @@ void pi_parse_delete(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_edit - Handle EDIT command.
 void pi_parse_edit(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    if (rt->running) { error_raise(ERR_WHAT, line_num); return; }
  if (rt->bytecode_only) {
      printf("EDIT: Prohibited in obfuscated/bytecode-only mode.\n");
      return;
@@ -349,6 +353,7 @@ void pi_parse_edit(Lexer *lex, RuntimeState *rt, int line_num)
  // pi_parse_auto - Handle AUTO command.
 void pi_parse_auto(Lexer *lex, RuntimeState *rt, int line_num)
 {
+    if (rt->running) { error_raise(ERR_WHAT, line_num); return; }
  if (rt->bytecode_only) {
      printf("AUTO: Prohibited in obfuscated/bytecode-only mode.\n");
      return;

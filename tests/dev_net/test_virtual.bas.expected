@@ -1,0 +1,120 @@
+Testing Virtual & Networking Keywords...
+Registered devices:
+ ID Name Class Caps Description
+ -- ---- ----- ---- -----------
+  0 CON:         Console    0003 Console (stdout + stdin)
+  1 ERR:         Console    0002 Error output (stderr)
+  2 FILE:        File       000F File I/O (stdio)
+  3 NULL:        Unknown    0007 Null device
+  4 TIMER:       Timer      0045 Timer device
+  5 PERSIST:     File       0203 Persistent key-value virtual device
+=== VIRTUAL NETWORK ===
+
+ FUJINET module is not active.
+ Use MODULE "FUJINET" to enable.
+=== VIRTUAL MEMORY ===
+
+ Memory Map:
+Available memory maps:
+ NONE       Bare segment, no presets
+ MSDOS      MS-DOS (BIOS Data Area, 640K)
+ IBMPC      IBM PC 5150 BIOS
+ PCJR       IBM PCjr 4860 BIOS
+ PCXT       IBM PC/XT 5160 BIOS
+ PCAT       IBM PC/AT 5170 BIOS
+ C64        Commodore 64 (VIC-II, SID, CIA)
+ C128       Commodore 128 (C64 + MMU)
+ VIC20      Commodore VIC-20
+ PLUS4      Commodore Plus/4 (TED)
+ PET        Commodore PET 2001/4032
+ ATARI8     Atari 400/800/XL/XE
+ APPLE2     Apple II / IIe
+ TRS80      TRS-80 Model I/III
+ SPECTRUM   ZX Spectrum 48K
+ QL         Sinclair QL (QDOS, 68008)
+
+ Variable Slots: 26 (A-Z)
+ Stack Depth: 1024 max
+ Stack Used: 0 (0%)
+ Program Lines: 34 / 65536 (0%)
+ Max Line Length: 255 chars
+ Word Size: 64-bit
+ sizeof(int): 4 bytes
+ sizeof(long): 4 bytes
+ sizeof(double): 8 bytes
+ sizeof(void*): 8 bytes
+=== VIRTUAL MACHINE ===
+
+ State: RUNNING
+ Opcodes: 67 defined
+ Keywords: 9999 registered
+ Stack Depth: 0 / 1024
+
+ Modules: 6 registered, 2 active
+  STDLIB       ACTIVE   [Library]
+  USB          INACTIVE  [Device]
+  FUJINET      INACTIVE  [Device]
+  UPNP         INACTIVE  [Device]
+  GWBASIC      INACTIVE  [Extension]
+  PERSIST      ACTIVE   [Extension]
+
+ Security: UNRESTRICTED
+ Dialect: BASIC++
+ Trace: OFF (TROFF)
+=== VIRTUAL CONSOLE ===
+
+ Console Device: CON:
+ Class: Console
+ Capabilities: 0003
+ Description: Console (stdout + stdin)
+ Input: YES
+ Output: YES
+ Clear Screen: YES
+
+ Error Device: ERR:
+ Class: Console
+ Description: Error output (stderr)
+=== VIRTUAL TERMINAL ===
+
+ Dialect: BASIC++
+ Encoding: ASCII (7-bit)
+ Columns: 80
+ Rows: 25
+ Cursor Col: 1
+ Cursor Row: 2
+ Screen Mode: 0
+ Line Input: 255 chars max
+ Tab Width: 8
+ Bell: WIN
+=== DEVICE MAP ===
+
+ BASIC File Channels:
+ Channel Device Status
+ ------- ------ ------
+  #1      FILE:  ---
+  #2      FILE:  ---
+  #3      FILE:  ---
+  #4      FILE:  ---
+  #5      FILE:  ---
+  #6      FILE:  ---
+  #7      FILE:  ---
+  #8      FILE:  ---
+
+ VDev Slot Table:
+ Slot Name       Class      Caps  Description
+ ---- ----       -----      ----  -----------
+   0  CON:       Console    0003  Console (stdout + stdin)
+   1  ERR:       Console    0002  Error output (stderr)
+   2  FILE:      File       000F  File I/O (stdio)
+   3  NULL:      Unknown    0007  Null device
+   4  TIMER:     Timer      0045  Timer device
+   5  PERSIST:   File       0203  Persistent key-value virtual device
+
+ 6 device(s) registered, 58 slots available.
+
+ Device Aliases (7 active):
+Alias      Target     Dir      Dialect
+-----      ------     ---      -------
+SCRN:      CON:       OUT      (manual)\nKYBD:      CON:       IN       (manual)\nLPT1:      ERR:       OUT      (manual)\nLPT2:      ERR:       OUT      (manual)\nCOM1:      SER:       BOTH     (manual)\nCOM2:      SER:       BOTH     (manual)\nCAS1:      FILE:      BOTH     (manual)\nVirtual Error:  1 
+Unknown network protocol: GEMINI
+HOW? AT LINE 200

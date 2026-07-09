@@ -460,3 +460,105 @@ VDev *vdev_net_open(const char *uri)
     return d;
 #endif // VNET_NO_NETWORKING
 }
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
+
+// Dynamic OpenSSL types
+typedef void* SSL_CTX_PTR;
+typedef void* SSL_PTR;
+typedef void* SSL_METHOD_PTR;
+
+static void* ssl_lib = NULL;
+static void* crypto_lib = NULL;
+
+static int tls_initialized = 0;
+
+// OpenSSL function pointers
+static void (*p_SSL_library_init)(void) = NULL;
+//static void (*p_OpenSSL_add_all_algorithms)(void) = NULL;
+//static void (*p_SSL_load_error_strings)(void) = NULL;
+static SSL_METHOD_PTR (*p_TLS_client_method)(void) = NULL;
+static SSL_CTX_PTR (*p_SSL_CTX_new)(SSL_METHOD_PTR) = NULL;
+static SSL_PTR (*p_SSL_new)(SSL_CTX_PTR) = NULL;
+static int (*p_SSL_set_fd)(SSL_PTR, int) = NULL;
+static int (*p_SSL_connect)(SSL_PTR) = NULL;
+static int (*p_SSL_write)(SSL_PTR, const void*, int) = NULL;
+static int (*p_SSL_read)(SSL_PTR, void*, int) = NULL;
+static void (*p_SSL_free)(SSL_PTR) = NULL;
+static void (*p_SSL_CTX_free)(SSL_CTX_PTR) = NULL;
+
+static int init_tls_dynamic(void) {
+    if (tls_initialized) return 1;
+#ifdef USE_OPENSSL
+    // Compile-time linkage takes precedence if defined
+    return 1;
+#endif
+
+#ifdef _WIN32
+    ssl_lib = LoadLibraryA("libssl-1_1-x64.dll");
+    if (!ssl_lib) ssl_lib = LoadLibraryA("ssleay32.dll");
+    crypto_lib = LoadLibraryA("libcrypto-1_1-x64.dll");
+    if (!crypto_lib) crypto_lib = LoadLibraryA("libeay32.dll");
+    
+    if (ssl_lib && crypto_lib) {
+        p_SSL_library_init = (void*)GetProcAddress(ssl_lib, "SSL_library_init");
+        p_TLS_client_method = (void*)GetProcAddress(ssl_lib, "TLS_client_method");
+        if(!p_TLS_client_method) p_TLS_client_method = (void*)GetProcAddress(ssl_lib, "SSLv23_client_method");
+        p_SSL_CTX_new = (void*)GetProcAddress(ssl_lib, "SSL_CTX_new");
+        p_SSL_new = (void*)GetProcAddress(ssl_lib, "SSL_new");
+        p_SSL_set_fd = (void*)GetProcAddress(ssl_lib, "SSL_set_fd");
+        p_SSL_connect = (void*)GetProcAddress(ssl_lib, "SSL_connect");
+        p_SSL_write = (void*)GetProcAddress(ssl_lib, "SSL_write");
+        p_SSL_read = (void*)GetProcAddress(ssl_lib, "SSL_read");
+        p_SSL_free = (void*)GetProcAddress(ssl_lib, "SSL_free");
+        p_SSL_CTX_free = (void*)GetProcAddress(ssl_lib, "SSL_CTX_free");
+    }
+#else
+    ssl_lib = dlopen("libssl.so", RTLD_LAZY);
+    crypto_lib = dlopen("libcrypto.so", RTLD_LAZY);
+    if (ssl_lib && crypto_lib) {
+        p_SSL_library_init = dlsym(ssl_lib, "SSL_library_init");
+        p_TLS_client_method = dlsym(ssl_lib, "TLS_client_method");
+        if(!p_TLS_client_method) p_TLS_client_method = dlsym(ssl_lib, "SSLv23_client_method");
+        p_SSL_CTX_new = dlsym(ssl_lib, "SSL_CTX_new");
+        p_SSL_new = dlsym(ssl_lib, "SSL_new");
+        p_SSL_set_fd = dlsym(ssl_lib, "SSL_set_fd");
+        p_SSL_connect = dlsym(ssl_lib, "SSL_connect");
+        p_SSL_write = dlsym(ssl_lib, "SSL_write");
+        p_SSL_read = dlsym(ssl_lib, "SSL_read");
+        p_SSL_free = dlsym(ssl_lib, "SSL_free");
+        p_SSL_CTX_free = dlsym(ssl_lib, "SSL_CTX_free");
+    }
+#endif
+
+    if (p_SSL_CTX_new && p_SSL_new && p_SSL_connect) {
+        if (p_SSL_library_init) p_SSL_library_init();
+        tls_initialized = 1;
+        return 1;
+    }
+    return 0;
+}
+
+// Dummy fetch implementations for now
+char *net_gemini_fetch(const char *url) {
+    if (!init_tls_dynamic()) {
+        // Fallback to proxy
+        char *buf = malloc(256);
+        snprintf(buf, 256, "PROXY_FALLBACK: GEMINI URL %s", url);
+        return buf;
+    }
+    char *buf = malloc(256);
+    snprintf(buf, 256, "TLS_FETCH: GEMINI URL %s", url);
+    return buf;
+}
+
+char *net_gopher_fetch(const char *url) {
+    // Gopher is plaintext TCP
+    char *buf = malloc(256);
+    snprintf(buf, 256, "GOPHER_FETCH: URL %s", url);
+    return buf;
+}

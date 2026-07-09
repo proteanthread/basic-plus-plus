@@ -32,6 +32,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include "errors.h"
+#include "vdev.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -279,6 +281,10 @@ int gw_fflush(FILE *stream) {
 
 char *gw_console_read_line(char *buf, size_t max_len) {
     int stdin_redirected = platform_stdin_is_redirected();
+
+    if (error_get_beep()) {
+        vdev_beep();
+    }
 
     if (!gw_sdl2_is_active() || stdin_redirected) {
         if (fgets(buf, (int)max_len, stdin)) {

@@ -307,6 +307,14 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_IMAGE:
   pi_parse_image(lex, rt, line_num);
   return;
+        #ifndef BPP_LITE_BUILD
+        case KW_GEMINI:
+            pi_parse_gemini(lex, rt, line_num);
+            return;
+        case KW_GOPHER:
+            pi_parse_gopher(lex, rt, line_num);
+            return;
+#endif
   case KW_OPEN:
   if (security_check(SECOP_FILE_WRITE, line_num))
   return;
@@ -591,7 +599,20 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  case KW_SCREEN:
   pi_parse_screen(lex, rt, line_num);
   return;
- case KW_GRAPHICS:
+ 
+  case KW_DRAWTO:
+   pi_parse_drawto(lex, rt, line_num);
+   break;
+  case KW_AT:
+   pi_parse_at_stmt(lex, rt, line_num);
+   break;
+  case KW_PLOT:
+   pi_parse_plot(lex, rt, line_num);
+   break;
+  case KW_REVERSE:
+   pi_parse_reverse(lex, rt, line_num);
+   break;
+  case KW_GRAPHICS:
   pi_parse_graphics(lex, rt, line_num);
   return;
  case KW_CONSOLE:
@@ -1305,6 +1326,17 @@ void pi_skip_to_pos(Lexer *lex, int target_pos)
  } else {
   modifier = postfix_scan(lex, &mod_pos);
  }
+
+  // Validate that postfix modifiers are not applied to declaratives/boundaries
+  if (modifier != KW_COUNT && lex->current.type == TOK_KEYWORD) {
+      KeywordId kw = lex->current.value.keyword;
+      if (kw == KW_DIM || kw == KW_DECLARE || kw == KW_FOR || kw == KW_NEXT ||
+          kw == KW_WHILE || kw == KW_WEND || kw == KW_DO || kw == KW_LOOP ||
+          kw == KW_REPEAT || kw == KW_UNTIL || kw == KW_SELECT || kw == KW_CASE) {
+          error_raise(ERR_WHAT, line_num_int);
+          return;
+      }
+  }
 
  if (modifier == KW_IF || modifier == KW_UNLESS) {
   // Postfix IF/UNLESS:

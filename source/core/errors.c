@@ -125,6 +125,7 @@
 #include "errors.h"
 #include "txn.h"
 #include "../console.h"
+#include "../vdev.h"
 
 // -----------------------------------------------------------------
 // Module State -- Global Error Flag
@@ -183,6 +184,7 @@ const char *error_message(ErrorCode code)
 #else
     case ERR_SORRY: return "SORRY.";
 #endif
+    case ERR_ASSERTION_FAILED: return "ASSERTION FAILED.";
     default:        return "";
     }
 }
@@ -237,10 +239,12 @@ void error_raise(ErrorCode code, double line_num)
         return;
     }
 
-    // Audible beep on error (BEL character).
-    // Disabled by BEEP OFF statement.
+    // Audible beep on error.
+    // When BEEP ON is active, users hear 2 beeps on error.
     if (beep_on_error) {
-        printf("\a");
+        vdev_beep();
+        vdev_sleep(100);
+        vdev_beep();
     }
 
     // Print the error message with optional line number.

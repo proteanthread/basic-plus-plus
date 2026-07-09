@@ -1,4 +1,73 @@
 #include "parser_internal.h"
+#include "selftest.h"
+
+#define MAX_SELFTESTS 512
+
+int _st_assert_failures = 0;
+
+struct {
+    const char *keyword;
+    const char *description;
+    KeywordTestFunc func;
+} st_registry[MAX_SELFTESTS];
+static int st_registry_count = 0;
+
+void selftest_register(const char *keyword, const char *description, KeywordTestFunc func) {
+    if (st_registry_count < MAX_SELFTESTS) {
+        st_registry[st_registry_count].keyword = keyword;
+        st_registry[st_registry_count].description = description;
+        st_registry[st_registry_count].func = func;
+        st_registry_count++;
+    }
+}
+
+static int my_stricmp(const char *a, const char *b) {
+    while (*a && *b) {
+        int d = tolower((unsigned char)*a) - tolower((unsigned char)*b);
+        if (d != 0) return d;
+        a++; b++;
+    }
+    return tolower((unsigned char)*a) - tolower((unsigned char)*b);
+}
+
+void selftest_run_keyword(RuntimeState *rt, const char *keyword) {
+    for (int i = 0; i < st_registry_count; i++) {
+        if (st_registry[i].keyword && my_stricmp(st_registry[i].keyword, keyword) == 0) {
+            printf("\n=======================================================\n");
+            printf("=== Testing Keyword: %s\n", keyword);
+            printf("=======================================================\n");
+            if (st_registry[i].description) {
+                printf("EXPECTATIONS & FAILURE MODES:\n%s\n", st_registry[i].description);
+                printf("-------------------------------------------------------\n");
+            }
+            
+            _st_assert_failures = 0;
+            st_registry[i].func(rt);
+            
+            printf("-------------------------------------------------------\n");
+            if (_st_assert_failures > 0) {
+                printf("=== RESULT: %d ASSERTION(S) FAILED ===\n", _st_assert_failures);
+                printf("=======================================================\n");
+            } else {
+                printf("=== RESULT: ALL ASSERTIONS PASSED ===\n");
+                printf("=======================================================\n");
+            }
+            return;
+        }
+    }
+    // Fallback removed - ALL keywords must be explicitly registered in Layer 1.
+    printf("\n=======================================================\n");
+    printf("=== Testing Keyword: %s\n", keyword);
+    printf("=======================================================\n");
+    printf("EXPECTATIONS & FAILURE MODES:\n");
+    printf("ERROR: No explicit exhaustive test is registered for '%s'.\n", keyword);
+    printf("Please add it to the selftests_all.c registry.\n");
+    printf("-------------------------------------------------------\n");
+    printf("=== RESULT: 1 ASSERTION(S) FAILED ===\n");
+    printf("=======================================================\n");
+    _st_assert_failures++;
+}
+
 #ifdef _WIN32
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
@@ -932,8 +1001,42 @@ void pi_parse_verify(Lexer *lex, RuntimeState *rt, int line_num) {
 }
 
 // 6. Original Built-in SELFTEST Implementation
+void run_global_selftests(RuntimeState *rt);
+
 void pi_parse_selftest(Lexer *lex, RuntimeState *rt, int line_num) {
-    (void)lex; (void)line_num;
+    (void)line_num;
+    
+    // We are at SELFTEST. Let's see what the next token is.
+    lexer_next(lex);
+    
+    printf("DEBUG: token type is %d\n", lex->current.type);
+    
+    if (lex->current.type != TOK_EOF && lex->current.type != TOK_CR && lex->current.type != TOK_COLON) {
+        if (lex->current.type == TOK_KEYWORD) {
+            const char* kw = lexer_keyword_name(lex->current.value.keyword);
+            selftest_run_keyword(rt, kw);
+        } else if (lex->current.type == TOK_NAMED_VAR) {
+            char buffer[64];
+            int len = lex->current.str_length < 63 ? lex->current.str_length : 63;
+            strncpy(buffer, lex->current.str_start, len);
+            buffer[len] = '\0';
+            selftest_run_keyword(rt, buffer);
+        } else if (lex->current.type == TOK_VARIABLE || lex->current.type == TOK_STRING_VAR) {
+            char buffer[4];
+            buffer[0] = lex->current.value.var_name;
+            buffer[1] = (lex->current.type == TOK_STRING_VAR) ? '$' : '\0';
+            buffer[2] = '\0';
+            selftest_run_keyword(rt, buffer);
+        } else {
+            printf("Syntax Error: Expected keyword after SELFTEST (got token type %d)\n", lex->current.type);
+        }
+        return;
+    }
+    
+    run_global_selftests(rt);
+}
+
+void run_global_selftests(RuntimeState *rt) {
     printf("=== BASIC++ SELF-TEST ===\n");
     st_log(rt, "Starting Exhaustive Self-Test Suite...");
 

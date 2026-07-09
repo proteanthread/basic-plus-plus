@@ -1,7 +1,7 @@
 [![GitGem](https://gitgem.org/api/badge/github/proteanthread/basic-plus-plus.svg)](https://gitgem.org/github/proteanthread/basic-plus-plus)
 
 # BASIC++ Interpreter
-## Version 4.9.7
+## Version 5.0.0
 
 I don't care what you do with my code, just don't take my code and sell it and/or don't take my code, modify my code, and sell it. This code is not for sale.
 
@@ -418,6 +418,10 @@ The interpreter executable supports several switches when launched from the comm
 *   `-q` / `--quiet` — Quiet mode; suppresses the startup banner and prompts.
 *   `-c "command"` — Run the specified BASIC command in batch mode and exit.
 *   `-r "file.bas"` — Load and run the specified BASIC script file and exit.
+*   `--list "file.bas"` — Load the specified program, print its source code listing, and exit.
+*   `--dry-run "file.bas"` — Load the specified program in debug/step-by-step mode with File I/O disabled.
+*   `--edit` — Start the interpreter in full-screen editor mode.
+*   `--edlin [file]` — Start the interpreter in line-editor mode (runs edlin), optionally loading the specified file.
 *   `--log [filename]` — Enable session logging. Saves boot phase diagnostics and runtime warnings/trace to the specified file. If no filename is provided, a dynamic name like `[script]-yyyy-mm-dd-hh-mm-ss.LOG` is generated.
 *   `--out [filename]` — Echo all console program output and keyboard inputs to the specified file. If no filename is provided, a dynamic name like `[script]-yyyy-mm-dd-hh-mm-ss.OUT` is generated, using the same timestamp as the log file.
 *   `--clean-up` / `--cleanup` — Sweep intermediate files (logs, object files, stub modules, etc.) in the workspace, but preserve the most recently modified `.LOG` file and `.OUT` file.

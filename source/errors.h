@@ -65,7 +65,8 @@ typedef enum ErrorCode {
  ERR_NONE = 0,
  ERR_WHAT,
  ERR_HOW,
- ERR_SORRY
+ ERR_SORRY,
+ ERR_ASSERTION_FAILED = 80
 } ErrorCode;
 
  // error_raise - Report an error.

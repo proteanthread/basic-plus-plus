@@ -1,0 +1,111 @@
+MEMMAP$
+
+1. Syntax & Parameters
+
+MEMMAP$
+
+Parameters:
+- None. MEMMAP$ is a parameterless system variable (function) that requires no arguments and no parentheses.
+
+2. Description & Usage
+
+The MEMMAP$ function returns a string indicating the currently active virtual BIOS/memory map configuration of the BASIC++ environment. Because BASIC++ provides an extensive virtual machine layer that can mock various historic 8-bit and 16-bit architectures, MEMMAP$ is vital for runtime introspection.
+
+By default, BASIC++ boots into an IBM PC compatible virtual memory mode, so MEMMAP$ will typically return "IBMPC" or "MSDOS" unless the user has explicitly changed the memory map via command-line arguments (e.g., --mmap C64) or runtime directives. 
+
+This is particularly useful when writing portable BASIC scripts that might need to query hardware-specific capabilities, such as whether it's safe to PEEK and POKE certain legacy video memory segments (like &HB800 for PC CGA text memory or 53280 for C64 border color).
+
+The value returned is read-only. It cannot be directly modified through assignment (e.g., MEMMAP$ = "C64" is illegal).
+
+Returns one of the predefined strings from the internal map list (e.g., "NONE", "MSDOS", "IBMPC", "PCJR", "PCXT", "PCAT", "C64", "C128", "VIC20", "PLUS4", "PET", "ATARI8", "APPLE2", "TRS80", "SPECTRUM", "QL").
+
+3. Code Examples
+
+Example 1: Basic Usage
+`basic
+10 PRINT "Current Memory Map: "; MEMMAP$
+`
+
+Example 2: Conditional Hardware Pokes
+`basic
+10 MAP$ = MEMMAP$
+20 IF MAP$ = "C64" THEN GOTO 100
+30 IF MAP$ = "IBMPC" OR MAP$ = "MSDOS" THEN GOTO 200
+40 PRINT "Unknown hardware profile: "; MAP$
+50 END
+100 REM Commodore 64 specific initialization
+110 POKE 53280, 0 : POKE 53281, 0 : REM Set background and border to black
+120 GOTO 300
+200 REM IBM PC specific initialization
+210 DEF SEG = &HB800 : REM Set segment to CGA video memory
+220 GOTO 300
+300 PRINT "System initialized."
+`
+
+Example 3: Checking length for formatting
+`basic
+10 M$ = MEMMAP$
+20 PRINT "System: ["; M$; "]"
+30 PRINT "Length: "; LEN(M$); " characters"
+`
+
+4. Internal C-Source Mapping
+
+- Lexer & Tokens: Defined as KWMEMMAPFUNC in source/lexer.h and tokenized in source/lexer/lexer.c (mapped to "MEMMAP$"). Detokenized in source/codegen/detok.c and source/standalone/detok/detok_core.c.
+- AST Generation: Parsed as a zero-argument function into FUNCMEMMAP in source/ast.h. Handled in source/codegen/ast.c via explicit AstFuncId and PCODEFUNC1 logic.
+- Runtime Execution: Evaluated in source/core/vmexec.c inside the switch(fid) block under case FUNCMEMMAP:, which delegates to memmapgetname((MemMapType)rt->memmap_type).
+- Memory Map Definitions: The actual string arrays and the memmapgetname() function are implemented in source/memory/memmap.c and prototyped in source/memmap.h. 
+- Help Registration: Mapped in source/help/help.c and source/standalone/help/help_core.c.
+
+5. Implementation Details
+
+- Parser Expectations: The AST builder explicitly treats MEMMAP$ as a parameterless system built-in (AstFuncId / PCODE_FUNC1). Because it has no parameters, the execution stack must cleanly pop the empty argument context to prevent stack underflow. This was explicitly hardened during a recent architectural update.
+- Mutability Constraints: MEMMAP$ is strictly an intrinsic system function, not a mutable variable. It evaluates dynamically at runtime by fetching the string corresponding to rt->memmap_type. Any attempt to parse it as an L-value (e.g., MEMMAP$ = "X") will trigger a syntax error.
+- Troubleshooting: If MEMMAP$ returns "UNKNOWN", it implies that the internal rt->memmaptype enum has lost synchronization with the memmaptable[] in memmap.c. If you encounter stack underflows when evaluating MEMMAP$ inside complex expressions, check vmexec.c to ensure that fid >= FUNCMEMMAP is properly routed to the correct parameterless function evaluation path.
+
+6. Cross-References / See Also
+
+- PEEK
+- POKE
+- DEF SEG
+- VPATH$
+- CWD$
+- PWD
+
+7. Historical Context
+
+- GW-BASIC / QBASIC: MEMMAP$ did not exist in GW-BASIC or QBASIC. Those interpreters were strictly bound to the IBM PC real-mode environment and had no concept of cross-architecture virtual hardware mocking.
+- ECMA-116 Standard: Not defined in standard minimal or full BASIC. 
+- BASIC++: Introduced explicitly to support BASIC++'s multi-architecture virtual memory layer (e.g., MMAPC64, MMAPAPPLE2), allowing single scripts to conditionally adjust their PEEK/POKE offsets based on the currently mocked BIOS.
+
+8. Manual Testing Guide
+
+To manually test MEMMAP$ in the console without automated Python suites:
+
+1. Launch the standard console interpreter for your OS:
+   - Windows: basicpp-console.exe
+   - Linux: ./baspp-console
+2. At the Ready. prompt, enter the following direct command:
+   PRINT MEMMAP$
+3. Press Enter. The interpreter should output the default map name, typically IBMPC or MSDOS.
+4. Exit the interpreter by typing SYSTEM.
+5. Launch the interpreter again, but explicitly specify a different memory map profile via the command line (if your build supports the --mmap switch, e.g., basicpp-console.exe --mmap C64). 
+6. Type PRINT MEMMAP$ again to verify that the output reflects the new profile (e.g., C64).
+
+9. Memory Management & Garbage Collection Profile
+Under the hood, this keyword operates within the strict bounds of the BASIC++ deterministic memory manager (core/memory.c). When executed, any intermediate strings generated by this operation are routed to the Transient Memory Arena within the String Pool (core/stringpool.c). If the arena exceeds its high-water mark, an aggressive mark-and-sweep garbage collection pass is immediately triggered before the instruction completes. On embedded architectures (compiled with -DBPPLITEBUILD), this transient arena is statically clamped (default 4KB), meaning iterative loops invoking this keyword must be designed carefully to avoid ERROUTOF_MEMORY traps. Developers porting to bare-metal systems must verify that the memory.c heap allocator correctly points to a continuous SRAM block without fragmentation.
+
+10. Portability & Hardware Porting Concerns
+Because BASIC++ is strictly C17 ISO/IEC 9899:2018 compliant, this keyword relies on zero proprietary OS APIs. When compiling for headless microcontrollers (such as the Arduino Mega or ESP32) using the -DNOSDL2 macro, this instruction routes all its graphical or I/O side effects through the Platform Abstraction Layer (PAL). Hardware implementers must ensure that platformsleep() and platformgetticks() are properly mapped in core/platform.c if this keyword involves timing, yielding, or hardware-level interrupts. In cases where the underlying hardware lacks a floating-point unit (FPU), the lexer automatically maps numeric outputs to 32-bit fixed integer types if -DBPPNOFLOAT is enforced.
+
+11. Abstract Syntax Tree (AST) Life Cycle
+During the parsing phase, the Recursive Descent Parser encounters the token associated with this keyword. It allocates an ASTNode structure from the ASTARENA and populates its operand pointers. At runtime, the astinterpreter.c engine performs a post-order traversal to evaluate all child expression nodes before triggering the final execution hook. This two-pass system guarantees that syntax errors (like mismatched parentheses or missing commas) are caught globally before any destructive side-effects occur. Once parsed, the ASTNode resides in memory until NEW or RUN is executed, at which point the entire arena is zeroed out to prevent memory leaks.
+
+12. C17 Standard Safety & Security Boundaries
+Security and isolation are paramount. This keyword utilizes strict bounds-checking to prevent buffer overflows. Internally, any array indexing or string manipulation defaults to sizet for addressing, preventing negative index wraps. Stack-smashing protections are enforced virtually by the MAXCALL_STACK limit defined in config.h. Any attempt by this keyword to access unallocated heap memory will trigger the interpreter's internal fault handler, raising a trappable BASIC error rather than causing a segmentation fault at the OS level.
+
+13. Deterministic Execution & Regression Prevention
+To prevent regressions across builds (Windows, Linux, or MCU), the execution of this keyword is entirely deterministic. It behaves identically regardless of the endianness of the host CPU (Little-Endian x64 vs Big-Endian legacy chips). The testing suite in selftests_all.c ensures that the byte-for-byte output of this operation remains identical. If a developer modifies the underlying C source code for this keyword, they MUST run the SELFTEST suite to verify that parsing precedence, token mapping, and garbage collection behavior have not drifted.
+
+14. Performance Profiling & Optimization Rules
+For developers writing performance-critical algorithms in BASIC++, be aware that calling this keyword inside a FOR...NEXT or WHILE...WEND loop incurs a minimal virtual dispatch overhead. Because the interpreter uses a switch-case dispatch engine in exec.c, the branch predictor on modern CPUs will optimize repeated calls. However, on 8-bit or 16-bit chips, minimizing the use of string-mutating variants of this keyword will drastically improve frame rates and execution speed.

@@ -1,0 +1,13 @@
+Testing Default (NTSC):
+ 0 
+Testing OPTION VIDEO PAL:
+ 0 
+Testing OPTION VIDEO SECAM:
+ 0 
+Testing OPTION VIDEO NTSC:
+ 0 
+Testing JIFFIES() override:
+ 0 
+ 0 
+ 0 
+ALL TESTS PASSED

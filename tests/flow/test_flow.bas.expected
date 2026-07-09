@@ -1,0 +1,42 @@
+DEBUG: exec_run_from prescanned DEFINE on line 11090
+DEBUG: exec_run_from prescanned DEFINE on line 11120
+--- RUNNING CONTROL FLOW TESTS ---
+Testing FOR/NEXT...
+Testing WHILE/WEND...
+Testing DO/LOOP...
+DEBUG: pi_parse_do at line 3030, rt->current_index=92
+DEBUG: pi_parse_loop at line 3060, stack_top=2
+DEBUG: pi_parse_do at line 3030, rt->current_index=92
+DEBUG: pi_parse_loop at line 3060, stack_top=2
+DEBUG: pi_parse_do at line 3030, rt->current_index=92
+DEBUG: pi_parse_loop at line 3060, stack_top=2
+DEBUG: pi_parse_do at line 3030, rt->current_index=92
+DEBUG: pi_parse_do at line 3090, rt->current_index=98
+DEBUG: pi_parse_loop at line 3120, stack_top=2
+DEBUG: pi_parse_do at line 3090, rt->current_index=98
+DEBUG: pi_parse_loop at line 3120, stack_top=2
+DEBUG: pi_parse_do at line 3090, rt->current_index=98
+DEBUG: pi_parse_loop at line 3120, stack_top=2
+DEBUG: pi_parse_do at line 3090, rt->current_index=98
+DEBUG: pi_parse_do at line 3150, rt->current_index=104
+DEBUG: pi_parse_loop at line 3180, stack_top=2
+DEBUG: pi_parse_do at line 3150, rt->current_index=104
+DEBUG: pi_parse_loop at line 3180, stack_top=2
+DEBUG: pi_parse_do at line 3150, rt->current_index=104
+DEBUG: pi_parse_loop at line 3180, stack_top=2
+DEBUG: pi_parse_do at line 3210, rt->current_index=110
+DEBUG: pi_parse_loop at line 3240, stack_top=2
+DEBUG: pi_parse_do at line 3210, rt->current_index=110
+DEBUG: pi_parse_loop at line 3240, stack_top=2
+DEBUG: pi_parse_do at line 3210, rt->current_index=110
+DEBUG: pi_parse_loop at line 3240, stack_top=2
+Testing REPEAT/UNTIL...
+Testing IF/THEN/ELSE...
+Testing SELECT CASE...
+Testing DATA/READ/RESTORE...
+Testing ON ERROR / CAUSE...
+Testing ON ... GOTO...
+Testing DEF FN...
+Testing DEFINE PROCEDURES...
+Testing EVENT TRIGGERS...
+ALL TESTS PASSED

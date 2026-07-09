@@ -428,6 +428,7 @@ void pi_parse_redim(Lexer *lex, RuntimeState *rt, int line_num)
  return;
 }
 
+#if 0
  // scope_parse_varlist - Parse a variable name list.
  //
  // Consumes comma-separated variable names:
@@ -480,6 +481,7 @@ static int scope_parse_varlist(Lexer *lex)
  }
  return count;
 }
+#endif
 
  // pi_parse_shared - Handle SHARED command.
 void pi_parse_shared(Lexer *lex, RuntimeState *rt, int line_num)

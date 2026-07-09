@@ -1,0 +1,767 @@
+# BASIC++ Quick Reference
+
+## Advanced_Display
+
+| Keyword | Description |
+|---|---|
+| `CSRLIN` | The CSRLIN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `GRAPHICS` | The GRAPHICS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `POS` | The POS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `SCREEN` | The SCREEN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `VIEW` | The VIEW keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `WINDOW` | The WINDOW keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Advanced_Drawing
+
+| Keyword | Description |
+|---|---|
+| `CIRCLE` | The CIRCLE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `DRAW` | The DRAW keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `DRAWTO` | The DRAWTO keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `LINE` | The LINE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PAINT` | The PAINT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Advanced_Math
+
+| Keyword | Description |
+|---|---|
+| `ABS` | Returns the absolute (positive) value of a given numeric expression. |
+| `ACOS` | Returns the arccosine (inverse cosine) of a numeric expression. |
+| `ASIN` | Returns the arcsine (inverse sine) of a numeric expression. |
+| `ATN` | Returns the arctangent of a numeric expression. |
+| `AVG` | Returns the arithmetic average (mean) of a list of numeric expressions. |
+| `CABS` | Returns the complex absolute value (magnitude) of a complex number. |
+| `CARG` | Returns the complex argument (phase angle) of a complex number in radians. |
+| `CDBL` | Converts a number to double precision. Evaluates the input and calculates the result mathematically. |
+| `CEXP` | Returns the complex exponential of a complex number. |
+| `CLOG` | Returns the complex natural logarithm of a complex number. |
+| `COMP` | Compares two numeric values and returns a status indicator. |
+| `COMPLEX` | Creates a complex number from real and imaginary parts. |
+| `CONJ` | Returns the complex conjugate of a complex number. |
+| `COS` | Returns the trigonometric cosine of an angle. |
+| `COSH` | Returns the hyperbolic cosine of a numeric value. |
+| `CPOW` | Raises a complex number to a complex power (z^w). |
+| `CSQR` | Returns the square root of a complex number. |
+| `EXP` | Returns the mathematical constant e raised to a power. |
+| `FIX` | Truncates a floating-point number towards zero to return an integer. |
+| `IMAG` | Returns the imaginary component of a complex number. |
+| `INT` | Returns the largest integer less than or equal to x (floor function). |
+| `LGT` | Returns the base-10 logarithm of a number. |
+| `LOG` | Returns the natural logarithm (base e) of a number. |
+| `LOG10` | Returns the base-10 logarithm of a number. |
+| `LOG2` | Returns the base-2 logarithm of a number. |
+| `MAX` | Returns the largest value among the provided arguments. |
+| `MED` | Returns the median (middle value) of a series of numeric expressions. If an even number of arguments is provided, it returns the arithmetic average of the two middle values. |
+| `MIN` | Returns the smallest numeric value among a list of given numeric arguments. |
+| `PDIF` | Returns the positive difference between two numeric expressions. If the first argument is greater than the second, it returns arg1 - arg2. Otherwise, it returns 0.0. |
+| `PI` | Returns the mathematical constant Pi (approximately 3.141592653589793). |
+| `REAL` | Extracts the real part of a complex number. If passed a standard non-complex numeric, it returns the numeric value itself. |
+| `RND` | Generates a random number. The behavior is dialect-dependent (e.g. GW-BASIC vs Palo Alto Tiny BASIC). In GW-BASIC mode: if argument > 0, returns a float in [0, 1). If 0, repeats the last random value. If < 0, seeds the generator with the absolute value. |
+| `ROUND` | Rounds a numeric expression to a specified number of decimal places. Positive places round to decimals, zero to integer, negative to powers of ten. |
+| `SGN` | Returns the mathematical sign of the expression: -1 for negative, 0 for zero, and 1 for positive. |
+| `SIN` | Returns the sine of an angle. The angle is interpreted in radians or degrees depending on the active OPTION ANGLE state. |
+| `SINH` | Returns the hyperbolic sine of the specified expression. |
+| `SQR` | Returns the mathematical square root of a positive expression. If a negative value is passed, it generally produces an error unless in a complex context. |
+| `TAN` | Returns the tangent of an angle. The angle is interpreted in radians or degrees depending on the active OPTION ANGLE state. |
+| `TANH` | Returns the hyperbolic tangent of the expression. |
+
+## Arrays
+
+| Keyword | Description |
+|---|---|
+| `DIM` | Assigns or manages DIM functionality in memory. |
+| `ERASE` | Assigns or manages ERASE functionality in memory. |
+| `LBOUND` | Assigns or manages LBOUND functionality in memory. |
+| `MAT` | Assigns or manages MAT functionality in memory. |
+| `OPTION` | Assigns or manages OPTION functionality in memory. |
+| `REDIM` | Assigns or manages REDIM functionality in memory. |
+| `UBOUND` | Assigns or manages UBOUND functionality in memory. |
+
+## Audio
+
+| Keyword | Description |
+|---|---|
+| `BEEP` | The BEEP command controls the rudimentary auditory feedback mechanism of the BASIC++ interpreter. |
+| `PLAY` | The PLAY keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `SOUND` | The SOUND keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Audio_Output
+
+| Keyword | Description |
+|---|---|
+| `BEEP` | The BEEP command controls the rudimentary auditory feedback mechanism of the BASIC++ interpreter. |
+| `PLAY` | The PLAY command is an integral part of the BASIC++ interpreter subsystem. |
+| `SOUND` | The SOUND command is an integral part of the BASIC++ interpreter subsystem. |
+
+## Basic_Drawing
+
+| Keyword | Description |
+|---|---|
+| `AT` | The AT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PLOT` | The PLOT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `POINT` | The POINT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PRESET` | The PRESET keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PSET` | The PSET keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Branching
+
+| Keyword | Description |
+|---|---|
+| `GOSUB` | The GOSUB command instructs the BASIC++ interpreter to branch execution to a specified subroutine, temporarily suspending the current execution path. Before branching, the interpreter records the address (the line number or AST node of the statement immediately following the GOSUB) by pushing it onto the internal call stack. This allows a subsequent RETURN statement to resume execution precisely where it left off. |
+| `GOTO` | The GOTO command instructs the BASIC++ interpreter to unconditionally branch execution to a specified line number or label. Unlike GOSUB, GOTO does not record a return address on the call stack. It simply updates the interpreter's Program Counter (PC) and resumes execution from the new location. |
+| `ON_GOSUB` | The ON...GOSUB command evaluates a numeric expression and branches to the n-th subroutine target in the provided list. Just like a standard GOSUB, it pushes the return address (the statement immediately following the ON...GOSUB) onto the internal call stack. When the target subroutine completes and executes a RETURN, execution resumes after the ON...GOSUB statement. |
+| `ON_GOTO` | The ON...GOTO command evaluates a numeric expression and unconditionally branches to the n-th target in the provided list. It acts as a computed GOTO or a primitive switch-case statement. |
+| `RETURN` | The RETURN command concludes a subroutine previously invoked by a GOSUB or ON...GOSUB statement. When executed, it pops the top address from the internal call stack and branches execution to that address, effectively resuming the program right after the invoking GOSUB. |
+
+## Breakpoints_And_Flow
+
+| Keyword | Description |
+|---|---|
+| `CONT` | The CONT command resumes execution of a program after it has been halted by a STOP statement, an END statement, or a user interrupt (such as pressing Ctrl+C). It allows the developer to inspect variables or state in direct mode and then seamlessly continue program execution from the break point. |
+| `END` | The END statement terminates program execution and returns the interpreter to the direct mode prompt (Ok). It also performs automatic cleanup tasks, such as closing all open files and flushing buffers, ensuring a clean exit state. |
+| `STOP` | The STOP command halts program execution and returns control to the interpreter's direct mode (command prompt). |
+
+## Buffer_Management
+
+| Keyword | Description |
+|---|---|
+| `PCOPY` | The PCOPY keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Color_Modifiers
+
+| Keyword | Description |
+|---|---|
+| `BORDER` | The BORDER keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `COLOR` | The COLOR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `INK` | The INK keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PALETTE` | The PALETTE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PAPER` | The PAPER keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Config_Environment
+
+| Keyword | Description |
+|---|---|
+| `OPTION_VIDEO` | The OPTION VIDEO statement allows developers to configure the global timing metric environment for the interpreter, specifically adjusting the internal system's definition of "Jiffies" to match historical 50 Hz (PAL/SECAM) or 60 Hz (NTSC) television and monitor refresh rates. |
+
+## Configuration
+
+| Keyword | Description |
+|---|---|
+| `ALIAS` | Provides a comprehensive API for keyword aliasing, operator aliasing, and loading entire language packs. Allows developers and users to map native keywords to alternative strings, supporting localization (e.g., mapping PRINT to ESCRIBIR in Spanish) or syntactic sugar. Useful for dialect morphing and dynamic overrides. |
+| `KEYWORD` | An introspection and configuration command that allows viewing and modifying internal parser properties for specific keywords at runtime. Useful for dynamic syntax adjustments, allowing users to override keyword traits like spacing and context. |
+| `OPTION` | Configures and modifies core interpreter behavior dynamically. It covers array bounds (BASE), syntax strictness (STRICT), trigonometry modes (ANGLE), output formatting (TAB, ZONE), casing rules (KEYWORD), and arithmetic models (ARITHMETIC). This command is crucial for enforcing dialect compliance. |
+| `OVERRIDE` | Allows a user to completely rewrite how the parser interprets a given keyword by overriding it with a text macro or alternative syntax without modifying the original user code. Powerful for metaprogramming and dynamic replacements. |
+| `SCOPE` | A powerful security and hooking mechanism that allows users to enable/disable specific keywords, or inject execution hooks (BEFORE, AFTER, OVERRIDE) whenever a specific keyword is invoked. It is restricted to security level 0 or 1. It acts as an advanced debugger capability or sandbox constrainer. |
+
+## Console
+
+| Keyword | Description |
+|---|---|
+| `CSRLIN` | The CSRLIN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `POS` | The POS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Console_Display
+
+| Keyword | Description |
+|---|---|
+| `CLS` | The CLS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `COLOR` | The COLOR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `CONSOLE` | The CONSOLE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `HOME` | The HOME keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `LOCATE` | The LOCATE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `WIDTH` | The WIDTH keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Conversion
+
+| Keyword | Description |
+|---|---|
+| `CVD` | Assigns or manages CVD functionality in memory. |
+| `CVI` | Assigns or manages CVI functionality in memory. |
+| `CVS` | Assigns or manages CVS functionality in memory. |
+| `MKDSTR` | Assigns or manages MKDSTR functionality in memory. |
+| `MKISTR` | Assigns or manages MKISTR functionality in memory. |
+| `MKSSTR` | Assigns or manages MKSSTR functionality in memory. |
+
+## Data_Flow
+
+| Keyword | Description |
+|---|---|
+| `DATA` | The DATA statement is a non-executable declarative command used to store a sequence of constants within a BASIC++ program. These constants are sequentially accessed and assigned to variables at runtime by the READ statement. |
+| `READ` | The READ command sequentially retrieves constants stored in DATA statements and assigns them to the specified variables. It advances the internal data pointer with each successful read, ensuring the next READ operation fetches the subsequent value in the sequence. |
+| `RESTORE` | The RESTORE command alters the internal DATA pointer, changing the sequence of where the next READ statement will fetch its values from. |
+
+## Devices_Hardware
+
+| Keyword | Description |
+|---|---|
+| `LPOS` | The LPOS function returns the current position of the print head within the printer buffer for the specified line printer. |
+
+## Diagnostics
+
+| Keyword | Description |
+|---|---|
+| `CHECK` | Examines the user's program currently in memory and performs a comprehensive multi-pass static analysis to identify potential errors, warnings, structural anomalies, and unreachable code without actually executing the program. |
+| `DUMP` | The DUMP command provides a low-level, comprehensive output of the BASIC++ virtual machine's internal state. |
+| `VARS` | The VARS command outputs a cleanly formatted list of all currently defined variables, their data types, and their current values in memory. |
+| `VERIFY` | The VERIFY command performs a complete static analysis of a specified BASIC source file without loading it into the active program workspace. This allows the user to audit external files for syntax errors, structural integrity, and missing line numbers safely. |
+
+## Directory
+
+| Keyword | Description |
+|---|---|
+| `CHDIR` | The CHDIR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `CURDIRDOLLAR` | The CURDIR$ keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `CWDDOLLAR` | The CWD$ built-in string function returns the name of the current working directory. Unlike PWD$, which returns the complete absolute path, CWD$ isolates and returns only the final directory component (the current folder name). |
+| `MKDIR` | The MKDIR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PWD` | The PWD keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PWDDOLLAR` | The PWD$ built-in string function returns the complete absolute path of the current working directory. Unlike CWD$, which returns only the final folder name, PWD$ provides the full directory hierarchy starting from the root of the filesystem or drive letter. |
+| `RMDIR` | The RMDIR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Display_Configuration
+
+| Keyword | Description |
+|---|---|
+| `CONSOLE` | The CONSOLE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `DISPLAY` | The DISPLAY keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `GRAPHICS` | The GRAPHICS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `SCREEN` | The SCREEN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Environment
+
+| Keyword | Description |
+|---|---|
+| `CLOCK$` | The CLOCK$ system variable retrieves the current system date and time as a fully formatted, human-readable string. |
+| `DATE$` | The DATE$ system variable returns the current system date as a string formatted as MM-DD-YYYY. |
+| `ENVIRON` | The ENVIRON command is used to set or modify operating system environment variables for the current BASIC++ process. Unlike internal dialect toggles (which are managed via commands like OPTION or OVERRIDE), ENVIRON specifically targets the underlying OS environment block. |
+| `ENVIRON$` | The ENVIRON$ function retrieves the string value of a specified operating system environment variable. If the requested environment variable does not exist, the function returns an empty string (""). |
+| `ENVIRONSTR` | No description available |
+| `HOSTNAME$` | The HOSTNAME$ function returns the network name (hostname) of the local computer running the BASIC++ interpreter as a string. |
+| `SYSTEM` | No description available |
+| `TIME$` | The TIME$ system variable returns the current system time as a string formatted as HH:MM:SS (using a 24-hour clock). |
+| `TIMER` | The TIMER keyword serves a dual purpose in BASIC++: |
+| `USERNAME$` | The USERNAME$ function retrieves the login name of the current user executing the BASIC++ interpreter as a string. |
+| `VER` | The VER command displays the current version and build information of the BASIC++ interpreter directly to the standard output console. |
+
+## Error_Handling
+
+| Keyword | Description |
+|---|---|
+| `ERL` | The ERL (Error Line) system variable returns the integer line number where the last runtime error occurred. It is a critical component of classic error handling, typically leveraged within an ON ERROR GOTO trap routine to pinpoint the exact location of the failure. This granular visibility allows the program to conditionally recover, branch to specific remediation logic, or report the precise point of failure to the user. |
+| `ERR` | The ERR system variable returns the integer error code of the last runtime error encountered by the interpreter. It is primarily used within an ON ERROR GOTO error-handling routine to determine the specific nature of a failure. By interrogating the ERR code, programmers can implement selective recovery logic (e.g., retrying a file operation if ERR = 53 for "File not found", or aborting if ERR = 11 for "Division by zero"). |
+| `ERROR` | The ERROR statement forcefully simulates a runtime exception or triggers a user-defined error condition. When executed, it behaves exactly as if a built-in system error had occurred, populating the ERR and ERL variables and branching execution to the active error handler (if one exists). |
+| `ON_ERROR_GOTO` | The ON ERROR GOTO statement enables global runtime error trapping in a BASIC++ program. When enabled, any subsequent runtime exception (such as Division by Zero, File Not Found, or an explicit ERROR statement) will not halt the program. Instead, execution will unconditionally branch to the specified line number or label. |
+| `RESUME` | The RESUME statement is exclusively used to conclude an active error-handling routine (initiated by ON ERROR GOTO) and return control to the main program flow. Executing RESUME clears the internal "error state" flag, allowing subsequent errors to be trapped again. |
+
+## Events_and_Interrupts
+
+| Keyword | Description |
+|---|---|
+| `KEY` | The KEY statement manages the function keys (softkeys). It can be used to assign string macros to the function keys, or to control the display of the function key assignments on the bottom row (usually line 25) of the screen. |
+| `ON_KEY` | The ON KEY(...) GOSUB statement sets up an asynchronous event trap. When the specified key is pressed, the program automatically interrupts its sequential execution and branches to the specified subroutine (as if an implicit GOSUB was called). The event trapping is only active when enabled via KEY(n) ON. |
+| `ON_PLAY` | The ON PLAY(...) GOSUB statement facilitates continuous background music playback. It establishes an event trap that branches to a specified subroutine whenever the background audio buffer (populated by the PLAY statement) has fewer than n notes remaining in its queue. The trap must be enabled via PLAY ON. |
+| `ON_TIMER` | The ON TIMER(...) GOSUB statement initializes a periodic timer event. When enabled via the TIMER ON statement, the virtual machine will automatically branch to the specified subroutine every n seconds. |
+| `TIMER` | The TIMER keyword serves a dual purpose. As a function, it returns the number of seconds elapsed since midnight (00:00:00). As a statement, it controls the global state of the timer event traps set by ON TIMER(...). |
+
+## Execution
+
+| Keyword | Description |
+|---|---|
+| `END` | The END command unconditionally terminates the execution of a running BASIC++ program, closes all open file channels, flushes output buffers, and returns the interpreter to immediate mode (or exits to the OS if running as a script). |
+| `RUN` | The RUN command is the primary trigger for executing a BASIC++ program. |
+| `STOP` | The STOP keyword halts the execution of a BASIC++ program, prints a break message (e.g., Break in line 10), and returns the interpreter to immediate (command) mode. Crucially, unlike END or CLEAR, STOP preserves the entire execution state, including all variables, arrays, dimensioned memory, open file handles, and the internal stack. This makes it an essential debugging tool, allowing a programmer to pause execution, inspect or alter variables, and subsequently resume execution using the CONT (continue) command. |
+
+## Exponents_Logarithms
+
+| Keyword | Description |
+|---|---|
+| `EXP` | Returns e raised to the power of the number. Evaluates the input and calculates the result mathematically. |
+| `LOG` | Returns the natural logarithm of a number. Evaluates the input and calculates the result mathematically. |
+
+## Filesystem
+
+| Keyword | Description |
+|---|---|
+| `DIR` | The DIR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `FILES` | The FILES keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `NAME` | The NAME keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `SCRATCH` | The SCRATCH keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Hardware_Ports
+
+| Keyword | Description |
+|---|---|
+| `INP` | The INP keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `OUT` | The OUT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `WAIT` | The WAIT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Hyperbolic_Trigonometry
+
+| Keyword | Description |
+|---|---|
+| `COSH` | Returns the hyperbolic cosine of a number. Evaluates the input and calculates the result mathematically. |
+| `SINH` | Returns the hyperbolic sine of a number. Evaluates the input and calculates the result mathematically. |
+
+## Input_Devices
+
+| Keyword | Description |
+|---|---|
+| `PEN` | The PEN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Introspection
+
+| Keyword | Description |
+|---|---|
+| `BIOS` | The BIOS keyword serves as a comprehensive introspection facility for the BASIC++ environment. It traverses the internal dictionaries and system registries to output diagnostic, structural, and user-facing documentation. The functionality accommodates deep NLP querying, boundary validation, and real-time environment status. It is designed to expose state safely without side-effects. |
+| `CATALOG` | The CATALOG keyword serves as a comprehensive introspection facility for the BASIC++ environment. It traverses the internal dictionaries and system registries to output diagnostic, structural, and user-facing documentation. The functionality accommodates deep NLP querying, boundary validation, and real-time environment status. It is designed to expose state safely without side-effects. |
+| `CWD` | No description available |
+| `HELP` | The HELP keyword serves as a comprehensive introspection facility for the BASIC++ environment. It traverses the internal dictionaries and system registries to output diagnostic, structural, and user-facing documentation. The functionality accommodates deep NLP querying, boundary validation, and real-time environment status. It is designed to expose state safely without side-effects. |
+| `HOSTNAME` | No description available |
+| `INFO` | The INFO keyword serves as a comprehensive introspection facility for the BASIC++ environment. It traverses the internal dictionaries and system registries to output diagnostic, structural, and user-facing documentation. The functionality accommodates deep NLP querying, boundary validation, and real-time environment status. It is designed to expose state safely without side-effects. |
+| `PWD` | No description available |
+| `USERNAME` | No description available |
+| `VER` | The VER keyword serves as a comprehensive introspection facility for the BASIC++ environment. It traverses the internal dictionaries and system registries to output diagnostic, structural, and user-facing documentation. The functionality accommodates deep NLP querying, boundary validation, and real-time environment status. It is designed to expose state safely without side-effects. |
+
+## Key_Value_Storage
+
+| Keyword | Description |
+|---|---|
+| `PRETRIEVE` | PRETRIEVE retrieves a persistent numeric value from the local Key-Value (KV) database that was previously saved using the PSTORE command. It is used to load configuration data, high scores, or saved states across multiple executions of the BASIC++ interpreter. If the key does not exist, PRETRIEVE returns 0. |
+| `PRETRIEVE$` | PRETRIEVE$ retrieves a persistent string value from the local Key-Value database that was previously saved using the PSTORE command. It allows scripts to seamlessly reload text configurations, user names, or serialized data arrays. If the key does not exist, it returns an empty string (""). |
+| `PSTORE` | PSTORE inserts or updates a key-value pair within the persistent storage system. It acts polymorphically; if value is a numeric type, it stores a numeric entry. If value is a string type, it stores a string entry. |
+
+## Keyboard_Input
+
+| Keyword | Description |
+|---|---|
+| `INKEY` | The INKEY keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `INKEYDOLLAR` | The INKEY$ built-in string variable reads a single character from the keyboard buffer. Unlike INPUT$ or INPUT, INKEY$ is non-blocking, meaning it immediately returns control to the program even if no key was pressed. |
+| `INPUT` | The INPUT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `INPUTDOLLAR` | The INPUT$ keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `KEY` | The KEY keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `ONKEYDOLLAR` | The ONKEY$ built-in string variable functions as an event-aware counterpart to INKEY$. It reads a single character from the keyboard buffer in a non-blocking manner, returning immediately to the caller. |
+
+## Loops
+
+| Keyword | Description |
+|---|---|
+| `DO` | The DO statement initiates a highly versatile block loop. It can act as an infinite loop, a pre-test loop (using DO WHILE or DO UNTIL), or a post-test loop (if the condition is attached to the LOOP statement instead). |
+| `FOR` | The FOR statement initiates a definite loop that repeats a block of code a specific number of times. It initializes the loop counter and evaluates the termination condition. Execution proceeds into the loop block, and upon encountering the corresponding NEXT statement, the counter is incremented by the stepvalue. |
+| `LOOP` | The LOOP statement marks the end of a DO loop block. If a condition is provided, it evaluates the condition to determine whether to branch back to the corresponding DO statement. |
+| `NEXT` | The NEXT statement marks the end of a FOR loop block. It increments the loop counter by the stepvalue (defined in the FOR statement) and checks if the new value satisfies the termination condition. If the condition is met, execution jumps back to the instruction immediately following the FOR statement. If not, the loop context is popped, and execution continues after the NEXT statement. |
+| `WEND` | The WEND statement marks the end of a WHILE loop block. When encountered, it unconditionally instructs the interpreter to jump back to its corresponding WHILE statement to re-evaluate the loop condition. |
+| `WHILE` | The WHILE statement initiates a pre-test loop. It evaluates the condition before entering the loop block. If the condition is true, execution proceeds to the statements inside the block. When a WEND statement is encountered, execution jumps back to the WHILE statement to re-evaluate the condition. If the condition is false, execution branches immediately to the statement following the corresponding WEND. |
+
+## Matrix_Math
+
+| Keyword | Description |
+|---|---|
+| `MAT` | Performs matrix operations. Evaluates the input and calculates the result mathematically. |
+| `MAT_IDN` | The MAT IDN statement initializes a square matrix (a 2D array where the number of rows equals the number of columns) as an identity matrix. An identity matrix has 1s on the main diagonal (where row index equals column index) and 0s everywhere else. |
+| `MAT_INV` | The MAT INV statement computes the multiplicative inverse of a square matrix <arrayB> and stores the result in <arrayA>. If <arrayB> is multiplied by <arrayA>, the result is the identity matrix. <arrayA> must be dimensioned to the exact same size as <arrayB>. |
+| `MAT_RND` | The MAT RND statement populates every element of a given array with a pseudo-random floating-point number between 0.0 (inclusive) and 1.0 (exclusive). This is highly useful for generating random datasets, procedural generation, or initializing weights in simulations. |
+| `MAT_TRN` | The MAT TRN statement computes the transpose of matrix <arrayB> and stores it in <arrayA>. Transposition flips a matrix over its main diagonal, effectively swapping rows and columns. <arrayA> must be dimensioned such that its rows equal <arrayB>'s columns, and its columns equal <arrayB>'s rows. |
+
+## Memory
+
+| Keyword | Description |
+|---|---|
+| `BANK` | Assigns or manages BANK functionality in memory. |
+| `CLEAR` | Assigns or manages CLEAR functionality in memory. |
+| `FRE` | Assigns or manages FRE functionality in memory. |
+| `PEEK` | Assigns or manages PEEK functionality in memory. |
+| `POKE` | Assigns or manages POKE functionality in memory. |
+
+## Memory_Access
+
+| Keyword | Description |
+|---|---|
+| `BANK` | Assigns or manages BANK functionality in memory. |
+| `MEMMAP` | Assigns or manages MEMMAP functionality in memory. |
+| `PEEK` | Assigns or manages PEEK functionality in memory. |
+| `PEEKB` | Assigns or manages PEEKB functionality in memory. |
+| `POKE` | Assigns or manages POKE functionality in memory. |
+| `POKEB` | Assigns or manages POKEB functionality in memory. |
+| `SEG` | Assigns or manages SEG functionality in memory. |
+| `VARPTR` | Assigns or manages VARPTR functionality in memory. |
+
+## Memory_Management
+
+| Keyword | Description |
+|---|---|
+| `FRE` | Assigns or manages FRE functionality in memory. |
+| `MEM` | Assigns or manages MEM functionality in memory. |
+| `SIZE` | Assigns or manages SIZE functionality in memory. |
+
+## Memory_State
+
+| Keyword | Description |
+|---|---|
+| `CLEAR` | Assigns or manages CLEAR functionality in memory. |
+| `CLR` | Assigns or manages CLR functionality in memory. |
+| `FRE` | Assigns or manages FRE functionality in memory. |
+| `MEM` | The MEM keyword returns the total amount of free, unallocated variable memory available to the BASIC program, measured in bytes. This allows the programmer to proactively check system resources before dimensioning large arrays or allocating substantial string buffers, thereby avoiding catastrophic "Out of Memory" runtime errors. |
+| `SIZE` | The SIZE system variable returns the total accumulated byte size of the currently executing program environment. This includes the raw program source text length, the active variable memory consumed, the scratchpad memory utilized, and the weight of any dynamically loaded virtual memory banks (1MB each). |
+
+## Metadata_Locks
+
+| Keyword | Description |
+|---|---|
+| `ACCESS` | The ACCESS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `ASK` | The ASK keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `FILEMOD` | The FILEMOD keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `LOCK` | The LOCK keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `SET` | The SET keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `UNLOCK` | The UNLOCK keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Multitasking
+
+| Keyword | Description |
+|---|---|
+| `TASK` | The TASK command introduces cooperative or preemptive multitasking (depending on the target OS layer) to the BASIC++ ecosystem. It allows the programmer to spawn, suspend, resume, and kill secondary execution threads that run concurrently with the main program loop. |
+
+## Output_Formatting
+
+| Keyword | Description |
+|---|---|
+| `IMAGE` | The IMAGE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PRINT` | The PRINT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `SPC` | The SPC keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `TAB` | The TAB keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `WRITE` | The WRITE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Packing
+
+| Keyword | Description |
+|---|---|
+| `FIELD` | Assigns or manages FIELD functionality in memory. |
+| `LSET` | Assigns or manages LSET functionality in memory. |
+| `RSET` | Assigns or manages RSET functionality in memory. |
+
+## Persistence
+
+| Keyword | Description |
+|---|---|
+| `LOAD` | The LOAD command reads a BASIC++ source file from disk into the interpreter's memory workspace. By default, LOAD clears all existing variables, arrays, and program lines in memory before reading the new file. It essentially performs a NEW operation followed by file ingestion. |
+| `SAVE` | The SAVE keyword writes the current program residing in the interpreter's memory workspace to a file on the local disk. By default (if neither , A nor , P is specified), classic BASIC interpreters saved in a proprietary binary tokenized format. For BASIC++, the default behavior is to save as plain ASCII text unless compatibility settings force binary tokenization. |
+
+## Printer
+
+| Keyword | Description |
+|---|---|
+| `LLIST` | The LLIST keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `LPRINT` | The LPRINT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Procedures
+
+| Keyword | Description |
+|---|---|
+| `CALL` | The CALL statement transfers control to a subprogram (defined by SUB). When the subprogram finishes executing (via END SUB or EXIT SUB), control returns to the statement immediately following the CALL. |
+| `DECLARE` | The DECLARE statement alerts the compiler or interpreter to the presence of a procedure (SUB or FUNCTION), establishing its name and expected parameters before the procedure is actually defined or called. |
+| `DEF_FN` | The DEF FN statement defines a single-line, user-defined function. It is a legacy GW-BASIC feature used for simple, repetitive calculations that do not warrant a full structured FUNCTION block. |
+| `FUNCTION` | The FUNCTION block defines a structured, multi-line procedure that returns a value. It provides isolated local variable scoping and parameter passing, representing modern structured programming in BASIC. |
+| `SUB` | The SUB block defines a structured, multi-line procedure that does not return a value (analogous to a void function in C). It is used for modularizing code, performing actions, and mutating state via pass-by-reference parameters. |
+
+## Process_Ops
+
+| Keyword | Description |
+|---|---|
+| `EXEC` | No description available |
+| `SHELL` | No description available |
+| `SYS` | No description available |
+
+## Random_Access
+
+| Keyword | Description |
+|---|---|
+| `FIELD` | The FIELD keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `GET` | The GET keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `POINTER` | The POINTER keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PUT` | The PUT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `SEEK` | The SEEK keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Scope
+
+| Keyword | Description |
+|---|---|
+| `COMMON` | Assigns or manages COMMON functionality in memory. |
+| `SHARED` | Assigns or manages SHARED functionality in memory. |
+
+## Sequential_IO
+
+| Keyword | Description |
+|---|---|
+| `CLOSE` | The CLOSE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `EOF` | The EOF keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `LOC` | The LOC keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `LOF` | The LOF keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `OPEN` | The OPEN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `RESET` | The RESET keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## String_Case_Conversion
+
+| Keyword | Description |
+|---|---|
+| `ICASE$` | Inverts the case of all alphabetic characters in a given string. Lowercase characters (a-z) become uppercase (A-Z), and uppercase characters (A-Z) become lowercase (a-z). Non-alphabetic characters such as numbers, punctuation, and spaces remain unchanged. |
+| `LCASE$` | Converts all uppercase alphabetic characters (A-Z) in a given string to their corresponding lowercase equivalents (a-z). Non-alphabetic characters (such as numbers, punctuation, and spaces) are completely unaffected and pass through identically. |
+| `MCASE$` | Converts a string into alternating mixed case. Specifically, it toggles between uppercase and lowercase for every alphabetic character it encounters. The very first alphabetic character is forced to uppercase, the second alphabetic character to lowercase, the third to uppercase, and so on. Non-alphabetic characters (such as spaces or punctuation) are untouched and do NOT disrupt the alternating alphabetic sequence pattern. |
+| `TCASE$` | Converts a string to title case (sometimes referred to as proper case). TCASE$ capitalizes the very first character of the string and any alphabetic character that immediately follows a whitespace character (like a space or tab). All other alphabetic characters in the string are forced to lowercase. Non-alphabetic characters are unaffected. |
+| `UCASE$` | Converts all lowercase alphabetic characters (a-z) in a given string to their corresponding uppercase equivalents (A-Z). Non-alphabetic characters (such as numbers, punctuation, and spaces) are completely unaffected and pass through identically. |
+
+## String_Extraction
+
+| Keyword | Description |
+|---|---|
+| `LEFT$` | The LEFT$ keyword is a fundamental string extraction function that retrieves a specified number of characters starting from the absolute left (the beginning) of a given string. This operation is highly deterministic and designed to safely truncate or bound-check the requested length against the actual length of the source string. |
+| `MID$` | The MID$ function is the most versatile string extraction tool in the BASIC language. It allows the extraction of a precise subsection from the interior of any given string, defined by a 1-based physical offset and an optional constraint on length. |
+| `RIGHT$` | The RIGHT$ keyword is a core string manipulation function designed to extract a precise number of characters from the absolute right (the end) of a target string. It operates in constant harmony with LEFT$, allowing users to parse suffixes, file extensions, and terminal control sequences. |
+| `SEG$` | The SEG$ function serves as a specialized bounds-based extraction mechanism, differentiating itself from MID$ by requiring an absolute terminating boundary rather than a relative character count. This design intrinsically supports operations where substring boundaries are derived from two precise positional markers (such as output from dual INSTR calls). |
+
+## String_Formatting
+
+| Keyword | Description |
+|---|---|
+| `CHR$` | The CHR$ function converts a given ASCII character code (a numeric value) into a single-character string representation. It is the exact inverse of the ASC function. CHR$ is extremely useful for inserting unprintable or control characters (such as carriage returns, line feeds, tabs, or escape sequences) into string variables or output streams. |
+| `SPACE$` | The SPACE$ function returns a string consisting entirely of space characters. It is primarily used for text formatting, padding, alignment, and clearing specific sections of a console screen. |
+| `STRING$` | The STRING$ function is a highly versatile string generation utility that creates a new string composed of a single repeating character. |
+
+## String_Properties
+
+| Keyword | Description |
+|---|---|
+| `ASC` | The ASC function returns the numeric ASCII (or extended ASCII) code corresponding to the first character of the specified stringExpression$. The returned integer value will be in the range of 0 to 255. |
+| `INSTR` | The INSTR function searches for the first occurrence of the needle$ string inside the haystack$ string, starting at the start% index (if provided). |
+| `LEN` | The LEN function returns the number of characters (technically, the number of bytes) present in stringExpression$. |
+
+## String_Search_And_Replace
+
+| Keyword | Description |
+|---|---|
+| `EDIT$` | The EDIT$ function reformats a string based on the code argument. code acts as a bitmask where multiple formatting options can be combined by adding their values together (or using bitwise OR). |
+| `LTRIM$` | The LTRIM$ function removes all leading space characters ( ) from the left side of the provided string and returns the cleaned string. |
+| `REPLACE$` | The REPLACE$ function searches the target$ string for all non-overlapping occurrences of the search$ string, replacing them with the replace$ string, and returning the newly formed string. |
+| `REVERSE$` | The REVERSE$ function takes a string expression and returns a new string with the characters in exact reverse order (right-to-left). |
+| `RTRIM$` | The RTRIM$ function removes all trailing space characters ( ) from the right side of the provided string and returns the cleaned string. |
+| `TRIM$` | The TRIM$ function removes all leading and trailing space characters ( ) from the provided string and returns the cleaned string. |
+
+## String_Type_Conversion
+
+| Keyword | Description |
+|---|---|
+| `STR$` | The STR$ function converts a numeric value (integer or float) into its string representation. The output string is formatted identically to how it would be displayed by the PRINT statement. |
+| `VAL` | The VAL function evaluates a string representation of a number and converts it into its corresponding numeric value (integer or float). |
+
+## System_Variables
+
+| Keyword | Description |
+|---|---|
+| `DATE` | The DATE system variable provides the current system date as a numeric value. It typically represents the date in an encoded format (e.g., YYYYMMDD) or a Julian day number, depending on the active environment profile. It can also be assigned a numeric value to alter the system or virtual date. |
+| `DATE$` | The DATE$ system variable retrieves the current system date formatted as a string. By default, it adheres to the standard "MM-DD-YYYY" format. It can also be assigned a string to change the internal date of the machine or virtual environment. |
+| `DAY` | Returns the current day of the month as an integer between 1 and 31. |
+| `DAY$` | Returns the current day of the week as a capitalized string (e.g., "Sunday", "Monday", ..., "Saturday"). |
+| `DOW` | The DOW (Day Of Week) keyword returns a numeric value from 1 to 7 corresponding to the current day of the week. Depending on the dialect, 1 may represent Sunday or Monday. It is strictly a read-only variable/function. |
+| `FALSE` | The FALSE system variable evaluates directly to the integer value -1 (in accordance with historic BASIC standards, where boolean false was usually 0, but wait! Wait. In GW-BASIC and QBASIC, FALSE is typically 0 and TRUE is -1. Let's re-verify the codebase grep for TRUE/FALSE. |
+| `HOURS` | HOURS returns the current hour of the system clock as an integer ranging from 0 to 23. |
+| `JIFFIES` | The JIFFIES function returns the elapsed system time multiplied by a specific video mode frequency. By default, it multiplies by rt->jiffiesmultiplier. It can take an optional string argument such as "NTSC" (60.0), "PAL" (50.0), or "SECAM" (50.0) to simulate ticks for specific video hardware standards. |
+| `MINUTES` | MINUTES returns the current minute of the system clock as an integer ranging from 0 to 59. |
+| `MONTH` | Returns the current month of the year as an integer between 1 (January) and 12 (December). |
+| `MONTH$` | Returns the name of the current month as a capitalized string (e.g., "January", "February", ..., "December"). |
+| `SECONDS` | SECONDS returns the current second of the system clock as an integer ranging from 0 to 59. |
+| `TI` | The TI (Timer/Ticks) variable returns the number of system clock ticks (usually 1/60th of a second, known as jiffies) since the system or interpreter was booted. It is a read-only variable primarily used for high-resolution profiling or random number seeding. |
+| `TI$` | The TI$ system variable returns a 6-character string representing the time elapsed since boot or since it was last reset, formatted as "HHMMSS". It can also be assigned a string to reset the internal tick counter relative to a specific time. |
+| `TICKS` | TICKS returns the system uptime in milliseconds. Often used for measuring elapsed time or as a high-resolution timer. |
+| `TIME` | The TIME system variable provides a numeric representation of the current system time. When read, it returns a precise float or long integer reflecting the seconds since midnight or an encoded numeric format depending on the active dialect. When used as an assignment, it attempts to set the internal or system clock to the specified numeric value. |
+| `TIME$` | The TIME$ system variable returns the current system time formatted as a string, strictly adhering to the "HH:MM:SS" 24-hour format. It can also be used as a statement to set the system time by providing a string in a valid time format. |
+| `TRUE` | The TRUE system variable evaluates directly to a predefined integer representing boolean truth. Utilizing the TRUE keyword instead of hardcoding numeric values (such as -1 or 1) heavily enhances code readability and guarantees portability across varying BASIC dialects, particularly between GW-BASIC, QBASIC, and ECMA-116 profiles. |
+| `YEAR` | Returns the current four-digit year as an integer (e.g., 2026). |
+
+## Tracing
+
+| Keyword | Description |
+|---|---|
+| `DEBUG` | The DEBUG command toggles the interactive debugging environment in BASIC++. When DEBUG ON is executed, the interpreter enters a specialized state where users can step through code, inspect variables, and monitor memory usage in real-time. |
+| `TRACE` | The TRACE command enables the tracing of program execution. When active, the interpreter prints the line number of each statement as it is executed. |
+| `TROFF` | The TROFF command explicitly disables program tracing that was previously enabled by the TRACE (or TRON) command. |
+| `TRON` | The TRON (Trace On) command enables the built-in execution tracing facility of the BASIC++ interpreter, which is an invaluable debugging tool for tracking the flow of control within a program. Once TRON is executed, the interpreter automatically outputs the line number of each subsequent line of code as it is executed. The line numbers are typically enclosed in square brackets, such as [10], and are printed directly to the active output stream or console window. |
+
+## Trigonometry
+
+| Keyword | Description |
+|---|---|
+| `COS` | Returns the cosine of a number. Evaluates the input and calculates the result mathematically. |
+| `SIN` | Returns the sine of a number. Evaluates the input and calculates the result mathematically. |
+| `TAN` | Returns the tangent of a number. Evaluates the input and calculates the result mathematically. |
+
+## Type_Conversion
+
+| Keyword | Description |
+|---|---|
+| `BIN$` | Converts a numeric value to its binary string representation. |
+| `HEX$` | Converts a numeric value to its hexadecimal string representation. |
+| `NUM` | Converts string bytes to a numeric value. |
+| `NUM$` | Converts a numeric value to string bytes. |
+| `OCT$` | Converts a numeric value to its octal string representation. |
+
+## Types
+
+| Keyword | Description |
+|---|---|
+| `DEFDBL` | Assigns or manages DEFDBL functionality in memory. |
+| `DEFINT` | Assigns or manages DEFINT functionality in memory. |
+| `DEFSNG` | Assigns or manages DEFSNG functionality in memory. |
+| `DEFSTR` | Assigns or manages DEFSTR functionality in memory. |
+
+## Unit_Testing
+
+| Keyword | Description |
+|---|---|
+| `ASSERT` | The ASSERT statement is an advanced diagnostic and unit testing tool embedded directly into the BASIC++ syntax. It allows programmers to assert that a specific condition must be true at a given point in execution. If the condition evaluates to true, the program continues silently with no interruption. If the condition evaluates to false (zero), the interpreter halts program execution and throws an assertion error, typically printing the line number and the optional custom error message. |
+| `SELFTEST` | The SELFTEST command is a powerful internal diagnostic utility built directly into the BASIC++ interpreter. When invoked, it pauses standard script execution and runs a series of hardcoded, highly rigorous C-level unit tests against the interpreter's core subsystems. It verifies the integrity of the Lexer, Value system, String pool, Function registry, Memory allocator, Dialect configuration, Parser precedence, Control flow mechanisms, Virtual File System (VFS), and SDL graphics contexts. |
+
+## Utility_Math
+
+| Keyword | Description |
+|---|---|
+| `ABS` | Returns the absolute (positive) value of the specified mathematical expression. If the value is negative, it is converted to positive. If it is already positive or zero, it remains unchanged. |
+| `FIX` | Truncates a numeric value toward zero. It simply strips the fractional part of a number without rounding. For positive numbers, it is identical to INT. For negative numbers, it behaves differently (e.g., -3.7 becomes -3, whereas INT makes it -4). |
+| `INT` | Returns the largest integer less than or equal to the numeric expression. Note that for negative numbers, this means rounding down to the next lower integer (e.g., -3.7 becomes -4). |
+
+## VFS
+
+| Keyword | Description |
+|---|---|
+| `MOUNT` | The MOUNT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `MOUNTS` | The MOUNTS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `UMOUNT` | The UMOUNT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `UNLOAD` | The UNLOAD keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `VPATH` | The VPATH keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Variables
+
+| Keyword | Description |
+|---|---|
+| `LET` | Assigns or manages LET functionality in memory. |
+| `READ` | Assigns or manages READ functionality in memory. |
+| `REM` | Assigns or manages REM functionality in memory. |
+| `RESTORE` | Assigns or manages RESTORE functionality in memory. |
+| `SWAP` | Assigns or manages SWAP functionality in memory. |
+
+## Variables_Memory
+
+| Keyword | Description |
+|---|---|
+| `CDBL` | Assigns or manages CDBL functionality in memory. |
+| `CINT` | Assigns or manages CINT functionality in memory. |
+| `CSNG` | Assigns or manages CSNG functionality in memory. |
+| `CWD$` | No description available |
+| `HOSTNAME$` | No description available |
+| `MEMMAP$` | The MEMMAP$ function returns a string indicating the currently active virtual BIOS/memory map configuration of the BASIC++ environment. Because BASIC++ provides an extensive virtual machine layer that can mock various historic 8-bit and 16-bit architectures, MEMMAP$ is vital for runtime introspection. |
+| `PWD$` | No description available |
+| `USERNAME$` | No description available |
+
+## Viewport_Mapping
+
+| Keyword | Description |
+|---|---|
+| `PMAP` | The PMAP keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `VIEW` | The VIEW keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `WINDOW` | The WINDOW keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Virtual_Memory
+
+| Keyword | Description |
+|---|---|
+| `BANK` | Assigns or manages BANK functionality in memory. |
+| `PEEKB` | Assigns or manages PEEKB functionality in memory. |
+| `POKEB` | Assigns or manages POKEB functionality in memory. |
+
+## Visual_Attributes
+
+| Keyword | Description |
+|---|---|
+| `BRIGHT` | The BRIGHT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `FLASH` | The FLASH keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `INVERSE` | The INVERSE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `OVER` | The OVER keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `REVERSE` | The REVERSE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+
+## Workspace
+
+| Keyword | Description |
+|---|---|
+| `CLEAR` | The CLEAR command performs a deep wipe of the interpreter's variable memory. It resets all numeric variables and arrays to zero, and all string variables and arrays to null (empty strings). Crucially, unlike NEW, CLEAR does not delete the program lines residing in memory; it solely affects data state. |
+| `LIST` | The LIST command outputs the currently loaded BASIC++ AST (Abstract Syntax Tree) back into human-readable source code. Because BASIC++ tokenizes the code upon entry, the output of LIST is reconstructed from the internal p-code tokens. This normalization ensures keywords are capitalized and whitespace is consistent. |
+| `NEW` | The NEW command clears the current program from memory, resetting the workspace. It is used to start a fresh project or clear out old state before loading a new program. |
+
+## docs
+
+| Keyword | Description |
+|---|---|
+| `SUMMARY` | No description available |
+
+## hardware_io
+
+| Keyword | Description |
+|---|---|
+| `INP` | No description available |
+| `OUT` | No description available |
+
+## logic_and_bitwise
+
+| Keyword | Description |
+|---|---|
+| `AND` | The AND operator evaluates to true (non-zero) if and only if both expressions evaluate to true. When evaluating numerical values, it performs a bitwise AND operation on the integer representations of the operands. This means each bit of the result is 1 if both corresponding bits of the operands are 1, otherwise it is 0. If expressions are boolean or relational (e.g., A=1), they evaluate to true (usually -1) or false (0), making the bitwise AND function perfectly as a logical AND. |
+| `EQV` | The EQV operator is the logical opposite of XOR. It evaluates to true if both expressions are true or both are false. For numeric values, it performs a bitwise equivalence (XNOR). Each bit of the result is 1 if the corresponding bits of the operands are the same, and 0 if they differ. |
+| `HI` | The HI function returns the high-order (most significant) byte of a 16-bit integer expression. It isolates the upper 8 bits (bits 8-15) of the given integer and returns them as a new integer value. This is typically used in low-level bitwise operations, memory manipulations, or when interacting with hardware and binary file structures. |
+| `IMP` | The IMP (implication) operator evaluates to false only if the first expression is true and the second expression is false; otherwise, it evaluates to true. For numeric values, it performs a bitwise implication, which is logically equivalent to (NOT A) OR B on a bit-by-bit basis. |
+| `LO` | The LO function returns the low-order (least significant) byte of an integer expression. It isolates the lower 8 bits (bits 0-7) of the given integer and returns them as a new integer value. This function is essential for low-level systems programming, graphics, and reading specific byte sequences from memory or files. |
+| `NOT` | The NOT operator performs logical negation and bitwise complement. It takes a single operand. For numerical values, it inverts all bits (bitwise NOT). For boolean/relational comparisons that return -1 (True) or 0 (False), applying NOT to 0 results in -1, and applying NOT to -1 results in 0 (in a 2's complement system, NOT 0 is -1, and NOT -1 is 0), so it perfectly doubles as a logical NOT. |
+| `OR` | The OR operator evaluates to true if at least one of the expressions evaluates to true. For numeric values, it performs a bitwise inclusive OR operation. This means each bit of the result is 1 if at least one of the corresponding bits of the operands is 1. If expressions are boolean/relational, they evaluate to -1 or 0, so bitwise OR effectively functions as a logical OR. |
+| `XOR` | The XOR operator evaluates to true if exactly one of the expressions is true, but not both. For numeric values, it performs a bitwise exclusive OR. Each bit of the result is 1 if the corresponding bits of the operands differ, and 0 if they are the same. |
+
+## math
+
+| Keyword | Description |
+|---|---|
+| `MOD` | The MOD operator performs arithmetic modulo division. It calculates the remainder of expression1 divided by expression2. |
+| `TIM` | TIM(x) returns specific time components based on the argument. TIM(0)=minute (0-59), TIM(1)=hour (0-23), TIM(2)=day of year (1-366), TIM(3)=year (e.g. 2026). Default fallback returns the raw epoch time. |
+
+## network_protocols
+
+| Keyword | Description |
+|---|---|
+| `OPEN__COM` | No description available |
+
+## progmgmt
+
+| Keyword | Description |
+|---|---|
+| `AUTO` | Enables automatic line numbering mode during interactive entry. When activated, the interpreter automatically generates and prints the next sequential line number, prompting the user for code. Pressing Enter on an empty line or typing a single period (.) cancels AUTO mode. |
+| `DELETE` | Deletes a specific program line or a contiguous range of program lines from the currently loaded program memory. It permanently removes the targeted lines from the AST. |
+| `EDIT` | Displays the specified program line for editing. If no line number is provided, it displays the first line of the program. The user can then retype the line (by typing the line number followed by new code) or press Enter to leave it unchanged. |
+| `REFORMAT` | Automatically re-indents the entire program in memory based on structural control flow keywords (e.g., FOR, WHILE, DO, IF, SUB, FUNCTION). It strips existing leading spaces and applies consistent indentation, making code more readable. |
+| `RENAME` | Dual-purpose command. It can rename a file on the physical filesystem. It can also rename internal program structures like variables, arrays, subroutines, or functions within the loaded program space. |
+| `RENUM` | Renumbers all program lines starting from newstartline with increments of step. It also automatically updates all line number references in GOTO, GOSUB, RESTORE, and THEN statements to match the new numbering scheme. |
+
+## serial_bio
+
+| Keyword | Description |
+|---|---|
+| `IOCTL` | No description available |
+
+## virtual_dev
+
+| Keyword | Description |
+|---|---|
+| `VDEV` | No description available |
+
+## virtual_mach
+
+| Keyword | Description |
+|---|---|
+| `VMEM` | No description available |
+
+## virtual_net
+
+| Keyword | Description |
+|---|---|
+| `VNET` | No description available |

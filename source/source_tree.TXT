@@ -1,0 +1,2695 @@
+Folder PATH listing for volume Acer
+Volume serial number is 0000008D F218:C3FF
+C:.
+|   .gitignore
+|   1964
+|   1964.exe
+|   apple2
+|   apple2.exe
+|   basicpp-console.exe
+|   basicpp.exe
+|   basicpp.map
+|   baspp
+|   baspp-console
+|   biotest.bin
+|   blite
+|   blite.exe
+|   bppc
+|   bppc.exe
+|   build-fd.bat
+|   build-linux.sh
+|   build.bat
+|   catalog.TXT
+|   CHANGELOG.txt
+|   compile_custom.bat
+|   compile_custom.py
+|   generate_kv.py
+|   generate_math.py
+|   gen_docs.py
+|   gen_math.py
+|   gen_prog.py
+|   gen_strings.py
+|   gen_strings2.py
+|   help.TXT
+|   len.bas
+|   level1
+|   level1.exe
+|   LICENSE
+|   MODEL1.FNT
+|   quick_reference.MD
+|   quick_reference.TXT
+|   README.md
+|   replace.py
+|   run_log.txt
+|   run_test.bat
+|   scratch_expand.py
+|   SDL2.dll
+|   search_palette.txt
+|   selftest_vfs.tmp
+|   siotest.txt
+|   summary.MD
+|   test.bas
+|   test_environ.bas
+|   test_eof_lof.tmp
+|   test_fs.tmp
+|   test_input.txt
+|   test_mcase_manual.bas
+|   test_mem.bas
+|   test_mem2.bas
+|   test_month.bas
+|   test_palette.bas
+|   test_print.bas
+|   test_rename2.bas
+|   tinybasic
+|   tinybasic.exe
+|   trans
+|   trans.exe
+|   
++---.agents
+|       AGENTS.md
+|       
++---.vscode
+|       settings.json
+|       
++---classics
+|   |   eliza.bas
+|   |   
+|   +---bcg
+|   |       23matches.bas
+|   |       3dplot.bas
+|   |       aceyducey.bas
+|   |       amazing.bas
+|   |       animal.bas
+|   |       awari.bas
+|   |       bagels.bas
+|   |       banner.bas
+|   |       basicpp.cfg
+|   |       basketball.bas
+|   |       batnum.bas
+|   |       battle.bas
+|   |       blackjack.bas
+|   |       bombardment.bas
+|   |       bombsaway.bas
+|   |       bounce.bas
+|   |       bowling.bas
+|   |       boxing.bas
+|   |       bug.bas
+|   |       bullfight.bas
+|   |       bullseye.bas
+|   |       bunny.bas
+|   |       buzzword.bas
+|   |       calendar.bas
+|   |       change.bas
+|   |       checkers.bas
+|   |       chemist.bas
+|   |       chief.bas
+|   |       chomp.bas
+|   |       civilwar.bas
+|   |       combat.bas
+|   |       craps.bas
+|   |       cube.bas
+|   |       depthcharge.bas
+|   |       diamond.bas
+|   |       dice.bas
+|   |       digits.bas
+|   |       evenwins.bas
+|   |       flipflop.bas
+|   |       football.bas
+|   |       ftball.bas
+|   |       furtrader.bas
+|   |       gameofevenwins.bas
+|   |       golf.bas
+|   |       gomoko.bas
+|   |       guess.bas
+|   |       gunner.bas
+|   |       hammurabi.bas
+|   |       hangman.bas
+|   |       hello.bas
+|   |       hexapawn.bas
+|   |       hi-lo.bas
+|   |       highiq.bas
+|   |       hockey.bas
+|   |       horserace.bas
+|   |       hurkle.bas
+|   |       kinema.bas
+|   |       king.bas
+|   |       lem.bas
+|   |       letter.bas
+|   |       life.bas
+|   |       lifefortwo.bas
+|   |       litquiz.bas
+|   |       love.bas
+|   |       lunar.bas
+|   |       mastermind.bas
+|   |       mathdice.bas
+|   |       mine.bas
+|   |       mugwump.bas
+|   |       name.bas
+|   |       nicomachus.bas
+|   |       nim.bas
+|   |       number.bas
+|   |       onecheck.bas
+|   |       orbit.bas
+|   |       pizza.bas
+|   |       poetry.bas
+|   |       poker.bas
+|   |       qubit.bas
+|   |       queen.bas
+|   |       reverse.bas
+|   |       rocket.bas
+|   |       rockscissors.bas
+|   |       roulette.bas
+|   |       russianroulette.bas
+|   |       salvo.bas
+|   |       sinewave.bas
+|   |       slalom.bas
+|   |       slots.bas
+|   |       splat.bas
+|   |       stars.bas
+|   |       stockmarket.bas
+|   |       suite.bas
+|   |       superstartrek.bas
+|   |       superstartrekins.bas
+|   |       synonym.bas
+|   |       target.bas
+|   |       test.bas
+|   |       tictactoe1.bas
+|   |       tictactoe2.bas
+|   |       tower.bas
+|   |       train.bas
+|   |       trap.bas
+|   |       war.bas
+|   |       weekday.bas
+|   |       word.bas
+|   |       
+|   +---DavidAhlBasicComputerAdventures
+|   |   |   APP.BAS
+|   |   |   AUTORACE.BAS
+|   |   |   BCA.ZIP
+|   |   |   cover.jpg
+|   |   |   EARHART.BAS
+|   |   |   HONGKONG.BAS
+|   |   |   M.BAS
+|   |   |   MARCO.BAS
+|   |   |   NEPTUNE.BAS
+|   |   |   ORIENT.BAS
+|   |   |   README.md
+|   |   |   SUBWAY.BAS
+|   |   |   TOUR.BAS
+|   |   |   WESTHO.BAS
+|   |   |   
+|   |   \---BCA_extracted
+|   |           APP.BAS
+|   |           AUTORACE.BAS
+|   |           EARHART.BAS
+|   |           HONGKONG.BAS
+|   |           M.BAS
+|   |           MARCO.BAS
+|   |           NEPTUNE.BAS
+|   |           ORIENT.BAS
+|   |           READ_ME.NOW
+|   |           SUBWAY.BAS
+|   |           TOUR.BAS
+|   |           WESTHO.BAS
+|   |           
+|   +---DavidAhlBasicComputerGames
+|   |       23-match.bas
+|   |       3dplot.bas
+|   |       aceyducy.bas
+|   |       amazing.bas
+|   |       animal.bas
+|   |       awari.bas
+|   |       bagels.bas
+|   |       banner.bas
+|   |       basketbl.bas
+|   |       batnum.bas
+|   |       battle.bas
+|   |       blackjck.bas
+|   |       bombard.bas
+|   |       bombsawy.bas
+|   |       bounce.bas
+|   |       bowling.bas
+|   |       boxing.bas
+|   |       bug.bas
+|   |       bullfght.bas
+|   |       bullseye.bas
+|   |       bunny.bas
+|   |       buzzword.bas
+|   |       calendar.bas
+|   |       ccbasic1.jpg
+|   |       change.bas
+|   |       checkers.bas
+|   |       chemist.bas
+|   |       chief.bas
+|   |       chomp.bas
+|   |       combat.bas
+|   |       craps.bas
+|   |       cube.bas
+|   |       depthchg.bas
+|   |       diamond.bas
+|   |       dice.bas
+|   |       digits.bas
+|   |       evenwin1.bas
+|   |       evenwin2.bas
+|   |       flipflop.bas
+|   |       footbal1.bas
+|   |       footbal2.bas
+|   |       furtradr.bas
+|   |       golf.bas
+|   |       gomoko.bas
+|   |       guess.bas
+|   |       gunner.bas
+|   |       hamurabi.bas
+|   |       hangman.bas
+|   |       hello.bas
+|   |       hexapawn.bas
+|   |       hi-q.bas
+|   |       hilo.bas
+|   |       hockey.bas
+|   |       horsrace.bas
+|   |       hurkle.bas
+|   |       kinema.bas
+|   |       king.bas
+|   |       lem.bas
+|   |       letter.bas
+|   |       life.bas
+|   |       life2.bas
+|   |       litquiz.bas
+|   |       love.bas
+|   |       lunar.bas
+|   |       mastrmnd.bas
+|   |       mathdice.bas
+|   |       mine.bas
+|   |       mugwump.bas
+|   |       name.bas
+|   |       nicoma.bas
+|   |       nim.bas
+|   |       number.bas
+|   |       onecheck.bas
+|   |       orbit.bas
+|   |       pizza.bas
+|   |       poetry.bas
+|   |       poker.bas
+|   |       qubic.bas
+|   |       queen.bas
+|   |       README.md
+|   |       reverse.bas
+|   |       rocket.bas
+|   |       rocksp.bas
+|   |       roulette.bas
+|   |       rusrou.bas
+|   |       salvo.bas
+|   |       sinewave.bas
+|   |       slalom.bas
+|   |       slots.bas
+|   |       splat.bas
+|   |       stars.bas
+|   |       stock.bas
+|   |       suite.bas
+|   |       synonym.bas
+|   |       target.bas
+|   |       test.bas
+|   |       test1.bas
+|   |       tictac1.bas
+|   |       tictac2.bas
+|   |       towers.bas
+|   |       train.bas
+|   |       trap.bas
+|   |       war.bas
+|   |       weekday.bas
+|   |       word.bas
+|   |       
+|   +---DOS11
+|   |       ART.BAS
+|   |       BALL.BAS
+|   |       BLUE.BAS
+|   |       BUG.BAS
+|   |       CALENDAR.BAS
+|   |       CIRCLE.BAS
+|   |       COLORBAR.BAS
+|   |       COMM.BAS
+|   |       DANDY.BAS
+|   |       DONKEY.BAS
+|   |       FORTY.BAS
+|   |       HAT.BAS
+|   |       HUMOR.BAS
+|   |       MARCH.BAS
+|   |       MORTGAGE.BAS
+|   |       MUSIC.BAS
+|   |       PIECHART.BAS
+|   |       POP.BAS
+|   |       README.md
+|   |       SAKURA.BAS
+|   |       SAMPLES.BAS
+|   |       SCALES.BAS
+|   |       SPACE.BAS
+|   |       STARS.BAS
+|   |       TEST.BAS
+|   |       
+|   \---m1mice
+|           basicpp-console.exe
+|           MODEL1.FNT
+|           MODEL1GW.BAS
+|           README.txt
+|           ROMIMAGE
+|           
++---docs
+|   |   quick_reference.MD
+|   |   
+|   +---Config_Environment
+|   |       OPTION_VIDEO.md
+|   |       
+|   +---Control_Flow
+|   |   +---Branching
+|   |   |       GOSUB.md
+|   |   |       GOTO.md
+|   |   |       IF_POSTFIX.md
+|   |   |       ON_GOSUB.md
+|   |   |       ON_GOTO.md
+|   |   |       RETURN.md
+|   |   |       UNLESS.md
+|   |   |       
+|   |   +---Data_Flow
+|   |   |       DATA.md
+|   |   |       READ.md
+|   |   |       RESTORE.md
+|   |   |       
+|   |   +---Error_Handling
+|   |   |       ERL.md
+|   |   |       ERR$.md
+|   |   |       ERR.md
+|   |   |       ERROR.md
+|   |   |       ON_ERROR_GOTO.md
+|   |   |       RESUME.md
+|   |   |       
+|   |   +---Events_and_Interrupts
+|   |   |       KEY.md
+|   |   |       ON_KEY.md
+|   |   |       ON_PLAY.md
+|   |   |       ON_TIMER.md
+|   |   |       TIMER.md
+|   |   |       
+|   |   +---Loops
+|   |   |       DO.md
+|   |   |       FOR.md
+|   |   |       LOOP.md
+|   |   |       NEXT.md
+|   |   |       WEND.md
+|   |   |       WHILE.md
+|   |   |       
+|   |   +---Multitasking
+|   |   |       TASK.md
+|   |   |       
+|   |   \---Procedures
+|   |           CALL.md
+|   |           DECLARE.md
+|   |           DEF_FN.md
+|   |           FUNCTION.md
+|   |           SUB.md
+|   |           
+|   +---debugging
+|   |   +---Breakpoints_And_Flow
+|   |   |       CONT.md
+|   |   |       
+|   |   +---Diagnostics
+|   |   |       CHECK.md
+|   |   |       DUMP.md
+|   |   |       VARS.md
+|   |   |       VERIFY.md
+|   |   |       
+|   |   +---Tracing
+|   |   |       DEBUG.md
+|   |   |       TRACE.md
+|   |   |       TROFF.md
+|   |   |       TRON.md
+|   |   |       
+|   |   \---Unit_Testing
+|   |           ASSERT.md
+|   |           SELFTEST.md
+|   |           
+|   +---Devices_Hardware
+|   |   |   LPOS.md
+|   |   |   
+|   |   +---serial_bio
+|   |   |       IOCTL.md
+|   |   |       
+|   |   +---virtual_dev
+|   |   |       VDEV.md
+|   |   |       
+|   |   \---virtual_mach
+|   |           VMEM.md
+|   |           
+|   +---File_IO
+|   |   +---Directory
+|   |   |       CHDIR.md
+|   |   |       CURDIRDOLLAR.md
+|   |   |       CWDDOLLAR.md
+|   |   |       MKDIR.md
+|   |   |       PWD.md
+|   |   |       PWDDOLLAR.md
+|   |   |       RMDIR.md
+|   |   |       
+|   |   +---Filesystem
+|   |   |       DIR.md
+|   |   |       EXISTS.md
+|   |   |       FILEMOD$.md
+|   |   |       FILES.md
+|   |   |       FILESIZE.md
+|   |   |       NAME.md
+|   |   |       SCRATCH.md
+|   |   |       
+|   |   +---Metadata_Locks
+|   |   |       ACCESS.md
+|   |   |       ASK.md
+|   |   |       FILEMOD.md
+|   |   |       LOCK.md
+|   |   |       SET.md
+|   |   |       UNLOCK.md
+|   |   |       
+|   |   +---Random_Access
+|   |   |       FIELD.md
+|   |   |       GET.md
+|   |   |       POINTER.md
+|   |   |       PUT.md
+|   |   |       SEEK.md
+|   |   |       
+|   |   +---Sequential_IO
+|   |   |       CLOSE.md
+|   |   |       EOF.md
+|   |   |       LOC.md
+|   |   |       LOF.md
+|   |   |       OPEN.md
+|   |   |       RESET.md
+|   |   |       
+|   |   \---VFS
+|   |           MOUNT.md
+|   |           MOUNTS.md
+|   |           UMOUNT.md
+|   |           UNLOAD.md
+|   |           VPATH.md
+|   |           
+|   +---graphics_system
+|   |   +---Advanced_Drawing
+|   |   |       CIRCLE.md
+|   |   |       DRAW.md
+|   |   |       DRAWTO.md
+|   |   |       LINE.md
+|   |   |       PAINT.md
+|   |   |       
+|   |   +---Basic_Drawing
+|   |   |       AT.md
+|   |   |       PLOT.md
+|   |   |       POINT.md
+|   |   |       PRESET.md
+|   |   |       PSET.md
+|   |   |       
+|   |   +---Buffer_Management
+|   |   |       PCOPY.md
+|   |   |       
+|   |   +---Color_Modifiers
+|   |   |       BORDER.md
+|   |   |       INK.md
+|   |   |       PALETTE.md
+|   |   |       PAPER.md
+|   |   |       
+|   |   +---Display_Configuration
+|   |   |       DISPLAY.md
+|   |   |       
+|   |   +---Input_Devices
+|   |   |       PEN.md
+|   |   |       
+|   |   +---Viewport_Mapping
+|   |   |       PMAP.md
+|   |   |       
+|   |   \---Visual_Attributes
+|   |           BRIGHT.md
+|   |           FLASH.md
+|   |           INVERSE.md
+|   |           OVER.md
+|   |           REVERSE.md
+|   |           
+|   +---Input_Output
+|   |   +---Advanced_Display
+|   |   |       GRAPHICS.md
+|   |   |       SCREEN.md
+|   |   |       VIEW.md
+|   |   |       WINDOW.md
+|   |   |       
+|   |   +---Audio
+|   |   |       BEEP.md
+|   |   |       PLAY.md
+|   |   |       SOUND.md
+|   |   |       
+|   |   +---Console
+|   |   |       CSRLIN.md
+|   |   |       POS.md
+|   |   |       
+|   |   +---Console_Display
+|   |   |       CLS.md
+|   |   |       COLOR.md
+|   |   |       CONSOLE.md
+|   |   |       HOME.md
+|   |   |       LOCATE.md
+|   |   |       WIDTH.md
+|   |   |       
+|   |   +---Hardware_Ports
+|   |   |       INP.md
+|   |   |       OUT.md
+|   |   |       WAIT.md
+|   |   |       
+|   |   +---Keyboard_Input
+|   |   |       INKEY.md
+|   |   |       INKEYDOLLAR.md
+|   |   |       INPUT.md
+|   |   |       INPUTDOLLAR.md
+|   |   |       ONKEYDOLLAR.md
+|   |   |       
+|   |   +---Output_Formatting
+|   |   |       IMAGE.md
+|   |   |       PRINT.md
+|   |   |       SPC.md
+|   |   |       TAB.md
+|   |   |       WRITE.md
+|   |   |       
+|   |   \---Printer
+|   |           LLIST.md
+|   |           LPRINT.md
+|   |           
+|   +---Introspection
+|   |       BIOS.md
+|   |       CATALOG.md
+|   |       CWD.md
+|   |       HELP.md
+|   |       HOSTNAME.md
+|   |       INFO.md
+|   |       USERNAME.md
+|   |       VER.md
+|   |       
+|   +---io
+|   |   +---Block_IO
+|   |   |       BIOCHECKSUM.md
+|   |   |       BIOCOMPARE.md
+|   |   |       BIOCOPY.md
+|   |   |       BIOFILL.md
+|   |   |       BIOREAD_STR.md
+|   |   |       BIOSIZE.md
+|   |   |       BIOSTATUS.md
+|   |   |       BIOWRITE.md
+|   |   |       
+|   |   +---Network_IO
+|   |   |       NBYTESWAITING.md
+|   |   |       NCONNECTED.md
+|   |   |       NEOF.md
+|   |   |       NERROR.md
+|   |   |       NHTTPSTATUS.md
+|   |   |       NINFO_STR.md
+|   |   |       NJSONQUERY_STR.md
+|   |   |       NREAD_STR.md
+|   |   |       NSTATUS.md
+|   |   |       NWRITE.md
+|   |   |       
+|   |   +---Persistent_IO
+|   |   |       PRETRIEVE.md
+|   |   |       PRETRIEVE_STR.md
+|   |   |       PSTORE.md
+|   |   |       
+|   |   +---Stream_IO
+|   |   |       SIOAVAIL.md
+|   |   |       SIOFLUSH.md
+|   |   |       SIOREADLN_STR.md
+|   |   |       SIOREAD_STR.md
+|   |   |       SIOSEEK.md
+|   |   |       SIOSTATUS.md
+|   |   |       SIOWRITE.md
+|   |   |       
+|   |   \---Transaction_IO
+|   |           TXNSTATUS.md
+|   |           
+|   +---logic_and_bitwise
+|   |       AND.md
+|   |       EQV.md
+|   |       HI.md
+|   |       IMP.md
+|   |       LO.md
+|   |       NOT.md
+|   |       OR.md
+|   |       XOR.md
+|   |       
+|   +---math
+|   |   |   MOD.md
+|   |   |   TIM.md
+|   |   |   
+|   |   +---Advanced_Math
+|   |   |       ACOS.md
+|   |   |       ASIN.md
+|   |   |       ATN.md
+|   |   |       AVG.md
+|   |   |       CABS.md
+|   |   |       CARG.md
+|   |   |       CDBL.md
+|   |   |       CEXP.md
+|   |   |       CLOG.md
+|   |   |       COMP.md
+|   |   |       COMPLEX.md
+|   |   |       CONJ.md
+|   |   |       CPOW.md
+|   |   |       CSQR.md
+|   |   |       IMAG.md
+|   |   |       LGT.md
+|   |   |       LOG10.md
+|   |   |       LOG2.md
+|   |   |       MAX.md
+|   |   |       MED.md
+|   |   |       MIN.md
+|   |   |       PDIF.md
+|   |   |       PI.md
+|   |   |       REAL.md
+|   |   |       RND.md
+|   |   |       ROUND.md
+|   |   |       SGN.md
+|   |   |       SQR.md
+|   |   |       TANH.md
+|   |   |       
+|   |   +---Exponents_Logarithms
+|   |   |       EXP.md
+|   |   |       LOG.md
+|   |   |       
+|   |   +---Hyperbolic_Trigonometry
+|   |   |       COSH.md
+|   |   |       SINH.md
+|   |   |       
+|   |   +---Matrix_Math
+|   |   |       MAT.md
+|   |   |       MAT_IDN.md
+|   |   |       MAT_INV.md
+|   |   |       MAT_RND.md
+|   |   |       MAT_TRN.md
+|   |   |       
+|   |   +---Trigonometry
+|   |   |       COS.md
+|   |   |       SIN.md
+|   |   |       TAN.md
+|   |   |       
+|   |   +---Type_Conversion
+|   |   |       BIN$.md
+|   |   |       HEX$.md
+|   |   |       NUM$.md
+|   |   |       NUM.md
+|   |   |       OCT$.md
+|   |   |       
+|   |   \---Utility_Math
+|   |           ABS.md
+|   |           FIX.md
+|   |           INT.md
+|   |           
+|   +---Persistence
+|   |   \---Key_Value_Storage
+|   |           PRETRIEVE$.md
+|   |           
+|   +---progmgmt
+|   |   |   AUTO.md
+|   |   |   DELETE.md
+|   |   |   EDIT.md
+|   |   |   REFORMAT.md
+|   |   |   RENAME.md
+|   |   |   RENUM.md
+|   |   |   
+|   |   +---Execution
+|   |   |       END.md
+|   |   |       RUN.md
+|   |   |       STOP.md
+|   |   |       
+|   |   +---Persistence
+|   |   |       LOAD.md
+|   |   |       SAVE.md
+|   |   |       
+|   |   \---Workspace
+|   |           CLEAR.md
+|   |           LIST.md
+|   |           NEW.md
+|   |           
+|   +---strings
+|   |   +---String_Case_Conversion
+|   |   |       ICASE$.md
+|   |   |       LCASE$.md
+|   |   |       MCASE$.md
+|   |   |       TCASE$.md
+|   |   |       UCASE$.md
+|   |   |       
+|   |   +---String_Extraction
+|   |   |       LEFT$.md
+|   |   |       MID$.md
+|   |   |       RIGHT$.md
+|   |   |       SEG$.md
+|   |   |       
+|   |   +---String_Formatting
+|   |   |       CHR$.md
+|   |   |       GUID$.md
+|   |   |       SPACE$.md
+|   |   |       STRING$.md
+|   |   |       
+|   |   +---String_Properties
+|   |   |       ASC.md
+|   |   |       INSTR.md
+|   |   |       LEN.md
+|   |   |       
+|   |   +---String_Search_And_Replace
+|   |   |       EDIT$.md
+|   |   |       LTRIM$.md
+|   |   |       REPLACE$.md
+|   |   |       REVERSE$.md
+|   |   |       RTRIM$.md
+|   |   |       TRIM$.md
+|   |   |       
+|   |   \---String_Type_Conversion
+|   |           STR$.md
+|   |           VAL.md
+|   |           
+|   +---System_Integration
+|   |   +---Configuration
+|   |   |       ALIAS.md
+|   |   |       KEYWORD.md
+|   |   |       OPTION.md
+|   |   |       OVERRIDE.md
+|   |   |       SCOPE.md
+|   |   |       
+|   |   +---Environment
+|   |   |       CLOCK$.md
+|   |   |       DATE$.md
+|   |   |       ENVIRON$.md
+|   |   |       ENVIRON.md
+|   |   |       ENVIRONSTR.md
+|   |   |       HOSTNAME$.md
+|   |   |       SYSTEM.md
+|   |   |       TIME$.md
+|   |   |       USERNAME$.md
+|   |   |       
+|   |   \---Process_Ops
+|   |           EXEC.md
+|   |           SHELL.md
+|   |           SYS.md
+|   |           
+|   \---Variables_Memory
+|       |   CWD$.md
+|       |   MEMMAP$.md
+|       |   PWD$.md
+|       |   
+|       +---Arrays
+|       |       DIM.md
+|       |       ERASE.md
+|       |       LBOUND.md
+|       |       REDIM.md
+|       |       UBOUND.md
+|       |       
+|       +---Conversion
+|       |       CVD.md
+|       |       CVI.md
+|       |       CVS.md
+|       |       MKDSTR.md
+|       |       MKISTR.md
+|       |       MKSSTR.md
+|       |       
+|       +---Memory
+|       |       BANK.md
+|       |       FRE.md
+|       |       PEEK.md
+|       |       POKE.md
+|       |       RAMBANKS.md
+|       |       
+|       +---Memory_Access
+|       |       MEMMAP.md
+|       |       PEEKB.md
+|       |       POKEB.md
+|       |       SEG.md
+|       |       VARPTR.md
+|       |       
+|       +---Memory_State
+|       |       CLR.md
+|       |       MEM.md
+|       |       SIZE.md
+|       |       
+|       +---Packing
+|       |       LSET.md
+|       |       RSET.md
+|       |       
+|       +---Scope
+|       |       COMMON.md
+|       |       SHARED.md
+|       |       
+|       +---System_Variables
+|       |       DATE.md
+|       |       DAY$.md
+|       |       DAY.md
+|       |       DOW.md
+|       |       FALSE.md
+|       |       HOURS.md
+|       |       JIFFIES.md
+|       |       MINUTES.md
+|       |       MONTH$.md
+|       |       MONTH.md
+|       |       SECONDS.md
+|       |       TI$.md
+|       |       TI.md
+|       |       TICKS.md
+|       |       TIME.md
+|       |       TODAY$.md
+|       |       TRUE.md
+|       |       YEAR.md
+|       |       
+|       +---Types
+|       |       DEFDBL.md
+|       |       DEFINT.md
+|       |       DEFSNG.md
+|       |       DEFSTR.md
+|       |       
+|       +---Variables
+|       |       LET.md
+|       |       REM.md
+|       |       SWAP.md
+|       |       
+|       \---Variables_Memory
+|               CINT.md
+|               CSNG.md
+|               
++---games
+|       adventure.bas
+|       defender.bas
+|       donkeykong.bas
+|       invaders.bas
+|       mario.bas
+|       missile.bas
+|       pacman.bas
+|       pegsol.bas
+|       solitaire.bas
+|       starfield.bas
+|       zelda.bas
+|       
++---help
+|   |   quick_reference.TXT
+|   |   SUMMARY.txt
+|   |   
+|   +---Config_Environment
+|   |       OPTION_VIDEO.txt
+|   |       
+|   +---Control_Flow
+|   |   +---Branching
+|   |   |       GOSUB.txt
+|   |   |       GOTO.txt
+|   |   |       IF_POSTFIX.txt
+|   |   |       ON_GOSUB.txt
+|   |   |       ON_GOTO.txt
+|   |   |       RETURN.txt
+|   |   |       UNLESS.txt
+|   |   |       
+|   |   +---Data_Flow
+|   |   |       DATA.txt
+|   |   |       READ.txt
+|   |   |       RESTORE.txt
+|   |   |       
+|   |   +---Error_Handling
+|   |   |       ERL.txt
+|   |   |       ERR$.txt
+|   |   |       ERR.txt
+|   |   |       ERROR.txt
+|   |   |       ON_ERROR_GOTO.txt
+|   |   |       RESUME.txt
+|   |   |       
+|   |   +---Events_and_Interrupts
+|   |   |       KEY.txt
+|   |   |       ON_KEY.txt
+|   |   |       ON_PLAY.txt
+|   |   |       ON_TIMER.txt
+|   |   |       TIMER.txt
+|   |   |       
+|   |   +---Loops
+|   |   |       DO.txt
+|   |   |       FOR.txt
+|   |   |       LOOP.txt
+|   |   |       NEXT.txt
+|   |   |       WEND.txt
+|   |   |       WHILE.txt
+|   |   |       
+|   |   +---Multitasking
+|   |   |       TASK.txt
+|   |   |       
+|   |   \---Procedures
+|   |           CALL.txt
+|   |           DECLARE.txt
+|   |           DEF_FN.txt
+|   |           FUNCTION.txt
+|   |           SUB.txt
+|   |           
+|   +---debugging
+|   |   +---Breakpoints_And_Flow
+|   |   |       CONT.txt
+|   |   |       
+|   |   +---Diagnostics
+|   |   |       CHECK.txt
+|   |   |       DUMP.txt
+|   |   |       VARS.txt
+|   |   |       VERIFY.txt
+|   |   |       
+|   |   +---Tracing
+|   |   |       DEBUG.txt
+|   |   |       TRACE.txt
+|   |   |       TROFF.txt
+|   |   |       TRON.txt
+|   |   |       
+|   |   \---Unit_Testing
+|   |           ASSERT.txt
+|   |           SELFTEST.txt
+|   |           
+|   +---Devices_Hardware
+|   |   |   LPOS.txt
+|   |   |   
+|   |   +---serial_bio
+|   |   |       IOCTL.txt
+|   |   |       
+|   |   +---virtual_dev
+|   |   |       VDEV.txt
+|   |   |       
+|   |   \---virtual_mach
+|   |           VMEM.txt
+|   |           
+|   +---File_IO
+|   |   +---Directory
+|   |   |       CHDIR.txt
+|   |   |       CURDIRDOLLAR.txt
+|   |   |       CWDDOLLAR.txt
+|   |   |       MKDIR.txt
+|   |   |       PWD.txt
+|   |   |       PWDDOLLAR.txt
+|   |   |       RMDIR.txt
+|   |   |       
+|   |   +---Filesystem
+|   |   |       DIR.txt
+|   |   |       EXISTS.txt
+|   |   |       FILEMOD$.txt
+|   |   |       FILES.txt
+|   |   |       FILESIZE.txt
+|   |   |       NAME.txt
+|   |   |       SCRATCH.txt
+|   |   |       
+|   |   +---Metadata_Locks
+|   |   |       ACCESS.txt
+|   |   |       ASK.txt
+|   |   |       FILEMOD.txt
+|   |   |       LOCK.txt
+|   |   |       SET.txt
+|   |   |       UNLOCK.txt
+|   |   |       
+|   |   +---Random_Access
+|   |   |       FIELD.txt
+|   |   |       GET.txt
+|   |   |       POINTER.txt
+|   |   |       PUT.txt
+|   |   |       SEEK.txt
+|   |   |       
+|   |   +---Sequential_IO
+|   |   |       CLOSE.txt
+|   |   |       EOF.txt
+|   |   |       LOC.txt
+|   |   |       LOF.txt
+|   |   |       OPEN.txt
+|   |   |       RESET.txt
+|   |   |       
+|   |   \---VFS
+|   |           MOUNT.txt
+|   |           MOUNTS.txt
+|   |           UMOUNT.txt
+|   |           UNLOAD.txt
+|   |           VPATH.txt
+|   |           
+|   +---graphics_system
+|   |   +---Advanced_Drawing
+|   |   |       CIRCLE.txt
+|   |   |       DRAW.txt
+|   |   |       DRAWTO.txt
+|   |   |       LINE.txt
+|   |   |       PAINT.txt
+|   |   |       
+|   |   +---Basic_Drawing
+|   |   |       AT.txt
+|   |   |       PLOT.txt
+|   |   |       POINT.txt
+|   |   |       PRESET.txt
+|   |   |       PSET.txt
+|   |   |       
+|   |   +---Buffer_Management
+|   |   |       PCOPY.txt
+|   |   |       
+|   |   +---Color_Modifiers
+|   |   |       BORDER.txt
+|   |   |       INK.txt
+|   |   |       PALETTE.txt
+|   |   |       PAPER.txt
+|   |   |       
+|   |   +---Display_Configuration
+|   |   |       DISPLAY.txt
+|   |   |       
+|   |   +---Input_Devices
+|   |   |       PEN.txt
+|   |   |       
+|   |   +---Viewport_Mapping
+|   |   |       PMAP.txt
+|   |   |       
+|   |   \---Visual_Attributes
+|   |           BRIGHT.txt
+|   |           FLASH.txt
+|   |           INVERSE.txt
+|   |           OVER.txt
+|   |           REVERSE.txt
+|   |           
+|   +---Input_Output
+|   |   +---Advanced_Display
+|   |   |       GRAPHICS.txt
+|   |   |       SCREEN.txt
+|   |   |       VIEW.txt
+|   |   |       WINDOW.txt
+|   |   |       
+|   |   +---Audio
+|   |   |       BEEP.txt
+|   |   |       PLAY.txt
+|   |   |       SOUND.txt
+|   |   |       
+|   |   +---Console
+|   |   |       CSRLIN.txt
+|   |   |       POS.txt
+|   |   |       
+|   |   +---Console_Display
+|   |   |       CLS.txt
+|   |   |       COLOR.txt
+|   |   |       CONSOLE.txt
+|   |   |       HOME.txt
+|   |   |       LOCATE.txt
+|   |   |       WIDTH.txt
+|   |   |       
+|   |   +---Hardware_Ports
+|   |   |       INP.txt
+|   |   |       OUT.txt
+|   |   |       WAIT.txt
+|   |   |       
+|   |   +---Keyboard_Input
+|   |   |       INKEY.txt
+|   |   |       INKEYDOLLAR.txt
+|   |   |       INPUT.txt
+|   |   |       INPUTDOLLAR.txt
+|   |   |       ONKEYDOLLAR.txt
+|   |   |       
+|   |   +---Output_Formatting
+|   |   |       IMAGE.txt
+|   |   |       PRINT.txt
+|   |   |       SPC.txt
+|   |   |       TAB.txt
+|   |   |       WRITE.txt
+|   |   |       
+|   |   \---Printer
+|   |           LLIST.txt
+|   |           LPRINT.txt
+|   |           
+|   +---Introspection
+|   |       BIOS.txt
+|   |       CATALOG.txt
+|   |       CWD.txt
+|   |       HELP.txt
+|   |       HOSTNAME.txt
+|   |       INFO.txt
+|   |       USERNAME.txt
+|   |       VER.txt
+|   |       
+|   +---io
+|   |   +---Block_IO
+|   |   |       BIOCHECKSUM.txt
+|   |   |       BIOCOMPARE.txt
+|   |   |       BIOCOPY.txt
+|   |   |       BIOFILL.txt
+|   |   |       BIOREAD_STR.txt
+|   |   |       BIOSIZE.txt
+|   |   |       BIOSTATUS.txt
+|   |   |       BIOWRITE.txt
+|   |   |       
+|   |   +---Network_IO
+|   |   |       NBYTESWAITING.txt
+|   |   |       NCONNECTED.txt
+|   |   |       NEOF.txt
+|   |   |       NERROR.txt
+|   |   |       NHTTPSTATUS.txt
+|   |   |       NINFO_STR.txt
+|   |   |       NJSONQUERY_STR.txt
+|   |   |       NREAD_STR.txt
+|   |   |       NSTATUS.txt
+|   |   |       NWRITE.txt
+|   |   |       
+|   |   +---Persistent_IO
+|   |   |       PRETRIEVE.txt
+|   |   |       PRETRIEVE_STR.txt
+|   |   |       PSTORE.txt
+|   |   |       
+|   |   +---Stream_IO
+|   |   |       SIOAVAIL.txt
+|   |   |       SIOFLUSH.txt
+|   |   |       SIOREADLN_STR.txt
+|   |   |       SIOREAD_STR.txt
+|   |   |       SIOSEEK.txt
+|   |   |       SIOSTATUS.txt
+|   |   |       SIOWRITE.txt
+|   |   |       
+|   |   \---Transaction_IO
+|   |           TXNSTATUS.txt
+|   |           
+|   +---logic_and_bitwise
+|   |       AND.txt
+|   |       EQV.txt
+|   |       HI.txt
+|   |       IMP.txt
+|   |       LO.txt
+|   |       NOT.txt
+|   |       OR.txt
+|   |       XOR.txt
+|   |       
+|   +---math
+|   |   |   MOD.txt
+|   |   |   TIM.txt
+|   |   |   
+|   |   +---Advanced_Math
+|   |   |       ACOS.txt
+|   |   |       ASIN.txt
+|   |   |       ATN.txt
+|   |   |       AVG.txt
+|   |   |       CABS.txt
+|   |   |       CARG.txt
+|   |   |       CDBL.txt
+|   |   |       CEXP.txt
+|   |   |       CLOG.txt
+|   |   |       COMP.txt
+|   |   |       COMPLEX.txt
+|   |   |       CONJ.txt
+|   |   |       CPOW.txt
+|   |   |       CSQR.txt
+|   |   |       IMAG.txt
+|   |   |       LGT.txt
+|   |   |       LOG10.txt
+|   |   |       LOG2.txt
+|   |   |       MAX.txt
+|   |   |       MED.txt
+|   |   |       MIN.txt
+|   |   |       PDIF.txt
+|   |   |       PI.txt
+|   |   |       REAL.txt
+|   |   |       RND.txt
+|   |   |       ROUND.txt
+|   |   |       SGN.txt
+|   |   |       SQR.txt
+|   |   |       TANH.txt
+|   |   |       
+|   |   +---Exponents_Logarithms
+|   |   |       EXP.txt
+|   |   |       LOG.txt
+|   |   |       
+|   |   +---Hyperbolic_Trigonometry
+|   |   |       COSH.txt
+|   |   |       SINH.txt
+|   |   |       
+|   |   +---Matrix_Math
+|   |   |       MAT.txt
+|   |   |       MAT_IDN.txt
+|   |   |       MAT_INV.txt
+|   |   |       MAT_RND.txt
+|   |   |       MAT_TRN.txt
+|   |   |       
+|   |   +---Trigonometry
+|   |   |       COS.txt
+|   |   |       SIN.txt
+|   |   |       TAN.txt
+|   |   |       
+|   |   +---Type_Conversion
+|   |   |       BIN$.txt
+|   |   |       HEX$.txt
+|   |   |       NUM$.txt
+|   |   |       NUM.txt
+|   |   |       OCT$.txt
+|   |   |       
+|   |   \---Utility_Math
+|   |           ABS.txt
+|   |           FIX.txt
+|   |           INT.txt
+|   |           
+|   +---Persistence
+|   |   \---Key_Value_Storage
+|   |           PRETRIEVE$.txt
+|   |           
+|   +---progmgmt
+|   |   |   AUTO.txt
+|   |   |   DELETE.txt
+|   |   |   EDIT.txt
+|   |   |   REFORMAT.txt
+|   |   |   RENAME.txt
+|   |   |   RENUM.txt
+|   |   |   
+|   |   +---Execution
+|   |   |       END.txt
+|   |   |       RUN.txt
+|   |   |       STOP.txt
+|   |   |       
+|   |   +---Persistence
+|   |   |       LOAD.txt
+|   |   |       SAVE.txt
+|   |   |       
+|   |   \---Workspace
+|   |           CLEAR.txt
+|   |           LIST.txt
+|   |           NEW.txt
+|   |           
+|   +---strings
+|   |   +---String_Case_Conversion
+|   |   |       ICASE$.txt
+|   |   |       LCASE$.txt
+|   |   |       MCASE$.txt
+|   |   |       TCASE$.txt
+|   |   |       UCASE$.txt
+|   |   |       
+|   |   +---String_Extraction
+|   |   |       LEFT$.txt
+|   |   |       MID$.txt
+|   |   |       RIGHT$.txt
+|   |   |       SEG$.txt
+|   |   |       
+|   |   +---String_Formatting
+|   |   |       CHR$.txt
+|   |   |       GUID$.txt
+|   |   |       SPACE$.txt
+|   |   |       STRING$.txt
+|   |   |       
+|   |   +---String_Properties
+|   |   |       ASC.txt
+|   |   |       INSTR.txt
+|   |   |       LEN.txt
+|   |   |       
+|   |   +---String_Search_And_Replace
+|   |   |       EDIT$.txt
+|   |   |       LTRIM$.txt
+|   |   |       REPLACE$.txt
+|   |   |       REVERSE$.txt
+|   |   |       RTRIM$.txt
+|   |   |       TRIM$.txt
+|   |   |       
+|   |   \---String_Type_Conversion
+|   |           STR$.txt
+|   |           VAL.txt
+|   |           
+|   +---System_Integration
+|   |   +---Configuration
+|   |   |       ALIAS.txt
+|   |   |       KEYWORD.txt
+|   |   |       OPTION.txt
+|   |   |       OVERRIDE.txt
+|   |   |       SCOPE.txt
+|   |   |       
+|   |   +---Environment
+|   |   |       CLOCK$.txt
+|   |   |       DATE$.txt
+|   |   |       ENVIRON$.txt
+|   |   |       ENVIRON.txt
+|   |   |       ENVIRONSTR.txt
+|   |   |       HOSTNAME$.txt
+|   |   |       SYSTEM.txt
+|   |   |       TIME$.txt
+|   |   |       USERNAME$.txt
+|   |   |       
+|   |   \---Process_Ops
+|   |           EXEC.txt
+|   |           SHELL.txt
+|   |           SYS.txt
+|   |           
+|   \---Variables_Memory
+|       |   CWD$.txt
+|       |   MEMMAP$.txt
+|       |   PWD$.txt
+|       |   
+|       +---Arrays
+|       |       DIM.txt
+|       |       ERASE.txt
+|       |       LBOUND.txt
+|       |       REDIM.txt
+|       |       UBOUND.txt
+|       |       
+|       +---Conversion
+|       |       CVD.txt
+|       |       CVI.txt
+|       |       CVS.txt
+|       |       MKDSTR.txt
+|       |       MKISTR.txt
+|       |       MKSSTR.txt
+|       |       
+|       +---Memory
+|       |       BANK.txt
+|       |       FRE.txt
+|       |       PEEK.txt
+|       |       POKE.txt
+|       |       RAMBANKS.txt
+|       |       
+|       +---Memory_Access
+|       |       MEMMAP.txt
+|       |       PEEKB.txt
+|       |       POKEB.txt
+|       |       SEG.txt
+|       |       VARPTR.txt
+|       |       
+|       +---Memory_State
+|       |       CLR.txt
+|       |       MEM.txt
+|       |       SIZE.txt
+|       |       
+|       +---Packing
+|       |       LSET.txt
+|       |       RSET.txt
+|       |       
+|       +---Scope
+|       |       COMMON.txt
+|       |       SHARED.txt
+|       |       
+|       +---System_Variables
+|       |       DATE.txt
+|       |       DAY$.txt
+|       |       DAY.txt
+|       |       DOW.txt
+|       |       FALSE.txt
+|       |       HOURS.txt
+|       |       JIFFIES.txt
+|       |       MINUTES.txt
+|       |       MONTH$.txt
+|       |       MONTH.txt
+|       |       SECONDS.txt
+|       |       TI$.txt
+|       |       TI.txt
+|       |       TICKS.txt
+|       |       TIME.txt
+|       |       TODAY$.txt
+|       |       TRUE.txt
+|       |       YEAR.txt
+|       |       
+|       +---Types
+|       |       DEFDBL.txt
+|       |       DEFINT.txt
+|       |       DEFSNG.txt
+|       |       DEFSTR.txt
+|       |       
+|       +---Variables
+|       |       LET.txt
+|       |       REM.txt
+|       |       SWAP.txt
+|       |       
+|       \---Variables_Memory
+|               CINT.txt
+|               CSNG.txt
+|               
++---lib
+|       ADVENT.LIB
+|       COUNTER.lib
+|       COUNTER.spec
+|       EXTCMDS.LIB
+|       GAME.LIB
+|       GAMEKIT.LIB
+|       IOTKIT.LIB
+|       REGEX.LIB
+|       TINYDB.LIB
+|       TURTLE.bpl
+|       TURTLE.LIB
+|       
++---samples
+|       DEMOS.BAS
+|       FILEIO.BAS
+|       FUJIDEMO.BAS
+|       GRAPHICS.BAS
+|       MENU.BAS
+|       PRINTTEST.BAS
+|       SAMPLE_MENU.BAS
+|       SPRITES.BAS
+|       VDEV.BAS
+|       
++---scratch
+|       add_alarm.py
+|       add_kws.py
+|       add_mid_stmt.py
+|       add_parser_cases.py
+|       add_parser_decls.py
+|       add_seg.py
+|       add_today_dollar.py
+|       append_edge_cases.py
+|       append_rules.py
+|       append_segs.py
+|       append_walkthrough_time.py
+|       audit_changelog.py
+|       audit_docs.py
+|       audit_parser.py
+|       build_console.bat
+|       build_docs.py
+|       build_io_docs.py
+|       build_io_tests.py
+|       build_modular_docs.py
+|       build_quick_ref.py
+|       bulk_update.py
+|       bump_version.py
+|       bump_version_4_9_11.py
+|       check_coverage.py
+|       check_funcs.py
+|       check_io_kws.py
+|       cleanup_io_docs.py
+|       clean_all_debug_how.py
+|       clean_debug.py
+|       compile_and_test.py
+|       compile_via_nmake.bat
+|       create_missing_docs.py
+|       create_pm_test.py
+|       create_test.py
+|       create_tests.py
+|       debug_lexer.py
+|       debug_month.py
+|       debug_today.py
+|       doc_io_kws.py
+|       dump.patch
+|       dump_reg.bas
+|       dump_reg.py
+|       find_global_duplicates.py
+|       find_how.py
+|       fix3.py
+|       fix4.py
+|       fix_alarm.py
+|       fix_at.py
+|       fix_atomic.py
+|       fix_build_linux.py
+|       fix_c.py
+|       fix_c2.py
+|       fix_c3.py
+|       fix_c4.py
+|       fix_docs.py
+|       fix_docs_errors.py
+|       fix_docs_mcase.py
+|       fix_help.py
+|       fix_help_c.py
+|       fix_help_quotes.py
+|       fix_host_user.py
+|       fix_includes.py
+|       fix_keyword_strings.py
+|       fix_key_func.py
+|       fix_lexer_keywords.py
+|       fix_lexer_month.py
+|       fix_lexer_swap.py
+|       fix_lite_stubs.py
+|       fix_mcase.py
+|       fix_parser_cmds.py
+|       fix_parser_io.py
+|       fix_play.py
+|       fix_quick_ref.py
+|       fix_state.py
+|       fix_stop.py
+|       fix_stop2.py
+|       fix_strig.py
+|       fix_test.py
+|       fix_tests.py
+|       fix_today_lexer.py
+|       fix_vm_warning.py
+|       generated_help_db.c
+|       generate_docs.py
+|       generate_exhaustive_docs.py
+|       generate_help_db.py
+|       generate_string_docs.py
+|       gen_adv_math.py
+|       gen_audio_docs.py
+|       gen_docs.py
+|       gen_docs_block.py
+|       gen_docs_network.py
+|       gen_exhaustive.py
+|       gen_graphics_docs.py
+|       gen_math_docs.py
+|       gen_palettes.py
+|       gen_pm_comprehensive.py
+|       gen_pm_docs.py
+|       gen_tests.py
+|       implement_graphics.py
+|       mcase_debug.txt
+|       mcase_out.txt
+|       mcase_test.bas
+|       modularize_docs.py
+|       palettes_out.txt
+|       patch.py
+|       patch2.py
+|       patch3.py
+|       patch4.py
+|       patch5.py
+|       patch_additions.py
+|       patch_alarm.py
+|       patch_ast_c.py
+|       patch_ast_h.py
+|       patch_build_scripts.py
+|       patch_check.py
+|       patch_cleanup.py
+|       patch_codegen_c.py
+|       patch_codegen_helpers.py
+|       patch_config.py
+|       patch_c_syntax.py
+|       patch_debug.py
+|       patch_dir.py
+|       patch_docs.py
+|       patch_dupes.py
+|       patch_exec.py
+|       patch_fileio.py
+|       patch_help.py
+|       patch_help_c.py
+|       patch_help_core_c.py
+|       patch_how.py
+|       patch_jiffies.py
+|       patch_jiffies2.py
+|       patch_jiffies3.py
+|       patch_jiffies4.py
+|       patch_jiffies5.py
+|       patch_lexer.py
+|       patch_lexer_strfuncs.py
+|       patch_line.py
+|       patch_list.py
+|       patch_list2.py
+|       patch_makefd.py
+|       patch_makefile.py
+|       patch_mem_size.py
+|       patch_parser.py
+|       patch_parser_expr.py
+|       patch_parser_internal.py
+|       patch_parser_io.py
+|       patch_parser_lite.py
+|       patch_play_help.py
+|       patch_rename.py
+|       patch_rename2.py
+|       patch_rename3.py
+|       patch_rename4.py
+|       patch_runtime.py
+|       patch_sdl2.py
+|       patch_sdl2_audio.py
+|       patch_sdl2_emu.py
+|       patch_stop.py
+|       patch_test.py
+|       patch_test2.py
+|       patch_test3.py
+|       patch_test4.py
+|       patch_test5.py
+|       patch_ti.py
+|       patch_time.py
+|       patch_today.py
+|       patch_vdev_net.py
+|       print_test.bas
+|       rebuild_catalog.py
+|       remove_debug_today.py
+|       remove_lines.py
+|       remove_static.py
+|       remove_ti_hack.py
+|       rename_keywords.py
+|       replace.py
+|       replace2.py
+|       replace3.py
+|       replace_printf.py
+|       revert_printf.py
+|       run_comprehensive_tests.py
+|       sanity_check.py
+|       sort_catalogs.py
+|       sort_docs.py
+|       sort_references.py
+|       split_docs.py
+|       strip_help_md.py
+|       strip_markdown.py
+|       strip_md2.py
+|       sync_docs_to_help.py
+|       test.bas
+|       test_abs.bas
+|       test_all_strings.bas
+|       test_array.bas
+|       test_c
+|       test_c.c
+|       test_dbg.c
+|       test_hello.bas
+|       test_hello10.py
+|       test_hello11.py
+|       test_hello12.bas
+|       test_hello13.bas
+|       test_hello14.bas
+|       test_hello2.bas
+|       test_hello3.bas
+|       test_hello4.bas
+|       test_hello4.py
+|       test_hello5.bas
+|       test_hello6.py
+|       test_hello7.py
+|       test_hello8.py
+|       test_hello9.bas
+|       test_instr.bas
+|       test_lcase.bas
+|       test_lcase2.bas
+|       test_lex.bat
+|       test_lex.c
+|       test_ltrim.bas
+|       test_ltrim2.bas
+|       test_md_parse.py
+|       test_run.py
+|       time_test.log
+|       time_test.out
+|       update_agents.py
+|       update_beep.py
+|       update_builtins_func.py
+|       update_builtins_h.py
+|       update_b_gfx.py
+|       update_catalogs.py
+|       update_changelog.py
+|       update_docs.py
+|       update_gfxbuf.py
+|       update_help.py
+|       update_help_c.py
+|       update_pm_manual_tests.py
+|       update_pm_refs.py
+|       update_rambanks.py
+|       update_refs.py
+|       update_runtime.py
+|       update_source_tree.py
+|       update_time_vars.py
+|       update_tree.py
+|       verify_docs.py
+|       write_docs.py
+|       write_io_tests.py
+|       write_markdowns.py
+|       write_math_tests.py
+|       write_string_tests.py
+|       
++---scripts
+|       audit_manual_tests.py
+|       sync_docs.py
+|       
++---sdl2
+|   |   BUGS.txt
+|   |   COPYING.txt
+|   |   README-SDL.txt
+|   |   README.txt
+|   |   WhatsNew.txt
+|   |   
+|   +---cmake
+|   |       sdl2-config-version.cmake
+|   |       sdl2-config.cmake
+|   |       
+|   +---docs
+|   |       CONTRIBUTING.md
+|   |       doxyfile
+|   |       README-android.md
+|   |       README-cmake.md
+|   |       README-directfb.md
+|   |       README-dynapi.md
+|   |       README-emscripten.md
+|   |       README-gdk.md
+|   |       README-gesture.md
+|   |       README-git.md
+|   |       README-hg.md
+|   |       README-ios.md
+|   |       README-kmsbsd.md
+|   |       README-linux.md
+|   |       README-macos.md
+|   |       README-n3ds.md
+|   |       README-nacl.md
+|   |       README-ngage.md
+|   |       README-os2.md
+|   |       README-pandora.md
+|   |       README-platforms.md
+|   |       README-porting.md
+|   |       README-ps2.md
+|   |       README-psp.md
+|   |       README-raspberrypi.md
+|   |       README-riscos.md
+|   |       README-touch.md
+|   |       README-versions.md
+|   |       README-visualc.md
+|   |       README-vita.md
+|   |       README-wince.md
+|   |       README-windows.md
+|   |       README-winrt.md
+|   |       README.md
+|   |       release_checklist.md
+|   |       
+|   +---include
+|   |       begin_code.h
+|   |       close_code.h
+|   |       SDL.h
+|   |       SDL_assert.h
+|   |       SDL_atomic.h
+|   |       SDL_audio.h
+|   |       SDL_bits.h
+|   |       SDL_blendmode.h
+|   |       SDL_clipboard.h
+|   |       SDL_config.h
+|   |       SDL_cpuinfo.h
+|   |       SDL_egl.h
+|   |       SDL_endian.h
+|   |       SDL_error.h
+|   |       SDL_events.h
+|   |       SDL_filesystem.h
+|   |       SDL_gamecontroller.h
+|   |       SDL_gesture.h
+|   |       SDL_guid.h
+|   |       SDL_haptic.h
+|   |       SDL_hidapi.h
+|   |       SDL_hints.h
+|   |       SDL_joystick.h
+|   |       SDL_keyboard.h
+|   |       SDL_keycode.h
+|   |       SDL_loadso.h
+|   |       SDL_locale.h
+|   |       SDL_log.h
+|   |       SDL_main.h
+|   |       SDL_messagebox.h
+|   |       SDL_metal.h
+|   |       SDL_misc.h
+|   |       SDL_mouse.h
+|   |       SDL_mutex.h
+|   |       SDL_name.h
+|   |       SDL_opengl.h
+|   |       SDL_opengles.h
+|   |       SDL_opengles2.h
+|   |       SDL_opengles2_gl2.h
+|   |       SDL_opengles2_gl2ext.h
+|   |       SDL_opengles2_gl2platform.h
+|   |       SDL_opengles2_khrplatform.h
+|   |       SDL_opengl_glext.h
+|   |       SDL_pixels.h
+|   |       SDL_platform.h
+|   |       SDL_power.h
+|   |       SDL_quit.h
+|   |       SDL_rect.h
+|   |       SDL_render.h
+|   |       SDL_revision.h
+|   |       SDL_rwops.h
+|   |       SDL_scancode.h
+|   |       SDL_sensor.h
+|   |       SDL_shape.h
+|   |       SDL_stdinc.h
+|   |       SDL_surface.h
+|   |       SDL_system.h
+|   |       SDL_syswm.h
+|   |       SDL_test.h
+|   |       SDL_test_assert.h
+|   |       SDL_test_common.h
+|   |       SDL_test_compare.h
+|   |       SDL_test_crc32.h
+|   |       SDL_test_font.h
+|   |       SDL_test_fuzzer.h
+|   |       SDL_test_harness.h
+|   |       SDL_test_images.h
+|   |       SDL_test_log.h
+|   |       SDL_test_md5.h
+|   |       SDL_test_memory.h
+|   |       SDL_test_random.h
+|   |       SDL_thread.h
+|   |       SDL_timer.h
+|   |       SDL_touch.h
+|   |       SDL_types.h
+|   |       SDL_version.h
+|   |       SDL_video.h
+|   |       SDL_vulkan.h
+|   |       
+|   \---lib
+|       +---x64
+|       |       SDL2.dll
+|       |       SDL2.lib
+|       |       SDL2main.lib
+|       |       SDL2test.lib
+|       |       
+|       \---x86
+|               SDL2.dll
+|               SDL2.lib
+|               SDL2main.lib
+|               SDL2test.lib
+|               
++---source
+|   |   alias_lang.h
+|   |   ast.h
+|   |   boot.h
+|   |   builtins.h
+|   |   bytecode.h
+|   |   check.h
+|   |   codegen.h
+|   |   compat.h
+|   |   compat_plugin.h
+|   |   compiler.h
+|   |   config.h
+|   |   config_file.h
+|   |   console.h
+|   |   debug.c
+|   |   debug.o
+|   |   detok.h
+|   |   device_alias.h
+|   |   dialect.h
+|   |   errors.h
+|   |   error_registry.h
+|   |   eval.h
+|   |   events.h
+|   |   exec.h
+|   |   fileio.h
+|   |   funcreg.h
+|   |   gfxbuf.h
+|   |   help.h
+|   |   interp.h
+|   |   keyword_props.h
+|   |   legacy_compat.h
+|   |   lexer.h
+|   |   libbpp_compiler.a
+|   |   makefd
+|   |   Makefile
+|   |   mbf_math.h
+|   |   memmap.h
+|   |   memory.h
+|   |   module.h
+|   |   mod_edlin.h
+|   |   mod_fujinet.h
+|   |   mod_jit.h
+|   |   mod_legacy_compat.h
+|   |   mod_persist.h
+|   |   mod_stdlib.h
+|   |   mod_upnp.h
+|   |   mod_usb.h
+|   |   override.h
+|   |   parser.h
+|   |   parser_internal.h
+|   |   parser_internal_additions.h
+|   |   pcode.h
+|   |   platform.h
+|   |   rpn.h
+|   |   runtime.h
+|   |   scope.h
+|   |   scope_stack.h
+|   |   sdl2_emu.h
+|   |   security.h
+|   |   segmented_mem.h
+|   |   selftest.h
+|   |   serial_compat.h
+|   |   SOURCE_TREE.txt
+|   |   spec.c
+|   |   spec.h
+|   |   spec.o
+|   |   stdlib_core.h
+|   |   stringpool.h
+|   |   task.h
+|   |   txn.h
+|   |   value.h
+|   |   vdev.h
+|   |   vm.h
+|   |   
+|   +---arrays
+|   |       parser_mat.c
+|   |       parser_mat.o
+|   |       
+|   +---codegen
+|   |       archive.c
+|   |       archive.h
+|   |       archive.o
+|   |       archive_bpe.h
+|   |       ast.c
+|   |       ast.o
+|   |       bytecode.c
+|   |       bytecode.o
+|   |       bytecode_bpp.h
+|   |       codegen.c
+|   |       codegen.o
+|   |       detok.c
+|   |       detok.o
+|   |       target.c
+|   |       target.h
+|   |       target.o
+|   |       trans.c
+|   |       trans.h
+|   |       trans_c17.c
+|   |       trans_c89.c
+|   |       trans_f90.c
+|   |       trans_pas.c
+|   |       trans_py3.c
+|   |       
+|   +---config
+|   |       override.c
+|   |       override.o
+|   |       parser_config.c
+|   |       parser_config.o
+|   |       scope.c
+|   |       scope.o
+|   |       scope_stack.c
+|   |       scope_stack.o
+|   |       
+|   +---core
+|   |       boot.c
+|   |       boot.o
+|   |       config_file.c
+|   |       config_file.o
+|   |       console.c
+|   |       console.o
+|   |       errors.c
+|   |       errors.o
+|   |       error_registry.c
+|   |       error_registry.o
+|   |       eval.c
+|   |       events.c
+|   |       fileio.c
+|   |       interp.c
+|   |       ldisdbl.c
+|   |       ldisdbl.o
+|   |       lite_stubs.c
+|   |       lite_stubs.o
+|   |       main.c
+|   |       main.o
+|   |       math_mbf.c
+|   |       memory.c
+|   |       memory.o
+|   |       pcode_cache.c
+|   |       pcode_cache.o
+|   |       pcode_compiler.c
+|   |       pcode_compiler.o
+|   |       pcode_emit.c
+|   |       pcode_emit.o
+|   |       platform.c
+|   |       platform.o
+|   |       plugin.c
+|   |       rpn.c
+|   |       rpn.o
+|   |       security.c
+|   |       security.o
+|   |       serial.c
+|   |       stdlib_core.c
+|   |       stdlib_core.o
+|   |       stmtreg.c
+|   |       stmtreg.h
+|   |       stmtreg_builtins.c
+|   |       stringpool.c
+|   |       stringpool.o
+|   |       strings.c
+|   |       task.c
+|   |       task.o
+|   |       tokenizer.c
+|   |       value.c
+|   |       value.o
+|   |       variables.c
+|   |       vm_exec.c
+|   |       vm_exec.o
+|   |       
+|   +---detok
+|   |       detokenizer.c
+|   |       detokenizer.h
+|   |       
+|   +---dialect
+|   |       dialect.c
+|   |       dialect.o
+|   |       dialect_aint.c
+|   |       dialect_aint.o
+|   |       dialect_asft.c
+|   |       dialect_asft.o
+|   |       dialect_atari.c
+|   |       dialect_atari.o
+|   |       dialect_c64.c
+|   |       dialect_c64.o
+|   |       dialect_coco.c
+|   |       dialect_coco.o
+|   |       dialect_ecma116.c
+|   |       dialect_ecma116.o
+|   |       dialect_ecma55.c
+|   |       dialect_ecma55.o
+|   |       dialect_gwbs.c
+|   |       dialect_gwbs.o
+|   |       dialect_mbasic.c
+|   |       dialect_mbasic.o
+|   |       dialect_patb.c
+|   |       dialect_patb.o
+|   |       dialect_qbasic.c
+|   |       dialect_qbasic.o
+|   |       dialect_sbasic.c
+|   |       dialect_sbasic.o
+|   |       dialect_sinclair.c
+|   |       dialect_sinclair.o
+|   |       dialect_superbasic.c
+|   |       dialect_superbasic.o
+|   |       dialect_trs1.c
+|   |       dialect_trs1.o
+|   |       dialect_trs2.c
+|   |       dialect_trs2.o
+|   |       
+|   +---display
+|   |       parser_display.c
+|   |       parser_display.o
+|   |       
+|   +---edlin
+|   |       edlin.c
+|   |       
+|   +---errhand
+|   |       parser_errhand.c
+|   |       parser_errhand.o
+|   |       
+|   +---filemgmt
+|   |       parser_filemgmt.c
+|   |       parser_filemgmt.o
+|   |       
+|   +---flow
+|   |       parser_flow.c
+|   |       parser_flow.o
+|   |       parser_loops.c
+|   |       parser_loops.o
+|   |       
+|   +---functions
+|   |       builtins.c
+|   |       builtins.o
+|   |       funcreg.c
+|   |       funcreg.o
+|   |       parser_deffn.c
+|   |       parser_deffn.o
+|   |       
+|   +---graphics
+|   |       builtins_graphics.c
+|   |       builtins_graphics.o
+|   |       gfxbuf.c
+|   |       gfxbuf.o
+|   |       parser_graphics.c
+|   |       parser_graphics.o
+|   |       
+|   +---help
+|   |       help.c
+|   |       help.o
+|   |       parser_help.c
+|   |       parser_help.o
+|   |       
+|   +---io
+|   |       builtins_bio.c
+|   |       builtins_bio.o
+|   |       builtins_fileio.c
+|   |       builtins_fileio.o
+|   |       builtins_net.c
+|   |       builtins_net.o
+|   |       builtins_sio.c
+|   |       builtins_sio.o
+|   |       builtins_txn.c
+|   |       builtins_txn.o
+|   |       device_alias.c
+|   |       device_alias.o
+|   |       fileio.c
+|   |       fileio.o
+|   |       format_input.c
+|   |       format_input.o
+|   |       format_using.c
+|   |       format_using.o
+|   |       parser_blockio.c
+|   |       parser_blockio.o
+|   |       parser_fileio.c
+|   |       parser_fileio.o
+|   |       parser_io.c
+|   |       parser_io.o
+|   |       parser_net.c
+|   |       parser_net.o
+|   |       parser_streamio.c
+|   |       parser_streamio.o
+|   |       parser_txn.c
+|   |       parser_txn.o
+|   |       txn.c
+|   |       txn.o
+|   |       vdev_net.c
+|   |       vdev_net.h
+|   |       vdev_net.o
+|   |       vfs.c
+|   |       vfs.h
+|   |       vfs.o
+|   |       
+|   +---lexer
+|   |       alias_lang.c
+|   |       alias_lang.o
+|   |       keyword_props.c
+|   |       keyword_props.o
+|   |       lexer.c
+|   |       lexer.o
+|   |       
+|   +---math
+|   |       builtins_math.c
+|   |       builtins_math.o
+|   |       
+|   +---memory
+|   |       builtins_memory.c
+|   |       builtins_memory.o
+|   |       memmap.c
+|   |       memmap.o
+|   |       
+|   +---misc
+|   |       parser_misc.c
+|   |       parser_misc.o
+|   |       
+|   +---modules
+|   |       bpl_format.c
+|   |       bpl_format.h
+|   |       bpl_format.o
+|   |       compat_plugin.c
+|   |       compat_plugin.o
+|   |       ext_feature.c
+|   |       ext_feature.o
+|   |       ext_feature_api.h
+|   |       ext_func.c
+|   |       ext_func.o
+|   |       ext_func_api.h
+|   |       ext_lib.c
+|   |       ext_lib.o
+|   |       ext_lib_api.h
+|   |       ext_plugin.c
+|   |       ext_plugin.o
+|   |       ext_plugin_api.h
+|   |       lib_space.c
+|   |       lib_space.h
+|   |       lib_space.o
+|   |       mbf_math.c
+|   |       mbf_math.o
+|   |       module.c
+|   |       module.o
+|   |       module_api.h
+|   |       mod_audio_player.c
+|   |       mod_audio_player.h
+|   |       mod_cassette.c
+|   |       mod_cassette.h
+|   |       mod_edlin.c
+|   |       mod_edlin.o
+|   |       mod_fsk_audio.c
+|   |       mod_fsk_audio.h
+|   |       mod_fsk_audio.o
+|   |       mod_fujinet.c
+|   |       mod_fujinet.o
+|   |       mod_jit.c
+|   |       mod_jit.o
+|   |       mod_legacy_compat.c
+|   |       mod_legacy_compat.o
+|   |       mod_persist.c
+|   |       mod_persist.o
+|   |       mod_stdlib.c
+|   |       mod_stdlib.o
+|   |       mod_upnp.c
+|   |       mod_upnp.o
+|   |       mod_usb.c
+|   |       mod_usb.o
+|   |       parser_block.c
+|   |       parser_block.h
+|   |       parser_block.o
+|   |       sdl2_emu.c
+|   |       sdl2_emu.o
+|   |       segmented_mem.c
+|   |       segmented_mem.o
+|   |       serial_compat.c
+|   |       serial_compat.o
+|   |       uef.c
+|   |       
+|   +---parser
+|   |       parser.c
+|   |       parser.o
+|   |       parser_expr.c
+|   |       parser_expr.o
+|   |       parser_meta.c
+|   |       
+|   +---progmgmt
+|   |       compiler.c
+|   |       compiler.o
+|   |       parser_cmds.c
+|   |       parser_cmds.o
+|   |       parser_progmgmt.c
+|   |       parser_progmgmt.o
+|   |       
+|   +---runtime
+|   |       ast_interpreter.c
+|   |       ast_interpreter.h
+|   |       ast_interpreter.o
+|   |       exec.c
+|   |       exec.o
+|   |       runtime.c
+|   |       runtime.o
+|   |       
+|   +---shell
+|   |       parser_shell.c
+|   |       parser_shell.o
+|   |       
+|   +---sound
+|   |       parser_sound.c
+|   |       parser_sound.o
+|   |       
+|   +---standalone
+|   |   |   bppc.c
+|   |   |   detok.c
+|   |   |   trans_cli.c
+|   |   |   
+|   |   +---alias_lang
+|   |   |       alias_lang_core.c
+|   |   |       alias_lang_core.h
+|   |   |       
+|   |   +---archive
+|   |   |       archive_core.c
+|   |   |       archive_core.h
+|   |   |       archive_core.o
+|   |   |       
+|   |   +---ast
+|   |   |       ast_core.c
+|   |   |       ast_core.h
+|   |   |       
+|   |   +---bpl_format
+|   |   |       bpl_format_core.c
+|   |   |       bpl_format_core.h
+|   |   |       
+|   |   +---bytecode
+|   |   |       bytecode_core.c
+|   |   |       bytecode_core.h
+|   |   |       
+|   |   +---codegen
+|   |   |       codegen_core.c
+|   |   |       codegen_core.h
+|   |   |       
+|   |   +---config_file
+|   |   |       config_file_core.c
+|   |   |       config_file_core.h
+|   |   |       
+|   |   +---console
+|   |   |       console_core.c
+|   |   |       console_core.h
+|   |   |       
+|   |   +---detok
+|   |   |       detok_core.c
+|   |   |       detok_core.h
+|   |   |       
+|   |   +---device_alias
+|   |   |       device_alias_core.c
+|   |   |       device_alias_core.h
+|   |   |       
+|   |   +---dialect
+|   |   +---editor
+|   |   |       editor_core.c
+|   |   |       editor_core.h
+|   |   |       
+|   |   +---error_registry
+|   |   |       error_registry_core.c
+|   |   |       error_registry_core.h
+|   |   |       
+|   |   +---events
+|   |   |       events_core.c
+|   |   |       events_core.h
+|   |   |       
+|   |   +---ext_feature
+|   |   |       ext_feature_core.c
+|   |   |       ext_feature_core.h
+|   |   |       
+|   |   +---ext_func
+|   |   |       ext_func_core.c
+|   |   |       ext_func_core.h
+|   |   |       
+|   |   +---ext_lib
+|   |   |       ext_lib_core.c
+|   |   |       ext_lib_core.h
+|   |   |       
+|   |   +---ext_plugin
+|   |   |       ext_plugin_core.c
+|   |   |       ext_plugin_core.h
+|   |   |       
+|   |   +---format_input
+|   |   |       format_input_core.c
+|   |   |       format_input_core.h
+|   |   |       
+|   |   +---format_using
+|   |   |       format_using_core.c
+|   |   |       format_using_core.h
+|   |   |       
+|   |   +---funcreg
+|   |   |       funcreg_core.c
+|   |   |       funcreg_core.h
+|   |   |       
+|   |   +---graphics
+|   |   |       graphics_core.c
+|   |   |       graphics_core.h
+|   |   |       
+|   |   +---help
+|   |   |       help_core.c
+|   |   |       help_core.h
+|   |   |       
+|   |   +---infix
+|   |   |       infix_core.c
+|   |   |       infix_core.h
+|   |   |       
+|   |   +---keyword_props
+|   |   |       keyword_props_core.c
+|   |   |       keyword_props_core.h
+|   |   |       
+|   |   +---lexer
+|   |   |       lexer_core.c
+|   |   |       lexer_core.h
+|   |   |       
+|   |   +---lib_space
+|   |   |       lib_space_core.c
+|   |   |       lib_space_core.h
+|   |   |       
+|   |   +---matrix
+|   |   |       matrix_core.c
+|   |   |       matrix_core.h
+|   |   |       
+|   |   +---mbf_math
+|   |   |       mbf_math_core.c
+|   |   |       mbf_math_core.h
+|   |   |       
+|   |   +---memmap
+|   |   |       memmap_core.c
+|   |   |       memmap_core.h
+|   |   |       
+|   |   +---memory
+|   |   |       memory_core.c
+|   |   |       memory_core.h
+|   |   |       
+|   |   +---mml
+|   |   |       mml_core.c
+|   |   |       mml_core.h
+|   |   |       
+|   |   +---mock_bios
+|   |   |       mock_bios_core.c
+|   |   |       mock_bios_core.h
+|   |   |       mock_bios_core.o
+|   |   |       
+|   |   +---module
+|   |   |       module_core.c
+|   |   |       module_core.h
+|   |   |       
+|   |   +---object
+|   |   |       object_core.c
+|   |   |       object_core.h
+|   |   |       
+|   |   +---override
+|   |   |       override_core.c
+|   |   |       override_core.h
+|   |   |       
+|   |   +---rand
+|   |   |       rand_core.c
+|   |   |       rand_core.h
+|   |   |       
+|   |   +---rpn
+|   |   |       rpn_core.c
+|   |   |       rpn_core.h
+|   |   |       
+|   |   +---scope
+|   |   |       scope_core.c
+|   |   |       scope_core.h
+|   |   |       
+|   |   +---scope_stack
+|   |   |       scope_stack_core.c
+|   |   |       scope_stack_core.h
+|   |   |       
+|   |   +---security
+|   |   |       security_core.c
+|   |   |       security_core.h
+|   |   |       
+|   |   +---sound
+|   |   |       sound_core.c
+|   |   |       sound_core.h
+|   |   |       
+|   |   +---spec
+|   |   |       spec_core.c
+|   |   |       spec_core.h
+|   |   |       
+|   |   +---stringpool
+|   |   |       stringpool_core.c
+|   |   |       stringpool_core.h
+|   |   |       
+|   |   +---string_algo
+|   |   |       string_algo_core.c
+|   |   |       string_algo_core.h
+|   |   |       
+|   |   +---txn
+|   |   |       txn_core.c
+|   |   |       txn_core.h
+|   |   |       
+|   |   +---value
+|   |   |       value_core.c
+|   |   |       value_core.h
+|   |   |       
+|   |   +---vdev
+|   |   |       vdev_core.c
+|   |   |       vdev_core.h
+|   |   |       
+|   |   +---vfs
+|   |   |       vfs_core.c
+|   |   |       vfs_core.h
+|   |   |       
+|   |   +---vm
+|   |   |       vm_core.c
+|   |   |       vm_core.h
+|   |   |       
+|   |   \---vt
+|   |           vt_core.c
+|   |           vt_core.h
+|   |           vt_core.o
+|   |           
+|   +---strings
+|   |       builtins_string.c
+|   |       builtins_string.o
+|   |       
+|   +---struct
+|   |       parser_struct.c
+|   |       parser_struct.o
+|   |       
+|   +---stub_module
+|   |       stub_module.c
+|   |       
+|   +---system
+|   |       builtins_io.c
+|   |       builtins_io.o
+|   |       builtins_system.c
+|   |       builtins_system.o
+|   |       
+|   +---tools
+|   |       bin_detok.c
+|   |       
+|   +---variables
+|   |       oop.c
+|   |       oop.h
+|   |       parser_assign.c
+|   |       parser_assign.o
+|   |       parser_vars.c
+|   |       parser_vars.o
+|   |       
+|   +---vi
+|   |       vi.c
+|   |       
+|   \---virtual
+|           parser_virtual.c
+|           parser_virtual.o
+|           vcon.c
+|           vdev.c
+|           vdev.o
+|           vm.c
+|           vm.o
+|           vmem.c
+|           vterm.c
+|           
++---standalone
+|   |   1964
+|   |   apple2
+|   |   level1
+|   |   tinybasic
+|   |   
+|   +---linux
+|   |       1964
+|   |       apple2
+|   |       core-bas
+|   |       int-bas
+|   |       level1
+|   |       tinybasic
+|   |       
+|   +---source
+|   |       1964.c
+|   |       apple2.c
+|   |       level1.c
+|   |       tinybasic.c
+|   |       
+|   \---windows
+|           1964.exe
+|           apple2.exe
+|           level1.exe
+|           tinybasic.exe
+|           
++---tests
+|   |   basicpp.cfg
+|   |   MATHLIB.LIB
+|   |   MINITEST.LIB
+|   |   README.md
+|   |   README.txt
+|   |   time_test.bas
+|   |   
+|   +---arrays
+|   |       test_arrays.bas
+|   |       test_bounds.bas
+|   |       
+|   +---console
+|   |       test_csrlin.bas
+|   |       
+|   +---conversion
+|   |       test_cv.bas
+|   |       
+|   +---data_persistence
+|   |       test_persistence.bas
+|   |       
+|   +---debug
+|   |       test_debug.bas
+|   |       
+|   +---devices_networking
+|   |       test_net_funcs.bas
+|   |       
+|   +---dev_net
+|   |       test_hardware.bas
+|   |       test_virtual.bas
+|   |       
+|   +---environment
+|   |       test_environ.bas
+|   |       
+|   +---error_handling
+|   |       test_err_str.bas
+|   |       
+|   +---fileio
+|   |       test_file_pointers.bas
+|   |       test_file_status.bas
+|   |       test_fs_cmds.bas
+|   |       test_oc.txt
+|   |       test_open_close.bas
+|   |       test_persist.bas
+|   |       test_random_access.bas
+|   |       test_vfs_mount.bas
+|   |       t_rnd.dat
+|   |       t_scratch.txt
+|   |       t_seek.txt
+|   |       t_stat.txt
+|   |       
+|   +---filemgmt
+|   |       test_rename.bas
+|   |       
+|   +---flow
+|   |       test_flow.bas
+|   |       test_postfix.bas
+|   |       test_postfix_err.bas
+|   |       
+|   +---functions
+|   |       test_func.bas
+|   |       
+|   +---general
+|   |       hello.bas
+|   |       test_advanced.bas
+|   |       
+|   +---graphics
+|   |       test_at_plot.bas
+|   |       test_core_graphics.bas
+|   |       test_drawto.bas
+|   |       test_modifiers.bas
+|   |       test_tui_menu.bas
+|   |       
+|   +---io
+|   |   |   test_console.bas
+|   |   |   test_input.txt
+|   |   |   test_io.bas
+|   |   |   
+|   |   +---Block_IO
+|   |   |       test_bio.bas
+|   |   |       test_biochecksum.bas
+|   |   |       test_block_io.bas
+|   |   |       
+|   |   +---Filesystem
+|   |   |       test_files.bas
+|   |   |       
+|   |   +---Network_IO
+|   |   |       test_network_io.bas
+|   |   |       
+|   |   +---Persistent_IO
+|   |   |       test_persistent_io.bas
+|   |   |       
+|   |   +---Sequential_IO
+|   |   |       test_eof_lof.bas
+|   |   |       
+|   |   +---Stream_IO
+|   |   |       test_sio.bas
+|   |   |       test_stream_io.bas
+|   |   |       
+|   |   \---Transaction_IO
+|   |           test_transaction_io.bas
+|   |           test_txn.bas
+|   |           
+|   +---math
+|   |   |   test_bin.bas
+|   |   |   test_hex.bas
+|   |   |   test_math.bas
+|   |   |   test_oct.bas
+|   |   |   
+|   |   +---Advanced_Math
+|   |   |       test_adv_math.bas
+|   |   |       
+|   |   +---Matrix_Math
+|   |   |       test_matrix.bas
+|   |   |       
+|   |   \---Type_Conversion
+|   |           test_type_conversion.bas
+|   |           
+|   +---memory
+|   |       test_mem.bas
+|   |       test_memory_access.bas
+|   |       test_pack.bas
+|   |       
+|   +---progmgmt
+|   |       test_progmgmt.bas
+|   |       
+|   +---sound
+|   |       test_audio.bas
+|   |       
+|   +---strings
+|   |       test_asc.bas
+|   |       test_chr.bas
+|   |       test_edit.bas
+|   |       test_hash.bas
+|   |       test_icase.bas
+|   |       test_instr.bas
+|   |       test_lcase.bas
+|   |       test_left.bas
+|   |       test_len.bas
+|   |       test_ltrim.bas
+|   |       test_mcase.bas
+|   |       test_mid.bas
+|   |       test_mid_stmt.bas
+|   |       test_num.bas
+|   |       test_replace.bas
+|   |       test_reverse.bas
+|   |       test_right.bas
+|   |       test_rtrim.bas
+|   |       test_seg.bas
+|   |       test_space.bas
+|   |       test_str.bas
+|   |       test_string.bas
+|   |       test_strings.bas
+|   |       test_string_case.bas
+|   |       test_string_extraction.bas
+|   |       test_string_formatting.bas
+|   |       test_string_properties.bas
+|   |       test_string_search_replace.bas
+|   |       test_tcase.bas
+|   |       test_trim.bas
+|   |       test_ucase.bas
+|   |       test_val.bas
+|   |       
+|   +---system
+|   |       test_system.bas
+|   |       
+|   +---variables
+|   |       test_all_vars.bas
+|   |       test_convert.bas
+|   |       test_data.bas
+|   |       test_memmap_bios.bas
+|   |       test_remaining_vars.bas
+|   |       test_scope.bas
+|   |       test_system_time.bas
+|   |       test_types.bas
+|   |       test_vars.bas
+|   |       
+|   \---Variables_Memory
+|       \---System_Variables
+|               test_jiffies.bas
+|               test_new_time.bas
+|               test_time.bas
+|               
++---vfs
+|   \---persist
+|           mykey.dat
+|           test_key.dat
+|           test_num.dat
+|           
+\---__pycache__

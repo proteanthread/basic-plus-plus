@@ -59,6 +59,7 @@
  // ---
 
 #include "parser_internal.h"
+#include "../console.h"
 
 // ============================================================
  // MICROSOFT-STYLE INPUT PROTECTION
@@ -95,10 +96,10 @@ int input_read_protected(char *buf, int maxlen, const char *prompt)
  int len;
 
  if (prompt)
-  printf("%s", prompt);
+  gw_printf("%s", prompt);
  else
-  printf("? ");
- fflush(stdout);
+  gw_printf("? ");
+ gw_fflush(stdout);
 
  if (fgets(buf, maxlen, stdin) == NULL) {
   buf[0] = '\0';
@@ -253,6 +254,6 @@ int format_input_using(char *buf, int maxlen, const char *fmt,
    return (int)strlen(buf);
 
   // Invalid input: re-prompt
-  printf("?Redo from start\n");
+  gw_printf("?Redo from start\n");
  }
 }

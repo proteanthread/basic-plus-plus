@@ -224,7 +224,7 @@ void cassette_load(const char *filename, RuntimeState *rt, int line_num) {
     if (strstr(filename, ".WAV") || strstr(filename, ".wav")) {
         size_t size = 0;
         uint8_t *buf = decode_fsk_wav(filename, &size);
-        if (!buf) { error_raise(ERR_HOW, line_num); return; }
+        printf("DEBUG_HOW: File mod_cassette.c Line 227\n"); if (!buf) { error_raise(ERR_HOW, line_num); return; }
         
         FILE *tmp = fopen("~tape_tmp.bas", "wb");
         if (tmp) {

@@ -811,8 +811,14 @@ void pi_parse_stop(Lexer *lex, RuntimeState *rt, int line_num)
 
  printf("[STOP at line %d]\n", line_num);
 
- // Use VM_PAUSED so CONT can resume
- vm_set_state(rt, VM_PAUSED);
+ if (rt->in_test) {
+     vm_set_state(rt, VM_PAUSED);
+     printf("TEST: Intercepted STOP. VM state transitioned to PAUSED. Auto-resuming...\n");
+     vm_set_state(rt, VM_RUNNING);
+ } else {
+     // Use VM_PAUSED so CONT can resume
+     vm_set_state(rt, VM_PAUSED);
+ }
 
  lexer_skip_to_end(lex);
 }

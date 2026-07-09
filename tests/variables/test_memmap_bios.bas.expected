@@ -1,0 +1,13 @@
+==== BIOS & MEMMAP TEST ====
+Initial MEMMAP$: MSDOS
+BIOS Map switched to: PCJR
+MEMMAP$ after BIOS PCJR: PCJR
+SUCCESS: BIOS PCJR loaded.
+BIOS Map switched to: MSDOS
+MEMMAP$ after BIOS MSDOS: MSDOS
+SUCCESS: BIOS MSDOS loaded.
+BIOS Map switched to: PCAT
+MEMMAP$ after BIOS PCAT: PCAT
+SUCCESS: BIOS PCAT loaded.
+Invalid BIOS map. Must be NONE, MSDOS, IBMPC, PCJR, PCXT, or PCAT.
+SUCCESS: Invalid BIOS threw error:         2            

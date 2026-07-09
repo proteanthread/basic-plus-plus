@@ -64,4 +64,7 @@ void help_info(RuntimeState *rt);
 void help_catalog(void);
 #endif
 
+ // help_has_keyword - Returns true if the keyword exists in the help database
+bool help_has_keyword(const char *keyword);
+
 #endif // BASICPP_HELP_H
