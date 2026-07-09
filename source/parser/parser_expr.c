@@ -1322,13 +1322,10 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                     lexer_next(lex);
                     expect_operand = 0;
                 } else if (kw == KW_TIMER) {
-                    double remain = 0.0;
-                    if (rt->timer_interval > 0.0) {
-                        double elapsed = vdev_get_time() - rt->timer_last_fire;
-                        remain = rt->timer_interval - elapsed;
-                        if (remain < 0.0) remain = 0.0;
-                    }
-                    val_stack[val_top++] = bval_float(remain);
+                    time_t t = time(NULL);
+                    struct tm *tm = localtime(&t);
+                    double d = tm->tm_hour * 3600.0 + tm->tm_min * 60.0 + tm->tm_sec;
+                    val_stack[val_top++] = bval_float(d);
                     lexer_next(lex);
                     expect_operand = 0;
                 } else if (kw == KW_DATE_FUNC) {
@@ -1370,10 +1367,17 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                     val_stack[val_top++] = bval_float(d);
                     lexer_next(lex);
                     expect_operand = 0;
-                } else if (kw == KW_CLOCK_FUNC) {
-                    char buf[64];
+                } else if (kw == KW_CLOCK) {
                     time_t t = time(NULL);
                     struct tm *tm = localtime(&t);
+                    double d = (tm->tm_year + 1900) * 10000000000.0 + (tm->tm_mon + 1) * 100000000.0 + tm->tm_mday * 1000000.0 + tm->tm_hour * 10000.0 + tm->tm_min * 100.0 + tm->tm_sec;
+                    val_stack[val_top++] = bval_float(d);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_CLOCK_FUNC) {
+                    time_t t = time(NULL);
+                    struct tm *tm = localtime(&t);
+                    char buf[64];
                     sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
                     int len = 19;
                     char *ptr = strpool_store(&rt->strpool, buf, len);
@@ -1428,6 +1432,51 @@ BValue parse_expression_bval_internal(Lexer *lex, RuntimeState *rt, int line_num
                         char *ptr = strpool_store(&rt->strpool, cwdbuf, len);
                         val_stack[val_top++] = bval_string(ptr, len);
                     }
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_HOSTNAME_FUNC || kw == KW_USERNAME_FUNC) {
+                    const char *env_val = (kw == KW_HOSTNAME_FUNC) ? getenv("HOSTNAME") : getenv("USERNAME");
+                    if (!env_val) {
+#ifdef _WIN32
+                        env_val = (kw == KW_HOSTNAME_FUNC) ? getenv("COMPUTERNAME") : getenv("USERNAME");
+#else
+                        env_val = (kw == KW_HOSTNAME_FUNC) ? "localhost" : "user";
+#endif
+                    }
+                    if (!env_val) env_val = "";
+                    int len = (int)strlen(env_val);
+                    char *ptr = strpool_store(&rt->strpool, env_val, len);
+                    val_stack[val_top++] = bval_string(ptr, len);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_DAY || kw == KW_MONTH || kw == KW_YEAR || 
+                           kw == KW_HOURS || kw == KW_MINUTES || kw == KW_SECONDS) {
+                    time_t t = time(NULL);
+                    struct tm *tm = localtime(&t);
+                    double d = 0;
+                    if (kw == KW_DAY) d = tm->tm_mday;
+                    else if (kw == KW_MONTH) d = tm->tm_mon + 1;
+                    else if (kw == KW_YEAR) d = tm->tm_year + 1900;
+                    else if (kw == KW_HOURS) d = tm->tm_hour;
+                    else if (kw == KW_MINUTES) d = tm->tm_min;
+                    else if (kw == KW_SECONDS) d = tm->tm_sec;
+                    val_stack[val_top++] = bval_float(d);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_DAY_FUNC || kw == KW_MONTH_FUNC || kw == KW_YEAR_FUNC) {
+                    time_t t = time(NULL);
+                    struct tm *tm = localtime(&t);
+                    char buf[16];
+                    if (kw == KW_DAY_FUNC) sprintf(buf, "%02d", tm->tm_mday);
+                    else if (kw == KW_MONTH_FUNC) sprintf(buf, "%02d", tm->tm_mon + 1);
+                    else if (kw == KW_YEAR_FUNC) sprintf(buf, "%04d", tm->tm_year + 1900);
+                    int len = (int)strlen(buf);
+                    char *ptr = strpool_store(&rt->strpool, buf, len);
+                    val_stack[val_top++] = bval_string(ptr, len);
+                    lexer_next(lex);
+                    expect_operand = 0;
+                } else if (kw == KW_JIFFIES) {
+                    val_stack[val_top++] = bval_float(vdev_get_time() * 1000.0);
                     lexer_next(lex);
                     expect_operand = 0;
                 } else if (kw == KW_ALIAS_FUNC) {
