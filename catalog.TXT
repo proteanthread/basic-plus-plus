@@ -27,12 +27,12 @@
   PSET
 
 [Block_IO]
-  BIOCOMPARE                BIOCOPY                   BIOFILL                   BIOREAD_STR
+  BIOCOMPARE                BIOCOPY                   BIOFILL                   BIOREAD$   
   BIOSIZE                   BIOSTATUS                 BIOWRITE
 
 [Branching]
-  GOSUB                     GOTO                      IF (POSTFIX)              ON_GOSUB
-  ON_GOTO                   RETURN                    UNLESS
+  GOSUB                     GOTO                      IF (POSTFIX)              ON GOSUB
+  ON GOTO                   RETURN                    UNLESS
 
 [Breakpoints_And_Flow]
   CONT
@@ -83,11 +83,11 @@
   USERNAME$
 
 [Error_Handling]
-  ERL                       ERR                       ERROR                     ON_ERROR_GOTO
+  ERL                       ERR                       ERROR                     ON ERROR GOTO
   RESUME
 
 [Events_and_Interrupts]
-  KEY                       ON_KEY                    ON_PLAY                   ON_TIMER
+  KEY                       ON KEY                    ON PLAY                   ON TIMER
   TIMER
 
 [Execution]
@@ -124,8 +124,8 @@
   WEND                      WHILE
 
 [Matrix_Math]
-  MAT                       MAT_IDN                   MAT_INV                   MAT_RND
-  MAT_TRN
+  MAT                       MAT IDN                   MAT INV                   MAT RND
+  MAT TRN
 
 [Memory]
   BANK                      FRE                       PEEK                      POKE
@@ -146,7 +146,7 @@
 
 [Network_IO]
   NBYTESWAITING             NCONNECTED                NEOF                      NERROR
-  NHTTPSTATUS               NINFO_STR                 NJSONQUERY_STR            NREAD_STR
+  NHTTPSTATUS               NINFO$                    NJSONQUERY$               NREAD$   
   NSTATUS                   NWRITE
 
 [Output_Formatting]
@@ -160,13 +160,13 @@
   LOAD                      SAVE
 
 [Persistent_IO]
-  PRETRIEVE                 PRETRIEVE_STR             PSTORE
+  PRETRIEVE                 PRETRIEVE$                PSTORE
 
 [Printer]
   LLIST                     LPRINT
 
 [Procedures]
-  CALL                      DECLARE                   DEF_FN                    FUNCTION
+  CALL                      DECLARE                   DEF FN                    FUNCTION
   SUB
 
 [Process_Ops]
@@ -184,7 +184,7 @@
   OPEN                      RESET
 
 [Stream_IO]
-  SIOAVAIL                  SIOFLUSH                  SIOREADLN_STR             SIOREAD_STR
+  SIOAVAIL                  SIOFLUSH                  SIOREADLN$                SIOREAD$   
   SIOSEEK                   SIOSTATUS                 SIOWRITE
 
 [String_Case_Conversion]
