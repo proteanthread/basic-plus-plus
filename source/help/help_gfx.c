@@ -1,0 +1,31 @@
+#include "help.h"
+
+const HelpEntry help_db_gfx[] = {
+  { "BORDER", "Set screen border color", "BORDER 4", HCAT_GFX },
+  { "BRIGHT", "Set text screen brightness attribute", "BRIGHT 1 | BRIGHT 0", HCAT_GFX },
+  { "CIRCLE", "Draw a circle", "CIRCLE (160,100), 50", HCAT_GFX },
+  { "CURSOR", "Graphics or sound macro", "CURSOR", HCAT_GFX },
+  { "DISPLAY", "Configure or query terminal displays", "DISPLAY ON | DISPLAY OFF", HCAT_GFX },
+  { "DRAW", "Graphics or sound macro", "DRAW", HCAT_GFX },
+  { "DRAWTO", "Graphics or sound macro", "DRAWTO", HCAT_GFX },
+  { "FLASH", "Toggle text flashing screen attribute", "FLASH 1 | FLASH 0", HCAT_GFX },
+  { "GRAPHICS", "Set Atari 8-bit graphics/text mode (abbreviated GR.)", "GRAPHICS 8+16", HCAT_GFX },
+  { "INK", "Set graphics pen/ink color", "INK 14", HCAT_GFX },
+  { "INVERSE", "Toggle text screen reverse video", "INVERSE 1 | INVERSE 0", HCAT_GFX },
+  { "OVER", "Toggle text overstrike rendering mode", "OVER 1 | OVER 0", HCAT_GFX },
+  { "PAINT", "Flood fill an area", "PAINT (160,100), color", HCAT_GFX },
+  { "PALETTE", "Remap a palette color", "PALETTE colornum, newcolor", HCAT_GFX },
+  { "PAPER", "Set text screen background paper color", "PAPER 1", HCAT_GFX },
+  { "PCOPY", "Copy screen memory page", "PCOPY 1, 0", HCAT_GFX },
+  { "PEN", "Read or configure light pen slot", "PRINT PEN(0)", HCAT_GFX },
+  { "PLAY", "Graphics or sound macro", "PLAY", HCAT_GFX },
+  { "PLOT", "Plot point or draw line", "PLOT 100, 50", HCAT_GFX },
+  { "PMAP", "Map physical to logical coordinates", "PRINT PMAP(X, 0)", HCAT_GFX },
+  { "POINT", "Read color at pixel (x,y)", "C = POINT(100,50)", HCAT_GFX },
+  { "PRESET", "Reset a pixel at (x,y)", "PRESET (100,50)", HCAT_GFX },
+  { "PSET", "Set a pixel at (x,y)", "PSET (100,50), color", HCAT_GFX },
+  { "SCREEN", "Set screen mode", "SCREEN mode [,color]", HCAT_GFX },
+  { "VIEW", "Set graphics viewport", "VIEW (x1,y1)-(x2,y2)", HCAT_GFX },
+  { "WINDOW", "Set logical coordinate system", "WINDOW (0,0)-(639,199)", HCAT_GFX },
+  { NULL, NULL, NULL, 0 }
+};

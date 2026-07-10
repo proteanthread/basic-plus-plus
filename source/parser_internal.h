@@ -289,8 +289,6 @@ void pi_parse_merge_cmd(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_chain_cmd(Lexer *lex, RuntimeState *rt,
     int line_num);
-void pi_parse_dialect_cmd(Lexer *lex, RuntimeState *rt,
-    int line_num);
 void pi_parse_bios_cmd(Lexer *lex, RuntimeState *rt,
     int line_num);
 void pi_parse_int_cmd(Lexer *lex, RuntimeState *rt,

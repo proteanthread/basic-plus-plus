@@ -153,3 +153,16 @@ void gw_mem_clear_hooks(GW_Memory *mem) {
 uint8_t *gw_mem_get_buffer(GW_Memory *mem) {
     return mem ? mem->buffer : NULL;
 }
+
+size_t gw_mem_get_size(GW_Memory *mem) {
+    if (!mem) return 0;
+    return mem->size;
+}
+
+// Export for VM SHARE
+void segmem_share_bank(GW_Memory *mem, int bank_id, int mode) {
+    if (!mem) return;
+    if (bank_id < 0 || bank_id >= 16) return;
+    // We would lock or mark the bank here.
+    // For now, this is a stub for the architecture plan to allow compilation.
+}

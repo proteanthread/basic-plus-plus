@@ -1,4 +1,4 @@
-/* =====================================================================
+﻿/* =====================================================================
  * BASIC++ DEVELOPER & MAINTENANCE REFERENCE
  * File: config.h
  * =====================================================================
@@ -63,8 +63,8 @@
  // headers (if applicable in future versions).
 #define BASICPP_VERSION_MAJOR 5
 #define BASICPP_VERSION_MINOR 0
-#define BASICPP_VERSION_PATCH 1
-#define BASICPP_VERSION "5.0.1"
+#define BASICPP_VERSION_PATCH 3
+#define BASICPP_VERSION "5.0.3"
 
 #ifdef BPP_LITE_BUILD
   #define BASICPP_NAME "BASIC++ Lite"
@@ -425,3 +425,4 @@
 #endif
 
 #endif // BASICPP_CONFIG_H
+

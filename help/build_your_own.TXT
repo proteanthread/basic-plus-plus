@@ -1,10 +1,10 @@
-# Build Your Own BASIC++ Dialect: The Definitive Guide
+# Build Your Own BASIC++ Environment: The Definitive Guide
 
 BASIC++ is designed with extreme modularity, backward compatibility, and portability in mind. Adhering strictly to C17 standards without deep OS-specific API entanglements in the core interpreter loop, BASIC++ allows you to deploy highly customized, lightweight BASIC interpreters for everything from massive desktop environments down to embedded microcontrollers (e.g., Arduino, Raspberry Pi Pico, ESP32, FreeRTOS, and BareMetal systems).
 
 This document provides a comprehensive deep-dive into stripping away unnecessary subsystems, applying the correct C macros, mapping memory footprints, and deploying optimized, custom BASIC interpreters.
 
-By understanding the division between the **Core Interpreter** and the **Sub-System Modules**, you can build a dialect that consumes as little as 40KB of memory, or as large as a full modern retro-environment.
+By understanding the division between the **Core Interpreter** and the **Sub-System Modules**, you can build an environment that consumes as little as 40KB of memory, or as large as a full modern retro-environment.
 
 ---
 
@@ -24,7 +24,7 @@ When invoking your C compiler (GCC, Clang, or MSVC), you can use predefined comp
 
 ### `-DBPP_LITE_BUILD`
 **Purpose:** Disables heavy sub-system initializations in `boot.c` and alters default behaviors for memory allocation.
-**Impact:** Prevents the allocation of massive graphics buffers (VRAM arrays) and strips the initialization of network device structures. Bypasses the loading of the standard dialect suite. This is **mandatory** when building for strict memory constraints (less than 256KB of RAM).
+**Impact:** Prevents the allocation of massive graphics buffers (VRAM arrays) and strips the initialization of network device structures. Bypasses the loading of standard libraries. This is **mandatory** when building for strict memory constraints (less than 256KB of RAM).
 
 ### `-DNO_SDL2`
 **Purpose:** Completely severs all ties to the SDL2 headers and library dependencies.
@@ -194,7 +194,7 @@ TIER3_SRC = $(TIER2_SRC) \
     source/graphics/parser_graphics.c source/graphics/gfxbuf.c \
     source/sound/parser_sound.c source/display/parser_display.c \
     source/modules/sdl2_emu.c source/debug.c source/selftests_all.c \
-    source/dialect/dialect_gwbs.c source/dialect/dialect_qbasic.c
+    
 
 all:
 	$(CC) $(CFLAGS) $(INCLUDES) -o basicpp $(TIER3_SRC) $(LIBS)

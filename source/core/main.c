@@ -72,7 +72,6 @@ int g_init_rambanks = 64;
 #include "parser.h"
 #include "exec.h"
 #include "runtime.h"
-#include "dialect.h"
 #include "errors.h"
 #include "vdev.h"
 #include "funcreg.h"
@@ -200,7 +199,7 @@ static void print_usage(const char *prog)
     printf("  --about          Describe version and what's new\n");
     printf("  --license        Display full MIT license text\n");
     printf("\nEnvironment & Memory:\n");
-    printf("  -d DIALECT       Set default dialect (GWBS, QBAS, PATB, BPP, etc.)\n");
+    
     printf("  -s LEVEL         Set security level (OPEN, STANDARD, RESTRICTED)\n");
     printf("  -S               Enable strict dialect mode\n");
     printf("  -f FILE          Use a specific configuration file\n");
@@ -346,6 +345,12 @@ typedef struct {
     MemorySystem *memory;
 } EdlinExecCtx;
 
+
+// Wrapper to map Edlin's output to the SDL console
+static void edlin_write_str_cb(const char *str) {
+    gw_printf("%s", str);
+}
+
 static void edlin_execute_buffer_cb(const char **lines, int line_count, void *ctx)
 {
     EdlinExecCtx *ectx = (EdlinExecCtx *)ctx;
@@ -457,7 +462,6 @@ int main(int argc, char *argv[])
     ConfigFile cfg = {0};
 
     // --- Effective settings ---
-    DialectId eff_dialect = BASICPP_DEFAULT_DIALECT;
     SecLevel eff_security = SEC_OPEN;
     int eff_strict = 0;
     int eff_quiet = 0;
@@ -775,7 +779,6 @@ int main(int argc, char *argv[])
 
  // ----- Early init (needed before config lookups) -----
  platform_init();
- dialect_register_all();
  keyword_registry_init();
 
 #ifndef BPP_LITE_BUILD
@@ -793,22 +796,7 @@ int main(int argc, char *argv[])
 
  // ----- Apply settings: config file first, then CLI overrides -----
 
-// Dialect
- if (cfg.found && cfg.dialect[0] != '\0') {
-  int did = dialect_find_by_name(cfg.dialect);
-  if (did >= 0) eff_dialect = (DialectId)did;
- }
- if (cli_dialect != NULL) {
-  int did = dialect_find_by_name(cli_dialect);
-  if (did >= 0) {
-   eff_dialect = (DialectId)did;
-  } else {
-   printf("Warning: unknown dialect '%s', using default\n",
-    cli_dialect);
-  }
- }
  if (g_cli_lite) {
-     eff_dialect = DIALECT_GW_BASIC;
  }
 
   // Default security depends on context
@@ -946,7 +934,7 @@ int main(int argc, char *argv[])
   BootStatus boot_result;
 
   memset(&boot_cfg, 0, sizeof(boot_cfg));
-  boot_cfg.dialect   = eff_dialect;
+  
   boot_cfg.security  = eff_security;
   boot_cfg.strict    = eff_strict;
   boot_cfg.quiet     = eff_quiet;
@@ -1089,7 +1077,7 @@ int main(int argc, char *argv[])
    memset(&edlin_cbs, 0, sizeof(edlin_cbs));
    edlin_cbs.execute_buffer = edlin_execute_buffer_cb;
    edlin_cbs.read_line      = gw_console_read_line;
-   edlin_cbs.write_str      = NULL;  /* Use default printf */
+   edlin_cbs.write_str      = edlin_write_str_cb;  /* Use GUI printf */
    edlin_cbs.get_terminal_height = platform_get_console_height;
    edlin_cbs.ctx            = &edlin_ctx;
 
@@ -1246,7 +1234,6 @@ int main(int argc, char *argv[])
                 kw == KW_LIST || kw == KW_NEW || kw == KW_CONT ||
                 kw == KW_SYSTEM || kw == KW_AUTO || kw == KW_RENUM ||
                 kw == KW_EDIT || kw == KW_MERGE || kw == KW_CHAIN ||
-                kw == KW_DIALECT || kw == KW_BIOS || kw == KW_DELETE ||
                 kw == KW_COMPILE || kw == KW_SELFTEST) {
                 bypass = 1;
             }

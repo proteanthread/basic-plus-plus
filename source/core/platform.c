@@ -148,6 +148,7 @@
 #undef TokenType
 #include <io.h>
 #include <conio.h>
+#include <direct.h>
 #else
 #include <unistd.h>
 #include <termios.h>
@@ -1026,4 +1027,36 @@ int platform_get_console_width(void)
     }
 #endif
     return -1;
+}
+
+int plat_mkdir(const char *path) {
+#ifdef _WIN32
+    return _mkdir(path);
+#else
+    return mkdir(path, 0755);
+#endif
+}
+
+int plat_rmdir(const char *path) {
+#ifdef _WIN32
+    return _rmdir(path);
+#else
+    return rmdir(path);
+#endif
+}
+
+int plat_chdir(const char *path) {
+#ifdef _WIN32
+    return _chdir(path);
+#else
+    return chdir(path);
+#endif
+}
+
+char *plat_getcwd(char *buffer, int maxlen) {
+#ifdef _WIN32
+    return _getcwd(buffer, maxlen);
+#else
+    return getcwd(buffer, maxlen);
+#endif
 }

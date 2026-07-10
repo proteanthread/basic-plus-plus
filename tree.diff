@@ -1,0 +1,17 @@
+﻿--- source/SOURCE_TREE.txt
++++ source/SOURCE_TREE.txt
+@@ -107,2 +107,11 @@
+ |   |-- parser_help.c      <-- HELP command syntax parser
+ |   |-- help.c             <-- Help database and engine dispatcher
++|   |-- help_flow.c        <-- Control flow help definitions
++|   |-- help_io.c          <-- I/O help definitions
++|   |-- help_math.c        <-- Math help definitions
++|   |-- help_strings.c     <-- Strings help definitions
++|   |-- help_varmem.c      <-- Variable/Memory help definitions
++|   |-- help_fileio.c      <-- File I/O help definitions
++|   |-- help_gfx.c         <-- Graphics help definitions
++|   |-- help_sound.c       <-- Sound help definitions
++|   |-- help_sysenv.c      <-- System/Environment help definitions
++|   |-- help_intro.c       <-- Intro/CLI help definitions
++|   |-- help_sysvar.c      <-- System variables help definitions
+ |

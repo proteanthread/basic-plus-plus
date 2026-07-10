@@ -162,4 +162,10 @@ int platform_get_console_width(void);
 // plat_strdup - Portable string duplication avoiding MSVC deprecation warnings
 char *plat_strdup(const char *s);
 
+// Portable Directory Operations
+int plat_mkdir(const char *path);
+int plat_rmdir(const char *path);
+int plat_chdir(const char *path);
+char *plat_getcwd(char *buffer, int maxlen);
+
 #endif // BASICPP_PLATFORM_H

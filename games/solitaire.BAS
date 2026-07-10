@@ -1,208 +1,124 @@
 10 REM =============================================
-20 REM  SOLITAIRE (KLONDIKE) - BASIC++ Card Game
-30 REM  Arrow keys navigate, SPACE select/place
-40 REM  D to draw from deck, ESC quit
-50 REM =============================================
-60 RANDOMIZE TIMER
-70 PRINT CHR$(27);"[?25l";
-80 REM --- Card representation ---
-90 REM Card = suit*13 + rank (0-51)
-100 REM Suit: 0=Spades, 1=Hearts, 2=Diamonds, 3=Clubs
-110 REM Rank: 0=Ace, 1=2, ... 12=King
-120 DIM DECK(52)
-130 DIM TAB(7, 20), TABSZ(7), TABFACE(7)
-140 REM TAB(col, row) = card value (-1=empty)
-150 REM TABSZ(col) = number of cards in tableau column
-160 REM TABFACE(col) = index of first face-up card
-170 DIM FOUND(4)
-180 REM FOUND(suit) = top rank (-1=empty, 0=Ace, etc)
-190 DIM WASTE(24), WASTESZ
-200 DIM STOCK(24), STOCKSZ
-210 REM Cursor position
-220 CUR_X = 1: CUR_Y = 1
-230 SEL_C = -1: SEL_R = -1
-240 MOVES = 0
-250 REM
-260 REM --- Initialize deck ---
-270 FOR I = 0 TO 51: DECK(I) = I: NEXT I
-280 REM Shuffle (Fisher-Yates)
-290 FOR I = 51 TO 1 STEP -1
-300   J = INT(RND(1) * (I + 1))
-310   T = DECK(I): DECK(I) = DECK(J): DECK(J) = T
-320 NEXT I
-330 REM --- Deal tableau ---
-340 DI = 0
-350 FOR C = 1 TO 7
-360   TABSZ(C) = C
-370   TABFACE(C) = C
-380   FOR R = 1 TO C
-390     TAB(C, R) = DECK(DI): DI = DI + 1
-400   NEXT R
-410 NEXT C
-420 REM --- Remaining to stock ---
-430 STOCKSZ = 0
-440 FOR I = DI TO 51
-450   STOCKSZ = STOCKSZ + 1
-460   STOCK(STOCKSZ) = DECK(I)
-470 NEXT I
-480 WASTESZ = 0
-490 FOR I = 1 TO 4: FOUND(I) = -1: NEXT I
-500 REM
-510 REM --- Draw screen ---
-520 CLS
-530 COLOR 15, 0
-540 LOCATE 1, 1: PRINT "KLONDIKE SOLITAIRE";
-550 LOCATE 1, 40: PRINT "Moves:"; MOVES;
-560 LOCATE 1, 60: PRINT "ESC=Quit D=Draw";
-570 REM Draw separator
-580 COLOR 8, 0
-590 LOCATE 2, 1: PRINT STRING$(80, CHR$(196));
-600 REM
-610 GOSUB 1000: REM Draw all
-620 REM
-630 REM ========== MAIN GAME LOOP ==========
-640 K$ = INKEY$
-650 IF K$ = "" THEN 640
-660 IF K$ = CHR$(27) THEN 2000
-670 SK = 0 : IF LEN(K$) = 2 THEN SK = ASC(MID$(K$, 2, 1))
-680 REM Navigate
-690 IF SK = 75 AND CUR_X > 1 THEN CUR_X = CUR_X - 1
-700 IF SK = 77 AND CUR_X < 7 THEN CUR_X = CUR_X + 1
-710 IF SK = 72 AND CUR_Y > 1 THEN CUR_Y = CUR_Y - 1
-720 IF SK = 80 AND CUR_Y < 13 THEN CUR_Y = CUR_Y + 1
-730 REM Draw card
-740 IF K$ = "d" OR K$ = "D" THEN GOSUB 1500
-750 REM Select / Place
-760 IF K$ = " " THEN GOSUB 1600
-770 REM Auto-foundation
-780 IF K$ = "f" OR K$ = "F" THEN GOSUB 1700
-790 GOSUB 1000
-800 REM Check win
-810 WIN = 1
-820 FOR I = 1 TO 4: IF FOUND(I) < 12 THEN WIN = 0
-830 NEXT I
-840 IF WIN = 1 THEN 1900
-850 GOTO 640
-860 REM
+REM ==================================================
+REM  EXHAUSTIVE DOCUMENTATION
+REM ==================================================
+REM  This file is a standalone Game Engine for BASIC++.
+REM  It operates strictly within the text UI (TUI) and relies on external
+REM  mechanics libraries for its game loop. 
+REM  Key Components:
+REM  - Initialization: Sets up the visual buffer and arrays.
+REM  - Main Loop: Uses a non-blocking INKEY$ loop synced with the TICKS timer.
+REM  - Collision/Movement: Delegated to the imported library.
+REM  - Save/Load: Invoked via GOSUB 8000 and 8100, saving to .sav files.
+REM ==================================================
+20 REM  SOLITAIRE (KLONDIKE) ENGINE
+30 REM  Uses BOARDGAME.LIB for mechanics.
+40 REM  Arrow keys navigate, SPACE select/place
+50 REM  D to draw from deck, ESC quit
+60 REM  Press S to Save, L to Load
+70 REM =============================================
+80 LOAD LIBRARY "lib\boardgame.LIB"
+90 RANDOMIZE TIMER
+100 PRINT CHR$(27);"[?25l";
+110 DIM TBL(7, 20), TABSZ(7), TABFACE(7)
+120 DIM FOUND(4), WASTE(24), STOCK(24)
+130 CUR_X = 1: CUR_Y = 1: SEL_C = -1: SEL_R = -1: MOVES = 0
+140 CALL BG_INIT_DECK(52)
+150 CALL BG_SHUFFLE_DECK()
+160 DI = 0
+170 FOR C = 1 TO 7
+180   TABSZ(C) = C: TABFACE(C) = C
+190   FOR R = 1 TO C: TBL(C, R) = BG_ARRAY(DI): DI = DI + 1: NEXT R
+200 NEXT C
+210 STOCKSZ = 0: FOR I = DI TO 51: STOCKSZ = STOCKSZ + 1: STOCK(STOCKSZ) = BG_ARRAY(I): NEXT I
+220 WASTESZ = 0: FOR I = 1 TO 4: FOUND(I) = -1: NEXT I
+230 CLS: COLOR 15, 0: LOCATE 1, 1: PRINT "KLONDIKE SOLITAIRE";
+240 LOCATE 1, 40: PRINT "Moves:"; MOVES;
+250 LOCATE 1, 60: PRINT "ESC=Quit D=Draw";
+260 COLOR 8, 0: LOCATE 2, 1: PRINT STRING$(80, CHR$(196));
+270 GOSUB 1000
+280 REM ========== MAIN GAME LOOP ==========
+290 K$ = INKEY$: IF K$ = "" THEN 290
+300 IF K$ = CHR$(27) THEN 2000
+310 IF UCASE$(K$) = "S" THEN GOSUB 8200: GOTO 290
+320 IF UCASE$(K$) = "L" THEN GOSUB 8300: GOTO 290
+330 SK = 0 : IF LEN(K$) = 2 THEN SK = ASC(MID$(K$, 2, 1))
+340 CX = CUR_X: CY = CUR_Y: CALL BG_MOVE_CURSOR(SK, 1, 7, 1, 13): CUR_X = CX: CUR_Y = CY
+350 IF UCASE$(K$) = "D" THEN GOSUB 1500
+360 IF K$ = " " THEN GOSUB 1600
+370 IF UCASE$(K$) = "F" THEN GOSUB 1700
+380 GOSUB 1000
+390 WIN = 1: FOR I = 1 TO 4: IF FOUND(I) < 12 THEN WIN = 0
+400 NEXT I: IF WIN = 1 THEN 1900
+410 GOTO 290
 1000 REM === Draw everything ===
-1010 REM Draw stock
-1020 COLOR 7, 0
-1030 LOCATE 3, 2
-1040 CH$ = "[  ]" : IF STOCKSZ > 0 THEN COLOR 2, 0: CH$ = "[##]"
-1041 PRINT CH$;
-1050 REM Draw waste
-1060 LOCATE 3, 8
-1070 PRINT "[  ]"; : IF WASTESZ > 0 THEN GOSUB 1100
-1080 REM Draw foundations
-1090 FOR I = 1 TO 4
-1091   LOCATE 3, 20 + I * 7
-1092   IF FOUND(I) >= 0 THEN
-1093     C = I * 13 + FOUND(I)
-1094     GOSUB 1200
-1095   ELSE
-1096     COLOR 8, 0: PRINT "[  ]";
-1097   END IF
-1098 NEXT I
-1099 REM Draw tableau
-1100 FOR C = 1 TO 7
-1101   FOR R = 1 TO TABSZ(C)
-1102     LOCATE 5 + R, C * 9 - 4
-1103     IF R < TABFACE(C) THEN
-1104       COLOR 2, 0: PRINT "## ";
-1105     ELSE
-1106       CV = TAB(C, R)
-1107       GOSUB 1200
-1108     END IF
-1109   NEXT R
-1110   REM Clear below
-1111   FOR R = TABSZ(C) + 1 TO 15
-1112     LOCATE 5 + R, C * 9 - 4
-1113     PRINT "   ";
-1114   NEXT R
-1115   IF TABSZ(C) = 0 THEN LOCATE 6, C * 9 - 4: COLOR 8, 0: PRINT "[ ]";
-1116 NEXT C
-1117 REM Draw cursor
-1118 COLOR 15, 0
-1119 IF CUR_Y = 1 THEN
-1120   LOCATE 3, CUR_X * 9 - 4
-1121 ELSE
-1122   LOCATE 5 + CUR_Y - 1, CUR_X * 9 - 4
-1123 END IF
-1124 PRINT ">";
-1125 REM Update moves
-1126 LOCATE 1, 47: COLOR 15, 0: PRINT MOVES; "   ";
-1127 RETURN
-1128 REM
-1100 REM === Draw waste top ===
-1110 CV = WASTE(WASTESZ)
-1120 GOSUB 1200
-1130 RETURN
-1200 REM === Draw a card (CV=card value) ===
-1210 SU = CV \ 13: RK = CV MOD 13
-1220 COLOR 15, 0 : IF SU = 1 OR SU = 2 THEN COLOR 12, 0
-1230 REM Rank chars
-1240 IF RK = 0 THEN R$ = "A"
-1250 IF RK >= 1 AND RK <= 8 THEN R$ = STR$(RK + 1)
-1260 IF RK = 9 THEN R$ = "T"
-1270 IF RK = 10 THEN R$ = "J"
-1280 IF RK = 11 THEN R$ = "Q"
-1290 IF RK = 12 THEN R$ = "K"
-1300 REM Suit chars
-1310 IF SU = 0 THEN S$ = CHR$(6)
-1320 IF SU = 1 THEN S$ = CHR$(3)
-1330 IF SU = 2 THEN S$ = CHR$(4)
-1340 IF SU = 3 THEN S$ = CHR$(5)
-1350 PRINT R$; S$; " ";
-1360 RETURN
+1010 COLOR 7, 0: LOCATE 3, 2
+1020 CH$ = "[  ]" : IF STOCKSZ > 0 THEN COLOR 2, 0: CH$ = "[##]"
+1030 PRINT CH$;
+1040 LOCATE 3, 8: PRINT "[  ]"; : IF WASTESZ > 0 THEN GOSUB 1300
+1050 FOR I = 1 TO 4
+1060   LOCATE 3, 20 + I * 7
+1070   IF FOUND(I) >= 0 THEN CV = I * 13 + FOUND(I): GOSUB 1400 ELSE COLOR 8, 0: PRINT "[  ]";
+1080 NEXT I
+1090 FOR C = 1 TO 7
+1100   FOR R = 1 TO TABSZ(C)
+1110     LOCATE 5 + R, C * 9 - 4
+1120     IF R < TABFACE(C) THEN COLOR 2, 0: PRINT "## "; ELSE CV = TBL(C, R): GOSUB 1400
+1130   NEXT R
+1140   FOR R = TABSZ(C) + 1 TO 15: LOCATE 5 + R, C * 9 - 4: PRINT "   ";: NEXT R
+1150   IF TABSZ(C) = 0 THEN LOCATE 6, C * 9 - 4: COLOR 8, 0: PRINT "[ ]";
+1160 NEXT C
+1170 COLOR 15, 0: IF CUR_Y = 1 THEN LOCATE 3, CUR_X * 9 - 4 ELSE LOCATE 5 + CUR_Y - 1, CUR_X * 9 - 4
+1180 PRINT ">";
+1190 LOCATE 1, 47: COLOR 15, 0: PRINT MOVES; "   ";
+1200 RETURN
+1300 REM === Draw waste top ===
+1310 CV = WASTE(WASTESZ): GOSUB 1400: RETURN
+1400 REM === Draw a card ===
+1410 CALL BG_GET_CARD_STR(CV)
+1420 COLOR BG_RET_COL(1), 0: PRINT BG_RET_STR$(1); " ";: RETURN
 1500 REM === Draw from stock ===
-1510 IF STOCKSZ = 0 THEN
-1520   REM Flip waste back to stock
-1530   FOR I = WASTESZ TO 1 STEP -1
-1540     STOCKSZ = STOCKSZ + 1
-1550     STOCK(STOCKSZ) = WASTE(I)
-1560   NEXT I
-1570   WASTESZ = 0
-1580   RETURN
-1590 END IF
-1600 WASTESZ = WASTESZ + 1
-1610 WASTE(WASTESZ) = STOCK(STOCKSZ)
-1620 STOCKSZ = STOCKSZ - 1
-1630 MOVES = MOVES + 1
-1640 RETURN
+1510 IF STOCKSZ = 0 THEN FOR I = WASTESZ TO 1 STEP -1: STOCKSZ = STOCKSZ + 1: STOCK(STOCKSZ) = WASTE(I): NEXT I: WASTESZ = 0: RETURN
+1520 WASTESZ = WASTESZ + 1: WASTE(WASTESZ) = STOCK(STOCKSZ): STOCKSZ = STOCKSZ - 1: MOVES = MOVES + 1: RETURN
 1600 REM === Select / Place card ===
-1610 REM Simplified: toggle selection
-1620 IF SEL_C = -1 THEN
-1630   SEL_C = CUR_X: SEL_R = CUR_Y
-1640   RETURN
-1650 END IF
-1660 REM Try to place
-1670 MOVES = MOVES + 1
-1680 SEL_C = -1: SEL_R = -1
-1690 RETURN
+1610 IF SEL_C = -1 THEN SEL_C = CUR_X: SEL_R = CUR_Y: RETURN
+1620 MOVES = MOVES + 1: SEL_C = -1: SEL_R = -1: RETURN
 1700 REM === Auto-move to foundation ===
 1710 FOR C = 1 TO 7
 1720   IF TABSZ(C) = 0 THEN 1780
-1730   CV = TAB(C, TABSZ(C))
-1740   SU = CV \ 13: RK = CV MOD 13
-1750   IF FOUND(SU + 1) = RK - 1 OR (RK = 0 AND FOUND(SU + 1) = -1) THEN
-1760     FOUND(SU + 1) = RK
-1770     TABSZ(C) = TABSZ(C) - 1
-1775     IF TABFACE(C) > TABSZ(C) AND TABSZ(C) > 0 THEN TABFACE(C) = TABSZ(C)
-1776     MOVES = MOVES + 1
+1730   CV = TBL(C, TABSZ(C)): SU = CV \ 13: RK = CV MOD 13
+1740   IF FOUND(SU + 1) = RK - 1 OR (RK = 0 AND FOUND(SU + 1) = -1) THEN
+1750     FOUND(SU + 1) = RK: TABSZ(C) = TABSZ(C) - 1
+1760     IF TABFACE(C) > TABSZ(C) AND TABSZ(C) > 0 THEN TABFACE(C) = TABSZ(C)
+1770     MOVES = MOVES + 1
 1780   END IF
-1790 NEXT C
-1800 RETURN
+1790 NEXT C: RETURN
 1900 REM === YOU WIN ===
-1910 CLS
-1920 COLOR 14, 0
-1930 LOCATE 10, 25: PRINT "C O N G R A T U L A T I O N S !"
-1940 LOCATE 12, 25: PRINT "You won in"; MOVES; "moves!"
-1950 LOCATE 16, 25: PRINT "Press any key..."
-1960 K$ = "": WHILE K$ = "": K$ = INKEY$: WEND
-1970 CLS: END
+1910 CLS: COLOR 14, 0: LOCATE 10, 25: PRINT "C O N G R A T U L A T I O N S !"
+1920 LOCATE 12, 25: PRINT "You won in"; MOVES; "moves!"
+1930 LOCATE 16, 25: PRINT "Press any key...": GOSUB 9990: CLS: END
 2000 REM === QUIT ===
-2010 CURSOR ON: CLS
-2020 PRINT "Thanks for playing Solitaire!"
-2030 PRINT "Moves:"; MOVES
-2040 END
+2010 CURSOR ON: CLS: PRINT "Thanks for playing Solitaire!": PRINT "Moves:"; MOVES: END
+8200 REM === SAVE GAME ===
+8210 OPEN "solitaire.sav" FOR OUTPUT AS #1
+8220 PRINT #1, MOVES: PRINT #1, STOCKSZ: PRINT #1, WASTESZ
+8230 FOR I = 1 TO 4: PRINT #1, FOUND(I): NEXT I
+8240 FOR C = 1 TO 7: PRINT #1, TABSZ(C): PRINT #1, TABFACE(C)
+8250 FOR R = 1 TO 20: PRINT #1, TBL(C, R): NEXT R: NEXT C
+8260 FOR I = 1 TO 24: PRINT #1, STOCK(I): PRINT #1, WASTE(I): NEXT I
+8270 CLOSE #1: COLOR 14, 0: LOCATE 12, 30: PRINT "GAME SAVED!": DELAY 1000: CLS: GOSUB 1000: RETURN
+8300 REM === LOAD GAME ===
+8310 IF EXIST("solitaire.sav") THEN
+8320   OPEN "solitaire.sav" FOR INPUT AS #1
+8330   INPUT #1, MOVES: INPUT #1, STOCKSZ: INPUT #1, WASTESZ
+8340   FOR I = 1 TO 4: INPUT #1, FOUND(I): NEXT I
+8350   FOR C = 1 TO 7: INPUT #1, TABSZ(C): INPUT #1, TABFACE(C)
+8360   FOR R = 1 TO 20: INPUT #1, TBL(C, R): NEXT R: NEXT C
+8370   FOR I = 1 TO 24: INPUT #1, STOCK(I): INPUT #1, WASTE(I): NEXT I
+8380   CLOSE #1: CLS: GOSUB 1000
+8390 END IF
+8400 RETURN
 
+9990 K$ = INKEY$: IF K$ = "" THEN 9990 ELSE RETURN
+9992 K$ = INKEY$: IF K$ <> " " THEN 9992 ELSE RETURN
+9994 K$ = INKEY$: IF K$ <> "r" AND K$ <> "R" THEN 9994 ELSE RETURN

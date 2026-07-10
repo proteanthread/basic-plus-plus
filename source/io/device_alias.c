@@ -86,6 +86,19 @@ static void da_copy_upper(char *dst, const char *src, int max)
     dst[i] = '\0';
 }
 
+static int da_str_starts_with_ci(const char *prefix, const char *str)
+{
+    while (*prefix && *str) {
+        char ca = *prefix, cb = *str;
+        if (ca >= 'a' && ca <= 'z') ca = (char)(ca - 32);
+        if (cb >= 'a' && cb <= 'z') cb = (char)(cb - 32);
+        if (ca != cb) return 0;
+        prefix++;
+        str++;
+    }
+    return (*prefix == '\0');
+}
+
 // --- Internal: find existing alias by name ---
 static int da_find(const char *alias)
 {
@@ -142,20 +155,30 @@ const DeviceAlias *device_alias_resolve(const char *name)
     if (name == NULL) return NULL;
 
     for (i = 0; i < alias_count; i++) {
-        if (alias_table[i].active &&
-            da_str_eq_ci(alias_table[i].alias, name)) {
-            return &alias_table[i];
+        if (!alias_table[i].active) continue;
+        
+        // If the alias ends with ':', it can act as a prefix for paths (e.g. D1:TEST.BAS)
+        int alen = (int)strlen(alias_table[i].alias);
+        if (alen > 0 && alias_table[i].alias[alen - 1] == ':') {
+            if (da_str_starts_with_ci(alias_table[i].alias, name)) {
+                return &alias_table[i];
+            }
+        } else {
+            // Strict exact match for things like "*PR" or "0"
+            if (da_str_eq_ci(alias_table[i].alias, name)) {
+                return &alias_table[i];
+            }
         }
     }
     return NULL;
 }
 
 // --- device_alias_clear_dialect ---
-void device_alias_clear_dialect(int id)
+void device_alias_clear_machine(int model)
 {
     int i;
     for (i = 0; i < alias_count; i++) {
-        if (alias_table[i].dialect == id) {
+        if (alias_table[i].dialect == model) {
             alias_table[i].active = 0;
         }
     }
@@ -220,7 +243,7 @@ void device_alias_list(void)
         default:              dir_str = "?";     break;
         }
 
-        printf("%-10s %-10s %-8s (manual)\\n",
+        printf("%-10s %-10s %-8s (manual)\n",
                alias_table[i].alias,
                alias_table[i].target,
                dir_str);
@@ -495,26 +518,29 @@ static const AliasEntry trs2_aliases[] = {
 // ===================================================================
  // device_alias_load_dialect - Master loader
  // =================================================================== 
-int device_alias_load_dialect(int id)
+int device_alias_load_machine(int model)
 {
-    // Clear previous aliases from this dialect
-    device_alias_clear_dialect(id);
+    // Clear previous aliases from this machine
+    device_alias_clear_machine(model);
 
-    return da_load_table(gwbasic_aliases, (int)(sizeof(gwbasic_aliases) / sizeof(gwbasic_aliases[0])), id);
+    switch (model) {
+        case 6: // BIOS_MODEL_ATARI
+            return da_load_table(atari_aliases, (int)(sizeof(atari_aliases) / sizeof(atari_aliases[0])), model);
+        case 7: // BIOS_MODEL_C64
+            return da_load_table(c64_aliases, (int)(sizeof(c64_aliases) / sizeof(c64_aliases[0])), model);
+        case 8: // BIOS_MODEL_APPLE2
+            return da_load_table(applesoft_aliases, (int)(sizeof(applesoft_aliases) / sizeof(applesoft_aliases[0])), model);
+        case 9: // BIOS_MODEL_TRS80
+            return da_load_table(trs2_aliases, (int)(sizeof(trs2_aliases) / sizeof(trs2_aliases[0])), model);
+        case 0: // BIOS_MODEL_NONE (default boot)
+        case 1: // MSDOS
+        case 2: // PC
+        case 3: // PCJR
+        case 4: // XT
+        case 5: // AT
+            return da_load_table(gwbasic_aliases, (int)(sizeof(gwbasic_aliases) / sizeof(gwbasic_aliases[0])), model);
+        default:
+            return 0;
+    }
 }
-#ifdef __GNUC__
-__attribute__((unused))
-#endif
-static void suppress_unused_aliases(void) {
-    (void)atari_aliases;
-    (void)c64_aliases;
-    (void)coco_aliases;
-    (void)sinclair_aliases;
-    (void)qbasic_aliases;
-    (void)mbasic_aliases;
-    (void)applesoft_aliases;
-    (void)ecma116_aliases;
-    (void)superbasic_aliases;
-    (void)sbasic_aliases;
-    (void)trs2_aliases;
-}
+

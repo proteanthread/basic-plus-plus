@@ -54,7 +54,9 @@ void gw_mem_register_write_hook(GW_Memory *mem, uint32_t start, uint32_t end, GW
 // Reset all hooks
 void gw_mem_clear_hooks(GW_Memory *mem);
 
+
 // Direct buffer access
 uint8_t *gw_mem_get_buffer(GW_Memory *mem);
+size_t gw_mem_get_size(GW_Memory *mem);
 
 #endif // GW_MEMORY_H

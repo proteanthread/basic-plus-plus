@@ -70,6 +70,7 @@
 #include "fileio.h"
 #include "ast.h"
 #include "ast_interpreter.h"
+#include "core/vm_host.H"
 
 // --- OS Signal Handler (Tier 3) ---
  // Async-safe: only sets a flag. The event_poll() loop
@@ -1133,9 +1134,38 @@ void exec_brun(RuntimeState *rt)
 #endif
 }
 
+
 void exec_run_step_cooperative(RuntimeState *rt)
 {
+    // --- VIRTUAL MACHINE INJECTIONS (SPEED & INTERRUPT) ---
+    extern struct VirtualMachine* vm_host_current(void);
+    struct VirtualMachine* current_vm = vm_host_current();
+    if (current_vm && current_vm->state == 2 /* VM_STATE_RUNNING */) {
+        // Handle PIC Interrupt Queue
+        if (current_vm->interrupt_head != current_vm->interrupt_tail) {
+            uint8_t int_num = current_vm->interrupt_queue[current_vm->interrupt_head];
+            current_vm->interrupt_head = (current_vm->interrupt_head + 1) % 16;
+            
+            // Mock bios execute int (we need mock_bios_execute_int)
+            // extern void mock_bios_execute_int(MockBiosContext *ctx, uint8_t int_num, uint16_t *ax, uint16_t *bx, uint16_t *cx, uint16_t *dx);
+            mock_bios_interrupt(&current_vm->bios_ctx, int_num);
+        }
+        
+        // Throttling logic via SDL_GetPerformanceCounter and SDL_GetPerformanceFrequency
+        // Just inject a small delay if target_speed_pct < 100
+        if (current_vm->target_speed_pct < 100) {
+            int delay_ms = 100 - current_vm->target_speed_pct;
+            // platform_sleep_ms(delay_ms);
+            // using lower thread priority instead is better, but since it's cooperative, 
+            // a sleep is the only way to yield CPU to the host thread if this was threaded.
+            extern void platform_sleep_ms(int ms);
+            platform_sleep_ms(delay_ms > 10 ? 10 : delay_ms);
+        }
+    }
+    // --------------------------------------------------------
+
     if (rt->direct_mode) {
+
         Lexer lex;
         g_arithmetic_decimal = rt->arithmetic_decimal;
         if (vm_get_state(rt) != VM_RUNNING || rt->current_index >= rt->program->count || error_occurred()) {

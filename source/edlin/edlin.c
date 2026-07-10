@@ -1,13 +1,19 @@
 /*
- *
- * VERSION: 1.3.1
- * LICENSE: Modified MIT License
- *
+ * VERSION: 1.3.2
+ * LICENSE: MIT License
+ * COPYLEFT: BASIC++ Community
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* --- Terminal Size Headers --- */
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/ioctl.h>
+#include <unistd.h>
+#endif
 
 #define MAX_LINES 1000
 #define MAX_LENGTH 255
@@ -17,8 +23,30 @@ int current_lines = 0;
 int current_page = 0;
 char current_filename[MAX_LENGTH] = "";
 
-/* --- Input Helper Functions --- */
+/* --- Terminal Size Helper --- */
+int get_terminal_lines(void) {
+    int lines = 24; /* Standard default terminal height */
+    
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+        lines = csbi.srWindow.Bottom - csbi.srWindow.Top + 1; 
+    }
+#else
+    struct winsize w;
+    /* STDOUT_FILENO is usually 1 */
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) != -1) {
+        if (w.ws_row > 0) {
+            lines = w.ws_row;
+        }
+    }
+#endif
 
+    /* Subtract 1 to leave room for the input prompt, fallback to 23 */
+    return (lines > 1) ? (lines - 1) : 23;
+}
+
+/* --- Input Helper Functions --- */
 int get_int_prompt(const char *prompt) {
     char input[MAX_LENGTH];
     printf("%s", prompt);
@@ -36,9 +64,8 @@ void get_string_prompt(const char *prompt, char *buffer) {
 }
 
 /* --- Core Editor Functions --- */
-
 void display_help(void) {
-    printf("\nedlin - Portable Line Editor (Version 1.3.1)\n");
+    printf("\nedlin - Portable Line Editor (Version 1.3.2)\n");
     printf("Available Commands:\n");
     printf("  [line] - Edit a specific line (enter line number)\n");
     printf("  a     - Append lines from disk into memory\n");
@@ -55,7 +82,6 @@ void display_help(void) {
     printf("  s     - Search text\n");
     printf("  t     - Transfer (merge) another file\n");
     printf("  w     - Write lines to disk\n\n");
-    printf("  x     - Execute BASIC++ Program\n\n");
 }
 
 void load_file(const char *filename) {
@@ -112,7 +138,6 @@ void insert_line(void) {
         
         input[strcspn(input, "\n")] = '\0';
         if (strcmp(input, ".") == 0) break;
-
         strncpy(text_buffer[current_lines], input, MAX_LENGTH);
         current_lines++;
     }
@@ -155,7 +180,6 @@ void edit_line(int index) {
 }
 
 /* --- New Extended Commands --- */
-
 void copy_lines(void) {
     int start = get_int_prompt("Start line: ") - 1;
     int end = get_int_prompt("End line: ") - 1;
@@ -234,8 +258,13 @@ void move_lines(void) {
 
 void page_display(void) {
     int i, end;
+    
+    /* Dynamically request the terminal size */
+    int dynamic_lines = get_terminal_lines();
+    
     if (current_page >= current_lines) current_page = 0;
-    end = current_page + 23;
+    
+    end = current_page + dynamic_lines;
     if (end > current_lines) end = current_lines;
     
     for (i = current_page; i < end; i++) {
@@ -380,6 +409,7 @@ void append_lines(void) {
 
 int main(int argc, char *argv[]) {
     char command[MAX_LENGTH];
+    
     if (argc > 1) {
         load_file(argv[1]);
         printf("Type '?' or 'h' for a list of available commands.\n");
@@ -388,12 +418,12 @@ int main(int argc, char *argv[]) {
         printf("Usage: edlin <filename>\n");
         return 1;
     }
-
+    
     while (1) {
         printf("*");
         if (!fgets(command, MAX_LENGTH, stdin)) break;
         command[strcspn(command, "\n")] = '\0';
-
+        
         if (command[0] >= '0' && command[0] <= '9') {
             edit_line(atoi(command) - 1);
         } else if (command[0] == 'a' || command[0] == 'A') {

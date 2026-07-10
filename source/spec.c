@@ -86,7 +86,7 @@ int spec_load_file(const char *filename) {
             if (spec_count < MAX_SPECS) {
                 // Register the new keyword dynamically!
                 if (current_spec.category == SPEC_CAT_STATEMENT) {
-                    current_spec.kw_id = keyword_register_custom(current_spec.name, DFLAG_ALL);
+                    current_spec.kw_id = keyword_register_custom(current_spec.name);
                 }
                 spec_registry[spec_count++] = current_spec;
             }

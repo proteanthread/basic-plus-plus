@@ -4,6 +4,8 @@
  */
 
 #if !defined(_WIN32) && !defined(WIN32) && !defined(__MSDOS__) && !defined(__DOS__)
+    #define _DEFAULT_SOURCE
+    #define _BSD_SOURCE
     #define _POSIX_SOURCE /* Exposes POSIX unbuffered terminal I/O in strict C89 mode on Linux */
 #endif
 
@@ -13,6 +15,7 @@
 
 /* --- Platform Specific Terminal Handling --- */
 #if defined(_WIN32) || defined(WIN32)
+    #define WIN32_LEAN_AND_MEAN
     #include <windows.h>
     #include <conio.h>
     #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
@@ -25,12 +28,24 @@
 #else
     #include <termios.h>
     #include <unistd.h>
+    #include <sys/ioctl.h>
     struct termios orig_termios;
 #endif
 
 #define MAX_LINES 1000
 #define MAX_LENGTH 255
-#define SCREEN_ROWS 24
+
+/* --- Extended Key Codes --- */
+#define KEY_UP    1000
+#define KEY_DOWN  1001
+#define KEY_LEFT  1002
+#define KEY_RIGHT 1003
+#define KEY_HOME  1004
+#define KEY_END   1005
+#define KEY_PGUP  1006
+#define KEY_PGDN  1007
+#define KEY_INS   1008
+#define KEY_DEL   1009
 
 char text_buffer[MAX_LINES][MAX_LENGTH];
 char current_filename[MAX_LENGTH] = "";
@@ -42,6 +57,28 @@ int row_offset = 0;
 int mode = 0; /* 0: Normal, 1: Insert, 2: Command */
 int cmd_len = 0;
 int running = 1;
+int screen_rows = 24;
+
+void get_terminal_size(void) {
+#if defined(_WIN32) || defined(WIN32)
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+        screen_rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    } else {
+        screen_rows = 24;
+    }
+#elif defined(__MSDOS__) || defined(__DOS__)
+    screen_rows = 25; /* DOS text-mode standard */
+#else
+    struct winsize w;
+    if (ioctl(1, TIOCGWINSZ, &w) != -1 && w.ws_row > 0) {
+        screen_rows = w.ws_row;
+    } else {
+        screen_rows = 24;
+    }
+#endif
+    if (screen_rows < 5) screen_rows = 24; /* Sanity fallback for ridiculously small windows */
+}
 
 void reset_term(void) {
 #if !defined(_WIN32) && !defined(WIN32) && !defined(__MSDOS__) && !defined(__DOS__)
@@ -70,15 +107,86 @@ void init_term(void) {
 int get_input(void) {
 #if defined(_WIN32) || defined(WIN32) || defined(__MSDOS__) || defined(__DOS__)
     int c = GETCH();
-    if (c == 0 || c == 224) { /* Safely swallow physical arrow keys scan codes on Windows/DOS */
-        GETCH();
+    if (c < 0) {
+        running = 0; 
+        return 0;
+    }
+    if (c == 0 || c == 224) { /* Hardware scan codes */
+        int seq = GETCH();
+        switch (seq) {
+            case 72: return KEY_UP;
+            case 80: return KEY_DOWN;
+            case 75: return KEY_LEFT;
+            case 77: return KEY_RIGHT;
+            case 71: return KEY_HOME;
+            case 79: return KEY_END;
+            case 73: return KEY_PGUP;
+            case 81: return KEY_PGDN;
+            case 82: return KEY_INS;
+            case 83: return KEY_DEL;
+        }
         return 0;
     }
     return c;
 #else
-    char c;
-    if (read(0, &c, 1) == 1) return c;
-    return 0;
+    char c, seq[3];
+    int ret = 27; /* Default fallback is standard ESC */
+    if (read(0, &c, 1) != 1) {
+        running = 0;
+        return 0;
+    }
+    
+    /* Parse ANSI escapes */
+    if (c == 27) {
+        struct termios raw;
+        tcgetattr(0, &raw);
+        raw.c_cc[VMIN] = 0;
+        raw.c_cc[VTIME] = 1; /* 100ms timeout for trailing escape chars */
+        tcsetattr(0, TCSANOW, &raw);
+        
+        if (read(0, &seq[0], 1) == 1) {
+            if (seq[0] == '[' || seq[0] == 'O') {
+                if (read(0, &seq[1], 1) == 1) {
+                    if (seq[0] == '[' && seq[1] >= '0' && seq[1] <= '9') {
+                        if (read(0, &seq[2], 1) == 1 && seq[2] == '~') {
+                            switch(seq[1]) {
+                                case '1': ret = KEY_HOME; break;
+                                case '2': ret = KEY_INS;  break;
+                                case '3': ret = KEY_DEL;  break;
+                                case '4': ret = KEY_END;  break;
+                                case '5': ret = KEY_PGUP; break;
+                                case '6': ret = KEY_PGDN; break;
+                                case '7': ret = KEY_HOME; break;
+                                case '8': ret = KEY_END;  break;
+                            }
+                        }
+                    } else {
+                        if (seq[0] == '[') {
+                            switch(seq[1]) {
+                                case 'A': ret = KEY_UP;    break;
+                                case 'B': ret = KEY_DOWN;  break;
+                                case 'C': ret = KEY_RIGHT; break;
+                                case 'D': ret = KEY_LEFT;  break;
+                                case 'H': ret = KEY_HOME;  break;
+                                case 'F': ret = KEY_END;   break;
+                            }
+                        } else if (seq[0] == 'O') {
+                            switch(seq[1]) {
+                                case 'H': ret = KEY_HOME;  break;
+                                case 'F': ret = KEY_END;   break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        /* Restore terminal to strict blocking mode */
+        raw.c_cc[VMIN] = 1; 
+        raw.c_cc[VTIME] = 0; 
+        tcsetattr(0, TCSANOW, &raw);
+        return ret;
+    }
+    return c;
 #endif
 }
 
@@ -129,7 +237,7 @@ void fix_cursor(void) {
     if (cursor_c < 0) cursor_c = 0;
 
     if (cursor_r < row_offset) row_offset = cursor_r;
-    if (cursor_r >= row_offset + SCREEN_ROWS - 1) row_offset = cursor_r - (SCREEN_ROWS - 2);
+    if (cursor_r >= row_offset + screen_rows - 1) row_offset = cursor_r - (screen_rows - 2);
 }
 
 void render_screen(void) {
@@ -137,7 +245,7 @@ void render_screen(void) {
     printf("\x1b[?25l"); /* Hide cursor momentarily to prevent flicker */
     printf("\x1b[H");
     
-    for (i = 0; i < SCREEN_ROWS - 1; i++) {
+    for (i = 0; i < screen_rows - 1; i++) {
         int line_idx = row_offset + i;
         if (line_idx < current_lines) {
             printf("%s\x1b[K\r\n", text_buffer[line_idx]);
@@ -159,12 +267,39 @@ void render_screen(void) {
     
     /* Set Physical Cursor Position */
     if (mode == 2) {
-        printf("\x1b[%d;%dH", SCREEN_ROWS, cmd_len + 2);
+        printf("\x1b[%d;%dH", screen_rows, cmd_len + 2);
     } else {
         printf("\x1b[%d;%dH", (cursor_r - row_offset) + 1, cursor_c + 1);
     }
     printf("\x1b[?25h");
     fflush(stdout);
+}
+
+void display_help(void) {
+    printf("\x1b[2J\x1b[H"); 
+    printf("--- vi Built-in Help ---\r\n\n");
+    printf(" NORMAL MODE:\r\n");
+    printf("   h,j,k,l / Arrows : Move cursor\r\n");
+    printf("   Home / End       : Jump to start/end of line\r\n");
+    printf("   PgUp / PgDn      : Page up / Page down\r\n");
+    printf("   0, $             : Jump to start/end of line\r\n");
+    printf("   i, a, I, A       : Enter Insert Mode\r\n");
+    printf("   o, O             : Insert new line / Insert Mode\r\n");
+    printf("   x, Del           : Delete character under cursor\r\n");
+    printf("   dd               : Delete current line\r\n");
+    printf("   :                : Enter Command Mode\r\n\n");
+    printf(" INSERT MODE:\r\n");
+    printf("   Esc              : Return to Normal Mode\r\n");
+    printf("   Enter            : Split line\r\n");
+    printf("   Backspace        : Delete char or merge lines\r\n\n");
+    printf(" COMMAND MODE:\r\n");
+    printf("   :w               : Save file\r\n");
+    printf("   :q, :q!          : Quit / Quit without saving\r\n");
+    printf("   :wq, :x          : Save and Quit\r\n");
+    printf("   :?               : Show this help screen\r\n\n");
+    printf("Press any key to return...");
+    fflush(stdout);
+    get_input(); /* Block execution until user returns */
 }
 
 void handle_normal(int c) {
@@ -186,27 +321,31 @@ void handle_normal(int c) {
             }
             return;
         }
-        /* Fall back and process char if it wasn't a double 'dd' execution */
     }
 
     switch (c) {
-        case 'h': cursor_c--; break;
-        case 'l': cursor_c++; break;
-        case 'j': cursor_r++; break;
-        case 'k': cursor_r--; break;
-        case 'i': mode = 1; break;
+        case 'h': case KEY_LEFT:  cursor_c--; break;
+        case 'l': case KEY_RIGHT: cursor_c++; break;
+        case 'j': case KEY_DOWN:  cursor_r++; break;
+        case 'k': case KEY_UP:    cursor_r--; break;
+        case KEY_HOME: case '0':  cursor_c = 0; break;
+        case KEY_END:  case '$':  cursor_c = (int)strlen(text_buffer[cursor_r]); break;
+        case KEY_PGUP: cursor_r -= (screen_rows - 2); break;
+        case KEY_PGDN: cursor_r += (screen_rows - 2); break;
+        
+        case 'i': case KEY_INS: mode = 1; break;
         case 'a': cursor_c++; mode = 1; break;
         case 'I': cursor_c = 0; mode = 1; break;
         case 'A': cursor_c = (int)strlen(text_buffer[cursor_r]); mode = 1; break;
-        case '0': cursor_c = 0; break;
-        case '$': cursor_c = (int)strlen(text_buffer[cursor_r]); break;
-        case 'x':
+        
+        case 'x': case KEY_DEL:
             if (text_buffer[cursor_r][cursor_c] != '\0') {
                 for (i = cursor_c; text_buffer[cursor_r][i]; i++) {
                     text_buffer[cursor_r][i] = text_buffer[cursor_r][i + 1];
                 }
             }
             break;
+            
         case 'd': pending_d = 1; break;
         case 'o':
             if (current_lines < MAX_LINES) {
@@ -231,6 +370,7 @@ void handle_normal(int c) {
                 cursor_c = 0;
             }
             break;
+            
         case ':':
             mode = 2;
             cmd_len = 0;
@@ -241,9 +381,33 @@ void handle_normal(int c) {
 
 void handle_insert(int c) {
     int i, len;
+    
     if (c == 27) { /* Escape */
         mode = 0;
         if (cursor_c > 0) cursor_c--;
+    } else if (c == KEY_UP) { cursor_r--; }
+    else if (c == KEY_DOWN) { cursor_r++; }
+    else if (c == KEY_LEFT) { cursor_c--; }
+    else if (c == KEY_RIGHT) { cursor_c++; }
+    else if (c == KEY_HOME) { cursor_c = 0; }
+    else if (c == KEY_END) { cursor_c = (int)strlen(text_buffer[cursor_r]); }
+    else if (c == KEY_PGUP) { cursor_r -= (screen_rows - 2); }
+    else if (c == KEY_PGDN) { cursor_r += (screen_rows - 2); }
+    else if (c == KEY_DEL) {
+        if (text_buffer[cursor_r][cursor_c] != '\0') {
+            for (i = cursor_c; text_buffer[cursor_r][i]; i++) {
+                text_buffer[cursor_r][i] = text_buffer[cursor_r][i + 1];
+            }
+        } else if (cursor_r < current_lines - 1) {
+            len = (int)strlen(text_buffer[cursor_r]);
+            if (len + (int)strlen(text_buffer[cursor_r + 1]) < MAX_LENGTH) {
+                strcat(text_buffer[cursor_r], text_buffer[cursor_r + 1]);
+                for (i = cursor_r + 1; i < current_lines - 1; i++) {
+                    strcpy(text_buffer[i], text_buffer[i + 1]);
+                }
+                current_lines--;
+            }
+        }
     } else if (c == 10 || c == 13) { /* Enter */
         if (current_lines < MAX_LINES) {
             for (i = current_lines; i > cursor_r; i--) {
@@ -274,7 +438,7 @@ void handle_insert(int c) {
                 cursor_c = prev_len;
             }
         }
-    } else if (c >= 32 && c <= 126) { /* Standard Characters */
+    } else if (c >= 32 && c <= 126) { /* Standard ASCII Characters */
         len = (int)strlen(text_buffer[cursor_r]);
         if (len < MAX_LENGTH - 1) {
             for (i = len; i >= cursor_c; i--) {
@@ -295,7 +459,8 @@ void handle_command(int c) {
         else if (strcmp(cmd_buffer, "wq") == 0 || strcmp(cmd_buffer, "x") == 0) {
             save_file();
             running = 0;
-        }
+        } 
+        else if (strcmp(cmd_buffer, "?") == 0) display_help();
         mode = 0;
     } else if (c == 8 || c == 127) {
         if (cmd_len > 0) cmd_buffer[--cmd_len] = '\0';
@@ -326,8 +491,10 @@ int main(int argc, char *argv[]) {
     printf("\x1b[2J\x1b[H"); 
     
     while (running) {
+        get_terminal_size(); /* Dynamically re-read layout per user iteration */
         fix_cursor();
         render_screen();
+        
         c = get_input();
         if (c == 0) continue;
         

@@ -85,7 +85,7 @@ typedef struct DeviceAlias {
  // Must be called once during boot, before any dialect
  // initialization. Zeros all entries and sets count to 0.
 void device_alias_init(void);
-int device_alias_load_dialect(int id);
+int device_alias_load_machine(int model);
 
  // device_alias_register - Add a single alias mapping.
  //
@@ -124,13 +124,13 @@ const DeviceAlias *device_alias_resolve(const char *name);
  //   id - the dialect to load aliases for
  //
  // Returns the number of aliases loaded.
-int device_alias_load_dialect(int id);
+int device_alias_load_machine(int model);
 
  // device_alias_clear_dialect - Remove all aliases for a dialect.
  //
  // Parameters:
  //   id - the dialect whose aliases to remove
-void device_alias_clear_dialect(int id);
+void device_alias_clear_machine(int model);
 
  // device_alias_clear_all - Remove all aliases (reset).
 void device_alias_clear_all(void);

@@ -108,7 +108,8 @@ typedef enum VDevId {
  VDEV_FILE = 2, // File I/O device
  VDEV_NULL = 3, // Null device
  VDEV_TIMER = 4, // Timer device
- VDEV_USER = 5, // First user-registerable slot
+ VDEV_VDRV = 5,
+    VDEV_USER = 6, // First user-registerable slot
  VDEV_MAX = 64 // Maximum device slots (was 16)
 } VDevId;
 
@@ -192,6 +193,22 @@ typedef enum VDevClass {
 #define VDEV_IOCTL_INT15 10 // BIOS System/Cassette Services
 #define VDEV_IOCTL_INT16 11 // BIOS Keyboard Services
 #define VDEV_IOCTL_INT21 12 // DOS Services
+#define VDEV_IOCTL_VFS_RESOLVE 13 // Resolve virtual path to host path
+#define VDEV_IOCTL_DIR_MKDIR 14 // Create directory
+#define VDEV_IOCTL_DIR_RMDIR 15 // Remove directory
+#define VDEV_IOCTL_DIR_CHDIR 16 // Change directory
+#define VDEV_IOCTL_DIR_GETCWD 17 // Get current working directory
+#define VDEV_IOCTL_MEM_ALLOC 18 // Allocate virtual memory block
+#define VDEV_IOCTL_MEM_FREE 19 // Free virtual memory block
+#define VDEV_IOCTL_MEM_RESIZE 20 // Resize virtual memory block
+
+
+typedef struct {
+    const char *path;
+    char *out_buffer;
+    int out_max;
+    int for_write;
+} VDevVfsResolveArgs;
 #define VDIO_USER 256 // first user-defined command
 
 // Forward declaration

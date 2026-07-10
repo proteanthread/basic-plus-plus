@@ -1,0 +1,63 @@
+BASIC++ VIRTUAL MACHINE & MOCK BIOS ARCHITECTURE
+==================================================
+
+BASIC++ provides a powerful abstraction layer allowing multiple simulated
+16-bit or 32-bit hardware environments to run concurrently within a single
+host instance. This replaces the legacy DIALECT subsystem, enabling accurate
+emulation of platforms such as the IBM PC, PCjr, XT, and AT without cluttering
+the global interpreter space.
+
+1. THE VIRTUAL MACHINE ARCHITECTURE
+
+Each Virtual Machine (VM) in BASIC++ operates in complete isolation,
+running its own instance of the VirtualMachine structure. This encapsulates:
+* BasicTask: The core multitasking unit allowing the VM to operate
+  preemptively or cooperatively in the background.
+* SegmentedMemContext: An isolated 16MB virtual memory space divided into
+  standard memory banks (RAMBANKs), preventing memory collision.
+* MockBiosContext: A self-contained implementation of essential PC BIOS
+  and DOS INT 21H interrupts, simulating low-level system services.
+* VDevRegistry: A dedicated virtual device namespace preventing alias
+  conflicts (e.g., COM1 in VM1 is distinct from COM1 in VM2).
+
+Because VMs render to off-screen, headless buffers by default, they can
+execute completely unnoticed until you connect a console view to them.
+
+2. UTILIZING THE VM COMMAND
+
+VM CREATE "name", "architecture"
+  Instantiates a new virtual machine in memory but does not begin execution.
+  Example: VM CREATE "DOS1", "IBM PC"
+
+VM CONFIG "name", parameter, value
+  Adjusts the hardware layout, BIOS parameters, or peripheral mappings prior
+  to boot. Example: VM CONFIG "DOS1", MEM_SIZE, 640
+
+VM START "name"
+  Begins execution of the VM. By default, it runs headlessly in the background.
+
+VM ATTACH "name"
+  Maps the host's primary graphical display and keyboard input directly into
+  the running VM's VDevRegistry, bringing it to the foreground.
+
+VM REBOOT "name"
+  Cycles the machine's state.
+
+VM STOP "name"
+  Terminates the instance entirely and deallocates its runtime state.
+
+3. EXPANDING THE POWER OF THE VM (UPCOMING FEATURES)
+
+The VM architecture in BASIC++ is designed for futureproofing. We are
+continuously integrating advanced capabilities:
+
+* VM SNAPSHOT "file.vms" / VM RESTORE "file.vms":
+  Serialize the entire VirtualMachine memory, task stack, and registers to disk.
+* VM SPEED <pct>:
+  Throttle the execution loop of a specific background VM to simulate older
+  processors (e.g., 4.77 MHz 8088).
+* VM INTERRUPT <num>:
+  Inject a simulated hardware interrupt manually into the running VM context.
+* VM SHARE <bank>:
+  Map a single RAMBANK into multiple isolated VMs for ultra-fast inter-VM
+  communication.
