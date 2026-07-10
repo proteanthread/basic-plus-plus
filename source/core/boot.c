@@ -442,7 +442,7 @@ static BootStatus boot_phase3_devices(MemorySystem *memory)
     // Device alias table (for cross-dialect device mapping)
 #ifndef BPP_LITE_BUILD
     device_alias_init();
-    device_alias_load_dialect(0);
+    device_alias_load_machine(0);
     boot_log(BOOT_DEBUG, "  Device alias table initialized");
 #endif
 

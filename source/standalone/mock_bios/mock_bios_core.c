@@ -94,6 +94,10 @@ void mock_bios_init_mem(MockBiosContext *ctx, uint8_t *mem, size_t size, MockBio
     ctx->pit_counter = 0;
     ctx->crtc_index = 0;
     memset(ctx->crtc_regs, 0, sizeof(ctx->crtc_regs));
+    
+    for (int i = 0; i < 20; i++) {
+        ctx->dos_handles[i] = NULL;
+    }
 
     if (model == BIOS_MODEL_NONE) {
         if (size > 0) memset(mem, 0, size);
@@ -521,13 +525,113 @@ void mock_bios_interrupt(MockBiosContext *ctx, uint8_t int_num)
             bx = 0xFF00;
             cx = 0;
         }
+        else if (ah == 0x39 || ah == 0x3A || ah == 0x3B || ah == 0x47 || ah == 0x3C || ah == 0x3D || ah == 0x3E || ah == 0x3F || ah == 0x40) {
+            char path[256];
+            uint32_t addr = dx;
+            int i = 0;
+            if (ah != 0x3E && ah != 0x3F && ah != 0x40 && ah != 0x47) {
+                while (i < 255) {
+                    uint8_t ch = ctx->read_mem(ctx->user_data, addr++);
+                    if (ch == '\0') break;
+                    path[i++] = ch;
+                }
+            }
+            path[i] = '\0';
+
+            typedef struct { const char *path; char *out_buffer; int out_max; int for_write; } BiosVfsArgs;
+
+            if (ah == 0x39) { // MKDIR
+                ax = (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 14, path)) ? 0 : 3;
+                if (ax == 0) flags &= ~1; else flags |= 1;
+            } else if (ah == 0x3A) { // RMDIR
+                ax = (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 15, path)) ? 0 : 3;
+                if (ax == 0) flags &= ~1; else flags |= 1;
+            } else if (ah == 0x3B) { // CHDIR
+                ax = (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 16, path)) ? 0 : 3;
+                if (ax == 0) flags &= ~1; else flags |= 1;
+            } else if (ah == 0x47) { // GETCWD
+                if (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 17, path)) {
+                    addr = dx; // write to memory
+                    for (int j = 0; path[j]; j++) ctx->write_mem(ctx->user_data, addr++, path[j]);
+                    ctx->write_mem(ctx->user_data, addr, 0);
+                    flags &= ~1; ax = 0;
+                } else {
+                    flags |= 1; ax = 15;
+                }
+            } else if (ah == 0x3C) { // CREATE FILE
+                BiosVfsArgs vfs = { path, path, sizeof(path), 1 };
+                if (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 13, &vfs)) {
+                    int handle = -1;
+                    for (int j=0; j<20; j++) if (!ctx->dos_handles[j]) { handle=j; break; }
+                    if (handle >= 0) {
+                        ctx->dos_handles[handle] = fopen(vfs.out_buffer, "wb+");
+                        if (ctx->dos_handles[handle]) { ax = handle; flags &= ~1; }
+                        else { ax = 3; flags |= 1; }
+                    } else { ax = 4; flags |= 1; }
+                } else { ax = 3; flags |= 1; }
+            } else if (ah == 0x3D) { // OPEN FILE
+                BiosVfsArgs vfs = { path, path, sizeof(path), 0 };
+                if (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 13, &vfs)) {
+                    int handle = -1;
+                    for (int j=0; j<20; j++) if (!ctx->dos_handles[j]) { handle=j; break; }
+                    if (handle >= 0) {
+                        ctx->dos_handles[handle] = fopen(vfs.out_buffer, "rb+");
+                        if (!ctx->dos_handles[handle]) ctx->dos_handles[handle] = fopen(vfs.out_buffer, "rb");
+                        if (ctx->dos_handles[handle]) { ax = handle; flags &= ~1; }
+                        else { ax = 2; flags |= 1; }
+                    } else { ax = 4; flags |= 1; }
+                } else { ax = 2; flags |= 1; }
+            } else if (ah == 0x3E) { // CLOSE
+                int h = bx & 0xFF;
+                if (h < 20 && ctx->dos_handles[h]) {
+                    fclose((FILE*)ctx->dos_handles[h]);
+                    ctx->dos_handles[h] = NULL;
+                    ax = 0; flags &= ~1;
+                } else { ax = 6; flags |= 1; }
+            } else if (ah == 0x3F) { // READ
+                int h = bx & 0xFF;
+                if (h < 20 && ctx->dos_handles[h]) {
+                    char buf[1024];
+                    int to_read = cx > 1024 ? 1024 : cx;
+                    size_t read_bytes = fread(buf, 1, to_read, (FILE*)ctx->dos_handles[h]);
+                    for (size_t j=0; j<read_bytes; j++) ctx->write_mem(ctx->user_data, (uint32_t)(dx+j), buf[j]);
+                    ax = (uint32_t)read_bytes; flags &= ~1;
+                } else { ax = 6; flags |= 1; }
+            } else if (ah == 0x40) { // WRITE
+                int h = bx & 0xFF;
+                if (h < 20 && ctx->dos_handles[h]) {
+                    char buf[1024];
+                    int to_write = cx > 1024 ? 1024 : cx;
+                    for (int j=0; j<to_write; j++) buf[j] = ctx->read_mem(ctx->user_data, (uint32_t)(dx+j));
+                    size_t written = fwrite(buf, 1, to_write, (FILE*)ctx->dos_handles[h]);
+                    ax = (uint32_t)written; flags &= ~1;
+                } else { ax = 6; flags |= 1; }
+            }
+        }
+        else if (ah == 0x48) {
+            uint32_t size_paras = bx;
+            if (ctx->vdev_ioctl) {
+                ax = ctx->vdev_ioctl(ctx->user_data, 18, (void*)(size_t)size_paras);
+                if (ax) flags &= ~1; else { flags |= 1; ax = 8; }
+            } else { flags |= 1; ax = 8; }
+        } else if (ah == 0x49) {
+            uint32_t segment = bx; // MockBiosRegs needs es, but let's assume bx for now if es isn't there. Wait, no es in MockBiosRegs.
+            // We'll use bx for testing for now.
+            segment = bx;
+            if (ctx->vdev_ioctl) {
+                ax = ctx->vdev_ioctl(ctx->user_data, 19, (void*)(size_t)segment);
+                flags &= ~1;
+            } else { flags |= 1; ax = 9; }
+        } else if (ah == 0x4A) {
+            uint32_t new_size_paras = bx;
+            if (ctx->vdev_ioctl) {
+                ax = ctx->vdev_ioctl(ctx->user_data, 20, (void*)(size_t)new_size_paras);
+                if (ax) flags &= ~1; else { flags |= 1; ax = 8; }
+            } else { flags |= 1; ax = 8; }
+        }
         else if (ah == 0x4C) {
             char term_msg[64];
-            #ifdef _MSC_VER
-            sprintf_s(term_msg, sizeof(term_msg), "\r\n[DOS] Program terminated with exit code %d\r\n", al);
-            #else
-            sprintf(term_msg, "\r\n[DOS] Program terminated with exit code %d\r\n", al);
-            #endif
+            snprintf(term_msg, sizeof(term_msg), "\r\n[DOS] Program terminated with exit code %d\r\n", al);
             for (int i = 0; term_msg[i] != '\0'; i++) {
                 if (ctx->vdev_ioctl) {
                     MockBiosRegs io_regs = { (0x0E00 | (uint8_t)term_msg[i]), 0, 0, 0, 0 };

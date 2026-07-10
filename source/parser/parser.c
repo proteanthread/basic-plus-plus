@@ -142,7 +142,7 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  // Strict mode gate: reject keywords that don't
  // belong to the active dialect's bitmask.
  // In union mode this always passes.
- if (!1) {
+ if (0) {
  error_raise(ERR_WHAT, line_num);
  return;
  }
@@ -286,9 +286,7 @@ void pi_parse_statement(Lexer *lex, RuntimeState *rt, int line_num)
  return;
  pi_parse_chain_cmd(lex, rt, line_num);
  return;
-  case KW_DIALECT:
-  pi_parse_dialect_cmd(lex, rt, line_num);
-  return;
+  
   case KW_BIOS:
   pi_parse_bios_cmd(lex, rt, line_num);
   return;

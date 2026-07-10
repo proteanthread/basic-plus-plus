@@ -17,6 +17,15 @@
  *    specific line. The 'x' command passes the buffer to the host
  *    for execution and returns to the editor prompt.
  *
+ *    IMMEDIATE MODE VS DEFERRED MODE:
+ *    BASIC++ defaults to an Immediate Mode REPL (like GW-BASIC) where
+ *    lines are evaluated as soon as they are typed. To implement or
+ *    default to a Deferred Mode workflow (like QBASIC), the host
+ *    application uses this module (invoked via --edlin or --edit).
+ *    In Deferred Mode, users write their entire program in the text buffer
+ *    first, and then execute it in batch via the 'x' command (which calls
+ *    the execute_buffer callback).
+ *
  * 3. WHAT CAN BE CHANGED:
  *    - New editor commands can be added to the dispatch switch.
  *    - Buffer sizes are controlled by MAX_EDLIN_LINES/LENGTH in

@@ -5,13 +5,13 @@
 
 I don't care what you do with my code, just don't take my code and sell it and/or don't take my code, modify my code, and sell it. This code is not for sale.
 
-### I do encourage you to fork this into your own dialect.  Everything you need is right there in the source.
+### I do encourage you to fork this into your own implementation.  Everything you need is right there in the source.
 
 ---
 
 ## Abstract
 
-BASIC++ ships with a runtime dialect-switching engine, a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 70 documentation files.
+BASIC++ ships with a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 70 documentation files.
 
 Designed for small memory footprints and readable source code. Runs on Windows 11, Linux, and FreeDOS. Suitable for embedded systems, legacy hardware, and as a teaching tool for interpreter design (tokenization, recursive-descent parsing, virtual machines, and environment management).
 
@@ -27,11 +27,29 @@ Alongside the main BASIC++ interpreter, the repository includes four fully self-
 
 ---
 
-## Section 1: Core Features
+## Section 1: Interpreter Editions
 
-The interpreter provides a comprehensive implementation of BASIC with support for 16 distinct dialect profiles, runtime dialect switching, and a union-mode parser that accepts the combined keyword set of all supported dialects by default.
+BASIC++ is distributed in three distinct compilation tiers, allowing it to scale from modern graphical workstations down to resource-constrained microcontrollers. The core architectural keywords, parsing logic, and execution semantics remain identical across all tiers; they differ only in their hardware abstractions and subsystem inclusions.
 
-### 1.1. Data Types
+### 1.1. BASIC++ SDL (GUI Edition)
+**Binaries:** asicpp.exe (Windows), aspp (Linux)
+The full-featured graphical interpreter. This build statically links against SDL2, providing a dedicated GUI window upon boot. It supports the complete suite of visual and auditory features, including the 320x200 16-color virtual framebuffer (SCREEN 1), dynamic palette manipulation (COLOR, PALETTE), vector drawing (LINE, CIRCLE, PAINT), and audio synthesis (SOUND, PLAY).
+
+### 1.2. BASIC++ Standard (Console Edition)
+**Binaries:** asicpp-console.exe (Windows), aspp-console (Linux)
+The standard command-line interface (CLI) interpreter. It boots directly into the host OS terminal (e.g., PowerShell, bash) without initializing a GUI window, ensuring seamless integration with shell pipes, redirections, and headless execution. However, it retains full compatibility with the SDL tier: if a program executes a graphical or audio command (like SCREEN 1), the interpreter will dynamically boot the SDL2 engine on-demand, create a window, and seamlessly continue execution.
+
+### 1.3. BASIC++ Lite3 (Embedded Edition)
+**Binaries:** lite.exe (Windows), lite (Linux)
+A stripped-down, ultra-lightweight build optimized strictly for minimal memory footprints and execution speed. Designed for embedded environments (e.g., Arduino, Raspberry Pi Pico, FreeRTOS), it entirely omits the SDL layer, the graphics framebuffer, network subsystems, and other heavy external modules. It executes core BASIC logic and standard console I/O using standard C library functions.
+
+---
+
+## Section 2: Core Features
+
+The interpreter provides a comprehensive implementation of BASIC with a union-mode parser that accepts a comprehensive keyword set covering standard BASIC features by default.
+
+### 2.1. Data Types
 
 BASIC++ supports three fundamental data types:
 
@@ -39,7 +57,7 @@ BASIC++ supports three fundamental data types:
 - **Floating-point** — Double-precision IEEE 754 (`double`), activated via numeric literals containing a decimal point (e.g., `3.14`) or via dialect configuration. Supports the full suite of transcendental functions: `SIN`, `COS`, `TAN`, `ATN`, `SQR`, `LOG`, `EXP`.
 - **Strings** — Variable-length character sequences up to 255 characters, managed via a pooled allocator. String variables are denoted by the `$` suffix (e.g., `A$`, `NAME$`).
 
-### 1.2. Variable Storage
+### 2.2. Variable Storage
 
 The variable system provides three tiers of storage:
 
@@ -51,7 +69,7 @@ The variable system provides three tiers of storage:
 
 All variables are initialized to zero (numeric) or empty string (string) upon `RUN`. The `CLEAR` command resets all variable storage without affecting the stored program.
 
-### 1.3. Parser
+### 2.3. Parser
 
 Expression evaluation in both the interpreter and C transpiler is conducted via an iterative, stack-based Shunting-Yard precedence parser with correct mathematical operator precedence:
 
@@ -69,7 +87,7 @@ EQV, IMP              (equivalence, implication — lowest)
 
 Sub-expressions encapsulated in parentheses and function arguments are evaluated iteratively using dedicated operand and operator stacks, avoiding host C language recursion limit dependencies. The parser supports both line-numbered program mode and unnumbered direct (immediate) mode execution.
 
-### 1.4. Implemented Directives
+### 2.4. Implemented Directives
 
 The interpreter implements over 220 keywords spanning the following categories:
 
@@ -107,7 +125,7 @@ The interpreter implements over 220 keywords spanning the following categories:
 
 **Extensibility:** `DIALECT`, `ALIAS`, `MODULE`, `OPTION STRICT`, `COMPILE`
 
-### 1.5. Environment Directives
+### 2.5. Environment Directives
 
 A distinct set of directives, which operate at the "edit" level outside stored programs, are provided for managing the runtime environment:
 
@@ -128,7 +146,7 @@ A distinct set of directives, which operate at the "edit" level outside stored p
 | `HELP [keyword]` | Display help for a command or topic |
 | `BYE` | Exit the interpreter to the OS prompt |
 
-### 1.6. Input/Output Operations
+### 2.6. Input/Output Operations
 
 The core implementation provides multiple output pathways:
 
@@ -137,77 +155,14 @@ The core implementation provides multiple output pathways:
 - **File I/O** — Full GW-BASIC/QBasic-compatible file operations supporting sequential (`INPUT`, `OUTPUT`, `APPEND`), random-access (`RANDOM`), and binary (`BINARY`) modes across 8 simultaneous file channels (`#1` through `#8`).
 - **Shell integration** — `SHELL "command"` for synchronous execution, `SHELL$("command")` for output capture, pipe (`|`) and redirect (`>`, `>>`) operators.
 
-### 1.7. Program Serialization & Execution Formats
+### 2.7. Program Serialization & Execution Formats
 
 BASIC++ supports four execution and storage profiles to enable portable and secure distribution of BASIC applications:
 
 - **Source Code (`.BAS`)** — Human-readable, byte-for-byte preserved plain text BASIC source code. Correct formatting, whitespace, and case choices are maintained.
-- **Compiled VM Bytecode (`.BPP`)** — Platform/dialect-independent bytecode format containing serialized VM instructions, string pools, line number maps, and ON jump tables. Features VM major version validation and payload CRC-16 integrity checks. If the adjacent `.BAS` source file is missing, it runs in **orphaned execution mode** where interactive LISTing and line editing are blocked.
+- **Compiled VM Bytecode (`.BPP`)** — Platform-independent bytecode format containing serialized VM instructions, string pools, line number maps, and ON jump tables. Features VM major version validation and payload CRC-16 integrity checks. If the adjacent `.BAS` source file is missing, it runs in **orphaned execution mode** where interactive LISTing and line editing are blocked.
 - **Portable Libraries (`.BPL`)** — Pre-compiled bytecode modules with export tables. Supports XOR-obfuscation (`0x5A`) of source code representation on disk for proprietary/obfuscated library imports.
 - **Execution Archives (`.EXE`/`.BPE`)** — Self-contained chunk-based containers bundling metadata (`META`), dependencies (`DEPS`), source code (`SRC_`), compiled bytecode (`BYTE`), and combined signatures (`SIGN`) for direct cross-platform execution.
-
-
----
-
-
-## Section 2: Multi-Dialect Engine
-
-BASIC++ is unique in its ability to emulate 12 historically accurate BASIC dialects within a single interpreter. Each dialect profile configures statement separators, operator behavior, ready prompts, print zone widths, feature gates, and keyword availability.
-
-### 2.1. Supported Dialects
-
-| Code | Dialect | Year | Prompt | Separator | Notes |
-|:-----|:--------|:-----|:-------|:----------|:------|
-| `PATB` | Palo Alto Tiny BASIC | 1976 | `READY` | `;` | Li-Chen Wang. Integer-only, `@()` arrays, `#` for `<>` |
-| `TRS1` | TRS-80 Level I | 1977 | `READY` | `:` | Leininger. Integer-only, 26 vars, basic strings |
-| `TRS2` | TRS-80 Level II | 1979 | `READY` | `:` | Microsoft. Full float, string arrays, multi-dim |
-| `GWBS` | GW-BASIC | 1983 | `Ok` | `:` | Microsoft. IBM PC workhorse, WHILE/WEND, ON ERROR |
-| `EC55` | ECMA-55 Minimal BASIC | 1978 | `READY` | `:` | ISO standard. Requires LET, formal specification |
-| `E116` | ECMA-116 Full BASIC | 1986 | `READY` | `:` | ISO standard. Structured flow, matrices, exceptions |
-| `QBAS` | QBasic | 1991 | `Ok` | `:` | Microsoft. SUB/FUNCTION, SELECT CASE, long names |
-| `AINT` | Apple II Integer BASIC | 1977 | `>` | `:` | Wozniak. Integer-only, no float, limited strings |
-| `ASFT` | AppleSoft BASIC | 1977 | `]` | `:` | Microsoft for Apple II. Full float, standard MS |
-| `ATRI` | Atari BASIC | 1979 | `READY` | `:` | Shepardson. Tokenized storage, CLR, DIM strings |
-| `C64B` | Commodore BASIC v2 | 1982 | `READY.` | `:` | Microsoft 6502. PEEK/POKE/SYS, limited error handling |
-| `COCO` | Color Computer BASIC | 1980 | `OK` | `:` | Microsoft Extended Color BASIC for Tandy CoCo |
-
-### 2.2. Dialect Switching
-
-Dialects can be switched at any time during a session:
-
-```basic
-DIALECT "QBAS"        ' Switch to QBasic mode
-DIALECT "C64B"        ' Switch to Commodore 64 mode
-DIALECT LIST          ' List all available dialects
-```
-
-### 2.3. Strict Mode
-
-By default, BASIC++ operates in **union mode**, where all keywords from all dialects are accepted. Enabling strict mode restricts the parser to only the keywords that belong to the active dialect's historical feature set:
-
-```basic
-OPTION STRICT         ' Enable dialect-strict parsing
-OPTION STRICT OFF     ' Return to union mode
-```
-
-### 2.4. Keyword Aliasing
-
-The `ALIAS` system allows keyword remapping for localization or personal preference:
-
-```basic
-ALIAS "IMPRIME" = PRINT       ' Spanish alias for PRINT
-ALIAS "ESCRIBE" = WRITE       ' Spanish alias for WRITE
-ALIAS LIST                    ' Show active aliases
-ALIAS CLEAR ALL               ' Remove all aliases
-```
-
-
-### 2.5. Conversational Dialect Features
-
-BASIC++ integrates features from classic conversational dialects (JOSS, FOCAL, MUMPS):
-- **Decimal Line Steps (JOSS/FOCAL)**: Supports load-time translation of decimal step numbers (e.g. `10.10 PRINT "Hi"`) which translate to standard line `1010` and label `STEP_10_10:`.
-- **Step Execution (FOCAL)**: The `DO` command supports step calls (e.g. `DO 10.10`) executing that single step as an implicit subroutine.
-- **Persistent Key-Value Store (MUMPS)**: Provides built-in functions `PSTORE(key$, val)` and `PRETRIEVE(key$)`/`PRETRIEVE$(key$)` as well as the virtual device `PERSIST:<key>` to save and load persistent data to `/vfs/persist/<key>.dat`.
 
 
 ---
@@ -378,12 +333,25 @@ The direct, or "immediate," execution context is invoked when directives are ent
      15
 > A = 42 : PRINT A * 2
      84
-> DIALECT "QBAS" : PRINT "Now in QBasic mode"
-Now in QBasic mode
 ```
 ### 6.2. Program Mode
-
-The "stored program" context is invoked when directives are entered with a preceding line number. Such lines are not executed; instead, they are inserted into the Program Storage array, maintained in sorted order by line number.
+  
+  The "stored program" context is invoked when directives are entered with a preceding line number. Such lines are not executed; instead, they are inserted into the Program Storage array, maintained in sorted order by line number.
+  
+  ```
+  > 10 PRINT "Hello"
+  > 20 GOTO 10
+  ```
+  
+### 6.3. Deferred Mode (Edlin)
+  
+  While BASIC++ defaults to an Immediate Mode REPL (Direct Mode), it also natively supports a Deferred Mode workflow (similar to QBASIC or modern IDEs) via the built-in screen editor. In Deferred Mode, statements are not evaluated or executed line-by-line as they are typed. Instead, you write your entire program within a text buffer offline. Once the program is fully written, it is passed to the host engine in a single batch for execution.
+  
+  To invoke Deferred Mode, launch the interpreter with the `--edlin` (or `--edit`) flag:
+  ```
+  > basicpp-console.exe --edlin
+  ```
+  Once inside the editor, you may use the `x` command to execute the entire buffer as a BASIC++ program.
 
 By default, decimal line numbers must be between 1 and `LINE_NUMBER_MAX` (65529).
 
@@ -411,7 +379,7 @@ Hello, World!
  1  2  3  4  5
 ```
 
-### 6.3. Command-Line Switches
+### 6.4. Command-Line Switches
 
 The interpreter executable supports several switches when launched from the command line:
 
@@ -427,11 +395,11 @@ The interpreter executable supports several switches when launched from the comm
 *   `--clean-up` / `--cleanup` — Sweep intermediate files (logs, object files, stub modules, etc.) in the workspace, but preserve the most recently modified `.LOG` file and `.OUT` file.
 *   `--full-clean-up` / `--full-cleanup` — Sweep all intermediate files including all `.LOG` and `.OUT` files.
 
-### 6.4. Program Execution
+### 6.5. Program Execution
 
 The `RUN` directive initiates sequential execution of the stored program. This directive first clears Variable Storage and the Call Stack to a zeroed state, ensuring that the program executes in a clean, predictable environment. Execution begins at the lowest extant line number. The `BYE` command exits the interpreter entirely, returning control to the operating system.
 
-### 6.5. Built-In Diagnostics (SELFTEST)
+### 6.6. Built-In Diagnostics (SELFTEST)
 
 The interpreter includes a formal self-test diagnostic suite. By running the command:
 ```
@@ -447,12 +415,11 @@ the interpreter executes a series of exhaustive subtests:
 3. **String Pool** — Introspects bump-allocator usage and bounds.
 4. **Function Registry** — Asserts that all built-in library functions are properly registered.
 5. **Memory Pool** — Validates scratch memory allocation watermarks.
-6. **Dialect Configuration** — Queries current dialect personality properties.
-7. **Parser Precedence** — Checks recursive-descent math precedence rules.
-8. **Loop Control Flow** — Exercises FOR/NEXT loop evaluation.
-9. **VFS File I/O** — Runs sequential line writes and inputs.
-10. **Device Aliases** — Confirms that device mappings (e.g. `SCRN:` -> `CON:`) resolve.
-11. **Graphics/SDL2** — Assesses compiled vs. linked SDL versions, queries renderer features (VSync, hardware acceleration, maximum texture sizes), monitor resolutions, active drivers, and audio synthesis devices.
+6. **Parser Precedence** — Checks recursive-descent math precedence rules.
+7. **Loop Control Flow** — Exercises FOR/NEXT loop evaluation.
+8. **VFS File I/O** — Runs sequential line writes and inputs.
+9. **Device Aliases** — Confirms that device mappings (e.g. `SCRN:` -> `CON:`) resolve.
+10. **Graphics/SDL2** — Assesses compiled vs. linked SDL versions, queries renderer features (VSync, hardware acceleration, maximum texture sizes), monitor resolutions, active drivers, and audio synthesis devices.
 
 In Console/text-only builds, `SELFTEST` dynamically boots the SDL2 engine on-demand to verify graphical and audio capabilities, cleaning up all SDL window and audio threads immediately after the check completes. When run in conjunction with `--log`, all diagnostic metadata is written in-depth to the active session log.
 
@@ -556,7 +523,7 @@ This classification refers to functionality for BASIC source code amalgamation, 
 
 ### 11.3. Modules
 
-This classification defines the primary system for C-level code extensibility. A "Module" is a compiled C-code entity that adds new keywords and syntactic features to the interpreter. This system is responsible for language syntax modification, enabling the creation of dialect-specific feature sets (e.g., adding a GRAPHICS module to provide `PSET` and `LINE`, or a SOUND module to provide `PLAY`). This is the mechanism by which the interpreter evolves from "Core" to "Full" BASIC.
+This classification defines the primary system for C-level code extensibility. A "Module" is a compiled C-code entity that adds new keywords and syntactic features to the interpreter. This system is responsible for language syntax modification, enabling the creation of specific feature sets (e.g., adding a GRAPHICS module to provide `PSET` and `LINE`, or a SOUND module to provide `PLAY`). This is the mechanism by which the interpreter evolves from "Core" to "Full" BASIC.
 
 ### 11.4. Plugins
 
@@ -615,9 +582,9 @@ A comprehensive documentation suite of 37 reference manuals and tutorials is inc
 ## Section 13: Example Session
 
 ```
-BASIC++ 4.4.4
+BASIC++ Standard 5.0.0
 @COPYLEFT ALL WRONGS RESERVED
-Jul 01 2026
+Jul 10 2026
 
 Ready.
 > 10 INPUT "Your name"; N$
@@ -648,7 +615,6 @@ Goodbye.
 | Source files | 129 `.c` + 65 `.h` |
 | Lines of code | ~90,000 |
 | Keywords | 223 |
-| Dialect profiles | 16 |
 | Documentation files | 70 |
 | External dependencies | **Zero** |
 | C standard | C17 |

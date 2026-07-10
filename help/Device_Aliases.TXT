@@ -1,0 +1,48 @@
+Virtual Machine & Device Alias Subsystem
+
+BASIC++ implements a dynamic Device Alias subsystem integrated tightly with the Virtual Machine / Mock BIOS hardware profiles. This allows for 100% accurate legacy device mapping.
+
+Overview
+Classic systems often had proprietary names for hardware ports. For example, the Atari 8-bit computers used E: for the screen editor and P: for the printer. The Commodore 64 used device numbers like 8 for disk drives and 4 for printers.
+
+The Device Alias system intercepts OPEN operations for these legacy device strings and seamlessly redirects them to modern BASIC++ Virtual Devices (VDevs) such as CON:, LPT:, or VDRV:.
+
+Mock BIOS Machine Profiles
+When a virtual machine is booted (e.g. VM BOOT "game.bas" SYSTEM ATARI), the host interpreter queries the MockBiosModel and loads a preset array of device aliases.
+
+Supported Profiles:
+- Atari 8-bit (BIOS_MODEL_ATARI): Maps E:, S:, K:, P:, C:, D1:, etc.
+- Commodore 64 (BIOS_MODEL_C64): Maps 0 (KBD), 3 (SCR), 4/5 (LPT), 8/9 (VDRV), etc.
+- Apple II (BIOS_MODEL_APPLE2): Standard disk/printer mappings.
+- TRS-80 (BIOS_MODEL_TRS80): Maps *PR, *CL, *CS.
+- IBM PC / MS-DOS (BIOS_MODEL_PC): Standard GW-BASIC mappings (SCRN:, KYBD:, LPT1:).
+
+Virtual Drives (VDRV:)
+To support legacy disk drive prefixes like D1: (Atari) or 8 (Commodore), the alias system resolves prefixes natively. 
+If an alias ends with a colon (:), the engine performs a prefix match instead of an exact match.
+
+basic
+OPEN "D1:TEST.BAS" FOR INPUT AS #1
+
+In the background, D1: is aliased to VDRV: (Virtual Drive). The remaining filename (TEST.BAS) is passed directly to the Virtual Drive I/O handler, allowing mapped folders or .d64/.atr image mounts to emulate hardware disk interfaces accurately.
+
+Runtime Alias Modification (DEVMAP)
+You can dynamically modify these aliases at runtime without changing the VM's hardware profile using the DEVMAP ALIAS command.
+
+Syntax
+basic
+DEVMAP ALIAS "SRC:" "TGT:"
+DEVMAP ALIAS RESET
+DEVMAP ALIAS LIST
+
+
+Examples
+Map the Atari screen editor (E:) to the modern console:
+basic
+DEVMAP ALIAS "E:" "CON:"
+
+
+Clear all active aliases:
+basic
+DEVMAP ALIAS RESET
+

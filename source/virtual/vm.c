@@ -134,7 +134,7 @@ static const KeywordOpcodeMap kw_opcode_map[] = {
  { KW_CLOSE, OP_CLOSE },
  { KW_CHAIN, OP_CHAIN },
  { KW_MERGE, OP_MERGE },
- { KW_DIALECT, OP_DIALECT },
+ 
  
  { KW_BSAVE, OP_BSAVE },
  { KW_BLOAD, OP_BLOAD },

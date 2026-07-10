@@ -48,6 +48,7 @@
 #include "../codegen/archive.h"
 #include "../memmap.h"
 #include "../segmented_mem.h"
+#include "gw_detok.h"
 
 extern struct GW_Memory *g_gw_mem;
 
@@ -1134,7 +1135,13 @@ void pi_parse_load_cmd(Lexer *lex, RuntimeState *rt, int line_num)
         fclose(mf);
     }
 
-    if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'E' && magic[3] == '\x1A') {
+    if (magic[0] == 0xFF) {
+        if (!gw_detok_load(&rt->memory->program, filename)) {
+            printf("Error: Failed to detokenize binary file '%s'.\n", filename);
+            error_raise(ERR_HOW, line_num);
+            return;
+        }
+    } else if (magic[0] == 'B' && magic[1] == 'P' && magic[2] == 'E' && magic[3] == '\x1A') {
         if (bpe_load(filename, &rt->memory->program, rt) != 0) {
             error_raise(ERR_HOW, line_num);
             return;

@@ -1,2983 +1,474 @@
-----------------------------------------
+=== BASIC++ COMMAND REFERENCE ===
+
+[Arithmetic / Math]
+ ABS          Absolute value
+ ACOS         Arccosine (SBASIC, returns radians)
+ ASIN         Arcsine (SBASIC, returns radians)
+ ATN          Arctangent (returns radians)
+ AVG          Advanced mathematical function
+ CABS         Advanced mathematical function
+ CARG         Advanced mathematical function
+ CDBL         Convert to double precision
+ CEXP         Advanced mathematical function
+ CINT         Round to nearest integer
+ CLOG         Advanced mathematical function
+ COMP         Compare two values (SBASIC, returns -1/0/+1)
+ COMPLEX      Advanced mathematical function
+ CONJ         Advanced mathematical function
+ COS          Cosine (radians)
+ COSH         Hyperbolic cosine (SBASIC)
+ CPOW         Advanced mathematical function
+ CSNG         Convert to single precision
+ CSQR         Advanced mathematical function
+ DET          Determinant of a matrix
+ EXP          Exponential (e^x)
+ FIX          Truncate toward zero
+ HI           High 8 bits (byte) of integer
+ IMAG         Advanced mathematical function
+ INT          Truncate to integer (math) or trigger software interrupt
+ LGT          Common logarithm base 10 (HP BASIC)
+ LN           Natural logarithm (base e)
+ LO           Low 8 bits (byte) of integer
+ LOG          Natural logarithm (base e)
+ LOG10        Common logarithm base 10 (SBASIC)
+ LOG2         Binary logarithm base 2 (SBASIC)
+ MAX          Advanced mathematical function
+ MED          Advanced mathematical function
+ MIN          Advanced mathematical function
+ NUM          Convert string to number
+ PDIF         Positive difference (SBASIC, MAX(a-b,0))
+ PI           Constant PI (SBASIC, 3.14159...)
+ RANDOMIZE    Seed the random number generator
+ REAL         Advanced mathematical function
+ REMAINDER    Modulo remainder of division
+ RND          Random number (0 to 1)
+ ROUND        Advanced mathematical function
+ SGN          Sign of a number (-1, 0, or 1)
+ SIN          Sine (radians)
+ SINH         Hyperbolic sine (SBASIC)
+ SQR          Square root
+ TAN          Tangent (radians)
+ TANH         Hyperbolic tangent (SBASIC)
+ TIM          Time components mode (HP BASIC, 0=min,1=hr,2=yday,3=yr)
+
+[Control Flow]
+ BY           Counting step in loop (SBASIC FOR loop alias)
+ CALL         Call a SUB procedure
+ CASE         Case clause within SELECT CASE
+ CAUSE        Raise an exception (ECMA-116)
+ CONTINUE     Resume execution of loop
+ DECLARE      Forward-declare a SUB or FUNCTION
+ DEF          Define a user function (one-line)
+ DEFINE       Begin user-defined block function
+ DO           Begin a DO loop
+ ELSE         Alternate branch in block IF or single-line IF
+ ELSEIF       Additional condition in block IF
+ END          Terminate program execution
+ ENDDEFINE    End user-defined function block
+ ENDFOR       End counting loop (Structured BASIC)
+ ENDIF        End a block IF structure
+ ENDREPEAT    End repeat loop block
+ ERROR        Raise a user error
+ EXIT         Exit a FOR or DO loop early
+ FN           Call user-defined function
+ FOR          Begin a counting loop
+ FUNCTION     Define a named function
+ GOSUB        Call a subroutine at a line number
+ GOTO         Jump to a line number
+ IF           Conditional decision structure
+ IN           Check containment in list or array
+ IS           Case selector comparison operator
+ LOOP         End of a DO loop (with condition)
+ NEXT         End of a FOR loop
+ ON           Computed GOTO/GOSUB or error/event handler
+ ON BREAK     Set Ctrl+C / signal interrupt handler
+ ON COM       Set serial port interrupt handler
+ ON KEY       Set key press interrupt handler
+ ON PEN       Set light pen interrupt handler
+ ON PLAY      Set music buffer interrupt handler
+ ON STRIG     Set joystick trigger interrupt handler
+ ON TIMER     Set timer interrupt handler
+ PROCEDURE    Begin procedure block definition
+ REPEAT       Begin repeat loop block
+ RESUME       Return from an error handler
+ RETRY        Retry failed transaction statement
+ RETURN       Return from a GOSUB subroutine
+ SELECT       Begin a SELECT CASE block
+ STEP         Count loop step increments
+ STOP         Pause program (use CONT to resume)
+ SUB          Define a named subroutine
+ TASK         Multi-tasking thread spawn
+ THEN         Conditional branch target indicator
+ TO           Counting upper limit indicator
+ TRAP         Set error/event trap handler (hybrid)
+ UNTIL        Exit condition for repeat loop
+ USE          Protected exception block handler
+ USR          Invoke machine language function
+ WEND         End of a WHILE loop
+ WHEN         Begin protected exception block
+ WHILE        Begin a conditional loop
+
+[Debug & Testing]
+ ASSERT       Assert a condition is true
+ BACKTRACE    Print the call stack
+ BREAK        Set a breakpoint or pause
+ CHECK        Check internal state
+ CONT         Continue after STOP or BREAK
+ DEBUG        Enter debug mode
+ DUMP         Dump variables or memory
+ ENDTEST      End a test block
+ SELFTEST     Run built-in interpreter tests
+ TEST         Begin a test block
+ TRACE        Enable detailed tracing
+ TROFF        Disable execution tracing
+ TRON         Enable execution tracing
+ VARS         List all defined variables
+ VERIFY       Verify program integrity
+
+[Devices & Network]
+ BIOREAD      Block I/O read
+ BIOS         Access mock BIOS interrupt
+ COM          Enable/disable COM port events
+ DEVMAP       Map a device to an alias
+ FILEMOD      Modify file attributes
+ IMAGE        Manage disk images
+ INP          Read from a hardware port
+ IOCTL        Send control string to device
+ MOUNT        Mount a VFS path
+ NINFO        Network info query
+ OUT          Write to a hardware port
+ SIOREAD      Stream I/O read
+ SIOREADLN    Stream I/O read line
+ UMOUNT       Unmount a VFS path
+ VCON         Virtual console info
+ VDEV         Virtual device introspection
+ VMACH        Virtual machine info
+ VMEM         Virtual memory introspection
+ VNET         Virtual network introspection
+ VPATH        Virtual filesystem path setup
+ VTERM        Virtual terminal info
+ WAIT         Wait for hardware port state
+
+[File I/O]
+ ACCESS       Query file channel permissions
+ ASK          Query file info (ECMA-116)
+ BIOCHECKSUM  Low-level block I/O operation
+ BIOCOMPARE   Low-level block I/O operation
+ BIOCOPY      Low-level block I/O operation
+ BIOFILL      Low-level block I/O operation
+ BIOSIZE      Low-level block I/O operation
+ BIOSTATUS    Low-level block I/O operation
+ BIOWRITE     Low-level block I/O operation
+ CHDIR        File and directory management
+ CLOSE        Close a file channel
+ CURDIR       Query current directory path
+ CVD          Unpack 8-byte string to double
+ CVI          Unpack 2-byte string to integer
+ CVS          Unpack 4-byte string to single
+ CWD          File and directory management
+ DIR          File and directory management
+ FIELD        Define record buffer fields
+ FILELEN      File and directory management
+ FILES        File and directory management
+ FILESIZE     File and directory management
+ GET          Read a record from random file
+ LOC          Current file position
+ LOCK         Lock file records
+ LOF          Get length of open file
+ MKD$         Pack double to 8-byte string
+ MKDIR        File and directory management
+ MKI$         Pack integer to 2-byte string
+ MKS$         Pack single to 4-byte string
+ MOUNTS       Display all active VFS mounts
+ NAME         File and directory management
+ POINTER      Query/set file position pointer
+ PUT          Write a record to random file
+ RENAME       File and directory management
+ RESET        Close all open files
+ REWRITE      Re-open channel for writing
+ RMDIR        File and directory management
+ SEEK         Set or get file position
+ SET          Set file pointer (ECMA-116)
+ SIOAVAIL     Low-level block I/O operation
+ SIOFLUSH     Low-level block I/O operation
+ SIOSEEK      Low-level block I/O operation
+ SIOSTATUS    Low-level block I/O operation
+ SIOWRITE     Low-level block I/O operation
+ UNLOCK       Unlock file records
+ VPATH$       File and directory management
+
+[Graphics]
+ BORDER       Set screen border color
+ BRIGHT       Set text screen brightness attribute
+ CIRCLE       Draw a circle
+ CURSOR       Graphics or sound macro
+ DISPLAY      Configure or query terminal displays
+ DRAW         Graphics or sound macro
+ DRAWTO       Graphics or sound macro
+ FLASH        Toggle text flashing screen attribute
+ GRAPHICS     Set Atari 8-bit graphics/text mode (abbreviated GR.)
+ INK          Set graphics pen/ink color
+ INVERSE      Toggle text screen reverse video
+ OVER         Toggle text overstrike rendering mode
+ PAINT        Flood fill an area
+ PALETTE      Remap a palette color
+ PAPER        Set text screen background paper color
+ PCOPY        Copy screen memory page
+ PEN          Read or configure light pen slot
+ PLAY         Graphics or sound macro
+ PLOT         Plot point or draw line
+ PMAP         Map physical to logical coordinates
+ POINT        Read color at pixel (x,y)
+ PRESET       Reset a pixel at (x,y)
+ PSET         Set a pixel at (x,y)
+ SCREEN       Set screen mode
+ VIEW         Set graphics viewport
+ WINDOW       Set logical coordinate system
+
+[Input / Output]
+ AT           Position cursor (used with PRINT)
+ CLS          Clear the screen
+ COLOR        Set text foreground/background
+ CONSOLE      Set or query active console device
+ EOF          Standard I/O or string formatting
+ GEMINI       Network protocol handler
+ GOPHER       Network protocol handler
+ HOME         Move cursor to top-left
+ INKEY        Non-blocking key read value
+ INPUT        Get console input into a variable
+ INPUT$       Read N chars from keyboard/file
+ INSTR        Standard I/O or string formatting
+ LINE         Read entire line (LINE INPUT)
+ LOCATE       Move cursor to row,column
+ LPRINT       Standard I/O or string formatting
+ LSET         Standard I/O or string formatting
+ NBYTESWAITING Network socket operation
+ NCONNECTED   Network socket operation
+ NEOF         Network socket operation
+ NERROR       Network socket operation
+ NHTTPSTATUS  Network socket operation
+ NJSONQUERY   Network socket operation
+ NSTATUS      Network socket operation
+ OPEN         Standard I/O or string formatting
+ PRINT        Display output to console
+ RSET         Standard I/O or string formatting
+ SPC          Standard I/O or string formatting
+ TAB          Standard I/O or string formatting
+ WIDTH        Set screen width
+ WRITE        Write comma-delimited data
+
+[Introspection]
+ ALARM        Built-in command or function: ALARM
+ ALIAS        Advanced language feature
+ ALIAS$       Advanced language feature
+ CATALOG      List all commands & functions
+ COMPILE      Advanced language feature
+ COPY         Built-in command or function: COPY
+ DEFUSR       Built-in command or function: DEFUSR
+ DEMAND       Built-in command or function: DEMAND
+ ENDSELECT    Built-in command or function: ENDSELECT
+ ERR$         Built-in command or function: ERR$
+ EXISTS       Built-in command or function: EXISTS
+ HASH         Built-in command or function: HASH
+ HELP         Show this help (or HELP keyword)
+ INFO         Display system information
+ IOCTL$       Built-in command or function: IOCTL$
+ KEY          Built-in command or function: KEY
+ LIKE         Built-in command or function: LIKE
+ LPOS         Printer head column position
+ MEMMAP$      Current memory map name (read-only)
+ MODULE       Advanced language feature
+ MOVE         Built-in command or function: MOVE
+ OVERRIDE     Advanced language feature
+ PUBLIC       Advanced language feature
+ REFORMAT     Built-in command or function: REFORMAT
+ SCOPE        Advanced language feature
+ SCRATCH      Built-in command or function: SCRATCH
+ TXNSTATUS    Built-in command or function: TXNSTATUS
+ UNLESS       Built-in command or function: UNLESS
+ USING        Built-in command or function: USING
+ VARPTR$      Built-in command or function: VARPTR$
+
+[Operators]
+ AND          Logical/bitwise AND operator
+ EQV          Logical equivalence operator
+ IMP          Logical implication operator
+ MOD          Modulo (remainder) operator
+ NOT          Logical/bitwise NOT operator
+ OR           Logical/bitwise OR operator
+ XOR          Bitwise exclusive OR
+
+[Program Mgmt & Editing]
+ AUTO         Automatic line numbering
+ BLOAD        Load binary memory image
+ BRUN         Load and execute binary program
+ BSAVE        Save binary memory image
+ CHAIN        Load and execute program, passing vars
+ CLOAD        Load program from cassette
+ CRUN         Load and run from cassette
+ CSAVE        Save program to cassette
+ DELETE       Delete program lines
+ EDIT         Edit a program line
+ LIST         List stored program lines
+ LLIST        Print stored program lines to LPT
+ LOAD         Load program from disk
+ MERGE        Merge program lines from disk
+ NEW          Clear program and variables
+ RENUM        Renumber program lines
+ RUN          Execute the stored program
+ SAVE         Save program to disk
+ UNLOAD       Unload module or program
+ UNSAVE       Delete saved program (alias for KILL)
+
+[Sound]
+ BEEP         Emit an audible beep
+ SOUND        Play a tone at frequency
+
+[String Functions]
+ ASC          ASCII value of first character
+ BIN          Number base conversion
+ BIN$         Convert to binary string (8-bit groups)
+ CHR          Convert ASCII code to string character
+ CHR$         Character from ASCII code
+ HEX          Number base conversion
+ HEX$         Convert to hexadecimal string
+ ICASE        String manipulation function
+ LCASE        String manipulation function
+ LEFT         String manipulation function
+ LEFT$        Get left portion of string
+ LEN          Length of a string
+ LTRIM        String manipulation function
+ MCASE        String manipulation function
+ MID          String manipulation function
+ MID$         Substring function
+ OCT          Number base conversion
+ OCT$         Convert to octal string
+ REPLACE      String manipulation function
+ REVERSE      String manipulation function
+ RIGHT        String manipulation function
+ RIGHT$       Get right portion of string
+ RTRIM        String manipulation function
+ SPACE        String manipulation function
+ SPACE$       Generate N space characters
+ STR          String manipulation function
+ STR$         Convert number to string
+ STRING       String manipulation function
+ TCASE        String manipulation function
+ TRIM         String manipulation function
+ UCASE        String manipulation function
+ VAL          Convert string to number
+
+[System & Environ]
+ ATOMIC       Begin a transactional block
+ BYE          Exit the interpreter
+ CLOCK        Access system NTP clock
+ COMMIT       Commit active transaction changes
+ CURDIR$      Current directory (alias for CWD$)
+ DATE         Get or set the system date
+ DELAY        Pause execution for milliseconds
+ DIALECT      System environment query/control
+ DIALECT$     System environment query/control
+ ENVIRON      System environment query/control
+ ERDEV        Error device code of last device error
+ ERRORLEVEL   Last shell exit code
+ EXEC         Execute a system command (Alias)
+ EXIST        System operation or file query
+ EXTERR       Extended error information
+ HOSTNAME     System environment query/control
+ JIFFIES      System time or date query
+ KEY(N)       Enable/disable key event trapping
+ KEYWORD      Modify keyword attributes at runtime
+ KILL         Reserved for future use
+ MOTOR        System operation or file query
+ ONKEY        Trigger key interrupt handler
+ PAUSE        Pause program for N frames/seconds
+ PLAY(N)      Enable/disable music buffer interrupt
+ PWD          Print current working directory path
+ ROLLBACK     Rollback current transaction state
+ SECURITY     System operation or file query
+ SHELL        Drop to system shell or exec command
+ SLEEP        Pause execution for N seconds
+ STICK        Read joystick coordinate value
+ STRIG        Read joystick trigger status
+ SYS          Execute a system command
+ SYSTEM       System environment query/control
+ TEST         System operation or file query
+ TI           System time or date query
+ TI$          System time or date query
+ TICKS        System time or date query
+ TIME         Get or set the system time
+ TODAY$       System time or date query
+ TXN          Query current transaction status
+ USERNAME     System environment query/control
+
+[System Variables]
+ CLOCK$       Current timestamp as YYYY-MM-DD HH:MM:SS
+ CWD$         Current working directory name string
+ DATE$        Current date as MM-DD-YYYY
+ DAY          Current day of month (1-31)
+ DAY$         Current day of the week
+ ERL          Line number of last runtime error
+ ERR          Numeric code of last runtime error
+ FALSE        Boolean value -1
+ HOSTNAME$    System hostname string
+ HOURS        Current hour (0-23)
+ INKEY$       Non-blocking single-char keyboard read
+ MEM          Free variable space in bytes
+ MINUTES      Current minute (0-59)
+ MONTH        Current numeric month (1-12)
+ MONTH$       Current month name
+ ONKEY$       Event-aware keyboard read
+ PWD$         Current working directory path string
+ SECONDS      Current second (0-59)
+ SIZE         Program memory size in bytes
+ TIME$        Current time as HH:MM:SS
+ TIMER        Seconds elapsed since midnight
+ TRUE         Boolean value 1
+ USERNAME$    Current system username string
+ VER          Current BASIC++ version number
+ YEAR         Current 4-digit year
+
+[Variables & Memory]
+ AS           Specify variable type or file channel alias
+ BANK         RAMBANK segmented virtual memory control
+ CLEAR        Clear stack and variables
+ CLR          Clear all variables (Atari/C64)
+ COMMON       Share vars with CHAINed program
+ CONST        Define a named constant
+ CSRLIN       Current cursor row
+ DATA         Store numeric or string data
+ DEFDBL       Declare double variable range
+ DEFINT       Declare integer variable range
+ DEFSNG       Declare single variable range
+ DEFSTR       Declare string variable range
+ DIM          Declare an array with dimensions
+ ERASE        Erase an array from memory
+ FRE          Free memory available
+ LBOUND       Array lower bound index
+ LET          Assign value to variable (optional in most dialects)
+ LOCAL        Declare local variables in sub/fn
+ MAT          Matrix operations
+ MEMMAP       Select memory map preset
+ MKD          Pack double to 8-byte string
+ MKI          Pack integer to 2-byte string
+ MKS          Pack single to 4-byte string
+ OPTION       Set interpreter options
+ PEEK         Read byte from virtual memory
+ PEEKB        Read byte from a RAMBANK segment
+ POKE         Write byte to virtual memory
+ POKEB        Write byte to a RAMBANK segment
+ POS          Current cursor column
+ PRETRIEVE    Retrieve persistent variable
+ PSTORE       Store variable persistently
+ READ         Read the next DATA value
+ REDIM        Resize a dynamic array
+ REM          Comment (ignored by interpreter)
+ RESTORE      Reset DATA pointer to beginning
+ SEG          Get memory segment index of variable
+ SHARED       Share variables with main program
+ STATIC       Preserve local variables across calls
+ SWAP         Exchange two variables
+ TYPE         Define a user-defined type
+ UBOUND       Array upper bound index
+ VARPTR       Pointer index of a variable
 
---- HELP ABS ---
-ABS - Absolute value
-Usage: PRINT ABS(-5) ' prints 5
-Category: Math
-----------------------------------------
-
---- HELP ACCESS ---
-ACCESS - Query file channel permissions
-Usage: PRINT ACCESS(1)
-Category: Fileio
-----------------------------------------
-
---- HELP ACOS ---
-ACOS - Arccosine (SBASIC, returns radians)
-Usage: PRINT ACOS(0) ' 1.5708 (PI/2)
-Category: Math
-----------------------------------------
-
---- HELP ALARM ---
-ALARM - Undocumented keyword ALARM
-Usage: ALARM
-Category: Flow
-----------------------------------------
-
---- HELP ALARM ---
-ALARM - Undocumented keyword ALARM
-Usage: ALARM
-Category: Intro
-----------------------------------------
-
---- HELP ALIAS ---
-ALIAS - Undocumented keyword ALIAS
-Usage: ALIAS
-Category: Intro
-----------------------------------------
-
---- HELP ALIAS$ ---
-ALIAS$ - Undocumented keyword ALIAS$
-Usage: ALIAS$
-Category: Intro
-----------------------------------------
-
---- HELP AND ---
-AND - Logical/bitwise AND operator
-Usage: IF A>0 AND B>0 THEN ...
-Category: Oper
-----------------------------------------
-
---- HELP AS ---
-AS - Undocumented keyword AS
-Usage: AS
-Category: Flow
-----------------------------------------
-
---- HELP AS ---
-AS - Undocumented keyword AS
-Usage: AS
-Category: Intro
-----------------------------------------
-
---- HELP ASC ---
-ASC - Undocumented keyword ASC
-Usage: ASC
-Category: Intro
-----------------------------------------
-
---- HELP ASIN ---
-ASIN - Arcsine (SBASIC, returns radians)
-Usage: PRINT ASIN(1) ' 1.5708 (PI/2)
-Category: Math
-----------------------------------------
-
---- HELP ASK ---
-ASK - Query file info (ECMA-116)
-Usage: ASK #1: FILESIZE F
-Category: Fileio
-----------------------------------------
-
---- HELP ASSERT ---
-ASSERT - Test an assertion (pass/fail)
-Usage: ASSERT 2+3=5 or ASSERT A>0
-Category: Debug
-----------------------------------------
-
---- HELP ATN ---
-ATN - Arctangent (returns radians)
-Usage: PI = 4*ATN(1)
-Category: Math
-----------------------------------------
-
---- HELP ATOMIC ---
-ATOMIC - Begin a transactional block
-Usage: ATOMIC: A=A+1: B=B-1: COMMIT
-Category: Sysenv
-----------------------------------------
-
---- HELP AUTO ---
-AUTO - Auto-generate line numbers
-Usage: AUTO or AUTO 100,5
-Category: Edit
-----------------------------------------
-
---- HELP AVG ---
-AVG - Undocumented keyword AVG
-Usage: AVG
-Category: Intro
-----------------------------------------
-
---- HELP BACKTRACE ---
-BACKTRACE - Show call stack backtrace
-Usage: BACKTRACE
-Category: Debug
-----------------------------------------
-
---- HELP BANK ---
-BANK - RAMBANK segmented virtual memory control
-Usage: BANK n SHARED | BANK n PRIVATE | BANK n CLEAR | BANK n STATUS | BANK LIST | BANK n
-Category: Varmem
-----------------------------------------
-
---- HELP BEEP ---
-BEEP - Emit an audible beep
-Usage: BEEP
-Category: Sound
-----------------------------------------
-
---- HELP BIN ---
-BIN - Represent integer in binary form
-Usage: PRINT BIN(255)
-Category: String
-----------------------------------------
-
---- HELP BIN ---
-BIN - Undocumented keyword BIN
-Usage: BIN
-Category: Flow
-----------------------------------------
-
---- HELP BIN ---
-BIN - Undocumented keyword BIN
-Usage: BIN
-Category: Intro
-----------------------------------------
-
---- HELP BIN$ ---
-BIN$ - Convert to binary string (8-bit groups)
-Usage: PRINT BIN$(255) ' 11111111
-Category: String
-----------------------------------------
-
---- HELP BIOCHECKSUM ---
-BIOCHECKSUM - Undocumented keyword BIOCHECKSUM
-Usage: BIOCHECKSUM
-Category: Intro
-----------------------------------------
-
---- HELP BIOCOMPARE ---
-BIOCOMPARE - Undocumented keyword BIOCOMPARE
-Usage: BIOCOMPARE
-Category: Intro
-----------------------------------------
-
---- HELP BIOCOPY ---
-BIOCOPY - Undocumented keyword BIOCOPY
-Usage: BIOCOPY
-Category: Intro
-----------------------------------------
-
---- HELP BIOFILL ---
-BIOFILL - Undocumented keyword BIOFILL
-Usage: BIOFILL
-Category: Intro
-----------------------------------------
-
---- HELP BIOREAD ---
-BIOREAD - Read block from block-level device
-Usage: BIOREAD #1, block_num, array()
-Category: Device
-----------------------------------------
-
---- HELP BIOSIZE ---
-BIOSIZE - Undocumented keyword BIOSIZE
-Usage: BIOSIZE
-Category: Intro
-----------------------------------------
-
---- HELP BIOSTATUS ---
-BIOSTATUS - Undocumented keyword BIOSTATUS
-Usage: BIOSTATUS
-Category: Intro
-----------------------------------------
-
---- HELP BIOWRITE ---
-BIOWRITE - Undocumented keyword BIOWRITE
-Usage: BIOWRITE
-Category: Intro
-----------------------------------------
-
---- HELP BLOAD ---
-BLOAD - Undocumented keyword BLOAD
-Usage: BLOAD
-Category: Flow
-----------------------------------------
-
---- HELP BLOAD ---
-BLOAD - Undocumented keyword BLOAD
-Usage: BLOAD
-Category: Intro
-----------------------------------------
-
---- HELP BORDER ---
-BORDER - Set screen border color
-Usage: BORDER 4
-Category: Gfx
-----------------------------------------
-
---- HELP BREAK ---
-BREAK - Set/clear/list breakpoints
-Usage: BREAK 100 | BREAK -100 | BREAK
-Category: Debug
-----------------------------------------
-
---- HELP BRIGHT ---
-BRIGHT - Set text screen brightness attribute
-Usage: BRIGHT 1 | BRIGHT 0
-Category: Gfx
-----------------------------------------
-
---- HELP BRUN ---
-BRUN - Undocumented keyword BRUN
-Usage: BRUN
-Category: Flow
-----------------------------------------
-
---- HELP BRUN ---
-BRUN - Undocumented keyword BRUN
-Usage: BRUN
-Category: Intro
-----------------------------------------
-
---- HELP BSAVE ---
-BSAVE - Undocumented keyword BSAVE
-Usage: BSAVE
-Category: Flow
-----------------------------------------
-
---- HELP BSAVE ---
-BSAVE - Undocumented keyword BSAVE
-Usage: BSAVE
-Category: Intro
-----------------------------------------
-
---- HELP BY ---
-BY - Counting step in loop (SBASIC FOR loop alias)
-Usage: FOR I = 1 TO 10 BY 2
-Category: Flow
-----------------------------------------
-
---- HELP BYE ---
-BYE - Exit the interpreter
-Usage: BYE
-Category: Sysenv
-----------------------------------------
-
---- HELP CABS ---
-CABS - Undocumented keyword CABS
-Usage: CABS
-Category: Intro
-----------------------------------------
-
---- HELP CALL ---
-CALL - Undocumented keyword CALL
-Usage: CALL
-Category: Intro
-----------------------------------------
-
---- HELP CARG ---
-CARG - Undocumented keyword CARG
-Usage: CARG
-Category: Intro
-----------------------------------------
-
---- HELP CASE ---
-CASE - Case clause within SELECT CASE
-Usage: CASE 1,2,3 or CASE IS > 10 or CASE ELSE
-Category: Flow
-----------------------------------------
-
---- HELP CATALOG ---
-CATALOG - List all commands & functions
-Usage: CATALOG
-Category: Intro
-----------------------------------------
-
---- HELP CAUSE ---
-CAUSE - Raise an exception (ECMA-116)
-Usage: CAUSE EXCEPTION 1000
-Category: Flow
-----------------------------------------
-
---- HELP CDBL ---
-CDBL - Convert to double precision
-Usage: PRINT CDBL(X)
-Category: Math
-----------------------------------------
-
---- HELP CEXP ---
-CEXP - Undocumented keyword CEXP
-Usage: CEXP
-Category: Intro
-----------------------------------------
-
---- HELP CHAIN ---
-CHAIN - Undocumented keyword CHAIN
-Usage: CHAIN
-Category: Flow
-----------------------------------------
-
---- HELP CHAIN ---
-CHAIN - Undocumented keyword CHAIN
-Usage: CHAIN
-Category: Intro
-----------------------------------------
-
---- HELP CHDIR ---
-CHDIR - Undocumented keyword CHDIR
-Usage: CHDIR
-Category: Intro
-----------------------------------------
-
---- HELP CHECK ---
-CHECK - Analyze program currently in memory
-Usage: CHECK
-Category: Debug
-----------------------------------------
-
---- HELP CHR ---
-CHR - Convert ASCII code to string character
-Usage: PRINT CHR(65)
-Category: String
-----------------------------------------
-
---- HELP CHR$ ---
-CHR$ - Character from ASCII code
-Usage: PRINT CHR$(65) ' A
-Category: String
-----------------------------------------
-
---- HELP CINT ---
-CINT - Round to nearest integer
-Usage: PRINT CINT(3.6) ' prints 4
-Category: Math
-----------------------------------------
-
---- HELP CIRCLE ---
-CIRCLE - Draw a circle
-Usage: CIRCLE (160,100), 50
-Category: Gfx
-----------------------------------------
-
---- HELP CLEAR ---
-CLEAR - Clear stack and variables
-Usage: CLEAR
-Category: Varmem
-----------------------------------------
-
---- HELP CLOAD ---
-CLOAD - Undocumented keyword CLOAD
-Usage: CLOAD
-Category: Flow
-----------------------------------------
-
---- HELP CLOAD ---
-CLOAD - Undocumented keyword CLOAD
-Usage: CLOAD
-Category: Intro
-----------------------------------------
-
---- HELP CLOCK ---
-CLOCK - Access system NTP clock
-Usage: CLOCK ON | CLOCK OFF
-Category: Sysenv
-----------------------------------------
-
---- HELP CLOCK$ ---
-CLOCK$ - Full timestamp string
-Usage: PRINT CLOCK$ ' YYYY-MM-DD HH:MM:SS
-Category: Sysenv
-----------------------------------------
-
---- HELP CLOCK$ ---
-CLOCK$ - Current timestamp as YYYY-MM-DD HH:MM:SS
-Usage: PRINT CLOCK$
-Category: Sysvar
-----------------------------------------
-
---- HELP CLOCK: ---
-CLOCK: - FujiNet NTP clock device
-Usage: Read time via CLOCK: device (ISO/binary formats)
-Category: Device
-----------------------------------------
-
---- HELP CLOG ---
-CLOG - Undocumented keyword CLOG
-Usage: CLOG
-Category: Intro
-----------------------------------------
-
---- HELP CLOSE ---
-CLOSE - Close a file channel
-Usage: CLOSE #1
-Category: Fileio
-----------------------------------------
-
---- HELP CLR ---
-CLR - Clear all variables (Atari/C64)
-Usage: CLR
-Category: Varmem
-----------------------------------------
-
---- HELP CLS ---
-CLS - Clear the screen
-Usage: CLS
-Category: Io
-----------------------------------------
-
---- HELP COLOR ---
-COLOR - Set text foreground/background
-Usage: COLOR 14,1 (yellow on blue)
-Category: Io
-----------------------------------------
-
---- HELP COM ---
-COM - Configure serial port communication
-Usage: COM(1) ON | COM(1) OFF | COM(1) STOP
-Category: Device
-----------------------------------------
-
---- HELP COMMIT ---
-COMMIT - Commit active transaction changes
-Usage: COMMIT
-Category: Sysenv
-----------------------------------------
-
---- HELP COMMON ---
-COMMON - Share vars with CHAINed program
-Usage: COMMON A, B$
-Category: Varmem
-----------------------------------------
-
---- HELP COMP ---
-COMP - Compare two values (SBASIC, returns -1/0/+1)
-Usage: PRINT COMP(3,5) ' -1
-Category: Math
-----------------------------------------
-
---- HELP COMPILE ---
-COMPILE - Undocumented keyword COMPILE
-Usage: COMPILE
-Category: Flow
-----------------------------------------
-
---- HELP COMPILE ---
-COMPILE - Undocumented keyword COMPILE
-Usage: COMPILE
-Category: Intro
-----------------------------------------
-
---- HELP COMPLEX ---
-COMPLEX - Undocumented keyword COMPLEX
-Usage: COMPLEX
-Category: Intro
-----------------------------------------
-
---- HELP CONJ ---
-CONJ - Undocumented keyword CONJ
-Usage: CONJ
-Category: Intro
-----------------------------------------
-
---- HELP CONSOLE ---
-CONSOLE - Set or query active console device
-Usage: CONSOLE 2
-Category: Io
-----------------------------------------
-
---- HELP CONST ---
-CONST - Define a named constant
-Usage: CONST PI = 3.14159
-Category: Varmem
-----------------------------------------
-
---- HELP CONT ---
-CONT - Continue from STOP/BREAK
-Usage: CONT
-Category: Debug
-----------------------------------------
-
---- HELP CONTINUE ---
-CONTINUE - Resume execution of loop
-Usage: CONTINUE FOR or CONTINUE DO
-Category: Flow
-----------------------------------------
-
---- HELP COPY ---
-COPY - Undocumented keyword COPY
-Usage: COPY
-Category: Flow
-----------------------------------------
-
---- HELP COPY ---
-COPY - Undocumented keyword COPY
-Usage: COPY
-Category: Intro
-----------------------------------------
-
---- HELP COS ---
-COS - Cosine (radians)
-Usage: PRINT COS(0) ' prints 1
-Category: Math
-----------------------------------------
-
---- HELP COSH ---
-COSH - Hyperbolic cosine (SBASIC)
-Usage: PRINT COSH(0) ' 1
-Category: Math
-----------------------------------------
-
---- HELP CPOW ---
-CPOW - Undocumented keyword CPOW
-Usage: CPOW
-Category: Intro
-----------------------------------------
-
---- HELP CRUN ---
-CRUN - Undocumented keyword CRUN
-Usage: CRUN
-Category: Flow
-----------------------------------------
-
---- HELP CRUN ---
-CRUN - Undocumented keyword CRUN
-Usage: CRUN
-Category: Intro
-----------------------------------------
-
---- HELP CSAVE ---
-CSAVE - Undocumented keyword CSAVE
-Usage: CSAVE
-Category: Flow
-----------------------------------------
-
---- HELP CSAVE ---
-CSAVE - Undocumented keyword CSAVE
-Usage: CSAVE
-Category: Intro
-----------------------------------------
-
---- HELP CSNG ---
-CSNG - Convert to single precision
-Usage: PRINT CSNG(X)
-Category: Math
-----------------------------------------
-
---- HELP CSQR ---
-CSQR - Undocumented keyword CSQR
-Usage: CSQR
-Category: Intro
-----------------------------------------
-
---- HELP CSRLIN ---
-CSRLIN - Current cursor row
-Usage: PRINT CSRLIN
-Category: Varmem
-----------------------------------------
-
---- HELP CURDIR ---
-CURDIR - Query current directory path
-Usage: PRINT CURDIR
-Category: Fileio
-----------------------------------------
-
---- HELP CURDIR$ ---
-CURDIR$ - Current directory (alias for CWD$)
-Usage: PRINT CURDIR$
-Category: Sysenv
-----------------------------------------
-
---- HELP CURSOR ---
-CURSOR - Undocumented keyword CURSOR
-Usage: CURSOR
-Category: Flow
-----------------------------------------
-
---- HELP CURSOR ---
-CURSOR - Undocumented keyword CURSOR
-Usage: CURSOR
-Category: Intro
-----------------------------------------
-
---- HELP CVD ---
-CVD - Unpack 8-byte string to double
-Usage: D = CVD(A$)
-Category: Fileio
-----------------------------------------
-
---- HELP CVI ---
-CVI - Unpack 2-byte string to integer
-Usage: N = CVI(A$)
-Category: Fileio
-----------------------------------------
-
---- HELP CVS ---
-CVS - Unpack 4-byte string to single
-Usage: F = CVS(A$)
-Category: Fileio
-----------------------------------------
-
---- HELP CWD ---
-CWD - Query current working directory
-Usage: PRINT CWD
-Category: Fileio
-----------------------------------------
-
---- HELP CWD ---
-CWD - Print current working directory folder name
-Usage: CWD
-Category: Sysenv
-----------------------------------------
-
---- HELP CWD ---
-CWD - Undocumented keyword CWD
-Usage: CWD
-Category: Flow
-----------------------------------------
-
---- HELP CWD ---
-CWD - Undocumented keyword CWD
-Usage: CWD
-Category: Intro
-----------------------------------------
-
---- HELP CWD$ ---
-CWD$ - Current working directory name string
-Usage: A$ = CWD$ or PRINT CWD$
-Category: Sysenv
-----------------------------------------
-
---- HELP CWD$ ---
-CWD$ - Current working directory name string
-Usage: PRINT CWD$
-Category: Sysvar
-----------------------------------------
-
---- HELP DATE$ ---
-DATE$ - Current date string
-Usage: PRINT DATE$
-Category: Sysenv
-----------------------------------------
-
---- HELP DATE$ ---
-DATE$ - Current date as MM-DD-YYYY
-Usage: PRINT DATE$
-Category: Sysvar
-----------------------------------------
-
---- HELP DAY ---
-DAY - Current day of month (1-31)
-Usage: PRINT DAY
-Category: Sysvar
-----------------------------------------
-
---- HELP DAY$ ---
-DAY$ - Current day of the week
-Usage: PRINT DAY$
-Category: Sysvar
-----------------------------------------
-
---- HELP DECLARE ---
-DECLARE - Forward-declare a SUB or FUNCTION
-Usage: DECLARE SUB MySub(x, y$)
-Category: Flow
-----------------------------------------
-
---- HELP DEF ---
-DEF - Define a user function (one-line)
-Usage: DEF FNA(X)=X*X+1
-Category: Flow
-----------------------------------------
-
---- HELP DEFDBL ---
-DEFDBL - Declare double variable range
-Usage: DEFDBL A-Z
-Category: Varmem
-----------------------------------------
-
---- HELP DEFINE ---
-DEFINE - Begin user-defined block function
-Usage: DEFINE FUNCTION my_fn(x) ... ENDDEFINE
-Category: Flow
-----------------------------------------
-
---- HELP DEFINT ---
-DEFINT - Declare integer variable range
-Usage: DEFINT A-Z
-Category: Varmem
-----------------------------------------
-
---- HELP DEFSNG ---
-DEFSNG - Declare single variable range
-Usage: DEFSNG A-Z
-Category: Varmem
-----------------------------------------
-
---- HELP DEFSTR ---
-DEFSTR - Declare string variable range
-Usage: DEFSTR A-Z
-Category: Varmem
-----------------------------------------
-
---- HELP DEFUSR ---
-DEFUSR - Undocumented keyword DEFUSR
-Usage: DEFUSR
-Category: Intro
-----------------------------------------
-
---- HELP DELAY ---
-DELAY - Pause execution for milliseconds
-Usage: DELAY 500
-Category: Sysenv
-----------------------------------------
-
---- HELP DELETE ---
-DELETE - Delete lines by range
-Usage: DELETE 100 or DELETE 100-200
-Category: Edit
-----------------------------------------
-
---- HELP DEMAND ---
-DEMAND - Undocumented keyword DEMAND
-Usage: DEMAND
-Category: Flow
-----------------------------------------
-
---- HELP DEMAND ---
-DEMAND - Undocumented keyword DEMAND
-Usage: DEMAND
-Category: Intro
-----------------------------------------
-
---- HELP DET ---
-DET - Determinant of a matrix
-Usage: PRINT DET(A)
-Category: Math
-----------------------------------------
-
---- HELP DEVMAP ---
-DEVMAP - Device slot mapping
-Usage: DEVMAP - file channels + VDev slot table
-Category: Device
-----------------------------------------
-
---- HELP DIALECT ---
-DIALECT - Undocumented keyword DIALECT
-Usage: DIALECT
-Category: Intro
-----------------------------------------
-
---- HELP DIALECT$ ---
-DIALECT$ - Undocumented keyword DIALECT$
-Usage: DIALECT$
-Category: Intro
-----------------------------------------
-
---- HELP DIM ---
-DIM - Declare an array with dimensions
-Usage: DIM A(10) or DIM M(3,3) or DIM A$(25)
-Category: Varmem
-----------------------------------------
-
---- HELP DIR ---
-DIR - Undocumented keyword DIR
-Usage: DIR
-Category: Flow
-----------------------------------------
-
---- HELP DIR ---
-DIR - Undocumented keyword DIR
-Usage: DIR
-Category: Intro
-----------------------------------------
-
---- HELP DISPLAY ---
-DISPLAY - Configure or query terminal displays
-Usage: DISPLAY ON | DISPLAY OFF
-Category: Gfx
-----------------------------------------
-
---- HELP DO ---
-DO - Begin a DO loop
-Usage: DO ... LOOP WHILE cond
-Category: Flow
-----------------------------------------
-
---- HELP DRAW ---
-DRAW - Undocumented keyword DRAW
-Usage: DRAW
-Category: Intro
-----------------------------------------
-
---- HELP DRAWTO ---
-DRAWTO - Undocumented keyword DRAWTO
-Usage: DRAWTO
-Category: Intro
-----------------------------------------
-
---- HELP EDIT ---
-EDIT - Edit a program line
-Usage: EDIT 100
-Category: Edit
-----------------------------------------
-
---- HELP ELSE ---
-ELSE - Alternate branch in block IF or single-line IF
-Usage: IF X > 5 THEN PRINT X ELSE PRINT Y
-Category: Flow
-----------------------------------------
-
---- HELP ELSEIF ---
-ELSEIF - Additional condition in block IF
-Usage: ELSEIF X>10 THEN ...
-Category: Flow
-----------------------------------------
-
---- HELP END ---
-END - Terminate program execution
-Usage: END
-Category: Flow
-----------------------------------------
-
---- HELP ENDDEFINE ---
-ENDDEFINE - End user-defined function block
-Usage: ENDDEFINE
-Category: Flow
-----------------------------------------
-
---- HELP ENDFOR ---
-ENDFOR - End counting loop (Structured BASIC)
-Usage: ENDFOR
-Category: Flow
-----------------------------------------
-
---- HELP ENDIF ---
-ENDIF - End a block IF structure
-Usage: END IF
-Category: Flow
-----------------------------------------
-
---- HELP ENDREPEAT ---
-ENDREPEAT - End repeat loop block
-Usage: ENDREPEAT
-Category: Flow
-----------------------------------------
-
---- HELP ENDSELECT ---
-ENDSELECT - Undocumented keyword ENDSELECT
-Usage: ENDSELECT
-Category: Intro
-----------------------------------------
-
---- HELP ENDTEST ---
-ENDTEST - End test block and report
-Usage: ENDTEST
-Category: Debug
-----------------------------------------
-
---- HELP ENVIRON ---
-ENVIRON - Undocumented keyword ENVIRON
-Usage: ENVIRON
-Category: Flow
-----------------------------------------
-
---- HELP ENVIRON ---
-ENVIRON - Undocumented keyword ENVIRON
-Usage: ENVIRON
-Category: Intro
-----------------------------------------
-
---- HELP EOF ---
-EOF - Undocumented keyword EOF
-Usage: EOF
-Category: Intro
-----------------------------------------
-
---- HELP EQV ---
-EQV - Logical equivalence operator
-Usage: PRINT 5 EQV 3
-Category: Oper
-----------------------------------------
-
---- HELP ERASE ---
-ERASE - Erase an array from memory
-Usage: ERASE A
-Category: Varmem
-----------------------------------------
-
---- HELP ERDEV ---
-ERDEV - Error device code of last device error
-Usage: PRINT ERDEV
-Category: Sysenv
-----------------------------------------
-
---- HELP ERL ---
-ERL - Line number of last error
-Usage: PRINT ERL
-Category: Flow
-----------------------------------------
-
---- HELP ERL ---
-ERL - Line number of last runtime error
-Usage: PRINT ERL
-Category: Sysvar
-----------------------------------------
-
---- HELP ERR ---
-ERR - Error code of last error
-Usage: PRINT ERR
-Category: Flow
-----------------------------------------
-
---- HELP ERR ---
-ERR - Numeric code of last runtime error
-Usage: PRINT ERR
-Category: Sysvar
-----------------------------------------
-
---- HELP ERR$ ---
-ERR$ - Undocumented keyword ERR$
-Usage: ERR$
-Category: Intro
-----------------------------------------
-
---- HELP ERROR ---
-ERROR - Raise a user error
-Usage: ERROR 5
-Category: Flow
-----------------------------------------
-
---- HELP ERRORLEVEL ---
-ERRORLEVEL - Last shell exit code
-Usage: PRINT ERRORLEVEL
-Category: Sysenv
-----------------------------------------
-
---- HELP EXEC ---
-EXEC - Undocumented keyword EXEC
-Usage: EXEC
-Category: Intro
-----------------------------------------
-
---- HELP EXIST ---
-EXIST - Undocumented keyword EXIST
-Usage: EXIST
-Category: Flow
-----------------------------------------
-
---- HELP EXIST ---
-EXIST - Undocumented keyword EXIST
-Usage: EXIST
-Category: Intro
-----------------------------------------
-
---- HELP EXISTS ---
-EXISTS - Undocumented keyword EXISTS
-Usage: EXISTS
-Category: Intro
-----------------------------------------
-
---- HELP EXIT ---
-EXIT - Exit a FOR or DO loop early
-Usage: EXIT FOR or EXIT DO
-Category: Flow
-----------------------------------------
-
---- HELP EXP ---
-EXP - Exponential (e^x)
-Usage: PRINT EXP(1) ' prints 2.71828
-Category: Math
-----------------------------------------
-
---- HELP EXTERR ---
-EXTERR - Extended error information
-Usage: PRINT EXTERR(0)
-Category: Sysenv
-----------------------------------------
-
---- HELP FALSE ---
-FALSE - Boolean value -1
-Usage: PRINT FALSE
-Category: Sysvar
-----------------------------------------
-
---- HELP FIELD ---
-FIELD - Define record buffer fields
-Usage: FIELD #1, 20 AS N$, 4 AS A$
-Category: Fileio
-----------------------------------------
-
---- HELP FILELEN ---
-FILELEN - Undocumented keyword FILELEN
-Usage: FILELEN
-Category: Flow
-----------------------------------------
-
---- HELP FILELEN ---
-FILELEN - Undocumented keyword FILELEN
-Usage: FILELEN
-Category: Intro
-----------------------------------------
-
---- HELP FILES ---
-FILES - Undocumented keyword FILES
-Usage: FILES
-Category: Intro
-----------------------------------------
-
---- HELP FILESIZE ---
-FILESIZE - Undocumented keyword FILESIZE
-Usage: FILESIZE
-Category: Intro
-----------------------------------------
-
---- HELP FIX ---
-FIX - Truncate toward zero
-Usage: PRINT FIX(-3.7) ' prints -3
-Category: Math
-----------------------------------------
-
---- HELP FLASH ---
-FLASH - Toggle text flashing screen attribute
-Usage: FLASH 1 | FLASH 0
-Category: Gfx
-----------------------------------------
-
---- HELP FN ---
-FN - Call user-defined function
-Usage: PRINT FN my_fn(x)
-Category: Flow
-----------------------------------------
-
---- HELP FOR ---
-FOR - Begin a counting loop
-Usage: FOR I=1 TO 10 STEP 2 (or BY 2 in SBASIC)
-Category: Flow
-----------------------------------------
-
---- HELP FRE ---
-FRE - Free memory available
-Usage: PRINT FRE(0)
-Category: Varmem
-----------------------------------------
-
---- HELP FUJI: ---
-FUJI: - FujiNet configuration device
-Usage: WiFi config, host slots, AppKey storage
-Category: Device
-----------------------------------------
-
---- HELP FUNCTION ---
-FUNCTION - Define a named function
-Usage: FUNCTION MyFn (x) ... END FUNCTION
-Category: Flow
-----------------------------------------
-
---- HELP GEMINI ---
-GEMINI - Undocumented keyword GEMINI
-Usage: GEMINI
-Category: Flow
-----------------------------------------
-
---- HELP GEMINI ---
-GEMINI - Undocumented keyword GEMINI
-Usage: GEMINI
-Category: Intro
-----------------------------------------
-
---- HELP GET ---
-GET - Read a record from random file
-Usage: GET #1, recnum
-Category: Fileio
-----------------------------------------
-
---- HELP GOPHER ---
-GOPHER - Undocumented keyword GOPHER
-Usage: GOPHER
-Category: Flow
-----------------------------------------
-
---- HELP GOPHER ---
-GOPHER - Undocumented keyword GOPHER
-Usage: GOPHER
-Category: Intro
-----------------------------------------
-
---- HELP GOSUB ---
-GOSUB - Call a subroutine at a line number
-Usage: GOSUB 500
-Category: Flow
-----------------------------------------
-
---- HELP GOTO ---
-GOTO - Jump to a line number
-Usage: GOTO 100
-Category: Flow
-----------------------------------------
-
---- HELP GRAPHICS ---
-GRAPHICS - Set Atari 8-bit graphics/text mode (abbreviated GR.)
-Usage: GRAPHICS 8+16
-Category: Gfx
-----------------------------------------
-
---- HELP HASH ---
-HASH - Undocumented keyword HASH
-Usage: HASH
-Category: Flow
-----------------------------------------
-
---- HELP HASH ---
-HASH - Undocumented keyword HASH
-Usage: HASH
-Category: Intro
-----------------------------------------
-
---- HELP HELP ---
-HELP - Show this help (or HELP keyword)
-Usage: HELP or HELP PRINT or HELP ABS
-Category: Intro
-----------------------------------------
-
---- HELP HEX ---
-HEX - Convert number to hex representation
-Usage: PRINT HEX(255)
-Category: String
-----------------------------------------
-
---- HELP HEX ---
-HEX - Undocumented keyword HEX
-Usage: HEX
-Category: Flow
-----------------------------------------
-
---- HELP HEX ---
-HEX - Undocumented keyword HEX
-Usage: HEX
-Category: Intro
-----------------------------------------
-
---- HELP HEX$ ---
-HEX$ - Convert to hexadecimal string
-Usage: PRINT HEX$(255) ' FF
-Category: String
-----------------------------------------
-
---- HELP HI ---
-HI - High 8 bits (byte) of integer
-Usage: PRINT HI(256) ' 1
-Category: Math
-----------------------------------------
-
---- HELP HOME ---
-HOME - Move cursor to top-left
-Usage: HOME
-Category: Io
-----------------------------------------
-
---- HELP HOSTNAME ---
-HOSTNAME - Print system hostname
-Usage: HOSTNAME
-Category: Sysenv
-----------------------------------------
-
---- HELP HOSTNAME ---
-HOSTNAME - Undocumented keyword HOSTNAME
-Usage: HOSTNAME
-Category: Flow
-----------------------------------------
-
---- HELP HOSTNAME ---
-HOSTNAME - Undocumented keyword HOSTNAME
-Usage: HOSTNAME
-Category: Intro
-----------------------------------------
-
---- HELP HOSTNAME$ ---
-HOSTNAME$ - System hostname string
-Usage: PRINT HOSTNAME$
-Category: Sysenv
-----------------------------------------
-
---- HELP HOSTNAME$ ---
-HOSTNAME$ - System hostname string
-Usage: PRINT HOSTNAME$
-Category: Sysvar
-----------------------------------------
-
---- HELP HOURS ---
-HOURS - Current hour (0-23)
-Usage: PRINT HOURS
-Category: Sysvar
-----------------------------------------
-
---- HELP ICASE ---
-ICASE - Undocumented keyword ICASE
-Usage: ICASE
-Category: Flow
-----------------------------------------
-
---- HELP ICASE ---
-ICASE - Undocumented keyword ICASE
-Usage: ICASE
-Category: Intro
-----------------------------------------
-
---- HELP IF ---
-IF - Conditional decision structure
-Usage: IF X > 10 THEN PRINT X ELSE PRINT Y
-Category: Flow
-----------------------------------------
-
---- HELP IMAG ---
-IMAG - Undocumented keyword IMAG
-Usage: IMAG
-Category: Intro
-----------------------------------------
-
---- HELP IMP ---
-IMP - Logical implication operator
-Usage: PRINT 5 IMP 3
-Category: Oper
-----------------------------------------
-
---- HELP IN ---
-IN - Check containment in list or array
-Usage: IF X IN (1, 2, 3) THEN ...
-Category: Flow
-----------------------------------------
-
---- HELP INFO ---
-INFO - Display system information
-Usage: INFO
-Category: Intro
-----------------------------------------
-
---- HELP INK ---
-INK - Set graphics pen/ink color
-Usage: INK 14
-Category: Gfx
-----------------------------------------
-
---- HELP INKEY ---
-INKEY - Non-blocking key read value
-Usage: K = INKEY
-Category: Io
-----------------------------------------
-
---- HELP INKEY$ ---
-INKEY$ - Non-blocking keyboard read
-Usage: K$=INKEY$
-Category: Io
-----------------------------------------
-
---- HELP INKEY$ ---
-INKEY$ - Non-blocking single-char keyboard read
-Usage: A$ = INKEY$
-Category: Sysvar
-----------------------------------------
-
---- HELP INP ---
-INP - Read byte from hardware port
-Usage: PRINT INP(&H3F8)
-Category: Device
-----------------------------------------
-
---- HELP INPUT$ ---
-INPUT$ - Read N chars from keyboard/file
-Usage: A$ = INPUT$(5) or A$ = INPUT$(10, #1)
-Category: Io
-----------------------------------------
-
---- HELP INSTR ---
-INSTR - Undocumented keyword INSTR
-Usage: INSTR
-Category: Intro
-----------------------------------------
-
---- HELP INT ---
-INT - Truncate to integer (math) or trigger software interrupt
-Usage: PRINT INT(3.7) or INT &H10
-Category: Math
-----------------------------------------
-
---- HELP INVERSE ---
-INVERSE - Toggle text screen reverse video
-Usage: INVERSE 1 | INVERSE 0
-Category: Gfx
-----------------------------------------
-
---- HELP IOCTL ---
-IOCTL - Device control command
-Usage: IOCTL #ch, cmd [, arg]
-Category: Device
-----------------------------------------
-
---- HELP IOCTL$ ---
-IOCTL$ - Undocumented keyword IOCTL$
-Usage: IOCTL$
-Category: Intro
-----------------------------------------
-
---- HELP IS ---
-IS - Case selector comparison operator
-Usage: CASE IS > 10
-Category: Flow
-----------------------------------------
-
---- HELP JIFFIES ---
-JIFFIES - Undocumented keyword JIFFIES
-Usage: JIFFIES
-Category: Intro
-----------------------------------------
-
---- HELP KEY ---
-KEY - Undocumented keyword KEY
-Usage: KEY
-Category: Intro
-----------------------------------------
-
---- HELP KEY(N) ---
-KEY(N) - Enable/disable key event trapping
-Usage: KEY(1) ON | KEY(1) OFF | KEY(1) STOP
-Category: Sysenv
-----------------------------------------
-
---- HELP KEYWORD ---
-KEYWORD - Modify built-in keyword behavior
-Usage: KEYWORD PRINT UPPERCASE ON | KEYWORD kw DESCRIBE
-Category: Edit
-----------------------------------------
-
---- HELP KILL ---
-KILL - Reserved for future use
-Usage: KILL (use SCRATCH to delete files)
-Category: Sysenv
-----------------------------------------
-
---- HELP LBOUND ---
-LBOUND - Array lower bound index
-Usage: PRINT LBOUND(A, 1)
-Category: Varmem
-----------------------------------------
-
---- HELP LCASE ---
-LCASE - Undocumented keyword LCASE
-Usage: LCASE
-Category: Flow
-----------------------------------------
-
---- HELP LCASE ---
-LCASE - Undocumented keyword LCASE
-Usage: LCASE
-Category: Intro
-----------------------------------------
-
---- HELP LEFT ---
-LEFT - Undocumented keyword LEFT
-Usage: LEFT
-Category: Flow
-----------------------------------------
-
---- HELP LEFT ---
-LEFT - Undocumented keyword LEFT
-Usage: LEFT
-Category: Intro
-----------------------------------------
-
---- HELP LEN ---
-LEN - Undocumented keyword LEN
-Usage: LEN
-Category: Intro
-----------------------------------------
-
---- HELP LET ---
-LET - Assign value to variable (optional in most dialects)
-Usage: LET A = 5 or A = 5
-Category: Varmem
-----------------------------------------
-
---- HELP LGT ---
-LGT - Common logarithm base 10 (HP BASIC)
-Usage: PRINT LGT(100) ' 2
-Category: Math
-----------------------------------------
-
---- HELP LIKE ---
-LIKE - Undocumented keyword LIKE
-Usage: LIKE
-Category: Flow
-----------------------------------------
-
---- HELP LIKE ---
-LIKE - Undocumented keyword LIKE
-Usage: LIKE
-Category: Intro
-----------------------------------------
-
---- HELP LINE ---
-LINE - Read entire line (LINE INPUT)
-Usage: LINE INPUT A$ or LINE INPUT #1, A$
-Category: Io
-----------------------------------------
-
---- HELP LIST ---
-LIST - Display program lines
-Usage: LIST or LIST 100-200
-Category: Progmgmt
-----------------------------------------
-
---- HELP LLIST ---
-LLIST - List program to printer
-Usage: LLIST or LLIST 100-200
-Category: Progmgmt
-----------------------------------------
-
---- HELP LN ---
-LN - Natural logarithm (base e)
-Usage: PRINT LN(2.71828)
-Category: Math
-----------------------------------------
-
---- HELP LO ---
-LO - Low 8 bits (byte) of integer
-Usage: PRINT LO(257) ' 1
-Category: Math
-----------------------------------------
-
---- HELP LOAD ---
-LOAD - Undocumented keyword LOAD
-Usage: LOAD
-Category: Intro
-----------------------------------------
-
---- HELP LOC ---
-LOC - Current file position
-Usage: PRINT LOC(1)
-Category: Fileio
-----------------------------------------
-
---- HELP LOCAL ---
-LOCAL - Declare local variables in sub/fn
-Usage: LOCAL X, Y$
-Category: Varmem
-----------------------------------------
-
---- HELP LOCATE ---
-LOCATE - Move cursor to row,column
-Usage: LOCATE 10,20
-Category: Io
-----------------------------------------
-
---- HELP LOCK ---
-LOCK - Lock file records
-Usage: LOCK #1, record
-Category: Fileio
-----------------------------------------
-
---- HELP LOF ---
-LOF - Get length of open file
-Usage: PRINT LOF(1)
-Category: Fileio
-----------------------------------------
-
---- HELP LOG ---
-LOG - Natural logarithm (base e)
-Usage: PRINT LOG(2.71828)
-Category: Math
-----------------------------------------
-
---- HELP LOG10 ---
-LOG10 - Common logarithm base 10 (SBASIC)
-Usage: PRINT LOG10(100) ' 2
-Category: Math
-----------------------------------------
-
---- HELP LOG2 ---
-LOG2 - Binary logarithm base 2 (SBASIC)
-Usage: PRINT LOG2(8) ' 3
-Category: Math
-----------------------------------------
-
---- HELP LOOP ---
-LOOP - End of a DO loop (with condition)
-Usage: LOOP WHILE A>0 or LOOP UNTIL A=0
-Category: Flow
-----------------------------------------
-
---- HELP LPOS ---
-LPOS - Printer head column position
-Usage: PRINT LPOS(0)
-Category: Intro
-----------------------------------------
-
---- HELP LPRINT ---
-LPRINT - Undocumented keyword LPRINT
-Usage: LPRINT
-Category: Intro
-----------------------------------------
-
---- HELP LSET ---
-LSET - Undocumented keyword LSET
-Usage: LSET
-Category: Intro
-----------------------------------------
-
---- HELP LTRIM ---
-LTRIM - Undocumented keyword LTRIM
-Usage: LTRIM
-Category: Flow
-----------------------------------------
-
---- HELP LTRIM ---
-LTRIM - Undocumented keyword LTRIM
-Usage: LTRIM
-Category: Intro
-----------------------------------------
-
---- HELP MAT ---
-MAT - Matrix operations
-Usage: MAT PRINT A or MAT A=ZER
-Category: Varmem
-----------------------------------------
-
---- HELP MAX ---
-MAX - Undocumented keyword MAX
-Usage: MAX
-Category: Intro
-----------------------------------------
-
---- HELP MCASE ---
-MCASE - Undocumented keyword MCASE
-Usage: MCASE
-Category: Flow
-----------------------------------------
-
---- HELP MCASE ---
-MCASE - Undocumented keyword MCASE
-Usage: MCASE
-Category: Intro
-----------------------------------------
-
---- HELP MED ---
-MED - Undocumented keyword MED
-Usage: MED
-Category: Intro
-----------------------------------------
-
---- HELP MEM ---
-MEM - Free variable space in bytes
-Usage: PRINT MEM
-Category: Sysvar
-----------------------------------------
-
---- HELP MEMMAP ---
-MEMMAP - Select memory map preset
-Usage: MEMMAP 48 or MEMMAP 64
-Category: Varmem
-----------------------------------------
-
---- HELP MEMMAP$ ---
-MEMMAP$ - Current memory map name (read-only)
-Usage: PRINT MEMMAP$
-Category: Intro
-----------------------------------------
-
---- HELP MERGE ---
-MERGE - Undocumented keyword MERGE
-Usage: MERGE
-Category: Flow
-----------------------------------------
-
---- HELP MERGE ---
-MERGE - Undocumented keyword MERGE
-Usage: MERGE
-Category: Intro
-----------------------------------------
-
---- HELP MID ---
-MID - Undocumented keyword MID
-Usage: MID
-Category: Flow
-----------------------------------------
-
---- HELP MID ---
-MID - Undocumented keyword MID
-Usage: MID
-Category: Intro
-----------------------------------------
-
---- HELP MIN ---
-MIN - Undocumented keyword MIN
-Usage: MIN
-Category: Intro
-----------------------------------------
-
---- HELP MINUTES ---
-MINUTES - Current minute (0-59)
-Usage: PRINT MINUTES
-Category: Sysvar
-----------------------------------------
-
---- HELP MKD ---
-MKD - Pack double to 8-byte string
-Usage: A$ = MKD(D)
-Category: Varmem
-----------------------------------------
-
---- HELP MKD$ ---
-MKD$ - Pack double to 8-byte string
-Usage: A$ = MKD$(D)
-Category: Fileio
-----------------------------------------
-
---- HELP MKDIR ---
-MKDIR - Undocumented keyword MKDIR
-Usage: MKDIR
-Category: Intro
-----------------------------------------
-
---- HELP MKI ---
-MKI - Pack integer to 2-byte string
-Usage: A$ = MKI(I)
-Category: Varmem
-----------------------------------------
-
---- HELP MKI$ ---
-MKI$ - Pack integer to 2-byte string
-Usage: A$ = MKI$(N)
-Category: Fileio
-----------------------------------------
-
---- HELP MKS ---
-MKS - Pack single to 4-byte string
-Usage: A$ = MKS(S)
-Category: Varmem
-----------------------------------------
-
---- HELP MKS$ ---
-MKS$ - Pack single to 4-byte string
-Usage: A$ = MKS$(F)
-Category: Fileio
-----------------------------------------
-
---- HELP MOD ---
-MOD - Modulo (remainder) operator
-Usage: PRINT 10 MOD 3 ' prints 1
-Category: Oper
-----------------------------------------
-
---- HELP MODULE ---
-MODULE - Undocumented keyword MODULE
-Usage: MODULE
-Category: Flow
-----------------------------------------
-
---- HELP MODULE ---
-MODULE - Undocumented keyword MODULE
-Usage: MODULE
-Category: Intro
-----------------------------------------
-
---- HELP MONTH ---
-MONTH - Current numeric month (1-12)
-Usage: PRINT MONTH
-Category: Sysvar
-----------------------------------------
-
---- HELP MONTH$ ---
-MONTH$ - Current month name
-Usage: PRINT MONTH$
-Category: Sysvar
-----------------------------------------
-
---- HELP MOTOR ---
-MOTOR - Undocumented keyword MOTOR
-Usage: MOTOR
-Category: Flow
-----------------------------------------
-
---- HELP MOTOR ---
-MOTOR - Undocumented keyword MOTOR
-Usage: MOTOR
-Category: Intro
-----------------------------------------
-
---- HELP MOUNTS ---
-MOUNTS - Display all active VFS mounts
-Usage: MOUNTS
-Category: Fileio
-----------------------------------------
-
---- HELP MOVE ---
-MOVE - Undocumented keyword MOVE
-Usage: MOVE
-Category: Flow
-----------------------------------------
-
---- HELP MOVE ---
-MOVE - Undocumented keyword MOVE
-Usage: MOVE
-Category: Intro
-----------------------------------------
-
---- HELP NAME ---
-NAME - Undocumented keyword NAME
-Usage: NAME
-Category: Intro
-----------------------------------------
-
---- HELP NBYTESWAITING ---
-NBYTESWAITING - Undocumented keyword NBYTESWAITING
-Usage: NBYTESWAITING
-Category: Intro
-----------------------------------------
-
---- HELP NCONNECTED ---
-NCONNECTED - Undocumented keyword NCONNECTED
-Usage: NCONNECTED
-Category: Intro
-----------------------------------------
-
---- HELP NEOF ---
-NEOF - Undocumented keyword NEOF
-Usage: NEOF
-Category: Intro
-----------------------------------------
-
---- HELP NERROR ---
-NERROR - Undocumented keyword NERROR
-Usage: NERROR
-Category: Intro
-----------------------------------------
-
---- HELP NEW ---
-NEW - Clear program from memory
-Usage: NEW
-Category: Progmgmt
-----------------------------------------
-
---- HELP NEXT ---
-NEXT - End of a FOR loop
-Usage: NEXT I
-Category: Flow
-----------------------------------------
-
---- HELP NHTTPSTATUS ---
-NHTTPSTATUS - Undocumented keyword NHTTPSTATUS
-Usage: NHTTPSTATUS
-Category: Intro
-----------------------------------------
-
---- HELP NINFO ---
-NINFO - Query network adapter information
-Usage: PRINT NINFO
-Category: Device
-----------------------------------------
-
---- HELP NJSONQUERY ---
-NJSONQUERY - Undocumented keyword NJSONQUERY
-Usage: NJSONQUERY
-Category: Flow
-----------------------------------------
-
---- HELP NJSONQUERY ---
-NJSONQUERY - Undocumented keyword NJSONQUERY
-Usage: NJSONQUERY
-Category: Intro
-----------------------------------------
-
---- HELP NOT ---
-NOT - Logical/bitwise NOT operator
-Usage: IF NOT A THEN ...
-Category: Oper
-----------------------------------------
-
---- HELP NSTATUS ---
-NSTATUS - Undocumented keyword NSTATUS
-Usage: NSTATUS
-Category: Intro
-----------------------------------------
-
---- HELP OCT ---
-OCT - Convert number to octal representation
-Usage: PRINT OCT(255)
-Category: String
-----------------------------------------
-
---- HELP OCT ---
-OCT - Undocumented keyword OCT
-Usage: OCT
-Category: Flow
-----------------------------------------
-
---- HELP OCT ---
-OCT - Undocumented keyword OCT
-Usage: OCT
-Category: Intro
-----------------------------------------
-
---- HELP OCT$ ---
-OCT$ - Convert to octal string
-Usage: PRINT OCT$(255) ' 377
-Category: String
-----------------------------------------
-
---- HELP ON ---
-ON - Computed GOTO/GOSUB or error/event handler
-Usage: ON X GOTO 100,200 or ON ERROR GOTO 500
-Category: Flow
-----------------------------------------
-
---- HELP ON BREAK ---
-ON BREAK - Set Ctrl+C / signal interrupt handler
-Usage: ON BREAK GOSUB 900
-Category: Flow
-----------------------------------------
-
---- HELP ON COM ---
-ON COM - Set serial port interrupt handler
-Usage: ON COM(1) GOSUB 800
-Category: Flow
-----------------------------------------
-
---- HELP ON KEY ---
-ON KEY - Set key press interrupt handler
-Usage: ON KEY(1) GOSUB 700
-Category: Flow
-----------------------------------------
-
---- HELP ON PEN ---
-ON PEN - Set light pen interrupt handler
-Usage: ON PEN GOSUB 600
-Category: Flow
-----------------------------------------
-
---- HELP ON PLAY ---
-ON PLAY - Set music buffer interrupt handler
-Usage: ON PLAY(3) GOSUB 500
-Category: Flow
-----------------------------------------
-
---- HELP ON STRIG ---
-ON STRIG - Set joystick trigger interrupt handler
-Usage: ON STRIG(0) GOSUB 400
-Category: Flow
-----------------------------------------
-
---- HELP ON TIMER ---
-ON TIMER - Set timer interrupt handler
-Usage: ON TIMER(5) GOSUB 300
-Category: Flow
-----------------------------------------
-
---- HELP ONKEY ---
-ONKEY - Trigger key interrupt handler
-Usage: ONKEY GOSUB 500
-Category: Sysenv
-----------------------------------------
-
---- HELP ONKEY$ ---
-ONKEY$ - Event-aware keyboard read (like INKEY$)
-Usage: K$=ONKEY$
-Category: String
-----------------------------------------
-
---- HELP ONKEY$ ---
-ONKEY$ - Event-aware keyboard read
-Usage: A$ = ONKEY$
-Category: Sysvar
-----------------------------------------
-
---- HELP OPEN ---
-OPEN - Undocumented keyword OPEN
-Usage: OPEN
-Category: Intro
-----------------------------------------
-
---- HELP OPTION ---
-OPTION - Set interpreter options
-Usage: OPTION BASE 0|1 | STRICT ON|OFF | MIXED D1,D2,...
-Category: Varmem
-----------------------------------------
-
---- HELP OR ---
-OR - Logical/bitwise OR operator
-Usage: IF A=0 OR B=0 THEN ...
-Category: Oper
-----------------------------------------
-
---- HELP OUT ---
-OUT - Write byte to hardware port
-Usage: OUT &H3F8, 1
-Category: Device
-----------------------------------------
-
---- HELP OVER ---
-OVER - Toggle text overstrike rendering mode
-Usage: OVER 1 | OVER 0
-Category: Gfx
-----------------------------------------
-
---- HELP OVERRIDE ---
-OVERRIDE - Undocumented keyword OVERRIDE
-Usage: OVERRIDE
-Category: Intro
-----------------------------------------
-
---- HELP PAINT ---
-PAINT - Flood fill an area
-Usage: PAINT (160,100), color
-Category: Gfx
-----------------------------------------
-
---- HELP PALETTE ---
-PALETTE - Remap a palette color
-Usage: PALETTE colornum, newcolor
-Category: Gfx
-----------------------------------------
-
---- HELP PAPER ---
-PAPER - Set text screen background paper color
-Usage: PAPER 1
-Category: Gfx
-----------------------------------------
-
---- HELP PAUSE ---
-PAUSE - Pause program for N frames/seconds
-Usage: PAUSE 60
-Category: Sysenv
-----------------------------------------
-
---- HELP PCOPY ---
-PCOPY - Copy screen memory page
-Usage: PCOPY 1, 0
-Category: Gfx
-----------------------------------------
-
---- HELP PDIF ---
-PDIF - Positive difference (SBASIC, MAX(a-b,0))
-Usage: PRINT PDIF(5,3) ' 2
-Category: Math
-----------------------------------------
-
---- HELP PEEK ---
-PEEK - Read byte from virtual memory
-Usage: PRINT PEEK(addr)
-Category: Varmem
-----------------------------------------
-
---- HELP PEEKB ---
-PEEKB - Read byte from a RAMBANK segment
-Usage: PRINT PEEKB(bank, offset)
-Category: Varmem
-----------------------------------------
-
---- HELP PEN ---
-PEN - Read or configure light pen slot
-Usage: PRINT PEN(0)
-Category: Gfx
-----------------------------------------
-
---- HELP PI ---
-PI - Constant PI (SBASIC, 3.14159...)
-Usage: PRINT PI ' 3.14159265358979
-Category: Math
-----------------------------------------
-
---- HELP PLAY ---
-PLAY - Undocumented keyword PLAY
-Usage: PLAY
-Category: Intro
-----------------------------------------
-
---- HELP PLAY(N) ---
-PLAY(N) - Enable/disable music buffer interrupt
-Usage: PLAY ON | PLAY OFF | PLAY STOP
-Category: Sysenv
-----------------------------------------
-
---- HELP PLOT ---
-PLOT - Plot point or draw line
-Usage: PLOT 100, 50
-Category: Gfx
-----------------------------------------
-
---- HELP PMAP ---
-PMAP - Map physical to logical coordinates
-Usage: PRINT PMAP(X, 0)
-Category: Gfx
-----------------------------------------
-
---- HELP POINT ---
-POINT - Read color at pixel (x,y)
-Usage: C = POINT(100,50)
-Category: Gfx
-----------------------------------------
-
---- HELP POINTER ---
-POINTER - Query/set file position pointer
-Usage: POINTER #1, offset
-Category: Fileio
-----------------------------------------
-
---- HELP POKE ---
-POKE - Write byte to virtual memory
-Usage: POKE addr, value
-Category: Varmem
-----------------------------------------
-
---- HELP POKEB ---
-POKEB - Write byte to a RAMBANK segment
-Usage: POKEB bank, offset, value
-Category: Varmem
-----------------------------------------
-
---- HELP POS ---
-POS - Current cursor column
-Usage: PRINT POS(0)
-Category: Varmem
-----------------------------------------
-
---- HELP PRESET ---
-PRESET - Reset a pixel at (x,y)
-Usage: PRESET (100,50)
-Category: Gfx
-----------------------------------------
-
---- HELP PROCEDURE ---
-PROCEDURE - Begin procedure block definition
-Usage: PROCEDURE MyProc ... ENDPROC
-Category: Flow
-----------------------------------------
-
---- HELP PSET ---
-PSET - Set a pixel at (x,y)
-Usage: PSET (100,50), color
-Category: Gfx
-----------------------------------------
-
---- HELP PUBLIC ---
-PUBLIC - Undocumented keyword PUBLIC
-Usage: PUBLIC
-Category: Flow
-----------------------------------------
-
---- HELP PUBLIC ---
-PUBLIC - Undocumented keyword PUBLIC
-Usage: PUBLIC
-Category: Intro
-----------------------------------------
-
---- HELP PUT ---
-PUT - Write a record to random file
-Usage: PUT #1, recnum
-Category: Fileio
-----------------------------------------
-
---- HELP PWD ---
-PWD - Print current working directory path
-Usage: PWD
-Category: Sysenv
-----------------------------------------
-
---- HELP PWD$ ---
-PWD$ - Current working directory path string
-Usage: PRINT PWD$
-Category: Sysenv
-----------------------------------------
-
---- HELP PWD$ ---
-PWD$ - Current working directory path string
-Usage: PRINT PWD$
-Category: Sysvar
-----------------------------------------
-
---- HELP RANDOMIZE ---
-RANDOMIZE - Seed the random number generator
-Usage: RANDOMIZE or RANDOMIZE 42
-Category: Math
-----------------------------------------
-
---- HELP READ ---
-READ - Read the next DATA value
-Usage: READ A or READ A$
-Category: Varmem
-----------------------------------------
-
---- HELP REAL ---
-REAL - Undocumented keyword REAL
-Usage: REAL
-Category: Intro
-----------------------------------------
-
---- HELP REDIM ---
-REDIM - Resize a dynamic array
-Usage: REDIM A(20)
-Category: Varmem
-----------------------------------------
-
---- HELP REFORMAT ---
-REFORMAT - Undocumented keyword REFORMAT
-Usage: REFORMAT
-Category: Intro
-----------------------------------------
-
---- HELP REM ---
-REM - Comment (ignored by interpreter)
-Usage: REM This is a comment (or ' shorthand)
-Category: Varmem
-----------------------------------------
-
---- HELP REMAINDER ---
-REMAINDER - Modulo remainder of division
-Usage: PRINT REMAINDER(10, 3)
-Category: Math
-----------------------------------------
-
---- HELP RENAME ---
-RENAME - Undocumented keyword RENAME
-Usage: RENAME
-Category: Intro
-----------------------------------------
-
---- HELP RENUM ---
-RENUM - Renumber program lines
-Usage: RENUM or RENUM 100,5
-Category: Edit
-----------------------------------------
-
---- HELP REPEAT ---
-REPEAT - Begin repeat loop block
-Usage: REPEAT ... UNTIL cond
-Category: Flow
-----------------------------------------
-
---- HELP REPLACE ---
-REPLACE - Undocumented keyword REPLACE
-Usage: REPLACE
-Category: Flow
-----------------------------------------
-
---- HELP REPLACE ---
-REPLACE - Undocumented keyword REPLACE
-Usage: REPLACE
-Category: Intro
-----------------------------------------
-
---- HELP RESET ---
-RESET - Close all open files
-Usage: RESET
-Category: Fileio
-----------------------------------------
-
---- HELP RESTORE ---
-RESTORE - Reset DATA pointer to beginning
-Usage: RESTORE or RESTORE 200
-Category: Varmem
-----------------------------------------
-
---- HELP RESUME ---
-RESUME - Return from an error handler
-Usage: RESUME or RESUME NEXT or RESUME 100
-Category: Flow
-----------------------------------------
-
---- HELP RETRY ---
-RETRY - Retry failed transaction statement
-Usage: RETRY
-Category: Flow
-----------------------------------------
-
---- HELP RETURN ---
-RETURN - Return from a GOSUB subroutine
-Usage: RETURN
-Category: Flow
-----------------------------------------
-
---- HELP REVERSE ---
-REVERSE - Toggle reverse video text mode
-Usage: REVERSE 1 | REVERSE 0
-Category: Gfx
-----------------------------------------
-
---- HELP REVERSE ---
-REVERSE - Undocumented keyword REVERSE
-Usage: REVERSE
-Category: Flow
-----------------------------------------
-
---- HELP REVERSE ---
-REVERSE - Undocumented keyword REVERSE
-Usage: REVERSE
-Category: Intro
-----------------------------------------
-
---- HELP REWRITE ---
-REWRITE - Re-open channel for writing
-Usage: REWRITE #1
-Category: Fileio
-----------------------------------------
-
---- HELP RIGHT ---
-RIGHT - Undocumented keyword RIGHT
-Usage: RIGHT
-Category: Flow
-----------------------------------------
-
---- HELP RIGHT ---
-RIGHT - Undocumented keyword RIGHT
-Usage: RIGHT
-Category: Intro
-----------------------------------------
-
---- HELP RMDIR ---
-RMDIR - Undocumented keyword RMDIR
-Usage: RMDIR
-Category: Intro
-----------------------------------------
-
---- HELP RND ---
-RND - Random number (0 to 1)
-Usage: PRINT RND(1) or PRINT INT(RND(1)*6)+1
-Category: Math
-----------------------------------------
-
---- HELP ROLLBACK ---
-ROLLBACK - Rollback current transaction state
-Usage: ROLLBACK
-Category: Sysenv
-----------------------------------------
-
---- HELP ROUND ---
-ROUND - Undocumented keyword ROUND
-Usage: ROUND
-Category: Intro
-----------------------------------------
-
---- HELP RSET ---
-RSET - Undocumented keyword RSET
-Usage: RSET
-Category: Intro
-----------------------------------------
-
---- HELP RTRIM ---
-RTRIM - Undocumented keyword RTRIM
-Usage: RTRIM
-Category: Flow
-----------------------------------------
-
---- HELP RTRIM ---
-RTRIM - Undocumented keyword RTRIM
-Usage: RTRIM
-Category: Intro
-----------------------------------------
-
---- HELP RUN ---
-RUN - Execute the stored program
-Usage: RUN
-Category: Progmgmt
-----------------------------------------
-
---- HELP SAVE ---
-SAVE - Undocumented keyword SAVE
-Usage: SAVE
-Category: Intro
-----------------------------------------
-
---- HELP SCOPE ---
-SCOPE - Undocumented keyword SCOPE
-Usage: SCOPE
-Category: Intro
-----------------------------------------
-
---- HELP SCRATCH ---
-SCRATCH - Undocumented keyword SCRATCH
-Usage: SCRATCH
-Category: Intro
-----------------------------------------
-
---- HELP SCREEN ---
-SCREEN - Set screen mode
-Usage: SCREEN mode [,color]
-Category: Gfx
-----------------------------------------
-
---- HELP SECONDS ---
-SECONDS - Current second (0-59)
-Usage: PRINT SECONDS
-Category: Sysvar
-----------------------------------------
-
---- HELP SECURITY ---
-SECURITY - Undocumented keyword SECURITY
-Usage: SECURITY
-Category: Flow
-----------------------------------------
-
---- HELP SECURITY ---
-SECURITY - Undocumented keyword SECURITY
-Usage: SECURITY
-Category: Intro
-----------------------------------------
-
---- HELP SEEK ---
-SEEK - Set or get file position
-Usage: SEEK #1, 100
-Category: Fileio
-----------------------------------------
-
---- HELP SEG ---
-SEG - Get memory segment index of variable
-Usage: PRINT SEG(X)
-Category: Varmem
-----------------------------------------
-
---- HELP SELECT ---
-SELECT - Begin a SELECT CASE block
-Usage: SELECT CASE X
-Category: Flow
-----------------------------------------
-
---- HELP SELFTEST ---
-SELFTEST - Run built-in validation suite
-Usage: SELFTEST
-Category: Debug
-----------------------------------------
-
---- HELP SET ---
-SET - Set file pointer (ECMA-116)
-Usage: SET #1: POINTER 0
-Category: Fileio
-----------------------------------------
-
---- HELP SGN ---
-SGN - Sign of a number (-1, 0, or 1)
-Usage: PRINT SGN(-5) ' prints -1
-Category: Math
-----------------------------------------
-
---- HELP SHARED ---
-SHARED - Share variables with main program
-Usage: SHARED A, B$
-Category: Varmem
-----------------------------------------
-
---- HELP SHELL ---
-SHELL - Undocumented keyword SHELL
-Usage: SHELL
-Category: Intro
-----------------------------------------
-
---- HELP SIN ---
-SIN - Sine (radians)
-Usage: PRINT SIN(3.14159/2)
-Category: Math
-----------------------------------------
-
---- HELP SINH ---
-SINH - Hyperbolic sine (SBASIC)
-Usage: PRINT SINH(1) ' 1.1752
-Category: Math
-----------------------------------------
-
---- HELP SIOAVAIL ---
-SIOAVAIL - Undocumented keyword SIOAVAIL
-Usage: SIOAVAIL
-Category: Intro
-----------------------------------------
-
---- HELP SIOFLUSH ---
-SIOFLUSH - Undocumented keyword SIOFLUSH
-Usage: SIOFLUSH
-Category: Intro
-----------------------------------------
-
---- HELP SIOREAD ---
-SIOREAD - Read block from stream/serial port
-Usage: SIOREAD #1, buffer$, size
-Category: Device
-----------------------------------------
-
---- HELP SIOREADLN ---
-SIOREADLN - Read line from stream/serial port
-Usage: SIOREADLN #1, buffer$
-Category: Device
-----------------------------------------
-
---- HELP SIOSEEK ---
-SIOSEEK - Undocumented keyword SIOSEEK
-Usage: SIOSEEK
-Category: Intro
-----------------------------------------
-
---- HELP SIOSTATUS ---
-SIOSTATUS - Undocumented keyword SIOSTATUS
-Usage: SIOSTATUS
-Category: Intro
-----------------------------------------
-
---- HELP SIOWRITE ---
-SIOWRITE - Undocumented keyword SIOWRITE
-Usage: SIOWRITE
-Category: Intro
-----------------------------------------
-
---- HELP SIZE ---
-SIZE - Show free memory (Tiny BASIC)
-Usage: SIZE
-Category: Varmem
-----------------------------------------
-
---- HELP SIZE ---
-SIZE - Program memory size in bytes
-Usage: PRINT SIZE
-Category: Sysvar
-----------------------------------------
-
---- HELP SLEEP ---
-SLEEP - Pause execution for N seconds
-Usage: SLEEP 2
-Category: Sysenv
-----------------------------------------
-
---- HELP SOUND ---
-SOUND - Play a tone at frequency
-Usage: SOUND 440, 18
-Category: Sound
-----------------------------------------
-
---- HELP SPACE ---
-SPACE - Generate string of N spaces
-Usage: PRINT SPACE(10)
-Category: String
-----------------------------------------
-
---- HELP SPACE ---
-SPACE - Undocumented keyword SPACE
-Usage: SPACE
-Category: Flow
-----------------------------------------
-
---- HELP SPACE ---
-SPACE - Undocumented keyword SPACE
-Usage: SPACE
-Category: Intro
-----------------------------------------
-
---- HELP SPACE$ ---
-SPACE$ - Generate N space characters
-Usage: PRINT SPACE$(10)
-Category: String
-----------------------------------------
-
---- HELP SPC ---
-SPC - Undocumented keyword SPC
-Usage: SPC
-Category: Intro
-----------------------------------------
-
---- HELP SQR ---
-SQR - Square root
-Usage: PRINT SQR(144) ' prints 12
-Category: Math
-----------------------------------------
-
---- HELP STATIC ---
-STATIC - Preserve local variables across calls
-Usage: STATIC count
-Category: Varmem
-----------------------------------------
-
---- HELP STEP ---
-STEP - Count loop step increments
-Usage: FOR I = 1 TO 10 STEP 2
-Category: Flow
-----------------------------------------
-
---- HELP STICK ---
-STICK - Read joystick coordinate value
-Usage: PRINT STICK(0)
-Category: Sysenv
-----------------------------------------
-
---- HELP STOP ---
-STOP - Pause program (use CONT to resume)
-Usage: STOP
-Category: Flow
-----------------------------------------
-
---- HELP STR ---
-STR - Undocumented keyword STR
-Usage: STR
-Category: Flow
-----------------------------------------
-
---- HELP STR ---
-STR - Undocumented keyword STR
-Usage: STR
-Category: Intro
-----------------------------------------
-
---- HELP STR$ ---
-STR$ - Convert number to string
-Usage: A$=STR$(42)
-Category: String
-----------------------------------------
-
---- HELP STRIG ---
-STRIG - Read joystick trigger status
-Usage: PRINT STRIG(0)
-Category: Sysenv
-----------------------------------------
-
---- HELP STRING ---
-STRING - Specify string data type
-Usage: DIM name AS STRING
-Category: Varmem
-----------------------------------------
-
---- HELP STRING ---
-STRING - Undocumented keyword STRING
-Usage: STRING
-Category: Flow
-----------------------------------------
-
---- HELP STRING ---
-STRING - Undocumented keyword STRING
-Usage: STRING
-Category: Intro
-----------------------------------------
-
---- HELP SUB ---
-SUB - Define a named subroutine
-Usage: SUB MySub (x, y$) ... END SUB
-Category: Flow
-----------------------------------------
-
---- HELP SWAP ---
-SWAP - Exchange two variables
-Usage: SWAP A,B
-Category: Varmem
-----------------------------------------
-
---- HELP SYS ---
-SYS - Call machine language routine
-Usage: SYS addr
-Category: Device
-----------------------------------------
-
---- HELP SYSTEM ---
-SYSTEM - Undocumented keyword SYSTEM
-Usage: SYSTEM
-Category: Intro
-----------------------------------------
-
---- HELP TAB ---
-TAB - Undocumented keyword TAB
-Usage: TAB
-Category: Intro
-----------------------------------------
-
---- HELP TAN ---
-TAN - Tangent (radians)
-Usage: PRINT TAN(3.14159/4)
-Category: Math
-----------------------------------------
-
---- HELP TANH ---
-TANH - Hyperbolic tangent (SBASIC)
-Usage: PRINT TANH(1) ' 0.7616
-Category: Math
-----------------------------------------
-
---- HELP TASK ---
-TASK - Undocumented keyword TASK
-Usage: TASK
-Category: Intro
-----------------------------------------
-
---- HELP TCASE ---
-TCASE - Undocumented keyword TCASE
-Usage: TCASE
-Category: Flow
-----------------------------------------
-
---- HELP TCASE ---
-TCASE - Undocumented keyword TCASE
-Usage: TCASE
-Category: Intro
-----------------------------------------
-
---- HELP TEST ---
-TEST - Undocumented keyword TEST
-Usage: TEST
-Category: Flow
-----------------------------------------
-
---- HELP TEST ---
-TEST - Undocumented keyword TEST
-Usage: TEST
-Category: Intro
-----------------------------------------
-
---- HELP THEN ---
-THEN - Conditional branch target indicator
-Usage: IF A > B THEN PRINT A
-Category: Flow
-----------------------------------------
-
---- HELP TI ---
-TI - Undocumented keyword TI
-Usage: TI
-Category: Intro
-----------------------------------------
-
---- HELP TI$ ---
-TI$ - Undocumented keyword TI$
-Usage: TI$
-Category: Intro
-----------------------------------------
-
---- HELP TICKS ---
-TICKS - Undocumented keyword TICKS
-Usage: TICKS
-Category: Intro
-----------------------------------------
-
---- HELP TIM ---
-TIM - Time components mode (HP BASIC, 0=min,1=hr,2=yday,3=yr)
-Usage: PRINT TIM(1)
-Category: Math
-----------------------------------------
-
---- HELP TIME$ ---
-TIME$ - Current time string
-Usage: PRINT TIME$
-Category: Sysenv
-----------------------------------------
-
---- HELP TIME$ ---
-TIME$ - Current time as HH:MM:SS
-Usage: PRINT TIME$
-Category: Sysvar
-----------------------------------------
-
---- HELP TIMER ---
-TIMER - Seconds elapsed since midnight (also: event trap)
-Usage: PRINT TIMER | TIMER ON | TIMER OFF | TIMER STOP
-Category: Sysenv
-----------------------------------------
-
---- HELP TIMER ---
-TIMER - Seconds elapsed since midnight
-Usage: PRINT TIMER
-Category: Sysvar
-----------------------------------------
-
---- HELP TO ---
-TO - Counting upper limit indicator
-Usage: FOR I = 1 TO 10
-Category: Flow
-----------------------------------------
-
---- HELP TODAY$ ---
-TODAY$ - Undocumented keyword TODAY$
-Usage: TODAY$
-Category: Intro
-----------------------------------------
-
---- HELP TRACE ---
-TRACE - Print execution line trace
-Usage: TRACE ON | TRACE OFF
-Category: Debug
-----------------------------------------
-
---- HELP TRAP ---
-TRAP - Set error/event trap handler (hybrid)
-Usage: TRAP n | TRAP e,s,n | TRAP (status) | ON TRAP GOSUB n
-Category: Flow
-----------------------------------------
-
---- HELP TRIM ---
-TRIM - Undocumented keyword TRIM
-Usage: TRIM
-Category: Flow
-----------------------------------------
-
---- HELP TRIM ---
-TRIM - Undocumented keyword TRIM
-Usage: TRIM
-Category: Intro
-----------------------------------------
-
---- HELP TROFF ---
-TROFF - Disable line trace output
-Usage: TROFF
-Category: Debug
-----------------------------------------
-
---- HELP TRON ---
-TRON - Enable line trace output
-Usage: TRON
-Category: Debug
-----------------------------------------
-
---- HELP TRUE ---
-TRUE - Boolean value 1
-Usage: PRINT TRUE
-Category: Sysvar
-----------------------------------------
-
---- HELP TXN ---
-TXN - Query current transaction status
-Usage: PRINT TXN
-Category: Sysenv
-----------------------------------------
-
---- HELP TXNSTATUS ---
-TXNSTATUS - Undocumented keyword TXNSTATUS
-Usage: TXNSTATUS
-Category: Intro
-----------------------------------------
-
---- HELP TYPE ---
-TYPE - Define a user-defined type
-Usage: TYPE recname ... END TYPE
-Category: Varmem
-----------------------------------------
-
---- HELP UBOUND ---
-UBOUND - Array upper bound index
-Usage: PRINT UBOUND(A, 1)
-Category: Varmem
-----------------------------------------
-
---- HELP UCASE ---
-UCASE - Undocumented keyword UCASE
-Usage: UCASE
-Category: Flow
-----------------------------------------
-
---- HELP UCASE ---
-UCASE - Undocumented keyword UCASE
-Usage: UCASE
-Category: Intro
-----------------------------------------
-
---- HELP UNLESS ---
-UNLESS - Undocumented keyword UNLESS
-Usage: UNLESS
-Category: Intro
-----------------------------------------
-
---- HELP UNLOCK ---
-UNLOCK - Unlock file records
-Usage: UNLOCK #1, record
-Category: Fileio
-----------------------------------------
-
---- HELP UNSAVE ---
-UNSAVE - Delete the last saved file
-Usage: UNSAVE Deletes last SAVE/LOAD filename
-Category: Progmgmt
-----------------------------------------
-
---- HELP UNTIL ---
-UNTIL - Exit condition for repeat loop
-Usage: LOOP UNTIL X > 5
-Category: Flow
-----------------------------------------
-
---- HELP USE ---
-USE - Protected exception block handler
-Usage: WHEN EXCEPTION IN ... USE ... END WHEN
-Category: Flow
-----------------------------------------
-
---- HELP USERNAME ---
-USERNAME - Print current system username
-Usage: USERNAME
-Category: Sysenv
-----------------------------------------
-
---- HELP USERNAME ---
-USERNAME - Undocumented keyword USERNAME
-Usage: USERNAME
-Category: Flow
-----------------------------------------
-
---- HELP USERNAME ---
-USERNAME - Undocumented keyword USERNAME
-Usage: USERNAME
-Category: Intro
-----------------------------------------
-
---- HELP USERNAME$ ---
-USERNAME$ - Current system username string
-Usage: PRINT USERNAME$
-Category: Sysenv
-----------------------------------------
-
---- HELP USERNAME$ ---
-USERNAME$ - Current system username string
-Usage: PRINT USERNAME$
-Category: Sysvar
-----------------------------------------
-
---- HELP USING ---
-USING - Undocumented keyword USING
-Usage: USING
-Category: Flow
-----------------------------------------
-
---- HELP USING ---
-USING - Undocumented keyword USING
-Usage: USING
-Category: Intro
-----------------------------------------
-
---- HELP USR ---
-USR - Invoke machine language function
-Usage: PRINT USR(x)
-Category: Flow
-----------------------------------------
-
---- HELP VAL ---
-VAL - Undocumented keyword VAL
-Usage: VAL
-Category: Intro
-----------------------------------------
-
---- HELP VARPTR ---
-VARPTR - Pointer index of a variable
-Usage: PRINT VARPTR(A)
-Category: Varmem
-----------------------------------------
-
---- HELP VARPTR$ ---
-VARPTR$ - Undocumented keyword VARPTR$
-Usage: VARPTR$
-Category: Intro
-----------------------------------------
-
---- HELP VARS ---
-VARS - Display variables and environment
-Usage: VARS [USER|ENV|SYSTEM|ALL] - program, user, OS, or BASIC++ env
-Category: Debug
-----------------------------------------
-
---- HELP VCON ---
-VCON - Virtual console information
-Usage: VCON - console device, input/output capabilities
-Category: Device
-----------------------------------------
-
---- HELP VDEV ---
-VDEV - List registered virtual devices
-Usage: VDEV - shows slot, name, class, caps, description
-Category: Device
-----------------------------------------
-
---- HELP VER ---
-VER - Display version information
-Usage: VER
-Category: Intro
-----------------------------------------
-
---- HELP VER ---
-VER - Current BASIC++ version number
-Usage: X = VER
-Category: Sysvar
-----------------------------------------
-
---- HELP VIEW ---
-VIEW - Set graphics viewport
-Usage: VIEW (x1,y1)-(x2,y2)
-Category: Gfx
-----------------------------------------
-
---- HELP VMACH ---
-VMACH - Virtual machine state
-Usage: VMACH - VM state, opcodes, modules, security
-Category: Device
-----------------------------------------
-
---- HELP VMEM ---
-VMEM - Virtual memory status
-Usage: VMEM - memory map, pools, stack, program storage
-Category: Device
-----------------------------------------
-
---- HELP VNET ---
-VNET - Virtual network status
-Usage: VNET - FujiNet channels, connections, adapter info
-Category: Device
-----------------------------------------
-
---- HELP VPATH$ ---
-VPATH$ - Undocumented keyword VPATH$
-Usage: VPATH$
-Category: Intro
-----------------------------------------
-
---- HELP VTERM ---
-VTERM - Virtual terminal information
-Usage: VTERM - screen size, cursor, encoding, dialect
-Category: Device
-----------------------------------------
-
---- HELP WAIT ---
-WAIT - Wait for port status
-Usage: WAIT port, AND_mask [,XOR_mask]
-Category: Device
-----------------------------------------
-
---- HELP WEND ---
-WEND - End of a WHILE loop
-Usage: WEND
-Category: Flow
-----------------------------------------
-
---- HELP WHEN ---
-WHEN - Begin protected exception block
-Usage: WHEN EXCEPTION IN ... USE ... END WHEN
-Category: Flow
-----------------------------------------
-
---- HELP WHILE ---
-WHILE - Begin a conditional loop
-Usage: WHILE A>0 ... WEND
-Category: Flow
-----------------------------------------
-
---- HELP WIDTH ---
-WIDTH - Set screen width
-Usage: WIDTH 80 or WIDTH 80,25
-Category: Io
-----------------------------------------
-
---- HELP WINDOW ---
-WINDOW - Set logical coordinate system
-Usage: WINDOW (0,0)-(639,199)
-Category: Gfx
-----------------------------------------
-
---- HELP WRITE ---
-WRITE - Write comma-delimited data
-Usage: WRITE #1, A, B$, C
-Category: Io
-----------------------------------------
-
---- HELP XOR ---
-XOR - Bitwise exclusive OR
-Usage: PRINT 5 XOR 3 ' prints 6
-Category: Oper
-----------------------------------------
-
---- HELP YEAR ---
-YEAR - Current 4-digit year
-Usage: PRINT YEAR
-Category: Sysvar
-----------------------------------------

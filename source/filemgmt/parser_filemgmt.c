@@ -567,11 +567,7 @@ void pi_parse_pwd(Lexer *lex, RuntimeState *rt, int line_num)
  // working directory path to stdout.
  {
  char cwd[512];
-#ifdef _WIN32
- if (_getcwd(cwd, sizeof(cwd)) != NULL)
-#else
- if (getcwd(cwd, sizeof(cwd)) != NULL)
-#endif
+if (plat_getcwd(cwd, sizeof(cwd)) != NULL)
  {
  gw_printf("%s\n", cwd);
  } else {
@@ -599,11 +595,7 @@ void pi_parse_chdir(Lexer *lex, RuntimeState *rt, int line_num)
  memcpy(path, pv.v.sval.data,
  (size_t)pl);
  path[pl] = '\0';
-#ifdef _WIN32
- _chdir(path);
-#else
- chdir(path);
-#endif
+plat_chdir(path);
  } else {
  error_raise(ERR_WHAT, line_num);
  }
@@ -634,11 +626,7 @@ void pi_parse_mkdir(Lexer *lex, RuntimeState *rt, int line_num)
  (size_t)dlen);
  dname[dlen] = '\0';
  lexer_next(lex);
-#if defined(_WIN32) || defined(__WATCOMC__)
- _mkdir(dname);
-#else
- mkdir(dname, 0755);
-#endif
+plat_mkdir(dname);
  }
  return;
 }
@@ -666,11 +654,7 @@ void pi_parse_rmdir(Lexer *lex, RuntimeState *rt, int line_num)
  (size_t)dlen);
  dname[dlen] = '\0';
  lexer_next(lex);
-#ifdef _WIN32
- _rmdir(dname);
-#else
- rmdir(dname);
-#endif
+plat_rmdir(dname);
  }
  return;
 }

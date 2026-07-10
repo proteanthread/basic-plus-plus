@@ -140,7 +140,7 @@ enum {
  KW_DATA, // DATA constants
  KW_READ, // READ from DATA
  KW_RESTORE, // reset DATA pointer
- KW_DIALECT, // switch dialect at runtime
+ KW_VM, // switch dialect at runtime
  KW_ABS,
  KW_RND,
  KW_SIZE,
@@ -396,7 +396,7 @@ enum {
  KW_BIN_FUNC, // BIN$ - binary conversion
  KW_CLOCK_FUNC, // CLOCK$ - full date/time timestamp
  KW_ALARM_FUNC, // ALARM$ - alarm time string
- KW_DIALECT_FUNC, // DIALECT$ - current dialect name (read-only)
+ KW_VM_FUNC, // DIALECT$ - current dialect name (read-only)
  KW_MEMMAP_FUNC, // MEMMAP$ - current memory map name (read-only)
  KW_ALIAS_FUNC, // ALIAS$ - alias introspection function
  KW_SCOPE, // SCOPE - keyword access control & hooks
@@ -581,12 +581,11 @@ enum {
 // The lexer now uses a dynamic KeywordId (integer) instead of a static enum.
 typedef int KeywordId;
 #define KW_CUSTOM_START 1000
-#include "dialect.h"
 #define KW_COUNT 9999 // Sentinel for invalid keyword
 
 // --- Dynamic Keyword Registry API ---
 void keyword_registry_init(void);
-KeywordId keyword_register_custom(const char *name, unsigned int dialect_flags);
+KeywordId keyword_register_custom(const char *name);
 
 // --- Token - A single lexical element. ---
  // Tokens are value types, small enough to be passed by value or

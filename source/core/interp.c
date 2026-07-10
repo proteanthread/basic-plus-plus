@@ -23,6 +23,7 @@
 #define _DEFAULT_SOURCE
 #include "interp.h"
 #include "../vdev.h"
+#include "../progmgmt/gw_detok.h"
 #include "tokenizer.h"
 #include "../memmap.h"
 
@@ -2442,32 +2443,52 @@ static bool gw_load_file_ex(GW_State *state, const char *path, bool merge) {
         state->current_program_path[sizeof(state->current_program_path) - 1] = '\0';
     }
     
-    FILE *f = fopen(resolved, "rb");
+    FILE *f = fopen(resolved, "rb"); printf("DEBUG: fopen(\"%%s\", \"rb\")\n", resolved);
     if (!f) {
         return false;
     }
     
-    int first = fgetc(f);
+    int first = fgetc(f); printf("DEBUG: first byte is %%02X\n", first);
     if (first == 0xFF) {
-        while (!feof(f)) {
-            uint16_t offset = 0;
-            if (fread(&offset, 2, 1, f) < 1 || offset == 0) break;
-            uint16_t line_num = 0;
-            fread(&line_num, 2, 1, f);
-            uint8_t temp[BUFLEN + 1];
-            int idx = 0;
-            if (!gw_read_binary_line(f, temp, BUFLEN + 1, &idx)) break;
-            
-            char ascii_line[BUFLEN * 4 + 1];
-            gw_detokenize_binary(temp, idx, ascii_line, sizeof(ascii_line));
-            uint8_t crunched[BUFLEN + 1];
-            size_t crunched_len = gw_crunch(ascii_line, crunched, sizeof(crunched));
-            gw_program_insert(state, line_num, crunched, crunched_len);
+        fclose(f);
+        
+        char temp_path[256];
+        snprintf(temp_path, sizeof(temp_path), "%s.tmp", resolved);
+        
+        if (!gw_detok_to_file(resolved, temp_path)) {
+            printf("Error: Failed to detokenize binary file '%s'.\n", resolved);
+            return false;
         }
+        
+        f = fopen(temp_path, "r"); printf("DEBUG: Opened %s\n", temp_path);
+        if (!f) return false;
+        
+        first = fgetc(f);
+        if (first != EOF) ungetc(first, f);
+        char line_buf[BUFLEN + 1];
+        while (fgets(line_buf, sizeof(line_buf), f)) { printf("DEBUG: Read line: %s\n", line_buf); {
+            size_t l_len = strlen(line_buf);
+            while (l_len > 0 && (line_buf[l_len - 1] == '\n' || line_buf[l_len - 1] == '\r')) {
+                line_buf[--l_len] = '\0';
+            }
+            char *start = line_buf;
+            while (*start == ' ' || *start == '\t') start++;
+            char *endptr;
+            long line_num = strtol(start, &endptr, 10);
+            if (endptr != start && line_num >= 0) {
+                while (*endptr == ' ' || *endptr == '\t') endptr++;
+                uint8_t crunched[BUFLEN + 1];
+                size_t crunched_len = gw_crunch(endptr, crunched, sizeof(crunched));
+                gw_program_insert(state, line_num, crunched, crunched_len);
+            }
+        }
+        fclose(f);
+        remove(temp_path);
+        return true;
     } else {
         if (first != EOF) ungetc(first, f);
         char line_buf[BUFLEN + 1];
-        while (fgets(line_buf, sizeof(line_buf), f)) {
+        while (fgets(line_buf, sizeof(line_buf), f)) { printf("DEBUG: Read line: %s\n", line_buf); {
             size_t l_len = strlen(line_buf);
             while (l_len > 0 && (line_buf[l_len - 1] == '\n' || line_buf[l_len - 1] == '\r')) {
                 line_buf[--l_len] = '\0';
@@ -3821,9 +3842,8 @@ void gw_exec_statement(GW_State *state) {
             while (*end_ip && *end_ip != ':') end_ip++;
             size_t stmt_len = end_ip - state->ip;
             if (stmt_len > 255) stmt_len = 255;
-            
-            char dstmt[256];
-            gw_detokenize_binary(state->ip, stmt_len, dstmt, sizeof(dstmt));
+                        char dstmt[256];
+              gw_list(state->ip, stmt_len, dstmt, sizeof(dstmt));
             
             // Advance IP to end of statement
             state->ip = end_ip;

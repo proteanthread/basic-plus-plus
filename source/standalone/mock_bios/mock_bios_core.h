@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdio.h>
 
 typedef struct MockBiosRegs {
     uint32_t ax;
@@ -39,7 +40,12 @@ typedef enum MockBiosModel {
     BIOS_MODEL_PC,
     BIOS_MODEL_PCJR,
     BIOS_MODEL_XT,
-    BIOS_MODEL_AT
+    BIOS_MODEL_AT,
+    BIOS_MODEL_ATARI,
+    BIOS_MODEL_C64,
+    BIOS_MODEL_APPLE2,
+    BIOS_MODEL_TRS80,
+    BIOS_MODEL_TANDY
 } MockBiosModel;
 
 typedef struct MockBiosContext {
@@ -68,6 +74,9 @@ typedef struct MockBiosContext {
     uint8_t pit_counter;
     uint8_t crtc_index;
     uint8_t crtc_regs[32];
+    
+    // DOS File Handles
+    FILE *dos_handles[20];
 } MockBiosContext;
 
 // Initialize mock BIOS memory structures (IVT, BDA, signatures) in target memory.

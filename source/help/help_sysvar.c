@@ -1,0 +1,30 @@
+#include "help.h"
+
+const HelpEntry help_db_sysvar[] = {
+  { "CLOCK$", "Current timestamp as YYYY-MM-DD HH:MM:SS", "PRINT CLOCK$", HCAT_SYSVAR },
+  { "CWD$", "Current working directory name string", "PRINT CWD$", HCAT_SYSVAR },
+  { "DATE$", "Current date as MM-DD-YYYY", "PRINT DATE$", HCAT_SYSVAR },
+  { "DAY", "Current day of month (1-31)", "PRINT DAY", HCAT_SYSVAR },
+  { "DAY$", "Current day of the week", "PRINT DAY$", HCAT_SYSVAR },
+  { "ERL", "Line number of last runtime error", "PRINT ERL", HCAT_SYSVAR },
+  { "ERR", "Numeric code of last runtime error", "PRINT ERR", HCAT_SYSVAR },
+  { "FALSE", "Boolean value -1", "PRINT FALSE", HCAT_SYSVAR },
+  { "HOSTNAME$", "System hostname string", "PRINT HOSTNAME$", HCAT_SYSVAR },
+  { "HOURS", "Current hour (0-23)", "PRINT HOURS", HCAT_SYSVAR },
+  { "INKEY$", "Non-blocking single-char keyboard read", "A$ = INKEY$", HCAT_SYSVAR },
+  { "MEM", "Free variable space in bytes", "PRINT MEM", HCAT_SYSVAR },
+  { "MINUTES", "Current minute (0-59)", "PRINT MINUTES", HCAT_SYSVAR },
+  { "MONTH", "Current numeric month (1-12)", "PRINT MONTH", HCAT_SYSVAR },
+  { "MONTH$", "Current month name", "PRINT MONTH$", HCAT_SYSVAR },
+  { "ONKEY$", "Event-aware keyboard read", "A$ = ONKEY$", HCAT_SYSVAR },
+  { "PWD$", "Current working directory path string", "PRINT PWD$", HCAT_SYSVAR },
+  { "SECONDS", "Current second (0-59)", "PRINT SECONDS", HCAT_SYSVAR },
+  { "SIZE", "Program memory size in bytes", "PRINT SIZE", HCAT_SYSVAR },
+  { "TIME$", "Current time as HH:MM:SS", "PRINT TIME$", HCAT_SYSVAR },
+  { "TIMER", "Seconds elapsed since midnight", "PRINT TIMER", HCAT_SYSVAR },
+  { "TRUE", "Boolean value 1", "PRINT TRUE", HCAT_SYSVAR },
+  { "USERNAME$", "Current system username string", "PRINT USERNAME$", HCAT_SYSVAR },
+  { "VER", "Current BASIC++ version number", "X = VER", HCAT_SYSVAR },
+  { "YEAR", "Current 4-digit year", "PRINT YEAR", HCAT_SYSVAR },
+  { NULL, NULL, NULL, 0 }
+};

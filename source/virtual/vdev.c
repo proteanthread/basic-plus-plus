@@ -117,6 +117,22 @@ static int vhal_ioctl_callback(void *user_data, int cmd, void *arg) {
         MockBiosRegs *r = (MockBiosRegs *)arg;
         r->ax = gw_console_read_char();
         return 1;
+    } else if (cmd == VDEV_IOCTL_VFS_RESOLVE) {
+        VDevVfsResolveArgs *r = (VDevVfsResolveArgs *)arg;
+        if (vfs_resolve(r->path, r->out_buffer, r->out_max, r->for_write)) return 1;
+        return 0;
+    } else if (cmd == VDEV_IOCTL_DIR_MKDIR) {
+        const char *path = (const char *)arg;
+        return plat_mkdir(path) == 0 ? 1 : 0;
+    } else if (cmd == VDEV_IOCTL_DIR_RMDIR) {
+        const char *path = (const char *)arg;
+        return plat_rmdir(path) == 0 ? 1 : 0;
+    } else if (cmd == VDEV_IOCTL_DIR_CHDIR) {
+        const char *path = (const char *)arg;
+        return plat_chdir(path) == 0 ? 1 : 0;
+    } else if (cmd == VDEV_IOCTL_DIR_GETCWD) {
+        char *path = (char *)arg;
+        return plat_getcwd(path, 256) != NULL ? 1 : 0;
     }
     return 0;
 }
@@ -538,6 +554,28 @@ void vdev_init(void)
     device_table[VDEV_TIMER].dev_read = timer_read;
     device_table[VDEV_TIMER].dev_write = NULL;
     device_table[VDEV_TIMER].dev_ioctl = timer_ioctl;
+
+        // --- VDRV: device (slot 5) ---
+    device_table[VDEV_VDRV].name = "VDRV:";
+    device_table[VDEV_VDRV].dev_putc = file_putc;
+    device_table[VDEV_VDRV].dev_puts = file_puts;
+    device_table[VDEV_VDRV].dev_flush = file_flush;
+    device_table[VDEV_VDRV].dev_cls = NULL;
+    device_table[VDEV_VDRV].dev_getc = file_getc;
+    device_table[VDEV_VDRV].dev_gets = file_gets;
+    device_table[VDEV_VDRV].dev_open = file_open;
+    device_table[VDEV_VDRV].dev_close = file_close;
+    device_table[VDEV_VDRV].user_data = NULL;
+    // metadata
+    device_table[VDEV_VDRV].dev_class = VDCLASS_FILE;
+    device_table[VDEV_VDRV].dev_caps = VDCAP_FILELIKE;
+    device_table[VDEV_VDRV].dev_version = "1.0";
+    device_table[VDEV_VDRV].dev_description = "Virtual Drive (VDRV:)";
+    device_table[VDEV_VDRV].dev_req_caps = 0;
+    // binary I/O
+    device_table[VDEV_VDRV].dev_read = file_read;
+    device_table[VDEV_VDRV].dev_write = file_write;
+    device_table[VDEV_VDRV].dev_seek = file_seek;
 
     device_used = VDEV_USER;
 }
