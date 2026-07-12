@@ -276,5 +276,15 @@ int fileio_save(ProgramStore *store, const char *filename) { (void)store; (void)
 int compiler_compile(const char *src, const char *dest) { (void)src; (void)dest; return -1; }
 void *lib_space_find(const char *name) { (void)name; return NULL; }
 
+int gw_sdl2_is_active(void) { return 0; }
+char* gw_sdl2_get_clipboard_text(void) { return NULL; }
+void gw_sdl2_set_clipboard_text(const char* t) { (void)t; }
+
+void* gw_mem_create(int size) { (void)size; return NULL; }
+void* gw_mem_get_buffer(void* mem) { (void)mem; return NULL; }
+int gw_mem_get_size(void* mem) { (void)mem; return 0; }
+int task_kill(int pid, int sig) { (void)pid; (void)sig; return -1; }
+int device_alias_load_machine(int model) { (void)model; return -1; }
+
 #endif
 

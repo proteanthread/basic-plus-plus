@@ -1,0 +1,502 @@
+Building BASIC++ — Makefile Tutorial
+
+
+---
+
+Table of Contents
+
+- Overview
+  - Feature Gates (BPP_SUPPORT_* Macros)
+  - Console vs SDL Builds
+- Quick Start
+  - Linux / MinGW (gcc)
+  - Windows 11 (MSVC)
+  - FreeDOS (OpenWatcom 16-bit)
+  - FreeDOS (OpenWatcom 32-bit)
+  - Debug Build (gcc)
+- How the Makefile Works
+  - 1 Source Groups
+  - 2 Header Dependencies
+  - 3 Compiler Flags
+  - 4 Output Location
+- Customizing for Your System
+  - 1 Changing the Compiler
+  - 2 Changing Optimization
+  - 3 Changing the Output Name
+  - 4 Changing the Output Directory
+  - 5 Cross-Compiling (ARM / Raspberry Pi)
+  - 6 Adding Linker Flags
+- Selecting Dialects
+  - Dialect Reference
+- Selecting Modules
+  - Module Reference
+- Memory Tuning
+  - Preset Profiles
+- Adding a New Source File
+- Common Issues
+  - "ldisdbl" pragma warning (MSVC)
+  - "_CRT_SECURE_NO_WARNINGS" (MSVC)
+  - 640K limit (OpenWatcom 16-bit)
+  - Missing advapi32.lib (MSVC)
+  - make vs nmake (Windows)
+- Verification
+- See Also
+
+---
+
+Overview
+
+BASIC++ is written in portable C17 with no external dependencies
+beyond the C standard library.  A single Makefile supports all four target
+platforms:
+
+| Platform       | Compiler         | Target          | Executable     |
+|----------------|------------------|-----------------|----------------|
+| Linux / MinGW  | gcc / clang      | 64-bit ELF/PE   | baspp        |
+| Windows 11     | MSVC (cl.exe)  | 64-bit PE       | basicpp.exe  |
+| FreeDOS        | OpenWatcom 16-bit| 16-bit DOS MZ   | bpp.exe      |
+| FreeDOS        | OpenWatcom 32-bit| 32-bit DOS/4GW  | bpp.exe      |
+
+The core language engine is largely identical across platforms, with
+platform-specific adaptations isolated in core/platform.c and
+virtual/vdev.c.  However, config.h does contain several #ifdef
+branches that control build profiles and feature availability:
+
+| Macro            | Purpose                                          |
+|------------------|--------------------------------------------------|
+| BPP_FREEDOS   | FreeDOS / OpenWatcom build profile               |
+| BPP_EMBEDDED  | Embedded / bare-metal build profile              |
+| BPP_LITE_BUILD| BASIC++ Lite minimal build (undefines all features) |
+| INPUT_CONSOLE | Console-mode build (defines BASICPP_NAME as 'BASIC++ Standard') |
+
+For a complete file-by-file reference, see source/SOURCE_TREE.txt.
+
+Feature Gates (BPP_SUPPORT_* Macros)
+
+config.h defines a set of BPP_SUPPORT_* macros that act as compile-time
+feature gates.  Each macro enables or disables an entire subsystem:
+
+| Macro                   | Subsystem                              |
+|-------------------------|----------------------------------------|
+| BPP_SUPPORT_GRAPHICS  | SDL2 graphics and SCREEN modes         |
+| BPP_SUPPORT_SOUND     | SOUND, PLAY, BEEP audio support        |
+| BPP_SUPPORT_FILEMGMT  | File management (OPEN, CLOSE, etc.)    |
+| BPP_SUPPORT_MAT       | MAT (matrix) operations               |
+| BPP_SUPPORT_STRUCT    | Structured programming (SUB, FUNCTION) |
+| BPP_SUPPORT_ERRHAND   | Error handling (ON ERROR, RESUME)      |
+| BPP_SUPPORT_SHELL     | SHELL command / OS access              |
+| BPP_SUPPORT_DEBUG     | TRON, TROFF, DEBUG commands            |
+| BPP_SUPPORT_COMPILER  | COMPILE command (C transpiler)         |
+| BPP_SUPPORT_VFS       | Virtual File System                    |
+| BPP_SUPPORT_TXN       | Transaction support                    |
+
+When BPP_LITE_BUILD is defined, all BPP_SUPPORT_* macros are
+undefined, producing the smallest possible binary (BASIC++ Lite).
+
+Console vs SDL Builds
+
+The build system produces two executables on Windows and Linux:
+
+| Build             | Windows Executable    | Linux Executable | Define          | Banner Name        |
+|-------------------|-----------------------|------------------|-----------------|--------------------|
+| Console/Text  | basicpp-console.exe | baspp-console  | INPUT_CONSOLE | BASIC++ Standard |
+| SDL/GUI       | basicpp.exe         | baspp          | (not defined) | BASIC++ SDL      |
+
+When INPUT_CONSOLE is defined, the interpreter boots as a text-only
+console application (BASIC++ Standard).  When it is not defined, the
+interpreter boots with SDL2 windowed output (BASIC++ SDL).  Both builds
+share the same source — the only difference is the initial I/O path: the
+console build initializes SDL on demand (e.g., on a SCREEN command),
+while the SDL build initializes it at boot.
+
+---
+
+1. Quick Start
+
+Linux / MinGW (gcc)
+
+
+cd source
+make
+
+
+Output: ../baspp
+
+Windows 11 (MSVC)
+
+Open a Developer Command Prompt (or run vcvarsall.bat x64), then:
+
+
+cd source
+nmake /f Makefile msvc
+
+
+Output: ..\basicpp.exe (GUI build) and ..\basicpp-console.exe (Console build)
+
+Alternative (standalone cl command):
+
+cl /TC /std:c17 /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS /DINPUT_CONSOLE /DNO_SDL2 /Fe:..\basicpp-console.exe core\*.c lexer\*.c parser\*.c flow\*.c arrays\*.c variables\*.c errors\*.c display\*.c io\*.c memory\*.c modules\*.c dialect\*.c help\*.c /link advapi32.lib ws2_32.lib Shell32.lib User32.lib Gdi32.lib Winmm.lib
+
+
+FreeDOS (OpenWatcom 16-bit)
+
+
+cd source
+make watcom
+
+
+Output: ../bpp.exe (16-bit DOS, large memory model)
+
+> [!WARNING]
+> The 16-bit build may hit the 640K conventional memory limit with all
+> features enabled.  Use make watcom386 for the full interpreter.
+
+FreeDOS (OpenWatcom 32-bit)
+
+
+cd source
+make watcom386
+
+
+Output: ../bpp.exe (32-bit, DOS/4GW protected mode)
+
+Debug Build (gcc)
+
+
+cd source
+make debug
+
+
+Flags: -g -O0 -DDEBUG (debug symbols, no optimization)
+
+---
+
+2. How the Makefile Works
+
+2.1 Source Groups
+
+Source files are organized into named groups by domain:
+
+
+CORE_SOURCES    = core/main.c core/memory.c core/errors.c ...
+LEXER_SOURCES   = lexer/lexer.c lexer/keyword_props.c ...
+PARSER_SOURCES  = parser/parser.c parser/parser_expr.c
+FLOW_SOURCES    = flow/parser_flow.c flow/parser_loops.c
+IO_SOURCES      = io/parser_io.c io/fileio.c ...
+DIALECT_SOURCES = dialect/dialect.c dialect/dialect_gwbs.c ...
+MODULES_SOURCES = modules/module.c modules/mod_stdlib.c ...
+
+
+These are concatenated into the master list:
+
+
+SOURCES = $(CORE_SOURCES) $(LEXER_SOURCES) $(PARSER_SOURCES) \
+          $(FLOW_SOURCES) $(IO_SOURCES) ... $(MISC_SOURCES)
+
+
+2.2 Header Dependencies
+
+All .h headers live in source/ root.  The -I. flag lets subdirectory
+files find them.  The Makefile uses a conservative model — every .o depends
+on ALL headers:
+
+
+%.o: %.c $(HEADERS)
+    $(CC) $(CFLAGS) -c $< -o $@
+
+
+Any header change triggers a full rebuild.  For ~80 source files, this takes
+under 10 seconds on modern hardware.
+
+2.3 Compiler Flags
+
+| Compiler     | Flags                                                      |
+|--------------|------------------------------------------------------------|
+| gcc      | -std=c17 -Wall -Wextra -O2 -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2 |
+| MSVC     | /TC /std:c17 /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS       |
+| Watcom 16| -ml -0 -za -wx -ox -i=. -dBPP_FREEDOS                    |
+| Watcom 32| -mf -za -wx -ox -i=. -dBPP_FREEDOS                    |
+
+Key flags explained:
+
+- -std=c17 / -za / /TC — strict ANSI C for maximum portability
+- -DNO_SDL2 — compile standard console-only interpreter without SDL graphics dependency
+- -D_POSIX_C_SOURCE=200809L — expose POSIX standard library API extensions on Unix/Linux
+- -ml — large memory model (16-bit: far code + far data)
+- -mf — flat memory model (32-bit: DPMI protected mode)
+- -0 — 8086 instruction set (broadest DOS compatibility)
+- /link advapi32.lib ... winmm.lib — Windows API & runtime subsystem helper libraries
+
+2.4 Output Location
+
+All executables go to the project root (parent of source/):
+
+
+OUTDIR = ..
+TARGET = $(OUTDIR)/baspp
+
+
+---
+
+3. Customizing for Your System
+
+3.1 Changing the Compiler
+
+
+make CC=clang
+
+
+Or edit the Makefile:
+
+
+CC = clang
+
+
+Tested compilers: gcc 12+, clang 15+, MSVC 19+, OpenWatcom 2.0.
+
+3.2 Changing Optimization
+
+
+Maximum speed
+CFLAGS = -std=c17 -Wall -Wextra -O3 -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
+
+Smallest binary
+CFLAGS = -std=c17 -Wall -Wextra -Os -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
+
+Debugging
+CFLAGS = -std=c17 -Wall -Wextra -g -O0 -DDEBUG -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
+
+
+3.3 Changing the Output Name
+
+
+make TARGET=../mybasic
+
+
+3.4 Changing the Output Directory
+
+
+make OUTDIR=/usr/local/bin
+
+
+3.5 Cross-Compiling (ARM / Raspberry Pi)
+
+
+make CC=arm-linux-gnueabihf-gcc
+
+
+The code has no x86-specific dependencies.
+
+3.6 Adding Linker Flags
+
+
+LDFLAGS = -lreadline -lncurses    # add libraries
+LDFLAGS = -static                  # static linking
+
+
+---
+
+4. Selecting Dialects
+
+By default, all 16 dialects are compiled in.  To build a smaller binary with
+only specific dialects:
+
+Step 1. Edit DIALECT_SOURCES in the Makefile:
+
+
+Example: ECMA-55 + Tiny BASIC only
+DIALECT_SOURCES = \
+    dialect/dialect.c \
+    dialect/dialect_patb.c dialect/dialect_ecma55.c
+
+
+Step 2. Edit dialect/dialect.c — dialect_register_all():
+
+
+void dialect_register_all(void)
+{
+    dialect_register_patb();
+    dialect_register_ecma55();
+    / All other calls removed /
+}
+
+
+Step 3. Rebuild: make clean && make
+
+Dialect Reference
+
+| Flag | File                   | Description                          |
+|------|------------------------|--------------------------------------|
+| PATB | dialect_patb.c       | Palo Alto Tiny BASIC (1976)          |
+| TRS1 | dialect_trs1.c       | TRS-80 Level I (1977)                |
+| TRS2 | dialect_trs2.c       | TRS-80 Level II / Model III (1978)   |
+| GWBS | dialect_gwbs.c       | GW-BASIC / BASICA (1983)             |
+| EC55 | dialect_ecma55.c     | ECMA-55 Minimal BASIC (1984)         |
+| E116 | dialect_ecma116.c    | ECMA-116 Full BASIC (1991)           |
+| QBAS | dialect_qbasic.c     | QBasic (1991)                        |
+| AINT | dialect_aint.c       | Apple II Integer BASIC (1977)        |
+| ASFT | dialect_asft.c       | Applesoft BASIC (1978)               |
+| ATAR | dialect_atari.c      | Atari BASIC (1979)                   |
+| C64B | dialect_c64.c        | Commodore BASIC v2 (1982)            |
+| COCO | dialect_coco.c       | Color Computer BASIC (1980)          |
+| MBAS | dialect_mbasic.c     | MBASIC / BASIC-80 / CP/M (1978)     |
+| SINC | dialect_sinclair.c   | Sinclair ZX Spectrum (1982)          |
+| SQLB | dialect_superbasic.c | Sinclair QL SuperBASIC (1984)        |
+| SUPB | dialect_sbasic.c     | Tymshare SUPER BASIC (1968)          |
+
+---
+
+5. Selecting Modules
+
+Optional modules can be omitted to reduce binary size:
+
+Step 1. Edit MODULES_SOURCES:
+
+
+Minimal (stdlib only)
+MODULES_SOURCES = \
+    modules/module.c modules/mod_stdlib.c
+
+
+Step 2. Edit core/main.c — remove registration calls:
+
+
+/ mod_usb_register();     -- removed /
+/ mod_fujinet_register(); -- removed /
+/ mod_upnp_register();    -- removed /
+
+
+Module Reference
+
+| Module  | File              | Devices Registered     | Required? |
+|---------|-------------------|------------------------|-----------|
+| STDLIB  | mod_stdlib.c    | (function library)   | Yes   |
+| USB     | mod_usb.c       | USB:, HID:, USBSER: | No    |
+| FUJINET | mod_fujinet.c   | N:, FUJI:, CLOCK:   | No    |
+| UPNP    | mod_upnp.c     | UPNP:, SOAP:          | No    |
+
+---
+
+6. Memory Tuning
+
+For memory-constrained targets (FreeDOS 16-bit), reduce pool sizes in
+source/config.h:
+
+
+/* Key tunable settings (config.h defaults) */
+#define PROGRAM_MEMORY_SIZE  8388608L / 8 MB stored program text  /
+#define VARIABLE_MEMORY_SIZE 1048576L / 1 MB runtime variable space /
+#define MAX_STRING_POOL      16777216L/ 16 MB string value space  /
+#define MAX_PROGRAM_LINES    65536    / Max line statements       /
+#define MAX_STACK_DEPTH      1024     /* Nested GOSUB/FOR limits   */
+#define MAX_NAMED_VARS       4096     / Max runtime named vars    /
+#define MAX_DIM_ARRAYS       1024     / DIM array slots           /
+#define MAX_ARRAY_ELEMENTS   4194304  / Max total array elements  /
+
+
+Preset Profiles
+
+| Setting | Lite/Embedded | FreeDOS Lite | Modern Default |
+|---|---|---|---|
+| PROGRAM_MEMORY_SIZE | 8 KB | 32 KB | 8 MB |
+| VARIABLE_MEMORY_SIZE| 4 KB | 16 KB | 1 MB |
+| MAX_STRING_POOL | 8 KB | 16 KB | 16 MB |
+| MAX_PROGRAM_LINES | 256 | 1,024 | 65,536 |
+| MAX_STACK_DEPTH | 32 | 64 | 1,024 |
+| MAX_NAMED_VARS | 64 | 128 | 4,096 |
+| MAX_DIM_ARRAYS | 16 | 32 | 1,024 |
+| MAX_ARRAY_ELEMENTS | 1,024 | 2,048 | 4,194,304 |
+
+---
+
+7. Adding a New Source File
+
+1. Create the .c file in the correct subdirectory
+2. Create a .h file in source/ root if it has a public API
+3. Add the .c to the appropriate *_SOURCES group in the Makefile
+4. Add any new .h to the HEADERS list
+5. For OpenWatcom targets, add an explicit compile line:
+
+
+$(WCC) $(WCFLAGS) -fo=newfile.obj subdir/newfile.c
+
+
+6. Add the .obj name to WATCOM_OBJS
+
+> [!IMPORTANT]
+> Don't forget to also update:
+> - help/help.c — if adding new BASIC keywords
+> - source/SOURCE_TREE.txt — always
+> - dialect/dialect.c — if adding a new dialect
+> - core/main.c — if adding a new module
+
+---
+
+8. Common Issues
+
+"ldisdbl" pragma warning (MSVC)
+
+
+core\ldisdbl.c(2): warning C4068: unknown pragma 'aux'
+
+
+Expected and harmless.  The pragma is for OpenWatcom only.
+
+"_CRT_SECURE_NO_WARNINGS" (MSVC)
+
+MSVC flags fopen, sprintf, etc. as "unsafe".  The
+/D_CRT_SECURE_NO_WARNINGS flag suppresses these.  We use standard C
+functions for cross-platform portability.
+
+640K limit (OpenWatcom 16-bit)
+
+The full 16-bit build may approach the 640K conventional memory limit.
+
+Solutions:
+- Use make watcom386 (32-bit build with extended memory)
+- Reduce pool sizes in config.h
+- Remove optional modules and dialects
+
+Missing advapi32.lib (MSVC)
+
+The /link advapi32.lib flag is required on Windows for the security
+subsystem.  If you see linker errors about RegOpenKeyEx, ensure
+advapi32.lib is linked.
+
+make vs nmake (Windows)
+
+- GNU make: make or make msvc
+- Microsoft nmake: nmake /f Makefile msvc
+- The gcc/clang targets use GNU make syntax (pattern rules)
+- The msvc target is a simple command and works with either
+
+---
+
+9. Verification
+
+After building, verify the interpreter:
+
+
+./baspp -v                        # Linux
+basicpp.exe -v                    # Windows
+bpp.exe -v                        # FreeDOS
+
+
+Expected: BASIC++ 4.2.3
+
+Run the built-in self-test:
+
+
+./baspp -q -c "SELFTEST"
+
+
+Expected: ALL TESTS PASSED (runs full suite of lexer, value, memory, string pool, VFS, and SDL checks)
+
+---
+
+See Also
+
+- source/SOURCE_TREE.txt — complete file-by-file reference
+- help/Event_Trapping.txt — event & interrupt trapping tutorial
+- help/Error_Handling.txt — ON ERROR GOTO, RESUME, error codes
+- docs/Event_Trapping.md — markdown event trapping reference

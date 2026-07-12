@@ -1,0 +1,139 @@
+
+Cooperative and Native Multi-threaded Multitasking in BASIC++
+=============================================================
+
+BASIC++ implements a hybrid multitasking environment that supports cooperative statement yielding alongside native operating system thread execution (utilizing Win32 Threads on Windows and POSIX Threads on Linux). This allows multiple independent BASIC program processes to execute concurrently within a single interpreter session.
+
+---
+
+
+Architectural Mechanics
+-----------------------
+
+
+1. The Scheduling Model
+~~~~~~~~~~~~~~~~~~~~~~~
+Multitasking in BASIC++ is built upon a hybrid scheduler that coordinates task execution:
+
+        +-------------------------------------------------+
+        |             Cooperative Task Scheduler          |
+        +-------------------------------------------------+
+             /                    |                    \
+            /                     |                     \
+    +--------------+      +--------------+      +--------------+
+    |    Task 1    |      |    Task 2    |      |    Task 3    |
+    | (Foreground) |      | (Background) |      | (Background) |
+    +--------------+      +--------------+      +--------------+
+           |                      |                     |
+     Statement Yield        Thread Spawn          Thread Spawn
+           |                      |                     |
+           v                      v                     v
+     [ exec.c Loop ]      [ Native Thread ]     [ Native Thread ]
+
+   Cooperative Slicing: When running sequentially on single-threaded platforms or when native threads are disabled, the interpreter yields execution control at the statement level* (after parsing each colon : or line boundary). The scheduler cycles through active tasks, letting each execute a statement slice.
+*   Native Threading: On modern multi-core hosts, spawning a background task launches an independent OS worker thread (task_thread_worker). The worker executes the sub-program concurrently, bypassing main-thread bottlenecks and achieving parallel speedups.
+   Fallback Schedulers: If OS limits prevent worker thread creation, the task system falls back transparently to cooperative statement-ticking on the primary interpreter thread.
+
+
+2. Task Memory Mapping
+~~~~~~~~~~~~~~~~~~~~~~
+Every spawned background task is assigned its own unique virtual memory home bank (a RAMBANK).
+   Bank Isolation: A task cannot access another task's variable pool or program space.
+*   Task Switching: Changing the active task (TASK pid) switches the active RAMBANK mapping to load the correct task workspace.
+*   Shared Memory: Tasks can communicate securely by declaring shared memory segments via BANK bank_id SHARED. Mutexes protect shared banks to prevent memory corruption.
+
+---
+
+
+Task Management Commands
+------------------------
+
+
+1. TASK "filename" [, priority]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Spawns a new background process executing a BASIC script.
+*   Usage: TASK "worker.bas"
+*   Behavior: Reads and compiles the file into a new BasicTask structure, assigns it a free RAMBANK, and launches it (as a native thread or cooperative sub-task). Returns the Process ID (PID).
+*   Example:
+        10 PID = TASK "background_calc.bas"
+    20 PRINT "Spawned background calculator with PID: "; PID
+    ```
+
+
+2. TASK LIST
+~~~~~~~~~~~~
+Displays a listing of all active tasks in memory with status diagnostics.
+*   Usage: TASK LIST (Direct or Program mode)
+   Details Displayed:
+       PID: Process ID.
+       File: Script filename.
+       Bank: Assigned home RAMBANK ID.
+    *   Threaded: YES (if running on a native OS thread) or NO (cooperative).
+    *   Status: One of TASK_RUNNING_FG, TASK_WAITING, TASK_RUNNING_BG, TASK_ERROR, TASK_DONE, or TASK_DONE_ERR.
+   Note: The status text uses terminal ANSI SGR escape sequences for color coding (Green for FG, Yellow for WAITING, White for BG, Red for ERROR, Blue for DONE, Purple for DONE_ERR).
+
+
+3. TASK pid
+~~~~~~~~~~~
+Switches the interpreter context to a specific task, or resumes a suspended task.
+   Usage: TASK 2
+   Behavior: Suspends the current foreground task and promotes the designated background task to the foreground.
+
+
+4. TASK KILL pid
+~~~~~~~~~~~~~~~~
+Terminates an active task and frees its assigned resources.
+   Usage: TASK KILL 3
+   Behavior: Signals the worker thread to exit, removes the task entry from the scheduler queue, and releases its associated RAMBANK.
+
+
+5. TASK WAIT pid
+~~~~~~~~~~~~~~~~
+Suspends the calling task until the target background process terminates.
+   Usage: TASK WAIT 2
+   Behavior: Blocks task execution, yielding to the cooperative scheduler or native threads until the specified PID is completed or errored out.
+
+
+6. TASK(pid) [Function]
+~~~~~~~~~~~~~~~~~~~~~~~
+Queries the state of the task with the given Process ID (PID).
+   Syntax: state = TASK(pid)
+   Return Values:
+       0: Foreground running (TASK_RUNNING_FG).
+    *   1: Waiting on input (TASK_WAITING).
+    *   2: Background running (TASK_RUNNING_BG).
+    *   3: Done with error (TASK_ERROR).
+    *   4: Clean exit (TASK_DONE).
+    *   5: Exit with non-clean code (TASK_DONE_ERR).
+    *   -1: Process does not exist / inactive.
+
+---
+
+
+Programming Example: Concurrent Workload
+----------------------------------------
+
+The following script spawns a background worker to calculate numbers and uses TASK WAIT to block until it finishes:
+
+10 REM Main Task
+20 PRINT "Spawning background worker..."
+30 WORKER = TASK "worker.bas"
+40 FOR I = 1 TO 5
+50   PRINT "Main task iteration "; I
+60   DELAY 500
+70 NEXT I
+80 PRINT "Waiting for worker to finish..."
+90 TASK WAIT WORKER
+100 PRINT "Worker completed. Status code: "; TASK(WORKER)
+
+---
+
+
+Task System Limits
+------------------
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| MAX_TASKS | 32 | Maximum concurrent tasks (defined in task.h) |
+
+Exceeding this limit when calling TASK "filename" raises an error.

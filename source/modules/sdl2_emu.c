@@ -1704,3 +1704,16 @@ void gw_sdl2_write_char_cursor(int visible) {
 }
 #endif
 
+
+char* gw_sdl2_get_clipboard_text(void) {
+    if (!gw_sdl2_is_active()) return NULL;
+    if (SDL_HasClipboardText()) {
+        return SDL_GetClipboardText();
+    }
+    return NULL;
+}
+
+void gw_sdl2_set_clipboard_text(const char* text) {
+    if (!gw_sdl2_is_active()) return;
+    SDL_SetClipboardText(text);
+}

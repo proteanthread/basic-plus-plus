@@ -1,0 +1,601 @@
+BASIC++ SHELL SCRIPTING INTEGRATION
+=====================================
+Version 4.2.3
+
+This guide covers using BASIC++ as a scripting tool within
+bash shell scripts, Windows batch files, and PowerShell
+scripts.  It also covers calling those shells FROM BASIC++.
+
+
+TABLE OF CONTENTS
+==================
+  1. Command-Line Usage
+  2. Exit Codes and Error Handling
+  3. Bash Shell Scripts
+  4. Windows Batch Files
+  5. PowerShell Scripts
+  6. Calling Shell Commands FROM BASIC++
+  7. Capturing Shell Output (SHELL$)
+  8. PRINT Redirection (File and Pipe)
+  9. Environment Variables
+ 10. Shebang Scripts (Unix/macOS)
+ 11. Practical Recipes
+
+
+1. COMMAND-LINE USAGE
+======================
+
+BASIC++ accepts several command-line forms:
+
+  basicpp                      Interactive REPL
+  basicpp program.bas          Load and run a program
+  basicpp program.bas arg1     Run with arguments (COMMAND$)
+  basicpp < input.txt          Pipe input from file
+  basicpp program.bas > out    Redirect output to file
+
+The program runs to completion (END or last line), then
+BASIC++ exits with code 0 (success).  If an unhandled error
+occurs, it exits with a non-zero code.
+
+
+2. EXIT CODES AND ERROR HANDLING
+==================================
+
+When BASIC++ runs a program non-interactively, the process
+exit code can be tested by the calling shell:
+
+  - Exit code 0: program ran to END successfully
+  - Non-zero:    an unhandled runtime error occurred
+
+This makes BASIC++ programs usable in shell pipelines and
+conditional execution chains.
+
+
+3. BASH SHELL SCRIPTS
+======================
+
+Running BASIC++ from bash
+---------------------------
+
+  #!/bin/bash
+
+Run a BASIC++ program
+  basicpp myprog.bas
+  if [ $? -ne 0 ]; then
+      echo "BASIC++ program failed!"
+      exit 1
+  fi
+
+Piping data through BASIC++
+------------------------------
+
+Pipe data into a BASIC++ program via INPUT
+  echo "42" | basicpp calculate.bas
+
+Capture BASIC++ output in a variable
+  RESULT=$(basicpp compute.bas)
+  echo "Result: $RESULT"
+
+Use BASIC++ as a filter in a pipeline
+  cat data.csv | basicpp transform.bas | sort > output.csv
+
+Inline BASIC++ with heredoc
+------------------------------
+
+  #!/bin/bash
+Run inline BASIC++ code using a temp file
+  TMPFILE=$(mktemp /tmp/bpp.XXXXXX.bas)
+  cat > "$TMPFILE" << 'BASIC'
+  10 FOR I = 1 TO 10
+  20   PRINT I * I
+  30 NEXT I
+  BASIC
+  basicpp "$TMPFILE"
+  rm -f "$TMPFILE"
+
+Using BASIC++ output in bash conditionals
+--------------------------------------------
+
+  #!/bin/bash
+BASIC++ program that exits with SHELL exit code
+  COUNT=$(basicpp count_records.bas)
+  if [ "$COUNT" -gt 100 ]; then
+      echo "Too many records: $COUNT"
+      mail -s "Alert" admin@example.com < /dev/null
+  fi
+
+Looping with BASIC++
+-----------------------
+
+  #!/bin/bash
+Process multiple files with BASIC++
+  for FILE in data/*.csv; do
+      echo "Processing $FILE..."
+      basicpp process.bas "$FILE"
+      if [ $? -ne 0 ]; then
+          echo "FAILED: $FILE"
+      fi
+  done
+
+
+4. WINDOWS BATCH FILES
+========================
+
+Running BASIC++ from a batch file
+------------------------------------
+
+  @ECHO OFF
+  REM Run a BASIC++ program
+  basicpp myprog.bas
+  IF ERRORLEVEL 1 (
+      ECHO BASIC++ program failed!
+      EXIT /B 1
+  )
+
+Capturing output
+------------------
+
+  @ECHO OFF
+  REM Capture BASIC++ output to a file
+  basicpp compute.bas > result.txt
+
+  REM Read it back
+  SET /P RESULT=<result.txt
+  ECHO Result: %RESULT%
+
+Piping data
+-------------
+
+  @ECHO OFF
+  REM Pipe data into BASIC++
+  ECHO 42 | basicpp calculate.bas
+
+  REM Use BASIC++ in a pipeline
+  TYPE data.csv | basicpp transform.bas | SORT > output.csv
+
+Conditional execution
+-----------------------
+
+  @ECHO OFF
+  REM Run BASIC++ only if a file exists
+  IF EXIST "data.csv" (
+      basicpp analyze.bas
+  ) ELSE (
+      ECHO No data file found!
+  )
+
+Processing multiple files
+----------------------------
+
+  @ECHO OFF
+  REM Process all .dat files
+  FOR %%F IN (data\*.dat) DO (
+      ECHO Processing %%F...
+      basicpp process.bas "%%F"
+      IF ERRORLEVEL 1 ECHO FAILED: %%F
+  )
+
+Build automation
+------------------
+
+  @ECHO OFF
+  REM Use BASIC++ as a build tool
+  ECHO === Building Project ===
+  basicpp generate_headers.bas
+  IF ERRORLEVEL 1 GOTO :FAIL
+
+  cl /O2 main.c generated.c
+  IF ERRORLEVEL 1 GOTO :FAIL
+
+  ECHO === Build Successful ===
+  EXIT /B 0
+
+  :FAIL
+  ECHO === Build FAILED ===
+  EXIT /B 1
+
+
+5. POWERSHELL SCRIPTS
+=======================
+
+Running BASIC++ from PowerShell
+----------------------------------
+
+Run a BASIC++ program
+  & .\basicpp.exe myprog.bas
+  if ($LASTEXITCODE -ne 0) {
+      Write-Error "BASIC++ program failed!"
+      exit 1
+  }
+
+Capturing output
+------------------
+
+Capture output as a string
+  $result = & .\basicpp.exe compute.bas
+  Write-Host "Result: $result"
+
+Capture output as an array of lines
+  $lines = & .\basicpp.exe report.bas
+  foreach ($line in $lines) {
+      Write-Host ">> $line"
+  }
+
+Piping data
+-------------
+
+Pipe data into BASIC++
+  "42" | & .\basicpp.exe calculate.bas
+
+Use BASIC++ in a pipeline
+  Get-Content data.csv |
+      & .\basicpp.exe transform.bas |
+      Sort-Object |
+      Set-Content output.csv
+
+Processing multiple files
+----------------------------
+
+Process all .bas test files
+  Get-ChildItem tests\*.bas | ForEach-Object {
+      Write-Host "Testing $($_.Name)..."
+      & .\basicpp.exe $_.FullName
+      if ($LASTEXITCODE -ne 0) {
+          Write-Warning "FAILED: $($_.Name)"
+      }
+  }
+
+PowerShell functions wrapping BASIC++
+----------------------------------------
+
+Create a reusable function
+  function Invoke-Basic {
+      param(
+          [Parameter(Mandatory)]
+          [string]$Program,
+          [string]$Input
+      )
+      if ($Input) {
+          $Input | & .\basicpp.exe $Program
+      } else {
+          & .\basicpp.exe $Program
+      }
+      return $LASTEXITCODE
+  }
+
+Usage:
+  $exitCode = Invoke-Basic -Program "analyze.bas"
+  $exitCode = Invoke-Basic -Program "calc.bas" -Input "42"
+
+Structured error handling
+---------------------------
+
+  try {
+      $output = & .\basicpp.exe critical.bas 2>&1
+      if ($LASTEXITCODE -ne 0) {
+          throw "BASIC++ error: $output"
+      }
+      Write-Host "Success: $output"
+  }
+  catch {
+      Write-Error $_.Exception.Message
+      Send-MailMessage -To "admin@co.com" `
+          -Subject "Script Failed" `
+          -Body $_.Exception.Message `
+          -SmtpServer "smtp.co.com"
+  }
+
+Scheduled tasks
+-----------------
+
+Register a scheduled task that runs BASIC++
+  $action = New-ScheduledTaskAction `
+      -Execute "C:\tools\basicpp.exe" `
+      -Argument "C:\scripts\daily_report.bas"
+  $trigger = New-ScheduledTaskTrigger -Daily -At "06:00"
+  Register-ScheduledTask `
+      -TaskName "DailyReport" `
+      -Action $action `
+      -Trigger $trigger
+
+
+6. CALLING SHELL COMMANDS FROM BASIC++
+========================================
+
+BASIC++ can call out to any shell from within a program:
+
+  SHELL Statement (wait for completion)
+  ----------------------------------------
+  SHELL "dir"                      ' Run and wait
+  SHELL "echo Hello World"         ' Simple command
+  SHELL                            ' Interactive shell
+
+  On Windows, SHELL invokes cmd.exe.
+  On Unix/macOS, SHELL invokes /bin/sh.
+
+  Calling specific shells:
+
+    ' Call PowerShell from BASIC++
+    SHELL "powershell -Command Get-Date"
+    SHELL "powershell -File script.ps1"
+
+    ' Call bash from BASIC++ (WSL or Unix)
+    SHELL "bash -c 'echo $HOME'"
+    SHELL "bash script.sh"
+
+    ' Call a batch file from BASIC++
+    SHELL "build.bat"
+    SHELL "cmd /c deploy.bat"
+
+  Exit code is captured in ERRORLEVEL:
+
+    SHELL "compile.bat"
+    IF ERRORLEVEL <> 0 THEN PRINT "Build failed!"
+
+  EXEC Statement (fire-and-forget)
+  -----------------------------------
+  EXEC "notepad readme.txt"        ' Opens, doesn't wait
+  EXEC "firefox http://example.com"
+
+  Redirection with SHELL
+  -------------------------
+  SHELL "dir /b" > "filelist.txt"           ' Overwrite
+  SHELL "echo entry" >> "log.txt"           ' Append
+  SHELL "dir /b" | "sort"                   ' Pipe
+  SHELL "type data.txt" | "findstr hello"   ' Multi-pipe
+
+
+7. CAPTURING SHELL OUTPUT (SHELL$)
+=====================================
+
+SHELL$ runs a command and returns its stdout as a string:
+
+  A$ = SHELL$("date /t")          ' Windows date
+  A$ = SHELL$("date +%Y-%m-%d")   ' Unix date
+  A$ = SHELL$("hostname")         ' Machine name
+  A$ = SHELL$("git rev-parse HEAD")  ' Git commit hash
+
+Maximum capture: 32 KB.  Trailing newlines are stripped.
+ERRORLEVEL is also set by SHELL$.
+
+Example: System inventory script
+
+  10 REM System inventory
+  20 PRINT "=== SYSTEM INVENTORY ==="
+  30 PRINT "Date:     "; DATE$
+  40 PRINT "Host:     "; SHELL$("hostname")
+  50 PRINT "User:     "; ENVIRON$("USERNAME")
+  60 PRINT "OS:       "; SHELL$("ver")
+  70 PRINT "IP:       "; SHELL$("ipconfig | findstr IPv4")
+  80 PRINT "Disk:     "; SHELL$("wmic logicaldisk get size")
+
+
+8. PRINT REDIRECTION (FILE AND PIPE)
+=======================================
+
+BASIC++ PRINT can redirect output directly to files
+or commands without opening file channels:
+
+  File output
+  -------------
+  PRINT > "output.txt", "Hello World"       ' Overwrite
+  PRINT >> "log.txt", "Entry: "; TIME$       ' Append
+
+  Pipe output
+  -------------
+  PRINT | "sort", "cherry"; CHR$(10); "apple"
+
+  Example: Generate a CSV report
+
+  10 PRINT > "report.csv", "Name,Score,Grade"
+  20 FOR I = 1 TO 10
+  30   READ N$, S
+  40   IF S >= 90 THEN G$ = "A"
+  50   IF S >= 80 AND S < 90 THEN G$ = "B"
+  60   IF S < 80 THEN G$ = "C"
+  70   PRINT >> "report.csv", N$; ","; S; ","; G$
+  80 NEXT I
+  90 DATA "Alice",95,"Bob",82,"Carol",78
+  100 DATA "Dave",91,"Eve",88,"Frank",73
+  110 DATA "Grace",97,"Hank",65,"Ivy",84
+  120 DATA "Jack",90
+
+
+9. ENVIRONMENT VARIABLES
+==========================
+
+Reading environment variables from BASIC++
+---------------------------------------------
+
+  PRINT ENVIRON$("PATH")          ' System PATH
+  PRINT ENVIRON$("HOME")          ' Home directory
+  PRINT ENVIRON$("USERNAME")      ' Current user
+  PRINT ENVIRON$("COMPUTERNAME")  ' Machine name
+
+  ' Conditional behavior based on environment
+  IF ENVIRON$("DEBUG") = "1" THEN TRON
+
+Setting environment variables for BASIC++
+--------------------------------------------
+
+  From bash:
+    export MY_CONFIG="production"
+    basicpp app.bas
+
+  From batch:
+    SET MY_CONFIG=production
+    basicpp app.bas
+
+  From PowerShell:
+    $env:MY_CONFIG = "production"
+    & .\basicpp.exe app.bas
+
+  Then in your BASIC++ program:
+    10 C$ = ENVIRON$("MY_CONFIG")
+    20 IF C$ = "production" THEN SECURITY 2
+    30 PRINT "Config: "; C$
+
+Setting environment variables FROM BASIC++
+---------------------------------------------
+
+  ENVIRON "MYVAR=hello"
+
+  This sets the variable for the current process only.
+  Child processes (via SHELL) will inherit it.
+
+
+10. SHEBANG SCRIPTS (Unix/macOS)
+==================================
+
+Make BASIC++ programs directly executable:
+
+  File: daily_check.bas
+  ----------------------
+  #!/usr/bin/env basicpp
+  10 PRINT "=== Daily Check ==="
+  20 PRINT "Date: "; DATE$; "  Time: "; TIME$
+  30 A$ = SHELL$("df -h / | tail -1")
+  40 PRINT "Disk: "; A$
+  50 A$ = SHELL$("uptime")
+  60 PRINT "Uptime: "; A$
+  70 END
+
+  Make it executable:
+    $ chmod +x daily_check.bas
+
+  Run it directly:
+    $ ./daily_check.bas
+    === Daily Check ===
+    Date: 06-11-2026  Time: 14:30:45
+    Disk: /dev/sda1  50G  23G  27G  46% /
+    Uptime: 14:30:45 up 42 days, ...
+
+  Add to crontab:
+    0 6   * /home/user/scripts/daily_check.bas >> /var/log/daily.log
+
+The #! line is silently skipped by the BASIC++ file loader.
+
+
+11. PRACTICAL RECIPES
+=======================
+
+A. Build system (batch + BASIC++)
+-----------------------------------
+
+  build.bat:
+  ----------
+  @ECHO OFF
+  ECHO === Pre-build: generating version header ===
+  basicpp gen_version.bas
+  IF ERRORLEVEL 1 EXIT /B 1
+  cl /O2 /Fe:app.exe main.c version.c
+  IF ERRORLEVEL 1 EXIT /B 1
+  ECHO === Build complete ===
+
+  gen_version.bas:
+  ----------------
+  10 PRINT > "version.c", "const char *version = ""2.0.0"";"
+  20 PRINT >> "version.c", "const char *build_date = """;
+  30 PRINT >> "version.c", DATE$;
+  40 PRINT >> "version.c", """;"
+  50 END
+
+B. Test runner (PowerShell + BASIC++)
+---------------------------------------
+
+  run_tests.ps1:
+  ---------------
+  $pass = 0; $fail = 0
+  Get-ChildItem tests\*.bas | ForEach-Object {
+      $output = & .\basicpp.exe $_.FullName 2>&1
+      if ($LASTEXITCODE -eq 0) {
+          Write-Host "  PASS  $($_.Name)" -Fore Green
+          $pass++
+      } else {
+          Write-Host "  FAIL  $($_.Name)" -Fore Red
+          $fail++
+      }
+  }
+  Write-Host "`nResults: $pass passed, $fail failed"
+  exit $fail
+
+C. Log monitor (bash + BASIC++)
+---------------------------------
+
+  monitor.sh:
+  ------------
+  #!/bin/bash
+  while true; do
+      ERRORS=$(basicpp count_errors.bas)
+      if [ "$ERRORS" -gt 0 ]; then
+          echo "$(date): $ERRORS errors detected" >> alert.log
+          basicpp send_alert.bas
+      fi
+      sleep 300
+  done
+
+D. Data pipeline (bash)
+--------------------------
+
+  #!/bin/bash
+Extract -> Transform -> Load
+  basicpp extract.bas | basicpp transform.bas > clean_data.csv
+  basicpp load.bas
+
+E. Deployment script (PowerShell)
+------------------------------------
+
+Deploy with BASIC++ config generator
+  & .\basicpp.exe gen_config.bas
+  if ($LASTEXITCODE -ne 0) { exit 1 }
+
+  Copy-Item config.ini \\server\deploy\
+  & .\basicpp.exe verify_deploy.bas
+  if ($LASTEXITCODE -ne 0) {
+      Write-Error "Deployment verification failed"
+      & .\basicpp.exe rollback.bas
+      exit 1
+  }
+  Write-Host "Deployment successful"
+
+F. File format converter (any shell)
+---------------------------------------
+
+  convert.bas:
+  -------------
+  10 REM Convert TSV to CSV
+  20 OPEN "input.tsv" FOR INPUT AS #1
+  30 WHILE NOT EOF(1)
+  40   LINE INPUT #1, L$
+  50   ' Replace tabs with commas
+  60   O$ = ""
+  70   FOR I = 1 TO LEN(L$)
+  80     C$ = MID$(L$, I, 1)
+  90     IF ASC(C$) = 9 THEN O$ = O$ + ","
+  100    IF ASC(C$) <> 9 THEN O$ = O$ + C$
+  110  NEXT I
+  120  PRINT > "output.csv", O$
+  130 WEND
+  140 CLOSE #1
+
+
+SECURITY NOTES
+================
+
+SHELL, SHELL$, and EXEC execute real OS commands with the
+permissions of the user running BASIC++.
+
+  SECURITY 0  (OPEN)        All shell commands allowed
+  SECURITY 1  (STANDARD)    Limited shell access
+  SECURITY 2  (RESTRICTED)  SHELL, SHELL$, EXEC blocked
+
+Security is a ONE-WAY RATCHET: once raised, it cannot be
+lowered within the same session.
+
+For untrusted BASIC++ programs, always set SECURITY 2 before
+running user code:
+
+  10 SECURITY 2
+  20 CHAIN "untrusted_program.bas"
+
+See Security.txt and Secure_Coding.txt for details.

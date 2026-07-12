@@ -70,6 +70,10 @@ static char edlin_filename[MAX_EDLIN_LENGTH] = "";
 
 /* Cached callbacks pointer (set once per edlin_start invocation). */
 static const EdlinCallbacks *edlin_cb = NULL;
+#ifndef DEFAULT_COLOR_MODE
+#define DEFAULT_COLOR_MODE 1
+#endif
+static int color_mode = 0;
 
 /* =====================================================================
  * Output Helpers
@@ -684,6 +688,14 @@ int edlin_start(const char *filename, const EdlinCallbacks *callbacks)
         case 'm':
             move_edlin_lines();
             break;
+        case 'o':
+            color_mode = !color_mode;
+            if (color_mode) {
+                edlin_print("\x1b[44;37m\x1b[2J\x1b[H[Color Mode ON]\r\n");
+            } else {
+                edlin_print("\x1b[0m\x1b[2J\x1b[H[Color Mode OFF]\r\n");
+            }
+            break;
         case 'p':
             page_edlin_display();
             break;
@@ -711,6 +723,7 @@ int edlin_start(const char *filename, const EdlinCallbacks *callbacks)
     }
 
 edlin_exit:
+    edlin_print("\x1b[0m\x1b[2J\x1b[H");
     edlin_cb = NULL;  /* Clear cached callbacks */
     return 0;
 }

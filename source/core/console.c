@@ -131,12 +131,55 @@ void gw_console_write_char(char c) {
 }
 
 char gw_console_read_char(void) {
-    int stdin_redirected = !platform_stdin_is_tty();
+    static char key_queue[16];
+    static int queue_head = 0;
+    static int queue_tail = 0;
+    int stdin_redirected;
+
+    if (queue_head < queue_tail) {
+        return key_queue[queue_head++];
+    }
+    queue_head = queue_tail = 0;
+
+    stdin_redirected = !platform_stdin_is_tty();
 
     if (!gw_sdl2_is_active() || stdin_redirected) {
         // Check for keyboard hit first
         if (platform_kbhit()) {
-            return (char)platform_getch();
+            int ch = platform_getch();
+#ifdef _WIN32
+            if (ch == 0 || ch == 224) {
+                int ext = platform_getch();
+                key_queue[0] = '\0';
+                if (ch == 0) {
+                    switch (ext) {
+                        case 59: strcpy(key_queue, "\x1b[11~"); break; /* F1 */
+                        case 60: strcpy(key_queue, "\x1b[12~"); break; /* F2 */
+                        case 61: strcpy(key_queue, "\x1b[13~"); break; /* F3 */
+                        case 62: strcpy(key_queue, "\x1b[14~"); break; /* F4 */
+                        case 63: strcpy(key_queue, "\x1b[15~"); break; /* F5 */
+                    }
+                } else if (ch == 224) {
+                    switch (ext) {
+                        case 72: strcpy(key_queue, "\x1b[A"); break; /* Up */
+                        case 80: strcpy(key_queue, "\x1b[B"); break; /* Down */
+                        case 77: strcpy(key_queue, "\x1b[C"); break; /* Right */
+                        case 75: strcpy(key_queue, "\x1b[D"); break; /* Left */
+                        case 71: strcpy(key_queue, "\x1b[H"); break; /* Home */
+                        case 79: strcpy(key_queue, "\x1b[F"); break; /* End */
+                        case 73: strcpy(key_queue, "\x1b[5~"); break; /* PgUp */
+                        case 81: strcpy(key_queue, "\x1b[6~"); break; /* PgDn */
+                        case 82: strcpy(key_queue, "\x1b[2~"); break; /* Ins */
+                        case 83: strcpy(key_queue, "\x1b[3~"); break; /* Del */
+                    }
+                }
+                if (key_queue[0] != '\0') {
+                    queue_tail = (int)strlen(key_queue);
+                    return key_queue[queue_head++];
+                }
+            }
+#endif
+            return (char)ch;
         }
         // Try non-blocking read from pipe/file
         int ch = platform_nb_read_char();
@@ -161,8 +204,17 @@ void gw_console_write_string(const char *buffer, int length) {
 #endif
 
     if (is_console) {
-        for (int i = 0; i < length && buffer[i] != '\0'; i++) {
-            gw_console_write_char(buffer[i]);
+        int actual_len = 0;
+        while (actual_len < length && buffer[actual_len] != '\0') actual_len++;
+        if (!gw_sdl2_is_active()) {
+            if (cli_trace) { fwrite(buffer, 1, actual_len, stderr); fflush(stderr); }
+            if (g_out_fp)  { fwrite(buffer, 1, actual_len, g_out_fp); fflush(g_out_fp); }
+            fwrite(buffer, 1, actual_len, stdout);
+            fflush(stdout);
+        } else {
+            for (int i = 0; i < actual_len; i++) {
+                gw_console_write_char(buffer[i]);
+            }
         }
         return;
     }
