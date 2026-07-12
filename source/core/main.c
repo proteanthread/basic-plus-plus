@@ -96,6 +96,9 @@ int g_init_rambanks = 64;
 #include "mod_legacy_compat.h"
 #ifndef BPP_LITE_BUILD
 #include "mod_edlin.h"
+#include "mod_ws.h"
+#include "mod_vi.h"
+#include "mod_edit.h"
 #endif
 #include "console.h"
 #include "memmap.h"
@@ -192,6 +195,8 @@ static void print_usage(const char *prog)
     printf("  --dry-run <file> Load in debug/step-by-step mode (Disables File I/O)\n");
     printf("  --edit           Start in screen-editor mode\n");
     printf("  --edlin [file]   Start the built-in line editor\n");
+    printf("  --ws [file]      Start the WordStar-like full-screen editor\n");
+    printf("  --vi [file]      Start the vi-like full-screen editor\n");
     printf("  -c \"CMD\"         Execute a command and exit\n");
     printf("\nInfo:\n");
     printf("  -h, --help       Print this help and exit\n");
@@ -345,10 +350,47 @@ typedef struct {
     MemorySystem *memory;
 } EdlinExecCtx;
 
+typedef struct {
+    RuntimeState *runtime;
+    MemorySystem *memory;
+} WsExecCtx;
+
+typedef struct {
+    RuntimeState *runtime;
+    MemorySystem *memory;
+} ViExecCtx;
+
+typedef struct {
+    RuntimeState *runtime;
+    MemorySystem *memory;
+} EditExecCtx;
+
 
 // Wrapper to map Edlin's output to the SDL console
 static void edlin_write_str_cb(const char *str) {
     gw_printf("%s", str);
+}
+
+static unsigned long edit_get_free_memory_cb(void *ctx) {
+    EditExecCtx *ectx = (EditExecCtx *)ctx;
+    return (unsigned long)(ectx->memory->variable.size + ectx->runtime->strpool.size + (ectx->memory->program.capacity * sizeof(ProgramLine)));
+}
+
+static void ws_get_console_size_cb(int *cols, int *rows) {
+    *cols = platform_get_console_width();
+    *rows = platform_get_console_height();
+}
+
+static char ws_blocking_read_char_cb(void) {
+    char c;
+    while ((c = gw_console_read_char()) == 0) {
+        platform_sleep_ms(5);
+    }
+    return c;
+}
+
+static char ws_nb_read_char_cb(void) {
+    return gw_console_read_char();
 }
 
 static void edlin_execute_buffer_cb(const char **lines, int line_count, void *ctx)
@@ -431,9 +473,14 @@ int main(int argc, char *argv[])
     const char *cli_list_file = NULL;
     const char *cli_dry_run_file = NULL;
     int cli_edit = 0;
+    const char *cli_edit_file = NULL;
 #ifndef BPP_LITE_BUILD
     int cli_edlin = 0;
     const char *cli_edlin_file = NULL;
+    int cli_ws = 0;
+    const char *cli_ws_file = NULL;
+    int cli_vi = 0;
+    const char *cli_vi_file = NULL;
 #endif
     int cli_debug = 0;
     int cli_boot_log = 0;
@@ -481,7 +528,7 @@ int main(int argc, char *argv[])
             if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "-s") == 0 ||
                 strcmp(argv[i], "-S") == 0 || strcmp(argv[i], "-f") == 0 ||
                 strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--command") == 0 ||
-                strcmp(argv[i], "--edit") == 0 || strcmp(argv[i], "--edlin") == 0 || strcmp(argv[i], "--lib") == 0 ||
+                strcmp(argv[i], "--edit") == 0 || strcmp(argv[i], "--edlin") == 0 || strcmp(argv[i], "--ws") == 0 || strcmp(argv[i], "--vi") == 0 || strcmp(argv[i], "--lib") == 0 ||
                 strcmp(argv[i], "--bios") == 0 ||
                 strcmp(argv[i], "--mod") == 0 || strcmp(argv[i], "--func") == 0 ||
                 strcmp(argv[i], "--com") == 0 || strcmp(argv[i], "--files") == 0 ||
@@ -548,6 +595,9 @@ int main(int argc, char *argv[])
             }
             if (strcmp(argv[i], "--edit") == 0) {
                 cli_edit = 1;
+                if (i + 1 < argc && argv[i + 1][0] != '-') {
+                    cli_edit_file = argv[++i];
+                }
                 continue;
             }
 #ifndef BPP_LITE_BUILD
@@ -556,6 +606,20 @@ int main(int argc, char *argv[])
                 /* Optional filename argument: peek ahead. */
                 if (i + 1 < argc && argv[i + 1][0] != '-') {
                     cli_edlin_file = argv[++i];
+                }
+                continue;
+            }
+            if (strcmp(argv[i], "--ws") == 0) {
+                cli_ws = 1;
+                if (i + 1 < argc && argv[i + 1][0] != '-') {
+                    cli_ws_file = argv[++i];
+                }
+                continue;
+            }
+            if (strcmp(argv[i], "--vi") == 0) {
+                cli_vi = 1;
+                if (i + 1 < argc && argv[i + 1][0] != '-') {
+                    cli_vi_file = argv[++i];
                 }
                 continue;
             }
@@ -1046,24 +1110,35 @@ int main(int argc, char *argv[])
  }
 
  // ----- Handle --edit (screen editor mode) -----
+#ifndef BPP_LITE_BUILD
   if (cli_edit) {
-   printf("Starting BASIC++ Editor (Memo Pad Mode)\n");
-   printf("Press Ctrl+Z (Windows) or Ctrl+D (Unix) to exit.\n");
-   for (;;) {
-    if (gw_console_read_line(input_buf, INPUT_BUFFER_SIZE) == NULL) {
-     break; // EOF
-    }
-    // In a true full-screen mode, this would hook into vdev_display.
-       // For now, it acts as a simple text buffer that doesn't scroll
-       //       beyond screen limits (simulated). 
+   EditExecCtx edit_ctx;
+   EditCallbacks edit_cbs;
+
+   edit_ctx.runtime = &runtime;
+   edit_ctx.memory  = &memory;
+
+   memset(&edit_cbs, 0, sizeof(edit_cbs));
+   edit_cbs.execute_buffer = (void (*)(const char **, int, void *))edlin_execute_buffer_cb;
+    edit_cbs.read_char      = ws_blocking_read_char_cb;
+    edit_cbs.read_char_nb   = ws_nb_read_char_cb;
+   edit_cbs.write_str      = edlin_write_str_cb;
+   edit_cbs.get_terminal_size = ws_get_console_size_cb;
+   edit_cbs.get_free_memory = edit_get_free_memory_cb;
+   edit_cbs.ctx            = &edit_ctx;
+
+   edit_start(cli_edit_file, &edit_cbs); 
+
+   if (runtime.log_fp && runtime.log_fp != stderr && runtime.log_fp != stdout) {
+       fclose((FILE*)runtime.log_fp);
    }
-   printf("\nExiting editor.\n");
-   if (runtime.log_fp && runtime.log_fp != stderr && runtime.log_fp != stdout) { fclose((FILE*)runtime.log_fp); }
    runtime.log_fp = NULL;
    if (g_out_fp) { fclose(g_out_fp); g_out_fp = NULL; }
+   runtime_cleanup(&runtime);
    mem_shutdown(&memory);
    return 0;
   }
+#endif
 
  // ----- Handle --edlin (built-in line editor) -----
 #ifndef BPP_LITE_BUILD
@@ -1082,6 +1157,61 @@ int main(int argc, char *argv[])
    edlin_cbs.ctx            = &edlin_ctx;
 
    edlin_start(cli_edlin_file, &edlin_cbs);
+
+   if (runtime.log_fp && runtime.log_fp != stderr && runtime.log_fp != stdout) {
+       fclose((FILE*)runtime.log_fp);
+   }
+   runtime.log_fp = NULL;
+   if (g_out_fp) { fclose(g_out_fp); g_out_fp = NULL; }
+   runtime_cleanup(&runtime);
+   mem_shutdown(&memory);
+   return 0;
+  }
+  
+  if (cli_ws) {
+   WsExecCtx ws_ctx;
+   WsCallbacks ws_cbs;
+
+   ws_ctx.runtime = &runtime;
+   ws_ctx.memory  = &memory;
+
+   memset(&ws_cbs, 0, sizeof(ws_cbs));
+   /* Re-use the edlin_execute_buffer_cb logic since WsExecCtx has the exact same layout */
+   ws_cbs.execute_buffer = (void (*)(const char **, int, void *))edlin_execute_buffer_cb;
+   ws_cbs.read_char      = ws_blocking_read_char_cb;
+   ws_cbs.read_char_nb   = ws_nb_read_char_cb;
+   ws_cbs.write_str      = edlin_write_str_cb;
+   ws_cbs.get_terminal_size = ws_get_console_size_cb;
+   ws_cbs.ctx            = &ws_ctx;
+
+   ws_start(cli_ws_file, &ws_cbs); 
+
+   if (runtime.log_fp && runtime.log_fp != stderr && runtime.log_fp != stdout) {
+       fclose((FILE*)runtime.log_fp);
+   }
+   runtime.log_fp = NULL;
+   if (g_out_fp) { fclose(g_out_fp); g_out_fp = NULL; }
+   runtime_cleanup(&runtime);
+   mem_shutdown(&memory);
+   return 0;
+  }
+  
+  if (cli_vi) {
+   ViExecCtx vi_ctx;
+   ViCallbacks vi_cbs;
+
+   vi_ctx.runtime = &runtime;
+   vi_ctx.memory  = &memory;
+
+   memset(&vi_cbs, 0, sizeof(vi_cbs));
+   vi_cbs.execute_buffer = (void (*)(const char **, int, void *))edlin_execute_buffer_cb;
+   vi_cbs.read_char      = ws_blocking_read_char_cb;
+   vi_cbs.read_char_nb   = ws_nb_read_char_cb;
+   vi_cbs.write_str      = edlin_write_str_cb;
+   vi_cbs.get_terminal_size = ws_get_console_size_cb;
+   vi_cbs.ctx            = &vi_ctx;
+
+   vi_start(cli_vi_file, &vi_cbs); 
 
    if (runtime.log_fp && runtime.log_fp != stderr && runtime.log_fp != stdout) {
        fclose((FILE*)runtime.log_fp);

@@ -1,0 +1,324 @@
+# Security and Sandboxing in BASIC++
+
+**Version 4.2.3**
+
+
+---
+
+## Table of Contents
+
+- Security Levels
+- Setting Security Level
+- Function Safety Categories
+- Permission Matrix
+- External Extension Security
+  - 1 Extension Loading Gate (SECOP_EXT_LOAD)
+  - 2 Security Pinning (Minimum-Floor Model)
+  - 3 Path Validation
+- Use Cases
+  - Running student homework (EDUCATIONAL)
+  - Online BASIC playground (PARANOID)
+  - Extension development (SAFE)
+  - Batch processing (STANDARD)
+  - Game toolkit (SAFE with extensions)
+- Security Errors
+- Implementation Notes
+- Best Practices
+
+---
+
+BASIC++ includes a 6-level security model that restricts what programs can
+do.  This is essential when running untrusted BASIC code, educational
+environments, and extension/plugin development.
+
+Security levels can only go UP, never down (one-way ratchet).  Once you
+set SECURITY SAFE, you cannot return to SECURITY OPEN within the same
+session.  Only a NEW or direct-mode command at level 0 can lower it.
+
+---
+
+## 1. Security Levels
+
+BASIC++ uses named security levels.  Numbers are supported but the named
+form is preferred.
+
+| # | Name         | Description                                         |
+|---|--------------|-----------------------------------------------------|
+| 0 | OPEN         | Everything allowed. Full system access. *(default)* |
+| 1 | SAFE         | Dangerous memory ops blocked. PEEK/POKE virtual     |
+|   |              | only. DEF USR restricted.                           |
+| 2 | STANDARD     | No SHELL, EXEC. File I/O current dir only. No KILL, |
+|   |              | MKDIR, RMDIR, CHDIR. Environment vars blocked.      |
+| 3 | EDUCATIONAL  | STANDARD restrictions + no external code loading.   |
+|   |              | LOAD FUNCTION/LIBRARY/FEATURE/PLUGIN blocked.       |
+|   |              | Ideal for classroom environments.                   |
+| 4 | RESTRICTED   | EDUCATIONAL + no graphics, sound, or network.       |
+|   |              | CHAIN and MERGE for file management only.           |
+| 5 | PARANOID     | Math and strings only. No file I/O, no memory, no   |
+|   |              | graphics, no sound, no network. No external         |
+|   |              | extensions of any kind. LIST, LOAD, SAVE, RUN       |
+|   |              | still work. Pure computation only.                  |
+
+---
+
+## 2. Setting Security Level
+
+```basic
+SECURITY OPEN              ' Level 0 - unrestricted
+SECURITY SAFE              ' Level 1 - memory protected
+SECURITY STANDARD          ' Level 2 - sandboxed I/O
+SECURITY EDUCATIONAL       ' Level 3 - classroom mode
+SECURITY RESTRICTED        ' Level 4 - minimal I/O
+SECURITY PARANOID          ' Level 5 - pure computation
+
+SECURITY 0                 ' Numeric form (discouraged)
+SECURITY 1                 ' Use named form instead
+```
+
+Use named form (SECURITY SAFE) rather than numeric (SECURITY 1).
+
+Security can be set in direct mode or in a program:
+
+```basic
+10 SECURITY SAFE
+20 ' Rest of program runs with memory protection
+```
+
+---
+
+## 3. Function Safety Categories
+
+Every built-in function has a safety classification:
+
+| Category      | Description                    | Blocked At    |
+|---------------|--------------------------------|---------------|
+| FSAFE_PURE    | No side effects. Always safe.  | Never         |
+| FSAFE_STATE   | Reads/modifies interpreter     | PARANOID      |
+| FSAFE_IO      | Performs I/O operations         | STANDARD+     |
+| FSAFE_SYSTEM  | Direct system/OS access        | SAFE+         |
+
+Examples:
+  FSAFE_PURE:   ABS, LEN, LEFT$, MID$, SIN, COS, VAL, STR$
+  FSAFE_STATE:  RND, FRE, TIMER, POS, CSRLIN
+  FSAFE_IO:     SHELL$, ENVIRON$, OPEN, CLOSE
+  FSAFE_SYSTEM: PEEK, POKE, INP, OUT, DEF USR
+
+---
+
+## 4. Permission Matrix
+
+What's allowed at each security level:
+
+| Feature                     | OPEN | SAFE | STD  | EDU  | REST | PARA |
+|-----------------------------|:----:|:----:|:----:|:----:|:----:|:----:|
+| PRINT (console)             |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| INPUT (keyboard)            |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| Math functions              |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| String functions            |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| Arrays / DIM                |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| FOR/NEXT/WHILE/WEND         |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| GOSUB/RETURN                |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| LIST / LOAD / SAVE / RUN    |  Y   |  Y   |  Y   |  Y   |  Y   |  Y   |
+| RND / RANDOMIZE             |  Y   |  Y   |  Y   |  Y   |  Y   |  -   |
+| TIMER / DATE$ / TIME$       |  Y   |  Y   |  Y   |  Y   |  Y   |  -   |
+| PEEK / POKE (virtual)       |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| PEEK / POKE (hardware)      |  Y   |  -   |  -   |  -   |  -   |  -   |
+| INP / OUT                   |  Y   |  -   |  -   |  -   |  -   |  -   |
+| DEF USR / USR               |  Y   |  -   |  -   |  -   |  -   |  -   |
+| OPEN / CLOSE (files)        |  Y   |  Y   |  CWD  |  CWD  |  -   |  -   |
+| PRINT# / INPUT#             |  Y   |  Y   |  CWD  |  CWD  |  -   |  -   |
+| KILL / NAME / SCRATCH       |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| MKDIR / RMDIR / CHDIR       |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| SHELL / SHELL$ / EXEC       |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| ENVIRON$                    |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| SAVE / LOAD / MERGE         |  Y   |  Y   |  CWD  |  CWD  | Lim  |  -   |
+| CHAIN                       |  Y   |  Y   |  -   |  -   | Lim  |  -   |
+| Graphics (PSET, CIRCLE etc) |  Y   |  Y   |  Y   |  Y   |  -   |  -   |
+| Sound (BEEP, PLAY, SOUND)   |  Y   |  Y   |  Y   |  Y   |  -   |  -   |
+| Network (N:, VNET)          |  Y   |  Y   |  Y   |  -   |  -   |  -   |
+| Port I/O (port gate)        |  Y   |  Y   |  -   |  -   |  -   |  -   |
+| LOAD FUNCTION/LIBRARY/etc   |  Y   |  Y   |  Y   |  -   |  -   |  -   |
+| COMPILE LIBRARY             |  Y   |  Y   |  Y   |  -   |  -   |  -   |
+| LOAD .BPL (pre-compiled)    |  Y   |  Y   |  Y   |  -   |  -   |  -   |
+
+Key: Y=allowed, -=blocked, CWD=current directory only, Lim=limited
+
+---
+
+## 5. External Extension Security
+
+### 5.1 Extension Loading Gate (SECOP_EXT_LOAD)
+
+External code loading (LOAD FUNCTION, LOAD LIBRARY, LOAD FEATURE,
+LOAD PLUGIN) is controlled by the SECOP_EXT_LOAD permission:
+
+  OPEN:        Allowed
+  SAFE:        Allowed
+  STANDARD:    Allowed
+  EDUCATIONAL: BLOCKED (no external code in classrooms)
+  RESTRICTED:  BLOCKED
+  PARANOID:    BLOCKED (no external anything)
+
+### 5.2 Security Pinning (Minimum-Floor Model)
+
+Every external extension declares a required security level:
+
+  External functions:  required_level in BppExtFunc struct
+  External libraries:  REM @SECURITY tag in .lib file
+  External features:   SECURITY in .spec file
+  External plugins:    security: in plugin.yaml manifest
+  External modules:    required_level in ModuleInfo struct
+
+Pinning uses a MINIMUM-FLOOR model:
+
+  An extension pinned to SAFE requires the interpreter to be at
+  SAFE or higher.  It works at SAFE, STANDARD, EDUCATIONAL,
+  RESTRICTED (subject to SECOP_EXT_LOAD gate).
+
+  An extension pinned to STANDARD requires STANDARD or higher.
+
+  OPEN (level 0) is LESS secure than SAFE (level 1), so an
+  extension pinned to SAFE will NOT load at OPEN.
+
+  PARANOID (level 5) blocks ALL external extensions regardless
+  of pinning.
+
+  Unpinned extensions (SEC_COUNT) work at any level that passes
+  the SECOP_EXT_LOAD gate.
+
+### 5.3 Path Validation
+
+All external code paths are validated:
+
+  Allowed:   CWD-relative paths only
+  Allowed:   .dll .so .lib .bpl .bpp .bas .spec .yaml extensions
+  Blocked:   Absolute paths (C:\, /, \\)
+  Blocked:   Path traversal (..)
+  Blocked:   Unrecognized extensions (.exe .bat .cmd .py etc)
+
+---
+
+## 6. Use Cases
+
+### A. Running student homework (EDUCATIONAL)
+
+```basic
+10 SECURITY EDUCATIONAL
+20 ' Students can compute, use graphics, but
+30 ' cannot load external code or delete files
+40 CHAIN "student_program.bas"
+```
+
+### B. Online BASIC playground (PARANOID)
+
+```basic
+SECURITY PARANOID
+' Pure computation only -- safe for web execution
+' Only math, strings, and flow control
+```
+
+### C. Extension development (SAFE)
+
+```basic
+10 SECURITY SAFE
+20 ' Extensions pinned to SAFE will load here
+30 LOAD FUNCTION "myext.dll"
+40 PRINT MYEXT(42)
+```
+
+### D. Batch processing (STANDARD)
+
+```basic
+10 SECURITY STANDARD
+20 ' Can do file I/O in current dir
+30 ' No SHELL, no EXEC, no KILL
+40 OPEN "data.txt" FOR INPUT AS #1
+50 ' ...process data...
+60 CLOSE #1
+```
+
+### E. Game toolkit (SAFE with extensions)
+
+```basic
+10 SECURITY SAFE
+20 LOAD PLUGIN "gamedev"
+30 ' Plugin loads at SAFE because SAFE >= SAFE
+40 ' Graphics, sound, input all available
+```
+
+---
+
+## 7. Security Errors
+
+When a blocked operation is attempted:
+
+```
+SORRY? Security: shell access not permitted at level STANDARD in line 30
+```
+
+This triggers error code 70.  Catch with ON ERROR GOTO:
+
+```basic
+10 ON ERROR GOTO 100
+20 SECURITY STANDARD
+30 SHELL "dir"              ' Blocked!
+40 END
+100 IF ERR = 70 THEN PRINT "Not allowed!" : RESUME NEXT
+```
+
+---
+
+## 8. Implementation Notes
+
+The security system is implemented in security.c / security.h.
+
+Key components:
+  - Permission matrix: static 2D array [6][19] (levels x operations)
+  - security_check():  operation-level gate
+  - security_check_pinned_level():  minimum-floor pinning
+  - security_check_path():  path traversal/extension validation
+  - security_check_mem():   hardware memory bounds
+  - security_check_port():  port I/O gate (explicit port whitelist)
+
+The 19 SecOperations (columns in the permission matrix) are:
+
+| Category             | SecOperation          | Index |
+|----------------------|-----------------------|:-----:|
+| **File Operations**  | SECOP_FILE_READ       |   0   |
+|                      | SECOP_FILE_WRITE      |   1   |
+|                      | SECOP_FILE_MGMT       |   2   |
+|                      | SECOP_FILE_BLOCK      |   3   |
+|                      | SECOP_FILE_STREAM     |   4   |
+| **Code Execution**   | SECOP_COMPILE         |   5   |
+|                      | SECOP_CHAIN           |   6   |
+|                      | SECOP_EVAL            |  13   |
+| **System Access**    | SECOP_SYSTEM          |   7   |
+|                      | SECOP_MODULE          |   8   |
+|                      | SECOP_USB             |   9   |
+| **Virtual Devices**  | SECOP_VDEV            |  10   |
+|                      | SECOP_VTERM           |  11   |
+|                      | SECOP_VCON            |  12   |
+| **Network**          | SECOP_NETWORK         |  14   |
+| **Memory Access**    | SECOP_MEM_READ        |  15   |
+|                      | SECOP_MEM_WRITE       |  16   |
+| **Program Mgmt**     | SECOP_PROG_MGMT       |  17   |
+| **Extension Loading**| SECOP_EXT_LOAD        |  18   |
+
+For C module authors: set the appropriate FSAFE_* level on your
+registered functions.  Set required_level on your ModuleInfo to
+declare the minimum security level your module requires.
+
+---
+
+## 9. Best Practices
+
+- Set security level EARLY in your program
+- Use the LOWEST level that meets your needs
+- Use named levels (SECURITY SAFE) not numbers (SECURITY 1)
+- Remember: level can go UP but not DOWN
+- Test at each security level to verify behavior
+- Use ON ERROR GOTO to handle permission errors gracefully
+- Pin external extensions to SAFE (the recommended default)
+- For classroom use, EDUCATIONAL blocks external code loading
+- For maximum safety, combine SECURITY PARANOID with a
+  restricted dialect (e.g., Tiny BASIC)

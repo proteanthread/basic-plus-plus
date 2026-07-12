@@ -1,0 +1,1783 @@
+================================================================
+  STRUCTURED BASIC PROGRAMMING WITH BASIC++
+  A Practical Guide to Writing Clear, Organized Programs
+================================================================
+  Inspired by Clark & Drum, "Structured BASIC" (1989)
+  Tailored for the BASIC++ Interpreter, v0.21+
+================================================================
+
+  TABLE OF CONTENTS
+
+  PART ONE:   FOUNDATIONS
+    Chapter 1   Getting Started with BASIC++
+    Chapter 2   Program Design and Planning
+    Chapter 3   Variables, Data Types, and Expressions
+
+  PART TWO:   STRUCTURED CONTROL
+    Chapter 4   Making Decisions (IF/THEN/ELSE)
+    Chapter 5   Loops and Repetition
+    Chapter 6   Block Structures and SELECT CASE
+
+  PART THREE: BUILDING EFFECTIVE PROGRAMS
+    Chapter 7   Subroutines with GOSUB
+    Chapter 8   SUB and FUNCTION Procedures
+    Chapter 9   Data Storage with READ/DATA
+    Chapter 10  String Processing
+
+  PART FOUR:  WORKING WITH DATA
+    Chapter 11  Arrays and Tables
+    Chapter 12  Sorting and Searching
+    Chapter 13  Sequential File I/O
+    Chapter 14  Random-Access and Binary Files
+
+  PART FIVE:  ADVANCED TOPICS
+    Chapter 15  Error Handling and Exceptions
+    Chapter 16  Program Documentation and Style
+    Chapter 17  Putting It All Together
+
+  APPENDIX A  Quick Reference: BASIC++ Keywords
+  APPENDIX B  Differences Between Dialects
+  APPENDIX C  ASCII Character Table (via CHR$/ASC)
+================================================================
+
+
+================================================================
+  PART ONE: FOUNDATIONS
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 1: GETTING STARTED WITH BASIC++
+----------------------------------------------------------------
+
+  1.1  WHAT IS BASIC++?
+
+  BASIC++ is an interpreter that speaks multiple dialects of
+  the BASIC programming language. It can run programs written
+  for GW-BASIC, QBasic, ECMA-116 Full BASIC, and many vintage
+  systems (TRS-80, Commodore 64, Apple II, and more).
+
+  This tutorial focuses on writing STRUCTURED programs --
+  programs that are well-organized, easy to read, and easy
+  to maintain.  We will use the GW-BASIC dialect (GWBS) as
+  our primary mode, because it offers the best combination
+  of classic BASIC syntax and modern structured features.
+
+  To select the GW-BASIC dialect, type:
+
+      DIALECT "GWBS"
+
+  or simply:
+
+      DIALECT 3
+
+
+  1.2  YOUR FIRST PROGRAM
+
+  Every BASIC program is a list of numbered statements.
+  The interpreter executes them in order, from lowest to
+  highest line number.
+
+  Type the following program:
+
+      10 REM === My First Program ===
+      20 REM Author: (your name)
+      30 PRINT "Hello! Welcome to BASIC++."
+      40 PRINT "I am ready to follow your instructions."
+      50 END
+
+  Now type RUN and press Enter:
+
+      RUN
+
+  Output:
+      Hello! Welcome to BASIC++.
+      I am ready to follow your instructions.
+
+  Let's examine what each line does:
+
+      Line 10-20:  REM (remark) lines are comments. The
+                   interpreter ignores them. Use them to
+                   document your program.
+
+      Line 30-40:  PRINT displays text on the screen.
+                   Text inside quotation marks is called
+                   a "string literal."
+
+      Line 50:     END stops the program.
+
+
+  1.3  LINE NUMBERS AND SPACING
+
+  Always number your lines by tens (10, 20, 30...).
+  This leaves room to insert new lines later.
+
+  Good:   10, 20, 30, 40, 50
+  Bad:    1, 2, 3, 4, 5   (no room to insert!)
+
+  You can put multiple statements on one line using a
+  colon (:) as a separator:
+
+      10 LET A = 5 : LET B = 10 : PRINT A + B
+
+  But for clarity, prefer one statement per line.
+
+
+  1.4  IMMEDIATE MODE vs. PROGRAM MODE
+
+  Commands without line numbers execute immediately:
+
+      PRINT 2 + 2         (prints 4 right away)
+      PRINT "HELLO"       (prints HELLO right away)
+
+  Commands WITH line numbers are stored in the program:
+
+      10 PRINT "STORED"   (nothing happens until RUN)
+
+  Useful immediate-mode commands:
+
+      NEW        Clear the program from memory
+      RUN        Execute the current program
+      LIST       Display the program listing
+      SAVE "X"   Save the program to file X
+      LOAD "X"   Load a program from file X
+
+
+  1.5  EXERCISES
+
+  1. Write a program that prints your name, address,
+     and phone number on three separate lines.
+
+  2. Write a program that prints a simple box:
+
+         +-----------+
+         |  BASIC++  |
+         +-----------+
+
+  3. What happens if you type PRINT without anything
+     after it?  Try it.
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 2: PROGRAM DESIGN AND PLANNING
+----------------------------------------------------------------
+
+  2.1  THINK BEFORE YOU CODE
+
+  The most common mistake beginners make is typing code
+  before thinking about what the program should do.
+
+  A structured program follows these design steps:
+
+      1. DEFINE the problem
+      2. PLAN the solution (on paper!)
+      3. CODE the program
+      4. TEST the program
+      5. DOCUMENT the program
+
+  This is called the "Program Development Cycle."
+
+
+  2.2  TOP-DOWN DESIGN
+
+  Break every problem into smaller pieces:
+
+      MAIN PROGRAM
+        |
+        +-- Initialize variables
+        |
+        +-- Get input from user
+        |
+        +-- Process the data
+        |
+        +-- Display the results
+        |
+        +-- End
+
+  Each piece becomes a section of your program, separated
+  by REM statements:
+
+      10 REM ==============================
+      11 REM  PAYROLL CALCULATOR
+      12 REM  Author: J. Smith
+      13 REM ==============================
+      14 REM
+      100 REM --- Initialize ---
+      110 LET TotalPay = 0
+      120 LET TaxRate = 0.15
+      130 REM
+      200 REM --- Get Input ---
+      210 INPUT "Hours worked: "; Hours
+      220 INPUT "Hourly rate:  "; Rate
+      230 REM
+      300 REM --- Process ---
+      310 LET GrossPay = Hours * Rate
+      320 LET Tax = GrossPay * TaxRate
+      330 LET NetPay = GrossPay - Tax
+      340 REM
+      400 REM --- Display Results ---
+      410 PRINT ""
+      420 PRINT "Gross Pay: $"; GrossPay
+      430 PRINT "Tax:       $"; Tax
+      440 PRINT "Net Pay:   $"; NetPay
+      450 REM
+      500 END
+
+  Notice:  Long variable names like "GrossPay" and
+  "TaxRate" make the program self-documenting.
+  BASIC++ supports named variables in the GWBS dialect.
+
+
+  2.3  THE THREE STRUCTURES
+
+  Every program, no matter how complex, can be built from
+  just three control structures:
+
+      1. SEQUENCE    -- statements executed in order
+      2. SELECTION   -- choosing between alternatives
+      3. REPETITION  -- repeating a group of statements
+
+  That's it!  These three building blocks can express
+  any algorithm.  The rest of this book shows you how.
+
+
+  2.4  EXERCISES
+
+  1. Write a problem definition and top-down design for
+     a program that converts temperatures from Fahrenheit
+     to Celsius.  (Formula: C = (F - 32) * 5 / 9)
+
+  2. Identify which of the three structures (sequence,
+     selection, repetition) each of these tasks needs:
+
+     a) Print a report heading
+     b) Calculate a grade (A, B, C, D, F) from a score
+     c) Add up 100 numbers
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 3: VARIABLES, DATA TYPES, AND EXPRESSIONS
+----------------------------------------------------------------
+
+  3.1  NUMERIC VARIABLES
+
+  A variable is a named storage location for data.
+
+  In BASIC++, there are two kinds of numeric variables:
+
+  Single-letter variables:  A, B, C, ... Z
+      These work in ALL dialects, even Tiny BASIC.
+
+  Named variables:  Score, Total, GrossPay, X1, Counter
+      These work in GW-BASIC, QBasic, and ECMA-116.
+      They can be any length and are case-insensitive.
+
+  Use LET to assign a value:
+
+      10 LET Score = 95
+      20 LET Total = 0
+      30 Total = Total + Score    (LET is optional)
+
+
+  3.2  STRING VARIABLES
+
+  String variables hold text and end with a dollar sign ($):
+
+      A$   B$   C$   ... Z$
+
+  Examples:
+
+      10 LET N$ = "JOHN SMITH"
+      20 LET C$ = "New York"
+      30 PRINT "Name: "; N$
+      40 PRINT "City: "; C$
+
+
+  3.3  CONSTANTS
+
+  Use CONST to define values that never change:
+
+      10 CONST PI = 3.14159
+      20 CONST MAX_STUDENTS = 30
+      30 CONST COMPANY$ = "ACME INC."
+
+  Attempting to change a CONST will cause an error.
+
+
+  3.4  ARITHMETIC EXPRESSIONS
+
+  BASIC++ supports these arithmetic operators:
+
+      Symbol   Meaning           Example   Result
+      ------   -------           -------   ------
+        ^      Exponentiation    2 ^ 10    1024
+        *      Multiplication    6 * 7     42
+        /      Division          22 / 7    3.14286
+        MOD    Modulus           17 MOD 5  2
+        +      Addition          10 + 5    15
+        -      Subtraction       10 - 3    7
+
+  Order of operations (highest to lowest priority):
+      1. Parentheses  ( )
+      2. Exponentiation  ^
+      3. Negation  -
+      4. Multiplication and Division  *  /
+      5. Modulus  MOD
+      6. Addition and Subtraction  +  -
+
+  Always use parentheses to clarify complex expressions:
+
+      BAD:   A = B + C * D / E - F
+      GOOD:  A = B + ((C * D) / E) - F
+
+
+  3.5  RELATIONAL AND LOGICAL OPERATORS
+
+  Relational operators compare values:
+
+      =    Equal to             IF A = 5
+      <>   Not equal to         IF A <> 0
+      <    Less than            IF A < 10
+      >    Greater than         IF A > 0
+      <=   Less than or equal   IF A <= 100
+      >=   Greater than/equal   IF A >= 0
+
+  Logical operators combine conditions:
+
+      AND   Both must be true     IF A > 0 AND A < 100
+      OR    Either can be true    IF A = 0 OR B = 0
+      NOT   Reverses truth        IF NOT (A = 0)
+      XOR   One but not both      IF A XOR B
+
+
+  3.6  BUILT-IN MATH FUNCTIONS
+
+      ABS(X)    Absolute value        ABS(-7) = 7
+      SGN(X)    Sign of X             SGN(-5) = -1
+      INT(X)    Integer part           INT(3.7) = 3
+      FIX(X)    Truncate toward zero   FIX(-3.7) = -3
+      SQR(X)    Square root            SQR(144) = 12
+      SIN(X)    Sine (radians)         SIN(0) = 0
+      COS(X)    Cosine                 COS(0) = 1
+      TAN(X)    Tangent                TAN(0) = 0
+      ATN(X)    Arctangent             ATN(1) = 0.7854
+      LOG(X)    Natural logarithm      LOG(1) = 0
+      EXP(X)    e raised to X          EXP(0) = 1
+      RND(X)    Random number          (varies)
+
+
+  3.7  EXERCISES
+
+  1. Write a program that asks for the radius of a
+     circle and prints the area and circumference.
+
+  2. Write a program that converts miles to kilometers.
+     (1 mile = 1.60934 km)
+
+  3. What is the value of each expression?
+     a) 3 + 4 * 2
+     b) (3 + 4) * 2
+     c) 2 ^ 3 + 1
+     d) 15 MOD 4
+
+
+================================================================
+
+
+================================================================
+  PART TWO: STRUCTURED CONTROL
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 4: MAKING DECISIONS (IF/THEN/ELSE)
+----------------------------------------------------------------
+
+  4.1  THE SIMPLE IF STATEMENT
+
+  The IF statement lets a program make decisions:
+
+      IF condition THEN action
+
+  Example:
+
+      10 INPUT "Enter your score: "; Score
+      20 IF Score >= 90 THEN PRINT "Excellent!"
+      30 IF Score < 60 THEN PRINT "Please see the teacher."
+      40 END
+
+
+  4.2  IF / THEN / ELSE (Single Line)
+
+  For two-way decisions, use ELSE:
+
+      10 INPUT "Enter a number: "; N
+      20 IF N >= 0 THEN PRINT "Positive" ELSE PRINT "Negative"
+      30 END
+
+  The ELSE part executes only when the condition is FALSE.
+
+
+  4.3  BLOCK IF / ELSEIF / ELSE / END IF
+
+  For complex decisions, use a BLOCK IF.  This is the
+  cornerstone of structured programming:
+
+      10 INPUT "Enter your score: "; Score
+      20 IF Score >= 90 THEN
+      30   PRINT "Grade: A"
+      40   PRINT "Outstanding work!"
+      50 ELSEIF Score >= 80 THEN
+      60   PRINT "Grade: B"
+      70   PRINT "Good job!"
+      80 ELSEIF Score >= 70 THEN
+      90   PRINT "Grade: C"
+      100  PRINT "Satisfactory."
+      110 ELSEIF Score >= 60 THEN
+      120  PRINT "Grade: D"
+      130  PRINT "Needs improvement."
+      140 ELSE
+      150  PRINT "Grade: F"
+      160  PRINT "Please see the teacher."
+      170 END IF
+      180 END
+
+  Rules for Block IF:
+
+      * The THEN keyword must be the LAST thing on the
+        line (followed by nothing or a comment).
+      * Each ELSEIF has its own THEN.
+      * ELSE has no condition and no THEN.
+      * The block must end with END IF.
+      * Indent the body for readability!
+
+
+  4.4  NESTED IF STATEMENTS
+
+  You can put IF statements inside other IF statements:
+
+      10 INPUT "Age: "; Age
+      20 INPUT "Income: "; Income
+      30 IF Age >= 18 THEN
+      40   IF Income >= 30000 THEN
+      50     PRINT "Eligible for loan."
+      60   ELSE
+      70     PRINT "Income too low."
+      80   END IF
+      90 ELSE
+      100  PRINT "Must be 18 or older."
+      110 END IF
+      120 END
+
+  Keep nesting to three levels or fewer.  If you need
+  more, reorganize using GOSUB or SUB.
+
+
+  4.5  STRUCTURED STYLE RULES
+
+  UNSTRUCTURED (spaghetti code -- AVOID THIS!):
+
+      10 IF X > 0 THEN GOTO 50
+      20 PRINT "NEGATIVE"
+      30 GOTO 60
+      50 PRINT "POSITIVE"
+      60 END
+
+  STRUCTURED (clear, readable):
+
+      10 IF X > 0 THEN
+      20   PRINT "POSITIVE"
+      30 ELSE
+      40   PRINT "NEGATIVE"
+      50 END IF
+      60 END
+
+  Rule:  Never use GOTO for decisions!  Use IF/ELSE.
+
+
+  4.6  EXERCISES
+
+  1. Write a program that asks for a temperature and
+     prints "Freezing" if below 32, "Hot" if above 90,
+     or "Comfortable" otherwise.
+
+  2. Write a program that calculates shipping charges:
+     Weight <= 1 lb:   $3.00
+     Weight <= 5 lbs:  $5.00
+     Weight <= 10 lbs: $8.00
+     Weight > 10 lbs:  $12.00
+
+  3. Rewrite the following spaghetti code as a
+     structured Block IF:
+
+      10 IF A = 1 THEN GOTO 100
+      20 IF A = 2 THEN GOTO 200
+      30 IF A = 3 THEN GOTO 300
+      40 GOTO 400
+      100 PRINT "ONE" : GOTO 400
+      200 PRINT "TWO" : GOTO 400
+      300 PRINT "THREE" : GOTO 400
+      400 END
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 5: LOOPS AND REPETITION
+----------------------------------------------------------------
+
+  5.1  THE FOR/NEXT LOOP
+
+  FOR/NEXT repeats a group of statements a fixed number
+  of times:
+
+      10 FOR I = 1 TO 10
+      20   PRINT I; " squared is "; I * I
+      30 NEXT I
+
+  Output:
+       1  squared is  1
+       2  squared is  4
+       3  squared is  9
+       ...
+       10  squared is  100
+
+  Using STEP:
+
+      10 REM Count by twos
+      20 FOR I = 0 TO 20 STEP 2
+      30   PRINT I;
+      40 NEXT I
+
+  Output:  0  2  4  6  8  10  12  14  16  18  20
+
+  Counting backward:
+
+      10 FOR I = 10 TO 1 STEP -1
+      20   PRINT I
+      30 NEXT I
+      40 PRINT "LIFTOFF!"
+
+
+  5.2  THE WHILE/WEND LOOP
+
+  WHILE/WEND repeats as long as a condition is true:
+
+      10 LET Total = 0
+      20 INPUT "Enter a number (0 to stop): "; N
+      30 WHILE N <> 0
+      40   Total = Total + N
+      50   INPUT "Enter a number (0 to stop): "; N
+      60 WEND
+      70 PRINT "Total: "; Total
+      80 END
+
+  The condition is tested BEFORE each iteration.
+  If the condition is false from the start, the body
+  never executes.
+
+
+  5.3  THE DO/LOOP
+
+  DO/LOOP is the most flexible loop structure.
+
+  DO ... LOOP UNTIL condition  (test at bottom):
+
+      10 LET Guess = 0
+      20 LET Secret = 42
+      30 DO
+      40   INPUT "Guess the number: "; Guess
+      50 LOOP UNTIL Guess = Secret
+      60 PRINT "You got it!"
+
+  The body always executes at least once.
+
+  DO WHILE condition ... LOOP  (test at top):
+
+      10 LET Count = 1
+      20 DO WHILE Count <= 5
+      30   PRINT "Count is "; Count
+      40   Count = Count + 1
+      50 LOOP
+
+
+  5.4  CHOOSING THE RIGHT LOOP
+
+      Use FOR/NEXT when:
+          You know exactly how many times to repeat.
+
+      Use WHILE/WEND when:
+          The number of repetitions depends on a condition
+          and you may not need to execute the body at all.
+
+      Use DO/LOOP UNTIL when:
+          The body must execute at least once, and you
+          test the exit condition afterward.
+
+
+  5.5  NESTED LOOPS
+
+  Loops inside loops create patterns:
+
+      10 REM Multiplication table
+      20 FOR Row = 1 TO 10
+      30   FOR Col = 1 TO 10
+      40     PRINT USING "####"; Row * Col;
+      50   NEXT Col
+      60   PRINT ""
+      70 NEXT Row
+
+  The inner loop (Col) completes all its iterations
+  for each single iteration of the outer loop (Row).
+
+
+  5.6  COMMON LOOP PATTERNS
+
+  Counting:
+      10 LET Count = 0
+      20 FOR I = 1 TO 100
+      30   IF Condition THEN Count = Count + 1
+      40 NEXT I
+
+  Accumulating:
+      10 LET Sum = 0
+      20 FOR I = 1 TO N
+      30   Sum = Sum + Value(I)
+      40 NEXT I
+
+  Sentinel loop (stop on special value):
+      10 INPUT "Enter score (-1 to stop): "; S
+      20 WHILE S <> -1
+      30   REM process score S
+      40   INPUT "Enter score (-1 to stop): "; S
+      50 WEND
+
+
+  5.7  EXERCISES
+
+  1. Write a program that prints the first 20 Fibonacci
+     numbers (1, 1, 2, 3, 5, 8, 13, 21 ...)
+
+  2. Write a program that asks for a number and prints
+     its factorial.  (5! = 5*4*3*2*1 = 120)
+
+  3. Write a multiplication drill:  generate random
+     problems (e.g., "What is 7 x 8?"), check the
+     answer, keep score, and stop after 10 questions.
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 6: BLOCK STRUCTURES AND SELECT CASE
+----------------------------------------------------------------
+
+  6.1  SELECT CASE
+
+  When you need to choose among many alternatives based
+  on a single value, SELECT CASE is cleaner than a chain
+  of IF/ELSEIF:
+
+      10 INPUT "Enter day number (1-7): "; D
+      20 SELECT CASE D
+      30   CASE 1
+      40     PRINT "Monday"
+      50   CASE 2
+      60     PRINT "Tuesday"
+      70   CASE 3
+      80     PRINT "Wednesday"
+      90   CASE 4
+      100    PRINT "Thursday"
+      110  CASE 5
+      120    PRINT "Friday"
+      130  CASE 6
+      140    PRINT "Saturday"
+      150  CASE 7
+      160    PRINT "Sunday"
+      170  CASE ELSE
+      180    PRINT "Invalid day number."
+      190 END SELECT
+      200 END
+
+
+  6.2  COMBINING STRUCTURES
+
+  The power of structured programming comes from
+  combining these building blocks:
+
+      10 REM === Student Grade Report ===
+      20 INPUT "How many students? "; Count
+      30 FOR I = 1 TO Count
+      40   INPUT "Enter score: "; Score
+      50   IF Score >= 90 THEN
+      60     G$ = "A"
+      70   ELSEIF Score >= 80 THEN
+      80     G$ = "B"
+      90   ELSEIF Score >= 70 THEN
+      100    G$ = "C"
+      110  ELSE
+      120    G$ = "F"
+      130  END IF
+      140  PRINT "Student "; I; ": Grade "; G$
+      150 NEXT I
+      160 END
+
+  This program uses SEQUENCE (LET/PRINT), SELECTION
+  (IF/ELSEIF), and REPETITION (FOR/NEXT) together.
+
+
+  6.3  EXERCISES
+
+  1. Write a menu-driven program using SELECT CASE:
+
+     ===== CALCULATOR =====
+     1. Add
+     2. Subtract
+     3. Multiply
+     4. Divide
+     5. Quit
+
+  2. Rewrite the shipping charges program from Chapter 4
+     using SELECT CASE.
+
+
+================================================================
+
+
+================================================================
+  PART THREE: BUILDING EFFECTIVE PROGRAMS
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 7: SUBROUTINES WITH GOSUB
+----------------------------------------------------------------
+
+  7.1  WHY USE SUBROUTINES?
+
+  As programs grow, they become harder to understand.
+  Subroutines break a program into manageable modules.
+
+  A subroutine is a section of code that can be "called"
+  from anywhere in the program.  GOSUB jumps to the
+  subroutine; RETURN jumps back.
+
+      10 REM === Main Program ===
+      20 GOSUB 1000          : REM Print header
+      30 INPUT "Enter amount: "; Amount
+      40 Tax = Amount * 0.08
+      50 Total = Amount + Tax
+      60 GOSUB 2000          : REM Print receipt
+      70 END
+      80 REM
+      1000 REM --- Print Header ---
+      1010 PRINT "========================="
+      1020 PRINT "    ACME STORE RECEIPT"
+      1030 PRINT "========================="
+      1040 RETURN
+      1050 REM
+      2000 REM --- Print Receipt ---
+      2010 PRINT ""
+      2020 PRINT "Amount:  $"; Amount
+      2030 PRINT "Tax:     $"; Tax
+      2040 PRINT "Total:   $"; Total
+      2050 PRINT "========================="
+      2060 RETURN
+
+
+  7.2  RULES FOR GOSUB
+
+  * Put subroutines AFTER the END statement.
+  * Always end a subroutine with RETURN.
+  * Use REM to document each subroutine's purpose.
+  * Use consistent line number ranges:
+        Main:         10-999
+        Subroutine 1: 1000-1999
+        Subroutine 2: 2000-2999
+        etc.
+
+
+  7.3  EXERCISES
+
+  1. Write a program with three subroutines:
+     one to print a header, one to calculate,
+     and one to print results.
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 8: SUB AND FUNCTION PROCEDURES
+----------------------------------------------------------------
+
+  8.1  THE SUB PROCEDURE
+
+  SUB procedures are the modern replacement for GOSUB.
+  They have their own local variables and are called
+  with the CALL statement:
+
+      10 REM === Main Program ===
+      20 CALL PrintBanner
+      30 INPUT "Enter your name: "; N$
+      40 CALL Greet(N$)
+      50 END
+      60 REM
+      100 SUB PrintBanner
+      110   PRINT "========================="
+      120   PRINT "   WELCOME TO BASIC++"
+      130   PRINT "========================="
+      140 END SUB
+      150 REM
+      200 SUB Greet(Name$)
+      210   PRINT "Hello, "; Name$; "!"
+      220 END SUB
+
+  Note:  SUB/END SUB defines the procedure.
+         CALL invokes it.
+
+
+  8.2  THE FUNCTION PROCEDURE
+
+  A FUNCTION is like a SUB but it returns a value:
+
+      10 REM === Circle Calculator ===
+      20 INPUT "Enter radius: "; R
+      30 PRINT "Area ="; CircleArea(R)
+      40 PRINT "Circ ="; CircleCirc(R)
+      50 END
+      60 REM
+      100 FUNCTION CircleArea(Radius)
+      110   CircleArea = 3.14159 * Radius ^ 2
+      120 END FUNCTION
+      130 REM
+      200 FUNCTION CircleCirc(Radius)
+      210   CircleCirc = 2 * 3.14159 * Radius
+      220 END FUNCTION
+
+  To return a value, assign to the function name.
+
+
+  8.3  DEF FN (Classic User-Defined Functions)
+
+  For simple one-line functions, use DEF FN:
+
+      10 DEF FNA(X) = X * X + 1
+      20 DEF FNB(X, Y) = X + Y
+      30 PRINT FNA(3)          : REM prints 10
+      40 PRINT FNB(10, 20)     : REM prints 30
+      50 END
+
+
+  8.4  SUB vs. GOSUB: A COMPARISON
+
+      Feature        GOSUB          SUB
+      -------        -----          ---
+      Variables      Shared         Local
+      Parameters     None           Yes
+      Readability    Moderate       Excellent
+      Reusability    Low            High
+      Modern?        No             Yes
+
+  Use SUB and FUNCTION for new programs.
+  Use GOSUB only when maintaining old code.
+
+
+  8.5  EXERCISES
+
+  1. Write a FUNCTION called Fahrenheit(C) that converts
+     Celsius to Fahrenheit.
+
+  2. Write a SUB called PrintBox(Width, Height) that
+     draws a box of asterisks.
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 9: DATA STORAGE WITH READ/DATA
+----------------------------------------------------------------
+
+  9.1  THE DATA STATEMENT
+
+  DATA stores values inside the program itself:
+
+      100 DATA 10, 20, 30
+      110 DATA "ALICE", "BOB", "CAROL"
+
+  DATA can hold numbers, strings (in quotes), or a mix.
+
+
+  9.2  THE READ STATEMENT
+
+  READ retrieves the next value from the DATA pool:
+
+      10 READ A
+      20 READ B
+      30 READ C
+      40 PRINT "Sum: "; A + B + C
+      50 DATA 10, 20, 30
+
+  You can also read into string variables:
+
+      10 READ N$
+      20 READ Score
+      30 PRINT N$; " scored "; Score
+      40 DATA "Alice", 95
+
+
+  9.3  RESTORE
+
+  RESTORE resets the DATA pointer to the beginning:
+
+      10 DATA 10, 20, 30
+      20 READ A : READ B : READ C
+      30 PRINT A; B; C
+      40 RESTORE
+      50 READ X
+      60 PRINT "First value again: "; X
+
+
+  9.4  PRACTICAL EXAMPLE: A LOOKUP TABLE
+
+      10 REM === Month Name Lookup ===
+      20 INPUT "Enter month number (1-12): "; M
+      30 FOR I = 1 TO M
+      40   READ M$
+      50 NEXT I
+      60 PRINT "Month "; M; " is "; M$
+      70 DATA "January","February","March","April"
+      80 DATA "May","June","July","August"
+      90 DATA "September","October","November","December"
+      100 END
+
+
+  9.5  EXERCISES
+
+  1. Create a DATA table of 5 students with names and
+     scores.  Read them and print the average.
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 10: STRING PROCESSING
+----------------------------------------------------------------
+
+  10.1  STRING FUNCTIONS
+
+      LEN(S$)              Length of string
+      LEFT$(S$, N)         First N characters
+      RIGHT$(S$, N)        Last N characters
+      MID$(S$, P, N)       N characters starting at P
+      ASC(S$)              ASCII code of first char
+      CHR$(N)              Character for ASCII code N
+      VAL(S$)              Convert string to number
+      STR$(N)              Convert number to string
+      INSTR(S$, T$)        Find T$ within S$
+
+  Examples:
+
+      10 LET W$ = "STRUCTURED"
+      20 PRINT LEN(W$)              : REM 10
+      30 PRINT LEFT$(W$, 6)         : REM STRUCT
+      40 PRINT RIGHT$(W$, 4)        : REM URED
+      50 PRINT MID$(W$, 5, 4)       : REM CTUR
+      60 END
+
+
+  10.2  STRING CONCATENATION
+
+  Join strings with the + operator:
+
+      10 LET First$ = "BASIC"
+      20 LET Last$ = "++"
+      30 LET Full$ = First$ + Last$
+      40 PRINT Full$                 : REM BASIC++
+
+
+  10.3  STRING COMPARISONS
+
+  Strings compare alphabetically (by ASCII value):
+
+      "ABC" < "DEF"    (true)
+      "APPLE" < "BANANA"  (true)
+      "A" < "a"        (true, uppercase < lowercase)
+
+
+  10.4  PRACTICAL EXAMPLE: WORD COUNTER
+
+      10 REM === Count words in a sentence ===
+      20 INPUT "Enter a sentence: "; S$
+      30 LET Words = 1
+      40 FOR I = 1 TO LEN(S$)
+      50   IF MID$(S$, I, 1) = " " THEN Words = Words + 1
+      60 NEXT I
+      70 PRINT "Word count: "; Words
+      80 END
+
+
+  10.5  EXERCISES
+
+  1. Write a program that reverses a string.
+  2. Write a program that counts vowels in a string.
+  3. Write a program that converts a string to uppercase
+     using ASC and CHR$.
+
+
+================================================================
+
+
+================================================================
+  PART FOUR: WORKING WITH DATA
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 11: ARRAYS AND TABLES
+----------------------------------------------------------------
+
+  11.1  ONE-DIMENSIONAL ARRAYS
+
+  An array stores multiple values under one name:
+
+      10 DIM Scores(10)          : REM 11 elements: 0-10
+      20 FOR I = 1 TO 10
+      30   INPUT "Score: "; Scores(I)
+      40 NEXT I
+      50 REM Calculate average
+      60 LET Sum = 0
+      70 FOR I = 1 TO 10
+      80   Sum = Sum + Scores(I)
+      90 NEXT I
+      100 PRINT "Average: "; Sum / 10
+      110 END
+
+  Use OPTION BASE 1 to make arrays start at 1 instead
+  of 0:
+
+      5 OPTION BASE 1
+      10 DIM Names(5)
+
+
+  11.2  TWO-DIMENSIONAL ARRAYS
+
+  A 2D array is like a table with rows and columns:
+
+      10 DIM Grid(3, 4)
+      20 FOR R = 1 TO 3
+      30   FOR C = 1 TO 4
+      40     Grid(R, C) = R * 10 + C
+      50   NEXT C
+      60 NEXT R
+
+  Grid now contains:
+      11  12  13  14
+      21  22  23  24
+      31  32  33  34
+
+
+  11.3  ERASE
+
+  ERASE deallocates an array so it can be re-dimensioned:
+
+      10 DIM A(100)
+      20 REM ... use A() ...
+      30 ERASE A
+      40 DIM A(200)      : REM now A has 201 elements
+
+
+  11.4  SWAP
+
+  SWAP exchanges the values of two variables:
+
+      10 LET A = 10
+      20 LET B = 20
+      30 SWAP A, B
+      40 PRINT A; B       : REM prints 20  10
+
+
+  11.5  EXERCISES
+
+  1. Write a program that reads 10 numbers into an array,
+     then prints them in reverse order.
+
+  2. Write a program that creates a 5x5 identity matrix
+     (1 on the diagonal, 0 elsewhere).
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 12: SORTING AND SEARCHING
+----------------------------------------------------------------
+
+  12.1  THE BUBBLE SORT
+
+  Sorting arranges data in order. The bubble sort is
+  the simplest sorting algorithm:
+
+      10 REM === Bubble Sort ===
+      20 DIM A(10)
+      30 REM Fill with random data
+      40 RANDOMIZE 0
+      50 FOR I = 1 TO 10
+      60   A(I) = INT(RND(1) * 100)
+      70 NEXT I
+      80 REM
+      90 REM --- Sort ---
+      100 FOR Pass = 1 TO 9
+      110   FOR J = 1 TO 10 - Pass
+      120     IF A(J) > A(J + 1) THEN SWAP A(J), A(J + 1)
+      130   NEXT J
+      140 NEXT Pass
+      150 REM
+      160 REM --- Print sorted array ---
+      170 FOR I = 1 TO 10
+      180   PRINT A(I)
+      190 NEXT I
+      200 END
+
+
+  12.2  LINEAR SEARCH
+
+  Search for a value by checking each element:
+
+      10 DIM Names$(5)
+      20 DATA "Alice","Bob","Carol","Dave","Eve"
+      30 FOR I = 1 TO 5
+      40   READ Names$(I)
+      50 NEXT I
+      60 REM
+      70 INPUT "Search for: "; Key$
+      80 LET Found = 0
+      90 FOR I = 1 TO 5
+      100   IF Names$(I) = Key$ THEN Found = I
+      110 NEXT I
+      120 IF Found > 0 THEN
+      130   PRINT Key$; " found at position "; Found
+      140 ELSE
+      150   PRINT Key$; " not found."
+      160 END IF
+      170 END
+
+
+  12.3  EXERCISES
+
+  1. Modify the bubble sort to sort in descending order.
+
+  2. Write a program that sorts 5 names alphabetically.
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 13: SEQUENTIAL FILE I/O
+----------------------------------------------------------------
+
+  13.1  OPENING AND CLOSING FILES
+
+  Files let you save data permanently on disk.
+
+      OPEN "filename" FOR OUTPUT AS #1   (write - creates)
+      OPEN "filename" FOR INPUT AS #1    (read)
+      OPEN "filename" FOR APPEND AS #1   (add to end)
+      CLOSE #1
+
+  The number after # is the "channel" (1-16).
+
+
+  13.2  WRITING TO A FILE
+
+      10 OPEN "students.dat" FOR OUTPUT AS #1
+      20 FOR I = 1 TO 3
+      30   INPUT "Enter name: "; N$
+      40   INPUT "Enter score: "; S
+      50   PRINT #1, N$
+      60   PRINT #1, S
+      70 NEXT I
+      80 CLOSE #1
+      90 PRINT "Data saved."
+      100 END
+
+
+  13.3  READING FROM A FILE
+
+      10 OPEN "students.dat" FOR INPUT AS #1
+      20 WHILE NOT EOF(1)
+      30   LINE INPUT #1, N$
+      40   LINE INPUT #1, S$
+      50   PRINT N$; " - "; S$
+      60 WEND
+      70 CLOSE #1
+      80 END
+
+
+  13.4  PRACTICAL EXAMPLE: ADDRESS BOOK
+
+      10 REM === Save addresses ===
+      20 OPEN "address.dat" FOR OUTPUT AS #1
+      30 INPUT "How many entries? "; Count
+      40 FOR I = 1 TO Count
+      50   INPUT "Name: "; N$
+      60   INPUT "Phone: "; P$
+      70   PRINT #1, N$
+      80   PRINT #1, P$
+      90 NEXT I
+      100 CLOSE #1
+      110 PRINT Count; " entries saved."
+      120 END
+
+
+  13.5  EXERCISES
+
+  1. Write a program that saves a TO-DO list to a file
+     and another that reads and displays it.
+
+  2. Write a program that counts the number of lines
+     in a text file.
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 14: RANDOM-ACCESS AND BINARY FILES
+----------------------------------------------------------------
+
+  14.1  RANDOM-ACCESS FILES
+
+  Random-access files let you read or write any record
+  directly, without reading through the entire file.
+
+      10 OPEN "records.dat" FOR RANDOM AS #1 LEN = 64
+      20 REM Define fields
+      30 FIELD #1, 30 AS N$, 10 AS P$, 8 AS S$
+      40 REM Write a record
+      50 LSET N$ = "John Smith"
+      60 LSET P$ = "555-1234"
+      70 LSET S$ = "100"
+      80 PUT #1, 1
+      90 REM Read it back
+      100 GET #1, 1
+      110 PRINT N$; " "; P$; " "; S$
+      120 CLOSE #1
+      130 END
+
+
+  14.2  ECMA-116 FILE OPERATIONS
+
+  When using the ECMA-116 dialect (E116), you have
+  access to a more structured file system:
+
+      10 DIALECT "E116"
+      20 OPEN #1: NAME "data.seq", ACCESS OUTPUT
+      30 PRINT #1, "Hello from ECMA-116"
+      40 CLOSE #1
+      50 REM
+      60 OPEN #1: NAME "data.seq", ACCESS INPUT
+      70 LINE INPUT #1, L$
+      80 PRINT "Read: "; L$
+      90 ASK #1: FILESIZE V
+      100 PRINT "File size: "; V; " bytes"
+      110 CLOSE #1
+      120 DIALECT "GWBS"
+
+  ECMA-116 also supports:
+      ASK #n: POINTER var      (get file position)
+      SET #n: POINTER expr     (set file position)
+      ERASE #n                 (truncate file)
+
+
+  14.3  EXERCISES
+
+  1. Write a simple random-access database that stores
+     names and phone numbers.
+
+  2. Use ECMA-116 file operations to create a file,
+     write 3 records, then read them back with
+     ASK POINTER to verify positions.
+
+
+================================================================
+
+
+================================================================
+  PART FIVE: ADVANCED TOPICS
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 15: ERROR HANDLING AND EXCEPTIONS
+----------------------------------------------------------------
+
+  15.1  ON ERROR GOTO (GW-BASIC Style)
+
+  Trap runtime errors so they don't crash your program:
+
+      10 ON ERROR GOTO 100
+      20 INPUT "Enter a number: "; N
+      30 PRINT "Result: "; 100 / N
+      40 ON ERROR GOTO 0           : REM turn off trap
+      50 END
+      100 REM --- Error handler ---
+      110 PRINT "An error occurred! (Division by zero?)"
+      120 RESUME NEXT
+
+  ON ERROR GOTO 0 disables the error trap.
+  RESUME NEXT continues after the line that caused
+  the error.
+
+
+  15.2  WHEN EXCEPTION (ECMA-116 Style)
+
+  ECMA-116 provides structured exception handling:
+
+      10 DIALECT "E116"
+      20 WHEN EXCEPTION IN
+      30   LET X = 100 / 0
+      40 USE
+      50   PRINT "Caught exception: division by zero"
+      60 END WHEN
+      70 PRINT "Program continues normally."
+      80 DIALECT "GWBS"
+
+  CAUSE EXCEPTION raises a user-defined exception:
+
+      10 DIALECT "E116"
+      20 WHEN EXCEPTION IN
+      30   CAUSE EXCEPTION 999
+      40 USE
+      50   PRINT "Caught user exception #999"
+      60 END WHEN
+      70 DIALECT "GWBS"
+
+
+  15.3  DEFENSIVE PROGRAMMING
+
+  Don't wait for errors -- prevent them:
+
+      10 INPUT "Enter divisor: "; D
+      20 IF D = 0 THEN
+      30   PRINT "Cannot divide by zero!"
+      40 ELSE
+      50   PRINT "Result: "; 100 / D
+      60 END IF
+
+  Always validate user input before processing it.
+
+
+  15.4  EXERCISES
+
+  1. Write a program with an error trap that handles
+     division by zero gracefully.
+
+  2. Write a program using WHEN EXCEPTION to handle
+     a file-not-found error.
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 16: PROGRAM DOCUMENTATION AND STYLE
+----------------------------------------------------------------
+
+  16.1  COMMENTING YOUR CODE
+
+  Good comments explain WHY, not WHAT:
+
+      BAD:   REM Set X to 5
+             LET X = 5
+
+      GOOD:  REM Default tax rate (5%)
+             LET TaxRate = 0.05
+
+  Document every program with a header:
+
+      10 REM ================================
+      11 REM  Program: PAYROLL.BAS
+      12 REM  Author:  J. Smith
+      13 REM  Date:    2026-06-08
+      14 REM  Purpose: Calculate weekly payroll
+      15 REM ================================
+
+
+  16.2  NAMING CONVENTIONS
+
+  Use descriptive variable names:
+
+      BAD:   X, Y, Z, A1, B2
+      GOOD:  Score, Total, TaxRate, StudentName$
+
+  Exception: loop counters (I, J, K) are traditional
+  and acceptable.
+
+
+  16.3  INDENTATION
+
+  Indent the body of every block structure:
+
+      FOR I = 1 TO 10
+        IF A(I) > Max THEN
+          Max = A(I)
+        END IF
+      NEXT I
+
+  Use 2 spaces per indent level.  Be consistent.
+
+
+  16.4  MODULE DOCUMENTATION
+
+  For each GOSUB/SUB/FUNCTION, document:
+
+      * Purpose:    What it does
+      * Parameters: What it receives
+      * Returns:    What it gives back
+      * Side effects: Variables it changes
+
+  Example:
+      100 REM --- CalculateTax ---
+      101 REM Purpose: Compute tax on Amount
+      102 REM Input:   Amount (global)
+      103 REM Output:  Tax (global)
+      104 REM Rate:    8% (hardcoded)
+      110 Tax = Amount * 0.08
+      120 RETURN
+
+
+  16.5  THE EIGHT COMMANDMENTS OF STRUCTURED BASIC
+
+  1. Use meaningful variable names.
+  2. Comment every program section.
+  3. Indent block structures.
+  4. Use IF/ELSE instead of GOTO for decisions.
+  5. Use FOR/WHILE/DO instead of GOTO for loops.
+  6. Keep subroutines short (under 30 lines).
+  7. Test each module separately before combining.
+  8. Plan before you code.
+
+
+================================================================
+
+
+----------------------------------------------------------------
+  CHAPTER 17: PUTTING IT ALL TOGETHER
+----------------------------------------------------------------
+
+  17.1  A COMPLETE STRUCTURED PROGRAM
+
+  Here is a complete, well-structured program that
+  demonstrates every principle from this book:
+
+  *** STUDENT GRADE MANAGER ***
+
+      10 REM ================================
+      11 REM  STUDENT GRADE MANAGER
+      12 REM  A structured BASIC++ program
+      13 REM  demonstrating all principles.
+      14 REM ================================
+      15 REM
+      20 CONST MAX_STUDENTS = 10
+      30 DIM StudentName$(MAX_STUDENTS)
+      40 DIM StudentScore(MAX_STUDENTS)
+      50 LET NumStudents = 0
+      60 REM
+      100 REM === MAIN MENU LOOP ===
+      110 DO
+      120   PRINT ""
+      130   PRINT "===== GRADE MANAGER ====="
+      140   PRINT "1. Add Student"
+      150   PRINT "2. View All Students"
+      160   PRINT "3. Calculate Average"
+      170   PRINT "4. Find Highest Score"
+      180   PRINT "5. Save to File"
+      190   PRINT "6. Quit"
+      200   PRINT "========================="
+      210   INPUT "Choice: "; Choice
+      220   REM
+      230   SELECT CASE Choice
+      240     CASE 1
+      250       GOSUB 1000
+      260     CASE 2
+      270       GOSUB 2000
+      280     CASE 3
+      290       GOSUB 3000
+      300     CASE 4
+      310       GOSUB 4000
+      320     CASE 5
+      330       GOSUB 5000
+      340     CASE 6
+      350       PRINT "Goodbye!"
+      360     CASE ELSE
+      370       PRINT "Invalid choice."
+      380   END SELECT
+      390 LOOP UNTIL Choice = 6
+      400 END
+      410 REM
+      1000 REM --- Add Student ---
+      1010 IF NumStudents >= MAX_STUDENTS THEN
+      1020   PRINT "Class is full!"
+      1030   RETURN
+      1040 END IF
+      1050 NumStudents = NumStudents + 1
+      1060 INPUT "Student name: "; StudentName$(NumStudents)
+      1070 INPUT "Score (0-100): "; StudentScore(NumStudents)
+      1080 PRINT "Student added."
+      1090 RETURN
+      1100 REM
+      2000 REM --- View All ---
+      2010 IF NumStudents = 0 THEN
+      2020   PRINT "No students yet."
+      2030   RETURN
+      2040 END IF
+      2050 PRINT ""
+      2060 PRINT "  #  Name             Score  Grade"
+      2070 PRINT "---  ---------------  -----  -----"
+      2080 FOR I = 1 TO NumStudents
+      2090   LET G$ = "F"
+      2100   IF StudentScore(I) >= 90 THEN G$ = "A"
+      2110   IF StudentScore(I) >= 80 AND StudentScore(I) < 90 THEN G$ = "B"
+      2120   IF StudentScore(I) >= 70 AND StudentScore(I) < 80 THEN G$ = "C"
+      2130   IF StudentScore(I) >= 60 AND StudentScore(I) < 70 THEN G$ = "D"
+      2140   PRINT I, StudentName$(I), StudentScore(I), G$
+      2150 NEXT I
+      2160 RETURN
+      2170 REM
+      3000 REM --- Calculate Average ---
+      3010 IF NumStudents = 0 THEN
+      3020   PRINT "No students."
+      3030   RETURN
+      3040 END IF
+      3050 LET Sum = 0
+      3060 FOR I = 1 TO NumStudents
+      3070   Sum = Sum + StudentScore(I)
+      3080 NEXT I
+      3090 PRINT "Average score: "; Sum / NumStudents
+      3100 RETURN
+      3110 REM
+      4000 REM --- Find Highest ---
+      4010 IF NumStudents = 0 THEN
+      4020   PRINT "No students."
+      4030   RETURN
+      4040 END IF
+      4050 LET Best = 1
+      4060 FOR I = 2 TO NumStudents
+      4070   IF StudentScore(I) > StudentScore(Best) THEN
+      4080     Best = I
+      4090   END IF
+      4100 NEXT I
+      4110 PRINT "Highest: "; StudentName$(Best);
+      4120 PRINT " with "; StudentScore(Best)
+      4130 RETURN
+      4140 REM
+      5000 REM --- Save to File ---
+      5010 OPEN "grades.dat" FOR OUTPUT AS #1
+      5020 PRINT #1, NumStudents
+      5030 FOR I = 1 TO NumStudents
+      5040   PRINT #1, StudentName$(I)
+      5050   PRINT #1, StudentScore(I)
+      5060 NEXT I
+      5070 CLOSE #1
+      5080 PRINT "Data saved to GRADES.DAT"
+      5090 RETURN
+
+
+  This program demonstrates:
+      * Top-down design (menu drives subroutines)
+      * CONST for configuration
+      * Arrays for data storage
+      * SELECT CASE for menu dispatch
+      * DO/LOOP for the main loop
+      * Block IF for validation
+      * FOR/NEXT for data processing
+      * Sequential file I/O for persistence
+      * Consistent commenting and indentation
+      * Descriptive variable names
+
+
+================================================================
+
+
+================================================================
+  APPENDIX A: QUICK REFERENCE - BASIC++ KEYWORDS
+================================================================
+
+  STATEMENTS:
+      CALL name(args)          Call a SUB procedure
+      CLOSE #n                 Close a file channel
+      CONST name = value       Define a constant
+      DATA values              Store inline data
+      DEF FN name(x) = expr    Define a function
+      DIM name(size)           Dimension an array
+      DO ... LOOP UNTIL cond   Loop (test at bottom)
+      DO WHILE cond ... LOOP   Loop (test at top)
+      END                      Stop program
+      END FUNCTION             End a FUNCTION block
+      END IF                   End a block IF
+      END SELECT               End a SELECT CASE block
+      END SUB                  End a SUB block
+      ERASE name               Deallocate an array
+      FOR v=a TO b [STEP c]    Counted loop
+      FUNCTION name(params)    Define a function proc
+      GOSUB line               Call a subroutine
+      GOTO line                Unconditional jump
+      IF cond THEN action      Conditional execution
+      INPUT [prompt;] var      Read from keyboard
+      KILL "filename"          Delete a file
+      LET var = expr           Assignment
+      LINE INPUT [#n,] var$    Read a whole line
+      LOCATE row, col          Move cursor
+      NEXT var                 End of FOR loop
+      ON ERROR GOTO line       Set error trap
+      ON expr GOTO lines       Computed branch
+      OPEN "file" FOR m AS #n  Open a file
+      OPTION BASE 0|1          Set array base
+      PRINT expr               Output to screen
+      PRINT #n, expr           Output to file
+      PRINT USING fmt; expr    Formatted output
+      READ var                 Read from DATA
+      REM text                 Comment
+      RESTORE                  Reset DATA pointer
+      RETURN                   Return from GOSUB
+      SELECT CASE expr         Multi-way branch
+      STOP                     Pause execution
+      SUB name(params)         Define a procedure
+      SWAP var1, var2          Exchange values
+      WEND                     End of WHILE loop
+      WHILE cond               Conditional loop
+
+  FUNCTIONS:
+      ABS(x)    ASC(s$)    ATN(x)    CHR$(n)
+      COS(x)    EXP(x)     FIX(x)    HEX$(n)
+      INSTR(s$,t$)  INT(x)  LEFT$(s$,n)  LEN(s$)
+      LOG(x)    MID$(s$,p,n)  OCT$(n)   PEEK(addr)
+      RIGHT$(s$,n)  RND(x)  SGN(x)    SIN(x)
+      SQR(x)    STR$(n)    TAN(x)    VAL(s$)
+
+  COMMANDS (Immediate Mode):
+      ALIAS kw = "name"   Create keyword alias
+      ALIAS CLEAR          Remove all aliases
+      ALIAS LIST           Show all aliases
+      COLOR fg, bg         Set text colors
+      DIALECT "name"       Switch BASIC dialect
+      DIALECT LIST         List all dialects
+      LIST [from[-to]]     Display program
+      LOAD "filename"      Load a program
+      MEMMAP "name"        Set memory map
+      MEMMAP LIST          List memory maps
+      NEW                  Clear program
+      POKE addr, val       Write to memory
+      RANDOMIZE [seed]     Seed random numbers
+      RUN                  Execute program
+      SAVE "filename"      Save program
+      SELFTEST             Run internal tests
+
+
+================================================================
+
+
+================================================================
+  APPENDIX B: DIFFERENCES BETWEEN DIALECTS
+================================================================
+
+  BASIC++ supports 16 dialects.  Here are the key
+  differences that affect structured programming:
+
+  Feature           PATB  TRS1  GWBS  E116  QBAS
+  -------           ----  ----  ----  ----  ----
+  Named variables    No    No   Yes   Yes   Yes
+  Block IF/END IF    No    No   Yes   Yes   Yes
+  SELECT CASE        No    No   Yes   Yes   Yes
+  WHILE/WEND         No    No   Yes   Yes   Yes
+  DO/LOOP            No    No   Yes   Yes   Yes
+  SUB/FUNCTION       No    No   Yes   Yes   Yes
+  CONST              No    No   Yes   Yes   Yes
+  String functions   No    Yes  Yes   Yes   Yes
+  DEF FN             No    No   Yes   Yes   Yes
+  File I/O           No    No   Yes   Yes   Yes
+  Error handling     No    No   Yes   Yes   Yes
+  WHEN EXCEPTION     No    No   No    Yes   No
+  OPTION ANGLE       No    No   No    Yes   No
+  OPTION STRICT      No    No   No    Yes   No
+
+  For structured programming, use GWBS, E116, or QBAS.
+
+  To switch dialects at any time:
+      DIALECT "GWBS"   (GW-BASIC, recommended)
+      DIALECT "E116"   (ECMA-116 Full BASIC)
+      DIALECT "QBAS"   (QBasic subset)
+
+  You can even mix dialects within a program:
+      100 DIALECT "E116"
+      110 WHEN EXCEPTION IN
+      120   ...
+      130 USE
+      140   ...
+      150 END WHEN
+      160 DIALECT "GWBS"
+
+
+================================================================
+
+
+================================================================
+  APPENDIX C: ASCII CHARACTER TABLE (via CHR$/ASC)
+================================================================
+
+  Code  Char    Code  Char    Code  Char    Code  Char
+  ----  ----    ----  ----    ----  ----    ----  ----
+   32   (spc)    48   0       64   @       96   `
+   33   !        49   1       65   A       97   a
+   34   "        50   2       66   B       98   b
+   35   #        51   3       67   C       99   c
+   36   $        52   4       68   D      100   d
+   37   %        53   5       69   E      101   e
+   38   &        54   6       70   F      102   f
+   39   '        55   7       71   G      103   g
+   40   (        56   8       72   H      104   h
+   41   )        57   9       73   I      105   i
+   42   *        58   :       74   J      106   j
+   43   +        59   ;       75   K      107   k
+   44   ,        60   <       76   L      108   l
+   45   -        61   =       77   M      109   m
+   46   .        62   >       78   N      110   n
+   47   /        63   ?       79   O      111   o
+                               80   P      112   p
+                               81   Q      113   q
+                               82   R      114   r
+                               83   S      115   s
+                               84   T      116   t
+                               85   U      117   u
+                               86   V      118   v
+                               87   W      119   w
+                               88   X      120   x
+                               89   Y      121   y
+                               90   Z      122   z
+
+  To see any ASCII code:   PRINT ASC("A")    -> 65
+  To get a character:      PRINT CHR$(65)    -> A
+  HEX$ and OCT$ convert:  PRINT HEX$(255)   -> FF
+                           PRINT OCT$(8)     -> 10
+
+
+================================================================
+
+  END OF TUTORIAL
+
+  "The purpose of computing is insight, not numbers."
+                              -- Richard Hamming
+
+================================================================

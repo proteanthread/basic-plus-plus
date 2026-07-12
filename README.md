@@ -1,7 +1,7 @@
 [![GitGem](https://gitgem.org/api/badge/github/proteanthread/basic-plus-plus.svg)](https://gitgem.org/github/proteanthread/basic-plus-plus)
 
 # BASIC++ Interpreter
-## Version 5.0.0
+## Version 5.0.5
 
 I don't care what you do with my code, just don't take my code and sell it and/or don't take my code, modify my code, and sell it. This code is not for sale.
 
@@ -11,7 +11,7 @@ I don't care what you do with my code, just don't take my code and sell it and/o
 
 ## Abstract
 
-BASIC++ ships with a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 70 documentation files.
+BASIC++ ships with a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 774 documentation files.
 
 Designed for small memory footprints and readable source code. Runs on Windows 11, Linux, and FreeDOS. Suitable for embedded systems, legacy hardware, and as a teaching tool for interpreter design (tokenization, recursive-descent parsing, virtual machines, and environment management).
 
@@ -27,29 +27,46 @@ Alongside the main BASIC++ interpreter, the repository includes four fully self-
 
 ---
 
-## Section 1: Interpreter Editions
+## 1. Interpreter Editions
 
 BASIC++ is distributed in three distinct compilation tiers, allowing it to scale from modern graphical workstations down to resource-constrained microcontrollers. The core architectural keywords, parsing logic, and execution semantics remain identical across all tiers; they differ only in their hardware abstractions and subsystem inclusions.
 
-### 1.1. BASIC++ SDL (GUI Edition)
+### 1.1 BASIC++ SDL (GUI Edition)
 **Binaries:** asicpp.exe (Windows), aspp (Linux)
 The full-featured graphical interpreter. This build statically links against SDL2, providing a dedicated GUI window upon boot. It supports the complete suite of visual and auditory features, including the 320x200 16-color virtual framebuffer (SCREEN 1), dynamic palette manipulation (COLOR, PALETTE), vector drawing (LINE, CIRCLE, PAINT), and audio synthesis (SOUND, PLAY).
 
-### 1.2. BASIC++ Standard (Console Edition)
+### 1.2 BASIC++ Standard (Console Edition)
 **Binaries:** asicpp-console.exe (Windows), aspp-console (Linux)
 The standard command-line interface (CLI) interpreter. It boots directly into the host OS terminal (e.g., PowerShell, bash) without initializing a GUI window, ensuring seamless integration with shell pipes, redirections, and headless execution. However, it retains full compatibility with the SDL tier: if a program executes a graphical or audio command (like SCREEN 1), the interpreter will dynamically boot the SDL2 engine on-demand, create a window, and seamlessly continue execution.
 
-### 1.3. BASIC++ Lite3 (Embedded Edition)
+### 1.3 BASIC++ Lite3 (Embedded Edition)
 **Binaries:** lite.exe (Windows), lite (Linux)
 A stripped-down, ultra-lightweight build optimized strictly for minimal memory footprints and execution speed. Designed for embedded environments (e.g., Arduino, Raspberry Pi Pico, FreeRTOS), it entirely omits the SDL layer, the graphics framebuffer, network subsystems, and other heavy external modules. It executes core BASIC logic and standard console I/O using standard C library functions.
 
 ---
 
-## Section 2: Core Features
+
+## 3. Built-in Development Environments (IDEs)
+
+BASIC++ features four natively embedded text editors, accessible via command-line switches, ensuring cross-platform development capabilities without relying on external host tools:
+
+- **--edit** (MS-DOS EDIT Clone): A robust, menu-driven IDE featuring a drop-down menu system, dynamic syntax rendering, and dual-mode (Color/Monochrome) support.
+- **--vi** (vi Clone): A modal editor faithfully replicating classic vi commands (Normal/Insert/Visual modes, yank, put, delete).
+- **--ws** (WordStar Clone): A classic WordStar-compatible editor, utilizing historic ^K control block sequences.
+- **--edlin** (EDLIN Clone): A line-oriented REPL editor for low-bandwidth terminals or headless environments.
+
+**Universal Editor Features:**
+All embedded editors feature seamless integration with modern operating systems:
+- **Universal Syntax Highlighting Toggle:** Press `F10` (or `o` in EDLIN) in any editor to instantly toggle dynamic color syntax highlighting.
+- **CUA Visual Selection:** Native Shift+Arrows text highlighting.
+- **OS Clipboard Integration:** Deep integration with the host OS clipboard (Windows/SDL2) using legacy CUA hotkeys 
+(Ctrl+Ins for Copy, Shift+Del for Cut, Shift+Ins for Paste) without colliding with standard IDE or vi/WordStar commands.
+
+## 2. Core Features
 
 The interpreter provides a comprehensive implementation of BASIC with a union-mode parser that accepts a comprehensive keyword set covering standard BASIC features by default.
 
-### 2.1. Data Types
+### 2.1 Data Types
 
 BASIC++ supports three fundamental data types:
 
@@ -57,7 +74,7 @@ BASIC++ supports three fundamental data types:
 - **Floating-point** — Double-precision IEEE 754 (`double`), activated via numeric literals containing a decimal point (e.g., `3.14`) or via dialect configuration. Supports the full suite of transcendental functions: `SIN`, `COS`, `TAN`, `ATN`, `SQR`, `LOG`, `EXP`.
 - **Strings** — Variable-length character sequences up to 255 characters, managed via a pooled allocator. String variables are denoted by the `$` suffix (e.g., `A$`, `NAME$`).
 
-### 2.2. Variable Storage
+### 2.2 Variable Storage
 
 The variable system provides three tiers of storage:
 
@@ -69,7 +86,7 @@ The variable system provides three tiers of storage:
 
 All variables are initialized to zero (numeric) or empty string (string) upon `RUN`. The `CLEAR` command resets all variable storage without affecting the stored program.
 
-### 2.3. Parser
+### 2.3 Parser
 
 Expression evaluation in both the interpreter and C transpiler is conducted via an iterative, stack-based Shunting-Yard precedence parser with correct mathematical operator precedence:
 
@@ -87,9 +104,9 @@ EQV, IMP              (equivalence, implication — lowest)
 
 Sub-expressions encapsulated in parentheses and function arguments are evaluated iteratively using dedicated operand and operator stacks, avoiding host C language recursion limit dependencies. The parser supports both line-numbered program mode and unnumbered direct (immediate) mode execution.
 
-### 2.4. Implemented Directives
+### 2.4 Implemented Directives
 
-The interpreter implements over 220 keywords spanning the following categories:
+The interpreter implements over 430 keywords spanning the following categories:
 
 **Data I/O:** `PRINT`, `PRINT USING`, `LPRINT`, `INPUT`, `LINE INPUT`, `READ`, `DATA`, `RESTORE`, `WRITE`
 
@@ -125,7 +142,7 @@ The interpreter implements over 220 keywords spanning the following categories:
 
 **Extensibility:** `DIALECT`, `ALIAS`, `MODULE`, `OPTION STRICT`, `COMPILE`
 
-### 2.5. Environment Directives
+### 2.5 Environment Directives
 
 A distinct set of directives, which operate at the "edit" level outside stored programs, are provided for managing the runtime environment:
 
@@ -146,7 +163,7 @@ A distinct set of directives, which operate at the "edit" level outside stored p
 | `HELP [keyword]` | Display help for a command or topic |
 | `BYE` | Exit the interpreter to the OS prompt |
 
-### 2.6. Input/Output Operations
+### 2.6 Input/Output Operations
 
 The core implementation provides multiple output pathways:
 
@@ -155,7 +172,7 @@ The core implementation provides multiple output pathways:
 - **File I/O** — Full GW-BASIC/QBasic-compatible file operations supporting sequential (`INPUT`, `OUTPUT`, `APPEND`), random-access (`RANDOM`), and binary (`BINARY`) modes across 8 simultaneous file channels (`#1` through `#8`).
 - **Shell integration** — `SHELL "command"` for synchronous execution, `SHELL$("command")` for output capture, pipe (`|`) and redirect (`>`, `>>`) operators.
 
-### 2.7. Program Serialization & Execution Formats
+### 2.7 Program Serialization & Execution Formats
 
 BASIC++ supports four execution and storage profiles to enable portable and secure distribution of BASIC applications:
 
@@ -168,11 +185,11 @@ BASIC++ supports four execution and storage profiles to enable portable and secu
 ---
 
 
-## Section 3: Security Sandboxing
+## 4. Security Sandboxing
 
 BASIC++ includes a three-tier security model that controls access to sensitive operations. This is critical for environments where untrusted BASIC programs may be executed (e.g., BBS systems, educational labs, online services).
 
-### 3.1. Security Levels
+### 4.1 Security Levels
 
 | Level | Name | File Read | File Write | Shell | Network |
 |:------|:-----|:----------|:-----------|:------|:--------|
@@ -189,46 +206,32 @@ SECURITY REPORT       ' Display current security posture
 ---
 
 
-## Section 4: Architecture
+## 5. Architecture
 
-### 4.1. Source File Organization
+### 5.1 Source File Organization
 
-The interpreter is organized into 29 compilation units:
+The interpreter is organized into 363 compilation units, strictly organized by subsystem:
 
-| File | Purpose |
-|:-----|:--------|
-| `main.c` | Boot sequence, REPL loop, shutdown |
-| `lexer.c/h` | Tokenizer with 223-keyword table, alias support |
-| `parser.c/h` | Recursive-descent parser with direct execution dispatch |
-| `runtime.c/h` | Runtime state, call stack, FOR/NEXT frames |
-| `memory.c/h` | Pool allocator, program store, scratch buffer |
-| `value.c/h` | Tagged union value system (int, float, string) |
-| `stringpool.c/h` | Compact string allocator with GC-safe pooling |
-| `dialect.c/h` | 12 dialect profiles, strict mode, feature gating |
-| `errors.c/h` | Error codes, BASIC-style error messages |
-| `fileio.c/h` | Sequential, random-access, and binary file I/O |
-| `vdev.c/h` | Virtual device layer (console, error, file, user) |
-| `vm.c/h` | Virtual machine formalization, opcode dispatch table |
-| `funcreg.c/h` | Function registry with override support |
-| `builtins.c/h` | Built-in math and string function implementations |
-| `detok.c/h` | Detokenizer for LIST, diagnostics, and debugging |
-| `exec.c/h` | Program execution engine (RUN loop) |
-| `ast.c/h` | Abstract syntax tree node types |
-| `codegen.c/h` | C code generator for the transpiler |
-| `compiler.c/h` | BASIC-to-C transpiler driver |
-| `security.c/h` | Security level enforcement and operation gating |
-| `module.c/h` | Module registration and lifecycle |
-| `mod_stdlib.c/h` | Standard library module (built-in) |
-| `mod_usb.c/h` | USB HID and serial device module |
-| `help.c/h` | Interactive help system |
-| `selftest.c/h` | Built-in self-test suite |
-| `memmap.c/h` | Virtual memory maps (MSDOS, C64, Atari, Apple, ZX) |
-| `platform.c/h` | Platform detection and OS abstraction |
-| `gfxbuf.c/h` | Graphics framebuffer (320×200, 16 colors) |
-| `bytecode.c/h` | Bytecode compilation infrastructure |
-| `config.h` | All compile-time constants and limits |
+| Directory | Purpose |
+|:----------|:--------|
+| `source/core/` | Boot sequence, REPL loop, memory pools, value system, errors, shutdown |
+| `source/lexer/` | Tokenizer with 430-keyword table, alias language parsing |
+| `source/parser/` | Recursive-descent parser, expression evaluation, direct execution dispatch |
+| `source/runtime/` | Runtime state, call stack, AST execution, FOR/NEXT/WHILE frames |
+| `source/io/` | Sequential, random-access, binary file I/O, networking |
+| `source/virtual/` | Virtual device layer, Virtual Machine formalization, VDev API |
+| `source/functions/` | Function registry, built-ins, user-defined functions (DEF FN) |
+| `source/codegen/` | C code generator, AST processing, archive builder for transpiler |
+| `source/standalone/` | Legacy standalone emulators (TinyBASIC, Level I, Apple II, 1964) |
+| `source/modules/` | Extensible plugin system (JIT, USB, UPnP, Edlin, vi, WordStar, etc.) |
+| `source/help/` | Interactive help system and documentation generation |
+| `source/memory/` | Virtual memory maps (MSDOS, C64, Atari, Apple, ZX), RAMBANKs |
+| `source/graphics/` | Graphics framebuffer (320x200, 16 colors) and shape rendering |
+| `source/config/` | Configuration options, settings overrides, program scope |
+| `source/progmgmt/` | Program commands, token detokenizer (GW-BASIC) |
+| `source/config.h` | Master compile-time constants, dimensions, and structural limits |
 
-### 4.2. Memory Layout
+### 5.2 Memory Layout
 
 All interpreter memory is defined by static, fixed-size pools. Dimensions are established at compile-time via `#define` constants in `config.h`, ensuring a predictable and verifiable memory footprint.
 
@@ -245,12 +248,12 @@ All interpreter memory is defined by static, fixed-size pools. Dimensions are es
 | File Channels | `MAX_FILE_CHANNELS` | 8 | Simultaneous open files |
 | Graphics Pool | `GRAPHICS_MEMORY_SIZE` | 4 MB | Dynamic sprite, page, and font cache |
 
-### 4.3. Adjustment of Memory Allocations
+### 5.3 Adjustment of Memory Allocations
 
 Alterations to these memory limitations are effectuated by modifying the appropriate `#define` pre-processor constants within `config.h`. Subsequent recompilation of the interpreter is mandatory for such changes to take effect. This compile-time configuration is a deliberate design choice, precluding runtime memory negotiation. This approach ensures that the interpreter's resource requirements are fixed and verifiable, a critical attribute for high-reliability systems, embedded applications, or legacy operating systems where dynamic memory management is complex or unreliable.
 
 
-### 4.4. Segmented Virtual Memory (RAMBANKs) & Multitasking
+### 5.4 Segmented Virtual Memory (RAMBANKs) & Multitasking
 
 BASIC++ implements a high-performance Segmented Virtual Memory system (RAMBANKs) and a multitasking process system:
 - **RAMBANKs**: Supports up to 254 virtual memory banks (1MB each) dynamically mapped into a resident bank pool (max 8 resident banks) utilizing a Least Recently Used (LRU) page eviction algorithm and disk swapping. Page swap data is obfuscated using XOR encryption according to the active security sandbox level.
@@ -261,11 +264,11 @@ BASIC++ implements a high-performance Segmented Virtual Memory system (RAMBANKs)
 ---
 
 
-## Section 5: Compilation
+## 6. Compilation
 
 The C source code is designed for high portability and is compilable on any system featuring a standards-compliant C compiler. No external libraries, package managers, or build frameworks are required.
 
-### 5.1. Quick Build
+### 6.1 Quick Build
 
 ```bash
 # Windows (MSVC — from Developer Command Prompt)
@@ -280,7 +283,7 @@ wcc -ml -0 -za -wx *.c
 wlink name basicpp.exe file *.obj
 ```
 
-### 5.2. Compilation for Portability and Size *(Recommended)*
+### 6.2 Compilation for Portability and Size *(Recommended)*
 
 ```bash
 gcc -Wall -Os -o basicpp *.c -lm
@@ -288,7 +291,7 @@ gcc -Wall -Os -o basicpp *.c -lm
 
 This incantation invokes the compiler with `-Wall` to enable all high-priority warnings, a best practice for identifying potential portability issues or unsafe code. Crucially, it uses `-Os`, which instructs the compiler to optimize specifically for the size of the resulting executable binary. This optimization level is often the primary concern in memory-constrained systems, such as the target embedded environments.
 
-### 5.3. Compilation for Execution Speed
+### 6.3 Compilation for Execution Speed
 
 ```bash
 gcc -Wall -O2 -o basicpp *.c -lm
@@ -296,7 +299,7 @@ gcc -Wall -O2 -o basicpp *.c -lm
 
 This command uses the `-O2` flag, enabling a more aggressive set of optimization passes (such as loop unrolling and function inlining) focused on increasing execution velocity. This may come at the cost of a slightly larger binary file. This build is suitable for desktop systems where performance is prioritized over footprint.
 
-### 5.4. Compilation for Debugging *(Symbolic Inclusion)*
+### 6.4 Compilation for Debugging *(Symbolic Inclusion)*
 
 ```bash
 gcc -Wall -g -O0 -DDEBUG -o basicpp *.c -lm
@@ -304,7 +307,7 @@ gcc -Wall -g -O0 -DDEBUG -o basicpp *.c -lm
 
 This command utilizes the `-g` flag to include debugging symbols (such as DWARF) within the final executable. The `-DDEBUG` flag enables debug-mode assertions and verbose diagnostics within the interpreter. This symbolic information is essential for using a debugger (such as GDB) to trace program execution, inspect variables, and analyze the call stack.
 
-### 5.5. Using the Makefile
+### 6.5 Using the Makefile
 
 A `Makefile` is provided for incremental builds:
 
@@ -320,11 +323,11 @@ make clean        # Remove build artifacts
 ---
 
 
-## Section 6: Operational Use
+## 7. Operational Use
 
 The interpreter operates via a standard REPL (Read-Evaluate-Print Loop) interface. This interface provides two distinct contexts for operation: Direct Mode and Program Mode.
 
-### 6.1. Direct Mode
+### 7.1 Direct Mode
 
 The direct, or "immediate," execution context is invoked when directives are entered without a preceding line number. Such directives are evaluated and executed immediately upon entry. This mode is principally utilized for testing, debugging, performing calculations, or inspecting variable state.
 
@@ -334,7 +337,7 @@ The direct, or "immediate," execution context is invoked when directives are ent
 > A = 42 : PRINT A * 2
      84
 ```
-### 6.2. Program Mode
+### 7.2 Program Mode
   
   The "stored program" context is invoked when directives are entered with a preceding line number. Such lines are not executed; instead, they are inserted into the Program Storage array, maintained in sorted order by line number.
   
@@ -343,7 +346,7 @@ The direct, or "immediate," execution context is invoked when directives are ent
   > 20 GOTO 10
   ```
   
-### 6.3. Deferred Mode (Edlin)
+### 7.3 Deferred Mode (Edlin)
   
   While BASIC++ defaults to an Immediate Mode REPL (Direct Mode), it also natively supports a Deferred Mode workflow (similar to QBASIC or modern IDEs) via the built-in screen editor. In Deferred Mode, statements are not evaluated or executed line-by-line as they are typed. Instead, you write your entire program within a text buffer offline. Once the program is fully written, it is passed to the host engine in a single batch for execution.
   
@@ -379,7 +382,7 @@ Hello, World!
  1  2  3  4  5
 ```
 
-### 6.4. Command-Line Switches
+### 7.4 Command-Line Switches
 
 The interpreter executable supports several switches when launched from the command line:
 
@@ -395,11 +398,11 @@ The interpreter executable supports several switches when launched from the comm
 *   `--clean-up` / `--cleanup` — Sweep intermediate files (logs, object files, stub modules, etc.) in the workspace, but preserve the most recently modified `.LOG` file and `.OUT` file.
 *   `--full-clean-up` / `--full-cleanup` — Sweep all intermediate files including all `.LOG` and `.OUT` files.
 
-### 6.5. Program Execution
+### 7.5 Program Execution
 
 The `RUN` directive initiates sequential execution of the stored program. This directive first clears Variable Storage and the Call Stack to a zeroed state, ensuring that the program executes in a clean, predictable environment. Execution begins at the lowest extant line number. The `BYE` command exits the interpreter entirely, returning control to the operating system.
 
-### 6.6. Built-In Diagnostics (SELFTEST)
+### 7.6 Built-In Diagnostics (SELFTEST)
 
 The interpreter includes a formal self-test diagnostic suite. By running the command:
 ```
@@ -428,7 +431,7 @@ In Console/text-only builds, `SELFTEST` dynamically boots the SDL2 engine on-dem
 ---
 
 
-## Section 7: Halting Non-Terminating Execution
+## 8. Halting Non-Terminating Execution
 
 In the event a BASIC program enters a non-terminating loop, which is a common possibility given the `GOTO` directive, execution may be interrupted by two mechanisms:
 
@@ -439,11 +442,11 @@ In the event a BASIC program enters a non-terminating loop, which is a common po
 ---
 
 
-## Section 8: Virtual Device Layer
+## 9. Virtual Device Layer
 
 BASIC++ abstracts all I/O through a virtual device (`VDev`) interface, enabling portability across operating systems and hardware configurations without modifying the core interpreter.
 
-### 8.1. Built-In Devices
+### 9.1 Built-In Devices
 
 | Device | ID | Function |
 |:-------|:---|:---------|
@@ -452,7 +455,7 @@ BASIC++ abstracts all I/O through a virtual device (`VDev`) interface, enabling 
 | File | `dev_file` | File I/O channels (#1 through #8) |
 | Printer | `dev_lpt` | LPRINT output device |
 
-### 8.2. Virtual Memory Maps
+### 9.2 Virtual Memory Maps
 
 The `MEMMAP` system provides pre-configured virtual address spaces that emulate classic platforms:
 
@@ -464,7 +467,7 @@ MEMMAP "ATARI8"       ' Atari 400/800 layout
 MEMMAP "ZX"           ' ZX Spectrum layout
 ```
 
-### 8.3. Graphics Framebuffer
+### 9.3 Graphics Framebuffer
 
 A 320×200, 16-color virtual framebuffer is provided, matching QBasic `SCREEN 1`. Graphics are rendered to the terminal using Unicode half-block characters.
 
@@ -472,18 +475,18 @@ A 320×200, 16-color virtual framebuffer is provided, matching QBasic `SCREEN 1`
 ---
 
 
-## Section 9: Module System
+## 10. Module System
 
 The module system provides C-level code extensibility. Modules add new keywords, functions, and hardware abstractions to the interpreter.
 
-### 9.1. Built-In Modules
+### 10.1 Built-In Modules
 
 | Module | Description |
 |:-------|:------------|
 | `STDLIB` | Standard library — core mathematical and string functions |
 | `USB` | USB HID (gamepads, joysticks) and USB serial (FTDI, CH340, Arduino) |
 
-### 9.2. Creating External Modules
+### 10.2 Creating External Modules
 
 External modules follow the `ModuleInterface` contract: an `init()`, `shutdown()`, and keyword registration via `funcreg_override()`. See `External_Modules.txt` for the complete API specification.
 
@@ -491,7 +494,7 @@ External modules follow the `ModuleInterface` contract: an `init()`, `shutdown()
 ---
 
 
-## Section 10: Transpiler
+## 11. Transpiler
 
 BASIC++ includes a powerful **External Compilation Suite** (`bppc` and `trans`):
 - **`trans`** (Transpiler): Converts stored `.BAS` programs and bytecode into standalone C17, Python 3, Free Pascal, or Fortran source code with strict, no-dependency translation rules.
@@ -509,33 +512,33 @@ COMPILE "hello"       ' Generates hello.c
 ---
 
 
-## Section 11: Future Expansion Trajectory
+## 12. Future Expansion Trajectory
 
 The architecture is explicitly provisioned for future expansion. The following classifications for extensibility have been identified:
 
-### 11.1. Addons
+### 12.1 Addons
 
 This classification is designated for the most advanced extensibility, involving the incorporation of inline foreign language code. This system would provide meta-directives (e.g., `$LANG: C`) to allow a user to embed, compile, and link source code from other languages, such as Assembly, Pascal, or C, directly within a BASIC program file. This represents the ultimate goal of a mixed-language development environment, likely implemented via a transpiler and external compiler-chaining.
 
-### 11.2. Merge
+### 12.2 Merge
 
 This classification refers to functionality for BASIC source code amalgamation, specifically the `MERGE` directive. This system maintains strict compliance with the behavioral standards of ECMA-55 (Minimal BASIC), ECMA-116 (Full BASIC), and/or QBasic/QuickBASIC. Its function is to load a BASIC program file from storage and combine it with the program already resident in memory, with lines from the incoming file overwriting any pre-existing lines with identical numbers. This is the foundational pillar for user-level code sharing.
 
-### 11.3. Modules
+### 12.3 Modules
 
 This classification defines the primary system for C-level code extensibility. A "Module" is a compiled C-code entity that adds new keywords and syntactic features to the interpreter. This system is responsible for language syntax modification, enabling the creation of specific feature sets (e.g., adding a GRAPHICS module to provide `PSET` and `LINE`, or a SOUND module to provide `PLAY`). This is the mechanism by which the interpreter evolves from "Core" to "Full" BASIC.
 
-### 11.4. Plugins
+### 12.4 Plugins
 
-This classification defines a specialized subset of Modules. A "Plugin" is a C-code module designated for low-level hardware mapping, system emulation, and direct memory interfacing. A Plugin functions as a "driver," abstracting the hardware. For example, a SOUND Module (Section 11.3) provides the `SOUND` keyword, but it calls a SOUND Plugin (e.g., `pc_speaker.plugin` for DOS or `oss.plugin` for Linux) to actually generate the audio. This architectural separation of semantics (Module) from implementation (Plugin) is the key to achieving cross-platform portability for hardware-dependent features.
+This classification defines a specialized subset of Modules. A "Plugin" is a C-code module designated for low-level hardware mapping, system emulation, and direct memory interfacing. A Plugin functions as a "driver," abstracting the hardware. For example, a SOUND Module (Section 12.3) provides the `SOUND` keyword, but it calls a SOUND Plugin (e.g., `pc_speaker.plugin` for DOS or `oss.plugin` for Linux) to actually generate the audio. This architectural separation of semantics (Module) from implementation (Plugin) is the key to achieving cross-platform portability for hardware-dependent features.
 
 
 ---
 
 
-## Section 12: Documentation
+## 13. Documentation
 
-A comprehensive documentation suite of 37 reference manuals and tutorials is included:
+A comprehensive documentation suite of 774 reference manuals and tutorials (including Markdown formats) is included:
 
 | Document | Subject |
 |:---------|:--------|
@@ -579,10 +582,10 @@ A comprehensive documentation suite of 37 reference manuals and tutorials is inc
 ---
 
 
-## Section 13: Example Session
+## 14. Example Session
 
 ```
-BASIC++ Standard 5.0.0
+BASIC++ Standard 5.0.5
 @COPYLEFT ALL WRONGS RESERVED
 Jul 10 2026
 
@@ -608,14 +611,14 @@ Goodbye.
 ---
 
 
-## Section 14: Project Statistics
+## 15. Project Statistics
 
 | Metric | Value |
 |:-------|:------|
-| Source files | 129 `.c` + 65 `.h` |
-| Lines of code | ~90,000 |
-| Keywords | 223 |
-| Documentation files | 70 |
+| Source files | 222 `.c` + 141 `.h` |
+| Lines of code | ~121,000 |
+| Keywords | 430 |
+| Documentation files | 774 |
 | External dependencies | **Zero** |
 | C standard | C17 |
 | License | @COPYLEFT ALL WRONGS RESERVED |
@@ -623,6 +626,7 @@ Goodbye.
 
 ---
 
-*Last updated: 2026-07-02 (Lexer Lookahead & Case-Insensitive improvements)*
+*Last updated: 2026-07-10 (Universal Color Scheme Integration & Directory Cleanup)*
 
 *BASIC++ — Because the world needed one more BASIC interpreter.*
+

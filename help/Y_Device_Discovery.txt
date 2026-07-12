@@ -1,0 +1,206 @@
+Device Discovery in BASIC++
+
+
+---
+
+Table of Contents
+
+- Functions
+  - DEVICECOUNT
+  - DEVICE$(n)
+  - DEVICECLASS$(n)
+  - DEVICEFIND(name$)
+  - DEVICEINFO$(n, key$)
+- Complete Example
+  - Device Inventory
+  - Find Sensor by Class
+- Platform Improvements (Milestone 26)
+  - Linux Sleep
+  - Linux INKEY$
+  - Buffer Safety
+- See Also
+
+---
+
+> Milestone 26 — Virtual Device Bus
+
+BASIC++ provides five functions for programmatic device enumeration. These
+bridge the C-level VDev discovery API to BASIC programs, enabling
+device-adaptive code, hot-plug detection, and runtime device inspection.
+
+Functions
+
+DEVICECOUNT
+
+Returns the number of registered virtual devices. No parentheses.
+
+
+PRINT "Devices:"; DEVICECOUNT
+
+
+Always returns at least 3 (CON:, ERR:, FILE: are built-in).
+
+---
+
+DEVICE$(n)
+
+Returns the name of the device at slot n. Slots are 0-based.
+
+
+PRINT DEVICE$(0)   ' → "CON:"
+PRINT DEVICE$(1)   ' → "ERR:"
+PRINT DEVICE$(2)   ' → "FILE:"
+
+
+Returns empty string if slot is unoccupied or out of range.
+
+---
+
+DEVICECLASS$(n)
+
+Returns the class name of the device at slot n.
+
+
+PRINT DEVICECLASS$(0)   ' → "Console"
+PRINT DEVICECLASS$(6)   ' → "Network"
+
+
+Device Classes
+
+| Class | Description | Examples |
+|-------|-------------|----------|
+| Console | Human I/O | Screen, keyboard |
+| File | Storage | Disk files |
+| Serial | Communication | RS-232, USB serial |
+| Printer | Output | LPT, CUPS |
+| Audio | Sound | Speaker, MIDI |
+| Network | Networking | TCP, UDP, HTTP |
+| GPIO | Embedded I/O | RPi pins |
+| I2C | Embedded bus | Sensors, displays |
+| SPI | Embedded bus | Flash, SD card |
+| Sensor | Data capture | Temp, GPS |
+| Display | Visual output | LCD, OLED |
+| Storage | Block I/O | SD, USB drive |
+| HID | Input device | Joystick, gamepad |
+| Camera | Video capture | Webcam |
+| Bridge | MCU gateway | Arduino, ESP32 |
+| Bluetooth | Wireless | BT Classic, BLE |
+| Clipboard | System | Copy/paste |
+| Pipe | IPC | Process pipes |
+| Timer | Timing | HW/SW timers |
+| Custom | User-defined | Anything else |
+| Unknown | Unclassified | Legacy VDevs |
+
+---
+
+DEVICEFIND(name$)
+
+Searches for a device by name. Case-insensitive. Returns slot number, or
+-1 if not found.
+
+
+S = DEVICEFIND("NET:")
+IF S >= 0 THEN
+  PRINT "NET: found at slot"; S
+ELSE
+  PRINT "NET: not available"
+END IF
+
+
+Hot-Plug Detection Pattern
+
+
+10 WHILE DEVICEFIND("USB:") < 0
+20   PRINT "Waiting for USB device..."
+30   SLEEP 1000
+40 WEND
+50 PRINT "USB device detected!"
+
+
+---
+
+DEVICEINFO$(n, key$)
+
+Queries device metadata by key name.
+
+
+PRINT DEVICEINFO$(0, "description")  ' → "Standard console"
+PRINT DEVICEINFO$(0, "version")      ' → "2.0"
+
+
+Supported Keys
+
+| Key | Returns |
+|-----|---------|
+| "class" | Device class name |
+| "caps" | Capability flags (hex) |
+| "version" | Version string |
+| "description" | Human-readable description |
+| "status" | Device status |
+
+Returns empty string if slot is unoccupied or key is unrecognized.
+
+---
+
+Complete Example
+
+Device Inventory
+
+
+10 REM === Device Inventory ===
+20 N = DEVICECOUNT
+30 PRINT N; " device(s) registered"
+40 PRINT
+50 PRINT "Slot  Name        Class       Description"
+60 PRINT "----  ----        -----       -----------"
+70 FOR I = 0 TO N - 1
+80   N$ = DEVICE$(I)
+90   IF N$ <> "" THEN
+100    C$ = DEVICECLASS$(I)
+110    D$ = DEVICEINFO$(I, "description")
+120    PRINT I; "  "; N$; "  "; C$; "  "; D$
+130  END IF
+140 NEXT I
+
+
+Find Sensor by Class
+
+
+10 FOR I = 0 TO DEVICECOUNT - 1
+20   IF DEVICECLASS$(I) = "Sensor" THEN
+30     PRINT "Sensor: "; DEVICE$(I);
+40     PRINT " - "; DEVICEINFO$(I, "description")
+50   END IF
+60 NEXT I
+
+
+---
+
+Platform Improvements (Milestone 26)
+
+Linux Sleep
+
+SLEEP now works correctly on Linux using usleep(). Previously it was a
+no-op.
+
+Linux INKEY$
+
+INKEY$ now works on Linux using termios non-blocking stdin reads.
+Previously it always returned empty string.
+
+Buffer Safety
+
+vdev_printf now uses vsnprintf instead of vsprintf to prevent
+potential buffer overflows on long format strings.
+
+---
+
+See Also
+
+- VDEV — List all devices (command output)
+- DEVMAP — Device slot mapping with aliases
+- VCON — Console device info
+- VMACH — Virtual machine state
+- VMEM — Virtual memory info
+- VNET — Network status
+- VTERM — Terminal info

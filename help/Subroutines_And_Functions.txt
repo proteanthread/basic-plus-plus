@@ -1,0 +1,1637 @@
+THE BASIC++ SUBROUTINE AND FUNCTION SYSTEM
+============================================
+Version 4.2.3
+
+This manual explains every way BASIC++ programs organize
+reusable code — from classic GOSUB/RETURN subroutines to
+QBasic-style SUB/FUNCTION blocks to Dartmouth DEF FN
+inline functions.
+
+Unlike a quick reference, this manual gives you deep
+understanding.  By the time you finish reading it, you will
+know:
+
+  - How GOSUB/RETURN works and when to use it
+  - How SUB blocks provide named subroutines with params
+  - How FUNCTION blocks return values from expressions
+  - How DEF FN defines inline single-expression functions
+  - How variable scoping and the call stack work
+  - How the CALL statement invokes subroutines
+  - How implicit (bare name) calling works
+  - How EXIT SUB and EXIT FUNCTION provide early return
+  - How parameters are passed and bound
+  - How nested calls and recursion are handled
+  - How all of this maps to internal data structures
+  - How to choose the right mechanism for your task
+
+
+TABLE OF CONTENTS
+=================
+
+  Part I:   The Three Mechanisms
+  1.  Overview: GOSUB, SUB/FUNCTION, DEF FN
+  2.  When to Use Each Mechanism
+  3.  Comparison Table
+  4.  Historical Context
+
+  Part II:  GOSUB/RETURN — Classic Subroutines
+  5.  Syntax and Semantics
+  6.  GOSUB to a Line Number
+  7.  GOSUB to a Label
+  8.  RETURN
+  9.  Nested GOSUB
+  10. ON...GOSUB — Computed GOSUB
+  11. GOSUB Best Practices
+  12. Limitations of GOSUB
+
+  Part III: SUB — Named Subroutines
+  13. SUB Definition Syntax
+  14. Parameter Lists
+  15. String Parameters
+  16. Calling With CALL
+  17. Implicit Calling (Bare Name)
+  18. END SUB
+  19. EXIT SUB — Early Return
+  20. Variable Scoping in SUB
+  21. How SUB Calls Work Internally
+  22. SUB Examples
+
+  Part IV:  FUNCTION — Named Functions
+  23. FUNCTION Definition Syntax
+  24. Return Values
+  25. Calling a FUNCTION
+  26. END FUNCTION
+  27. EXIT FUNCTION — Early Return
+  28. How FUNCTION Calls Work Internally
+  29. FUNCTION Examples
+
+  Part V:   DEF FN — Inline Functions
+  30. DEF FN Syntax
+  31. Parameters and the Body Expression
+  32. Calling FN Functions
+  33. Local Scoping (Save/Bind/Eval/Restore)
+  34. DEF FN vs FUNCTION
+  35. DEF SEG (Not a Function!)
+  36. DEF FN Examples
+
+  Part VI:  Advanced Topics
+  37. The Call Stack (StackFrame)
+  38. Frame Types
+  39. Variable Saving and Restoration
+  40. Maximum Nesting Depth
+  41. Recursion
+  42. Mutual Recursion
+  43. Passing Arrays and Records
+  44. Error Handling Inside Subroutines
+
+  Part VII: Internal Architecture
+  45. SubDef Structure
+  46. UserFunction Structure
+  47. StackFrame / FRAME_SUB
+  48. Storage in RuntimeState
+  49. Capacity Limits (config.h)
+  50. Name Lookup: runtime_find_sub
+
+  Part VIII: Complete Examples
+  51. Example: Math Library
+  52. Example: String Utilities
+  53. Example: Menu System with SUBs
+  54. Example: Recursive Tree Drawing
+  55. Example: Event-Driven Architecture
+
+  Part IX:  Reference
+  56. All Subroutine/Function Statements
+  57. Error Codes
+  58. Limits Table
+  59. Quick Decision Guide
+
+
+======================================================================
+Part I:  THE THREE MECHANISMS
+======================================================================
+
+
+1.  OVERVIEW: GOSUB, SUB/FUNCTION, DEF FN
+---------------------------------------------
+
+BASIC++ provides three mechanisms for code reuse,
+reflecting the evolution of the BASIC language:
+
+  GOSUB/RETURN (1964 - Dartmouth BASIC)
+    Jump to a line number, execute code, jump back.
+    No parameters, no local variables, no return value.
+
+  DEF FN (1964 - Dartmouth BASIC)
+    Define a one-line function with parameters and a
+    return value.  Body is a single expression.
+
+  SUB/FUNCTION (1985 - QBasic)
+    Define a multi-line named block with parameters.
+    SUB has no return value; FUNCTION returns a value.
+
+
+2.  WHEN TO USE EACH MECHANISM
+---------------------------------
+
+  Use GOSUB when:
+    - You need a quick chunk of reusable code
+    - The code is short and self-contained
+    - You're writing in a classic BASIC dialect (PATB)
+    - No parameters are needed (or few global vars)
+    - You're porting vintage BASIC programs
+
+  Use DEF FN when:
+    - You need a simple math formula
+    - The function is a single expression
+    - You need 1-4 parameters
+    - You want classic BASIC compatibility
+
+  Use SUB when:
+    - You need named, multi-line procedures
+    - You need parameters with local scope
+    - The subroutine performs an action (no return value)
+    - You want clean, maintainable code
+
+  Use FUNCTION when:
+    - You need a named block that returns a value
+    - The computation takes multiple lines
+    - You need parameters with local scope
+    - The function is called from expressions
+
+
+3.  COMPARISON TABLE
+----------------------
+
+  Feature           GOSUB       DEF FN      SUB        FUNCTION
+  ────────────────  ──────────  ──────────  ─────────  ──────────
+  Parameters        No          Yes (1-4)   Yes (0-8)  Yes (0-8)
+  Return value      No          Yes         No         Yes
+  Multi-line body   Yes         No (1 expr) Yes        Yes
+  Named             No (line#)  Yes (FNx)   Yes        Yes
+  Local variables   No          Yes (auto)  Yes (save) Yes (save)
+  Recursive         Risky       Yes         Yes        Yes
+  Max instances     256 deep    64 defs     64 defs    64 defs
+  Origin            1964        1964        1985       1985
+
+
+4.  HISTORICAL CONTEXT
+-------------------------
+
+  Year  System          Feature
+  ────  ──────────────  ──────────────────────────────
+  1964  Dartmouth BASIC GOSUB/RETURN, DEF FN
+  1975  Microsoft BASIC GOSUB, DEF FN (single letter)
+  1981  GW-BASIC        DEF FN with multi-param
+  1985  QBasic          SUB, FUNCTION, CALL
+  1991  QBasic 4.5      SHARED, STATIC, EXIT SUB
+  2024  BASIC++         All of the above, unified
+
+
+======================================================================
+Part II:  GOSUB/RETURN — CLASSIC SUBROUTINES
+======================================================================
+
+
+5.  SYNTAX AND SEMANTICS
+---------------------------
+
+  GOSUB line_number     Jump to line, push return addr
+  GOSUB label           Jump to label (if supported)
+  RETURN                Pop return address, jump back
+
+GOSUB pushes the current execution position onto the
+stack, then jumps to the target line.  RETURN pops the
+saved position and resumes execution after the GOSUB.
+
+
+6.  GOSUB TO A LINE NUMBER
+-----------------------------
+
+  100 PRINT "Before GOSUB"
+  110 GOSUB 500
+  120 PRINT "After GOSUB"
+  130 END
+  500 REM -- Subroutine --
+  510 PRINT "Inside subroutine!"
+  520 RETURN
+
+Output:
+
+  Before GOSUB
+  Inside subroutine!
+  After GOSUB
+
+The flow is:
+
+  100 → 110 → [push 120] → 500 → 510 → 520 →
+  [pop 120] → 120 → 130
+
+
+7.  GOSUB TO A LABEL
+-----------------------
+
+In QBasic and BASIC++ dialects with extended variables:
+
+  100 GOSUB DrawBorder
+  110 PRINT "Main content"
+  120 GOSUB DrawBorder
+  130 END
+  140 REM
+  DrawBorder:
+    PRINT "════════════════════════════════"
+    RETURN
+
+
+8.  RETURN
+-----------
+
+RETURN pops the most recent GOSUB frame from the stack
+and resumes execution:
+
+  100 GOSUB 1000
+  110 GOSUB 2000
+  120 END
+  1000 PRINT "First sub" : RETURN
+  2000 PRINT "Second sub" : RETURN
+
+RETURN raises ERR_HOW if the stack is empty (no matching
+GOSUB).
+
+
+9.  NESTED GOSUB
+-------------------
+
+GOSUB calls can nest — each pushes a frame on the stack:
+
+  100 GOSUB 1000
+  110 END
+  1000 PRINT "Level 1"
+  1010 GOSUB 2000
+  1020 PRINT "Back to Level 1"
+  1030 RETURN
+  2000 PRINT "Level 2"
+  2010 GOSUB 3000
+  2020 PRINT "Back to Level 2"
+  2030 RETURN
+  3000 PRINT "Level 3"
+  3010 RETURN
+
+Output:
+
+  Level 1
+  Level 2
+  Level 3
+  Back to Level 2
+  Back to Level 1
+
+Maximum nesting depth is 1024 (MAX_STACK_DEPTH).
+
+
+10.  ON...GOSUB — COMPUTED GOSUB
+------------------------------------
+
+ON...GOSUB selects a subroutine based on a value:
+
+  100 INPUT "Choice (1-3): "; C%
+  110 ON C% GOSUB 1000, 2000, 3000
+  120 PRINT "Done"
+  130 END
+  1000 PRINT "Option 1" : RETURN
+  2000 PRINT "Option 2" : RETURN
+  3000 PRINT "Option 3" : RETURN
+
+If C% = 1, GOSUB 1000.  If C% = 2, GOSUB 2000.  Etc.
+If the value is out of range, execution continues on the
+next line (no GOSUB).
+
+
+11.  GOSUB BEST PRACTICES
+----------------------------
+
+  1. Always put subroutines AFTER the END statement
+     to prevent fall-through execution:
+
+       100 GOSUB 1000
+       110 END
+       1000 REM -- Subroutine starts here --
+
+  2. Use REM comments to label subroutine entry points:
+
+       1000 REM === Draw Border ===
+
+  3. Every GOSUB must have a matching RETURN.
+     Forgetting RETURN causes the program to fall through
+     into the next subroutine or reach END.
+
+  4. Use meaningful line numbers:
+
+       1000-1099: Draw routines
+       2000-2099: Input routines
+       3000-3099: File routines
+
+
+12.  LIMITATIONS OF GOSUB
+----------------------------
+
+  - No parameters — you must set global variables before
+    the call and read them after
+  - No local variables — subroutines share all variables
+    with the caller
+  - No return values — you must use a global variable
+  - Hard to read — line number targets are opaque
+  - Hard to maintain — renumbering breaks GOSUB targets
+
+These limitations are why SUB/FUNCTION was invented.
+
+
+======================================================================
+Part III:  SUB — NAMED SUBROUTINES
+======================================================================
+
+
+13.  SUB DEFINITION SYNTAX
+-----------------------------
+
+  SUB SubName [(param1, param2, ...)]
+    body statements
+  END SUB
+
+Define a named subroutine:
+
+  100 SUB Greet(Name$)
+  110   PRINT "Hello, "; Name$; "!"
+  120 END SUB
+  130 REM
+  200 CALL Greet("Alice")
+  210 CALL Greet("Bob")
+
+Output:
+
+  Hello, Alice!
+  Hello, Bob!
+
+
+14.  PARAMETER LISTS
+----------------------
+
+SUBs accept 0 to 8 parameters (MAX_SUB_PARAMS = 8):
+
+  REM -- No parameters --
+  SUB DrawLine
+    PRINT STRING$(40, "-")
+  END SUB
+
+  REM -- One parameter --
+  SUB ShowValue(X)
+    PRINT "Value: "; X
+  END SUB
+
+  REM -- Multiple parameters --
+  SUB DrawBox(X, Y, W, H)
+    LOCATE Y, X
+    PRINT "+" + STRING$(W-2, "-") + "+"
+    FOR I% = 1 TO H - 2
+      LOCATE Y + I%, X
+      PRINT "|" + STRING$(W-2, " ") + "|"
+    NEXT I%
+    LOCATE Y + H - 1, X
+    PRINT "+" + STRING$(W-2, "-") + "+"
+  END SUB
+
+Parameters are passed by value — changing a parameter
+inside the SUB does not affect the caller's variable.
+
+
+15.  STRING PARAMETERS
+------------------------
+
+Use $ suffix for string parameters:
+
+  100 SUB Center(Text$, Width%)
+  110   PAD% = (Width% - LEN(Text$)) / 2
+  120   PRINT SPC(PAD%); Text$
+  130 END SUB
+  140 REM
+  200 CALL Center("Welcome!", 40)
+  210 CALL Center("BASIC++ v0.21", 40)
+
+String parameters are stored using the param_is_string
+flag in the SubDef structure.  When param_is_string[i]
+is 1, the argument is bound to a string variable (A$-Z$)
+rather than a numeric variable (A-Z).
+
+
+16.  CALLING WITH CALL
+-------------------------
+
+  Syntax: CALL SubName [(arg1, arg2, ...)]
+
+CALL explicitly invokes a SUB:
+
+  100 SUB AddScore(Points%)
+  110   SCORE% = SCORE% + Points%
+  120   PRINT "Score: "; SCORE%
+  130 END SUB
+  140 REM
+  200 SCORE% = 0
+  210 CALL AddScore(100)
+  220 CALL AddScore(250)
+  230 CALL AddScore(75)
+
+Arguments can be expressions:
+
+  300 CALL DrawBox(10, 5, 2 * WIDTH%, HEIGHT% + 2)
+
+Arguments without parentheses are also accepted:
+
+  400 CALL Greet "Alice"
+
+
+17.  IMPLICIT CALLING (BARE NAME)
+------------------------------------
+
+In QBasic-compatible dialects, you can call a SUB by
+its name alone, without CALL:
+
+  100 SUB PrintHeader
+  110   PRINT "========================"
+  120   PRINT "  My Application v1.0"
+  130   PRINT "========================"
+  140 END SUB
+  150 REM
+  200 PrintHeader        : REM Implicit call (no CALL)
+  210 PRINT "Main content here"
+
+With arguments:
+
+  100 SUB Move(Direction$, Steps%)
+  110   PRINT "Moving "; Direction$; " "; Steps%; " steps"
+  120 END SUB
+  130 REM
+  200 Move "NORTH", 5    : REM Implicit call with args
+  210 Move("SOUTH", 3)   : REM With parentheses
+
+The parser recognizes a named variable followed by
+arguments as an implicit SUB call when the name matches
+a defined SUB and LET-optional mode is active.
+
+
+18.  END SUB
+--------------
+
+END SUB marks the end of a subroutine definition and
+acts as an implicit RETURN when reached during execution:
+
+  100 SUB DoWork(N%)
+  110   FOR I% = 1 TO N%
+  120     PRINT "Working... step "; I%
+  130   NEXT I%
+  140 END SUB      : REM Execution returns to caller here
+
+When END SUB executes, it:
+
+  1. Pops the FRAME_SUB from the stack
+  2. Restores all saved variables (A-Z, A$-Z$)
+  3. Sets in_sub_index to -1
+  4. Jumps to the saved return_index
+
+
+19.  EXIT SUB — EARLY RETURN
+-------------------------------
+
+  Syntax: EXIT SUB
+
+EXIT SUB immediately returns from the current SUB:
+
+  100 SUB Validate(Value%)
+  110   IF Value% < 0 THEN
+  120     PRINT "Error: negative value!"
+  130     EXIT SUB
+  140   END IF
+  150   IF Value% > 100 THEN
+  160     PRINT "Error: value too large!"
+  170     EXIT SUB
+  180   END IF
+  190   PRINT "Value is valid: "; Value%
+  200 END SUB
+
+EXIT SUB performs the same stack operations as END SUB:
+pop frame, restore variables, jump to caller.
+
+
+20.  VARIABLE SCOPING IN SUB
+-------------------------------
+
+When a SUB is called, BASIC++ saves ALL single-letter
+variables (A-Z) and string variables (A$-Z$).  This
+means:
+
+  - Parameters are bound to fresh copies
+  - Local variables inside the SUB start at their
+    pre-call values (which are saved/restored)
+  - Named variables (multi-character) are NOT saved —
+    they are shared with the caller (global scope)
+
+This scoping model is a simplified version of QBasic's:
+
+  QBasic                         BASIC++
+  ─────────────────────────────  ──────────────────────
+  Parameters passed by reference Parameters by value
+  SHARED keyword for globals     Named vars are global
+  STATIC keyword for persistent  No static vars
+  Local scope for all vars       A-Z saved/restored
+                                 Named vars shared
+
+Example showing scope:
+
+  100 X% = 42
+  200 SUB TestScope(A%)
+  210   PRINT "Inside: A% = "; A%
+  220   PRINT "Inside: X% = "; X%   : REM X was saved
+  230   X% = 999                     : REM modifies saved X
+  240 END SUB
+  250 REM
+  300 CALL TestScope(7)
+  310 PRINT "Outside: X% = "; X%   : REM X restored to 42
+
+
+21.  HOW SUB CALLS WORK INTERNALLY
+--------------------------------------
+
+When CALL SubName(args) executes:
+
+  Step 1: Find SubDef
+    runtime_find_sub() scans the subs[] table
+    for a matching name (case-insensitive).
+
+  Step 2: Push FRAME_SUB
+    A StackFrame with type = FRAME_SUB is pushed
+    containing:
+    - return_index: line to resume after call
+    - sub_index: index into subs[] table
+    - saved_vars[26]: copy of A-Z variables
+    - saved_strvars[26]: copy of A$-Z$ variables
+
+  Step 3: Bind Parameters
+    For each parameter, set_param_by_name() stores
+    the argument value in the appropriate variable
+    or named variable slot.
+
+  Step 4: Jump to Body
+    next_index = sd->body_index
+    in_sub_index = sub table index
+
+  Step 5: Execute Body
+    Normal line-by-line execution continues.
+
+  Step 6: END SUB / EXIT SUB
+    Pop FRAME_SUB, restore all saved variables,
+    jump to return_index.
+
+
+22.  SUB EXAMPLES
+-------------------
+
+  REM -- Utility SUBs --
+
+  SUB Pause(Msg$)
+    PRINT Msg$
+    DO : LOOP UNTIL INKEY$ <> ""
+  END SUB
+
+  SUB CenterPrint(Text$)
+    COL% = (80 - LEN(Text$)) / 2 + 1
+    LOCATE CSRLIN, COL%
+    PRINT Text$
+  END SUB
+
+  SUB HLine(Char$, Width%)
+    PRINT STRING$(Width%, Char$)
+  END SUB
+
+  SUB Box(X%, Y%, W%, H%, Color%)
+    COLOR Color%
+    LOCATE Y%, X%
+    PRINT CHR$(218) + STRING$(W%-2, CHR$(196)) + CHR$(191)
+    FOR I% = 1 TO H% - 2
+      LOCATE Y% + I%, X%
+      PRINT CHR$(179) + STRING$(W%-2, " ") + CHR$(179)
+    NEXT I%
+    LOCATE Y% + H% - 1, X%
+    PRINT CHR$(192) + STRING$(W%-2, CHR$(196)) + CHR$(217)
+    COLOR
+  END SUB
+
+  SUB StatusBar(Text$)
+    LOCATE 25, 1
+    COLOR 0, 7
+    PRINT STRING$(80, " ");
+    LOCATE 25, 2
+    PRINT Text$;
+    COLOR
+  END SUB
+
+
+======================================================================
+Part IV:  FUNCTION — NAMED FUNCTIONS
+======================================================================
+
+
+23.  FUNCTION DEFINITION SYNTAX
+----------------------------------
+
+  FUNCTION FuncName [(param1, param2, ...)]
+    body statements
+    FuncName = return_value
+  END FUNCTION
+
+Define a named function that returns a value:
+
+  100 FUNCTION Square(N)
+  110   Square = N * N
+  120 END FUNCTION
+  130 REM
+  200 PRINT Square(5)       : REM Output: 25
+  210 PRINT Square(12)      : REM Output: 144
+  220 X% = Square(7) + 1    : REM X% = 50
+
+
+24.  RETURN VALUES
+--------------------
+
+Set the return value by assigning to the function name:
+
+  100 FUNCTION Max(A, B)
+  110   IF A > B THEN
+  120     Max = A
+  130   ELSE
+  140     Max = B
+  150   END IF
+  160 END FUNCTION
+  170 REM
+  200 PRINT Max(42, 17)     : REM Output: 42
+  210 PRINT Max(3, 99)      : REM Output: 99
+
+The assignment FuncName = value sets fn_return_value
+in the RuntimeState.  This value is returned to the
+calling expression after END FUNCTION.
+
+If you don't assign a value, the function returns 0
+(the default value of fn_return_value).
+
+
+25.  CALLING A FUNCTION
+--------------------------
+
+Functions are called from expressions using their name
+followed by parenthesized arguments:
+
+  100 FUNCTION Hypotenuse(A, B)
+  110   Hypotenuse = SQR(AA + BB)
+  120 END FUNCTION
+  130 REM
+  200 PRINT Hypotenuse(3, 4)           : REM 5
+  210 D = Hypotenuse(Width%, Height%)  : REM expression
+  220 IF Hypotenuse(X, Y) > 10 THEN    : REM in IF
+  230   PRINT "Too far!"
+  240 END IF
+
+Functions can be used anywhere a value is expected:
+
+  - In PRINT: PRINT Square(5)
+  - In assignments: X = Square(5)
+  - In conditions: IF Square(5) > 20 THEN
+  - In other functions: PRINT Max(Square(3), Square(4))
+  - In expressions: Y = Square(X) + Square(Y) + 1
+
+
+26.  END FUNCTION
+-------------------
+
+END FUNCTION works identically to END SUB — pops the
+FRAME_SUB, restores variables, returns to caller.
+
+The only difference: after END FUNCTION, the caller
+reads fn_return_value as the function's result.
+
+
+27.  EXIT FUNCTION — EARLY RETURN
+-------------------------------------
+
+  Syntax: EXIT FUNCTION
+
+EXIT FUNCTION immediately returns from the current
+FUNCTION with whatever value has been assigned:
+
+  100 FUNCTION SafeDivide(A, B)
+  110   IF B = 0 THEN
+  120     SafeDivide = 0
+  130     EXIT FUNCTION
+  140   END IF
+  150   SafeDivide = A / B
+  160 END FUNCTION
+
+Set the return value BEFORE calling EXIT FUNCTION.
+
+
+28.  HOW FUNCTION CALLS WORK INTERNALLY
+-------------------------------------------
+
+When FuncName(args) appears in an expression:
+
+  Step 1: Recognize FUNCTION Call
+    The parser sees TOK_NAMED_VAR followed by
+    TOK_LPAREN.  runtime_find_sub() confirms the
+    name matches a SUB/FUNCTION with is_function = 1.
+
+  Step 2: Push FRAME_SUB
+    Same as SUB calls — save all A-Z, A$-Z$.
+
+  Step 3: Bind Parameters
+    Same as SUB calls — set_param_by_name().
+
+  Step 4: Execute Body Inline
+    Unlike SUB calls (which use next_index to jump),
+    FUNCTION calls execute the body INLINE within the
+    expression parser.  The parser saves current_index
+    and next_index, then runs each body line until
+    END FUNCTION or EXIT FUNCTION pops the frame.
+
+  Step 5: Return Value
+    After the body executes, fn_return_value is read
+    and returned to the calling expression.
+
+  Step 6: Restore State
+    current_index and next_index are restored to their
+    pre-call values.  The expression parser continues.
+
+
+29.  FUNCTION EXAMPLES
+-------------------------
+
+  FUNCTION Factorial(N)
+    IF N <= 1 THEN
+      Factorial = 1
+    ELSE
+      Factorial = N * Factorial(N - 1)
+    END IF
+  END FUNCTION
+
+  FUNCTION Clamp(Value, Lo, Hi)
+    IF Value < Lo THEN
+      Clamp = Lo
+    ELSEIF Value > Hi THEN
+      Clamp = Hi
+    ELSE
+      Clamp = Value
+    END IF
+  END FUNCTION
+
+  FUNCTION IsPrime(N)
+    IF N < 2 THEN
+      IsPrime = 0
+      EXIT FUNCTION
+    END IF
+    FOR I% = 2 TO SQR(N)
+      IF N MOD I% = 0 THEN
+        IsPrime = 0
+        EXIT FUNCTION
+      END IF
+    NEXT I%
+    IsPrime = 1
+  END FUNCTION
+
+  FUNCTION StringRepeat$(S$, Count%)
+    R$ = ""
+    FOR I% = 1 TO Count%
+      R$ = R$ + S$
+    NEXT I%
+    StringRepeat$ = R$
+  END FUNCTION
+
+
+======================================================================
+Part V:  DEF FN — INLINE FUNCTIONS
+======================================================================
+
+
+30.  DEF FN SYNTAX
+--------------------
+
+  DEF FNx(params) = expression
+
+Define a single-expression function:
+
+  100 DEF FNA(X) = X * X + 1
+  110 PRINT FNA(5)         : REM Output: 26
+  120 PRINT FNA(0)         : REM Output: 1
+
+The function name is FN followed by a single letter
+(A-Z).  This gives you up to 26 named functions.
+
+
+31.  PARAMETERS AND THE BODY EXPRESSION
+-------------------------------------------
+
+DEF FN supports 1 to 4 parameters (MAX_FN_PARAMS = 4):
+
+  100 DEF FNA(X) = ABS(X)
+  110 DEF FNB(X,Y) = SQR(XX + YY)
+  120 DEF FNC(A,B,C) = (-B + SQR(BB - 4A*C)) / (2*A)
+
+The body is a single expression — everything after the
+= sign to the end of the line.  It can use any function
+or operator available in BASIC++:
+
+  200 DEF FND(X) = SIN(X)  COS(X)  2
+  210 DEF FNE(R) = 3.14159  R  R
+  220 DEF FNF(C) = C * 9 / 5 + 32
+
+The body is stored as text and re-parsed each time the
+function is called.  This means the body can reference
+variables that change between calls:
+
+  300 DEF FNG(X) = X + OFFSET%
+  310 OFFSET% = 10
+  320 PRINT FNG(5)    : REM Output: 15
+  330 OFFSET% = 100
+  340 PRINT FNG(5)    : REM Output: 105
+
+
+32.  CALLING FN FUNCTIONS
+----------------------------
+
+FN functions are called with the FN prefix:
+
+  100 DEF FNA(X) = X * X
+  110 PRINT FNA(5)         : REM 25
+  120 Y = FNA(3) + FNA(4)  : REM 9 + 16 = 25
+  130 IF FNA(X) > 100 THEN PRINT "Big!"
+
+FN calls can appear anywhere an expression is valid:
+
+  - In PRINT: PRINT FNA(5)
+  - In assignments: Y = FNA(5)
+  - In conditions: IF FNA(5) > 20 THEN
+  - Nested: PRINT FNA(FNB(3, 4))
+
+
+33.  LOCAL SCOPING (SAVE/BIND/EVAL/RESTORE)
+----------------------------------------------
+
+DEF FN provides automatic local scoping for parameters:
+
+  Step 1: SAVE
+    The current values of parameter variables are saved
+    to a temporary array (saved_vars[]).
+
+  Step 2: BIND
+    Parameter variables are set to the argument values.
+    E.g., for FNA(5), variable A is set to 5.
+
+  Step 3: EVAL
+    The body expression is parsed and evaluated using
+    the current variable state.
+
+  Step 4: RESTORE
+    Parameter variables are restored to their saved
+    values.
+
+This means the caller's variables are not affected:
+
+  100 DEF FNA(X) = X * 2
+  110 X = 42
+  120 PRINT FNA(5)    : REM Output: 10
+  130 PRINT X         : REM Output: 42 (restored!)
+
+
+34.  DEF FN VS FUNCTION
+--------------------------
+
+  Feature              DEF FN              FUNCTION
+  ───────────────────  ──────────────────  ──────────────
+  Body                 Single expression   Multi-line
+  Max parameters       4                   8
+  Name length          1 letter (FNx)      31 chars
+  Max definitions      64                  64 (shared)
+  Local scope          Auto (params only)  Full (A-Z)
+  Can use IF/THEN      No (expression)     Yes
+  Can use FOR/NEXT     No (expression)     Yes
+  Can call other fns   Yes                 Yes
+  Recursion            Yes                 Yes
+
+Use DEF FN for simple formulas.  Use FUNCTION for
+anything that needs multiple statements, branching,
+or loops.
+
+
+35.  DEF SEG (NOT A FUNCTION!)
+---------------------------------
+
+DEF SEG is parsed by the same handler (parse_def_fn)
+but is NOT a function definition.  It sets the virtual
+memory segment base for PEEK and POKE:
+
+  100 DEF SEG = &HB800    : REM set segment base
+  110 POKE 0, 65           : REM write to segment
+  120 DEF SEG              : REM reset to default
+
+The parser checks for SEG after DEF and handles it
+separately before looking for FN.
+
+
+36.  DEF FN EXAMPLES
+-----------------------
+
+  REM -- Temperature conversion --
+  DEF FNF(C) = C * 9 / 5 + 32
+  DEF FNC(F) = (F - 32) * 5 / 9
+  PRINT "100°C = "; FNF(100); "°F"
+  PRINT "212°F = "; FNC(212); "°C"
+
+  REM -- Distance formula --
+  DEF FND(X,Y) = SQR(XX + YY)
+  PRINT "Distance: "; FND(3, 4)
+
+  REM -- Percentage --
+  DEF FNP(V,T) = INT(V * 100 / T + 0.5)
+  PRINT FNP(75, 100); "%"
+
+  REM -- Clamping --
+  DEF FNL(V,L,H) = -(V>H)H - (V<L)L - (V>=L)(V<=H)V
+
+
+======================================================================
+Part VI:  ADVANCED TOPICS
+======================================================================
+
+
+37.  THE CALL STACK (STACKFRAME)
+-----------------------------------
+
+Every GOSUB, SUB call, FOR loop, WHILE loop, and DO
+loop pushes a StackFrame onto the runtime stack.  The
+stack is a fixed-size array:
+
+  StackFrame stack[MAX_STACK_DEPTH];  / 1,024 frames /
+  int        stack_top;               / 0 = empty /
+
+Push adds a frame at stack[stack_top++].
+Pop removes a frame at stack[--stack_top].
+
+
+38.  FRAME TYPES
+------------------
+
+  FrameType      Used By           Data Stored
+  ─────────────  ────────────────  ──────────────────
+  FRAME_GOSUB    GOSUB/RETURN      return_index
+  FRAME_FOR      FOR/NEXT          var, limit, step,
+                                   body_index
+  FRAME_WHILE    WHILE/WEND        loop_index
+  FRAME_DO       DO/LOOP           body_index,
+                                   is_until, is_pre
+  FRAME_SUB      SUB/FUNCTION      return_index,
+                 CALL              sub_index,
+                                   saved_vars[26],
+                                   saved_strvars[26]
+
+FRAME_SUB is the largest frame type because it saves
+all 26 numeric and 26 string variables.
+
+
+39.  VARIABLE SAVING AND RESTORATION
+----------------------------------------
+
+When a SUB or FUNCTION is called:
+
+  SAVE (push):
+    saved_vars[0..25] = variables[0..25]   (A-Z)
+    saved_strvars[0..25] = string_vars[0..25] (A$-Z$)
+
+  RESTORE (pop):
+    variables[0..25] = saved_vars[0..25]
+    string_vars[0..25] = saved_strvars[0..25]
+
+This means:
+
+  - Changes to single-letter variables inside a SUB
+    are LOST when the SUB returns
+  - Changes to named variables (multi-char) PERSIST
+    because named variables are NOT saved/restored
+
+This is by design — named variables serve as shared
+global state (similar to QBasic's SHARED keyword).
+
+
+40.  MAXIMUM NESTING DEPTH
+-----------------------------
+
+The stack holds 256 frames.  Each level of GOSUB,
+FOR, WHILE, DO, SUB, or FUNCTION call consumes one
+frame.  Practical limits:
+
+  Pattern                    Max Depth
+  ─────────────────────────  ──────────
+  Pure GOSUB nesting         256
+  Pure SUB nesting           256
+  SUB with FOR loop inside   128 (2 frames each)
+  SUB with nested FOR+DO     ~64 (4 frames each)
+
+Exceeding 256 frames raises ERR_SORRY.
+
+
+41.  RECURSION
+----------------
+
+Both SUB and FUNCTION support recursion because each
+call pushes its own FRAME_SUB with saved variables:
+
+  100 FUNCTION Factorial(N)
+  110   IF N <= 1 THEN
+  120     Factorial = 1
+  130   ELSE
+  140     Factorial = N * Factorial(N - 1)
+  150   END IF
+  160 END FUNCTION
+  170 REM
+  200 PRINT Factorial(1)     : REM 1
+  210 PRINT Factorial(5)     : REM 120
+  220 PRINT Factorial(10)    : REM 3628800
+
+Call stack for Factorial(4):
+
+  Frame 0: Factorial(4) → saved vars, N=4
+  Frame 1: Factorial(3) → saved vars, N=3
+  Frame 2: Factorial(2) → saved vars, N=2
+  Frame 3: Factorial(1) → returns 1
+  Unwind:  21=2 → 32=6 → 4*6=24
+
+DEF FN also supports recursion (with care):
+
+  100 DEF FNA(N) = -(N<=1) + -(N>1)  N  FNA(N-1)
+
+
+42.  MUTUAL RECURSION
+------------------------
+
+Two functions can call each other:
+
+  100 FUNCTION IsEven(N)
+  110   IF N = 0 THEN
+  120     IsEven = 1
+  130   ELSE
+  140     IsEven = IsOdd(N - 1)
+  150   END IF
+  160 END FUNCTION
+  170 REM
+  180 FUNCTION IsOdd(N)
+  190   IF N = 0 THEN
+  200     IsOdd = 0
+  210   ELSE
+  220     IsOdd = IsEven(N - 1)
+  230   END IF
+  240 END FUNCTION
+  250 REM
+  300 PRINT IsEven(4)     : REM 1 (true)
+  310 PRINT IsOdd(7)      : REM 1 (true)
+
+
+43.  PASSING ARRAYS AND RECORDS
+----------------------------------
+
+BASIC++ passes parameters by value.  You cannot pass
+entire arrays or typed records as parameters.  Instead:
+
+  - Pass individual elements: CALL Process(Array%(5))
+  - Use named variables (global): access them inside SUB
+  - Pass an index: CALL ProcessItem(5) and access
+    the global array inside the SUB
+
+Example:
+
+  100 DIM Scores(100)
+  110 SUB PrintScore(Index%)
+  120   PRINT "Score #"; Index%; " = "; Scores(Index%)
+  130 END SUB
+  140 REM
+  200 Scores(1) = 95
+  210 Scores(2) = 87
+  220 CALL PrintScore(1)
+  230 CALL PrintScore(2)
+
+
+44.  ERROR HANDLING INSIDE SUBROUTINES
+-----------------------------------------
+
+ON ERROR GOTO is global — it applies inside SUBs and
+FUNCTIONs:
+
+  100 ON ERROR GOTO 9000
+  110 CALL DangerousSub
+  120 END
+  130 REM
+  200 SUB DangerousSub
+  210   X% = 1 / 0     : REM Division by zero!
+  220 END SUB
+  230 REM
+  9000 PRINT "Error "; ERR; " on line "; ERL
+  9010 RESUME NEXT
+
+The error handler fires regardless of call depth.
+However, RESUME NEXT resumes at the next line after
+the error, which may be inside the SUB body.
+
+
+======================================================================
+Part VII:  INTERNAL ARCHITECTURE
+======================================================================
+
+
+45.  SUBDEF STRUCTURE
+-----------------------
+
+From runtime.h:
+
+  #define MAX_SUBS       64
+  #define MAX_SUB_PARAMS 8
+
+  typedef struct SubDef {
+      char name[MAX_VAR_NAME_LEN + 1];   / 32 bytes /
+      int  name_len;
+      int  body_index;     / first line of body /
+      char params[MAX_SUB_PARAMS]
+                 [MAX_VAR_NAME_LEN + 1]; / 8 × 32 /
+      int  param_is_string[MAX_SUB_PARAMS];
+      int  param_count;
+      int  is_function;    / 0=SUB, 1=FUNCTION /
+  } SubDef;
+
+Each SubDef stores:
+
+  - name: subroutine/function name (uppercase)
+  - name_len: length of the name
+  - body_index: program store index of first body line
+  - params[]: up to 8 parameter names
+  - param_is_string[]: 1 if param is string type ($)
+  - param_count: number of parameters
+  - is_function: 0 for SUB, 1 for FUNCTION
+
+The subs[] table is shared between SUBs and FUNCTIONs.
+The is_function flag distinguishes them.
+
+
+46.  USERFUNCTION STRUCTURE
+------------------------------
+
+From runtime.h (for DEF FN):
+
+  #define MAX_USER_FUNCS 256
+  #define MAX_FN_PARAMS  4
+  #define MAX_FN_BODY    MAX_LINE_LENGTH
+
+  typedef struct UserFunction {
+      char name[MAX_VAR_NAME_LEN + 1];
+      int  name_len;
+      char params[MAX_FN_PARAMS];  / single letters /
+      int  param_count;
+      char body[MAX_FN_BODY + 1];  / expression text /
+      int  body_len;
+  } UserFunction;
+
+DEF FN functions are stored separately from SUBs:
+
+  - name: single-letter function name (e.g., "A")
+  - params[]: single-letter parameter names (A-Z)
+  - body: the expression text, stored as a string
+  - body_len: length of the expression text
+
+The body is RE-PARSED every time the function is called.
+This is inefficient but simple and allows the body to
+reference variables that change between calls.
+
+
+47.  STACKFRAME / FRAME_SUB
+------------------------------
+
+From runtime.h:
+
+  typedef struct StackFrame {
+      FrameType type;
+      union {
+          struct {
+              int return_index;
+          } gosub;
+          struct {
+              int  return_index;
+              int  sub_index;
+              BValue saved_vars[MAX_VARIABLES];     / 26 /
+              BValue saved_strvars[MAX_STRING_VARS]; / 26 /
+          } sub_call;
+          /* ... FOR, WHILE, DO frames ... */
+      } data;
+  } StackFrame;
+
+FRAME_SUB is the largest frame type.  Each frame stores:
+
+  - return_index: line to resume after return
+  - sub_index: which SubDef this call is for
+  - saved_vars[26]: snapshot of all A-Z values
+  - saved_strvars[26]: snapshot of all A$-Z$ values
+
+Approximate size per FRAME_SUB:
+
+  26 × sizeof(BValue) + 26 × sizeof(BValue) + 8
+  = 52 × 16 + 8 ≈ 840 bytes
+
+
+48.  STORAGE IN RUNTIMESTATE
+-------------------------------
+
+  /* SUB/FUNCTION table */
+  SubDef   subs[MAX_SUBS];        / 64 slots /
+  int      sub_count;             / # defined /
+  BValue   fn_return_value;       / FUNCTION result /
+  int      in_sub_index;          / -1 = not in SUB /
+
+  / DEF FN table /
+  UserFunction user_funcs[MAX_USER_FUNCS];  / 256 slots /
+  int          user_func_count;
+
+  / Call stack /
+  StackFrame stack[MAX_STACK_DEPTH];  / 1024 frames /
+  int        stack_top;
+
+
+49.  CAPACITY LIMITS (CONFIG.H)
+----------------------------------
+
+  Constant            Value   What It Limits
+  ──────────────────  ──────  ────────────────────────
+  MAX_SUBS            256     Total SUB + FUNCTION defs
+  MAX_SUB_PARAMS      8       Parameters per SUB/FUNC
+  MAX_USER_FUNCS      256     Total DEF FN definitions
+  MAX_FN_PARAMS       4       Parameters per DEF FN
+  MAX_FN_BODY         255     Body expression length
+  MAX_STACK_DEPTH     1024    Total stack frames
+  MAX_VAR_NAME_LEN    31      Name length (SUBs, params)
+
+
+50.  NAME LOOKUP: RUNTIME_FIND_SUB
+-------------------------------------
+
+When CALL SubName or SubName(args) is encountered:
+
+  SubDef runtime_find_sub(RuntimeState rt,
+                           const char *name,
+                           int name_len);
+
+This function:
+
+  1. Converts name to uppercase
+  2. Scans subs[0..sub_count-1]
+  3. Compares name_len and name (case-insensitive)
+  4. Returns pointer to matching SubDef, or NULL
+
+The search is O(N) where N is the number of defined
+SUBs/FUNCTIONs.  With max 64 entries, this is trivial.
+
+
+======================================================================
+Part VIII:  COMPLETE EXAMPLES
+======================================================================
+
+
+51.  EXAMPLE: MATH LIBRARY
+-----------------------------
+
+  100 REM ======================================
+  110 REM  Math Library (using all three types)
+  120 REM ======================================
+  130 REM
+  140 REM -- DEF FN: simple formulas --
+  150 DEF FNA(R) = 3.14159  R  R       : REM area of circle
+  160 DEF FNP(R) = 2 * 3.14159 * R       : REM perimeter
+  170 DEF FNH(A,B) = SQR(AA + BB)      : REM hypotenuse
+  180 DEF FND(X1,Y1,X2,Y2) = SQR((X2-X1)*(X2-X1) + _
+                                  (Y2-Y1)*(Y2-Y1))
+  190 REM
+  200 REM -- FUNCTION: multi-line computations --
+  210 FUNCTION GCD(A, B)
+  220   DO WHILE B > 0
+  230     T = B
+  240     B = A MOD B
+  250     A = T
+  260   LOOP
+  270   GCD = A
+  280 END FUNCTION
+  290 REM
+  300 FUNCTION Fibonacci(N)
+  310   IF N <= 0 THEN
+  320     Fibonacci = 0
+  330   ELSEIF N = 1 THEN
+  340     Fibonacci = 1
+  350   ELSE
+  360     A = 0 : B = 1
+  370     FOR I% = 2 TO N
+  380       T = A + B
+  390       A = B
+  400       B = T
+  410     NEXT I%
+  420     Fibonacci = B
+  430   END IF
+  440 END FUNCTION
+  450 REM
+  460 REM -- Test everything --
+  470 PRINT "Circle (r=5):"
+  480 PRINT "  Area: "; FNA(5)
+  490 PRINT "  Perimeter: "; FNP(5)
+  500 PRINT "Hypotenuse (3,4): "; FNH(3,4)
+  510 PRINT "Distance (0,0)-(3,4): "; FND(0,0,3,4)
+  520 PRINT "GCD(48, 18): "; GCD(48, 18)
+  530 PRINT "Fibonacci(10): "; Fibonacci(10)
+  540 END
+
+
+52.  EXAMPLE: STRING UTILITIES
+---------------------------------
+
+  100 REM ======================================
+  110 REM  String Utility Library
+  120 REM ======================================
+  130 REM
+  140 FUNCTION PadLeft$(Text$, Width%, Char$)
+  150   IF LEN(Text$) >= Width% THEN
+  160     PadLeft$ = Text$
+  170     EXIT FUNCTION
+  180   END IF
+  190   PadLeft$ = STRING$(Width% - LEN(Text$), Char$) + _
+                   Text$
+  200 END FUNCTION
+  210 REM
+  220 FUNCTION PadRight$(Text$, Width%, Char$)
+  230   IF LEN(Text$) >= Width% THEN
+  240     PadRight$ = Text$
+  250     EXIT FUNCTION
+  260   END IF
+  270   PadRight$ = Text$ + STRING$(Width% - LEN(Text$), _
+                                    Char$)
+  280 END FUNCTION
+  290 REM
+  300 FUNCTION Repeat$(Text$, Count%)
+  310   R$ = ""
+  320   FOR I% = 1 TO Count%
+  330     R$ = R$ + Text$
+  340   NEXT I%
+  350   Repeat$ = R$
+  360 END FUNCTION
+  370 REM
+  380 SUB PrintCentered(Text$, Width%)
+  390   PAD% = (Width% - LEN(Text$)) / 2
+  400   IF PAD% < 0 THEN PAD% = 0
+  410   PRINT SPC(PAD%); Text$
+  420 END SUB
+  430 REM
+  440 REM -- Test --
+  450 CALL PrintCentered("Hello, World!", 40)
+  460 PRINT PadLeft$("42", 8, "0")     : REM "00000042"
+  470 PRINT PadRight$("Alice", 20, ".") : REM "Alice..............."
+  480 PRINT Repeat$("=-", 20)          : REM 40 chars
+  490 END
+
+
+53.  EXAMPLE: MENU SYSTEM WITH SUBS
+---------------------------------------
+
+  100 REM ======================================
+  110 REM  Menu System Using SUBs
+  120 REM ======================================
+  130 REM
+  140 SUB DrawMenu(Title$, Items$(), Count%)
+  150   CLS
+  160   COLOR 15, 1
+  170   LOCATE 1, 1
+  180   PRINT STRING$(80, " ");
+  190   LOCATE 1, (80 - LEN(Title$)) / 2
+  200   PRINT Title$;
+  210   COLOR
+  220   FOR I% = 1 TO Count%
+  230     LOCATE 5 + I% * 2, 20
+  240     PRINT I%; ". "; Items$(I%)
+  250   NEXT I%
+  260   LOCATE 22, 20
+  270   COLOR 8
+  280   PRINT "Enter choice (1-"; Count%; "): ";
+  290   COLOR
+  300 END SUB
+  310 REM
+  320 SUB HandleChoice(Choice%)
+  330   CLS
+  340   SELECT CASE Choice%
+  350     CASE 1
+  360       PRINT "Starting new game..."
+  370     CASE 2
+  380       PRINT "Loading saved game..."
+  390     CASE 3
+  400       PRINT "Opening settings..."
+  410     CASE ELSE
+  420       PRINT "Invalid choice."
+  430   END SELECT
+  440   PRINT
+  450   PRINT "Press any key..."
+  460   DO : LOOP UNTIL INKEY$ <> ""
+  470 END SUB
+  480 REM
+  490 REM -- Main program --
+  500 DIM M$(4)
+  510 M$(1) = "New Game"
+  520 M$(2) = "Load Game"
+  530 M$(3) = "Settings"
+  540 M$(4) = "Exit"
+  550 DO
+  560   CALL DrawMenu("MAIN MENU", M$(), 4)
+  570   INPUT "", C%
+  580   IF C% = 4 THEN EXIT DO
+  590   CALL HandleChoice(C%)
+  600 LOOP
+  610 CLS
+  620 PRINT "Goodbye!"
+  630 END
+
+
+54.  EXAMPLE: RECURSIVE TREE DRAWING
+-----------------------------------------
+
+  100 REM ======================================
+  110 REM  Recursive Tree Drawing
+  120 REM ======================================
+  130 REM
+  140 SUB DrawTree(Depth%, Prefix$, IsLast%)
+  150   IF IsLast% THEN
+  160     PRINT Prefix$; "└── Node (depth "; Depth%; ")"
+  170   ELSE
+  180     PRINT Prefix$; "├── Node (depth "; Depth%; ")"
+  190   END IF
+  200   IF Depth% > 0 THEN
+  210     IF IsLast% THEN
+  220       NewPfx$ = Prefix$ + "    "
+  230     ELSE
+  240       NewPfx$ = Prefix$ + "│   "
+  250     END IF
+  260     CALL DrawTree(Depth% - 1, NewPfx$, 0)
+  270     CALL DrawTree(Depth% - 1, NewPfx$, 1)
+  280   END IF
+  290 END SUB
+  300 REM
+  310 PRINT "Root"
+  320 CALL DrawTree(3, "", 0)
+  330 CALL DrawTree(3, "", 1)
+  340 END
+
+Output:
+
+  Root
+  ├── Node (depth 3)
+  │   ├── Node (depth 2)
+  │   │   ├── Node (depth 1)
+  │   │   │   ├── Node (depth 0)
+  │   │   │   └── Node (depth 0)
+  │   │   └── Node (depth 1)
+  │   │       ├── Node (depth 0)
+  │   │       └── Node (depth 0)
+  │   └── ...
+  └── ...
+
+
+55.  EXAMPLE: EVENT-DRIVEN ARCHITECTURE
+-------------------------------------------
+
+  100 REM ======================================
+  110 REM  Event-Driven System with SUBs
+  120 REM ======================================
+  130 REM
+  140 SUB OnKeyPress(Key$)
+  150   SELECT CASE Key$
+  160     CASE "q", "Q"
+  170       PRINT "Quit requested"
+  180       QUIT% = 1
+  190     CASE "h", "H"
+  200       CALL ShowHelp
+  210     CASE "s", "S"
+  220       CALL SaveState
+  230     CASE "l", "L"
+  240       CALL LoadState
+  250     CASE ELSE
+  260       PRINT "Unknown key: "; Key$
+  270   END SELECT
+  280 END SUB
+  290 REM
+  300 SUB ShowHelp
+  310   PRINT "──────────────────────────────"
+  320   PRINT "  H = Help"
+  330   PRINT "  S = Save"
+  340   PRINT "  L = Load"
+  350   PRINT "  Q = Quit"
+  360   PRINT "──────────────────────────────"
+  370 END SUB
+  380 REM
+  390 SUB SaveState
+  400   PRINT "[Saving state...]"
+  410 END SUB
+  420 REM
+  430 SUB LoadState
+  440   PRINT "[Loading state...]"
+  450 END SUB
+  460 REM
+  470 REM -- Main event loop --
+  480 QUIT% = 0
+  490 PRINT "Press keys (H=help, Q=quit):"
+  500 DO
+  510   K$ = INKEY$
+  520   IF K$ <> "" THEN CALL OnKeyPress(K$)
+  530   SLEEP 33
+  540 LOOP UNTIL QUIT% = 1
+  550 PRINT "Goodbye!"
+  560 END
+
+
+======================================================================
+Part IX:  REFERENCE
+======================================================================
+
+
+56.  ALL SUBROUTINE/FUNCTION STATEMENTS
+-------------------------------------------
+
+  Statement                    Description
+  ─────────────────────────────────────────────────────
+  GOSUB line_number            Jump to line, push return
+  GOSUB label                  Jump to label, push return
+  RETURN                       Pop return, resume caller
+  ON n GOSUB l1, l2, ...       Computed GOSUB
+  SUB Name [(params)]          Begin subroutine def
+  END SUB                      End subroutine def/return
+  EXIT SUB                     Early return from SUB
+  FUNCTION Name [(params)]     Begin function def
+  END FUNCTION                 End function def/return
+  EXIT FUNCTION                Early return from FUNCTION
+  CALL Name [(args)]           Explicit subroutine call
+  Name [args]                  Implicit subroutine call
+  DEF FNx(params) = expr       Define inline function
+  FNx(args)                    Call inline function
+  DEF SEG [= addr]             Set memory segment (not FN)
+
+
+57.  ERROR CODES
+------------------
+
+  Error       Constant    When It Occurs
+  ──────────  ──────────  ────────────────────────────
+  ERR_WHAT    Syntax      Invalid name, missing params,
+                          wrong token in definition
+  ERR_HOW     Runtime     SUB/FUNCTION not found,
+                          RETURN without GOSUB,
+                          missing END SUB/FUNCTION
+  ERR_SORRY   Memory      Too many SUBs (>256),
+                          stack overflow (>1024 frames)
+
+
+58.  LIMITS TABLE
+-------------------
+
+  Limit                     Value   What Happens
+  ────────────────────────  ──────  ───────────────────
+  MAX_SUBS (SUB+FUNCTION)  256     ERR_SORRY
+  MAX_SUB_PARAMS            8      Extra params ignored
+  MAX_USER_FUNCS (DEF FN)  256     ERR_SORRY
+  MAX_FN_PARAMS             4      Extra params ignored
+  MAX_FN_BODY              255     Body text truncated
+  MAX_STACK_DEPTH          1024    ERR_SORRY (overflow)
+  MAX_VAR_NAME_LEN          31     Names truncated
+
+
+59.  QUICK DECISION GUIDE
+----------------------------
+
+  Need:                         Use:
+  ────────────────────────────  ──────────────────────
+  Quick reusable code chunk     GOSUB/RETURN
+  Simple math formula           DEF FN
+  Named procedure with params   SUB
+  Named block that returns val  FUNCTION
+  Recursive computation         FUNCTION
+  One-line expression function  DEF FN
+  Action with side effects      SUB
+  Value computation             FUNCTION or DEF FN
+
+  Dialect compatibility:
+  ────────────────────────────  ──────────────────────
+  Classic BASIC (PATB)          GOSUB, DEF FN
+  GW-BASIC                     GOSUB, DEF FN
+  QBasic                        SUB, FUNCTION, DEF FN
+  BASIC++ (any dialect)         All mechanisms
+
+
+======================================================================
+  END OF TUTORIAL: SUBROUTINES AND FUNCTIONS
+======================================================================

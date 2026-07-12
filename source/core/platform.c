@@ -1060,3 +1060,61 @@ char *plat_getcwd(char *buffer, int maxlen) {
     return getcwd(buffer, maxlen);
 #endif
 }
+
+static char* internal_clipboard = NULL;
+
+extern int gw_sdl2_is_active(void);
+extern char* gw_sdl2_get_clipboard_text(void);
+extern void gw_sdl2_set_clipboard_text(const char*);
+
+char* platform_get_clipboard_text(void) {
+    if (gw_sdl2_is_active()) {
+        char *sdl_clip = gw_sdl2_get_clipboard_text();
+        if (sdl_clip && sdl_clip[0] != '\0') {
+            return sdl_clip;
+        }
+        if (sdl_clip) free(sdl_clip);
+    }
+#ifdef _WIN32
+    if (OpenClipboard(NULL)) {
+        HANDLE hData = GetClipboardData(CF_TEXT);
+        if (hData != NULL) {
+            char *pszText = (char*)GlobalLock(hData);
+            if (pszText != NULL) {
+                char *res = plat_strdup(pszText);
+                GlobalUnlock(hData);
+                CloseClipboard();
+                return res;
+            }
+        }
+        CloseClipboard();
+    }
+#endif
+    if (internal_clipboard) {
+        return plat_strdup(internal_clipboard);
+    }
+    return NULL;
+}
+
+void platform_set_clipboard_text(const char *text) {
+    if (!text) return;
+    if (gw_sdl2_is_active()) {
+        gw_sdl2_set_clipboard_text(text);
+    }
+#ifdef _WIN32
+    if (OpenClipboard(NULL)) {
+        EmptyClipboard();
+        HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, strlen(text) + 1);
+        if (hMem) {
+            memcpy(GlobalLock(hMem), text, strlen(text) + 1);
+            GlobalUnlock(hMem);
+            SetClipboardData(CF_TEXT, hMem);
+        }
+        CloseClipboard();
+    }
+#endif
+    if (internal_clipboard) {
+        free(internal_clipboard);
+    }
+    internal_clipboard = plat_strdup(text);
+}

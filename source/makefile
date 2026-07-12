@@ -170,7 +170,7 @@ MODULES_SOURCES = \
     modules/sdl2_emu.c modules/compat_plugin.c \
     modules/serial_compat.c modules/mod_legacy_compat.c \
     modules/mod_fsk_audio.c modules/mod_persist.c \
-    modules/mod_edlin.c
+    modules/mod_edlin.c modules/mod_ws.c modules/mod_vi.c modules/mod_edit.c
 
 # Runtime state & execution
 RUNTIME_SOURCES = \
@@ -205,6 +205,7 @@ LITE_SOURCES = $(CORE_SOURCES) $(LEXER_SOURCES) $(PARSER_SOURCES) \
                help/parser_help.c help/help.c help/help_flow.c help/help_io.c help/help_math.c help/help_misc.c \
                help/help_strings.c help/help_varmem.c help/help_fileio.c help/help_gfx.c help/help_sound.c \
                help/help_sysenv.c help/help_intro.c help/help_sysvar.c \
+               help/help_progmgmt.c help/help_testing.c help/help_devices.c \
                config/parser_config.c config/override.c config/scope.c config/scope_stack.c \
                progmgmt/parser_progmgmt.c progmgmt/parser_cmds.c \
                virtual/vdev.c virtual/vm.c virtual/vm_snapshot.c \
@@ -225,7 +226,7 @@ HEADERS = config.h errors.h lexer.h parser.h runtime.h parser_internal.h \
           keyword_props.h alias_lang.h override.h scope.h scope_stack.h \
           config_file.h boot.h rpn.h check.h device_alias.h txn.h \
           mod_stdlib.h mod_usb.h mod_fujinet.h mod_upnp.h mod_jit.h \
-          mod_persist.h io/vfs.h compat.h mod_edlin.h \
+          mod_persist.h io/vfs.h compat.h mod_edlin.h mod_ws.h \
           mbf_math.h segmented_mem.h sdl2_emu.h compat_plugin.h serial_compat.h \
           mod_legacy_compat.h
 

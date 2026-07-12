@@ -1,5 +1,28 @@
-﻿BASIC++ CHANGELOG
+BASIC++ CHANGELOG
 =================
+
+5.0.5 (2026-07-10) -- Universal Color Scheme Integration & Directory Cleanup
+---------------------------------------------------------------------------------
+  Editor & Terminal Enhancements:
+  - Implemented 'F10' hotkey across all native internal text editors (--edlin, --ws, --edit, --vi) to dynamically toggle syntax color highlighting on/off.
+  - Ensured --edlin natively boots into monochrome mode by default (color_mode = 0), requiring manual color toggle via the 'o' command.
+  - Hardened terminal state restoration by explicitly passing the ANSI reset sequence (\x1b[0m\x1b[2J\x1b[H) on exit in mod_edlin.c and mod_ws.c, preventing color bleeding into the parent shell.
+  - Safely replaced overlapping strcpy/strcat memory modifications with standard memmove across mod_vi.c and mod_edit.c, eliminating GCC -Wrestrict warnings.
+  - Ported missing _strdup implementation in mod_ws.c to plat_strdup for cross-platform POSIX standard compatibility on GCC/Linux.
+
+  Repository Maintenance & Code Health:
+  - Purged all legacy Python patch scripts, test batch runners, leftover debug logs (*.LOG, *.OUT), text dumps, and temporary .BAS scratchpads from the root directory.
+  - Deleted intermediate .obj/.o build artifacts, .map files, and deprecated *old.exe executables to ensure a pristine and reproducible build environment.
+  - Successfully verified 100% clean compilation on both Windows MSVC and Linux GCC across all variations (basicpp, basicpp-console, blite, bppc, trans, 1964, level1, apple2, tinybasic).
+
+5.0.4 (2026-07-10) -- Universal OS Clipboard & CUA Editor Selection
+---------------------------------------------------------------------------------
+  Editor Subsystems:
+  - Universal OS Clipboard Hooks: Implemented robust dual-layer clipboard access covering Windows API (OpenClipboard, GetClipboardData) and SDL2 (SDL_SetClipboardText). Fallbacks gracefully to internal process buffers if OS clipboards are unavailable.
+  - Added full visual CUA (Shift+Arrows) multi-line highlighting in --edit (MS-DOS EDIT), --vi, and --ws (WordStar).
+  - Implemented legacy hotkeys: Ctrl+Ins (Copy), Shift+Del (Cut), and Shift+Ins (Paste) across all native internal text editors without colliding with native modes or command structures.
+  - Eliminated screen tearing and flicker via buffered line painting.
+  - Adjusted MS-DOS EDIT clone menu to include [RUN] mapped functionally to execution.
 
 5.0.3 (2026-07-10) -- Documentation Accuracy Refresh & C17 Modernization
 ---------------------------------------------------------------------------------
