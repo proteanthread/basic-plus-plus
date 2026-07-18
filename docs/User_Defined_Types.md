@@ -1342,5 +1342,52 @@ Part VII:  ERROR REFERENCE AND BEST PRACTICES
 
 
 ======================================================================
+Part IX:  ENUM & WITH BLOCKS (v6.x.x additions)
+======================================================================
+
+39.  ENUM TYPES
+-----------------
+
+ENUM defines a set of named integer constants (enumeration list):
+
+  100 ENUM Status
+  110   Pending = 100
+  120   Active
+  130   Inactive = 200
+  140 END ENUM
+
+By default, the first element starts at 0, and each subsequent element increments by 1. Explicit values can be assigned using `=`.
+Access enum values using the `EnumName.ElementName` syntax:
+
+  150 IF userStatus = Status.Active THEN PRINT "User is active"
+
+
+40.  WITH BLOCKS
+-----------------
+
+The WITH statement allows you to access UDT fields or object members without repeating the object/variable name. Inside a WITH block, any variable reference starting with a leading dot (`.`) is implicitly prefixed with the path of the target variable/object of the active WITH block.
+
+  100 TYPE Person
+  110   name AS STRING
+  120   age AS NUMBER
+  130 END TYPE
+  140 DIM p1 AS Person
+  150 REM
+  160 WITH p1
+  170   .name = "Bob"
+  180   .age = 30
+  190 END WITH
+
+WITH blocks can be nested:
+
+  200 WITH p1
+  210   WITH .addr
+  220     .street = "789 Pine Rd"
+  230     .zip = 95051
+  240   END WITH
+  250 END WITH
+
+
+======================================================================
   END OF TUTORIAL: USER-DEFINED TYPES
 ======================================================================

@@ -1,0 +1,38 @@
+BREAK
+
+1. Syntax & Parameters
+BREAK
+
+2. Description & Usage
+The BREAK statement triggers an interactive breakpoint in the execution loop when running under debug mode. It suspends execution, outputs a breakpoint hit message to the console, and waits for user confirmation (pressing ENTER) before resuming.
+Usage: Used to pause execution at specific locations to inspect the active program state, run VARS/DUMP commands, or step through statements.
+
+3. Code Examples
+`basic
+10 LET A = 42
+20 BREAK
+30 PRINT "Resumed: A="; A
+`
+Execution: Pauses at line 20, displaying:
+`text
+[BREAKPOINT] hit at line 20
+Press ENTER to continue...
+`
+Resumes and prints A after pressing ENTER.
+
+4. Internal C-Source Mapping
+- source/parser/parser.c / source/codegen/ast.c (Parsing KW_BREAK)
+- source/statements/stmt_debug.c (Interpreter execution handler)
+- source/vm/vm.c (Breakpoint trigger hooking)
+
+5. Implementation Details
+The BREAK statement is ephemerally evaluated. Under non-debug mode, it behaves as a silent no-op. Under debug mode, it routes to vm_breakpoint to handle interactive keyboard suspension.
+
+6. Cross-References / See Also
+- CONT
+- TRON
+- TROFF
+- VARS
+
+7. Historical Context
+Historically, debugging in BASIC was limited to STOP statements which fully aborted execution. BREAK provides a softer, interactive debugging hook.

@@ -264,7 +264,15 @@ void pi_parse_assert(Lexer *lex, RuntimeState *rt, int line_num) {
     BValue cond_val = parse_expression_bval(lex, rt, line_num);
     if (error_occurred()) return;
     int pass = (bval_to_int(&cond_val) != 0);
-    
+
+    if (lex->current.type == TOK_COMMA) {
+        lexer_next(lex); // Consume ','
+        BValue msg_val = parse_expression_bval(lex, rt, line_num);
+        (void)msg_val;
+        if (error_occurred()) return;
+    }
+
+#ifndef BPP_TRANS_BUILD
     if (rt->in_test) {
         rt->test_total++;
         if (pass) {
@@ -281,6 +289,7 @@ void pi_parse_assert(Lexer *lex, RuntimeState *rt, int line_num) {
             error_raise(ERR_HOW, line_num);
         }
     }
+#endif
 }
 
 // 4. Debug & Introspection: INFO, DEBUG, DUMP, and BACKTRACE

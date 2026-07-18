@@ -1,6 +1,6 @@
 THE BASIC++ STRING HANDLING SYSTEM
 =====================================
-Version 4.2.3
+Version 6.4.0
 
 This manual explains how BASIC++ programs create,
 manipulate, compare, and convert strings — from basic
@@ -575,7 +575,7 @@ Rules:
 This feature is useful for character-by-character
 processing without repeated MID$/ASC calls.
 
-  Added in Version 4.2.3.
+  Added in Version 6.4.0.
 
 
 18.  CHR$(n) — ASCII CODE TO CHARACTER

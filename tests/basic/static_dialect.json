@@ -1,0 +1,11 @@
+{
+  "name": "StaticJSON",
+  "comment_char": "#",
+  "stmt_separator": ";",
+  "default_array_base": 1,
+  "case_sensitive": 1,
+  "keywords": {
+    "DISPLAY": "PRINT",
+    "QUIT": "END"
+  }
+}

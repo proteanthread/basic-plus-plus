@@ -184,6 +184,11 @@ typedef enum AstStmtType {
  STMT_RETRY, // RETRY
  STMT_CONTINUE, // CONTINUE
  STMT_INT, // INT interrupt_number
+ STMT_ASSERT,
+ STMT_TRON,
+ STMT_TROFF,
+ STMT_BREAK,
+ STMT_VARS,
  STMT_DIRECT_EXEC // execute raw statement via direct interpreter
 } AstStmtType;
 
@@ -352,6 +357,12 @@ struct AstStmt {
  struct {
  char *text;
  } direct_exec;
+
+ // STMT_ASSERT
+ struct {
+ AstExpr *condition;
+ AstExpr *message; /* NULL if none */
+ } assert_stmt;
 
  } v;
 };

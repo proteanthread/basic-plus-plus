@@ -496,6 +496,12 @@ static void collect_stmt_vars(AstStmt *s, VarNode **head) {
                 collect_expr_vars(s->v.if_stmt.condition, head);
                 collect_stmt_vars(s->v.if_stmt.then_stmt, head);
                 break;
+            case STMT_ASSERT:
+                collect_expr_vars(s->v.assert_stmt.condition, head);
+                if (s->v.assert_stmt.message) {
+                    collect_expr_vars(s->v.assert_stmt.message, head);
+                }
+                break;
             case STMT_GOTO:
                 collect_expr_vars(s->v.goto_stmt.target, head);
                 break;
@@ -720,6 +726,24 @@ static void emit_py3_stmt(FILE *out, AstStmt *s, int indent, AstLine *lines, int
                 fprintf(out, " = ");
                 emit_py3_expr(out, s->v.let_dim.value);
                 fprintf(out, "\n");
+                break;
+            case STMT_ASSERT:
+                for (int i = 0; i < indent; i++) fprintf(out, " ");
+                fprintf(out, "assert ");
+                emit_py3_expr(out, s->v.assert_stmt.condition);
+                if (s->v.assert_stmt.message) {
+                    fprintf(out, ", ");
+                    emit_py3_expr(out, s->v.assert_stmt.message);
+                }
+                fprintf(out, "\n");
+                break;
+            case STMT_TRON:
+            case STMT_TROFF:
+            case STMT_BREAK:
+                break;
+            case STMT_VARS:
+                for (int i = 0; i < indent; i++) fprintf(out, " ");
+                fprintf(out, "print('--- Active Variables (Python) ---')\n");
                 break;
             case STMT_IF:
                 fprintf(out, "if ");

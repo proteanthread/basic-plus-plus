@@ -1,7 +1,7 @@
 GitGem
 
 BASIC++ (protoBASIC) Interpreter
-Version 4.2.3
+Version 6.4.0
 
 
 ---
@@ -594,7 +594,7 @@ A comprehensive documentation suite of 36 reference manuals and tutorials is inc
 Section 13: Example Session
 
 
-BASIC++ 4.2.3
+BASIC++ 6.4.0
 @COPYLEFT ALL WRONGS RESERVED
 Jun  8 2026
 
