@@ -208,7 +208,7 @@ CALL FORWARD(100)
 
 ---
 
-## Custom Detokenizer Hook
+## Custom Detokenizer Hook & Built-in Legacy Support
 
 The `BLOAD` command supports a **pluggable detokenizer** for loading
 tokenized program files from other BASIC systems.
@@ -217,18 +217,25 @@ When `BLOAD` encounters a file that doesn't begin with the `"BPP"` magic
 bytes, it checks for a registered custom detokenizer. If one exists, the
 entire file is read into memory (up to 256KB) and passed to the callback.
 
+### Default Built-in Detokenizer (GW-BASIC)
+
+BASIC++ registers a default detokenizer that automatically parses legacy
+**GW-BASIC tokenized programs** starting with the `0xFF` signature byte.
+No manual registration is required; loading such a file automatically
+re-constructs the ASCII representation and loads it into memory.
+
 ### Supported Formats (via modules)
 
-| Format | First Byte | System |
-|--------|-----------|--------|
-| GW-BASIC tokenized | `0xFF` | IBM PC, MS-DOS |
-| Commodore PRG | Load address | C64, VIC-20, C128 |
-| Atari BASIC | Variable table | Atari 400/800/XL/XE |
+| Format | First Byte | System | Status |
+|--------|-----------|--------|--------|
+| GW-BASIC tokenized | `0xFF` | IBM PC, MS-DOS | **Built-in / Default** |
+| Commodore PRG | Load address | C64, VIC-20, C128 | Pluggable callback |
+| Atari BASIC | Variable table | Atari 400/800/XL/XE | Pluggable callback |
 
 ### C API
 
 ```c
-/* Register a detokenizer */
+/* Register a custom detokenizer (overriding the default) */
 bytecode_set_detokenizer(my_detokenizer_fn);
 
 /* Callback signature */
@@ -240,6 +247,25 @@ typedef int (*DetokenizerFn)(
 );
 /* Return >= 0 on success, -1 on failure */
 ```
+
+---
+
+## Standalone Binary Packaging Format
+
+Standalone executables generated via `bppc --standalone` package compiled `.BPP` bytecode payload inside a native executable binary (EXE on Windows, ELF on Linux) using a runner stub (`basstub`):
+
+```
+┌──────────────────────────────────────────────┐
+│  Runner Stub Executable (basstub / ELF / EXE)│
+├──────────────────────────────────────────────┤
+│  Appended .BPP Bytecode Payload              │
+├──────────────────────────────────────────────┤
+│  Footer: Payload Size (LE32, 4 bytes)        │
+│  Footer: 'BPPE' Magic (4 bytes: 0x45505042)  │
+└──────────────────────────────────────────────┘
+```
+
+The compiled stub opens itself at startup, reads the footer to determine the size of the payload, seeks to the payload, loads it into the VM, and runs it natively.
 
 ---
 

@@ -53,7 +53,7 @@ typedef struct MockBiosContext {
     void (*set_registers)(void *user_data, uint32_t ax, uint32_t bx, uint32_t cx, uint32_t dx, uint32_t flags);
 
     void *user_data;       /* Arbitrary client context payload pointer */
-    MockBiosModel model;   /* Active emulation: PC, XT, AT, PCjr, MSDOS */
+    MockBiosModel model;   /* Active emulation: PC, XT, AT, PCjr, MSDOS, ATARI, C64, VIC20, APPLE2, TRS80, TANDY */
 
     /* Persistent internal states */
     int key_buffer;
@@ -89,6 +89,14 @@ Depending on `MockBiosModel`:
 *   **PCjr (BIOS_MODEL_PCJR):** Registers cartridge signature headers `55AAh` at segment `D000h` (`0xD0000`).
 *   **XT (BIOS_MODEL_XT) / AT (BIOS_MODEL_AT):** Registers hard disk BIOS extension signatures `55AAh` at segment `C800h` (`0xC8000`).
 *   **Model Bytes:** Places the specific system model identifier signature at `0xFFFFE` (PC = `0xFF`, XT = `0xFE`, AT = `0xFC`, PCjr = `0xFD`).
+
+### 3.4. Legacy 8-Bit Machine Layouts
+When initialized with 8-bit models:
+*   **C64 (BIOS_MODEL_C64):** Pre-populates the CPU port (`0x0000-0x0001`), zero-page BASIC pointers (`$2B-$38`), default drive device number at `$BA` (8), cursor color shadow at `$0286` (light blue), and default VIC-II registers (border color 14, background 6).
+*   **VIC-20 (BIOS_MODEL_VIC20):** Pre-populates zero-page BASIC pointers (`$2B-$38`), VIC-I chip default registers (`$9000-$900F`), and pre-fills screen RAM at `$1E00` (spaces) and color RAM at `$9600` (white).
+*   **Atari (BIOS_MODEL_ATARI):** Pre-populates zero-page OS variables (`LMARGN` = 2, `RMARGN` = 39, `SAVMSC` = `$9C40`, `LOMEM` = `$A000`, `MEMTOP` = `$BC1F`), color shadow registers (`$02C4-$02C8`), and ANTIC default registers (`$D400-$D40F`).
+*   **Apple II (BIOS_MODEL_APPLE2):** Pre-populates Applesoft zero-page pointers (`$67-$74`, `$AF-$B0`), and fills Text Page 1 (`$0400-$07FF`) with `$A0` (spaces with high bit set).
+*   **TRS-80 (BIOS_MODEL_TRS80):** Pre-populates boot ROM instruction stubs at `$0000-$0002` (including 'R' identifier at `$0062`), fills video RAM (`$3C00-$3FFF`) with spaces, and sets up BASIC variables (`$4000-$4003`).
 
 ---
 

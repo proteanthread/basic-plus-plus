@@ -1,0 +1,49 @@
+MEMMAP$
+
+1. Syntax & Parameters
+X$ = MEMMAP$()
+
+Parameters:
+None.
+
+2. Description & Usage
+The MEMMAP$ built-in function returns a string identifier of the currently active BIOS memory map model. The returned string matches the model set by the BIOS statement or the OPTION BIOS directive. The default model is "PCAT" (IBM PC/AT).
+
+Returned values:
+* "NONE" - Bare 64K memory space without any BIOS emulator defaults.
+* "MSDOS" - MS-DOS emulation.
+* "IBMPC" - IBM PC BIOS emulation.
+* "PCJR" - IBM PCjr BIOS emulation.
+* "PCXT" - IBM PC/XT BIOS emulation.
+* "PCAT" - IBM PC/AT BIOS emulation (Default).
+* "ATARI" - Atari 400/800/XL/XE emulation.
+* "C64" - Commodore 64 emulation.
+* "VIC20" - Commodore VIC-20 emulation.
+* "APPLE2" - Apple II/IIe emulation.
+* "TRS80" - TRS-80 Model I/III emulation.
+* "TANDY" - Tandy 1000 emulation.
+
+3. Code Examples
+`basic
+10 PRINT "Active Model: " + MEMMAP$()
+20 BIOS "C64"
+30 PRINT "New Active Model: " + MEMMAP$()
+`
+
+4. Internal C-Source Mapping
+* source/expression/eval.c - Function registration and evaluation logic.
+* source/device/vdev_bus.c - Active model state storage and MMIO interception.
+* source/bios/mock_bios.c - Switchable legacy BIOS structures.
+
+5. Implementation Details
+Execution path: MEMMAP$ is recognized as a built-in token in the expression evaluator (eval.c). It queries the virtual device bus (vdev_bus.c) for the currently active BIOS model, retrieves the corresponding string representation via mock_bios_model_to_string(), and returns a string value copy.
+
+6. Cross-References / See Also
+* BIOS - Switch active BIOS/memory map model or trigger interrupt.
+* PEEK - Read byte from virtual memory.
+* POKE - Write byte to virtual memory.
+* HELP - Interactive user assistance.
+* CATALOG - Categorized list of keywords and functions.
+
+7. Historical Context
+In vintage home computer architectures, the memory layout (RAM/ROM locations) was hardwired. The MEMMAP$ function in BASIC++ allows cross-platform scripts to dynamically query the environment configuration to run model-specific PEEK/POKE routines safely.

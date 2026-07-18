@@ -1101,6 +1101,19 @@ static AstStmt *build_for(Lexer *lex, int line_num)
 	memcpy(s->v.for_stmt.name, lex->current.str_start, (size_t)nlen);
 	s->v.for_stmt.name[nlen] = '\0';
 	lexer_next(lex);
+ } else if (lex->current.type == TOK_KEYWORD) {
+	const char *kn = lexer_keyword_name(lex->current.value.keyword);
+	if (kn) {
+		s->v.for_stmt.var_name = kn[0];
+		int nlen = (int)strlen(kn);
+		if (nlen > MAX_VAR_NAME_LEN) nlen = MAX_VAR_NAME_LEN;
+		memcpy(s->v.for_stmt.name, kn, (size_t)nlen);
+		s->v.for_stmt.name[nlen] = '\0';
+	} else {
+		s->v.for_stmt.var_name = '\0';
+		s->v.for_stmt.name[0] = '\0';
+	}
+	lexer_next(lex);
  } else {
 	error_raise(ERR_WHAT, line_num);
 	free(s); return NULL;
@@ -1374,6 +1387,25 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
  }
  case KW_RETURN:
  return stmt_new(STMT_RETURN);
+ case KW_TRON:
+ return stmt_new(STMT_TRON);
+ case KW_TROFF:
+ return stmt_new(STMT_TROFF);
+ case KW_BREAK:
+ return stmt_new(STMT_BREAK);
+ case KW_VARS:
+ return stmt_new(STMT_VARS);
+ case KW_ASSERT:
+ {
+ AstStmt *s = stmt_new(STMT_ASSERT);
+ s->v.assert_stmt.condition = ast_build_expr(lex, line_num);
+ s->v.assert_stmt.message = NULL;
+ if (lex->current.type == TOK_COMMA) {
+     lexer_next(lex); /* Consume ',' */
+     s->v.assert_stmt.message = ast_build_expr(lex, line_num);
+ }
+ return s;
+ }
  case KW_FOR:
  return build_for(lex, line_num);
 	case KW_NEXT:
@@ -1390,6 +1422,19 @@ static AstStmt *build_statement(Lexer *lex, int line_num)
 			if (nlen > MAX_VAR_NAME_LEN) nlen = MAX_VAR_NAME_LEN;
 			memcpy(s->v.next.name, lex->current.str_start, (size_t)nlen);
 			s->v.next.name[nlen] = '\0';
+			lexer_next(lex);
+		} else if (lex->current.type == TOK_KEYWORD) {
+			const char *kn = lexer_keyword_name(lex->current.value.keyword);
+			if (kn) {
+				s->v.next.var_name = kn[0];
+				int nlen = (int)strlen(kn);
+				if (nlen > MAX_VAR_NAME_LEN) nlen = MAX_VAR_NAME_LEN;
+				memcpy(s->v.next.name, kn, (size_t)nlen);
+				s->v.next.name[nlen] = '\0';
+			} else {
+				s->v.next.var_name = '\0';
+				s->v.next.name[0] = '\0';
+			}
 			lexer_next(lex);
 		} else {
 			s->v.next.var_name = '\0';
@@ -1679,35 +1724,50 @@ AstStmt *ast_build_line(Lexer *lex, int line_num)
  AstStmt *tail = NULL;
  char sep = ':';
 
- while (!error_occurred() &&
- lex->current.type != TOK_EOF &&
- lex->current.type != TOK_CR) {
+  while (lex->current.type != TOK_EOF &&
+         lex->current.type != TOK_CR) {
 
- AstStmt *s = build_statement(lex, line_num);
- if (!s) break;
+      const char *stmt_start = lex->source + lex->current.pos;
+      AstStmt *s = build_statement(lex, line_num);
 
- if (head == NULL) {
- head = s;
- tail = s;
- } else {
- tail->next = s;
- tail = s;
- }
+      if (error_occurred() || !s) {
+          error_clear();
 
- // Check for statement separator
- if (lex->current.type == TOK_SEMICOLON && sep == ';') {
- lexer_next(lex);
- } else if (lex->current.type == TOK_COLON && sep == ':') {
- lexer_next(lex);
- } else {
- break;
- }
- }
+          // Skip to end of line in lexer
+          while (lex->current.type != TOK_EOF && lex->current.type != TOK_CR) {
+              lexer_next(lex);
+          }
 
- if (error_occurred()) {
- ast_free_line(head);
- return NULL;
- }
+          AstStmt *rem_stmt = stmt_new(STMT_REM);
+          if (rem_stmt) {
+              rem_stmt->v.rem.text = stmt_start;
+              if (head == NULL) {
+                  head = rem_stmt;
+              } else {
+                  tail->next = rem_stmt;
+                  tail = rem_stmt;
+              }
+          }
+          break;
+      }
+
+      if (head == NULL) {
+          head = s;
+          tail = s;
+      } else {
+          tail->next = s;
+          tail = s;
+      }
+
+      // Check for statement separator
+      if (lex->current.type == TOK_SEMICOLON && sep == ';') {
+          lexer_next(lex);
+      } else if (lex->current.type == TOK_COLON && sep == ':') {
+          lexer_next(lex);
+      } else {
+          break;
+      }
+  }
 
  return head;
 }
@@ -1834,6 +1894,12 @@ void ast_free_stmt(AstStmt *stmt)
      free(stmt->v.direct_exec.text);
  }
  break;
+  case STMT_ASSERT:
+  ast_free_expr(stmt->v.assert_stmt.condition);
+  if (stmt->v.assert_stmt.message) {
+      ast_free_expr(stmt->v.assert_stmt.message);
+  }
+  break;
  default:
  break;
  }

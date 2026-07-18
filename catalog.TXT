@@ -1,126 +1,73 @@
 === BASIC++ CATALOG ===
 
 [Arithmetic / Math]
- ABS            ACOS           ASIN           ATN            AVG            
- CABS           CARG           CDBL           CEXP           CINT           
- CLOG           COMP           COMPLEX        CONJ           COS            
- COSH           CPOW           CSNG           CSQR           DET            
- EXP            FIX            HI             IMAG           INT            
- LGT            LN             LO             LOG            LOG10          
- LOG2           MAX            MED            MIN            NUM            
- PDIF           PI             RANDOMIZE      REAL           REMAINDER      
- RND            ROUND          SGN            SIN            SINH           
- SQR            TAN            TANH           TIM            
+ ABS            ATN            COS            EXP            FIX           
+ INT            LOG            RND            SIN            SQR           
+ TAN           
 
 [Control Flow]
- BY             CALL           CASE           CAUSE          CONTINUE       
- DECLARE        DEF            DEFINE         DO             ELSE           
- ELSEIF         END            ENDDEFINE      ENDFOR         ENDIF          
- ENDREPEAT      ERROR          EXIT           FN             FOR            
- FUNCTION       GOSUB          GOTO           IF             IN             
- IS             LOOP           NEXT           ON             ON BREAK       
- ON COM         ON KEY         ON PEN         ON PLAY        ON STRIG       
- ON TIMER       PROCEDURE      REPEAT         RESUME         RETRY          
- RETURN         SELECT         STEP           STOP           SUB            
- TASK           THEN           TO             TRAP           UNTIL          
- USE            USR            WEND           WHEN           WHILE          
+ BY             CALL           CASE           DECLARE        DO            
+ ELSE           END            ENDFUNC        ENDPROC        ERROR         
+ FOR            FUNCTION       GOSUB          GOTO           IF            
+ LOOP           NEXT           ON             PROCEDURE      RESUME        
+ RETURN         SELECT         STEP           SUB            TASK          
+ THEN           TO             UNTIL          WEND           WHILE         
+ WITH          
 
 [Debug & Testing]
- ASSERT         BACKTRACE      BREAK          CHECK          CONT           
- DEBUG          DUMP           ENDTEST        SELFTEST       TEST           
- TRACE          TROFF          TRON           VARS           VERIFY         
+ ASSERT         BREAK          SELFTEST       TROFF          TRON          
+ VARS          
 
 [Devices & Network]
- BIOREAD        BIOS           COM            DEVMAP         FILEMOD        
- IMAGE          INP            IOCTL          MOUNT          NINFO          
- OUT            SIOREAD        SIOREADLN      UMOUNT         VCON           
- VDEV           VMACH          VMEM           VNET           VPATH          
- VTERM          WAIT           
+ BIOS           HTTP_GET$      INP            IOCTL          IOCTL         
+ MOUNT          OUT            UMOUNT         WAIT          
 
 [File I/O]
- ACCESS         ASK            BIOCHECKSUM    BIOCOMPARE     BIOCOPY        
- BIOFILL        BIOSIZE        BIOSTATUS      BIOWRITE       CHDIR          
- CLOSE          CURDIR         CVD            CVI            CVS            
- CWD            DIR            FIELD          FILELEN        FILES          
- FILESIZE       GET            LOC            LOCK           LOF            
- MKD$           MKDIR          MKI$           MKS$           MOUNTS         
- NAME           POINTER        PUT            RENAME         RESET          
- REWRITE        RMDIR          SEEK           SET            SIOAVAIL       
- SIOFLUSH       SIOSEEK        SIOSTATUS      SIOWRITE       UNLOCK         
- VPATH$         
+ ATOMIC         CHDIR          CLOSE          COMMIT         FILES         
+ GET            LOC            LOF            MKDIR          NAME          
+ PUT            RESET          RMDIR          ROLLBACK       SEEK          
+ TXN           
 
 [Graphics]
- BORDER         BRIGHT         CIRCLE         CURSOR         DISPLAY        
- DRAW           DRAWTO         FLASH          GRAPHICS       INK            
- INVERSE        OVER           PAINT          PALETTE        PAPER          
- PCOPY          PEN            PLAY           PLOT           PMAP           
- POINT          PRESET         PSET           SCREEN         VIEW           
- WINDOW         
+ CIRCLE         PAINT          PLAY           PRESET         PSET          
+ SCREEN        
+
+[BGI Graphics]
+ BAR            CLOSEGRAPH     ELLIPSE        INITGRAPH      OUTTEXTXY     
+ PALETTE        PUTPIXEL       RECTANGLE     
 
 [Input / Output]
- AT             CLS            COLOR          CONSOLE        EOF            
- GEMINI         GOPHER         HOME           INKEY          INPUT          
- INPUT$         INSTR          LINE           LOCATE         LPRINT         
- LSET           NBYTESWAITING  NCONNECTED     NEOF           NERROR         
- NHTTPSTATUS    NJSONQUERY     NSTATUS        OPEN           PRINT          
- RSET           SPC            TAB            WIDTH          WRITE          
+ CLS            COLOR          EOF            GEMINI         INPUT         
+ INPUT          INSTR          LINE           NCONNECTED     NHTTPSTATUS   
+ NSTATUS        OPEN           PRINT         
 
 [Introspection]
- ALARM          ALIAS          ALIAS$         CATALOG        COMPILE        
- COPY           DEFUSR         DEMAND         ENDSELECT      ERR$           
- EXISTS         HASH           HELP           INFO           IOCTL$         
- KEY            LIKE           LPOS           MEMMAP$        MODULE         
- MOVE           OVERRIDE       PUBLIC         REFORMAT       SCOPE          
- SCRATCH        TXNSTATUS      UNLESS         USING          VARPTR$        
+ ALIAS          CATALOG        DEMAND         HELP           HELP          
+ INFO           MEMMAP$        MODULE         UNLESS         USING         
 
-[Operators]
- AND            EQV            IMP            MOD            NOT            
- OR             XOR            
 
 [Program Mgmt & Editing]
- AUTO           BLOAD          BRUN           BSAVE          CHAIN          
- CLOAD          CRUN           CSAVE          DELETE         EDIT           
- LIST           LLIST          LOAD           MERGE          NEW            
- RENUM          RUN            SAVE           UNLOAD         UNSAVE         
+ BLOAD          BRUN           BSAVE          DELETE         EDIT          
+ LIST           LOAD           MERGE          NEW            RENUM         
+ RUN            SAVE           UNLOAD         UNSAVE        
 
 [Sound]
- BEEP           SOUND          
+ BEEP           SOUND         
 
 [String Functions]
- ASC            BIN            BIN$           CHR            CHR$           
- HEX            HEX$           ICASE          LCASE          LEFT           
- LEFT$          LEN            LTRIM          MCASE          MID            
- MID$           OCT            OCT$           REPLACE        REVERSE        
- RIGHT          RIGHT$         RTRIM          SPACE          SPACE$         
- STR            STR$           STRING         TCASE          TRIM           
- UCASE          VAL            
+ ASC            CHR$           LCASE$         LEFT$          LEN           
+ LTRIM$         MID$           REPLACE$       RIGHT$         RTRIM$        
+ SPACE$         STR$           STRING$        TRIM$          UCASE$        
+ VAL           
 
 [System & Environ]
- ATOMIC         BYE            CLOCK          COMMIT         CURDIR$        
- DATE           DELAY          DIALECT        DIALECT$       ENVIRON        
- ERDEV          ERRORLEVEL     EXEC           EXIST          EXTERR         
- HOSTNAME       JIFFIES        KEY(N)         KEYWORD        KILL           
- MOTOR          ONKEY          PAUSE          PLAY(N)        PWD            
- ROLLBACK       SECURITY       SHELL          SLEEP          STICK          
- STRIG          SYS            SYSTEM         TEST           TI             
- TI$            TICKS          TIME           TODAY$         TXN            
- USERNAME       
+ DIALECT        KILL           SECURITY      
 
-[System Variables]
- CLOCK$         CWD$           DATE$          DAY            DAY$           
- ERL            ERR            FALSE          HOSTNAME$      HOURS          
- INKEY$         MEM            MINUTES        MONTH          MONTH$         
- ONKEY$         PWD$           SECONDS        SIZE           TIME$          
- TIMER          TRUE           USERNAME$      VER            YEAR           
+ DIALECT        KILL           SECURITY      
 
 [Variables & Memory]
- AS             BANK           CLEAR          CLR            COMMON         
- CONST          CSRLIN         DATA           DEFDBL         DEFINT         
- DEFSNG         DEFSTR         DIM            ERASE          FRE            
- LBOUND         LET            LOCAL          MAT            MEMMAP         
- MKD            MKI            MKS            OPTION         PEEK           
- PEEKB          POKE           POKEB          POS            PRETRIEVE      
- PSTORE         READ           REDIM          REM            RESTORE        
- SEG            SHARED         STATIC         SWAP           TYPE           
- UBOUND         VARPTR         
-
+ AS             CLASS          DATA           DEFDBL         DEFINT        
+ ENUM           DEFSNG         DEFSTR         DIM            ERASE         
+ LBOUND         LET            MAT            OPTION         PEEK          
+ POKE           READ           REM            RESTORE        TYPE          
+ UBOUND

@@ -1305,5 +1305,80 @@ Users add your module:
 
 
 =====================================================================
+36. DYNAMIC DIALECT CONFIGURATION FILES
+=====================================================================
+
+Instead of declaring maps programmatically, you can define your custom
+dialect in a file. BASIC++ supports parsing JSON, INI, XML, and YAML
+configuration file structures.
+
+The `DIALECT LOAD` statement accepts a file path. If the second parameter
+is omitted, the format is automatically inferred from the file extension.
+
+Example loading from a JSON file path:
+  DIALECT LOAD "custom_dialect.json"
+
+Example specifying format explicitly:
+  DIALECT LOAD "my_dialect_spec.txt", "JSON"
+
+
+Format Examples:
+
+1. JSON (.json):
+{
+  "name": "CustomJSON",
+  "comment_char": "#",
+  "stmt_separator": ";",
+  "default_array_base": 1,
+  "case_sensitive": 1,
+  "math_precedence": "LEFT_TO_RIGHT",
+  "keywords": {
+    "DISPLAY": "PRINT",
+    "QUIT": "END"
+  }
+}
+
+2. INI (.ini / .cfg):
+name = CustomINI
+comment_char = #
+stmt_separator = ;
+default_array_base = 1
+case_sensitive = 1
+math_precedence = LEFT_TO_RIGHT
+
+[keywords]
+DISPLAY = PRINT
+QUIT = END
+
+
+=====================================================================
+37. COMPILE-TIME STATIC CUSTOM DIALECTS (bppc)
+=====================================================================
+
+Dynamic map allocation and JSON/INI parsing require additional code
+footprint and runtime overhead, which is unsuitable for memory-restricted
+embedded targets or microcontrollers running blite and bscript.
+
+To support custom dialects on lightweight builds, the compiler/transpiler
+(bppc) includes a compile-time static header generator option.
+
+Generating Static Dialect Headers:
+Use the --dialect switch with bppc to compile a dialect JSON/INI
+specification directly into a static C header file (custom_dialect_static.h):
+
+  bppc --dialect my_dialect.json include/custom_dialect_static.h
+
+Compiling Custom Dialect Binaries:
+To build blite and bscript with the statically generated custom dialect active:
+1. Generate custom_dialect_static.h inside include/.
+2. Compile the binaries with the BPP_USE_CUSTOM_STATIC_DIALECT option enabled:
+   - CMake: Pass -DBPP_USE_CUSTOM_STATIC_DIALECT=ON
+   - MSVC: Define BPP_USE_CUSTOM_STATIC_DIALECT preprocessor macro
+
+This compiles a custom footprint-optimized executable with zero runtime
+BppMap allocation overhead.
+
+
+=====================================================================
 END OF DOCUMENT
 =====================================================================

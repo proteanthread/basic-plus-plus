@@ -1,0 +1,7 @@
+=== SPEED_OPT EXTERNAL DOCUMENTATION ===
+Author: Antigravity Compiler Team
+Description:
+  This option enables level-3 optimization passes in the VM,
+  leveraging direct register mappings and hot statement caching.
+Status: HIGH PERFORMANCE
+=========================================
