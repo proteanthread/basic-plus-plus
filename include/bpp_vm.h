@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_vm.h
  * @brief Virtual Machine core execution context API.
@@ -27,6 +32,9 @@
 #ifndef BPP_VM_H
 #define BPP_VM_H
 
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include "bpp_types.h"
@@ -66,6 +74,7 @@ void       vm_shutdown(VMContext *vm);
  */
 void       vm_run_program(VMContext *vm);
 bool       vm_is_running(VMContext *vm);
+void       vm_set_running(VMContext *vm, bool running);
 int        vm_get_eval_depth(VMContext *vm);
 void       vm_inc_eval_depth(VMContext *vm);
 void       vm_dec_eval_depth(VMContext *vm);
@@ -106,6 +115,8 @@ BppLineNumber    vm_get_current_line(VMContext *vm);
 const char      *vm_get_current_stmt_pos(VMContext *vm);
 StmtRegistry    *vm_get_stmt_registry(VMContext *vm);
 BppTypeRegistry *vm_get_types(VMContext *vm);
+int              vm_get_last_mouse_click_btn(VMContext *vm);
+int              vm_get_last_mouse_click_type(VMContext *vm);
 
 /**
  * @brief Static DATA block position entry.
@@ -142,10 +153,64 @@ void vm_set_timer_trap(VMContext *vm, double seconds, BppLineNumber line);
 void vm_set_timer_state(VMContext *vm, int state); /* 0=OFF, 1=ON, 2=STOP */
 void vm_set_key_trap(VMContext *vm, int key_idx, int key_code, BppLineNumber line);
 void vm_set_key_state(VMContext *vm, int key_idx, int state); /* 0=OFF, 1=ON, 2=STOP */
+int  vm_get_key_state(const VMContext *vm, int key_idx);
+int  vm_get_key_code(const VMContext *vm, int key_idx);
+BppLineNumber vm_get_key_gosub_line(const VMContext *vm, int key_idx);
 void vm_set_play_trap(VMContext *vm, int note_threshold, BppLineNumber line);
 void vm_set_play_state(VMContext *vm, int state); /* 0=OFF, 1=ON, 2=STOP */
+void vm_set_mouse_trap(VMContext *vm, int state, BppLineNumber line, int target_char);
+void vm_set_hmouse_trap(VMContext *vm, int state, BppLineNumber line);
+void vm_set_vmouse_trap(VMContext *vm, int state, BppLineNumber line);
+void vm_set_trig_trap(VMContext *vm, int state, BppLineNumber line, int target_btn);
+void vm_set_com_trap(VMContext *vm, int port_idx, BppLineNumber line);
+void vm_set_com_state(VMContext *vm, int port_idx, int state);
+void vm_set_pen_trap(VMContext *vm, BppLineNumber line);
+void vm_set_pen_state(VMContext *vm, int state);
+void vm_set_strig_trap(VMContext *vm, int strig_idx, BppLineNumber line);
+void vm_set_strig_state(VMContext *vm, int strig_idx, int state);
+void vm_set_usr_ptr(VMContext *vm, int idx, uintptr_t ptr);
+uintptr_t vm_get_usr_ptr(const VMContext *vm, int idx);
 void vm_trigger_event_polling(VMContext *vm);
 void vm_clear_event_handlers(VMContext *vm);
+
+/* Alarm event trapping APIs */
+typedef struct {
+    double initial_seconds;   /* original duration (the key) */
+    double remaining_seconds; /* remaining time (decrements) */
+    int state;                /* 0=OFF, 1=ON, 2=STOP (paused) */
+    double last_update_time;  /* platform uptime or epoch when last updated */
+    BppLineNumber gosub_line; /* specific GOSUB target line */
+} BppAlarmCountdown;
+
+typedef struct {
+    char target_time[32];      /* target time string (the key, e.g. "14:30:00") */
+    int state;                 /* 0=OFF, 1=ON, 2=STOP (paused) */
+    char last_triggered_date[16]; /* YYYY-MM-DD to avoid double trigger in same minute/second */
+    int seconds_since_midnight; /* target time parsed as seconds since midnight */
+    BppLineNumber gosub_line;  /* specific GOSUB target line */
+    int snooze_trigger_time;   /* seconds since midnight when to trigger snoozed alarm, -1 if inactive */
+} BppAlarmDaily;
+
+void vm_set_alarm_countdown_trap(VMContext *vm, double seconds, BppLineNumber line);
+void vm_set_alarm_countdown_state(VMContext *vm, double seconds, int state);
+void vm_set_alarm_countdown_remaining(VMContext *vm, double seconds, double remaining);
+double vm_get_alarm_countdown(VMContext *vm, double seconds);
+double vm_get_closest_alarm_countdown(VMContext *vm);
+void vm_snooze_alarm_countdown(VMContext *vm, double seconds, double snooze_amount);
+void vm_unset_alarm_countdown(VMContext *vm, double seconds);
+void vm_snooze_all_countdowns(VMContext *vm, double snooze_amount);
+
+void vm_set_alarm_daily_trap(VMContext *vm, const char *time_str, BppLineNumber line);
+void vm_set_alarm_daily_state(VMContext *vm, const char *time_str, int state);
+double vm_get_alarm_daily_remaining(VMContext *vm, const char *time_str);
+double vm_get_closest_alarm_daily_remaining(VMContext *vm);
+bool vm_validate_time_str(const char *time_str, int *out_secs);
+void vm_snooze_alarm_daily(VMContext *vm, const char *time_str, int snooze_amount);
+void vm_unset_alarm_daily(VMContext *vm, const char *time_str);
+void vm_snooze_all_dailies(VMContext *vm, int snooze_amount);
+
+void vm_set_global_alarm_state(VMContext *vm, int state);
+void vm_set_global_alarm_str_state(VMContext *vm, int state);
 
 /* Structured Exception Handling TryStack APIs */
 typedef struct {
@@ -227,6 +292,8 @@ void        vm_set_defining_dialect(VMContext *vm, BppDialect *d);
 
 double      vm_get_last_rnd(VMContext *vm);
 void        vm_set_last_rnd(VMContext *vm, double val);
+double      vm_get_jiffies_multiplier(VMContext *vm);
+void        vm_set_jiffies_multiplier(VMContext *vm, double val);
 
 typedef struct {
     BppLineNumber current_line;
@@ -240,6 +307,8 @@ void vm_save_state(VMContext *vm, BppVMState *state);
 void vm_restore_state(VMContext *vm, const BppVMState *state);
 
 BppError vm_get_error(VMContext *vm);
+void vm_set_chaining(VMContext *vm, bool chaining);
+bool vm_get_chaining(VMContext *vm);
 
 /**
  * @brief Jump VM execution to a specific program line and position offset.
@@ -381,6 +450,9 @@ const char  *vm_with_stack_peek(VMContext *vm);
 void vm_halt(VMContext *vm);
 void vm_request_exit(VMContext *vm);
 bool vm_exit_requested(VMContext *vm);
+void vm_trigger_break(VMContext *vm);
+bool vm_break_triggered(VMContext *vm);
+void vm_reset_break(VMContext *vm);
 
 /**
  * @brief Pluggable custom detokenizer callback type.

@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 #ifndef STANDALONE_EDITOR
 #include "bpp_editor.h"
 #endif
@@ -124,7 +130,7 @@ static struct VMContext *current_vm = NULL;
 
 static void oom(void) {
     fprintf(stderr, "\n\nOut of memory!\n");
-    exit(1);
+    return;
 }
 
 static void ensure_line_capacity(int row, int needed) {
@@ -133,7 +139,7 @@ static void ensure_line_capacity(int row, int needed) {
         if (new_cap < needed) new_cap = needed;
         if (new_cap < 128) new_cap = 128;
         char *new_text = realloc(text_buffer[row].text, new_cap);
-        if (!new_text) oom();
+        if (!new_text) { oom(); return; }
         text_buffer[row].text = new_text;
         text_buffer[row].capacity = new_cap;
     }
@@ -145,7 +151,7 @@ static void ensure_buffer_capacity(int needed) {
         if (new_cap < needed) new_cap = needed;
         if (new_cap < 256) new_cap = 256;
         Line *new_buf = realloc(text_buffer, new_cap * sizeof(Line));
-        if (!new_buf) oom();
+        if (!new_buf) { oom(); return; }
         text_buffer = new_buf;
         text_buffer_capacity = new_cap;
     }
@@ -156,8 +162,8 @@ static void insert_empty_line(int row) {
     for (int i = current_lines; i > row; i--) {
         text_buffer[i] = text_buffer[i - 1];
     }
-    text_buffer[row].text = malloc(128);
-    if (!text_buffer[row].text) oom();
+    text_buffer[row].text = (char *)calloc(1, 128);
+    if (!text_buffer[row].text) { oom(); return; }
     text_buffer[row].text[0] = '\0';
     text_buffer[row].length = 0;
     text_buffer[row].capacity = 128;

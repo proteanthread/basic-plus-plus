@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_variables.h
  * @brief Variable storage, scoping, and lookup API.
@@ -72,6 +77,9 @@ bool var_assign(VariableContext *ctx, const char *name, BValue val);
  * @brief Clear all variables (implements CLEAR / CLR / NEW).
  */
 void var_clear_all(VariableContext *ctx);
+void var_mark_common(VariableContext *ctx, const char *name);
+bool var_is_common(VariableContext *ctx, const char *name);
+void var_clear_for_chain(VariableContext *ctx);
 
 /**
  * @brief Clear all local variables belonging to a specific prefix scope.

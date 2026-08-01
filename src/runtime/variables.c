@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file variables.c
  * @brief Variable storage and lookup table implementation.
@@ -32,6 +38,7 @@
 #include "bpp_vdev.h"
 #include "bpp_platform.h"
 #include "bpp_logger.h"
+#include "bpp_vcon.h"
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -60,6 +67,8 @@ struct VariableContext {
     char             active_namespace[64];
     char             shared_vars[64][64];
     int              shared_count;
+    char             common_vars[128][64];
+    int              common_count;
     ValueType        global_def_types[26];
     ScopeDefMapping *scope_defs;
     bool             case_sensitive;
@@ -94,7 +103,7 @@ static void normalize_name(VariableContext *ctx, char *dest, const char *src, si
 /* Portable C17 strdup replacement to avoid POSIX warnings and dependencies */
 static char *bpp_strdup(const char *src) {
     size_t len = strlen(src);
-    char *dest = (char *)malloc(len + 1);
+    char *dest = (char *)calloc(1, len + 1);
     if (dest) {
         memcpy(dest, src, len + 1);
     }
@@ -120,7 +129,7 @@ static int bpp_strcasecmp(const char *s1, const char *s2) {
 
 VariableContext *var_init(MemoryContext *mem, StringContext *str) {
     if (!mem || !str) return NULL;
-    VariableContext *ctx = (VariableContext *)malloc(sizeof(VariableContext));
+    VariableContext *ctx = (VariableContext *)calloc(1, sizeof(VariableContext));
     if (!ctx) return NULL;
     ctx->mem = mem;
     ctx->str = str;
@@ -128,6 +137,7 @@ VariableContext *var_init(MemoryContext *mem, StringContext *str) {
     ctx->active_scope[0] = '\0';
     ctx->active_namespace[0] = '\0';
     ctx->shared_count = 0;
+    ctx->common_count = 0;
     memset(ctx->buckets, 0, sizeof(ctx->buckets));
     for (int i = 0; i < 26; ++i) {
         ctx->global_def_types[i] = VAL_NUMBER;
@@ -206,6 +216,39 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
                     res->as.string = str_create(ctx->str, clip, strlen(clip));
                     free(clip);
                 }
+            } else if (bpp_strcasecmp(name, "HMOUSE") == 0 || bpp_strcasecmp(name, "_HMOUSE") == 0) {
+                int col = 1, row = 1;
+                platform_mouse_get_position(&col, &row);
+                res->type = VAL_NUMBER;
+                res->as.number = col;
+            } else if (bpp_strcasecmp(name, "VMOUSE") == 0 || bpp_strcasecmp(name, "_VMOUSE") == 0) {
+                int col = 1, row = 1;
+                platform_mouse_get_position(&col, &row);
+                res->type = VAL_NUMBER;
+                res->as.number = row;
+            } else if (bpp_strcasecmp(name, "MOUSE") == 0 || bpp_strcasecmp(name, "_MOUSE") == 0 ||
+                       bpp_strcasecmp(name, "MOUSE$") == 0 || bpp_strcasecmp(name, "_MOUSE$") == 0) {
+                int col = 1, row = 1;
+                platform_mouse_get_position(&col, &row);
+                int hover_char = 32;
+                extern VConContext *g_vcon_context;
+                if (g_vcon_context) {
+                    int active_idx = vcon_get_active_index(g_vcon_context);
+                    hover_char = vcon_get_char_at(g_vcon_context, active_idx, row - 1, col - 1);
+                }
+                char buf[2] = {(char)hover_char, 0};
+                if (res->type == VAL_STRING && res->as.string) {
+                    str_release(ctx->str, res->as.string);
+                }
+                res->type = VAL_STRING;
+                res->as.string = str_create(ctx->str, buf, 1);
+            } else if (bpp_strcasecmp(name, "TRIG") == 0 || bpp_strcasecmp(name, "_TRIG") == 0) {
+                int mask = 0;
+                if (platform_mouse_get_button(0)) mask |= 1;
+                if (platform_mouse_get_button(1)) mask |= 2;
+                if (platform_mouse_get_button(2)) mask |= 4;
+                res->type = VAL_NUMBER;
+                res->as.number = mask;
             }
             return res;
         }
@@ -222,7 +265,7 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
     }
 
     /* Implicitly declare the variable */
-    VarEntry *new_entry = (VarEntry *)malloc(sizeof(VarEntry));
+    VarEntry *new_entry = (VarEntry *)calloc(1, sizeof(VarEntry));
     if (!new_entry) return NULL;
 
     new_entry->name = bpp_strdup(lookup_name);
@@ -235,7 +278,7 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
     size_t len = strlen(lookup_name);
     char last = lookup_name[len - 1];
 
-    if (last == '$') {
+    if (last == '$' || bpp_strcasecmp(name, "MOUSE") == 0 || bpp_strcasecmp(name, "_MOUSE") == 0) {
         new_entry->value.type = VAL_STRING;
         new_entry->value.as.string = NULL; /* Empty string */
     } else if (last == '%') {
@@ -263,6 +306,36 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
             new_entry->value.as.string = str_create(ctx->str, clip, strlen(clip));
             free(clip);
         }
+    } else if (bpp_strcasecmp(name, "HMOUSE") == 0 || bpp_strcasecmp(name, "_HMOUSE") == 0) {
+        int col = 1, row = 1;
+        platform_mouse_get_position(&col, &row);
+        new_entry->value.type = VAL_NUMBER;
+        new_entry->value.as.number = col;
+    } else if (bpp_strcasecmp(name, "VMOUSE") == 0 || bpp_strcasecmp(name, "_VMOUSE") == 0) {
+        int col = 1, row = 1;
+        platform_mouse_get_position(&col, &row);
+        new_entry->value.type = VAL_NUMBER;
+        new_entry->value.as.number = row;
+    } else if (bpp_strcasecmp(name, "MOUSE") == 0 || bpp_strcasecmp(name, "_MOUSE") == 0 ||
+               bpp_strcasecmp(name, "MOUSE$") == 0 || bpp_strcasecmp(name, "_MOUSE$") == 0) {
+        int col = 1, row = 1;
+        platform_mouse_get_position(&col, &row);
+        int hover_char = 32;
+        extern VConContext *g_vcon_context;
+        if (g_vcon_context) {
+            int active_idx = vcon_get_active_index(g_vcon_context);
+            hover_char = vcon_get_char_at(g_vcon_context, active_idx, row - 1, col - 1);
+        }
+        char buf[2] = {(char)hover_char, 0};
+        new_entry->value.type = VAL_STRING;
+        new_entry->value.as.string = str_create(ctx->str, buf, 1);
+    } else if (bpp_strcasecmp(name, "TRIG") == 0 || bpp_strcasecmp(name, "_TRIG") == 0) {
+        int mask = 0;
+        if (platform_mouse_get_button(0)) mask |= 1;
+        if (platform_mouse_get_button(1)) mask |= 2;
+        if (platform_mouse_get_button(2)) mask |= 4;
+        new_entry->value.type = VAL_NUMBER;
+        new_entry->value.as.number = mask;
     }
 
     return &new_entry->value;
@@ -279,6 +352,24 @@ bool var_assign(VariableContext *ctx, const char *name, BValue val) {
     if (bpp_strcasecmp(name, "_CLIPBOARD$") == 0 && val.type == VAL_STRING) {
         const char *text = str_data(val.as.string);
         platform_clipboard_set(text ? text : "");
+    } else if (bpp_strcasecmp(name, "HMOUSE") == 0 || bpp_strcasecmp(name, "_HMOUSE") == 0) {
+        int col = 1, row = 1;
+        platform_mouse_get_position(&col, &row);
+        platform_mouse_set_position((int)val.as.number, row);
+    } else if (bpp_strcasecmp(name, "VMOUSE") == 0 || bpp_strcasecmp(name, "_VMOUSE") == 0) {
+        int col = 1, row = 1;
+        platform_mouse_get_position(&col, &row);
+        platform_mouse_set_position(col, (int)val.as.number);
+    } else if (bpp_strcasecmp(name, "MOUSE") == 0 || bpp_strcasecmp(name, "_MOUSE") == 0 ||
+               bpp_strcasecmp(name, "MOUSE$") == 0 || bpp_strcasecmp(name, "_MOUSE$") == 0) {
+        if (val.type == VAL_STRING) {
+            const char *str = str_data(val.as.string);
+            if (str && str[0]) {
+                platform_mouse_set_cursor(str[0], 7);
+            }
+        } else {
+            platform_mouse_enable(val.as.number != 0.0);
+        }
     }
 
     /* Check type compatibility */
@@ -392,6 +483,7 @@ void var_clear_all(VariableContext *ctx) {
     }
     ctx->is_explicit = false;
     ctx->shared_count = 0;
+    ctx->common_count = 0;
     clear_scope_defs(ctx);
     for (int i = 0; i < 26; ++i) {
         ctx->global_def_types[i] = VAL_NUMBER;
@@ -426,7 +518,7 @@ BValue *var_declare(VariableContext *ctx, const char *name) {
         entry = entry->next;
     }
 
-    VarEntry *new_entry = (VarEntry *)malloc(sizeof(VarEntry));
+    VarEntry *new_entry = (VarEntry *)calloc(1, sizeof(VarEntry));
     if (!new_entry) return NULL;
 
     new_entry->name = bpp_strdup(lookup_name);
@@ -549,7 +641,7 @@ void var_set_def_type(VariableContext *ctx, const char *scope, char start_letter
             curr = curr->next;
         }
         if (!curr) {
-            curr = (ScopeDefMapping *)malloc(sizeof(ScopeDefMapping));
+            curr = (ScopeDefMapping *)calloc(1, sizeof(ScopeDefMapping));
             if (!curr) return;
             strncpy(curr->scope_name, scope, sizeof(curr->scope_name) - 1);
             curr->scope_name[sizeof(curr->scope_name) - 1] = '\0';
@@ -697,7 +789,7 @@ bool var_deserialize(VariableContext *ctx, void *fp) {
         uint32_t name_len = 0;
         if (fread(&name_len, sizeof(name_len), 1, f) != 1) return false;
 
-        char *name = (char *)malloc(name_len + 1);
+        char *name = (char *)calloc(1, name_len + 1);
         if (!name) return false;
         if (fread(name, 1, name_len, f) != name_len) {
             free(name);
@@ -727,7 +819,7 @@ bool var_deserialize(VariableContext *ctx, void *fp) {
                 return false;
             }
             if (s_len > 0) {
-                char *s_buf = (char *)malloc(s_len + 1);
+                char *s_buf = (char *)calloc(1, s_len + 1);
                 if (!s_buf) { free(name); return false; }
                 if (fread(s_buf, 1, s_len, f) != s_len) {
                     free(s_buf);
@@ -747,7 +839,7 @@ bool var_deserialize(VariableContext *ctx, void *fp) {
                 return false;
             }
             if (a_len > 0) {
-                char *a_buf = (char *)malloc(a_len + 1);
+                char *a_buf = (char *)calloc(1, a_len + 1);
                 if (!a_buf) { free(name); return false; }
                 if (fread(a_buf, 1, a_len, f) != a_len) {
                     free(a_buf);
@@ -769,7 +861,7 @@ bool var_deserialize(VariableContext *ctx, void *fp) {
             }
         }
 
-        VarEntry *new_entry = (VarEntry *)malloc(sizeof(VarEntry));
+        VarEntry *new_entry = (VarEntry *)calloc(1, sizeof(VarEntry));
         if (!new_entry) { free(name); return false; }
         new_entry->name = name;
         new_entry->value = val;
@@ -779,6 +871,79 @@ bool var_deserialize(VariableContext *ctx, void *fp) {
         ctx->buckets[bucket] = new_entry;
     }
     return true;
+}
+
+void var_mark_common(VariableContext *ctx, const char *name) {
+    if (!ctx || !name || !*name) return;
+    char norm[64];
+    normalize_name(ctx, norm, name, sizeof(norm));
+    for (int i = 0; i < ctx->common_count; ++i) {
+        if (strcmp(ctx->common_vars[i], norm) == 0) {
+            return;
+        }
+    }
+    if (ctx->common_count < 128) {
+        snprintf(ctx->common_vars[ctx->common_count++], 64, "%s", norm);
+    }
+}
+
+bool var_is_common(VariableContext *ctx, const char *name) {
+    if (!ctx || !name || !*name) return false;
+    char norm[64];
+    normalize_name(ctx, norm, name, sizeof(norm));
+    
+    /* Strips any namespace prefix/scoped prefix to get base variable name for common check */
+    const char *base = strchr(norm, ':');
+    if (base) {
+        base++;
+    } else {
+        base = norm;
+    }
+    const char *dot = strchr(base, '.');
+    if (dot) {
+        base = dot + 1;
+    }
+    
+    for (int i = 0; i < ctx->common_count; ++i) {
+        if (strcmp(ctx->common_vars[i], base) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void var_clear_for_chain(VariableContext *ctx) {
+    if (!ctx) return;
+    for (int i = 0; i < HASH_BUCKETS; ++i) {
+        VarEntry *prev = NULL;
+        VarEntry *entry = ctx->buckets[i];
+        while (entry) {
+            VarEntry *next = entry->next;
+            if (var_is_common(ctx, entry->name)) {
+                prev = entry;
+            } else {
+                if (prev) {
+                    prev->next = next;
+                } else {
+                    ctx->buckets[i] = next;
+                }
+                free(entry->name);
+                if ((entry->value.type == VAL_STRING || entry->value.type == VAL_ARRAY_REF) && entry->value.as.string) {
+                    str_release(ctx->str, entry->value.as.string);
+                } else if (entry->value.type == VAL_MAP && entry->value.as.map) {
+                    bpp_map_release(ctx->str, entry->value.as.map);
+                }
+                free(entry);
+            }
+            entry = next;
+        }
+    }
+    ctx->is_explicit = false;
+    ctx->shared_count = 0;
+    clear_scope_defs(ctx);
+    for (int i = 0; i < 26; ++i) {
+        ctx->global_def_types[i] = VAL_NUMBER;
+    }
 }
 
 

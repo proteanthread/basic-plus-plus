@@ -1,0 +1,19 @@
+BASEDIR$
+
+1. Syntax & Parameters
+BASEDIR$
+
+---
+
+2. Description & Usage
+Returns the parent directory path of the current working directory.
+
+---
+
+3. Code Examples
+10 PRINT BASEDIR$
+
+---
+
+4. Cross-References / See Also
+- BASEPATH$, BASENAME$, PWD

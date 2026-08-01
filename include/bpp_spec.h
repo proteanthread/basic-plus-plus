@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_spec.h
  * @brief Dynamic Keyword Specification & Feature Registry API.
@@ -12,6 +17,8 @@
 
 #ifndef BPP_SPEC_H
 #define BPP_SPEC_H
+
+#include <stdbool.h>
 
 #include "bpp_lexer.h"
 #include "bpp_vm.h"

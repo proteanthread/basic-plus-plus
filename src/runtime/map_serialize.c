@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file map_serialize.c
  * @brief JSON, XML, YAML, and INI serialization / deserialization converters for BppMap.
@@ -27,9 +33,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#if defined(_MSC_VER)
-#define strcasecmp _stricmp
-#endif
 
 #if BPP_SUPPORT_JSON
 static void stringify_json_internal(BppMap *map, char **p_buf, size_t *p_cap, size_t *p_len);
@@ -87,7 +90,7 @@ static char *parse_json_string(const char **p_in) {
     const char *start = p;
     while (*p && *p != '"') p++;
     size_t len = p - start;
-    char *res = (char *)malloc(len + 1);
+    char *res = (char *)calloc(1, len + 1);
     if (res) {
         memcpy(res, start, len);
         res[len] = '\0';
@@ -250,7 +253,7 @@ static void stringify_json_internal(BppMap *map, char **p_buf, size_t *p_cap, si
 char *bpp_map_stringify_json(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
-    char *buf = (char *)malloc(cap);
+    char *buf = (char *)calloc(1, cap);
     if (!buf) return NULL;
     buf[0] = '\0';
     stringify_json_internal(map, &buf, &cap, &len);
@@ -297,7 +300,7 @@ BppMap *bpp_map_parse_xml(void *str_ctx, const char *xml) {
             const char *val_start = p;
             while (*p && *p != '<') p++;
             size_t val_len = p - val_start;
-            char *val_str = (char *)malloc(val_len + 1);
+            char *val_str = (char *)calloc(1, val_len + 1);
             if (val_str) {
                 memcpy(val_str, val_start, val_len);
                 val_str[val_len] = '\0';
@@ -381,7 +384,7 @@ static void stringify_xml_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
 char *bpp_map_stringify_xml(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
-    char *buf = (char *)malloc(cap);
+    char *buf = (char *)calloc(1, cap);
     if (!buf) return NULL;
     buf[0] = '\0';
     stringify_xml_internal(map, &buf, &cap, &len);
@@ -426,7 +429,7 @@ BppMap *bpp_map_parse_yaml(void *str_ctx, const char *yaml) {
             while (val_end > val_start && isspace((unsigned char)*val_end)) val_end--;
             size_t val_len = (val_end >= val_start) ? (val_end - val_start + 1) : 0;
 
-            char *val_str = (char *)malloc(val_len + 1);
+            char *val_str = (char *)calloc(1, val_len + 1);
             if (val_str) {
                 memcpy(val_str, val_start, val_len);
                 val_str[val_len] = '\0';
@@ -485,7 +488,7 @@ static void stringify_yaml_internal(BppMap *map, char **p_buf, size_t *p_cap, si
 char *bpp_map_stringify_yaml(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
-    char *buf = (char *)malloc(cap);
+    char *buf = (char *)calloc(1, cap);
     if (!buf) return NULL;
     buf[0] = '\0';
     stringify_yaml_internal(map, &buf, &cap, &len, 0);
@@ -562,7 +565,7 @@ BppMap *bpp_map_parse_ini(void *str_ctx, const char *ini) {
             while (val_end > val_start && isspace((unsigned char)*val_end)) val_end--;
             size_t val_len = (val_end >= val_start) ? (val_end - val_start + 1) : 0;
 
-            char *val_str = (char *)malloc(val_len + 1);
+            char *val_str = (char *)calloc(1, val_len + 1);
             if (val_str) {
                 memcpy(val_str, val_start, val_len);
                 val_str[val_len] = '\0';
@@ -645,7 +648,7 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
 char *bpp_map_stringify_ini(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
-    char *buf = (char *)malloc(cap);
+    char *buf = (char *)calloc(1, cap);
     if (!buf) return NULL;
     buf[0] = '\0';
     stringify_ini_internal(map, &buf, &cap, &len);

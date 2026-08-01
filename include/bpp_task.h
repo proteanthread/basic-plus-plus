@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_task.h
  * @brief Multitasking Task Manager API.
@@ -52,6 +57,7 @@ void task_mutex_unlock(void);
 
 void task_mgr_init(void *main_vm);
 void task_mgr_shutdown(void);
+int  task_mgr_has_active_tasks(void);
 int  task_spawn(VDevContext *vdev, const char *filename);
 int  task_spawn_at_label(VDevContext *vdev, const char *filename, const char *label);
 void task_list(VDevContext *vdev);

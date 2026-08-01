@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_metadata.h
  * @brief Metadata registry defining schemas for namespace resolution, cross-file global labels, and queryable docstrings.
@@ -42,6 +47,9 @@
 #ifndef BPP_METADATA_H
 #define BPP_METADATA_H
 
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "bpp_config.h"
 #include "bpp_lexer.h"
 
@@ -59,7 +67,7 @@ typedef struct {
 
 /* Introspection docstring mapping target names to documentation text */
 typedef struct {
-    char target_name[128]; // e.g. "MATH.ADD" or "::MY_LABEL"
+    char target_name[128]; /* e.g. "MATH.ADD" or "::MY_LABEL" */
     char docstring[256];
 } BppDocstring;
 
@@ -73,10 +81,10 @@ typedef struct {
 
 /* Stateful metadata block structure for KEYWORD, SCOPE, ALIAS blocks */
 typedef struct {
-    char block_type[32];   // "KEYWORD", "SCOPE", "ALIAS"
-    char target_name[64];  // The target of the block, e.g. "PRINT"
-    char docstring[256];   // The docstring of the block
-    char body[MAX_BLOCK_BODY_LEN]; // Concatenated line text of the block body
+    char block_type[32];   /* "KEYWORD", "SCOPE", "ALIAS" */
+    char target_name[64];  /* The target of the block, e.g. "PRINT" */
+    char docstring[256];   /* The docstring of the block */
+    char body[MAX_BLOCK_BODY_LEN]; /* Concatenated line text of the block body */
 } BppMetadataBlock;
 
 /* Registry context holding all metadata */
@@ -90,9 +98,9 @@ typedef struct {
     BppMetadataBlock metadata_blocks[MAX_METADATA_BLOCKS];
     int metadata_block_count;
 
-    char current_namespace[64];      // Active namespace during loading/parsing
-    char last_docstring_buffer[256]; // Holds the last parsed docstring temporarily
-    bool option_strict;              // Strict variable and type checks enabled
+    char current_namespace[64];      /* Active namespace during loading/parsing */
+    char last_docstring_buffer[256]; /* Holds the last parsed docstring temporarily */
+    bool option_strict;              /* Strict variable and type checks enabled */
 } BppMetadataRegistry;
 
 /**

@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file metadata.c
  * @brief Implementation of the metadata registry for namespaces, global labels, and docstrings.
@@ -46,9 +52,6 @@
 #include <ctype.h>
 #include <stdio.h>
 
-#if defined(_WIN32) && !defined(strcasecmp)
-#define strcasecmp _stricmp
-#endif
 
 static void safe_strncpy(char *dest, const char *src, size_t dest_size) {
     if (!dest || dest_size == 0) return;
@@ -64,8 +67,7 @@ static void safe_strncpy(char *dest, const char *src, size_t dest_size) {
     dest[len] = '\0';
 }
 
-#undef strncpy
-#define strncpy(dest, src, size) safe_strncpy(dest, src, (size) + 1)
+/* Remove standard function macro hijack; calls use safe_strncpy explicitly */
 
 void metadata_init(BppMetadataRegistry *reg) {
     if (!reg) return;
@@ -81,23 +83,19 @@ bool metadata_register_label(BppMetadataRegistry *reg, const char *label, const 
     if (!reg || !label || !filename) return false;
     if (reg->global_label_count >= MAX_GLOBAL_LABELS) return false;
 
-    // Check if the label is already registered to avoid duplicates
+    /* Check if the label is already registered to avoid duplicates */
     for (int i = 0; i < reg->global_label_count; i++) {
         if (strcasecmp(reg->global_labels[i].label_name, label) == 0) {
-            // Update location
-            strncpy(reg->global_labels[i].filename, filename, sizeof(reg->global_labels[i].filename) - 1);
-            reg->global_labels[i].filename[sizeof(reg->global_labels[i].filename) - 1] = '\0';
+            /* Update location */
+            safe_strncpy(reg->global_labels[i].filename, filename, sizeof(reg->global_labels[i].filename));
             reg->global_labels[i].line_number = line;
             return true;
         }
     }
 
     int idx = reg->global_label_count;
-    strncpy(reg->global_labels[idx].label_name, label, sizeof(reg->global_labels[idx].label_name) - 1);
-    reg->global_labels[idx].label_name[sizeof(reg->global_labels[idx].label_name) - 1] = '\0';
-
-    strncpy(reg->global_labels[idx].filename, filename, sizeof(reg->global_labels[idx].filename) - 1);
-    reg->global_labels[idx].filename[sizeof(reg->global_labels[idx].filename) - 1] = '\0';
+    safe_strncpy(reg->global_labels[idx].label_name, label, sizeof(reg->global_labels[idx].label_name));
+    safe_strncpy(reg->global_labels[idx].filename, filename, sizeof(reg->global_labels[idx].filename));
 
     reg->global_labels[idx].line_number = line;
     reg->global_label_count++;
@@ -109,8 +107,7 @@ bool metadata_resolve_label(const BppMetadataRegistry *reg, const char *label, c
 
     for (int i = 0; i < reg->global_label_count; i++) {
         if (strcasecmp(reg->global_labels[i].label_name, label) == 0) {
-            strncpy(out_filename, reg->global_labels[i].filename, max_len - 1);
-            out_filename[max_len - 1] = '\0';
+            safe_strncpy(out_filename, reg->global_labels[i].filename, max_len);
             *out_line = reg->global_labels[i].line_number;
             return true;
         }
@@ -122,21 +119,17 @@ bool metadata_register_docstring(BppMetadataRegistry *reg, const char *target, c
     if (!reg || !target || !docstring) return false;
     if (reg->docstring_count >= MAX_DOCSTRINGS) return false;
 
-    // Check if target already has a docstring to update it
+    /* Check if target already has a docstring to update it */
     for (int i = 0; i < reg->docstring_count; i++) {
         if (strcasecmp(reg->docstrings[i].target_name, target) == 0) {
-            strncpy(reg->docstrings[i].docstring, docstring, sizeof(reg->docstrings[i].docstring) - 1);
-            reg->docstrings[i].docstring[sizeof(reg->docstrings[i].docstring) - 1] = '\0';
+            safe_strncpy(reg->docstrings[i].docstring, docstring, sizeof(reg->docstrings[i].docstring));
             return true;
         }
     }
 
     int idx = reg->docstring_count;
-    strncpy(reg->docstrings[idx].target_name, target, sizeof(reg->docstrings[idx].target_name) - 1);
-    reg->docstrings[idx].target_name[sizeof(reg->docstrings[idx].target_name) - 1] = '\0';
-
-    strncpy(reg->docstrings[idx].docstring, docstring, sizeof(reg->docstrings[idx].docstring) - 1);
-    reg->docstrings[idx].docstring[sizeof(reg->docstrings[idx].docstring) - 1] = '\0';
+    safe_strncpy(reg->docstrings[idx].target_name, target, sizeof(reg->docstrings[idx].target_name));
+    safe_strncpy(reg->docstrings[idx].docstring, docstring, sizeof(reg->docstrings[idx].docstring));
 
     reg->docstring_count++;
     return true;
@@ -164,25 +157,25 @@ void metadata_pre_scan_line(VMContext *vm, const char *filename, BppLineNumber l
 
     BppToken tok = lex_next(lex);
 
-    // 1. Docstring: // docstring
+    /* 1. Docstring: // docstring */
     if (tok.type == TOK_DOCSTRING) {
         int len = (int)(tok.length < sizeof(reg->last_docstring_buffer) - 1 ? tok.length : sizeof(reg->last_docstring_buffer) - 1);
         memcpy(reg->last_docstring_buffer, tok.as.string, len);
         reg->last_docstring_buffer[len] = '\0';
     }
-    // 2. Namespace: ::[namespace]
+    /* 2. Namespace: ::[namespace] */
     else if (tok.type == TOK_NAMESPACE_DECL) {
         int len = (int)(tok.length < sizeof(reg->current_namespace) - 1 ? tok.length : sizeof(reg->current_namespace) - 1);
         memcpy(reg->current_namespace, tok.as.string, len);
         reg->current_namespace[len] = '\0';
 
-        // Associate buffered docstring with the namespace if present
+        /* Associate buffered docstring with the namespace if present */
         if (reg->last_docstring_buffer[0] != '\0') {
             metadata_register_docstring(reg, reg->current_namespace, reg->last_docstring_buffer);
             reg->last_docstring_buffer[0] = '\0';
         }
     }
-    // 3. Global Label: ::label:
+    /* 3. Global Label: ::label: */
     else if (tok.type == TOK_GLOBAL_LABEL) {
         char label_name[64];
         int len = (int)(tok.length < sizeof(label_name) - 1 ? tok.length : sizeof(label_name) - 1);
@@ -191,7 +184,7 @@ void metadata_pre_scan_line(VMContext *vm, const char *filename, BppLineNumber l
 
         metadata_register_label(reg, label_name, filename, line_num);
 
-        // Associate buffered docstring with the global label key (e.g. "::label")
+        /* Associate buffered docstring with the global label key (e.g. "::label") */
         if (reg->last_docstring_buffer[0] != '\0') {
             char target_key[128];
             snprintf(target_key, sizeof(target_key), "::%s", label_name);
@@ -199,7 +192,7 @@ void metadata_pre_scan_line(VMContext *vm, const char *filename, BppLineNumber l
             reg->last_docstring_buffer[0] = '\0';
         }
     }
-    // 4. Procedures: SUB, FUNCTION
+    /* 4. Procedures: SUB, FUNCTION */
     else if (tok.type == TOK_KEYWORD) {
         if (tok.as.keyword == KW_SUB || tok.as.keyword == KW_FUNCTION) {
             BppToken name_tok = lex_next(lex);
@@ -224,11 +217,11 @@ void metadata_pre_scan_line(VMContext *vm, const char *filename, BppLineNumber l
         }
     }
 
-    // Clear docstring buffer if we hit a statement that isn't a docstring, EOL, or comment
+    /* Clear docstring buffer if we hit a statement that isn't a docstring, EOL, or comment */
     if (tok.type != TOK_DOCSTRING && tok.type != TOK_EOL && tok.type != TOK_EOF) {
         if (tok.type != TOK_KEYWORD || (tok.as.keyword != KW_REM && tok.as.keyword != KW_SUB && tok.as.keyword != KW_FUNCTION)) {
-            // Keep docstring buffer for LET or other assignments only if they might declare a documented variable,
-            // but for simplicity let's only clear on other non-declarative statements.
+            /* Keep docstring buffer for LET or other assignments only if they might declare a documented variable, */
+            /* but for simplicity let's only clear on other non-declarative statements. */
             reg->last_docstring_buffer[0] = '\0';
         }
     }
@@ -240,14 +233,13 @@ bool metadata_register_block(BppMetadataRegistry *reg, const char *type, const c
     if (!reg || !type || !target) return false;
     if (reg->metadata_block_count >= MAX_METADATA_BLOCKS) return false;
 
-    // Check if target block already exists to update it (merging docstrings and bodies)
+    /* Check if target block already exists to update it (merging docstrings and bodies) */
     for (int i = 0; i < reg->metadata_block_count; i++) {
         if (strcasecmp(reg->metadata_blocks[i].block_type, type) == 0 &&
             strcasecmp(reg->metadata_blocks[i].target_name, target) == 0) {
             if (docstring && docstring[0] != '\0') {
                 if (reg->metadata_blocks[i].docstring[0] == '\0') {
-                    strncpy(reg->metadata_blocks[i].docstring, docstring, sizeof(reg->metadata_blocks[i].docstring) - 1);
-                    reg->metadata_blocks[i].docstring[sizeof(reg->metadata_blocks[i].docstring) - 1] = '\0';
+                    safe_strncpy(reg->metadata_blocks[i].docstring, docstring, sizeof(reg->metadata_blocks[i].docstring));
                 } else if (strstr(reg->metadata_blocks[i].docstring, docstring) == NULL) {
                     size_t cur_dlen = strlen(reg->metadata_blocks[i].docstring);
                     if (cur_dlen + strlen(docstring) + 3 < sizeof(reg->metadata_blocks[i].docstring)) {
@@ -266,8 +258,7 @@ bool metadata_register_block(BppMetadataRegistry *reg, const char *type, const c
                                  "\n%s", body);
                     }
                 } else {
-                    strncpy(reg->metadata_blocks[i].body, body, sizeof(reg->metadata_blocks[i].body) - 1);
-                    reg->metadata_blocks[i].body[sizeof(reg->metadata_blocks[i].body) - 1] = '\0';
+                    safe_strncpy(reg->metadata_blocks[i].body, body, sizeof(reg->metadata_blocks[i].body));
                 }
             }
             return true;
@@ -275,22 +266,17 @@ bool metadata_register_block(BppMetadataRegistry *reg, const char *type, const c
     }
 
     int idx = reg->metadata_block_count;
-    strncpy(reg->metadata_blocks[idx].block_type, type, sizeof(reg->metadata_blocks[idx].block_type) - 1);
-    reg->metadata_blocks[idx].block_type[sizeof(reg->metadata_blocks[idx].block_type) - 1] = '\0';
-
-    strncpy(reg->metadata_blocks[idx].target_name, target, sizeof(reg->metadata_blocks[idx].target_name) - 1);
-    reg->metadata_blocks[idx].target_name[sizeof(reg->metadata_blocks[idx].target_name) - 1] = '\0';
+    safe_strncpy(reg->metadata_blocks[idx].block_type, type, sizeof(reg->metadata_blocks[idx].block_type));
+    safe_strncpy(reg->metadata_blocks[idx].target_name, target, sizeof(reg->metadata_blocks[idx].target_name));
 
     if (docstring) {
-        strncpy(reg->metadata_blocks[idx].docstring, docstring, sizeof(reg->metadata_blocks[idx].docstring) - 1);
-        reg->metadata_blocks[idx].docstring[sizeof(reg->metadata_blocks[idx].docstring) - 1] = '\0';
+        safe_strncpy(reg->metadata_blocks[idx].docstring, docstring, sizeof(reg->metadata_blocks[idx].docstring));
     } else {
         reg->metadata_blocks[idx].docstring[0] = '\0';
     }
 
     if (body) {
-        strncpy(reg->metadata_blocks[idx].body, body, sizeof(reg->metadata_blocks[idx].body) - 1);
-        reg->metadata_blocks[idx].body[sizeof(reg->metadata_blocks[idx].body) - 1] = '\0';
+        safe_strncpy(reg->metadata_blocks[idx].body, body, sizeof(reg->metadata_blocks[idx].body));
     } else {
         reg->metadata_blocks[idx].body[0] = '\0';
     }
@@ -309,6 +295,12 @@ const BppMetadataBlock *metadata_get_block(const BppMetadataRegistry *reg, const
         }
     }
     return NULL;
+}
+
+void metadata_get_all_blocks(const BppMetadataRegistry *reg, const BppMetadataBlock **out_blocks, int *out_count) {
+    if (!reg || !out_blocks || !out_count) return;
+    *out_blocks = reg->metadata_blocks;
+    *out_count = reg->metadata_block_count;
 }
 
 static bool is_block_end_marker_simple(const char *text, const char *block_type, const char *block_target, MemoryContext *mem) {
@@ -379,6 +371,23 @@ static bool is_block_end_marker_simple(const char *text, const char *block_type,
     return false;
 }
 
+typedef struct {
+    char type[32];
+    char target[64];
+    char body[1024];
+    char docstring[256];
+} NestBlock;
+
+#define POP_NEST_STACK() do { \
+    if (nest_stack_ptr > 0) { \
+        nest_stack_ptr--; \
+        safe_strncpy(current_block_type, nest_stack[nest_stack_ptr].type, sizeof(current_block_type)); \
+        safe_strncpy(current_block_target, nest_stack[nest_stack_ptr].target, sizeof(current_block_target)); \
+        safe_strncpy(current_block_body, nest_stack[nest_stack_ptr].body, sizeof(current_block_body)); \
+        safe_strncpy(current_block_docstring, nest_stack[nest_stack_ptr].docstring, sizeof(current_block_docstring)); \
+    } \
+} while (0)
+
 void metadata_pre_scan_program(VMContext *vm, const char *filename) {
     BppMetadataRegistry *reg = vm_get_metadata(vm);
     if (!reg) return;
@@ -394,26 +403,8 @@ void metadata_pre_scan_program(VMContext *vm, const char *filename) {
     char current_block_body[MAX_BLOCK_BODY_LEN] = "";
     char current_block_docstring[256] = "";
 
-    struct {
-        char type[32];
-        char target[64];
-        char body[MAX_BLOCK_BODY_LEN];
-        char docstring[256];
-    } nest_stack[8];
+    NestBlock nest_stack[8];
     int nest_stack_ptr = 0;
-
-#define POP_NEST_STACK() \
-    do { \
-        nest_stack_ptr--; \
-        strncpy(current_block_type, nest_stack[nest_stack_ptr].type, sizeof(current_block_type) - 1); \
-        current_block_type[sizeof(current_block_type) - 1] = '\0'; \
-        strncpy(current_block_target, nest_stack[nest_stack_ptr].target, sizeof(current_block_target) - 1); \
-        current_block_target[sizeof(current_block_target) - 1] = '\0'; \
-        strncpy(current_block_body, nest_stack[nest_stack_ptr].body, sizeof(current_block_body) - 1); \
-        current_block_body[sizeof(current_block_body) - 1] = '\0'; \
-        strncpy(current_block_docstring, nest_stack[nest_stack_ptr].docstring, sizeof(current_block_docstring) - 1); \
-        current_block_docstring[sizeof(current_block_docstring) - 1] = '\0'; \
-    } while (0)
 
     for (size_t i = 0; i < count; i++) {
         const char *text = lines[i].text;
@@ -432,21 +423,16 @@ void metadata_pre_scan_program(VMContext *vm, const char *filename) {
                 /* If we are already inside a block, push the current block state to the stack */
                 if (inside_block) {
                     if (nest_stack_ptr < 8) {
-                        strncpy(nest_stack[nest_stack_ptr].type, current_block_type, sizeof(nest_stack[nest_stack_ptr].type) - 1);
-                        nest_stack[nest_stack_ptr].type[sizeof(nest_stack[nest_stack_ptr].type) - 1] = '\0';
-                        strncpy(nest_stack[nest_stack_ptr].target, current_block_target, sizeof(nest_stack[nest_stack_ptr].target) - 1);
-                        nest_stack[nest_stack_ptr].target[sizeof(nest_stack[nest_stack_ptr].target) - 1] = '\0';
-                        strncpy(nest_stack[nest_stack_ptr].body, current_block_body, sizeof(nest_stack[nest_stack_ptr].body) - 1);
-                        nest_stack[nest_stack_ptr].body[sizeof(nest_stack[nest_stack_ptr].body) - 1] = '\0';
-                        strncpy(nest_stack[nest_stack_ptr].docstring, current_block_docstring, sizeof(nest_stack[nest_stack_ptr].docstring) - 1);
-                        nest_stack[nest_stack_ptr].docstring[sizeof(nest_stack[nest_stack_ptr].docstring) - 1] = '\0';
+                        safe_strncpy(nest_stack[nest_stack_ptr].type, current_block_type, sizeof(nest_stack[nest_stack_ptr].type));
+                        safe_strncpy(nest_stack[nest_stack_ptr].target, current_block_target, sizeof(nest_stack[nest_stack_ptr].target));
+                        safe_strncpy(nest_stack[nest_stack_ptr].body, current_block_body, sizeof(nest_stack[nest_stack_ptr].body));
+                        safe_strncpy(nest_stack[nest_stack_ptr].docstring, current_block_docstring, sizeof(nest_stack[nest_stack_ptr].docstring));
                         nest_stack_ptr++;
                     }
                 }
 
                 inside_block = true;
-                strncpy(current_block_type, dir_name, sizeof(current_block_type) - 1);
-                current_block_type[sizeof(current_block_type) - 1] = '\0';
+                safe_strncpy(current_block_type, dir_name, sizeof(current_block_type));
 
                 BppToken target_tok = lex_next(lex);
                 if (target_tok.type == TOK_IDENT || target_tok.type == TOK_KEYWORD || target_tok.type == TOK_STRING) {
@@ -466,8 +452,7 @@ void metadata_pre_scan_program(VMContext *vm, const char *filename) {
 
                 /* Inherit docstring from parent if stack has a parent block and local docstring starts empty */
                 if (nest_stack_ptr > 0 && current_block_docstring[0] == '\0') {
-                    strncpy(current_block_docstring, nest_stack[nest_stack_ptr - 1].docstring, sizeof(current_block_docstring) - 1);
-                    current_block_docstring[sizeof(current_block_docstring) - 1] = '\0';
+                    safe_strncpy(current_block_docstring, nest_stack[nest_stack_ptr - 1].docstring, sizeof(current_block_docstring));
                 } else {
                     current_block_docstring[0] = '\0';
                 }

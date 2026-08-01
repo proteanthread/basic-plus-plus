@@ -11,10 +11,11 @@ Generates a pseudo-random floating-point number. The `RND` function is highly ve
 
 The behavior strictly depends on the value of the provided `expression`:
 - `RND` or `RND(1)` or `RND(n > 0)`: Generates a new random real number greater than or equal to 0.0 and less than 1.0.
-- `RND(0)` or `RND 0`: Returns the most recent previous random number generated (does not advance the sequence). This is highly useful for reusing a random value without needing to assign it to an intermediate variable.
-- `RND(-n)` or `RND -n`: Seeds the random number generator using the absolute value of the argument, and returns the first number in that seeded sequence. Each specific negative argument will initialize a repeatable, deterministic sequence of random numbers. This is critical for debugging programs that use `RND`, as you can use `RND(-1)` to seed, and `RND(0)` or `RND(1)` to continue predictably.
-- `RND &Hnnn`, `RND &Onnn`, `RND &Bnnn`: Because hexadecimal, octal, and binary strings are resolved as numeric literals during lexical analysis, they are fully valid arguments and evaluate as `RND(n > 0)` (returning a new random fraction).
-- `RND TIME`: The `TIME` keyword evaluates to a numeric `HHMMSS` time integer. Because it is positive, `RND TIME` effectively acts as `RND(time_integer > 0)` and returns a new random fraction. To use the current time to truly re-seed the engine entropically, use `RANDOMIZE TIMER` instead.
+- `RND(0)` or `RND 0`: Returns the most recent previous random number generated (does not advance the sequence).
+- `RND(-n)`: Seeds the random number generator using the absolute value of the argument, and returns the first number scaled in `[-n, 0)`.
+- `RND n` (paren-less): Generates a random integer between `0` and `n` (or between `-n` and `0` if negative).
+- `RND &Hnnn`, `RND &Onnn`, `RND &Bnnn`: Generates a random integer and returns it formatted as a string in matching base (hexadecimal, octal, or binary).
+- `RND TIME`, `RND TI`, `RND TIMER`: Returns a randomized offset system clock or timer value (as string or number).
 
 Note: Parentheses are optional when passing a numeric literal, a numeric variable, or a numeric keyword.
 
@@ -36,7 +37,7 @@ Note: Parentheses are optional when passing a numeric literal, a numeric variabl
 
 ## 4. Internal C-Source Mapping
 Implemented in `builtins_math.c` via the `builtin_rnd()` function.
-Parsed in `parser_expr.c` via `is_rnd_argument_start()` which allows parenthesis omission for specific token types (`TOK_NUMBER`, `TOK_VARIABLE`, `TOK_MINUS`, `TOK_PLUS`).
+Parsed in `parser_expr.c` via `is_rnd_argument_start()` which allows parenthesis omission for specific token types (`TOK_NUMBER`, `TOK_VARIABLE`, `TOK_MINUS`, `TOK_PLUS`, `TOK_TIME`).
 
 ## 5. Implementation Details
 The `builtin_rnd()` handler relies on the `RuntimeState` struct's `rnd_seed` variable. It implements a standard Linear Congruential Generator (LCG):

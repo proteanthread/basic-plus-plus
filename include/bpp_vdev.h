@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_vdev.h
  * @brief Virtual Device System (VDS) API.
@@ -198,6 +203,7 @@ void vdev_play_sound_freq(double freq, double duration_seconds);
  * @brief Poll background events (like SDL window close or keyboard queue).
  */
 void vdev_gfx_poll_events(void);
+void vdev_gfx_force_flush(void);
 void vdev_gfx_enable(bool allowed, bool gui_boot);
 struct VMContext;
 void vdev_gfx_boot_check(struct VMContext *vm);

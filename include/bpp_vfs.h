@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_vfs.h
  * @brief Virtual Filesystem (VFS) Mount & Path virtualization interface.
@@ -46,5 +51,10 @@ bool        vfs_mount(VfsContext *ctx, const char *prefix, const char *target, B
 bool        vfs_umount(VfsContext *ctx, const char *prefix);
 bool        vfs_resolve(VfsContext *ctx, const char *virtual_path, char *resolved_path, size_t max_len);
 void        vfs_list_mounts(VfsContext *ctx, VDevContext *vdev);
+
+const char *vfs_get_search_path(VfsContext *ctx);
+void        vfs_set_search_path(VfsContext *ctx, const char *path);
+const char *vfs_get_category_path(VfsContext *ctx, const char *category);
+void        vfs_set_category_path(VfsContext *ctx, const char *category, const char *path);
 
 #endif /* BPP_VFS_H */

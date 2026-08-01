@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_arrays.h
  * @brief Dynamic Array Management Subsystem API.
@@ -28,11 +33,14 @@
 #ifndef BPP_ARRAYS_H
 #define BPP_ARRAYS_H
 
+#include <stdbool.h>
+
 #include "bpp_types.h"
 #include "bpp_memory.h"
 #include "bpp_strings.h"
 
 /* Opaque Array Subsystem Context */
+struct VariableContext;
 typedef struct ArrayContext ArrayContext;
 
 /**
@@ -45,6 +53,7 @@ void          arr_shutdown(ArrayContext *ctx);
  * @brief Clear and delete all currently active arrays.
  */
 void          arr_clear_all(ArrayContext *ctx);
+void          arr_clear_for_chain(ArrayContext *ctx, struct VariableContext *var_ctx);
 
 /**
  * @brief Declare a new multi-dimensional array (DIM statement).

@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_stmt.h
  * @brief Statement Registry and Command Dispatcher API.
@@ -30,6 +35,9 @@
 
 #ifndef BPP_STMT_H
 #define BPP_STMT_H
+
+#include <stdint.h>
+#include <stdbool.h>
 
 #include "bpp_types.h"
 #include "bpp_lexer.h"
@@ -82,5 +90,6 @@ BppError stmt_tron_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_troff_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_break_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_vars_handler(VMContext *vm, LexerContext *lex);
+const char *error_get_message(int code);
 
 #endif /* BPP_STMT_H */

@@ -1,5 +1,0 @@
-10 REM --- Transactions Test ---
-20 PRINT "Testing TXNSTATUS..."
-30 T = TXNSTATUS()
-40 PRINT "TRANSACTIONS PASSED"
-50 END

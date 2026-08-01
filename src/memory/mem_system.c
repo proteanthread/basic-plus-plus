@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file mem_system.c
  * @brief Memory context and allocator implementation.
@@ -74,7 +80,7 @@ MemoryContext *mem_init(size_t prog_mem_sz, size_t var_mem_sz, size_t str_mem_sz
 
     /* Allocate scratch arena */
     ctx->scratch_size = scratch_mem_sz;
-    ctx->scratch_base = (char *)malloc(ctx->scratch_size);
+    ctx->scratch_base = (char *)calloc(1, ctx->scratch_size);
     if (!ctx->scratch_base) {
         free(ctx);
         return NULL;
@@ -87,7 +93,7 @@ MemoryContext *mem_init(size_t prog_mem_sz, size_t var_mem_sz, size_t str_mem_sz
 
     /* Allocate variable space */
     ctx->var_size = var_mem_sz;
-    ctx->var_base = (char *)malloc(ctx->var_size);
+    ctx->var_base = (char *)calloc(1, ctx->var_size);
     if (!ctx->var_base) {
         free(ctx->scratch_base);
         free(ctx);
@@ -98,7 +104,7 @@ MemoryContext *mem_init(size_t prog_mem_sz, size_t var_mem_sz, size_t str_mem_sz
     /* Initialize program store */
     ctx->lines_mem_limit = prog_mem_sz;
     ctx->lines_capacity = 128;
-    ctx->lines = (BppProgramLine *)malloc(ctx->lines_capacity * sizeof(BppProgramLine));
+    ctx->lines = (BppProgramLine *)calloc(ctx->lines_capacity, sizeof(BppProgramLine));
     if (!ctx->lines) {
         free(ctx->var_base);
         free(ctx->scratch_base);
@@ -110,7 +116,7 @@ MemoryContext *mem_init(size_t prog_mem_sz, size_t var_mem_sz, size_t str_mem_sz
 
     /* Initialize library program store */
     ctx->lib_lines_capacity = 128;
-    ctx->lib_lines = (BppProgramLine *)malloc(ctx->lib_lines_capacity * sizeof(BppProgramLine));
+    ctx->lib_lines = (BppProgramLine *)calloc(ctx->lib_lines_capacity, sizeof(BppProgramLine));
     if (!ctx->lib_lines) {
         free(ctx->lines);
         free(ctx->var_base);
@@ -219,7 +225,7 @@ bool mem_program_insert(MemoryContext *ctx, BppLineNumber line, const char *text
     }
 
     /* Allocate line text buffer */
-    char *text_copy = (char *)malloc(len + 1);
+    char *text_copy = (char *)calloc(1, len + 1);
     if (!text_copy) return false;
     strcpy(text_copy, text);
 
@@ -287,7 +293,7 @@ void *mem_string_alloc(MemoryContext *ctx, size_t size) {
     if (ctx->str_used + total_size > ctx->str_limit) {
         return NULL; /* String heap limit */
     }
-    size_t *ptr = (size_t *)malloc(total_size);
+    size_t *ptr = (size_t *)calloc(1, total_size);
     if (!ptr) return NULL;
     *ptr = total_size;
     ctx->str_used += total_size;
@@ -351,7 +357,7 @@ bool mem_lib_program_insert(MemoryContext *ctx, BppLineNumber line, const char *
         ctx->lib_lines_capacity = new_cap;
     }
 
-    char *text_copy = (char *)malloc(len + 1);
+    char *text_copy = (char *)calloc(1, len + 1);
     if (!text_copy) return false;
     strcpy(text_copy, text);
 

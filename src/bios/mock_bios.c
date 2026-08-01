@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /* Enable POSIX extensions (localtime_r) on Linux/POSIX systems.
  * Must be defined before any system header includes. */
 #if !defined(_MSC_VER) && !defined(__WATCOMC__) && !defined(MSDOS)
@@ -30,11 +36,7 @@
 #include <time.h>
 #include "bpp_platform.h"
 
-#if defined(_MSC_VER)
-#define strcasecmp _stricmp
-#else
-#include <strings.h>
-#endif
+#include "bpp_config.h"
 
 /* BDA offset helper macros */
 #define BDA_COM1_PORT   0x0400
@@ -632,16 +634,16 @@ void mock_bios_interrupt(MockBiosContext *ctx, uint8_t int_num) {
 
             typedef struct { const char *path; char *out_buffer; int out_max; int for_write; } BiosVfsArgs;
 
-            if (ah == 0x39) { // MKDIR
+            if (ah == 0x39) { /* MKDIR */
                 ax = (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 14, path)) ? 0 : 3;
                 if (ax == 0) flags &= ~1; else flags |= 1;
-            } else if (ah == 0x3A) { // RMDIR
+            } else if (ah == 0x3A) { /* RMDIR */
                 ax = (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 15, path)) ? 0 : 3;
                 if (ax == 0) flags &= ~1; else flags |= 1;
-            } else if (ah == 0x3B) { // CHDIR
+            } else if (ah == 0x3B) { /* CHDIR */
                 ax = (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 16, path)) ? 0 : 3;
                 if (ax == 0) flags &= ~1; else flags |= 1;
-            } else if (ah == 0x47) { // GETCWD
+            } else if (ah == 0x47) { /* GETCWD */
                 if (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 17, path)) {
                     addr = dx;
                     if (ctx->write_mem) {
@@ -652,7 +654,7 @@ void mock_bios_interrupt(MockBiosContext *ctx, uint8_t int_num) {
                 } else {
                     flags |= 1; ax = 15;
                 }
-            } else if (ah == 0x3C) { // CREATE FILE
+            } else if (ah == 0x3C) { /* CREATE FILE */
                 BiosVfsArgs vfs = { path, path, sizeof(path), 1 };
                 if (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 13, &vfs)) {
                     int handle = -1;
@@ -663,7 +665,7 @@ void mock_bios_interrupt(MockBiosContext *ctx, uint8_t int_num) {
                         else { ax = 3; flags |= 1; }
                     } else { ax = 4; flags |= 1; }
                 } else { ax = 3; flags |= 1; }
-            } else if (ah == 0x3D) { // OPEN FILE
+            } else if (ah == 0x3D) { /* OPEN FILE */
                 BiosVfsArgs vfs = { path, path, sizeof(path), 0 };
                 if (ctx->vdev_ioctl && ctx->vdev_ioctl(ctx->user_data, 13, &vfs)) {
                     int handle = -1;
@@ -675,14 +677,14 @@ void mock_bios_interrupt(MockBiosContext *ctx, uint8_t int_num) {
                         else { ax = 2; flags |= 1; }
                     } else { ax = 4; flags |= 1; }
                 } else { ax = 2; flags |= 1; }
-            } else if (ah == 0x3E) { // CLOSE
+            } else if (ah == 0x3E) { /* CLOSE */
                 int h = bx & 0xFF;
                 if (h < 20 && ctx->dos_handles[h]) {
                     fclose((FILE*)ctx->dos_handles[h]);
                     ctx->dos_handles[h] = NULL;
                     ax = 0; flags &= ~1;
                 } else { ax = 6; flags |= 1; }
-            } else if (ah == 0x3F) { // READ
+            } else if (ah == 0x3F) { /* READ */
                 int h = bx & 0xFF;
                 if (h < 20 && ctx->dos_handles[h]) {
                     char buf[1024];
@@ -693,8 +695,7 @@ void mock_bios_interrupt(MockBiosContext *ctx, uint8_t int_num) {
                     }
                     ax = (uint32_t)read_bytes; flags &= ~1;
                 } else { ax = 6; flags |= 1; }
-            } else if (ah == 0x40) { // WRITE
-                int h = bx & 0xFF;
+            } else if (ah == 0x40) { /* WRITE */                int h = bx & 0xFF;
                 if (h < 20 && ctx->dos_handles[h]) {
                     char buf[1024];
                     int to_write = cx > 1024 ? 1024 : cx;

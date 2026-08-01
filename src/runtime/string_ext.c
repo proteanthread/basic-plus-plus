@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file string_ext.c
  * @brief Extended string manipulation functions.
@@ -110,7 +116,7 @@ BValue string_lpad_func(BValue *args, int argc, void *rt) {
         return res;
     }
     
-    char *buf = malloc(target_len + 1);
+    char *buf = calloc(1, target_len + 1);
     if (!buf) {
         BValue res;
         res.type = VAL_STRING;
@@ -147,7 +153,7 @@ BValue string_rpad_func(BValue *args, int argc, void *rt) {
         return res;
     }
     
-    char *buf = malloc(target_len + 1);
+    char *buf = calloc(1, target_len + 1);
     if (!buf) {
         BValue res;
         res.type = VAL_STRING;
@@ -175,7 +181,7 @@ BValue string_lset_func(BValue *args, int argc, void *rt) {
     int target_len = (int)args[1].as.number;
     
     int cur_len = (int)strlen(str);
-    char *buf = malloc(target_len + 1);
+    char *buf = calloc(1, target_len + 1);
     if (!buf) {
         BValue res;
         res.type = VAL_STRING;
@@ -207,7 +213,7 @@ BValue string_rset_func(BValue *args, int argc, void *rt) {
     int target_len = (int)args[1].as.number;
     
     int cur_len = (int)strlen(str);
-    char *buf = malloc(target_len + 1);
+    char *buf = calloc(1, target_len + 1);
     if (!buf) {
         BValue res;
         res.type = VAL_STRING;
@@ -253,7 +259,7 @@ static BValue string_join_func(BValue *args, int argc, void *rt) {
     }
     size_t out_cap = 256;
     size_t out_len = 0;
-    char *out_buf = malloc(out_cap);
+    char *out_buf = calloc(1, out_cap);
     if (!out_buf) {
         err->code = 7; err->message = "Out of memory in JOIN$";
         return res;

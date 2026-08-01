@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file spec.c
  * @brief Dynamic Keyword Specification & Feature Registry manager implementation.
@@ -19,10 +25,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#ifdef _WIN32
-#define strncasecmp _strnicmp
-#define strcasecmp _stricmp
-#endif
+#include "bpp_config.h"
 
 static SpecObject spec_registry[MAX_SPECS];
 static int        spec_count = 0;
@@ -239,12 +242,31 @@ int spec_load_file(VMContext *vm, const char *filename) {
         return -2; /* Permission denied */
     }
 
+    int parse_res = -1;
     /* Check file extension */
     const char *ext = strrchr(resolved_path, '.');
     if (ext && (strcasecmp(ext, ".yaml") == 0 || strcasecmp(ext, ".yml") == 0)) {
-        return parse_spec_yaml(vm, resolved_path);
+        parse_res = parse_spec_yaml(vm, resolved_path);
+    } else {
+        parse_res = parse_spec_block(vm, resolved_path);
     }
-    return parse_spec_block(vm, resolved_path);
+
+    if (parse_res == 0) {
+        /* Extract directory part of the spec file to load companion libs relative to it */
+        char dir_part[512] = {0};
+        const char *last_slash = strrchr(resolved_path, '/');
+        const char *last_backslash = strrchr(resolved_path, '\\');
+        const char *sep = (last_slash > last_backslash) ? last_slash : last_backslash;
+        if (sep) {
+            size_t dir_len = (size_t)(sep - resolved_path + 1);
+            if (dir_len < sizeof(dir_part)) {
+                memcpy(dir_part, resolved_path, dir_len);
+                dir_part[dir_len] = '\0';
+            }
+        }
+        spec_load_companion_libraries(vm, dir_part);
+    }
+    return parse_res;
 }
 
 void spec_list_all(VMContext *vm) {

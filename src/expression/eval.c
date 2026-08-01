@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file eval.c
  * @brief Iterative Expression Evaluator implementation.
@@ -31,6 +37,7 @@
 #include "bpp_file.h"
 #include "bpp_task.h"
 #include "bpp_vdev.h"
+#include "bpp_vfs.h"
 #include "bpp_metadata.h"
 #include "bpp_funcreg.h"
 #include "bpp_eval.h"
@@ -47,7 +54,10 @@
 #include "bpp_fujinet.h"
 #include "bpp_platform.h"
 #include "bpp_vcon.h"
+
+void bpp_hash_string(const char *algo, const char *data, char *out_buf, size_t out_size);
 #include <string.h>
+#include <ctype.h>
 
 static BppDirSearch *g_dir_search = NULL;
 #include <math.h>
@@ -65,6 +75,10 @@ extern struct tm *platform_localtime(const time_t *timep, struct tm *result);
 
 extern double vm_get_last_rnd(VMContext *vm);
 extern void vm_set_last_rnd(VMContext *vm, double val);
+extern double platform_get_timer(void);
+extern double platform_get_uptime(void);
+extern double vm_get_ti_offset(VMContext *vm);
+extern void vm_set_ti_offset(VMContext *vm, double val);
 
 /**
  * @brief Parse and evaluate a Sinclair/Atari string slicing construct.
@@ -571,7 +585,10 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
            (tok.type != TOK_KEYWORD || tok.as.keyword == KW_NONE ||
             tok.as.keyword == KW_TASK || tok.as.keyword == KW_PLAY || tok.as.keyword == KW_HELP ||
             tok.as.keyword == KW_SCREEN || tok.as.keyword == KW_SEEK ||
-            tok.as.keyword == KW_TIMER || tok.as.keyword == KW_KEY)) {
+            tok.as.keyword == KW_TIMER || tok.as.keyword == KW_KEY ||
+            tok.as.keyword == KW_REMOVE || tok.as.keyword == KW_REMOVE_STR ||
+            tok.as.keyword == KW_ALARM || tok.as.keyword == KW_ALARM_STR ||
+            tok.as.keyword == KW_RANDOMIZE)) {
 
         /* Stop parsing if we see 'AT' identifier */
         if (tok.type == TOK_IDENT && tok.length == 2 &&
@@ -680,7 +697,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                 memcpy(sub_name, sub_tok.start, sub_len);
                 sub_name[sub_len] = '\0';
                 
-                char combined[256];
+                char combined[384];
                 snprintf(combined, sizeof(combined), "%s.%s", name_buf, sub_name);
                 strncpy(name_buf, combined, sizeof(name_buf) - 1);
                 name_buf[sizeof(name_buf) - 1] = '\0';
@@ -1005,8 +1022,209 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                     }
                 }
             } else if (is_builtin_function(name_buf)) {
-                /* Zero-argument function call (e.g. FREEFILE) */
-                BValue val = eval_builtin_function(vm, name_buf, lex, false, out_err);
+                BValue val;
+                memset(&val, 0, sizeof(val));
+                if (strcmp(name_buf, "RND") == 0) {
+                    BppToken next = lex_peek(lex);
+                    bool has_arg = false;
+                    bool is_negative = false;
+                    if (next.type == TOK_MINUS) {
+                        LexerContext *temp = lex_init(vm_get_mem(vm), lex_get_pos(lex));
+                        if (temp) {
+                            lex_set_dialect(temp, vm_get_active_dialect(vm));
+                            lex_next(temp); /* consume '-' */
+                            BppToken sub = lex_next(temp);
+                            if (sub.type == TOK_NUMBER) {
+                                has_arg = true;
+                                is_negative = true;
+                            }
+                            lex_shutdown(temp);
+                        }
+                    } else if (next.type == TOK_NUMBER || next.type == TOK_IDENT || next.type == TOK_KEYWORD) {
+                        has_arg = true;
+                    }
+
+                    if (has_arg) {
+                        if (is_negative) {
+                            lex_next(lex); /* Consume '-' */
+                        }
+                        BppToken arg_tok = lex_next(lex); /* Consume the argument token */
+                        if (arg_tok.type == TOK_NUMBER) {
+                            double num_val = arg_tok.as.number;
+                            if (is_negative) num_val = -num_val;
+                            int base = 0;
+                            if (arg_tok.length > 2 && arg_tok.start[0] == '&') {
+                                char b = (char)toupper((unsigned char)arg_tok.start[1]);
+                                if (b == 'H') base = 16;
+                                else if (b == 'O') base = 8;
+                                else if (b == 'B') base = 2;
+                                else if (isdigit((unsigned char)arg_tok.start[1])) base = 8;
+                            }
+                            
+                            if (base > 0) {
+                                long max_val = (long)num_val;
+                                long r_val = 0;
+                                if (max_val > 0) {
+                                    r_val = rand() % (max_val + 1);
+                                }
+                                char buf[128] = "";
+                                if (base == 16) snprintf(buf, sizeof(buf), "%X", (unsigned int)r_val);
+                                else if (base == 8) snprintf(buf, sizeof(buf), "%o", (unsigned int)r_val);
+                                else if (base == 2) {
+                                    char bin[64] = "";
+                                    int idx = 0;
+                                    unsigned long tmp = r_val;
+                                    if (tmp == 0) {
+                                        strcpy(buf, "0");
+                                    } else {
+                                        while (tmp > 0) {
+                                            bin[idx++] = (tmp & 1) ? '1' : '0';
+                                            tmp >>= 1;
+                                        }
+                                        for (int j = 0; j < idx; j++) {
+                                            buf[j] = bin[idx - 1 - j];
+                                        }
+                                        buf[idx] = '\0';
+                                    }
+                                }
+                                val.type = VAL_STRING;
+                                val.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+                            } else {
+                                long limit = (long)num_val;
+                                long r_val = 0;
+                                if (limit > 0) {
+                                    r_val = rand() % (limit + 1);
+                                } else if (limit < 0) {
+                                    r_val = -(rand() % (-limit + 1));
+                                }
+                                val.type = VAL_NUMBER;
+                                val.as.number = (double)r_val;
+                            }
+                        } else if (arg_tok.type == TOK_IDENT || arg_tok.type == TOK_KEYWORD) {
+                            char arg_name[64] = "";
+                            size_t alen = (arg_tok.length < 63) ? arg_tok.length : 63;
+                            memcpy(arg_name, arg_tok.start, alen);
+                            arg_name[alen] = '\0';
+                            for (size_t k = 0; k < alen; k++) {
+                                arg_name[k] = (char)toupper((unsigned char)arg_name[k]);
+                            }
+                            
+                            if (strcmp(arg_name, "TIME") == 0) {
+                                int h = rand() % 24;
+                                int m = rand() % 60;
+                                int s = rand() % 60;
+                                char buf[16];
+                                snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
+                                val.type = VAL_STRING;
+                                val.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+                            } else if (strcmp(arg_name, "TI") == 0) {
+                                int h = rand() % 24;
+                                int m = rand() % 60;
+                                int s = rand() % 60;
+                                val.type = VAL_NUMBER;
+                                val.as.number = h * 10000.0 + m * 100.0 + s;
+                            } else if (strcmp(arg_name, "TIMER") == 0) {
+                                double r_sec = ((double)rand() / (double)RAND_MAX) * 86400.0;
+                                val.type = VAL_NUMBER;
+                                val.as.number = r_sec;
+                            } else {
+                                val = eval_builtin_function(vm, name_buf, lex, false, out_err);
+                            }
+                        } else {
+                            val = eval_builtin_function(vm, name_buf, lex, false, out_err);
+                        }
+                    } else {
+                        val = eval_builtin_function(vm, name_buf, lex, false, out_err);
+                    }
+                } else if (strcmp(name_buf, "RANDOMIZE") == 0) {
+                    BppToken next = lex_peek(lex);
+                    if (next.type == TOK_STRING || next.type == TOK_IDENT) {
+                        BppToken arg_tok = lex_next(lex);
+                        BValue arg_val;
+                        memset(&arg_val, 0, sizeof(arg_val));
+                        if (arg_tok.type == TOK_STRING) {
+                            arg_val.type = VAL_STRING;
+                            arg_val.as.string = str_create(vm_get_str(vm), arg_tok.as.string, arg_tok.length);
+                        } else {
+                            char var_name[256];
+                            size_t vlen = (arg_tok.length < 255) ? arg_tok.length : 255;
+                            memcpy(var_name, arg_tok.start, vlen);
+                            var_name[vlen] = '\0';
+                            BValue *lookup = var_lookup(var, var_name, false);
+                            if (lookup) {
+                                arg_val = *lookup;
+                                if (arg_val.type == VAL_STRING && arg_val.as.string) str_add_ref(arg_val.as.string);
+                                else if (arg_val.type == VAL_MAP && arg_val.as.map) bpp_map_add_ref(arg_val.as.map);
+                            }
+                        }
+
+                        const char *mode = NULL;
+                        if (arg_val.type == VAL_STRING && arg_val.as.string) {
+                            mode = str_data(arg_val.as.string);
+                        }
+                        if (mode) {
+                            if (strcmp(mode, "STRING$") == 0) {
+                                int len = 8;
+                                char *buf = (char *)calloc(1, len + 1);
+                                const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                                for (int i = 0; i < len; i++) {
+                                    buf[i] = charset[rand() % (sizeof(charset) - 1)];
+                                }
+                                buf[len] = '\0';
+                                val.type = VAL_STRING;
+                                val.as.string = str_create(vm_get_str(vm), buf, len);
+                                free(buf);
+                            } else if (strcmp(mode, "DATE$") == 0) {
+                                int m = rand() % 12 + 1;
+                                int d = rand() % 28 + 1;
+                                int y = rand() % 100;
+                                char buf[16];
+                                snprintf(buf, sizeof(buf), "%02d-%02d-%02d", m, d, y);
+                                val.type = VAL_STRING;
+                                val.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+                            } else if (strcmp(mode, "DAY$") == 0) {
+                                const char *days[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+                                const char *day = days[rand() % 7];
+                                val.type = VAL_STRING;
+                                val.as.string = str_create(vm_get_str(vm), day, strlen(day));
+                            } else if (strcmp(mode, "TIME$") == 0) {
+                                int h = rand() % 24;
+                                int m = rand() % 60;
+                                int s = rand() % 60;
+                                char buf[16];
+                                snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
+                                val.type = VAL_STRING;
+                                val.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+                            } else {
+                                size_t len = strlen(mode);
+                                char *buf = (char *)calloc(1, len + 1);
+                                strcpy(buf, mode);
+                                for (size_t i = len - 1; i > 0; i--) {
+                                    size_t j = rand() % (i + 1);
+                                    char tmp = buf[i];
+                                    buf[i] = buf[j];
+                                    buf[j] = tmp;
+                                }
+                                val.type = VAL_STRING;
+                                val.as.string = str_create(vm_get_str(vm), buf, len);
+                                free(buf);
+                            }
+                        } else {
+                            val.type = VAL_STRING;
+                            val.as.string = str_create(vm_get_str(vm), "", 0);
+                        }
+
+                        if (arg_val.type == VAL_STRING && arg_val.as.string) {
+                            str_release(vm_get_str(vm), arg_val.as.string);
+                        } else if (arg_val.type == VAL_MAP && arg_val.as.map) {
+                            bpp_map_release(vm_get_str(vm), arg_val.as.map);
+                        }
+                    } else {
+                        val = eval_builtin_function(vm, name_buf, lex, false, out_err);
+                    }
+                } else {
+                    val = eval_builtin_function(vm, name_buf, lex, false, out_err);
+                }
                 if (out_err->code != 0) return null_val;
                 val_stack[val_ptr++] = val;
                 expect_operand = false;
@@ -1193,7 +1411,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                         int ch = val.as.field_str.channel;
                         unsigned char *rec_buf = file_get_record_buffer(vm_get_file(vm), ch);
                         if (rec_buf) {
-                            char *buf_slice = (char *)malloc(val.as.field_str.length + 1);
+                            char *buf_slice = (char *)calloc(1, val.as.field_str.length + 1);
                             if (!buf_slice) {
                                 out_err->code = 7; out_err->message = "Out of memory";
                                 return null_val;
@@ -1314,6 +1532,34 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
     return val_stack[0];
 }
 
+#include <math.h>
+
+static void format_double_clean(char *buf, size_t buf_size, double val, bool leading_space, bool trailing_space) {
+    if (val == (double)(long long)val && fabs(val) <= 999999999.0) {
+        snprintf(buf, buf_size, "%s%lld%s", leading_space ? (val >= 0.0 ? " " : "") : "", (long long)val, trailing_space ? " " : "");
+        return;
+    }
+
+    if (fabs(val) <= 999999999.0 && fabs(val) >= 0.000001) {
+        char temp[128];
+        snprintf(temp, sizeof(temp), "%f", val);
+        
+        char *end = temp + strlen(temp) - 1;
+        while (end > temp && *end == '0') {
+            *end = '\0';
+            end--;
+        }
+        if (end > temp && *end == '.') {
+            *end = '\0';
+        }
+        
+        snprintf(buf, buf_size, "%s%s%s", leading_space ? (val >= 0.0 ? " " : "") : "", temp, trailing_space ? " " : "");
+        return;
+    }
+    
+    snprintf(buf, buf_size, "%s%g%s", leading_space ? (val >= 0.0 ? " " : "") : "", val, trailing_space ? " " : "");
+}
+
 #include <ctype.h>
 #include <stdio.h>
 
@@ -1326,11 +1572,89 @@ static bool is_builtin_function(const char *name) {
     }
     uname[i] = '\0';
 
+    if (i > 0 && uname[i - 1] != '$' && i < 62) {
+        char test_name[64];
+        strcpy(test_name, uname);
+        strcat(test_name, "$");
+        if (strcmp(test_name, "CHR$") == 0 ||
+            strcmp(test_name, "STR$") == 0 ||
+            strcmp(test_name, "LEFT$") == 0 ||
+            strcmp(test_name, "RIGHT$") == 0 ||
+            strcmp(test_name, "MID$") == 0 ||
+            strcmp(test_name, "UCASE$") == 0 ||
+            strcmp(test_name, "LCASE$") == 0 ||
+            strcmp(test_name, "LTRIM$") == 0 ||
+            strcmp(test_name, "RTRIM$") == 0 ||
+            strcmp(test_name, "TRIM$") == 0 ||
+            strcmp(test_name, "SPACE$") == 0 ||
+            strcmp(test_name, "STRING$") == 0 ||
+            strcmp(test_name, "REMOVE$") == 0 ||
+            strcmp(test_name, "REPLACE$") == 0 ||
+            strcmp(test_name, "HEX$") == 0 ||
+            strcmp(test_name, "OCT$") == 0 ||
+            strcmp(test_name, "BIN$") == 0 ||
+            strcmp(test_name, "EDIT$") == 0 ||
+            strcmp(test_name, "NUM$") == 0 ||
+            strcmp(test_name, "TCASE$") == 0 ||
+            strcmp(test_name, "ICASE$") == 0 ||
+            strcmp(test_name, "REVERSE$") == 0 ||
+            strcmp(test_name, "BASEDIR$") == 0 ||
+            strcmp(test_name, "BASENAME$") == 0 ||
+            strcmp(test_name, "BASEPATH$") == 0 ||
+            strcmp(test_name, "HOSTNAME$") == 0 ||
+            strcmp(test_name, "USERNAME$") == 0 ||
+            strcmp(test_name, "PATH$") == 0 ||
+            strcmp(test_name, "FILEMOD$") == 0 ||
+            strcmp(test_name, "ERR$") == 0) {
+            strcpy(uname, test_name);
+            i = strlen(uname);
+        }
+    }
+
     if (strcmp(uname, "INKEY$") == 0 ||
         strcmp(uname, "PEN") == 0 ||
         strcmp(uname, "TIME$") == 0 ||
         strcmp(uname, "DATE$") == 0 ||
         strcmp(uname, "TIMER") == 0 ||
+        strcmp(uname, "ALARM") == 0 ||
+        strcmp(uname, "ALARM$") == 0 ||
+        strcmp(uname, "EXISTS") == 0 ||
+        strcmp(uname, "RANDOMIZE") == 0 ||
+        strcmp(uname, "GUID$") == 0 ||
+        strcmp(uname, "TIM") == 0 ||
+        strcmp(uname, "TRUE") == 0 ||
+        strcmp(uname, "FALSE") == 0 ||
+        strcmp(uname, "TI") == 0 ||
+        strcmp(uname, "TIME") == 0 ||
+        strcmp(uname, "DATE") == 0 ||
+        strcmp(uname, "TI$") == 0 ||
+        strcmp(uname, "CLOCK$") == 0 ||
+        strcmp(uname, "TZ") == 0 ||
+        strcmp(uname, "TZ$") == 0 ||
+        strcmp(uname, "TIMEZONE$") == 0 ||
+        strcmp(uname, "UTC") == 0 ||
+        strcmp(uname, "CSRLIN") == 0 ||
+        strcmp(uname, "POS") == 0 ||
+        strcmp(uname, "LPOS") == 0 ||
+        strcmp(uname, "DAY") == 0 ||
+        strcmp(uname, "MONTH") == 0 ||
+        strcmp(uname, "YEAR") == 0 ||
+        strcmp(uname, "DAY$") == 0 ||
+        strcmp(uname, "MONTH$") == 0 ||
+        strcmp(uname, "HOURS") == 0 ||
+        strcmp(uname, "MINUTES") == 0 ||
+        strcmp(uname, "SECONDS") == 0 ||
+        strcmp(uname, "JIFFIES") == 0 ||
+        strcmp(uname, "TICKS") == 0 ||
+        strcmp(uname, "HOSTNAME$") == 0 ||
+        strcmp(uname, "USERNAME$") == 0 ||
+        strcmp(uname, "BASEDIR$") == 0 ||
+        strcmp(uname, "BASEPATH$") == 0 ||
+        strcmp(uname, "BASENAME$") == 0 ||
+        strcmp(uname, "PATH$") == 0 ||
+        strcmp(uname, "VER") == 0 ||
+        strcmp(uname, "MEM") == 0 ||
+        strcmp(uname, "SIZE") == 0 ||
         strcmp(uname, "PLAY") == 0 ||
         strcmp(uname, "TASK") == 0 ||
         strcmp(uname, "SQR") == 0 ||
@@ -1355,6 +1679,7 @@ static bool is_builtin_function(const char *name) {
         strcmp(uname, "CDBL") == 0 ||
 #ifndef BPP_LITE_BUILD
         strcmp(uname, "VARPTR") == 0 ||
+        strcmp(uname, "VARPTR$") == 0 ||
         strcmp(uname, "VARSEG") == 0 ||
         strcmp(uname, "SADD") == 0 ||
 #endif
@@ -1372,6 +1697,17 @@ static bool is_builtin_function(const char *name) {
         strcmp(uname, "SPACE$") == 0 ||
         strcmp(uname, "STRING$") == 0 ||
         strcmp(uname, "REPLACE$") == 0 ||
+        strcmp(uname, "HEX$") == 0 ||
+        strcmp(uname, "OCT$") == 0 ||
+        strcmp(uname, "BIN$") == 0 ||
+        strcmp(uname, "EDIT$") == 0 ||
+        strcmp(uname, "NUM$") == 0 ||
+        strcmp(uname, "TCASE$") == 0 ||
+        strcmp(uname, "ICASE$") == 0 ||
+        strcmp(uname, "REVERSE$") == 0 ||
+        strcmp(uname, "REMOVE$") == 0 ||
+        strcmp(uname, "REMOVE") == 0 ||
+        strcmp(uname, "HASH") == 0 ||
         strcmp(uname, "UBOUND") == 0 ||
         strcmp(uname, "LBOUND") == 0 ||
         strcmp(uname, "EOF") == 0 ||
@@ -1435,6 +1771,18 @@ static bool is_builtin_function(const char *name) {
         strcmp(uname, "JSON_STRINGIFY$") == 0 ||
         strcmp(uname, "XML_PARSE") == 0 ||
         strcmp(uname, "XML_STRINGIFY$") == 0 ||
+        strcmp(uname, "USR") == 0 || strcmp(uname, "USR0") == 0 ||
+        strcmp(uname, "USR1") == 0 || strcmp(uname, "USR2") == 0 ||
+        strcmp(uname, "USR3") == 0 || strcmp(uname, "USR4") == 0 ||
+        strcmp(uname, "USR5") == 0 || strcmp(uname, "USR6") == 0 ||
+        strcmp(uname, "USR7") == 0 || strcmp(uname, "USR8") == 0 ||
+        strcmp(uname, "USR9") == 0 ||
+        strcmp(uname, "ERDEV") == 0 || strcmp(uname, "ERDEV$") == 0 ||
+        strcmp(uname, "EXTERR") == 0 ||
+        strcmp(uname, "HASH$") == 0 || strcmp(uname, "SALT$") == 0 ||
+        strcmp(uname, "AUDITCRACK") == 0 || strcmp(uname, "AUDITCRACK$") == 0 ||
+        strcmp(uname, "SANDBOXAUDIT") == 0 || strcmp(uname, "VMCHECK") == 0 ||
+        strcmp(uname, "NETHOST$") == 0 || strcmp(uname, "NETIP$") == 0 ||
         strcmp(uname, "YAML_PARSE") == 0 ||
         strcmp(uname, "YAML_STRINGIFY$") == 0 ||
         strcmp(uname, "INI_PARSE") == 0 ||
@@ -1510,6 +1858,45 @@ static BValue eval_builtin_function(VMContext *vm, const char *name, LexerContex
         i++;
     }
     uname[i] = '\0';
+
+    if (i > 0 && uname[i - 1] != '$' && i < 62) {
+        char test_name[64];
+        strcpy(test_name, uname);
+        strcat(test_name, "$");
+        if (strcmp(test_name, "CHR$") == 0 ||
+            strcmp(test_name, "STR$") == 0 ||
+            strcmp(test_name, "LEFT$") == 0 ||
+            strcmp(test_name, "RIGHT$") == 0 ||
+            strcmp(test_name, "MID$") == 0 ||
+            strcmp(test_name, "UCASE$") == 0 ||
+            strcmp(test_name, "LCASE$") == 0 ||
+            strcmp(test_name, "LTRIM$") == 0 ||
+            strcmp(test_name, "RTRIM$") == 0 ||
+            strcmp(test_name, "TRIM$") == 0 ||
+            strcmp(test_name, "SPACE$") == 0 ||
+            strcmp(test_name, "STRING$") == 0 ||
+            strcmp(test_name, "REMOVE$") == 0 ||
+            strcmp(test_name, "REPLACE$") == 0 ||
+            strcmp(test_name, "HEX$") == 0 ||
+            strcmp(test_name, "OCT$") == 0 ||
+            strcmp(test_name, "BIN$") == 0 ||
+            strcmp(test_name, "EDIT$") == 0 ||
+            strcmp(test_name, "NUM$") == 0 ||
+            strcmp(test_name, "TCASE$") == 0 ||
+            strcmp(test_name, "ICASE$") == 0 ||
+            strcmp(test_name, "REVERSE$") == 0 ||
+            strcmp(test_name, "BASEDIR$") == 0 ||
+            strcmp(test_name, "BASENAME$") == 0 ||
+            strcmp(test_name, "BASEPATH$") == 0 ||
+            strcmp(test_name, "HOSTNAME$") == 0 ||
+            strcmp(test_name, "USERNAME$") == 0 ||
+            strcmp(test_name, "PATH$") == 0 ||
+            strcmp(test_name, "FILEMOD$") == 0 ||
+            strcmp(test_name, "ERR$") == 0) {
+            strcpy(uname, test_name);
+            i = strlen(uname);
+        }
+    }
 
     if (strcmp(uname, "UBOUND") == 0 || strcmp(uname, "LBOUND") == 0) {
         bool is_u = (strcmp(uname, "UBOUND") == 0);
@@ -1668,9 +2055,10 @@ static BValue eval_builtin_function(VMContext *vm, const char *name, LexerContex
     }
 
 #ifndef BPP_LITE_BUILD
-    if (strcmp(uname, "VARPTR") == 0 || strcmp(uname, "VARSEG") == 0 || strcmp(uname, "SADD") == 0) {
+    if (strcmp(uname, "VARPTR") == 0 || strcmp(uname, "VARPTR$") == 0 || strcmp(uname, "VARSEG") == 0 || strcmp(uname, "SADD") == 0) {
         bool is_seg = (strcmp(uname, "VARSEG") == 0);
         bool is_sadd = (strcmp(uname, "SADD") == 0);
+        bool is_str = (strcmp(uname, "VARPTR$") == 0);
         BppToken name_tok = lex_next(lex);
         if (name_tok.type != TOK_IDENT) {
             err->code = 2;
@@ -1687,7 +2075,6 @@ static BValue eval_builtin_function(VMContext *vm, const char *name, LexerContex
         
         if (lex_peek(lex).type == TOK_LPAREN) {
             lex_next(lex); /* Consume '(' */
-            /* We don't support full multidimensional indexing inside VARPTR yet, just skip for now and use base array */
             while (lex_peek(lex).type != TOK_RPAREN && lex_peek(lex).type != TOK_EOF) {
                 lex_next(lex);
             }
@@ -1703,11 +2090,29 @@ static BValue eval_builtin_function(VMContext *vm, const char *name, LexerContex
         
         uint32_t handle = vmem_register_handle(vm_get_vmem(vm), target, is_sadd);
 
-        res.type = VAL_NUMBER;
-        if (is_seg) {
-            res.as.number = (double)((handle >> 16) & 0xFFFF);
+        if (is_str) {
+            char desc[4];
+            int type_code = 3; /* default string */
+            if (target) {
+                if (target->type == VAL_NUMBER) {
+                    type_code = 8; /* double */
+                } else if (target->type == VAL_STRING) {
+                    type_code = 3; /* string */
+                }
+            }
+            desc[0] = (char)type_code;
+            desc[1] = (char)(handle & 0xFF);
+            desc[2] = (char)((handle >> 8) & 0xFF);
+            desc[3] = '\0';
+            res.type = VAL_STRING;
+            res.as.string = str_create(vm_get_str(vm), desc, 3);
         } else {
-            res.as.number = (double)(handle & 0xFFFF);
+            res.type = VAL_NUMBER;
+            if (is_seg) {
+                res.as.number = (double)((handle >> 16) & 0xFFFF);
+            } else {
+                res.as.number = (double)(handle & 0xFFFF);
+            }
         }
         return res;
     }
@@ -1995,10 +2400,455 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         struct tm *lt = platform_localtime(&t, &tm_buf);
         char buf[32] = "";
         if (lt) {
-            strftime(buf, sizeof(buf), "%H:%M:%S", lt);
+            int hour12 = lt->tm_hour % 12;
+            if (hour12 == 0) hour12 = 12;
+            char ap = (lt->tm_hour >= 12) ? 'P' : 'A';
+            snprintf(buf, sizeof(buf), "%02d:%02d:%02d %c", hour12, lt->tm_min, lt->tm_sec, ap);
         }
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+    }
+    else if (strcmp(uname, "TI$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "TI$ expects no arguments"; return res;
+        }
+        double adjusted = platform_get_uptime() + vm_get_ti_offset(vm);
+        if (adjusted < 0.0) adjusted = 0.0;
+        long long sec_total = (long long)adjusted;
+        long long days = sec_total / 86400;
+        long long remaining = sec_total % 86400;
+        int hr = (int)(remaining / 3600);
+        int min = (int)((remaining / 60) % 60);
+        int sec = (int)(remaining % 60);
+        char buf[64];
+        if (days == 0) {
+            snprintf(buf, sizeof(buf), "%02d%02d%02d", hr, min, sec);
+        } else {
+            snprintf(buf, sizeof(buf), "%03lld:%02d%02d%02d", days, hr, min, sec);
+        }
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+    }
+    else if (strcmp(uname, "CLOCK$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "CLOCK$ expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        extern struct tm *platform_gmtime(const time_t *timep, struct tm *result);
+        struct tm *gt = platform_gmtime(&t, &tm_buf);
+        char buf[64] = "";
+        if (gt) {
+            snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02dZ",
+                     gt->tm_year + 1900, gt->tm_mon + 1, gt->tm_mday,
+                     gt->tm_hour, gt->tm_min, gt->tm_sec);
+        }
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+    }
+    else if (strcmp(uname, "CSRLIN") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "CSRLIN expects no arguments"; return res;
+        }
+        extern int g_cursor_y;
+        res.type = VAL_NUMBER;
+        res.as.number = (double)(g_cursor_y + 1);
+    }
+    else if (strcmp(uname, "POS") == 0) {
+        if (arg_count != 1) {
+            err->code = 13; err->message = "POS expects 1 argument"; return res;
+        }
+        extern int g_cursor_x;
+        res.type = VAL_NUMBER;
+        res.as.number = (double)(g_cursor_x + 1);
+    }
+    else if (strcmp(uname, "LPOS") == 0) {
+        if (arg_count != 1) {
+            err->code = 13; err->message = "LPOS expects 1 argument"; return res;
+        }
+        extern int g_lpos;
+        res.type = VAL_NUMBER;
+        res.as.number = (double)g_lpos;
+    }
+    else if (strcmp(uname, "TZ$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "TZ$ expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        char buf[64] = "UTC";
+        if (lt) {
+            char tz_buf[64] = "";
+            strftime(tz_buf, sizeof(tz_buf), "%Z", lt);
+            if (tz_buf[0] != '\0') {
+                size_t len = strlen(tz_buf);
+                bool is_abbr = (len <= 5);
+                if (is_abbr) {
+                    for (size_t i = 0; i < len; i++) {
+                        if (tz_buf[i] >= 'a' && tz_buf[i] <= 'z') {
+                            is_abbr = false;
+                            break;
+                        }
+                    }
+                }
+                if (is_abbr) {
+                    strncpy(buf, tz_buf, sizeof(buf) - 1);
+                    buf[sizeof(buf) - 1] = '\0';
+                } else {
+                    int w_idx = 0;
+                    for (size_t i = 0; i < len; i++) {
+                        if (tz_buf[i] >= 'A' && tz_buf[i] <= 'Z') {
+                            if (w_idx < (int)sizeof(buf) - 1) {
+                                buf[w_idx++] = tz_buf[i];
+                            }
+                        }
+                    }
+                    buf[w_idx] = '\0';
+                    if (w_idx == 0) {
+                        strcpy(buf, "UTC");
+                    }
+                }
+            }
+        }
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+    }
+    else if (strcmp(uname, "TIMEZONE$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "TIMEZONE$ expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        char buf[64] = "UTC";
+        if (lt) {
+            char tz_buf[64] = "";
+            strftime(tz_buf, sizeof(tz_buf), "%Z", lt);
+            if (tz_buf[0] != '\0') {
+                strncpy(buf, tz_buf, sizeof(buf) - 1);
+                buf[sizeof(buf) - 1] = '\0';
+            }
+        }
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+    }
+    else if (strcmp(uname, "TZ") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "TZ expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        double val = 0.0;
+        if (lt) {
+            char buf[16] = "";
+            strftime(buf, sizeof(buf), "%z", lt);
+            val = atof(buf);
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = val;
+    }
+    else if (strcmp(uname, "UTC") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "UTC expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        double val = 0.0;
+        if (lt) {
+            char buf[16] = "";
+            strftime(buf, sizeof(buf), "%z", lt);
+            if (strlen(buf) >= 5) {
+                int sign = (buf[0] == '-') ? -1 : 1;
+                int hours = (buf[1] - '0') * 10 + (buf[2] - '0');
+                int mins = (buf[3] - '0') * 10 + (buf[4] - '0');
+                val = sign * (hours * 3600.0 + mins * 60.0);
+            }
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = val;
+    }
+    else if (strcmp(uname, "DATE$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "DATE$ expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        char buf[32] = "";
+        if (lt) {
+            strftime(buf, sizeof(buf), "%m-%d-%Y", lt);
+        }
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+    }
+    else if (strcmp(uname, "TRUE") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "TRUE expects no arguments"; return res;
+        }
+        res.type = VAL_NUMBER; res.as.number = 1.0;
+    }
+    else if (strcmp(uname, "FALSE") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "FALSE expects no arguments"; return res;
+        }
+        res.type = VAL_NUMBER; res.as.number = -1.0;
+    }
+    else if (strcmp(uname, "TI") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "TI expects no arguments"; return res;
+        }
+        double val = platform_get_uptime() + vm_get_ti_offset(vm);
+        val = fmod(val, 999999999.0);
+        res.type = VAL_NUMBER; res.as.number = val;
+    }
+    else if (strcmp(uname, "TIME") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "TIME expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        double val = 0;
+        if (lt) {
+            val = lt->tm_hour * 10000.0 + lt->tm_min * 100.0 + lt->tm_sec;
+        }
+        res.type = VAL_NUMBER; res.as.number = val;
+    }
+    else if (strcmp(uname, "DATE") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "DATE expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        double val = 0;
+        if (lt) {
+            val = (lt->tm_year + 1900) * 10000.0 + (lt->tm_mon + 1) * 100.0 + lt->tm_mday;
+        }
+        res.type = VAL_NUMBER; res.as.number = val;
+    }
+    else if (strcmp(uname, "DAY") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "DAY expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        res.type = VAL_NUMBER; res.as.number = lt ? lt->tm_mday : 1.0;
+    }
+    else if (strcmp(uname, "MONTH") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "MONTH expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        res.type = VAL_NUMBER; res.as.number = lt ? lt->tm_mon + 1 : 1.0;
+    }
+    else if (strcmp(uname, "YEAR") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "YEAR expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        res.type = VAL_NUMBER; res.as.number = lt ? lt->tm_year + 1900 : 2026.0;
+    }
+    else if (strcmp(uname, "DAY$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "DAY$ expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        const char *days[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+        const char *day_str = (lt && lt->tm_wday >= 0 && lt->tm_wday < 7) ? days[lt->tm_wday] : "SUN";
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), day_str, strlen(day_str));
+    }
+    else if (strcmp(uname, "MONTH$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "MONTH$ expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        const char *months[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
+        const char *mon_str = (lt && lt->tm_mon >= 0 && lt->tm_mon < 12) ? months[lt->tm_mon] : "JAN";
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), mon_str, strlen(mon_str));
+    }
+    else if (strcmp(uname, "HOURS") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "HOURS expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        extern struct tm *platform_gmtime(const time_t *timep, struct tm *result);
+        struct tm *gt = platform_gmtime(&t, &tm_buf);
+        res.type = VAL_NUMBER; res.as.number = gt ? gt->tm_hour : 0.0;
+    }
+    else if (strcmp(uname, "MINUTES") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "MINUTES expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        extern struct tm *platform_gmtime(const time_t *timep, struct tm *result);
+        struct tm *gt = platform_gmtime(&t, &tm_buf);
+        res.type = VAL_NUMBER; res.as.number = gt ? gt->tm_min : 0.0;
+    }
+    else if (strcmp(uname, "SECONDS") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "SECONDS expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        extern struct tm *platform_gmtime(const time_t *timep, struct tm *result);
+        struct tm *gt = platform_gmtime(&t, &tm_buf);
+        res.type = VAL_NUMBER; res.as.number = gt ? gt->tm_sec : 0.0;
+    }
+    else if (strcmp(uname, "JIFFIES") == 0) {
+        if (arg_count > 1) {
+            err->code = 13; err->message = "JIFFIES expects 0 or 1 arguments"; return res;
+        }
+        double mult = vm_get_jiffies_multiplier(vm);
+        if (arg_count == 1) {
+            if (args[0].type != VAL_STRING) {
+                err->code = 13; err->message = "JIFFIES expects a string argument"; return res;
+            }
+            const char *mode = str_data(args[0].as.string);
+            if (mode) {
+                if (strcasecmp(mode, "NTSC") == 0) mult = 60.0;
+                else if (strcasecmp(mode, "PAL") == 0) mult = 50.0;
+                else if (strcasecmp(mode, "SECAM") == 0) mult = 50.0;
+            }
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = platform_get_uptime() * mult;
+    }
+    else if (strcmp(uname, "TICKS") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "TICKS expects no arguments"; return res;
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = platform_get_uptime() * 100.0;
+    }
+    else if (strcmp(uname, "HOSTNAME$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "HOSTNAME$ expects no arguments"; return res;
+        }
+        const char *env_val = getenv("HOSTNAME");
+        if (!env_val) env_val = getenv("COMPUTERNAME");
+        if (!env_val) env_val = "localhost";
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), env_val, strlen(env_val));
+    }
+    else if (strcmp(uname, "USERNAME$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "USERNAME$ expects no arguments"; return res;
+        }
+        const char *env_val = getenv("USERNAME");
+        if (!env_val) env_val = getenv("USER");
+        if (!env_val) env_val = "user";
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), env_val, strlen(env_val));
+    }
+    else if (strcmp(uname, "BASEPATH$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "BASEPATH$ expects no arguments"; return res;
+        }
+        const char *path = vfs_get_category_path(vm_get_vfs(vm), "WORKING");
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), path ? path : "", path ? strlen(path) : 0);
+    }
+    else if (strcmp(uname, "BASEDIR$") == 0 || strcmp(uname, "BASENAME$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "BASEDIR$/BASENAME$ expects no arguments"; return res;
+        }
+        const char *path = vfs_get_category_path(vm_get_vfs(vm), "WORKING");
+        char tmp[512] = "";
+        if (path) {
+            size_t len = strlen(path);
+            if (len < sizeof(tmp)) {
+                strcpy(tmp, path);
+            }
+        }
+        size_t len = strlen(tmp);
+        if (len > 1 && (tmp[len - 1] == '/' || tmp[len - 1] == '\\')) {
+            tmp[len - 1] = '\0';
+            len--;
+        }
+        char *last_sep = strrchr(tmp, '/');
+        char *last_back = strrchr(tmp, '\\');
+        char *sep = (last_sep > last_back) ? last_sep : last_back;
+        char res_buf[512] = "";
+        if (strcmp(uname, "BASEDIR$") == 0) {
+            if (sep) {
+                if (sep == tmp + 2 && tmp[1] == ':') {
+                    strncpy(res_buf, tmp, 3);
+                    res_buf[3] = '\0';
+                } else if (sep == tmp) {
+                    strcpy(res_buf, "/");
+                } else {
+                    size_t parent_len = sep - tmp;
+                    strncpy(res_buf, tmp, parent_len);
+                    res_buf[parent_len] = '\0';
+                }
+            } else {
+                strcpy(res_buf, ".");
+            }
+        } else {
+            if (sep) {
+                strcpy(res_buf, sep + 1);
+            } else {
+                strcpy(res_buf, tmp);
+            }
+        }
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), res_buf, strlen(res_buf));
+    }
+    else if (strcmp(uname, "PATH$") == 0) {
+        if (arg_count > 1) {
+            err->code = 13; err->message = "PATH$ expects 0 or 1 arguments"; return res;
+        }
+        const char *path_val = NULL;
+        if (arg_count == 1) {
+            if (args[0].type != VAL_STRING) {
+                err->code = 13; err->message = "PATH$ expects a string argument"; return res;
+            }
+            path_val = vfs_get_category_path(vm_get_vfs(vm), str_data(args[0].as.string));
+        } else {
+            path_val = vfs_get_search_path(vm_get_vfs(vm));
+        }
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), path_val ? path_val : "", path_val ? strlen(path_val) : 0);
+    }
+    else if (strcmp(uname, "VER") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "VER expects no arguments"; return res;
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = 6.4;
+    }
+    else if (strcmp(uname, "MEM") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "MEM expects no arguments"; return res;
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = (double)mem_get_free_ram(vm_get_mem(vm));
+    }
+    else if (strcmp(uname, "SIZE") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "SIZE expects no arguments"; return res;
+        }
+        MemoryContext *mctx = vm_get_mem(vm);
+        size_t limit = mem_get_free_ram(mctx) + mem_get_used_ram(mctx);
+        res.type = VAL_NUMBER;
+        res.as.number = (double)limit;
     }
     else if (strcmp(uname, "DATE$") == 0) {
         if (arg_count != 0) {
@@ -2018,8 +2868,194 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         if (arg_count != 0) {
             err->code = 13; err->message = "TIMER expects no arguments"; return res;
         }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        double val = 0;
+        if (lt) {
+            val = lt->tm_hour * 3600.0 + lt->tm_min * 60.0 + lt->tm_sec;
+        }
         res.type = VAL_NUMBER;
-        res.as.number = platform_get_timer();
+        res.as.number = val;
+    }
+    else if (strcmp(uname, "ALARM") == 0) {
+        if (arg_count > 1) {
+            err->code = 13; err->message = "ALARM expects 0 or 1 arguments"; return res;
+        }
+        extern double vm_get_alarm_countdown(VMContext *vm, double seconds);
+        extern double vm_get_closest_alarm_countdown(VMContext *vm);
+        double val = 0.0;
+        if (arg_count == 1) {
+            if (args[0].type != VAL_NUMBER) {
+                err->code = 13; err->message = "ALARM expects a numeric argument"; return res;
+            }
+            val = vm_get_alarm_countdown(vm, args[0].as.number);
+        } else {
+            val = vm_get_closest_alarm_countdown(vm);
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = val;
+    }
+    else if (strcmp(uname, "ALARM$") == 0) {
+        if (arg_count > 1) {
+            err->code = 13; err->message = "ALARM$ expects 0 or 1 arguments"; return res;
+        }
+        extern double vm_get_alarm_daily_remaining(VMContext *vm, const char *time_str);
+        extern double vm_get_closest_alarm_daily_remaining(VMContext *vm);
+        double remaining = -1.0;
+        if (arg_count == 1) {
+            char time_str[128] = "";
+            if (args[0].type == VAL_NUMBER) {
+                int val_i = (int)args[0].as.number;
+                int h = val_i / 10000;
+                int m = (val_i % 10000) / 100;
+                int s = val_i % 100;
+                if (h < 0 || h >= 24 || m < 0 || m >= 60 || s < 0 || s >= 60) {
+                    err->code = 5; err->message = "Illegal function call: Invalid time format";
+                    return res;
+                }
+                snprintf(time_str, sizeof(time_str), "%02d:%02d:%02d", h, m, s);
+            } else {
+                size_t tlen = (str_len(args[0].as.string) < 127) ? str_len(args[0].as.string) : 127;
+                memcpy(time_str, str_data(args[0].as.string), tlen);
+                time_str[tlen] = '\0';
+            }
+            remaining = vm_get_alarm_daily_remaining(vm, time_str);
+        } else {
+            remaining = vm_get_closest_alarm_daily_remaining(vm);
+        }
+
+        if (remaining < 0.0) {
+            res.type = VAL_STRING;
+            res.as.string = str_create(vm_get_str(vm), "", 0);
+        } else {
+            int h = (int)(remaining / 3600.0);
+            int m = (int)(((int)remaining % 3600) / 60.0);
+            int s = (int)((int)remaining % 60);
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
+            res.type = VAL_STRING;
+            res.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+        }
+    }
+    else if (strcmp(uname, "EXISTS") == 0) {
+        if (arg_count != 1 || args[0].type != VAL_STRING) {
+            err->code = 13; err->message = "EXISTS expects one string argument"; return res;
+        }
+        const char *filename = str_data(args[0].as.string);
+        char resolved[512] = "";
+        bool exists = false;
+        if (filename) {
+            vfs_resolve(vm_get_vfs(vm), filename, resolved, sizeof(resolved));
+            FILE *fp = fopen(resolved, "rb");
+            if (fp) {
+                exists = true;
+                fclose(fp);
+            }
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = exists ? -1.0 : 0.0;
+    }
+    else if (strcmp(uname, "RANDOMIZE") == 0) {
+        if (arg_count == 0) {
+            err->code = 13; err->message = "RANDOMIZE function expects arguments"; return res;
+        }
+        if (args[0].type == VAL_STRING) {
+            const char *mode = str_data(args[0].as.string);
+            if (mode && strcmp(mode, "STRING$") == 0) {
+                int len = 8;
+                if (arg_count > 1 && args[1].type == VAL_NUMBER) {
+                    len = (int)args[1].as.number;
+                }
+                char *buf = (char *)calloc(1, len + 1);
+                const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                for (int i = 0; i < len; i++) {
+                    buf[i] = charset[rand() % (sizeof(charset) - 1)];
+                }
+                buf[len] = '\0';
+                res.type = VAL_STRING;
+                res.as.string = str_create(vm_get_str(vm), buf, len);
+                free(buf);
+            } else if (mode && strcmp(mode, "DATE$") == 0) {
+                int m = rand() % 12 + 1;
+                int d = rand() % 28 + 1;
+                int y = rand() % 100;
+                char buf[16];
+                snprintf(buf, sizeof(buf), "%02d-%02d-%02d", m, d, y);
+                res.type = VAL_STRING;
+                res.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+            } else if (mode && strcmp(mode, "DAY$") == 0) {
+                const char *days[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+                const char *day = days[rand() % 7];
+                res.type = VAL_STRING;
+                res.as.string = str_create(vm_get_str(vm), day, strlen(day));
+            } else if (mode && strcmp(mode, "TIME$") == 0) {
+                int h = rand() % 24;
+                int m = rand() % 60;
+                int s = rand() % 60;
+                char buf[16];
+                snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
+                res.type = VAL_STRING;
+                res.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+            } else {
+                size_t len = strlen(mode);
+                char *buf = (char *)calloc(1, len + 1);
+                strcpy(buf, mode);
+                for (size_t i = len - 1; i > 0; i--) {
+                    size_t j = rand() % (i + 1);
+                    char tmp = buf[i];
+                    buf[i] = buf[j];
+                    buf[j] = tmp;
+                }
+                res.type = VAL_STRING;
+                res.as.string = str_create(vm_get_str(vm), buf, len);
+                free(buf);
+            }
+        } else {
+            err->code = 13; err->message = "RANDOMIZE function expects a string as first argument"; return res;
+        }
+    }
+    else if (strcmp(uname, "GUID$") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "GUID$ expects no arguments"; return res;
+        }
+        char buf[37];
+        const char *chars = "0123456789abcdef";
+        for (int i = 0; i < 36; i++) {
+            if (i == 8 || i == 13 || i == 18 || i == 23) {
+                buf[i] = '-';
+            } else if (i == 14) {
+                buf[i] = '4';
+            } else if (i == 19) {
+                buf[i] = chars[(rand() % 4) + 8];
+            } else {
+                buf[i] = chars[rand() % 16];
+            }
+        }
+        buf[36] = '\0';
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), buf, 36);
+    }
+    else if (strcmp(uname, "TIM") == 0) {
+        if (arg_count != 1 || args[0].type == VAL_STRING) {
+            err->code = 13; err->message = "TIM expects one numeric argument"; return res;
+        }
+        int comp = (int)args[0].as.number;
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        double val = 0.0;
+        if (lt) {
+            if (comp == 0) val = (double)lt->tm_min;
+            else if (comp == 1) val = (double)lt->tm_hour;
+            else if (comp == 2) val = (double)(lt->tm_yday + 1);
+            else if (comp == 3) val = (double)(lt->tm_year + 1900);
+            else {
+                err->code = 5; err->message = "Illegal function call: TIM component must be 0, 1, 2, or 3"; return res;
+            }
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = val;
     }
     else if (strcmp(uname, "ABS") == 0) {
         if (arg_count != 1 || args[0].type == VAL_STRING) {
@@ -2193,6 +3229,378 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         res.as.number = strtod(str_data(sr), NULL);
         str_release(vm_get_str(vm), sr);
     }
+    else if (strcmp(uname, "REVERSE$") == 0) {
+        if (arg_count != 1 || args[0].type != VAL_STRING) {
+            err->code = 13; err->message = "REVERSE$ expects one string argument"; return res;
+        }
+        BppStringRef sr = args[0].as.string;
+        const char *data = str_data(sr);
+        size_t len = str_len(sr);
+        char *buf = (char *)calloc(1, len + 1);
+        if (!buf) {
+            err->code = 14; err->message = "Out of memory";
+            str_release(vm_get_str(vm), sr);
+            return res;
+        }
+        for (size_t idx = 0; idx < len; idx++) {
+            buf[idx] = data[len - 1 - idx];
+        }
+        buf[len] = '\0';
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), buf, len);
+        free(buf);
+        str_release(vm_get_str(vm), sr);
+    }
+    else if (strcmp(uname, "REPLACE$") == 0) {
+        if (arg_count != 3 || args[0].type != VAL_STRING || args[1].type != VAL_STRING || args[2].type != VAL_STRING) {
+            err->code = 13; err->message = "REPLACE$ expects three string arguments";
+            for (int j = 0; j < arg_count; j++) {
+                if (args[j].type == VAL_STRING && args[j].as.string) {
+                    str_release(vm_get_str(vm), args[j].as.string);
+                }
+            }
+            return res;
+        }
+        BppStringRef sr_orig = args[0].as.string;
+        BppStringRef sr_find = args[1].as.string;
+        BppStringRef sr_repl = args[2].as.string;
+
+        const char *orig = str_data(sr_orig);
+        const char *find = str_data(sr_find);
+        const char *repl = str_data(sr_repl);
+        size_t orig_len = str_len(sr_orig);
+        size_t find_len = str_len(sr_find);
+        size_t repl_len = str_len(sr_repl);
+
+        if (find_len == 0) {
+            res.type = VAL_STRING;
+            str_add_ref(sr_orig);
+            res.as.string = sr_orig;
+        } else {
+            size_t count = 0;
+            const char *p = orig;
+            while ((p = strstr(p, find)) != NULL) {
+                count++;
+                p += find_len;
+            }
+
+            size_t new_len = orig_len - count * find_len + count * repl_len;
+            char *buf = (char *)calloc(1, new_len + 1);
+            if (!buf) {
+                err->code = 14; err->message = "Out of memory";
+                str_release(vm_get_str(vm), sr_orig);
+                str_release(vm_get_str(vm), sr_find);
+                str_release(vm_get_str(vm), sr_repl);
+                return res;
+            }
+
+            char *dst = buf;
+            const char *src = orig;
+            while (true) {
+                const char *next = strstr(src, find);
+                if (!next) {
+                    strcpy(dst, src);
+                    break;
+                }
+                size_t prefix_len = next - src;
+                memcpy(dst, src, prefix_len);
+                dst += prefix_len;
+                memcpy(dst, repl, repl_len);
+                dst += repl_len;
+                src = next + find_len;
+            }
+            res.type = VAL_STRING;
+            res.as.string = str_create(vm_get_str(vm), buf, new_len);
+            free(buf);
+        }
+        str_release(vm_get_str(vm), sr_orig);
+        str_release(vm_get_str(vm), sr_find);
+        str_release(vm_get_str(vm), sr_repl);
+    }
+    else if (strcmp(uname, "REMOVE$") == 0) {
+        if (arg_count != 2 || args[0].type != VAL_STRING || args[1].type != VAL_STRING) {
+            err->code = 13; err->message = "REMOVE$ expects two string arguments";
+            for (int j = 0; j < arg_count; j++) {
+                if (args[j].type == VAL_STRING && args[j].as.string) {
+                    str_release(vm_get_str(vm), args[j].as.string);
+                }
+            }
+            return res;
+        }
+        BppStringRef sr_orig = args[0].as.string;
+        BppStringRef sr_find = args[1].as.string;
+
+        const char *orig = str_data(sr_orig);
+        const char *find = str_data(sr_find);
+        size_t orig_len = str_len(sr_orig);
+        size_t find_len = str_len(sr_find);
+
+        if (find_len == 0) {
+            res.type = VAL_STRING;
+            str_add_ref(sr_orig);
+            res.as.string = sr_orig;
+        } else {
+            size_t count = 0;
+            const char *p = orig;
+            while ((p = strstr(p, find)) != NULL) {
+                count++;
+                p += find_len;
+            }
+
+            size_t new_len = orig_len - count * find_len;
+            char *buf = (char *)calloc(1, new_len + 1);
+            if (!buf) {
+                err->code = 14; err->message = "Out of memory";
+                str_release(vm_get_str(vm), sr_orig);
+                str_release(vm_get_str(vm), sr_find);
+                return res;
+            }
+
+            char *dst = buf;
+            const char *src = orig;
+            while (true) {
+                const char *next = strstr(src, find);
+                if (!next) {
+                    strcpy(dst, src);
+                    break;
+                }
+                size_t prefix_len = next - src;
+                memcpy(dst, src, prefix_len);
+                dst += prefix_len;
+                src = next + find_len;
+            }
+            res.type = VAL_STRING;
+            res.as.string = str_create(vm_get_str(vm), buf, new_len);
+            free(buf);
+        }
+        str_release(vm_get_str(vm), sr_orig);
+        str_release(vm_get_str(vm), sr_find);
+    }
+    else if (strcmp(uname, "REMOVE") == 0) {
+        if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
+            err->code = 13; err->message = "REMOVE function expects two numeric arguments";
+            for (int j = 0; j < arg_count; j++) {
+                if (args[j].type == VAL_STRING && args[j].as.string) {
+                    str_release(vm_get_str(vm), args[j].as.string);
+                }
+            }
+            return res;
+        }
+        double val = args[0].as.number;
+        double find = args[1].as.number;
+        res.type = VAL_NUMBER;
+        res.as.number = (val == find) ? 0.0 : val;
+    }
+    else if (strcmp(uname, "HASH") == 0) {
+        if (arg_count != 1 || args[0].type != VAL_STRING) {
+            err->code = 13; err->message = "HASH expects one string argument"; return res;
+        }
+        BppStringRef sr = args[0].as.string;
+        const char *data = str_data(sr);
+        size_t len = str_len(sr);
+        unsigned int h = 5381;
+        for (size_t idx = 0; idx < len; idx++) {
+            h = ((h << 5) + h) + (unsigned char)data[idx];
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = (double)h;
+        str_release(vm_get_str(vm), sr);
+    }
+    else if (strcmp(uname, "HEX$") == 0) {
+        if (arg_count != 1 || args[0].type == VAL_STRING) {
+            err->code = 13; err->message = "HEX$ expects one numeric argument"; return res;
+        }
+        unsigned long uv = (unsigned long)args[0].as.number;
+        char tmp[20];
+        snprintf(tmp, sizeof(tmp), "%lX", uv);
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), tmp, strlen(tmp));
+    }
+    else if (strcmp(uname, "OCT$") == 0) {
+        if (arg_count != 1 || args[0].type == VAL_STRING) {
+            err->code = 13; err->message = "OCT$ expects one numeric argument"; return res;
+        }
+        unsigned long uv = (unsigned long)args[0].as.number;
+        char tmp[24];
+        snprintf(tmp, sizeof(tmp), "%lo", uv);
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), tmp, strlen(tmp));
+    }
+    else if (strcmp(uname, "BIN$") == 0) {
+        if (arg_count != 1 || args[0].type == VAL_STRING) {
+            err->code = 13; err->message = "BIN$ expects one numeric argument"; return res;
+        }
+        unsigned long uv = (unsigned long)args[0].as.number;
+        char raw[68];
+        int raw_bits = 0;
+        if (uv == 0) {
+            raw[raw_bits++] = '0';
+        } else {
+            while (uv > 0 && raw_bits < 64) {
+                raw[raw_bits++] = (char)('0' + (int)(uv & 1));
+                uv >>= 1;
+            }
+        }
+        int num_bytes = (raw_bits + 7) / 8;
+        int total_bits = num_bytes * 8;
+        while (raw_bits < total_bits) {
+            raw[raw_bits++] = '0';
+        }
+        char out[80];
+        int o = 0;
+        for (int idx = total_bits - 1; idx >= 0; idx--) {
+            out[o++] = raw[idx];
+            if (idx > 0 && (idx % 8) == 0) {
+                out[o++] = ' ';
+            }
+        }
+        out[o] = '\0';
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), out, o);
+    }
+    else if (strcmp(uname, "EDIT$") == 0) {
+        if (arg_count != 2 || args[0].type != VAL_STRING || args[1].type == VAL_STRING) {
+            err->code = 13; err->message = "EDIT$ expects (string$, code)";
+            for (int j = 0; j < arg_count; j++) {
+                if (args[j].type == VAL_STRING && args[j].as.string) {
+                    str_release(vm_get_str(vm), args[j].as.string);
+                }
+            }
+            return res;
+        }
+        BppStringRef sr = args[0].as.string;
+        const char *src = str_data(sr);
+        size_t src_len = str_len(sr);
+        long code = (long)args[1].as.number;
+
+        char *dest = (char *)calloc(1, src_len + 1);
+        if (!dest) {
+            err->code = 14; err->message = "Out of memory";
+            str_release(vm_get_str(vm), sr);
+            return res;
+        }
+
+        int dest_len = 0;
+        int in_quotes = 0;
+        int last_was_space = 0;
+
+        for (size_t idx = 0; idx < src_len; idx++) {
+            char c = src[idx];
+            if (code & 1) c = (char)(c & 127);
+            if ((code & 256) && c == '"') in_quotes = !in_quotes;
+            if (in_quotes) {
+                dest[dest_len++] = c;
+                continue;
+            }
+            if ((code & 2) && (c == ' ' || c == '\t')) continue;
+            if ((code & 4) && (c == '\r' || c == '\n' || c == '\f' || c == '\b' || c == 27 || c == '\0')) continue;
+            if (code & 64) {
+                if (c == '[') c = '(';
+                else if (c == ']') c = ')';
+            }
+            if (code & 32) {
+                if (c >= 'a' && c <= 'z') c = (char)(c - 32);
+            }
+            if (code & 16) {
+                if (c == ' ' || c == '\t') {
+                    if (last_was_space) continue;
+                    c = ' ';
+                    last_was_space = 1;
+                } else {
+                    last_was_space = 0;
+                }
+            }
+            dest[dest_len++] = c;
+        }
+        dest[dest_len] = '\0';
+
+        int start_pos = 0;
+        int end_pos = dest_len;
+        if (code & 8) {
+            while (start_pos < end_pos && (dest[start_pos] == ' ' || dest[start_pos] == '\t')) start_pos++;
+        }
+        if (code & 128) {
+            while (end_pos > start_pos && (dest[end_pos - 1] == ' ' || dest[end_pos - 1] == '\t')) end_pos--;
+        }
+
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), dest + start_pos, end_pos - start_pos);
+        free(dest);
+        str_release(vm_get_str(vm), sr);
+    }
+    else if (strcmp(uname, "NUM$") == 0) {
+        if (arg_count != 1 || args[0].type == VAL_STRING) {
+            err->code = 13; err->message = "NUM$ expects one numeric argument"; return res;
+        }
+        double val = args[0].as.number;
+        char tmp[64];
+        format_double_clean(tmp, sizeof(tmp), val, false, false);
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), tmp, strlen(tmp));
+    }
+    else if (strcmp(uname, "TCASE$") == 0) {
+        if (arg_count != 1 || args[0].type != VAL_STRING) {
+            err->code = 13; err->message = "TCASE$ expects one string argument"; return res;
+        }
+        BppStringRef sr = args[0].as.string;
+        const char *src = str_data(sr);
+        size_t len = str_len(sr);
+        char *buf = (char *)calloc(1, len + 1);
+        if (!buf) {
+            err->code = 14; err->message = "Out of memory";
+            str_release(vm_get_str(vm), sr);
+            return res;
+        }
+        bool next_upper = true;
+        for (size_t idx = 0; idx < len; idx++) {
+            char c = src[idx];
+            if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+                buf[idx] = c;
+                next_upper = true;
+            } else {
+                if (next_upper) {
+                    buf[idx] = (char)toupper((unsigned char)c);
+                    next_upper = false;
+                } else {
+                    buf[idx] = (char)tolower((unsigned char)c);
+                }
+            }
+        }
+        buf[len] = '\0';
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), buf, len);
+        free(buf);
+        str_release(vm_get_str(vm), sr);
+    }
+    else if (strcmp(uname, "ICASE$") == 0) {
+        if (arg_count != 1 || args[0].type != VAL_STRING) {
+            err->code = 13; err->message = "ICASE$ expects one string argument"; return res;
+        }
+        BppStringRef sr = args[0].as.string;
+        const char *src = str_data(sr);
+        size_t len = str_len(sr);
+        char *buf = (char *)calloc(1, len + 1);
+        if (!buf) {
+            err->code = 14; err->message = "Out of memory";
+            str_release(vm_get_str(vm), sr);
+            return res;
+        }
+        for (size_t idx = 0; idx < len; idx++) {
+            char c = src[idx];
+            if (c >= 'A' && c <= 'Z') {
+                buf[idx] = (char)(c + 32);
+            } else if (c >= 'a' && c <= 'z') {
+                buf[idx] = (char)(c - 32);
+            } else {
+                buf[idx] = c;
+            }
+        }
+        buf[len] = '\0';
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), buf, len);
+        free(buf);
+        str_release(vm_get_str(vm), sr);
+    }
     else if (strcmp(uname, "DIR$") == 0) {
         if (arg_count > 1) {
             err->code = 13; err->message = "DIR$ expects 0 or 1 argument"; return res;
@@ -2297,7 +3705,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         }
         BppStringRef sr = args[0].as.string;
         size_t len = str_len(sr);
-        char *buf = (char *)malloc(len + 1);
+        char *buf = (char *)calloc(1, len + 1);
         if (!buf) {
             err->code = 14; err->message = "Out of memory";
             str_release(vm_get_str(vm), sr);
@@ -2319,7 +3727,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         }
         BppStringRef sr = args[0].as.string;
         size_t len = str_len(sr);
-        char *buf = (char *)malloc(len + 1);
+        char *buf = (char *)calloc(1, len + 1);
         if (!buf) {
             err->code = 14; err->message = "Out of memory";
             str_release(vm_get_str(vm), sr);
@@ -2392,7 +3800,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         if (n < 0) {
             err->code = 5; err->message = "Negative count in SPACE$"; return res;
         }
-        char *buf = (char *)malloc(n + 1);
+        char *buf = (char *)calloc(1, n + 1);
         if (!buf) {
             err->code = 14; err->message = "Out of memory"; return res;
         }
@@ -2419,7 +3827,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             if (str_len(sr) > 0) c = s[0];
             str_release(vm_get_str(vm), sr);
         }
-        char *buf = (char *)malloc(n + 1);
+        char *buf = (char *)calloc(1, n + 1);
         if (!buf) {
             err->code = 14; err->message = "Out of memory"; return res;
         }
@@ -2458,7 +3866,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             }
 
             size_t new_len = orig_len + count * (repl_len - find_len);
-            char *buf = (char *)malloc(new_len + 1);
+            char *buf = (char *)calloc(1, new_len + 1);
             if (!buf) {
                 err->code = 14; err->message = "Out of memory";
                 str_release(vm_get_str(vm), sr_orig);
@@ -2669,7 +4077,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             err->code = 5; err->message = "Count must be positive"; return res;
         }
 
-        char *buf = malloc(n + 1);
+        char *buf = (char *)calloc(1, n + 1);
         if (!buf) {
             err->code = 7; err->message = "Out of memory"; return res;
         }
@@ -2843,7 +4251,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         long saved_pos = fp ? ftell(fp) : 0;
 
         file_seek(fctx, ch, pos + 1);
-        unsigned char *buf = malloc(len > 0 ? len : 1);
+        unsigned char *buf = (unsigned char *)calloc(1, len > 0 ? len : 1);
         if (!buf) {
             err->code = 7; err->message = "Out of memory"; return res;
         }
@@ -2878,7 +4286,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             err->code = 5; err->message = "Invalid read length"; return res;
         }
 
-        char *buf = malloc(n + 1);
+        char *buf = (char *)calloc(1, n + 1);
         if (!buf) {
             err->code = 7; err->message = "Out of memory"; return res;
         }
@@ -2932,7 +4340,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             FILE *fp = file_get_handle(fctx, ch);
             if (fp) {
                 long pos = ftell(fp);
-                unsigned char *orig = malloc(len);
+                unsigned char *orig = (unsigned char *)calloc(1, len);
                 if (orig) {
                     int orig_read = (int)fread(orig, 1, len, fp);
                     if (orig_read < len) {
@@ -3027,7 +4435,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
 
         file_seek(vm_get_file(vm), ch, pos + 1);
 
-        char *buf = malloc(n + 1);
+        char *buf = (char *)calloc(1, n + 1);
         if (!buf) {
             err->code = 7; err->message = "Out of memory"; return res;
         }
@@ -3062,7 +4470,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         file_seek(fctx, ch, pos + 1);
 
         if (file_txn_status(fctx) > 0 && fp) {
-            unsigned char *orig = malloc(len);
+            unsigned char *orig = (unsigned char *)calloc(1, len);
             if (orig) {
                 int orig_read = (int)fread(orig, 1, len, fp);
                 if (orig_read < len) {
@@ -3102,7 +4510,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         FILE *fp = file_get_handle(fctx, ch);
         long saved_pos = fp ? ftell(fp) : 0;
 
-        unsigned char *buf = malloc(n);
+        unsigned char *buf = (unsigned char *)calloc(1, n);
         if (!buf) {
             err->code = 7; err->message = "Out of memory"; return res;
         }
@@ -3113,7 +4521,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         }
 
         if (file_txn_status(fctx) > 0 && fp) {
-            unsigned char *orig = malloc(n);
+            unsigned char *orig = (unsigned char *)calloc(1, n);
             if (orig) {
                 fseek(fp, dest_pos, SEEK_SET);
                 int orig_read = (int)fread(orig, 1, n, fp);
@@ -3156,7 +4564,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         long saved_pos = fp ? ftell(fp) : 0;
 
         if (file_txn_status(fctx) > 0 && fp) {
-            unsigned char *orig = malloc(n);
+            unsigned char *orig = (unsigned char *)calloc(1, n);
             if (orig) {
                 fseek(fp, pos, SEEK_SET);
                 int orig_read = (int)fread(orig, 1, n, fp);
@@ -3168,7 +4576,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             }
         }
 
-        unsigned char *buf = malloc(n);
+        unsigned char *buf = (unsigned char *)calloc(1, n);
         if (!buf) {
             err->code = 7; err->message = "Out of memory"; return res;
         }
@@ -3244,13 +4652,127 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             err->code = 13; err->message = "CVD expects string argument"; return res;
         }
         if (args[0].as.string && str_len(args[0].as.string) >= 8) {
-            double val;
+        double val;
             memcpy(&val, str_data(args[0].as.string), 8);
             res.type = VAL_NUMBER;
             res.as.number = val;
         } else {
             err->code = 5; err->message = "Illegal function call: CVD string too short"; return res;
         }
+    }
+    else if (strncmp(uname, "USR", 3) == 0) {
+        int idx = 0;
+        if (strlen(uname) == 4 && isdigit((unsigned char)uname[3])) {
+            idx = uname[3] - '0';
+        }
+        if (arg_count != 1 || args[0].type == VAL_STRING) {
+            err->code = 13; err->message = "USR expects one numeric argument"; return res;
+        }
+        uintptr_t ptr = vm_get_usr_ptr(vm, idx);
+        res.type = VAL_NUMBER;
+        if (ptr != 0) {
+            typedef double (*UsrFunc)(double);
+            if (ptr > 0x10000) {
+                UsrFunc func = (UsrFunc)(intptr_t)ptr;
+                res.as.number = func(args[0].as.number);
+            } else {
+                res.as.number = (double)ptr + args[0].as.number;
+            }
+        } else {
+            res.as.number = args[0].as.number;
+        }
+    }
+    else if (strcmp(uname, "ERDEV") == 0) {
+        res.type = VAL_NUMBER;
+        res.as.number = 0.0;
+    }
+    else if (strcmp(uname, "ERDEV$") == 0) {
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), "DSK1    ", 8);
+    }
+    else if (strcmp(uname, "EXTERR") == 0) {
+        if (arg_count != 1 || args[0].type == VAL_STRING) {
+            err->code = 13; err->message = "EXTERR expects one numeric argument (0 to 3)"; return res;
+        }
+        int mode = (int)args[0].as.number;
+        res.type = VAL_NUMBER;
+        if (mode == 0) res.as.number = 0.0;
+        else if (mode == 1) res.as.number = 1.0;
+        else if (mode == 2) res.as.number = 1.0;
+        else if (mode == 3) res.as.number = 1.0;
+        else res.as.number = 0.0;
+    }
+    else if (strcmp(uname, "HASH$") == 0) {
+        if (arg_count != 2 || args[0].type != VAL_STRING || args[1].type != VAL_STRING) {
+            err->code = 13; err->message = "HASH$ expects (algo$, data$)"; return res;
+        }
+        const char *algo = str_data(args[0].as.string);
+        const char *data = str_data(args[1].as.string);
+        char digest[128];
+        bpp_hash_string(algo, data, digest, sizeof(digest));
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), digest, strlen(digest));
+    }
+    else if (strcmp(uname, "SALT$") == 0) {
+        if (arg_count != 2 || args[0].type != VAL_STRING || args[1].type != VAL_STRING) {
+            err->code = 13; err->message = "SALT$ expects (data$, salt$)"; return res;
+        }
+        const char *data = str_data(args[0].as.string);
+        const char *salt = str_data(args[1].as.string);
+        char combined[1024];
+        snprintf(combined, sizeof(combined), "%s:%s", salt, data);
+        char digest[128];
+        bpp_hash_string("SHA256", combined, digest, sizeof(digest));
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), digest, strlen(digest));
+    }
+    else if (strcmp(uname, "AUDITCRACK") == 0 || strcmp(uname, "AUDITCRACK$") == 0) {
+        if (arg_count < 2 || args[0].type != VAL_STRING || args[1].type != VAL_STRING) {
+            err->code = 13; err->message = "AUDITCRACK expects (hash$, wordlist_file$ [, algo$])"; return res;
+        }
+        const char *target_hash = str_data(args[0].as.string);
+        const char *wordlist_path = str_data(args[1].as.string);
+        const char *algo = (arg_count >= 3 && args[2].type == VAL_STRING) ? str_data(args[2].as.string) : "MD5";
+        
+        char found_word[256] = {0};
+        FILE *fp = fopen(wordlist_path, "r");
+        if (fp) {
+            char line[256];
+            while (fgets(line, sizeof(line), fp)) {
+                size_t len = strlen(line);
+                while (len > 0 && (line[len-1] == '\r' || line[len-1] == '\n')) line[--len] = '\0';
+                char digest[128];
+                bpp_hash_string(algo, line, digest, sizeof(digest));
+                if (strcasecmp(digest, target_hash) == 0) {
+                    snprintf(found_word, sizeof(found_word), "%s", line);
+                    break;
+                }
+            }
+            fclose(fp);
+        }
+        if (uname[strlen(uname)-1] == '$') {
+            res.type = VAL_STRING;
+            res.as.string = str_create(vm_get_str(vm), found_word, strlen(found_word));
+        } else {
+            res.type = VAL_NUMBER;
+            res.as.number = (found_word[0] != '\0') ? 1.0 : 0.0;
+        }
+    }
+    else if (strcmp(uname, "SANDBOXAUDIT") == 0) {
+        res.type = VAL_NUMBER;
+        res.as.number = 0.0;
+    }
+    else if (strcmp(uname, "VMCHECK") == 0) {
+        res.type = VAL_NUMBER;
+        res.as.number = 0.0;
+    }
+    else if (strcmp(uname, "NETHOST$") == 0) {
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), "localhost", 9);
+    }
+    else if (strcmp(uname, "NETIP$") == 0) {
+        res.type = VAL_STRING;
+        res.as.string = str_create(vm_get_str(vm), "127.0.0.1", 9);
     }
     else if (strcmp(uname, "DEVICECOUNT") == 0) {
         if (arg_count != 0) {
@@ -3374,7 +4896,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             err->code = 57; err->message = "HTTP_GET$ failed to open URL";
             return res;
         }
-        char *body_buf = malloc(4096);
+        char *body_buf = (char *)calloc(1, 4096);
         if (!body_buf) {
             n_dev.dev_close(&n_dev);
             err->code = 7; err->message = "Out of memory";
@@ -3939,7 +5461,10 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
            (tok.type != TOK_KEYWORD || tok.as.keyword == KW_NONE ||
             tok.as.keyword == KW_TASK || tok.as.keyword == KW_PLAY || tok.as.keyword == KW_HELP ||
             tok.as.keyword == KW_SCREEN || tok.as.keyword == KW_SEEK ||
-            tok.as.keyword == KW_TIMER || tok.as.keyword == KW_KEY)) {
+            tok.as.keyword == KW_TIMER || tok.as.keyword == KW_KEY ||
+            tok.as.keyword == KW_REMOVE || tok.as.keyword == KW_REMOVE_STR ||
+            tok.as.keyword == KW_ALARM || tok.as.keyword == KW_ALARM_STR ||
+            tok.as.keyword == KW_RANDOMIZE)) {
 
         /* Stop parsing if we see 'AT' identifier */
         if (tok.type == TOK_IDENT && tok.length == 2 &&

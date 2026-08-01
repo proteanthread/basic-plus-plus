@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /*
  * What it does: Auto-generated static dialect configuration for custom lightweight builds.
  * Why it exists: Provides compile-time dialect maps to minimize memory footprint in blite and bscript.
@@ -14,6 +19,7 @@
 #ifndef CUSTOM_DIALECT_STATIC_H
 #define CUSTOM_DIALECT_STATIC_H
 
+#include <stdbool.h>
 #include <string.h>
 #include "bpp_dialect.h"
 

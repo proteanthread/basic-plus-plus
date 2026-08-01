@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_bus.h
  * @brief Virtual Hardware Port & MMIO Bus interface.
@@ -12,6 +17,7 @@
 #ifndef BPP_BUS_H
 #define BPP_BUS_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "bpp_mock_bios.h"

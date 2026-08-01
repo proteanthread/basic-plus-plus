@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_vcon.h
  * @brief Virtual Consoles & Virtual Terminals (VCON/VTERM) interface.
@@ -13,6 +18,7 @@
 #ifndef BPP_VCON_H
 #define BPP_VCON_H
 
+#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include "bpp_types.h"

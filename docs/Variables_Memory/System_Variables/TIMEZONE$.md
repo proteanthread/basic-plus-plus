@@ -1,0 +1,30 @@
+# TIMEZONE$
+
+## 1. Syntax & Parameters
+
+**Syntax:**
+```basic
+TIMEZONE$
+```
+**Parameters:**
+- None. `TIMEZONE$` is a read-only String System Variable.
+
+## 2. Description & Usage
+
+Returns the full name of the current timezone (e.g., `"Mountain Daylight Time"` or `"GMT"`).
+Because it is a system variable, it does not require parentheses. It is read-only; you cannot assign a value to it.
+
+## 3. Code Examples
+
+**Example:**
+```basic
+PRINT "Full timezone name: "; TIMEZONE$
+```
+
+## 4. Internal C-Source Mapping
+
+- `src/expression/eval.c` (Evaluation)
+
+## 5. Cross-References / See Also
+
+- TZ, TZ$, UTC, CLOCK$

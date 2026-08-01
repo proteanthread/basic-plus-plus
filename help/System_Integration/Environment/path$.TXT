@@ -1,0 +1,24 @@
+PATH$
+
+1. Syntax & Parameters
+PATH$
+PATH$(category$)
+
+---
+
+2. Description & Usage
+Gets or sets virtual filesystem search paths.
+- PATH$ returns VFS search path string.
+- PATH$(category$) returns the path for the specified category ("WORKING", "DATA", "EXEC", "PROGRAM").
+- Assigning PATH$ = val$ or PATH$(category$) = val$ sets the path.
+
+---
+
+3. Code Examples
+10 PATH$ = "/bin;/data"
+20 PATH$("DATA") = "/custom/data"
+
+---
+
+4. Cross-References / See Also
+- BASEPATH$, BASEDIR$

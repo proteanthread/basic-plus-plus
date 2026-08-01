@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_boot.h
  * @brief Deterministic 9-Phase Boot Controller API.
@@ -28,6 +33,9 @@
 
 #ifndef BPP_BOOT_H
 #define BPP_BOOT_H
+
+#include <stddef.h>
+#include <stdbool.h>
 
 #include "bpp_memory.h"
 #include "bpp_strings.h"
@@ -66,5 +74,6 @@ BootContext *boot_execute(const BootConfig *config);
  * @brief Shuts down all boot subsystems in precise reverse order of initialization.
  */
 void boot_shutdown(BootContext *ctx);
+void boot_shutdown_ex(BootContext *ctx, bool force_exit);
 
 #endif /* BPP_BOOT_H */

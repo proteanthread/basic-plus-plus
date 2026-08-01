@@ -1,3 +1,8 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 /**
  * @file bpp_platform.h
  * @brief Cross-Platform Abstraction API.
@@ -50,6 +55,9 @@ void platform_init(void);
  */
 void platform_shutdown(void);
 
+void platform_fatal(const char *msg);
+void platform_panic(int code, const char *msg);
+
 /**
  * @brief Get the identifier of the host platform.
  */
@@ -98,11 +106,15 @@ int platform_rmdir(const char *path);
 char *platform_getcwd(char *buf, size_t size);
 int platform_remove(const char *path);
 int platform_rename(const char *oldpath, const char *newpath);
+long platform_filesize(const char *path);
+int platform_filemod(const char *path, char *out_buf, size_t buf_size);
 int platform_list_files(void *vdev_ptr, const char *pattern);
 
 /* Advanced Environment and Attributes */
 int platform_setenv(const char *name, const char *value);
 char *platform_getenv(const char *name);
+void platform_get_hostname(char *buf, size_t size);
+void platform_get_username(char *buf, size_t size);
 int platform_get_attributes(const char *path);
 int platform_set_attributes(const char *path, int attr);
 
@@ -131,7 +143,9 @@ void platform_find_close(BppDirSearch *search);
  * @return       Pointer to result on success, NULL on failure.
  */
 struct tm *platform_localtime(const time_t *timep, struct tm *result);
+struct tm *platform_gmtime(const time_t *timep, struct tm *result);
 double platform_get_timer(void);
+double platform_get_uptime(void);
 
 /* Threading and Mutex Abstractions */
 typedef struct {
@@ -199,6 +213,16 @@ void platform_tui_shutdown(void);
 /* Screen Querying Helpers */
 int platform_screen_get_char(int row, int col);
 int platform_screen_get_attr(int row, int col);
+
+/* Mouse Abstractions */
+void platform_mouse_enable(bool enable);
+void platform_mouse_get_position(int *col, int *row);
+void platform_mouse_set_position(int col, int row);
+int platform_mouse_get_button(int btn_idx);
+int platform_mouse_get_modifiers(void);
+void platform_mouse_set_cursor(int char_code, int attrib);
+void platform_mouse_get_cursor(int *char_code, int *attrib);
+bool platform_mouse_is_visible(void);
 
 /* Workspace Cleanup */
 void platform_cleanup_workspace(bool full_cleanup);
