@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file dialect.c
  * @brief Dialect Metaprogramming Engine configuration parser and lifecycle management.
@@ -35,7 +41,7 @@
 #include <ctype.h>
 
 BppDialect *dialect_create(void) {
-    BppDialect *d = (BppDialect *)malloc(sizeof(BppDialect));
+    BppDialect *d = (BppDialect *)calloc(1, sizeof(BppDialect));
     if (!d) return NULL;
     memset(d, 0, sizeof(BppDialect));
     
@@ -390,7 +396,7 @@ char *dialect_generate_docs(VMContext *vm, BppDialect *d) {
 
 #undef CLAMP_OFFSET
 
-    char *result = malloc(offset + 1);
+    char *result = (char *)calloc(1, offset + 1);
     if (result) {
         memcpy(result, temp, offset);
         result[offset] = '\0';

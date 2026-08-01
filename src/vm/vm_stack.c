@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file vm_stack.c
  * @brief VM Call Stack and GOSUB/RETURN frame manager.
@@ -44,11 +50,11 @@ typedef struct GosubStack {
 
 /* Stored inside the VM Context structure. We'll expose helpers: */
 GosubStack *gosub_stack_init(void) {
-    GosubStack *stack = (GosubStack *)malloc(sizeof(GosubStack));
+    GosubStack *stack = (GosubStack *)calloc(1, sizeof(GosubStack));
     if (!stack) return NULL;
     stack->capacity = BPP_MAX_STACK_DEPTH;
     stack->count = 0;
-    stack->frames = (GosubFrame *)malloc(stack->capacity * sizeof(GosubFrame));
+    stack->frames = (GosubFrame *)calloc(stack->capacity, sizeof(GosubFrame));
     if (!stack->frames) {
         free(stack);
         return NULL;
@@ -97,11 +103,11 @@ typedef struct ForStack {
 } ForStack;
 
 ForStack *for_stack_init(void) {
-    ForStack *stack = (ForStack *)malloc(sizeof(ForStack));
+    ForStack *stack = (ForStack *)calloc(1, sizeof(ForStack));
     if (!stack) return NULL;
     stack->capacity = BPP_MAX_STACK_DEPTH;
     stack->count = 0;
-    stack->frames = (BppForFrame *)malloc(stack->capacity * sizeof(BppForFrame));
+    stack->frames = (BppForFrame *)calloc(stack->capacity, sizeof(BppForFrame));
     if (!stack->frames) {
         free(stack);
         return NULL;
@@ -197,11 +203,11 @@ typedef struct WhileStack {
 } WhileStack;
 
 WhileStack *while_stack_init(void) {
-    WhileStack *stack = (WhileStack *)malloc(sizeof(WhileStack));
+    WhileStack *stack = (WhileStack *)calloc(1, sizeof(WhileStack));
     if (!stack) return NULL;
     stack->capacity = BPP_MAX_STACK_DEPTH;
     stack->count = 0;
-    stack->frames = (GosubFrame *)malloc(stack->capacity * sizeof(GosubFrame));
+    stack->frames = (GosubFrame *)calloc(stack->capacity, sizeof(GosubFrame));
     if (!stack->frames) {
         free(stack);
         return NULL;
@@ -252,11 +258,11 @@ typedef struct DoStack {
 } DoStack;
 
 DoStack *do_stack_init(void) {
-    DoStack *stack = (DoStack *)malloc(sizeof(DoStack));
+    DoStack *stack = (DoStack *)calloc(1, sizeof(DoStack));
     if (!stack) return NULL;
     stack->capacity = BPP_MAX_STACK_DEPTH;
     stack->count = 0;
-    stack->frames = (GosubFrame *)malloc(stack->capacity * sizeof(GosubFrame));
+    stack->frames = (GosubFrame *)calloc(stack->capacity, sizeof(GosubFrame));
     if (!stack->frames) {
         free(stack);
         return NULL;
@@ -307,11 +313,11 @@ struct SelectStack {
 };
 
 SelectStack *select_stack_init(void) {
-    SelectStack *stack = (SelectStack *)malloc(sizeof(SelectStack));
+    SelectStack *stack = (SelectStack *)calloc(1, sizeof(SelectStack));
     if (!stack) return NULL;
     stack->capacity = BPP_MAX_STACK_DEPTH;
     stack->count = 0;
-    stack->frames = (BppSelectFrame *)malloc(stack->capacity * sizeof(BppSelectFrame));
+    stack->frames = (BppSelectFrame *)calloc(stack->capacity, sizeof(BppSelectFrame));
     if (!stack->frames) {
         free(stack);
         return NULL;
@@ -362,11 +368,11 @@ struct SubStack {
 };
 
 SubStack *sub_stack_init(void) {
-    SubStack *stack = (SubStack *)malloc(sizeof(SubStack));
+    SubStack *stack = (SubStack *)calloc(1, sizeof(SubStack));
     if (!stack) return NULL;
     stack->capacity = BPP_MAX_STACK_DEPTH;
     stack->count = 0;
-    stack->frames = (BppSubFrame *)malloc(stack->capacity * sizeof(BppSubFrame));
+    stack->frames = (BppSubFrame *)calloc(stack->capacity, sizeof(BppSubFrame));
     if (!stack->frames) {
         free(stack);
         return NULL;
@@ -418,11 +424,11 @@ struct TryStack {
 };
 
 TryStack *try_stack_init(void) {
-    TryStack *stack = (TryStack *)malloc(sizeof(TryStack));
+    TryStack *stack = (TryStack *)calloc(1, sizeof(TryStack));
     if (!stack) return NULL;
     stack->capacity = BPP_MAX_STACK_DEPTH;
     stack->count = 0;
-    stack->frames = (BppTryFrame *)malloc(stack->capacity * sizeof(BppTryFrame));
+    stack->frames = (BppTryFrame *)calloc(stack->capacity, sizeof(BppTryFrame));
     if (!stack->frames) {
         free(stack);
         return NULL;

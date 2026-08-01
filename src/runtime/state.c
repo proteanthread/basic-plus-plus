@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file state.c
  * @brief Session State Save/Load implementation.
@@ -22,16 +28,16 @@ BppError vm_state_save(VMContext *vm, const char *filename) {
         return err;
     }
 
-    // 1. Header
+    /* 1. Header */
     fwrite("BPPSTATE", 1, 8, fp);
-    uint32_t version = 100; // 1.00
+    uint32_t version = 100; /* 1.00 */
     fwrite(&version, sizeof(version), 1, fp);
 
     extern BppLineNumber vm_get_current_line(VMContext *vm);
     BppLineNumber cur_line = vm_get_current_line(vm);
     fwrite(&cur_line, sizeof(cur_line), 1, fp);
 
-    // 2. Program Lines
+    /* 2. Program Lines */
     size_t count = 0;
     BppProgramLine *lines = mem_program_get_all(vm_get_mem(vm), &count);
     uint32_t line_count = (uint32_t)count;
@@ -46,7 +52,7 @@ BppError vm_state_save(VMContext *vm, const char *filename) {
         }
     }
 
-    // 3. Variables
+    /* 3. Variables */
     if (!var_serialize(vm_get_var(vm), fp)) {
         err.code = 58;
         err.message = "Failed to serialize variables";
@@ -54,7 +60,7 @@ BppError vm_state_save(VMContext *vm, const char *filename) {
         return err;
     }
 
-    // 4. Arrays
+    /* 4. Arrays */
     if (!arr_serialize(vm_get_arr(vm), fp)) {
         err.code = 58;
         err.message = "Failed to serialize arrays";
@@ -77,7 +83,7 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
         return err;
     }
 
-    // 1. Header
+    /* 1. Header */
     char magic[8];
     if (fread(magic, 1, 8, fp) != 8 || memcmp(magic, "BPPSTATE", 8) != 0) {
         err.code = 53;
@@ -104,7 +110,7 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
     extern void vm_set_current_line(VMContext *vm, BppLineNumber line);
     vm_set_current_line(vm, cur_line);
 
-    // 2. Program Lines
+    /* 2. Program Lines */
     mem_program_clear(vm_get_mem(vm));
     uint32_t line_count = 0;
     if (fread(&line_count, sizeof(line_count), 1, fp) != 1) {
@@ -133,7 +139,7 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
 
         char *text = NULL;
         if (text_len > 0) {
-            text = (char *)malloc(text_len + 1);
+            text = (char *)calloc(1, text_len + 1);
             if (!text) {
                 err.code = 53;
                 err.message = "Out of memory loading state program lines";
@@ -154,7 +160,7 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
         if (text) free(text);
     }
 
-    // 3. Variables
+    /* 3. Variables */
     if (!var_deserialize(vm_get_var(vm), fp)) {
         err.code = 53;
         err.message = "Failed to deserialize variables";
@@ -162,7 +168,7 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
         return err;
     }
 
-    // 4. Arrays
+    /* 4. Arrays */
     if (!arr_deserialize(vm_get_arr(vm), fp)) {
         err.code = 53;
         err.message = "Failed to deserialize arrays";
@@ -219,7 +225,7 @@ char *vm_state_info(VMContext *vm, const char *filename, BppError *err) {
              (double)version / 100.0, cur_line, line_count);
 
     size_t len = strlen(info_buf);
-    char *res = (char *)malloc(len + 1);
+    char *res = (char *)calloc(1, len + 1);
     if (res) {
         memcpy(res, info_buf, len + 1);
     }

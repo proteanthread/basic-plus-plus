@@ -4,13 +4,13 @@
 `CLOCK$`
 
 - **Parameters**: None.
-- **Return Type**: String (Format: `YYYY-MM-DD HH:MM:SS`)
+- **Return Type**: String (Format: `YYYY-MM-DDTHH:MM:SSZ`, UTC timezone)
 
 ## 2. Description & Usage
-The `CLOCK$` system variable retrieves the current system date and time as a fully formatted, human-readable string. 
-It combines the functionality of `DATE$` and `TIME$` into a single, unified ISO 8601-like timestamp representation.
-This variable is particularly useful for timestamping log files, database entries, or any application that requires a precise recording of when an event occurred. 
-It is evaluated dynamically at runtime, ensuring that every invocation captures the exact system time at that specific moment of execution.
+The `CLOCK$` system variable retrieves the current system date and time as a fully formatted ISO 8601 string in the UTC timezone. 
+It combines the functionality of date and time into a single, unified UTC timestamp representation.
+This variable is particularly useful for timestamping log files, database entries, or any application that requires a precise recording of when an event occurred in a standardized timezone. 
+It is evaluated dynamically at runtime, ensuring that every invocation captures the exact UTC time at that specific moment of execution.
 
 ## 3. Code Examples
 ```basic

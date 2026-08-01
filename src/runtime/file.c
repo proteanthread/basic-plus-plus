@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file file.c
  * @brief Portable File System Channel manager implementation.
@@ -72,7 +78,7 @@ struct FileContext {
 
 FileContext *file_init(MemoryContext *mem) {
     if (!mem) return NULL;
-    FileContext *ctx = (FileContext *)malloc(sizeof(FileContext));
+    FileContext *ctx = (FileContext *)calloc(1, sizeof(FileContext));
     if (!ctx) return NULL;
     ctx->mem = mem;
     for (int i = 0; i < BPP_MAX_OPEN_FILES; ++i) {
@@ -777,7 +783,7 @@ void file_txn_log_write(FileContext *ctx, int channel, long position, const void
             fclose(f);
         }
     } else {
-        ctx->txn_journal[idx].data = malloc(len);
+        ctx->txn_journal[idx].data = calloc(1, len);
         if (ctx->txn_journal[idx].data) {
             memcpy(ctx->txn_journal[idx].data, old_data, len);
         }
@@ -828,7 +834,7 @@ BppError file_txn_rollback(FileContext *ctx) {
                 records[count].channel = c;
                 records[count].position = pos;
                 records[count].len = l;
-                records[count].data = malloc(l);
+                records[count].data = calloc(1, l);
                 if (records[count].data) {
                     size_t read_bytes = fread(records[count].data, 1, l, f);
                     (void)read_bytes;

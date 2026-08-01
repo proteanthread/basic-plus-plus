@@ -103,6 +103,7 @@
 
 [Input / Output]
  CLS         Clear the screen
+ CSRLIN      Get the current cursor row line number (1-indexed)
  COLOR       Set text foreground/background
  EOF         Standard I/O or string formatting
  GEMINI      Network protocol handler
@@ -110,10 +111,205 @@
  INPUT       Get console input into a variable
  INSTR       Standard I/O or string formatting
  LINE        Read entire line (LINE INPUT)
+ LPOS        Get the current printer column position (1-indexed)
  NCONNECTED  Network socket operation
  NHTTPSTATUS Network socket operation
  NSTATUS     Network socket operation
  OPEN        Standard I/O or string formatting
+ POS         Get the current cursor column position (1-indexed)
+ PRINT       Display output to console
+
+[Introspection]
+ ALIAS       Advanced language feature
+ CATALOG     List all commands & functions
+ DEMAND      Built-in command or function: DEMAND
+ HELP        Show this help (or HELP keyword)
+ HELP        Show this help (or HELP keyword)
+ INFO        Display system information
+ MEMMAP$     Get name of currently active BIOS memory map model
+ MODULE      Advanced language feature
+ UNLESS      Built-in command or function: UNLESS
+ USING       Built-in command or function: USING
+
+[Program Mgmt & Editing]
+ BLOAD       Load binary memory image
+ BRUN        Load and execute binary program
+ BSAVE       Save binary memory image
+ DELETE      Delete program lines
+ EDIT        Edit a program line
+ LIST        List stored program lines
+ LOAD        Load program from disk
+ MERGE       Merge program lines from disk
+ NEW         Clear program and variables
+ RENUM       Renumber program lines
+ RUN         Execute the stored program
+ SAVE        Save program to disk
+ UNLOAD      Unload module or program
+ UNSAVE      Delete saved program (alias for KILL)
+
+[Sound]
+ BEEP        Emit an audible beep
+ SOUND       Play a tone at frequency
+
+[String Functions]
+ ASC         ASCII value of first character
+ CHR$        Character from ASCII code
+ LCASE$      Convert string to lowercase
+ LEFT$       Get left portion of string
+ LEN         Length of a string
+ LTRIM$      Trim leading spaces
+ MID$        Substring function
+ REPLACE$    Replace substrings
+ RIGHT$      Get right portion of string
+ RTRIM$      Trim trailing spaces
+ SPACE$      Create space string
+ STR$        Convert number to string
+ STRING$     Create repeated character string
+ TRIM$       Trim leading and trailing spaces
+ UCASE$      Convert string to uppercase
+ VAL         Convert string to number
+
+[System & Environ]
+ DIALECT     System environment query/control
+ KILL        Reserved for future use
+ SECURITY    System operation or file query
+
+[Variables & Memory]
+ AS          Specify variable type or file channel alias
+ CLASS       Define OOP Class block
+ ENUM        Define enumeration type
+ DATA        Store numeric or string data
+ DEFDBL      Declare double variable range
+ DEFINT      Declare integer variable range
+ DEFSNG      Declare single variable range
+ DEFSTR      Declare string variable range
+ DIM         Declare an array with dimensions
+ ERASE       Erase an array from memory
+ LBOUND      Array lower bound index
+ LET         Assign value to variable (optional in most dialects)
+ MAT         Matrix operations
+ OPTION      Set interpreter options
+ PEEK        Read byte from virtual memory
+ POKE        Write byte to virtual memory
+=== BASIC++ COMMAND REFERENCE ===
+
+[Arithmetic / Math]
+ ABS         Absolute value
+ ATN         Arctangent (returns radians)
+ COS         Cosine (radians)
+ EXP         Exponential (e^x)
+ FIX         Truncate toward zero
+ INT         Truncate to integer (math) or trigger software interrupt
+ LOG         Natural logarithm (base e)
+ RND         Random number (0 to 1)
+ SIN         Sine (radians)
+ SQR         Square root
+ TAN         Tangent (radians)
+
+[Control Flow]
+ BY          Counting step in loop (SBASIC FOR loop alias)
+ CALL        Call a SUB procedure
+ CASE        Case clause within SELECT CASE
+ DECLARE     Forward-declare a SUB or FUNCTION
+ DO          Begin a DO loop
+ ELSE        Alternate branch in block IF or single-line IF
+ END         Terminate program execution
+ ENDFUNC     End a FUNCTION block
+ ENDPROC     End a PROCEDURE block
+ ERROR       Raise a user error
+ FOR         Begin a counting loop
+ FUNCTION    Define a named function
+ GOSUB       Call a subroutine at a line number
+ GOTO        Jump to a line number
+ IF          Conditional decision structure
+ LOOP        End of a DO loop (with condition)
+ NEXT        End of a FOR loop
+ ON          Computed GOTO/GOSUB or error/event handler
+ PROCEDURE   Define a named procedure (alias for SUB)
+ RESUME      Return from an error handler
+ RETURN      Return from a GOSUB subroutine
+ SELECT      Begin a SELECT CASE block
+ STEP        Count loop step increments
+ SUB         Define a named subroutine
+ TASK        Multi-tasking thread spawn
+ THEN        Conditional branch target indicator
+ TO          Counting upper limit indicator
+ UNTIL       Exit condition for repeat loop
+ WEND        End of a WHILE loop
+  WHILE       Begin a conditional loop
+  WITH        Execute block of statements on UDT/Object path
+
+[Debug & Testing]
+ ASSERT      Assert condition is true
+ BREAK       Trigger interactive breakpoint
+ SELFTEST    Run built-in interpreter tests
+ TROFF       Turn statement tracing OFF
+ TRON        Turn statement tracing ON
+ VARS        Display all active variables
+
+[Devices & Network]
+ BIOS        Access mock BIOS interrupt or switch memory map model (string)
+ HTTP_GET$   Perform HTTP GET request
+ INP         Read from a hardware port
+ IOCTL       Send control string to device
+ IOCTL       Send control string to device
+ MOUNT       Mount a VFS path
+ OUT         Write to a hardware port
+ UMOUNT      Unmount a VFS path
+ WAIT        Wait for hardware port state
+
+[File I/O]
+ ATOMIC      Start implicit atomic transaction
+ CHDIR       File and directory management
+ CLOSE       Close a file channel
+ COMMIT      Commit active transaction
+ FILES       File and directory management
+ GET         Read a record from random file
+ LOC         Current file position
+ LOF         Get length of open file
+ MKDIR       File and directory management
+ NAME        File and directory management
+ PUT         Write a record to random file
+ RESET       Close all open files
+ RMDIR       File and directory management
+ ROLLBACK    Rollback active transaction
+ SEEK        Set or get file position
+ TXN         Transaction control (BEGIN, COMMIT, ROLLBACK, STATUS)
+
+[Graphics]
+ CIRCLE      Draw a circle
+ PAINT       Flood fill an area
+ PLAY        Graphics or sound macro
+ PRESET      Reset a pixel at (x,y)
+ PSET        Set a pixel at (x,y)
+ SCREEN      Set screen mode
+
+[BGI Graphics]
+ BAR         Draw a filled rectangle using fill color
+ CLOSEGRAPH  Shutdown BGI graphics and release VRAM
+ ELLIPSE     Draw an elliptical arc
+ INITGRAPH   Initialize BGI graphics mode by heritage mode ID
+ OUTTEXTXY   Render text at (x, y) in graphics mode
+ PALETTE     Set a palette entry (0-255) to an RGB color
+ PUTPIXEL    Write a single pixel at (x, y)
+ RECTANGLE   Draw an unfilled rectangle outline
+
+[Input / Output]
+ CLS         Clear the screen
+ CSRLIN      Get the current cursor row line number (1-indexed)
+ COLOR       Set text foreground/background
+ EOF         Standard I/O or string formatting
+ GEMINI      Network protocol handler
+ INPUT       Get console input into a variable
+ INPUT       Get console input into a variable
+ INSTR       Standard I/O or string formatting
+ LINE        Read entire line (LINE INPUT)
+ LPOS        Get the current printer column position (1-indexed)
+ NCONNECTED  Network socket operation
+ NHTTPSTATUS Network socket operation
+ NSTATUS     Network socket operation
+ OPEN        Standard I/O or string formatting
+ POS         Get the current cursor column position (1-indexed)
  PRINT       Display output to console
 
 [Introspection]
@@ -191,6 +387,22 @@
  READ        Read the next DATA value
  REM         Comment (ignored by interpreter)
  RESTORE     Reset DATA pointer to beginning
+ SADD        Get memory offset of a string variable's data
  TYPE        Define a user-defined type
  UBOUND      Array upper bound index
-
+ VARPTR      Get memory offset of a variable
+ VARPTR$     Get packed variable descriptor string
+ VARSEG      Get memory segment of a variable
+ RESET       Close all open file and device channels and flush buffers
+ USR         Machine code/C routine dispatch table (USR0 to USR9)
+ ERDEV       Get 16-bit hardware/INT 24h error code from last device operation
+ ERDEV$      Get 8-character ASCII device driver name from last error
+ EXTERR      Query extended operating system error (0=code, 1=class, 2=action, 3=locus)
+ HASH$       Generate MD5, SHA1, SHA256, SHA512, or CRC32 hash string
+ SALT$       Compute salted SHA256 password hash string
+ AUDITCRACK  Perform dictionary attack hash auditing
+ SANDBOXAUDIT Detect if execution is running inside a VM or sandbox
+ VMCHECK     Inspect hypervisor timing artifacts for VM detection
+ COM         Serial port event trap configuration
+ PEN         Lightpen/screen touch event trap configuration
+ STRIG       Joystick/gamepad button event trap configuration

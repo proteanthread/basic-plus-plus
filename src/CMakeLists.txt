@@ -20,8 +20,8 @@
 
 add_library(libbasicpp STATIC
     bootstrap/boot.c
-    vm/vm.c
     vm/vm_stack.c
+    vm/vm_host.c
     memory/mem_system.c
     memory/segmented_mem.c
     lexer/lexer.c
@@ -34,6 +34,7 @@ add_library(libbasicpp STATIC
     runtime/arrays.c
     runtime/file.c
     runtime/print_using.c
+    runtime/using_engine.c
     runtime/task.c
     runtime/metadata.c
     runtime/funcreg.c
@@ -43,38 +44,7 @@ add_library(libbasicpp STATIC
     runtime/string_ext.c
     runtime/array_sort.c
     module/mod_mathext.c
-    statements/stmt_print.c
-    statements/stmt_let.c
-    statements/stmt_lset.c
-    statements/stmt_input.c
-    statements/stmt_beep.c
-    statements/stmt_flow.c
-    statements/stmt_program.c
-    statements/stmt_loop.c
-    statements/stmt_dim.c
-    statements/stmt_def.c
-    statements/stmt_data.c
-    statements/stmt_error.c
-    statements/stmt_try.c
-    statements/stmt_struct.c
-    statements/stmt_selftest.c
-    statements/stmt_file.c
-    statements/stmt_filemgmt.c
-    statements/stmt_select.c
-    statements/stmt_sub.c
-    statements/stmt_security.c
-    statements/stmt_module.c
-    statements/stmt_task.c
-    statements/stmt_mat.c
-    statements/stmt_arrayext.c
     module/mod_arrayext.c
-    statements/stmt_help.c
-    statements/stmt_infra.c
-    statements/stmt_defseg.c
-    statements/stmt_compat.c
-    statements/stmt_dialect.c
-    statements/stmt_txn.c
-    statements/stmt_event.c
     security/security.c
     module/module.c
     module/mod_regex.c
@@ -86,7 +56,6 @@ add_library(libbasicpp STATIC
     runtime/vfs.c
     runtime/vnet.c
     bios/mock_bios.c
-    statements/stmt_bios.c
     runtime/spec.c
     editor/editor.c
     editor/editor_manager.c
@@ -97,24 +66,21 @@ add_library(libbasicpp STATIC
     editor/tui_multiplexer.c
     debug/dap_server.c
     debug/bpp_logger.c
-    statements/stmt_debug.c
-    statements/stmt_io_devices.c
     runtime/state.c
-    platform/platform.c
     device/vdev_fujinet.c
     runtime/gemini.c
     device/bgi/bgi_core.c
     device/bgi/bgi_raster.c
     device/bgi/bgi_font.c
     device/bgi/bgi_modes.c
-    statements/stmt_bgi.c
+    device/bgi/aalib/aalib.c
 )
 
-target_include_directories(libbasicpp PUBLIC ../include)
+target_include_directories(libbasicpp PUBLIC ../include device/bgi/aalib/include)
+target_compile_definitions(libbasicpp PRIVATE BGI_HAVE_AALIB)
 
 add_library(libbasicpp_lite STATIC
     bootstrap/boot.c
-    vm/vm.c
     vm/vm_stack.c
     memory/mem_system.c
     lexer/lexer.c
@@ -126,6 +92,7 @@ add_library(libbasicpp_lite STATIC
     runtime/arrays.c
     runtime/file.c
     runtime/print_using.c
+    runtime/using_engine.c
     runtime/task.c
     runtime/metadata.c
     runtime/funcreg.c
@@ -134,32 +101,6 @@ add_library(libbasicpp_lite STATIC
     runtime/crypto.c
     runtime/string_ext.c
     runtime/array_sort.c
-    statements/stmt_print.c
-    statements/stmt_let.c
-    statements/stmt_lset.c
-    statements/stmt_input.c
-    statements/stmt_beep.c
-    statements/stmt_flow.c
-    statements/stmt_program.c
-    statements/stmt_loop.c
-    statements/stmt_dim.c
-    statements/stmt_def.c
-    statements/stmt_data.c
-    statements/stmt_error.c
-    statements/stmt_try.c
-    statements/stmt_selftest.c
-    statements/stmt_file.c
-    statements/stmt_filemgmt.c
-    statements/stmt_select.c
-    statements/stmt_sub.c
-    statements/stmt_module.c
-    statements/stmt_task.c
-    statements/stmt_help.c
-    statements/stmt_infra.c
-    statements/stmt_compat.c
-    statements/stmt_dialect.c
-    statements/stmt_txn.c
-    statements/stmt_event.c
     module/module.c
     module/mod_regex.c
     device/vdev.c
@@ -170,27 +111,393 @@ add_library(libbasicpp_lite STATIC
     runtime/vfs.c
     runtime/spec.c
     debug/bpp_logger.c
-    statements/stmt_debug.c
-    statements/stmt_io_devices.c
     runtime/state.c
-    platform/platform.c
     device/bgi/bgi_core.c
     device/bgi/bgi_raster.c
     device/bgi/bgi_font.c
     device/bgi/bgi_modes.c
-    statements/stmt_bgi.c
+    device/bgi/aalib/aalib.c
 )
-target_include_directories(libbasicpp_lite PUBLIC ../include)
-target_compile_definitions(libbasicpp_lite PRIVATE BPP_LITE_BUILD NO_SDL2)
+target_include_directories(libbasicpp_lite PUBLIC ../include device/bgi/aalib/include)
+target_compile_definitions(libbasicpp_lite PRIVATE BPP_LITE_BUILD NO_SDL2 BGI_HAVE_AALIB)
 
 if(UNIX)
     target_compile_definitions(libbasicpp PUBLIC _POSIX_C_SOURCE=200809L _XOPEN_SOURCE=700 _GNU_SOURCE)
     target_compile_definitions(libbasicpp_lite PUBLIC _POSIX_C_SOURCE=200809L _XOPEN_SOURCE=700 _GNU_SOURCE)
-    target_link_libraries(libbasicpp PUBLIC m ncurses)
-    target_link_libraries(libbasicpp_lite PUBLIC m)
+    target_link_libraries(libbasicpp PUBLIC
+    bpp_plat_console
+    bpp_plat_fs
+    bpp_plat_sys
+    bpp_plat_time
+    bpp_plat_thread
+    bpp_plat_dl
+    bpp_plat_net
+    bpp_plat_regex
+    bpp_plat_clipboard
+    bpp_vm_context
+    bpp_vm_exec
+    bpp_vm_data
+    bpp_vm_error
+    bpp_vm_control
+    bpp_vm_events
+    bpp_vm_math m ncurses)
+    target_link_libraries(libbasicpp_lite PUBLIC
+    bpp_plat_console
+    bpp_plat_fs
+    bpp_plat_sys
+    bpp_plat_time
+    bpp_plat_thread
+    bpp_plat_dl
+    bpp_plat_net
+    bpp_plat_regex
+    bpp_plat_clipboard
+    bpp_vm_context
+    bpp_vm_exec
+    bpp_vm_data
+    bpp_vm_error
+    bpp_vm_control
+    bpp_vm_events
+    bpp_vm_math m)
 endif()
 
 if(WIN32)
-    target_link_libraries(libbasicpp PUBLIC ws2_32)
-    target_link_libraries(libbasicpp_lite PUBLIC ws2_32)
+    target_link_libraries(libbasicpp PUBLIC
+    bpp_plat_console
+    bpp_plat_fs
+    bpp_plat_sys
+    bpp_plat_time
+    bpp_plat_thread
+    bpp_plat_dl
+    bpp_plat_net
+    bpp_plat_regex
+    bpp_plat_clipboard
+    bpp_vm_context
+    bpp_vm_exec
+    bpp_vm_data
+    bpp_vm_error
+    bpp_vm_control
+    bpp_vm_events
+    bpp_vm_math ws2_32)
+    target_link_libraries(libbasicpp_lite PUBLIC
+    bpp_plat_console
+    bpp_plat_fs
+    bpp_plat_sys
+    bpp_plat_time
+    bpp_plat_thread
+    bpp_plat_dl
+    bpp_plat_net
+    bpp_plat_regex
+    bpp_plat_clipboard
+    bpp_vm_context
+    bpp_vm_exec
+    bpp_vm_data
+    bpp_vm_error
+    bpp_vm_control
+    bpp_vm_events
+    bpp_vm_math ws2_32)
 endif()
+
+
+# Platform Micro-Libraries
+add_library(bpp_plat_console STATIC ../lib/platform/plat_console.c)
+target_include_directories(bpp_plat_console PUBLIC ../include)
+
+add_library(bpp_plat_fs STATIC ../lib/platform/plat_fs.c)
+target_include_directories(bpp_plat_fs PUBLIC ../include)
+
+add_library(bpp_plat_sys STATIC ../lib/platform/plat_sys.c)
+target_include_directories(bpp_plat_sys PUBLIC ../include)
+
+add_library(bpp_plat_time STATIC ../lib/platform/plat_time.c)
+target_include_directories(bpp_plat_time PUBLIC ../include)
+
+add_library(bpp_plat_thread STATIC ../lib/platform/plat_thread.c)
+target_include_directories(bpp_plat_thread PUBLIC ../include)
+
+add_library(bpp_plat_dl STATIC ../lib/platform/plat_dl.c)
+target_include_directories(bpp_plat_dl PUBLIC ../include)
+
+add_library(bpp_plat_net STATIC ../lib/platform/plat_net.c)
+target_include_directories(bpp_plat_net PUBLIC ../include)
+
+add_library(bpp_plat_regex STATIC ../lib/platform/plat_regex.c)
+target_include_directories(bpp_plat_regex PUBLIC ../include)
+
+add_library(bpp_plat_clipboard STATIC ../lib/platform/plat_clipboard.c)
+target_include_directories(bpp_plat_clipboard PUBLIC ../include)
+
+if(UNIX)
+    set(BPP_PLAT_TARGETS
+        bpp_plat_console bpp_plat_fs bpp_plat_sys bpp_plat_time
+        bpp_plat_thread bpp_plat_dl bpp_plat_net bpp_plat_regex
+        bpp_plat_clipboard)
+    foreach(tgt ${BPP_PLAT_TARGETS})
+        target_compile_definitions(${tgt} PRIVATE
+            _POSIX_C_SOURCE=200809L _XOPEN_SOURCE=700 _GNU_SOURCE)
+    endforeach()
+endif()
+
+# VM Micro-Libraries
+add_library(bpp_vm_context STATIC vm/vm_context.c)
+target_include_directories(bpp_vm_context PUBLIC ../include)
+
+add_library(bpp_vm_exec STATIC vm/vm_exec.c)
+target_include_directories(bpp_vm_exec PUBLIC ../include)
+
+add_library(bpp_vm_data STATIC vm/vm_data.c)
+target_include_directories(bpp_vm_data PUBLIC ../include)
+
+add_library(bpp_vm_error STATIC vm/vm_error.c)
+target_include_directories(bpp_vm_error PUBLIC ../include)
+
+add_library(bpp_vm_control STATIC vm/vm_control.c)
+target_include_directories(bpp_vm_control PUBLIC ../include)
+
+add_library(bpp_vm_events STATIC vm/vm_events.c)
+target_include_directories(bpp_vm_events PUBLIC ../include)
+
+add_library(bpp_vm_math STATIC vm/vm_math.c)
+target_include_directories(bpp_vm_math PUBLIC ../include)
+
+# Editor Micro-Libraries
+add_library(bpp_editor_buffer STATIC ../lib/editor/editor_buffer.c)
+target_include_directories(bpp_editor_buffer PUBLIC ../include)
+
+add_library(bpp_editor_render STATIC ../lib/editor/editor_render.c)
+target_include_directories(bpp_editor_render PUBLIC ../include)
+
+add_library(bpp_editor_selection STATIC ../lib/editor/editor_selection.c)
+target_include_directories(bpp_editor_selection PUBLIC ../include)
+
+add_library(bpp_editor_term STATIC ../lib/editor/editor_term.c)
+target_include_directories(bpp_editor_term PUBLIC ../include)
+
+if(UNIX)
+    target_compile_definitions(bpp_editor_render PRIVATE
+        _POSIX_C_SOURCE=200809L _XOPEN_SOURCE=700 _GNU_SOURCE)
+endif()
+
+# Statement Micro-Libraries
+add_library(bpp_stmt_module STATIC statements/stmt_advanced/stmt_module.c)
+target_include_directories(bpp_stmt_module PUBLIC ../include)
+
+add_library(bpp_stmt_security STATIC statements/stmt_advanced/stmt_security.c)
+target_include_directories(bpp_stmt_security PUBLIC ../include)
+
+add_library(bpp_stmt_task STATIC statements/stmt_advanced/stmt_task.c)
+target_include_directories(bpp_stmt_task PUBLIC ../include)
+
+add_library(bpp_stmt_txn STATIC statements/stmt_advanced/stmt_txn.c)
+target_include_directories(bpp_stmt_txn PUBLIC ../include)
+
+add_library(bpp_stmt_data STATIC statements/stmt_core/stmt_data.c)
+target_include_directories(bpp_stmt_data PUBLIC ../include)
+
+add_library(bpp_stmt_dim STATIC statements/stmt_core/stmt_dim.c)
+target_include_directories(bpp_stmt_dim PUBLIC ../include)
+
+add_library(bpp_stmt_flow STATIC statements/stmt_core/stmt_flow.c)
+target_include_directories(bpp_stmt_flow PUBLIC ../include)
+
+add_library(bpp_stmt_input STATIC statements/stmt_core/stmt_input.c)
+target_include_directories(bpp_stmt_input PUBLIC ../include)
+
+add_library(bpp_stmt_let STATIC statements/stmt_core/stmt_let.c)
+target_include_directories(bpp_stmt_let PUBLIC ../include)
+
+add_library(bpp_stmt_loop STATIC statements/stmt_core/stmt_loop.c)
+target_include_directories(bpp_stmt_loop PUBLIC ../include)
+
+add_library(bpp_stmt_print STATIC statements/stmt_core/stmt_print.c)
+target_include_directories(bpp_stmt_print PUBLIC ../include)
+
+add_library(bpp_stmt_program STATIC statements/stmt_core/stmt_program.c)
+target_include_directories(bpp_stmt_program PUBLIC ../include)
+
+add_library(bpp_stmt_dialect STATIC statements/stmt_dialect/stmt_dialect.c)
+target_include_directories(bpp_stmt_dialect PUBLIC ../include)
+
+add_library(bpp_stmt_error STATIC statements/stmt_dialect/stmt_error.c)
+target_include_directories(bpp_stmt_error PUBLIC ../include)
+
+add_library(bpp_stmt_help STATIC statements/stmt_dialect/stmt_help.c)
+target_include_directories(bpp_stmt_help PUBLIC ../include)
+
+add_library(bpp_stmt_introspection STATIC statements/stmt_dialect/stmt_introspection.c)
+target_include_directories(bpp_stmt_introspection PUBLIC ../include)
+
+add_library(bpp_stmt_remove STATIC statements/stmt_dialect/stmt_remove.c)
+target_include_directories(bpp_stmt_remove PUBLIC ../include)
+
+add_library(bpp_stmt_selftest STATIC statements/stmt_dialect/stmt_selftest.c)
+target_include_directories(bpp_stmt_selftest PUBLIC ../include)
+
+add_library(bpp_stmt_arrayext STATIC statements/stmt_extended/stmt_arrayext.c)
+target_include_directories(bpp_stmt_arrayext PUBLIC ../include)
+
+add_library(bpp_stmt_def STATIC statements/stmt_extended/stmt_def.c)
+target_include_directories(bpp_stmt_def PUBLIC ../include)
+
+add_library(bpp_stmt_event STATIC statements/stmt_extended/stmt_event.c)
+target_include_directories(bpp_stmt_event PUBLIC ../include)
+
+add_library(bpp_stmt_mat STATIC statements/stmt_extended/stmt_mat.c)
+target_include_directories(bpp_stmt_mat PUBLIC ../include)
+
+add_library(bpp_stmt_randomize STATIC statements/stmt_extended/stmt_randomize.c)
+target_include_directories(bpp_stmt_randomize PUBLIC ../include)
+
+add_library(bpp_stmt_select STATIC statements/stmt_extended/stmt_select.c)
+target_include_directories(bpp_stmt_select PUBLIC ../include)
+
+add_library(bpp_stmt_struct STATIC statements/stmt_extended/stmt_struct.c)
+target_include_directories(bpp_stmt_struct PUBLIC ../include)
+
+add_library(bpp_stmt_sub STATIC statements/stmt_extended/stmt_sub.c)
+target_include_directories(bpp_stmt_sub PUBLIC ../include)
+
+add_library(bpp_stmt_try STATIC statements/stmt_extended/stmt_try.c)
+target_include_directories(bpp_stmt_try PUBLIC ../include)
+
+add_library(bpp_stmt_beep STATIC statements/stmt_graphics/stmt_beep.c)
+target_include_directories(bpp_stmt_beep PUBLIC ../include)
+
+add_library(bpp_stmt_bgi STATIC statements/stmt_graphics/stmt_bgi.c)
+target_include_directories(bpp_stmt_bgi PUBLIC ../include device/bgi/aalib/include)
+
+add_library(bpp_stmt_compat STATIC statements/stmt_graphics/stmt_compat.c)
+target_include_directories(bpp_stmt_compat PUBLIC ../include)
+
+add_library(bpp_stmt_defseg STATIC statements/stmt_io/stmt_defseg.c)
+target_include_directories(bpp_stmt_defseg PUBLIC ../include)
+
+add_library(bpp_stmt_file STATIC statements/stmt_io/stmt_file.c)
+target_include_directories(bpp_stmt_file PUBLIC ../include)
+
+add_library(bpp_stmt_filemgmt STATIC statements/stmt_io/stmt_filemgmt.c)
+target_include_directories(bpp_stmt_filemgmt PUBLIC ../include)
+
+add_library(bpp_stmt_io_devices STATIC statements/stmt_io/stmt_io_devices.c)
+target_include_directories(bpp_stmt_io_devices PUBLIC ../include)
+
+add_library(bpp_stmt_lset STATIC statements/stmt_io/stmt_lset.c)
+target_include_directories(bpp_stmt_lset PUBLIC ../include)
+
+add_library(bpp_stmt_bios STATIC statements/stmt_system/stmt_bios.c)
+target_include_directories(bpp_stmt_bios PUBLIC ../include)
+
+add_library(bpp_stmt_debug STATIC statements/stmt_system/stmt_debug.c)
+target_include_directories(bpp_stmt_debug PUBLIC ../include)
+
+add_library(bpp_stmt_infra STATIC statements/stmt_system/stmt_infra.c)
+target_include_directories(bpp_stmt_infra PUBLIC ../include)
+
+target_link_libraries(libbasicpp PUBLIC
+    bpp_plat_console
+    bpp_plat_fs
+    bpp_plat_sys
+    bpp_plat_time
+    bpp_plat_thread
+    bpp_plat_dl
+    bpp_plat_net
+    bpp_plat_regex
+    bpp_plat_clipboard
+    bpp_vm_context
+    bpp_vm_exec
+    bpp_vm_data
+    bpp_vm_error
+    bpp_vm_control
+    bpp_vm_events
+    bpp_vm_math
+    bpp_stmt_print
+    bpp_stmt_let
+    bpp_stmt_lset
+    bpp_stmt_input
+    bpp_stmt_randomize
+    bpp_stmt_introspection
+    bpp_stmt_beep
+    bpp_stmt_flow
+    bpp_stmt_program
+    bpp_stmt_loop
+    bpp_stmt_dim
+    bpp_stmt_def
+    bpp_stmt_data
+    bpp_stmt_error
+    bpp_stmt_try
+    bpp_stmt_struct
+    bpp_stmt_selftest
+    bpp_stmt_file
+    bpp_stmt_filemgmt
+    bpp_stmt_select
+    bpp_stmt_sub
+    bpp_stmt_security
+    bpp_stmt_module
+    bpp_stmt_task
+    bpp_stmt_mat
+    bpp_stmt_arrayext
+    bpp_stmt_help
+    bpp_stmt_infra
+    bpp_stmt_defseg
+    bpp_stmt_compat
+    bpp_stmt_remove
+    bpp_stmt_dialect
+    bpp_stmt_txn
+    bpp_stmt_event
+    bpp_stmt_bios
+    bpp_stmt_debug
+    bpp_stmt_io_devices
+    bpp_stmt_bgi
+    bpp_editor_buffer
+    bpp_editor_render
+    bpp_editor_selection
+    bpp_editor_term
+)
+
+target_link_libraries(libbasicpp_lite PUBLIC
+    bpp_plat_console
+    bpp_plat_fs
+    bpp_plat_sys
+    bpp_plat_time
+    bpp_plat_thread
+    bpp_plat_dl
+    bpp_plat_net
+    bpp_plat_regex
+    bpp_plat_clipboard
+    bpp_vm_context
+    bpp_vm_exec
+    bpp_vm_data
+    bpp_vm_error
+    bpp_vm_control
+    bpp_vm_events
+    bpp_vm_math
+    bpp_stmt_print
+    bpp_stmt_let
+    bpp_stmt_lset
+    bpp_stmt_input
+    bpp_stmt_randomize
+    bpp_stmt_beep
+    bpp_stmt_flow
+    bpp_stmt_program
+    bpp_stmt_loop
+    bpp_stmt_dim
+    bpp_stmt_def
+    bpp_stmt_data
+    bpp_stmt_error
+    bpp_stmt_try
+    bpp_stmt_selftest
+    bpp_stmt_file
+    bpp_stmt_filemgmt
+    bpp_stmt_select
+    bpp_stmt_sub
+    bpp_stmt_module
+    bpp_stmt_task
+    bpp_stmt_help
+    bpp_stmt_infra
+    bpp_stmt_compat
+    bpp_stmt_dialect
+    bpp_stmt_txn
+    bpp_stmt_event
+    bpp_stmt_debug
+    bpp_stmt_io_devices
+    bpp_stmt_bgi
+)

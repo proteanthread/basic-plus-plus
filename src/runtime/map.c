@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file map.c
  * @brief Reference-counted dictionary/map structure lifecycle and key-value management.
@@ -25,12 +31,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(_MSC_VER)
-#define strcasecmp _stricmp
-#endif
 
 BppMap *bpp_map_create(void) {
-    BppMap *map = (BppMap *)malloc(sizeof(BppMap));
+    BppMap *map = (BppMap *)calloc(1, sizeof(BppMap));
     if (!map) return NULL;
     map->ref_count = 1;
     map->capacity = 8;
@@ -101,7 +104,7 @@ bool bpp_map_set(void *str_ctx, BppMap *map, const char *key, BValue val) {
     }
 
     /* Copy key string */
-    char *k_copy = (char *)malloc(strlen(key) + 1);
+    char *k_copy = (char *)calloc(1, strlen(key) + 1);
     if (!k_copy) return false;
     memcpy(k_copy, key, strlen(key) + 1);
 

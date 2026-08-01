@@ -1,0 +1,53 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+/**
+ * @file bpp_usb.h
+ * @brief USB Device Driver Subsystem interface.
+ *
+ * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
+ * - What it does: Declares emulated USB controller hubs and driver registration structures.
+ * - Why it exists: Emulates dynamic external keyboard, mouse, or disk hot-plugs.
+ * - Why it works this way: It tracks active USB device ports and binds callbacks for
+ *   VHAL device classes.
+ */
+
+#ifndef BPP_USB_H
+#define BPP_USB_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include "types/types.h"
+#include "device/vdev.h"
+
+#define USB_MAX_PORTS 4
+
+typedef enum {
+    USB_DEV_NONE,
+    USB_DEV_KEYBOARD,
+    USB_DEV_MOUSE,
+    USB_DEV_STORAGE,
+    USB_DEV_DISPLAY
+} BppUsbDevType;
+
+typedef struct {
+    BppUsbDevType type;
+    char          name[32];
+    int           vendor_id;
+    int           product_id;
+    bool          connected;
+} BppUsbDevice;
+
+typedef struct UsbContext UsbContext;
+
+UsbContext *usb_init(MemoryContext *mem);
+void        usb_shutdown(UsbContext *ctx);
+
+bool        usb_connect(UsbContext *ctx, int port, BppUsbDevType type, int vid, int pid);
+void        usb_disconnect(UsbContext *ctx, int port);
+bool        usb_get_port_status(UsbContext *ctx, int port, BppUsbDevice *out_dev);
+int         usb_get_connected_count(UsbContext *ctx);
+
+#endif /* BPP_USB_H */

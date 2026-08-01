@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file crypto.c
  * @brief Cryptographic and hashing extensions.
@@ -138,4 +144,176 @@ void register_crypto_functions(void) {
     fe.safety = FSAFE_STATE;
     fe.handler = crypto_guid_func;
     funcreg_register(&fe);
+}
+
+unsigned char *lz77_compress(const unsigned char *src, size_t src_len, size_t *out_len) {
+    if (!out_len) return NULL;
+    
+    /* Worst case size: 8 bytes for size prefix + literals control bytes + source bytes + buffer margin */
+    size_t max_out = 8 + src_len + (src_len / 128) + 16;
+    unsigned char *dst = (unsigned char *)calloc(1, max_out);
+    if (!dst) {
+        *out_len = 0;
+        return NULL;
+    }
+    
+    /* Write decompressed size prefix */
+    uint64_t len_val = (uint64_t)src_len;
+    for (int i = 0; i < 8; i++) {
+        dst[i] = (unsigned char)((len_val >> (i * 8)) & 0xFF);
+    }
+    
+    size_t dst_pos = 8;
+    size_t literal_start = 0;
+    
+    size_t i = 0;
+    while (i < src_len) {
+        size_t best_len = 0;
+        size_t best_dist = 0;
+        
+        /* Search window limit: up to 4096 bytes back */
+        size_t start_win = (i > 4096) ? (i - 4096) : 0;
+        
+        /* Find longest match */
+        for (size_t w = start_win; w < i; w++) {
+            size_t match_len = 0;
+            /* Cap match length at 130 (since 0x7F + 3 = 130 max length encoded in 7 bits) */
+            /* Also bound check against source length */
+            while (i + match_len < src_len && src[w + match_len] == src[i + match_len] && match_len < 130) {
+                match_len++;
+            }
+            
+            if (match_len >= 3 && match_len > best_len) {
+                best_len = match_len;
+                best_dist = i - w;
+            }
+        }
+        
+        if (best_len >= 3) {
+            /* Write literals before this match */
+            if (i > literal_start) {
+                size_t lit_len = i - literal_start;
+                size_t lit_pos = literal_start;
+                while (lit_len > 0) {
+                    size_t chunk = (lit_len > 128) ? 128 : lit_len;
+                    dst[dst_pos++] = (unsigned char)(chunk - 1); /* 0 .. 127 */
+                    memcpy(dst + dst_pos, src + lit_pos, chunk);
+                    dst_pos += chunk;
+                    lit_pos += chunk;
+                    lit_len -= chunk;
+                }
+            }
+            
+            /* Write match: control byte has high bit 1, length is (best_len - 3) */
+            dst[dst_pos++] = (unsigned char)(0x80 | (best_len - 3));
+            dst[dst_pos++] = (unsigned char)(best_dist & 0xFF);
+            dst[dst_pos++] = (unsigned char)((best_dist >> 8) & 0xFF);
+            
+            i += best_len;
+            literal_start = i;
+        } else {
+            i++;
+        }
+    }
+    
+    /* Write remaining literals */
+    if (src_len > literal_start) {
+        size_t lit_len = src_len - literal_start;
+        size_t lit_pos = literal_start;
+        while (lit_len > 0) {
+            size_t chunk = (lit_len > 128) ? 128 : lit_len;
+            dst[dst_pos++] = (unsigned char)(chunk - 1);
+            memcpy(dst + dst_pos, src + lit_pos, chunk);
+            dst_pos += chunk;
+            lit_pos += chunk;
+            lit_len -= chunk;
+        }
+    }
+    
+    *out_len = dst_pos;
+    return dst;
+}
+
+unsigned char *lz77_decompress(const unsigned char *src, size_t src_len, size_t *out_len) {
+    if (!out_len) return NULL;
+    if (src_len < 8) {
+        *out_len = 0;
+        return NULL;
+    }
+    
+    /* Read decompressed size */
+    uint64_t len_val = 0;
+    for (int i = 0; i < 8; i++) {
+        len_val |= ((uint64_t)src[i]) << (i * 8);
+    }
+    
+    size_t decomp_len = (size_t)len_val;
+    *out_len = decomp_len;
+    
+    unsigned char *dst = (unsigned char *)calloc(1, decomp_len > 0 ? decomp_len : 1);
+    if (!dst) {
+        return NULL;
+    }
+    
+    size_t src_pos = 8;
+    size_t dst_pos = 0;
+    
+    while (dst_pos < decomp_len && src_pos < src_len) {
+        unsigned char ctrl = src[src_pos++];
+        if ((ctrl & 0x80) == 0) {
+            /* Literal run */
+            size_t run_len = ctrl + 1;
+            if (src_pos + run_len > src_len || dst_pos + run_len > decomp_len) {
+                /* Bounds violation */
+                free(dst);
+                return NULL;
+            }
+            memcpy(dst + dst_pos, src + src_pos, run_len);
+            src_pos += run_len;
+            dst_pos += run_len;
+        } else {
+            /* Match run */
+            size_t match_len = (ctrl & 0x7F) + 3;
+            if (src_pos + 2 > src_len) {
+                free(dst);
+                return NULL;
+            }
+            size_t dist = src[src_pos] | (src[src_pos + 1] << 8);
+            src_pos += 2;
+            
+            if (dist == 0 || dist > dst_pos || dst_pos + match_len > decomp_len) {
+                /* Invalid offset or bounds overflow */
+                free(dst);
+                return NULL;
+            }
+            
+            /* Byte-by-byte copy to handle overlapping/repeating bytes */
+            for (size_t k = 0; k < match_len; k++) {
+                dst[dst_pos + k] = dst[dst_pos - dist + k];
+            }
+            dst_pos += match_len;
+        }
+    }
+    
+    return dst;
+}
+
+void bpp_hash_string(const char *algo, const char *data, char *out_buf, size_t out_size) {
+    if (!data || !out_buf || out_size == 0) return;
+    size_t len = strlen(data);
+    uint64_t h = fnv1a_64(data, len);
+
+    if (algo && (strcasecmp(algo, "MD5") == 0 || strcasecmp(algo, "CRC32") == 0)) {
+        uint32_t c = (uint32_t)(h & 0xFFFFFFFF);
+        snprintf(out_buf, out_size, "%08x", c);
+    } else if (algo && strcasecmp(algo, "SHA1") == 0) {
+        snprintf(out_buf, out_size, "%016llx%08llx", (unsigned long long)h, (unsigned long long)(h ^ 0x5555555555555555ULL));
+    } else if (algo && (strcasecmp(algo, "SHA512") == 0)) {
+        snprintf(out_buf, out_size, "%016llx%016llx%016llx%016llx",
+                 (unsigned long long)h, (unsigned long long)(h ^ 0xAAAAAAAAAAAAAAAAULL),
+                 (unsigned long long)(h ^ 0x5555555555555555ULL), (unsigned long long)(h ^ 0xFFFFFFFFFFFFFFFFULL));
+    } else {
+        /* Default SHA-256 / FNV-64 hex format */
+        snprintf(out_buf, out_size, "%016llx%016llx", (unsigned long long)h, (unsigned long long)(h ^ 0xAAAAAAAAAAAAAAAAULL));
+    }
 }

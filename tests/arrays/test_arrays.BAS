@@ -1,8 +1,0 @@
-
-BASIC++ Standard 5.0.0
-@COPYLEFT ALL WRONGS RESERVED
-Jul  8 2026
-
-46.8 MB FREE
-
-Ready.

@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file vnet.c
  * @brief Virtual Network Stack & Sockets (VNet) implementation.
@@ -47,7 +53,7 @@ static VNetContext *g_vnet_ctx = NULL;
 
 VNetContext *vnet_init(MemoryContext *mem) {
     if (!mem) return NULL;
-    VNetContext *ctx = (VNetContext *)malloc(sizeof(VNetContext));
+    VNetContext *ctx = (VNetContext *)calloc(1, sizeof(VNetContext));
     if (!ctx) return NULL;
     ctx->mem = mem;
     ctx->initialized = false;

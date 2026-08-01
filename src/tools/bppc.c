@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ — a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file bppc.c
  * @brief BASIC++ to C17 compiler/transpiler tool.
@@ -19,6 +25,10 @@
  * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
  * - Assumptions: Input files are valid BASIC++ scripts.
  * - Portability concerns: Generated C code uses standard C17 features.
+ *
+ * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
+ * - Future expansions: Add native WebAssembly codegen backend.
+ * - External extension hooks: Exposed via transpiler CLI flags.
  */
 
 #include <stdio.h>
@@ -29,12 +39,7 @@
 #include <stdint.h>
 #include "bpp_version.h"
 
-#ifdef _WIN32
-#define strcasecmp _stricmp
-#define strncasecmp _strnicmp
-#else
-#include <strings.h>
-#endif
+#include "bpp_config.h"
 
 static bool g_debug_mode = false;
 
@@ -130,7 +135,7 @@ static bool parse_dialect_json(const char *json, DialectConfig *config) {
             if (key_len >= sizeof(key)) key_len = sizeof(key) - 1;
             memcpy(key, key_start, key_len);
             key[key_len] = '\0';
-            p++; // consume '"'
+            p++; /* consume '"' */
 
             while (*p && (isspace((unsigned char)*p) || *p == ':')) p++;
 
@@ -143,7 +148,7 @@ static bool parse_dialect_json(const char *json, DialectConfig *config) {
                 if (val_len >= sizeof(val)) val_len = sizeof(val) - 1;
                 memcpy(val, val_start, val_len);
                 val[val_len] = '\0';
-                p++; // consume '"'
+                p++; /* consume '"' */
 
                 if (strcmp(key, "name") == 0) {
                     size_t copy_len = strlen(val);
@@ -182,7 +187,7 @@ static bool parse_dialect_json(const char *json, DialectConfig *config) {
                             if (k_len >= sizeof(kw_name)) k_len = sizeof(kw_name) - 1;
                             memcpy(kw_name, k_start, k_len);
                             kw_name[k_len] = '\0';
-                            p++; // consume '"'
+                            p++; /* consume '"' */
 
                             while (*p && (isspace((unsigned char)*p) || *p == ':')) p++;
 
@@ -195,7 +200,7 @@ static bool parse_dialect_json(const char *json, DialectConfig *config) {
                                 if (m_len >= sizeof(kw_mapped)) m_len = sizeof(kw_mapped) - 1;
                                 memcpy(kw_mapped, m_start, m_len);
                                 kw_mapped[m_len] = '\0';
-                                p++; // consume '"'
+                                p++; /* consume '"' */
 
                                 if (config->keyword_count < 128) {
                                     snprintf(config->keywords_name[config->keyword_count], sizeof(config->keywords_name[config->keyword_count]), "%s", kw_name);
@@ -441,7 +446,7 @@ static const char *lookup_token(unsigned char tok) {
 
 static char *detokenize_gw_basic(const unsigned char *data, size_t file_len) {
     size_t out_cap = file_len * 5 + 1024;
-    char *out = malloc(out_cap);
+    char *out = (char *)calloc(1, out_cap);
     if (!out) return NULL;
     
     size_t out_len = 0;
@@ -505,7 +510,7 @@ typedef struct {
 
 static char *bppc_strdup(const char *src) {
     size_t len = strlen(src);
-    char *dst = malloc(len + 1);
+    char *dst = (char *)calloc(1, len + 1);
     if (dst) {
         memcpy(dst, src, len + 1);
     }
@@ -524,7 +529,7 @@ static bool compile_to_bpp(const char *source_text, const char *out_bpp_path) {
     }
     size_t line_cap = 256;
     size_t line_count = 0;
-    CompiledLine *lines = malloc(line_cap * sizeof(CompiledLine));
+    CompiledLine *lines = (CompiledLine *)calloc(line_cap, sizeof(CompiledLine));
     if (!lines) return false;
     
     const char *p = source_text;
@@ -889,7 +894,7 @@ int main(int argc, char **argv) {
         printf("[DEBUG] Input file size: %ld bytes\n", in_size);
     }
 
-    unsigned char *in_data = malloc(in_size >= 0 ? in_size + 1 : 1);
+    unsigned char *in_data = (unsigned char *)calloc(1, in_size >= 0 ? in_size + 1 : 1);
     if (!in_data) {
         fclose(in_f);
         fprintf(stderr, "Error: Out of memory loading input file\n");

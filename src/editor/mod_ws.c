@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 #ifndef STANDALONE_EDITOR
 #include "bpp_editor.h"
 #endif
@@ -120,7 +126,7 @@ static struct VMContext *current_vm = NULL;
 
 static void oom(void) {
     fprintf(stderr, "\n\nOut of memory!\n");
-    exit(1);
+    return;
 }
 
 static void ensure_line_capacity(int row, int needed) {
@@ -129,7 +135,7 @@ static void ensure_line_capacity(int row, int needed) {
         if (new_cap < needed) new_cap = needed;
         if (new_cap < 128) new_cap = 128;
         char *new_text = realloc(text_buffer[row].text, new_cap);
-        if (!new_text) oom();
+        if (!new_text) { oom(); return; }
         text_buffer[row].text = new_text;
         text_buffer[row].capacity = new_cap;
     }
@@ -141,7 +147,7 @@ static void ensure_buffer_capacity(int needed) {
         if (new_cap < needed) new_cap = needed;
         if (new_cap < 256) new_cap = 256;
         Line *new_buf = realloc(text_buffer, new_cap * sizeof(Line));
-        if (!new_buf) oom();
+        if (!new_buf) { oom(); return; }
         text_buffer = new_buf;
         text_buffer_capacity = new_cap;
     }
@@ -152,8 +158,8 @@ static void insert_empty_line(int row) {
     for (int i = num_lines; i > row; i--) {
         text_buffer[i] = text_buffer[i - 1];
     }
-    text_buffer[row].text = malloc(128);
-    if (!text_buffer[row].text) oom();
+    text_buffer[row].text = (char *)calloc(1, 128);
+    if (!text_buffer[row].text) { oom(); return; }
     text_buffer[row].text[0] = '\0';
     text_buffer[row].length = 0;
     text_buffer[row].capacity = 128;
@@ -191,7 +197,7 @@ static char *ws_clipboard = NULL;
 
 static char *ws_strdup(const char *s) {
     if (!s) return NULL;
-    char *dup = malloc((int)strlen(s) + 1);
+    char *dup = (char *)calloc(1, (int)strlen(s) + 1);
     if (dup) strcpy(dup, s);
     return dup;
 }
@@ -236,7 +242,7 @@ static char* get_selected_text_ws(void) {
     if (!sel_active) return NULL;
     int r1, c1, r2, c2;
     get_sel_bounds(&r1, &c1, &r2, &c2);
-    char *buf = malloc(65536);
+    char *buf = (char *)calloc(1, 65536);
     if (!buf) return NULL;
     buf[0] = '\0';
     int pos = 0;
@@ -257,8 +263,8 @@ static void delete_selected_text_ws(void) {
     int r1, c1, r2, c2;
     get_sel_bounds(&r1, &c1, &r2, &c2);
     int rem_len = text_buffer[r2].length - c2;
-    char *rem = malloc(rem_len + 1);
-    if (!rem) oom();
+    char *rem = (char *)calloc(1, rem_len + 1);
+    if (!rem) { oom(); return; }
     strcpy(rem, text_buffer[r2].text + c2);
     
     text_buffer[r1].text[c1] = '\0';

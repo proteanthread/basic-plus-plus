@@ -1,0 +1,30 @@
+# TZ$
+
+## 1. Syntax & Parameters
+
+**Syntax:**
+```basic
+TZ$
+```
+**Parameters:**
+- None. `TZ$` is a read-only String System Variable.
+
+## 2. Description & Usage
+
+Returns the current timezone name abbreviation (e.g., `"MDT"`, `"MST"`, or `"UTC"`).
+Because it is a system variable, it does not require parentheses. It is read-only; you cannot assign a value to it.
+
+## 3. Code Examples
+
+**Example:**
+```basic
+PRINT "Current timezone: "; TZ$
+```
+
+## 4. Internal C-Source Mapping
+
+- `src/expression/eval.c` (Evaluation)
+
+## 5. Cross-References / See Also
+
+- TZ, UTC, CLOCK$

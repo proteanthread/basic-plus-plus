@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file gemini.c
  * @brief Gemini Network Protocol Client.
@@ -148,7 +154,7 @@ char *net_gemini_fetch(VMContext *vm, const char *url, BppError *out_err) {
     /* Check if TLS libraries are available */
     if (!init_tls_dynamic()) {
         /* Fallback to offline mock response so tests pass on any machine/sandbox */
-        char *mock_response = malloc(4096);
+        char *mock_response = calloc(1, 4096);
         if (!mock_response) {
             out_err->code = 14; out_err->message = "Out of memory";
             return NULL;
@@ -210,7 +216,7 @@ char *net_gemini_fetch(VMContext *vm, const char *url, BppError *out_err) {
     p_SSL_write(ssl, req, (int)strlen(req));
 
     /* Read response */
-    char *response_buf = malloc(65536);
+    char *response_buf = calloc(1, 65536);
     if (!response_buf) {
         p_SSL_free(ssl);
         p_SSL_CTX_free(ctx);
@@ -252,7 +258,7 @@ char *net_gemini_fetch(VMContext *vm, const char *url, BppError *out_err) {
     if (status >= 20 && status < 30) {
         /* Success: extract body */
         size_t blen = strlen(body);
-        char *result = malloc(blen + 1);
+        char *result = calloc(1, blen + 1);
         if (!result) {
             free(response_buf);
             p_SSL_free(ssl);
@@ -270,7 +276,7 @@ char *net_gemini_fetch(VMContext *vm, const char *url, BppError *out_err) {
     }
 
     /* Not successful status */
-    char *err_res = malloc(512);
+    char *err_res = calloc(1, 512);
     if (!err_res) {
         free(response_buf);
         p_SSL_free(ssl);

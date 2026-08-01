@@ -1,0 +1,660 @@
+/**
+ * @file stmt_program.c
+ * @brief Program management statement command handlers (LIST, RUN, NEW).
+ *
+ * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
+ * - What it does: Implements program management commands:
+ *   - LIST: Iterates over all stored program lines and prints them to "CON:".
+ *   - RUN: Clears variable storage and sets the VM instruction pointer to the first line.
+ *   - NEW: Clears both variable storage and the program line store.
+ * - Why it exists: Provides core environment control commands for the REPL.
+ * - Why it works this way: It interfaces with the MemoryContext and VariableContext.
+ *   RUN starts execution by pointing next_line to the minimum line number, which the VM loop
+ *   picks up and runs line-by-line.
+ *
+ * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
+ * - What can be changed: Listing formats, list ranges (e.g. LIST 10-50).
+ * - What cannot be changed: Memory clear guarantees of the NEW command.
+ * - What to expect: Running the NEW command completely clears program memory.
+ * - What to do if something breaks: If LIST fails, check the mem_program_get_all list retrieval loop.
+ *
+ * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
+ * - Assumptions: Lines are stored sorted. Formatting outputs cleanly via vdev_printf.
+ * - Portability concerns: None. C17 compliant.
+ *
+ * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
+ * - How future expansion can occur safely: Add LOAD/SAVE file I/O hooks or LIST line ranges.
+ * - How to write external extensions: Plugins do not override core program management commands.
+ */
+
+#include "stmt/stmt.h"
+#include "device/vdev.h"
+#include "platform/platform.h"
+#include "eval/eval.h"
+#include "runtime/spec.h"
+#include "runtime/variables.h"
+#include "runtime/arrays.h"
+#include <string.h>
+#include <stdio.h>
+
+
+static bool parse_line_number(const char *str, BppLineNumber *out_line, const char **out_text);
+
+/* LIST handler */
+BppError stmt_list_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+    (void)lex;
+
+    VDevContext *vdev = vm_get_vdev(vm);
+    MemoryContext *mem = vm_get_mem(vm);
+
+    size_t count = 0;
+    BppProgramLine *lines = mem_program_get_all(mem, &count);
+
+    for (size_t i = 0; i < count; ++i) {
+        vdev_printf(vdev, "%g %s\n", lines[i].line_number, lines[i].text);
+    }
+
+    return err;
+}
+
+/* RUN handler */
+BppError stmt_run_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+
+    MemoryContext *mem = vm_get_mem(vm);
+
+    BppToken tok = lex_peek(lex);
+    bool has_arg = (tok.type != TOK_EOL && tok.type != TOK_EOF && tok.type != TOK_DOUBLE_COLON && tok.start[0] != ':');
+    if (has_arg) {
+        BValue val = eval_expression(vm, lex, &err);
+        if (err.code != 0) return err;
+        if (val.type != VAL_STRING) {
+            err.code = 13; err.message = "Type mismatch: RUN expects filename string";
+            return err;
+        }
+        const char *filename = str_data(val.as.string);
+        char path[256];
+        strncpy(path, filename, sizeof(path) - 1);
+        path[sizeof(path) - 1] = '\0';
+        str_release(vm_get_str(vm), val.as.string);
+
+        err = vm_load_program_file(vm, path);
+        if (err.code != 0) return err;
+    }
+
+    /* Reset loop stacks, variables, and exceptions */
+    vm_reset_for_run(vm);
+
+    /* Build DATA table */
+    vm_build_data_table(vm);
+
+    /* Set VM execution to the first line */
+    size_t count = 0;
+    BppProgramLine *lines = mem_program_get_all(mem, &count);
+
+    if (count > 0) {
+        /* Jump to the first line in the store */
+        vm_jump(vm, lines[0].line_number, NULL);
+        vm_set_running(vm, true);
+    } else {
+        /* No lines to run: NOP */
+        vm_jump(vm, 0.0, NULL);
+    }
+
+    return err;
+}
+
+/* NEW handler */
+BppError stmt_new_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+    (void)lex;
+
+    MemoryContext *mem = vm_get_mem(vm);
+    VariableContext *var = vm_get_var(vm);
+
+    /* Clear variables and program */
+    var_clear_all(var);
+    mem_program_clear(mem);
+
+    return err;
+}
+
+#include <ctype.h>
+
+/* OPTION handler */
+BppError stmt_option_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+
+    BppToken tok = lex_next(lex);
+    if (tok.type != TOK_IDENT) {
+        err.code = 2;
+        err.message = "Expected OPTION parameter (EXPLICIT or BASE)";
+        return err;
+    }
+
+    char opt_name[64];
+    size_t clen = (tok.length < 63) ? tok.length : 63;
+    memcpy(opt_name, tok.as.string, clen);
+    opt_name[clen] = '\0';
+
+    /* Normalize to upper case */
+    for (size_t j = 0; opt_name[j]; ++j) {
+        opt_name[j] = (char)toupper((unsigned char)opt_name[j]);
+    }
+
+    if (strcmp(opt_name, "EXPLICIT") == 0 || strcmp(opt_name, "STRICT") == 0) {
+        bool enable = true;
+        BppToken next = lex_peek(lex);
+        if (next.type == TOK_IDENT || next.type == TOK_KEYWORD) {
+            char val_name[64];
+            size_t vlen = (next.length < 63) ? next.length : 63;
+            memcpy(val_name, next.start, vlen);
+            val_name[vlen] = '\0';
+            for (size_t j = 0; val_name[j]; ++j) {
+                val_name[j] = (char)toupper((unsigned char)val_name[j]);
+            }
+            if (strcmp(val_name, "ON") == 0) {
+                lex_next(lex); /* Consume ON */
+                enable = true;
+            } else if (strcmp(val_name, "OFF") == 0) {
+                lex_next(lex); /* Consume OFF */
+                enable = false;
+            }
+        }
+        var_set_explicit(vm_get_var(vm), enable);
+    } else if (strcmp(opt_name, "BASE") == 0) {
+        BppToken val_tok = lex_next(lex);
+        if (val_tok.type != TOK_NUMBER) {
+            err.code = 2;
+            err.message = "Expected 0 or 1 after OPTION BASE";
+            return err;
+        }
+        int base = (int)val_tok.as.number;
+        if (base != 0 && base != 1) {
+            err.code = 5;
+            err.message = "OPTION BASE must be 0 or 1";
+            return err;
+        }
+        arr_set_option_base(vm_get_arr(vm), base);
+    } else if (strcmp(opt_name, "ARITHMETIC") == 0) {
+        BppToken val_tok = lex_next(lex);
+        if (val_tok.type != TOK_IDENT && val_tok.type != TOK_KEYWORD) {
+            err.code = 2;
+            err.message = "Expected DECIMAL or BINARY after OPTION ARITHMETIC";
+            return err;
+        }
+        char val_name[64];
+        size_t vlen = (val_tok.length < 63) ? val_tok.length : 63;
+        memcpy(val_name, val_tok.start, vlen);
+        val_name[vlen] = '\0';
+        for (size_t j = 0; val_name[j]; ++j) {
+            val_name[j] = (char)toupper((unsigned char)val_name[j]);
+        }
+        if (strcmp(val_name, "DECIMAL") == 0) {
+            vm_set_arithmetic_decimal(vm, true);
+        } else if (strcmp(val_name, "BINARY") == 0) {
+            vm_set_arithmetic_decimal(vm, false);
+        } else {
+            err.code = 2;
+            err.message = "Unknown ARITHMETIC option parameter";
+        }
+    } else if (strcmp(opt_name, "EH") == 0) {
+        BppToken val_tok = lex_next(lex);
+        if (val_tok.type != TOK_IDENT && val_tok.type != TOK_KEYWORD) {
+            err.code = 2;
+            err.message = "Expected ON or OFF after OPTION EH";
+            return err;
+        }
+        char val_name[64];
+        size_t vlen = (val_tok.length < 63) ? val_tok.length : 63;
+        memcpy(val_name, val_tok.start, vlen);
+        val_name[vlen] = '\0';
+        for (size_t j = 0; val_name[j]; ++j) {
+            val_name[j] = (char)toupper((unsigned char)val_name[j]);
+        }
+        if (strcmp(val_name, "ON") == 0) {
+            vm_set_opt_eh(vm, true);
+        } else if (strcmp(val_name, "OFF") == 0) {
+            vm_set_opt_eh(vm, false);
+        } else {
+            err.code = 2;
+            err.message = "Unknown EH option parameter: expected ON or OFF";
+        }
+    } else if (strcmp(opt_name, "VIDEO") == 0) {
+        BppToken val_tok = lex_next(lex);
+        if (val_tok.type != TOK_IDENT && val_tok.type != TOK_KEYWORD) {
+            err.code = 2;
+            err.message = "Expected NTSC, PAL, or SECAM after OPTION VIDEO";
+            return err;
+        }
+        char val_name[64];
+        size_t vlen = (val_tok.length < 63) ? val_tok.length : 63;
+        memcpy(val_name, val_tok.start, vlen);
+        val_name[vlen] = '\0';
+        for (size_t j = 0; val_name[j]; ++j) {
+            val_name[j] = (char)toupper((unsigned char)val_name[j]);
+        }
+        if (strcmp(val_name, "NTSC") == 0) {
+            vm_set_jiffies_multiplier(vm, 60.0);
+        } else if (strcmp(val_name, "PAL") == 0 || strcmp(val_name, "SECAM") == 0) {
+            vm_set_jiffies_multiplier(vm, 50.0);
+        } else {
+            err.code = 2;
+            err.message = "OPTION VIDEO must be NTSC, PAL, or SECAM";
+            return err;
+        }
+    } else {
+        err.code = 2;
+        err.message = "Unknown OPTION parameter";
+    }
+
+    return err;
+}
+
+#include <stdlib.h>
+
+static bool parse_line_number(const char *str, BppLineNumber *out_line, const char **out_text) {
+    while (*str && isspace((unsigned char)*str)) {
+        str++;
+    }
+    if (!isdigit((unsigned char)*str)) {
+        return false;
+    }
+
+    double major = 0.0;
+    while (*str && isdigit((unsigned char)*str)) {
+        major = major * 10.0 + (*str - '0');
+        str++;
+    }
+
+    double fraction = 0.0;
+    if (*str == '.') {
+        str++; /* consume first dot */
+        double minor_val = 0.0;
+        int minor_digits = 0;
+        while (*str && isdigit((unsigned char)*str)) {
+            minor_val = minor_val * 10.0 + (*str - '0');
+            minor_digits++;
+            str++;
+        }
+        
+        if (minor_digits > 0) {
+            double val1 = minor_val;
+            if (minor_digits == 1) val1 *= 10.0;
+            fraction += val1 / 100.0;
+
+            if (*str == '.') {
+                str++; /* consume second dot */
+                double sub_val = 0.0;
+                int sub_digits = 0;
+                while (*str && isdigit((unsigned char)*str)) {
+                    sub_val = sub_val * 10.0 + (*str - '0');
+                    sub_digits++;
+                    str++;
+                }
+                if (sub_digits > 0) {
+                    double val2 = sub_val;
+                    if (sub_digits == 1) val2 *= 10.0;
+                    fraction += val2 / 10000.0;
+                }
+            }
+        }
+    }
+
+    *out_line = major + fraction;
+    *out_text = str;
+    return true;
+}
+
+BppError stmt_load_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+
+    BppToken peek = lex_peek(lex);
+    bool is_feature = false;
+    if (peek.type == TOK_IDENT || peek.type == TOK_KEYWORD) {
+        if (peek.length == 7) {
+            char temp[8];
+            memcpy(temp, peek.start, 7);
+            temp[7] = '\0';
+            for (int i = 0; i < 7; i++) {
+                if (temp[i] >= 'a' && temp[i] <= 'z') temp[i] -= 32;
+            }
+            if (strcmp(temp, "FEATURE") == 0) {
+                is_feature = true;
+            }
+        }
+    }
+
+    if (is_feature) {
+        lex_next(lex); /* Consume "FEATURE" */
+        BppToken path_tok = lex_next(lex);
+        if (path_tok.type != TOK_STRING) {
+            err.code = 2;
+            err.message = "Expected string literal filename after LOAD FEATURE";
+            return err;
+        }
+        char filename[256];
+        size_t len = (path_tok.length < sizeof(filename) - 1) ? path_tok.length : sizeof(filename) - 1;
+        memcpy(filename, path_tok.as.string, len);
+        filename[len] = '\0';
+
+        int res = spec_load_file(vm, filename);
+        if (res != 0) {
+            err.code = 53;
+            err.message = "Failed to load feature specification file";
+        }
+        return err;
+    }
+
+    BppToken tok = lex_next(lex);
+    if (tok.type != TOK_STRING) {
+        err.code = 2;
+        err.message = "Expected string literal filename in LOAD";
+        return err;
+    }
+
+    char filename[256];
+    size_t len = (tok.length < sizeof(filename) - 1) ? tok.length : sizeof(filename) - 1;
+    memcpy(filename, tok.as.string, len);
+    filename[len] = '\0';
+
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        err.code = 53; /* File not found */
+        err.message = "File not found during LOAD";
+        return err;
+    }
+
+    MemoryContext *mem = vm_get_mem(vm);
+    VariableContext *var = vm_get_var(vm);
+
+    /* LOAD clears program and variables */
+    var_clear_all(var);
+    mem_program_clear(mem);
+
+    char line_buf[1024];
+    while (fgets(line_buf, sizeof(line_buf), fp)) {
+        size_t slen = strlen(line_buf);
+        while (slen > 0 && isspace((unsigned char)line_buf[slen - 1])) {
+            line_buf[slen - 1] = '\0';
+            slen--;
+        }
+
+        char *ptr = line_buf;
+        while (*ptr && isspace((unsigned char)*ptr)) {
+            ptr++;
+        }
+        if (*ptr == '\0') continue;
+
+        BppLineNumber line_num = 0.0;
+        const char *stmt_text = NULL;
+        if (parse_line_number(ptr, &line_num, &stmt_text)) {
+            while (*stmt_text && isspace((unsigned char)*stmt_text)) {
+                stmt_text++;
+            }
+            if (*stmt_text != '\0') {
+                mem_program_insert(mem, line_num, stmt_text);
+            }
+        }
+    }
+
+    fclose(fp);
+    vm_set_current_filename(vm, filename);
+    return err;
+}
+
+BppError stmt_save_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+
+    BppToken tok = lex_next(lex);
+    if (tok.type != TOK_STRING) {
+        err.code = 2;
+        err.message = "Expected string literal filename in SAVE";
+        return err;
+    }
+
+    char filename[256];
+    size_t len = (tok.length < sizeof(filename) - 1) ? tok.length : sizeof(filename) - 1;
+    memcpy(filename, tok.as.string, len);
+    filename[len] = '\0';
+
+    FILE *fp = fopen(filename, "w");
+    if (!fp) {
+        err.code = 61; /* Disk full / Write error */
+        err.message = "Failed to open file for writing in SAVE";
+        return err;
+    }
+
+    MemoryContext *mem = vm_get_mem(vm);
+    size_t count = 0;
+    BppProgramLine *lines = mem_program_get_all(mem, &count);
+
+    for (size_t i = 0; i < count; ++i) {
+        fprintf(fp, "%g %s\n", lines[i].line_number, lines[i].text);
+    }
+
+    fclose(fp);
+    vm_set_current_filename(vm, filename);
+    return err;
+}
+
+BppError stmt_merge_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+
+    BppToken tok = lex_next(lex);
+    if (tok.type != TOK_STRING) {
+        err.code = 2;
+        err.message = "Expected string literal filename in MERGE";
+        return err;
+    }
+
+    char filename[256];
+    size_t len = (tok.length < sizeof(filename) - 1) ? tok.length : sizeof(filename) - 1;
+    memcpy(filename, tok.as.string, len);
+    filename[len] = '\0';
+
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        err.code = 53;
+        err.message = "File not found during MERGE";
+        return err;
+    }
+
+    MemoryContext *mem = vm_get_mem(vm);
+
+    char line_buf[1024];
+    while (fgets(line_buf, sizeof(line_buf), fp)) {
+        size_t slen = strlen(line_buf);
+        while (slen > 0 && isspace((unsigned char)line_buf[slen - 1])) {
+            line_buf[slen - 1] = '\0';
+            slen--;
+        }
+
+        char *ptr = line_buf;
+        while (*ptr && isspace((unsigned char)*ptr)) {
+            ptr++;
+        }
+        if (*ptr == '\0') continue;
+
+        BppLineNumber line_num = 0.0;
+        const char *stmt_text = NULL;
+        if (parse_line_number(ptr, &line_num, &stmt_text)) {
+            while (*stmt_text && isspace((unsigned char)*stmt_text)) {
+                stmt_text++;
+            }
+            if (*stmt_text != '\0') {
+                mem_program_insert(mem, line_num, stmt_text);
+            }
+        }
+    }
+
+    fclose(fp);
+    return err;
+}
+
+/**
+ * @brief ENVIRON "VAR=VALUE"
+ */
+BppError stmt_environ_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+
+    BValue env_val = eval_expression(vm, lex, &err);
+    if (err.code != 0) return err;
+
+    if (env_val.type != VAL_STRING) {
+        if (env_val.type == VAL_STRING) str_release(vm_get_str(vm), env_val.as.string);
+        err.code = 13; err.message = "Type mismatch (expected string for ENVIRON)";
+        return err;
+    }
+
+    const char *env_str = str_data(env_val.as.string);
+    const char *eq = strchr(env_str, '=');
+    if (!eq) {
+        str_release(vm_get_str(vm), env_val.as.string);
+        err.code = 5; err.message = "Illegal function call (expected VAR=VALUE)";
+        return err;
+    }
+
+    size_t name_len = eq - env_str;
+    char name[256];
+    if (name_len >= sizeof(name)) name_len = sizeof(name) - 1;
+    strncpy(name, env_str, name_len);
+    name[name_len] = '\0';
+
+    const char *val = eq + 1;
+
+    platform_setenv(name, val);
+
+    str_release(vm_get_str(vm), env_val.as.string);
+    return err;
+}
+
+/* COMMON handler */
+BppError stmt_common_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+    VariableContext *var_ctx = vm_get_var(vm);
+
+    BppToken tok = lex_peek(lex);
+    if (tok.type == TOK_KEYWORD && strcmp(tok.start, "SHARED") == 0) {
+        lex_next(lex); /* Consume SHARED */
+    }
+
+    while (true) {
+        tok = lex_next(lex);
+        if (tok.type != TOK_IDENT) {
+            err.code = 2; err.message = "Expected variable name in COMMON";
+            return err;
+        }
+
+        char name[128];
+        size_t len = (tok.length < sizeof(name) - 1) ? tok.length : sizeof(name) - 1;
+        memcpy(name, tok.start, len);
+        name[len] = '\0';
+
+        /* Skip optional array parentheses e.g. A() */
+        BppToken next = lex_peek(lex);
+        if (next.type == TOK_LPAREN) {
+            lex_next(lex); /* Consume ( */
+            next = lex_peek(lex);
+            if (next.type == TOK_RPAREN) {
+                lex_next(lex); /* Consume ) */
+            }
+        }
+
+        /* Explicitly declare in context so the entry exists */
+        var_declare(var_ctx, name);
+        var_mark_common(var_ctx, name);
+
+        next = lex_peek(lex);
+        if (next.type == TOK_COMMA) {
+            lex_next(lex); /* Consume COMMA */
+        } else {
+            break;
+        }
+    }
+
+    return err;
+}
+
+/* CHAIN handler */
+BppError stmt_chain_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+
+    BValue file_val = eval_expression(vm, lex, &err);
+    if (err.code != 0) return err;
+
+    if (file_val.type != VAL_STRING || !file_val.as.string) {
+        err.code = 13; err.message = "Type mismatch: CHAIN expects filename string";
+        if (file_val.type == VAL_STRING && file_val.as.string) str_release(vm_get_str(vm), file_val.as.string);
+        return err;
+    }
+
+    const char *filename = str_data(file_val.as.string);
+    char path[256];
+    strncpy(path, filename, sizeof(path) - 1);
+    path[sizeof(path) - 1] = '\0';
+    str_release(vm_get_str(vm), file_val.as.string);
+
+    /* Auto-append .BAS if no extension */
+    size_t flen = strlen(path);
+    if (flen < 4 || (strcmp(path + flen - 4, ".bas") != 0 && strcmp(path + flen - 4, ".BAS") != 0)) {
+        if (flen + 4 < sizeof(path)) {
+            strcat(path, ".bas");
+        }
+    }
+
+    /* Check file existence using fopen */
+    FILE *fp = fopen(path, "r");
+    if (!fp) {
+        err.code = 53; err.message = "File not found during CHAIN";
+        return err;
+    }
+    fclose(fp);
+
+    VariableContext *var_ctx = vm_get_var(vm);
+    ArrayContext *arr_ctx = vm_get_arr(vm);
+
+    vm_set_chaining(vm, true);
+
+    /* 1. Clear non-COMMON variables */
+    var_clear_for_chain(var_ctx);
+
+    /* 2. Clear non-COMMON arrays */
+    arr_clear_for_chain(arr_ctx, var_ctx);
+
+    /* 3. Reset VM loop stack execution pointers */
+    vm_reset_for_run(vm);
+
+    /* 4. Load program file */
+    err = vm_load_program_file(vm, path);
+    vm_set_chaining(vm, false);
+    if (err.code != 0) return err;
+
+    /* 5. Rebuild DATA table */
+    vm_build_data_table(vm);
+
+    /* 6. Point VM execution to the first statement */
+    size_t count = 0;
+    BppProgramLine *lines = mem_program_get_all(vm_get_mem(vm), &count);
+    if (count > 0) {
+        vm_jump(vm, lines[0].line_number, NULL);
+        vm_set_running(vm, true);
+    } else {
+        vm_jump(vm, 0.0, NULL);
+        vm_set_running(vm, false);
+    }
+
+    return err;
+}
+

@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file main_console.c
  * @brief Standard Console/REPL bootstrap entry point.
@@ -29,6 +35,7 @@
 #include "bpp_boot.h"
 #include "bpp_config.h"
 #include "bpp_platform.h"
+#include "bpp_task.h"
 #include "bpp_vdev.h"
 #include "bpp_vfs.h"
 #include "bpp_editor.h"
@@ -36,6 +43,7 @@
 
 extern void tui_multiplexer_init(void);
 extern void tui_multiplexer_shutdown(void);
+extern void vdev_gfx_force_flush(void);
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -216,6 +224,7 @@ int main(int argc, char **argv) {
 
     if (cmd) {
         BppError err = vm_execute_line(boot->vm, cmd);
+        vdev_gfx_force_flush();
         if (err.code != 0) {
             vdev_printf(vdev, "?Error %d: %s in line %g\n", err.code, err.message, err.line);
             boot_shutdown(boot);
@@ -284,6 +293,11 @@ int main(int argc, char **argv) {
         }
 
         if (!con->ops.gets || !con->ops.gets(con, input_line, sizeof(input_line))) {
+            if (vm_break_triggered(boot->vm)) {
+                vdev_puts(vdev, "\n" BPP_READY "\n");
+                vm_reset_break(boot->vm);
+                continue;
+            }
             break; /* EOF */
         }
         if (input_line[0] == 4) break; /* Ctrl+D to exit */
@@ -335,6 +349,11 @@ int main(int argc, char **argv) {
                 }
             }
 
+            if (vm_is_running(boot->vm)) {
+                vm_run_program(boot->vm);
+            }
+            vdev_gfx_force_flush();
+
             /* Check if SYSTEM or EXIT was invoked */
             if (vm_exit_requested(boot->vm)) {
                 break;
@@ -345,6 +364,12 @@ int main(int argc, char **argv) {
         mem_scratch_reset(boot->mem);
     }
 
-    boot_shutdown(boot);
+    bool force = !vm_exit_requested(boot->vm);
+    if (!force) {
+        if (task_mgr_has_active_tasks()) {
+            vdev_puts(vdev, "Waiting for background tasks to complete...\n");
+        }
+    }
+    boot_shutdown_ex(boot, force);
     return 0;
 }

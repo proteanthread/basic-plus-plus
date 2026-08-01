@@ -227,6 +227,43 @@ Rules:
   becomes unkillable via keyboard.  The STOP statement and debugger BREAK
   command always work regardless.
 
+3.4b ON ALARM / ON ALARM$ - Countdown & Daily Alarms
+
+BASIC++ supports countdown and daily repeating alarms with ON ALARM and ON ALARM$. Alarms are configured and controlled using the SET keyword and modifiers: ON, OFF, STOP, PAUSE, SNOOZE [m] (defaults to 300 seconds), and UNSET (removes the alarm definition).
+
+* Countdown Alarms (ALARM(n)):
+  Allows setting a timer that counts down n seconds (supports fractional values, 1 to 86400).
+  
+  10 ON ALARM(1.5) GOSUB 100        : REM trap countdown of 1.5 seconds
+  20 SET ALARM(1.5) ON              : REM start/activate the alarm
+  30 ALARM ON                       : REM enable global alarms check
+  40 PRINT ALARM(1.5)               : REM prints remaining seconds
+  50 GOTO 40
+  100 PRINT "Alarm fired!" : RETURN
+  
+  Modifiers:
+  - SET ALARM(n) ON: Start or resume the timer.
+  - SET ALARM(n) OFF / STOP / PAUSE: Stop or pause the timer.
+  - SET ALARM(n) SNOOZE [secs]: Snooze the timer by adding secs to it (defaults to 300).
+  - SET ALARM(n) UNSET: Completely delete and clear the alarm.
+  - ALARM ON / OFF / STOP controls the global countdown alarms state.
+
+* Daily Alarms (ALARM$(time)):
+  Daily repeating alarms execute at the same local time every day. Supports 24-hour (HHMMSS numeric format, e.g., 143000, no quotes) and 12-hour ("HH:MM:SS AM/PM", "A/P" string format with quotes).
+  
+  10 ON ALARM$(143000) GOSUB 200     : REM trap daily alarm at 2:30 PM (no quotes)
+  20 SET ALARM$(143000) ON           : REM start/activate daily alarm
+  30 ALARM$ ON                       : REM enable global daily alarms check
+  40 PRINT ALARM$(143000)            : REM remaining time as "HH:MM:SS"
+  200 PRINT "Daily alarm fired!" : RETURN
+  
+  Modifiers:
+  - SET ALARM$(time) ON: Start or resume the daily alarm.
+  - SET ALARM$(time) OFF / STOP / PAUSE: Stop or pause the daily alarm.
+  - SET ALARM$(time) SNOOZE [secs]: Snooze the daily alarm (triggers again in secs seconds, defaults to 300).
+  - SET ALARM$(time) UNSET: Completely delete and clear the daily alarm.
+  - ALARM$ ON / OFF / STOP controls the global daily alarms state.
+
 3.5 Device I/O Events (VDev Tier 2)
 
 Any registered virtual device (VDev) with the VDCAP_EVENT capability can

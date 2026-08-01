@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file vdev_usb.c
  * @brief USB Device Driver Subsystem implementation.
@@ -22,7 +28,7 @@ struct UsbContext {
 
 UsbContext *usb_init(MemoryContext *mem) {
     if (!mem) return NULL;
-    UsbContext *ctx = (UsbContext *)malloc(sizeof(UsbContext));
+    UsbContext *ctx = (UsbContext *)calloc(1, sizeof(UsbContext));
     if (!ctx) return NULL;
     ctx->mem = mem;
 

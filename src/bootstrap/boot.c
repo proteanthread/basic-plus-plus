@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file boot.c
  * @brief Deterministic 9-Phase Boot Controller implementation.
@@ -191,7 +197,7 @@ BootContext *boot_execute(const BootConfig *config) {
     BppDialect *d_custom = dialect_create();
     if (d_custom) {
         init_custom_static_dialect(d_custom);
-        // Map keyword IDs
+        /* Map keyword IDs */
         for (int k = 0; k < d_custom->keyword_count; ++k) {
             d_custom->keywords[k].id = lex_find_keyword_by_name(d_custom->keywords[k].mapped_to);
             if (d_custom->keywords[k].id == KW_NONE) {
@@ -205,8 +211,8 @@ BootContext *boot_execute(const BootConfig *config) {
     if (config->dialect_config) {
         BppDialect *d_custom = dialect_create();
         if (d_custom) {
-            *d_custom = *(config->dialect_config); // Copy static config
-            // Map keyword IDs if needed
+            *d_custom = *(config->dialect_config); /* Copy static config */
+            /* Map keyword IDs if needed */
             for (int k = 0; k < d_custom->keyword_count; ++k) {
                 d_custom->keywords[k].id = lex_find_keyword_by_name(d_custom->keywords[k].mapped_to);
                 if (d_custom->keywords[k].id == KW_NONE) {
@@ -272,4 +278,16 @@ void boot_shutdown(BootContext *ctx) {
     platform_shutdown();
 
     free(ctx);
+}
+
+void boot_shutdown_ex(BootContext *ctx, bool force_exit) {
+    if (!ctx) return;
+
+    if (force_exit) {
+        platform_shutdown();
+        free(ctx);
+        return;
+    } else {
+        boot_shutdown(ctx);
+    }
 }

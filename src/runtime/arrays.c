@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file arrays.c
  * @brief Dynamic Array Management Subsystem implementation.
@@ -25,6 +31,7 @@
  */
 
 #include "bpp_arrays.h"
+#include "bpp_variables.h"
 #include "bpp_map.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -74,7 +81,7 @@ static void normalize_name(char *dest, const char *src, size_t max_len) {
 /* Portable C17 strdup replacement */
 static char *bpp_strdup(const char *src) {
     size_t len = strlen(src);
-    char *dest = (char *)malloc(len + 1);
+    char *dest = (char *)calloc(1, len + 1);
     if (dest) {
         memcpy(dest, src, len + 1);
     }
@@ -470,7 +477,7 @@ bool arr_deserialize(ArrayContext *ctx, void *fp) {
         uint32_t name_len = 0;
         if (fread(&name_len, sizeof(name_len), 1, f) != 1) return false;
 
-        char *name = (char *)malloc(name_len + 1);
+        char *name = (char *)calloc(1, name_len + 1);
         if (!name) return false;
         if (fread(name, 1, name_len, f) != name_len) {
             free(name);
@@ -531,7 +538,7 @@ bool arr_deserialize(ArrayContext *ctx, void *fp) {
                     return false;
                 }
                 if (s_len > 0) {
-                    char *s_buf = (char *)malloc(s_len + 1);
+                    char *s_buf = (char *)calloc(1, s_len + 1);
                     if (!s_buf) { free(elements); free(name); return false; }
                     if (fread(s_buf, 1, s_len, f) != s_len) {
                         free(s_buf);
@@ -548,7 +555,7 @@ bool arr_deserialize(ArrayContext *ctx, void *fp) {
             }
         }
 
-        ArrayEntry *entry = (ArrayEntry *)malloc(sizeof(ArrayEntry));
+        ArrayEntry *entry = (ArrayEntry *)calloc(1, sizeof(ArrayEntry));
         if (!entry) { free(elements); free(name); return false; }
         entry->name = name;
         entry->type = (ValueType)type;
@@ -562,6 +569,30 @@ bool arr_deserialize(ArrayContext *ctx, void *fp) {
         ctx->buckets[bucket] = entry;
     }
     return true;
+}
+
+void arr_clear_for_chain(ArrayContext *ctx, VariableContext *var_ctx) {
+    if (!ctx) return;
+    for (int i = 0; i < HASH_BUCKETS; ++i) {
+        ArrayEntry *prev = NULL;
+        ArrayEntry *entry = ctx->buckets[i];
+        while (entry) {
+            ArrayEntry *next = entry->next;
+            if (var_ctx && var_is_common(var_ctx, entry->name)) {
+                /* Keep this array */
+                prev = entry;
+            } else {
+                /* Free this array */
+                if (prev) {
+                    prev->next = next;
+                } else {
+                    ctx->buckets[i] = next;
+                }
+                free_entry(ctx, entry);
+            }
+            entry = next;
+        }
+    }
 }
 
 

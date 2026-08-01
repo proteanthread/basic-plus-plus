@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file vdev_vcon.c
  * @brief Virtual Consoles & Virtual Terminals (VCON/VTERM) implementation.
@@ -33,7 +39,7 @@ static void vcon_init_single(BppVirtualConsole *vc) {
 VConContext *g_vcon_context = NULL;
 
 VConContext *vcon_init(void) {
-    VConContext *ctx = (VConContext *)malloc(sizeof(VConContext));
+    VConContext *ctx = (VConContext *)calloc(1, sizeof(VConContext));
     if (!ctx) return NULL;
     ctx->active_index = 0;
     for (int i = 0; i < VCON_MAX_CONSOLES; ++i) {

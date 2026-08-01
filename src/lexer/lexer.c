@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file lexer.c
  * @brief Ephemeral Lexer/Tokenizer implementation.
@@ -69,22 +75,27 @@ static const KeywordMap k_keywords[] = {
     {"DATA",   KW_DATA},
     {"READ",   KW_READ},
     {"RESTORE",KW_RESTORE},
+    {"DEF",    KW_DEF},
     {"DEFINT", KW_DEFINT},
     {"DEFSNG", KW_DEFSNG},
     {"DEFDBL", KW_DEFDBL},
     {"DEFSTR", KW_DEFSTR},
+    {"USR",    KW_USR},
     {"ON",     KW_ON},
     {"ERROR",  KW_ERROR},
     {"RESUME", KW_RESUME},
     {"LOAD",   KW_LOAD},
     {"SAVE",   KW_SAVE},
     {"MERGE",  KW_MERGE},
+    {"COMMON", KW_COMMON},
+    {"CHAIN",  KW_CHAIN},
     {"SELFTEST",KW_SELFTEST},
     {"OPEN",   KW_OPEN},
     {"CLOSE",  KW_CLOSE},
     {"AS",     KW_AS},
     {"FILES",  KW_FILES},
     {"KILL",   KW_KILL},
+    {"SCRATCH",KW_SCRATCH},
     {"CHDIR",  KW_CHDIR},
     {"MKDIR",  KW_MKDIR},
     {"RMDIR",  KW_RMDIR},
@@ -164,6 +175,25 @@ static const KeywordMap k_keywords[] = {
     {"_MOUSEINPUT",   KW_MOUSEINPUT},
     {"_MOUSEHIDE",    KW_MOUSEHIDE},
     {"_MOUSESHOW",    KW_MOUSESHOW},
+    {"MOUSE",         KW_MOUSE},
+    {"_MOUSE",        KW_MOUSE},
+    {"HMOUSE",        KW_HMOUSE},
+    {"_HMOUSE",       KW_HMOUSE},
+    {"VMOUSE",        KW_VMOUSE},
+    {"_VMOUSE",       KW_VMOUSE},
+    {"TRIG",          KW_TRIG},
+    {"_TRIG",         KW_TRIG},
+    {"DISPLAY",       KW_DISPLAY},
+    {"LPRINT",        KW_LPRINT},
+    {"RANDOMIZE",     KW_RANDOMIZE},
+    {"_RANDOMIZE",    KW_RANDOMIZE},
+    {"PWD",           KW_PWD},
+    {"HOSTNAME",      KW_HOSTNAME},
+    {"_HOSTNAME",     KW_HOSTNAME},
+    {"USERNAME",      KW_USERNAME},
+    {"_USERNAME",     KW_USERNAME},
+    {"PATH",          KW_PATH},
+    {"_PATH",         KW_PATH},
     {"_TITLE",        KW_TITLE},
     {"_SCREENMOVE",   KW_SCREENMOVE},
     {"_FULLSCREEN",   KW_FULLSCREEN},
@@ -175,6 +205,9 @@ static const KeywordMap k_keywords[] = {
     {"_STATESAVE",    KW_STATESAVE},
     {"_STATELOAD",    KW_STATELOAD},
     {"MAP",      KW_MAP},
+    {"COM",      KW_COM},
+    {"PEN",      KW_PEN},
+    {"STRIG",    KW_STRIG},
     {"FILTER",   KW_FILTER},
     {"REDUCE",   KW_REDUCE},
 #if BPP_SUPPORT_EDITOR
@@ -244,8 +277,13 @@ static const KeywordMap k_keywords[] = {
     {"COMMIT",   KW_COMMIT},
     {"ROLLBACK", KW_ROLLBACK},
     {"TIMER",    KW_TIMER},
+    {"ALARM",    KW_ALARM},
+    {"ALARM$",   KW_ALARM_STR},
     {"KEY",      KW_KEY},
     {"OFF",        KW_OFF},
+    {"SET",        KW_SET},
+    {"SNOOZE",     KW_SNOOZE},
+    {"UNSET",      KW_UNSET},
     {"INITGRAPH",  KW_INITGRAPH},
     {"CLOSEGRAPH", KW_CLOSEGRAPH},
     {"PUTPIXEL",   KW_PUTPIXEL},
@@ -260,6 +298,8 @@ static const KeywordMap k_keywords[] = {
     {"TROFF",      KW_TROFF},
     {"BREAK",      KW_BREAK},
     {"VARS",       KW_VARS},
+    {"REMOVE",     KW_REMOVE},
+    {"REMOVE$",    KW_REMOVE_STR},
     {"AND",      KW_AND},
     {"OR",       KW_OR},
     {"NOT",      KW_NOT},
@@ -282,7 +322,7 @@ void lex_set_dialect(LexerContext *ctx, BppDialect *dialect) {
 
 LexerContext *lex_init(MemoryContext *mem, const char *source) {
     if (!source) return NULL;
-    LexerContext *ctx = (LexerContext *)malloc(sizeof(LexerContext));
+    LexerContext *ctx = (LexerContext *)calloc(1, sizeof(LexerContext));
     if (!ctx) return NULL;
     ctx->mem = mem;
     ctx->source = source;
@@ -416,7 +456,7 @@ BppToken lex_next(LexerContext *ctx) {
     if (*ctx->pos == ':' && *(ctx->pos + 1) == ':') {
         ctx->pos += 2;
         
-        // 1. ::[namespace]
+        /* 1. ::[namespace] */
         if (*ctx->pos == '[') {
             ctx->pos++;
             tok.start = ctx->pos;
@@ -432,7 +472,7 @@ BppToken lex_next(LexerContext *ctx) {
             return tok;
         }
 
-        // Scan identifier after ::
+        /* Scan identifier after :: */
         const char *ident_start = ctx->pos;
         while (isalnum((unsigned char)*ctx->pos) || *ctx->pos == '_') {
             ctx->pos++;
@@ -440,7 +480,7 @@ BppToken lex_next(LexerContext *ctx) {
         int len = (int)(ctx->pos - ident_start);
 
         if (len > 0) {
-            // Check if it's a known directive
+            /* Check if it's a known directive */
             bool is_directive = false;
             if (match_directive(ident_start, len, "DIALECT")) is_directive = true;
             else if (match_directive(ident_start, len, "OPTION")) is_directive = true;
@@ -462,7 +502,7 @@ BppToken lex_next(LexerContext *ctx) {
                 tok.length = len;
                 tok.as.string = ident_start;
                 if (*ctx->pos == ':') {
-                    ctx->pos++; // consume definition suffix
+                    ctx->pos++; /* consume definition suffix */
                 }
                 return tok;
             }
@@ -723,7 +763,8 @@ BppToken lex_next(LexerContext *ctx) {
         /* Check custom dialect keywords first */
         if (!is_kw && tok.length >= 3 && strncasecmp(start, "REM", 3) == 0) {
             char c4 = (tok.length > 3) ? start[3] : '\0';
-            if (c4 != '$' && c4 != '%' && c4 != '&' && c4 != '!' && c4 != '#') {
+            if (c4 != '$' && c4 != '%' && c4 != '&' && c4 != '!' && c4 != '#' &&
+                !isalnum((unsigned char)c4) && c4 != '_' && c4 != '.') {
                 bool is_start = true;
                 const char *p = start - 1;
                 while (p >= ctx->source) {

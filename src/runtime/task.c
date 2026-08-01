@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file task.c
  * @brief Multitasking Task Manager implementation.
@@ -151,6 +157,19 @@ void task_mgr_shutdown(void) {
         platform_mutex_destroy(&g_task_mutex);
         g_mutex_initialized = 0;
     }
+}
+
+int task_mgr_has_active_tasks(void) {
+    int active = 0;
+    task_mutex_lock();
+    for (int i = 1; i < MAX_TASKS; i++) {
+        if (g_tasks[i].is_used) {
+            active = 1;
+            break;
+        }
+    }
+    task_mutex_unlock();
+    return active;
 }
 
 int task_spawn(VDevContext *vdev, const char *filename) {

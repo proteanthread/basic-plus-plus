@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 #ifndef STANDALONE_EDITOR
 #include "bpp_editor.h"
 #endif
@@ -94,7 +100,7 @@ static struct VMContext *current_vm = NULL;
 
 static void oom(void) {
     fprintf(stderr, "\n\nOut of memory!\n");
-    exit(1);
+    return;
 }
 
 static void ensure_line_capacity(int row, int needed) {
@@ -103,7 +109,7 @@ static void ensure_line_capacity(int row, int needed) {
         if (new_cap < needed) new_cap = needed;
         if (new_cap < 128) new_cap = 128;
         char *new_text = realloc(edlin_buffer[row].text, new_cap);
-        if (!new_text) oom();
+        if (!new_text) { oom(); return; }
         edlin_buffer[row].text = new_text;
         edlin_buffer[row].capacity = new_cap;
     }
@@ -115,7 +121,7 @@ static void ensure_buffer_capacity(int needed) {
         if (new_cap < needed) new_cap = needed;
         if (new_cap < 256) new_cap = 256;
         Line *new_buf = realloc(edlin_buffer, new_cap * sizeof(Line));
-        if (!new_buf) oom();
+        if (!new_buf) { oom(); return; }
         edlin_buffer = new_buf;
         edlin_buffer_capacity = new_cap;
     }
@@ -133,8 +139,8 @@ static void insert_empty_line_at(int row) {
     for (int i = edlin_line_count; i > row; i--) {
         edlin_buffer[i] = edlin_buffer[i - 1];
     }
-    edlin_buffer[row].text = malloc(128);
-    if (!edlin_buffer[row].text) oom();
+    edlin_buffer[row].text = (char *)calloc(1, 128);
+    if (!edlin_buffer[row].text) { oom(); return; }
     edlin_buffer[row].text[0] = '\0';
     edlin_buffer[row].length = 0;
     edlin_buffer[row].capacity = 128;
@@ -455,8 +461,8 @@ static void copy_edlin_lines(void)
     int src_offset = (dest < start) ? count : 0;
     for (int j = 0; j < count; j++) {
         size_t len = edlin_buffer[start + src_offset + j].length;
-        edlin_buffer[dest + j].text = malloc(len + 1);
-        if (!edlin_buffer[dest + j].text) oom();
+        edlin_buffer[dest + j].text = (char *)calloc(1, len + 1);
+        if (!edlin_buffer[dest + j].text) { oom(); return; }
         strcpy(edlin_buffer[dest + j].text, edlin_buffer[start + src_offset + j].text);
         edlin_buffer[dest + j].length = len;
         edlin_buffer[dest + j].capacity = len + 1;
@@ -703,7 +709,7 @@ int main(VMContext *vm, const char *filename)
     edlin_line_count = 0;
     edlin_page_pos   = 0;
     memset(edlin_filename, 0, sizeof(edlin_filename));
-    // memset(edlin_buffer, 0, sizeof(edlin_buffer));
+    /* memset(edlin_buffer, 0, sizeof(edlin_buffer)); */
 
     if ((filename ? 2 : 1) > 1) {
         load_edlin_file(filename);

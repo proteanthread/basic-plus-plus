@@ -497,3 +497,24 @@ Each sub-phase must pass before proceeding:
 6. **Doc parity**: User guide + API doc + help text for each feature
 7. **Compiler sync**: `bppc` can compile programs using new keywords
 8. **Transpiler sync**: `trans` can transpile programs using new keywords
+
+---
+
+## Phase 13 Addendum — Advanced Networking, Security & Pentesting
+Phase 13 covers the integration of advanced network diagnostics, low-level packet capture sniffing, symmetric/asymmetric cryptographic toolkits, and virtual sandbox self-audits. 
+
+For full details, refer to the [Security & Pentesting Specification](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/Security_Pentesting_Spec.md).
+
+---
+
+## Phase 14 Addendum — Classic GW-BASIC & BGI Palette Integration
+Phase 14 covers screen cursor/layout inspection (`CSRLIN`, `POS`, `LPOS`), variable address pointers (`VARPTR`, `VARPTR$`), F-key trapping/labels (`KEY`, `ON KEY`), and BGI color mapping (`PALETTE`, `PALETTE USING`).
+
+For full details, refer to the [GW-BASIC Features Specification](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/GWBASIC_Features_Spec.md).
+
+---
+
+## Phase 15 Addendum — Combined 100% GW-BASIC Parity & Modular Pentesting Infrastructure
+Phase 15 covers achieving 100% core language parity with vintage GW-BASIC (`RESET`, `DEF USR`/`USR(n)`, `ERDEV`/`ERDEV$`, `EXTERR`, `ON COM`/`ON PEN`/`ON STRIG`, `IOCTL`) combined with modular, OS-agnostic security and pentesting tools (`NET SCAN`, `PORT SCAN`, `PACKET CAPTURE`, `HASH$`, `AUDIT CRACK`, `SANDBOX AUDIT`, `VM CHECK`).
+
+For full details, refer to the [Phase 15 Specification](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/Phase_15_Spec.md).

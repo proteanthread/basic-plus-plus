@@ -1,3 +1,9 @@
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 /**
  * @file vfs.c
  * @brief Virtual Filesystem (VFS) Mount & Path virtualization implementation.
@@ -35,11 +41,16 @@ static void safe_strncpy(char *dest, const char *src, size_t max_len) {
 struct VfsContext {
     MemoryContext *mem;
     BppMountPoint  mounts[VFS_MAX_MOUNTS];
+    char           search_path[VFS_MAX_PATH];
+    char           working_path[VFS_MAX_PATH];
+    char           data_path[VFS_MAX_PATH];
+    char           exec_path[VFS_MAX_PATH];
+    char           program_path[VFS_MAX_PATH];
 };
 
 VfsContext *vfs_init(MemoryContext *mem) {
     if (!mem) return NULL;
-    VfsContext *ctx = (VfsContext *)malloc(sizeof(VfsContext));
+    VfsContext *ctx = (VfsContext *)calloc(1, sizeof(VfsContext));
     if (!ctx) return NULL;
     ctx->mem = mem;
     for (int i = 0; i < VFS_MAX_MOUNTS; ++i) {
@@ -47,6 +58,20 @@ VfsContext *vfs_init(MemoryContext *mem) {
         ctx->mounts[i].prefix[0] = '\0';
         ctx->mounts[i].target[0] = '\0';
     }
+    ctx->search_path[0] = '\0';
+
+    extern char *platform_getcwd(char *buf, size_t size);
+    char cwd[VFS_MAX_PATH] = "";
+    if (platform_getcwd(cwd, sizeof(cwd))) {
+        safe_strncpy(ctx->working_path, cwd, VFS_MAX_PATH);
+        safe_strncpy(ctx->data_path, cwd, VFS_MAX_PATH);
+    } else {
+        ctx->working_path[0] = '\0';
+        ctx->data_path[0] = '\0';
+    }
+    ctx->exec_path[0] = '\0';
+    ctx->program_path[0] = '\0';
+
     return ctx;
 }
 
@@ -158,5 +183,46 @@ void vfs_list_mounts(VfsContext *ctx, VDevContext *vdev) {
             if (ctx->mounts[i].type == MNT_DISK) tname = "Virtual Disk";
             vdev_printf(vdev, "%-10s %-12s %s\n", ctx->mounts[i].prefix, tname, ctx->mounts[i].target);
         }
+    }
+}
+
+const char *vfs_get_search_path(VfsContext *ctx) {
+    return ctx ? ctx->search_path : "";
+}
+
+void vfs_set_search_path(VfsContext *ctx, const char *path) {
+    if (ctx && path) {
+        safe_strncpy(ctx->search_path, path, VFS_MAX_PATH);
+    }
+}
+
+const char *vfs_get_category_path(VfsContext *ctx, const char *category) {
+    if (!ctx || !category) return "";
+    if (platform_strcasecmp(category, "WORKING") == 0) {
+        char cwd[VFS_MAX_PATH];
+        extern char *platform_getcwd(char *buf, size_t size);
+        if (platform_getcwd(cwd, sizeof(cwd))) {
+            safe_strncpy(ctx->working_path, cwd, VFS_MAX_PATH);
+        }
+        return ctx->working_path;
+    }
+    if (platform_strcasecmp(category, "DATA") == 0) {
+        return ctx->data_path;
+    }
+    if (platform_strcasecmp(category, "EXEC") == 0 || platform_strcasecmp(category, "PROGRAM") == 0) {
+        return ctx->exec_path;
+    }
+    return "";
+}
+
+void vfs_set_category_path(VfsContext *ctx, const char *category, const char *path) {
+    if (!ctx || !category || !path) return;
+    if (platform_strcasecmp(category, "WORKING") == 0) {
+        safe_strncpy(ctx->working_path, path, VFS_MAX_PATH);
+    } else if (platform_strcasecmp(category, "DATA") == 0) {
+        safe_strncpy(ctx->data_path, path, VFS_MAX_PATH);
+    } else if (platform_strcasecmp(category, "EXEC") == 0 || platform_strcasecmp(category, "PROGRAM") == 0) {
+        safe_strncpy(ctx->exec_path, path, VFS_MAX_PATH);
+        safe_strncpy(ctx->program_path, path, VFS_MAX_PATH);
     }
 }

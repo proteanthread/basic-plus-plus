@@ -1,0 +1,19 @@
+BASENAME$
+
+1. Syntax & Parameters
+BASENAME$
+
+---
+
+2. Description & Usage
+Returns the basename of the current working directory as a string.
+
+---
+
+3. Code Examples
+10 PRINT BASENAME$
+
+---
+
+4. Cross-References / See Also
+- BASEPATH$, BASEDIR$, PWD
