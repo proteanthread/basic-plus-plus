@@ -390,7 +390,7 @@ BppError stmt_stop_handler(VMContext *vm, LexerContext *lex) {
     VDevContext *vdev = vm_get_vdev(vm);
     BppLineNumber ln = vm_get_current_line(vm);
     if (ln > 0.0) {
-        vdev_printf(vdev, "Break in %g\n", ln);
+        vdev_printf(vdev, "Break in %lld\n", (long long)ln);
     } else {
         vdev_puts(vdev, "Break\n");
     }

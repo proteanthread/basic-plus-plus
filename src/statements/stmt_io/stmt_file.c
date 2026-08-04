@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "num_format.h"
 
 void print_using_internal(VMContext *vm, LexerContext *lex, int channel);
 
@@ -726,7 +727,7 @@ BppError stmt_file_print_handler(VMContext *vm, LexerContext *lex) {
                 str_release(vm_get_str(vm), val.as.string);
             } else {
                 char buf[64];
-                snprintf(buf, sizeof(buf), "%g", val.as.number);
+                num_format_serialize(buf, sizeof(buf), val.as.number);
                 file_puts(fctx, channel, buf);
                 col += strlen(buf);
             }

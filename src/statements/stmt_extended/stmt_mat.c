@@ -38,6 +38,7 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
+#include "num_format.h"
 
 /* Helper: parse bare array name */
 static bool mat_get_array_name(LexerContext *lex, char *name_buf, size_t buf_size) {
@@ -122,7 +123,9 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
                 if (val->type == VAL_STRING) {
                     vdev_printf(vdev, "%s", val->as.string ? str_data(val->as.string) : "");
                 } else {
-                    vdev_printf(vdev, "%g", val->as.number);
+                    char nbuf[64];
+                    num_format_display(nbuf, sizeof(nbuf), val->as.number, false, false);
+                    vdev_puts(vdev, nbuf);
                 }
 
                 if (i < bounds[0]) {
@@ -141,7 +144,9 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
                     if (val->type == VAL_STRING) {
                         vdev_printf(vdev, "%s", val->as.string ? str_data(val->as.string) : "");
                     } else {
-                        vdev_printf(vdev, "%g", val->as.number);
+                        char nbuf[64];
+                        num_format_display(nbuf, sizeof(nbuf), val->as.number, false, false);
+                        vdev_puts(vdev, nbuf);
                     }
 
                     if (c < bounds[1]) {

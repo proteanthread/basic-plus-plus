@@ -27,8 +27,10 @@
 
 #include "stmt/stmt.h"
 #include "device/vdev.h"
+#include "device/vcon.h"
 #include "eval/eval.h"
 #include "runtime/using.h"
+#include "runtime/num_format.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -56,29 +58,7 @@ static void printer_write_str(FILE *fp, const char *s) {
 }
 
 static void format_double_clean(char *buf, size_t buf_size, double val, bool leading_space, bool trailing_space) {
-    if (val == (double)(long long)val && fabs(val) <= 999999999.0) {
-        snprintf(buf, buf_size, "%s%lld%s", leading_space ? (val >= 0.0 ? " " : "") : "", (long long)val, trailing_space ? " " : "");
-        return;
-    }
-
-    if (fabs(val) <= 999999999.0 && fabs(val) >= 0.000001) {
-        char temp[128];
-        snprintf(temp, sizeof(temp), "%f", val);
-        
-        char *end = temp + strlen(temp) - 1;
-        while (end > temp && *end == '0') {
-            *end = '\0';
-            end--;
-        }
-        if (end > temp && *end == '.') {
-            *end = '\0';
-        }
-        
-        snprintf(buf, buf_size, "%s%s%s", leading_space ? (val >= 0.0 ? " " : "") : "", temp, trailing_space ? " " : "");
-        return;
-    }
-    
-    snprintf(buf, buf_size, "%s%g%s", leading_space ? (val >= 0.0 ? " " : "") : "", val, trailing_space ? " " : "");
+    num_format_display(buf, buf_size, val, leading_space, trailing_space);
 }
 
 BppError stmt_print_handler(VMContext *vm, LexerContext *lex) {
@@ -99,7 +79,14 @@ BppError stmt_print_handler(VMContext *vm, LexerContext *lex) {
     StringContext *str_ctx = vm_get_str(vm);
 
     bool last_was_sep = false;
-    size_t col = 0;
+    /* Bug #19: Initialize col from actual console cursor position rather than
+     * always 0 so TAB/comma spacing works correctly after trailing semicolons */
+    int init_col = 0;
+    VConContext *vcon = vm_get_vcon(vm);
+    if (vcon) {
+        vcon_get_cursor(vcon, 0, NULL, &init_col);
+    }
+    size_t col = (init_col >= 0) ? (size_t)init_col : 0;
 
     tok = lex_peek(lex);
     while (tok.type != TOK_EOF && tok.type != TOK_EOL && (tok.type != TOK_KEYWORD || tok.as.keyword != KW_ELSE)) {
@@ -306,8 +293,10 @@ BppError stmt_display_handler(VMContext *vm, LexerContext *lex) {
                 str_release(vm_get_str(vm), val.as.string);
             } else {
                 char buf[64];
-                snprintf(buf, sizeof(buf), " %g ", val.as.number);
+                num_format_serialize(buf, sizeof(buf), val.as.number);
+                vdev_puts(vdev, " ");
                 vdev_puts(vdev, buf);
+                vdev_puts(vdev, " ");
             }
             last_was_sep = false;
         }

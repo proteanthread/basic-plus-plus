@@ -33,10 +33,10 @@
 #define BPP_VERSION_H
 
 #define BPP_VERSION_MAJOR    6
-#define BPP_VERSION_MINOR    4
-#define BPP_VERSION_PATCH    0
-#define BPP_VERSION_STRING   "6.4.0"
-#define BPP_VERSION_DATE     "2026-07-13"
+#define BPP_VERSION_MINOR    5
+#define BPP_VERSION_PATCH    1
+#define BPP_VERSION_STRING   "6.5.1"
+#define BPP_VERSION_DATE     "2026-08-03"
 #define BPP_VERSION_CODENAME "Phoenix"
 
 #endif /* BPP_VERSION_H */

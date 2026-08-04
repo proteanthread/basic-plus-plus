@@ -388,7 +388,7 @@ void vm_trigger_event_polling(VMContext *vm) {
         struct tm tm_buf;
         struct tm *lt = platform_localtime(&t, &tm_buf);
         if (lt) {
-            char current_date[32];
+            char current_date[64];
             snprintf(current_date, sizeof(current_date), "%04d-%02d-%02d", lt->tm_year + 1900, lt->tm_mon + 1, lt->tm_mday);
             int current_secs = lt->tm_hour * 3600 + lt->tm_min * 60 + lt->tm_sec;
             
@@ -796,7 +796,7 @@ void vm_set_alarm_daily_state(VMContext *vm, const char *time_str, int state) {
             struct tm tm_buf;
             struct tm *lt = platform_localtime(&t, &tm_buf);
             if (lt) {
-                char current_date[32];
+                char current_date[64];
                 snprintf(current_date, sizeof(current_date), "%04d-%02d-%02d", lt->tm_year + 1900, lt->tm_mon + 1, lt->tm_mday);
                 int current_secs = lt->tm_hour * 3600 + lt->tm_min * 60 + lt->tm_sec;
                 if (current_secs >= alarm->seconds_since_midnight) {

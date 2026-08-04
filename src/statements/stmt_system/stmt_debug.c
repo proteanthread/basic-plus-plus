@@ -154,7 +154,7 @@ BppError stmt_break_handler(VMContext *vm, LexerContext *lex) {
         /* In non-debug mode, BREAK is treated as a log info trace (no-op) */
         VDevContext *vdev = vm_get_vdev(vm);
         if (vdev) {
-            vdev_printf(vdev, "[BREAKPOINT at line %g]\n", vm_get_current_line(vm));
+            vdev_printf(vdev, "[BREAKPOINT at line %lld]\n", (long long)vm_get_current_line(vm));
         }
     }
     return err;

@@ -9,6 +9,16 @@ The `STR$` function converts a numeric value (`integer` or `float`) into its str
 
 A critical characteristic of `STR$` is that it preserves standard BASIC formatting conventions: positive numbers are preceded by a leading space character (acting as a placeholder for the sign), while negative numbers are preceded by a minus sign (`-`).
 
+#### Number Formatting & Precision (v6.5.1+)
+Starting in version 6.5.1, `STR$` output follows the enhanced three-tier number formatting system:
+- **15 Significant Digits**: User-facing string conversion displays up to 15 significant digits (increased from 6).
+- **16 Significant Digits for Serialization**: Internal number serialization for file I/O uses 16 significant digits to guarantee complete round-trip fidelity.
+- **Integer Precision Range**: Integers up to 2^53 (9,007,199,254,740,992) are formatted as clean integers without decimal points.
+- **Three-Tier System**:
+  1. **Exact Integers**: Whole numbers up to 2^53 convert to plain integer strings (e.g., `STR$(99999999999999)` returns `" 99999999999999"`).
+  2. **Fixed-Point Range**: Fractional values in the range [0.000001, 2^53] convert to fixed-point strings with trailing decimal zeros stripped (e.g., `STR$(1234567890.5)` returns `" 1234567890.5"`).
+  3. **Scientific Notation**: Values outside [0.000001, 2^53] convert to scientific notation (e.g., `STR$(1E20)` returns `" 1e+20"`).
+
 **Common Use Cases:**
 - Concatenating numbers with strings.
 - Preparing numeric data for string manipulation functions (e.g., `LEFT$`, `MID$`, `RIGHT$`).
@@ -37,6 +47,13 @@ Length:  4
 *Output:*
 ```text
 -45.6
+```
+
+**Precision & Number Formatting Examples (v6.5.1+):**
+```basic
+10 PRINT STR$(99999999999999)  : REM Outputs: " 99999999999999" (15-digit precision integer)
+20 PRINT STR$(1234567890.5)    : REM Outputs: " 1234567890.5" (Fixed-point, trailing zero stripped)
+30 PRINT STR$(1E20)            : REM Outputs: " 1e+20" (Scientific notation)
 ```
 
 **Complex Integration Example:**

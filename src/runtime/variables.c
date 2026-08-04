@@ -43,6 +43,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "num_format.h"
 
 #define HASH_BUCKETS 128
 
@@ -697,7 +698,7 @@ void var_print_all(VariableContext *ctx, void *vdev_ptr) {
         while (entry) {
             char val_buf[256] = {0};
             if (entry->value.type == VAL_NUMBER) {
-                snprintf(val_buf, sizeof(val_buf), "%g", entry->value.as.number);
+                num_format_display(val_buf, sizeof(val_buf), entry->value.as.number, false, false);
             } else if (entry->value.type == VAL_STRING) {
                 if (entry->value.as.string) {
                     snprintf(val_buf, sizeof(val_buf), "\"%s\"", str_data(entry->value.as.string));

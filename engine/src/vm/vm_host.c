@@ -84,6 +84,10 @@ static void host_vm_set_string_var(void *user_data, const char *name, const char
     if (vm && name && val) {
         BValue *v = var_lookup(vm_get_var(vm), name, true);
         if (v) {
+            /* Release any existing string reference before overwriting */
+            if (v->type == VAL_STRING && v->as.string) {
+                str_release(vm_get_str(vm), v->as.string);
+            }
             v->type = VAL_STRING;
             v->as.string = str_create(vm_get_str(vm), val, strlen(val));
         }

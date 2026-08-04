@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
     if (vm_has_error(boot->vm)) {
         BppError err = vm_get_error(boot->vm);
         VDevContext *vdev = vm_get_vdev(boot->vm);
-        vdev_printf(vdev, "?Error %d: %s in line %g\n", err.code, err.message, err.line);
+        vdev_printf(vdev, "?Error %d: %s in line %lld\n", err.code, err.message, (long long)err.line);
         boot_shutdown(boot);
         return 1;
     }

@@ -34,6 +34,7 @@ add_library(libbasicpp STATIC
     runtime/arrays.c
     runtime/file.c
     runtime/print_using.c
+    runtime/num_format.c
     runtime/using_engine.c
     runtime/task.c
     runtime/metadata.c
@@ -92,6 +93,7 @@ add_library(libbasicpp_lite STATIC
     runtime/arrays.c
     runtime/file.c
     runtime/print_using.c
+    runtime/num_format.c
     runtime/using_engine.c
     runtime/task.c
     runtime/metadata.c

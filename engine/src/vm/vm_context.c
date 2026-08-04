@@ -242,6 +242,9 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
 
     vm->stmt_reg = stmt_registry_init(mem);
     if (!vm->stmt_reg) {
+#ifndef BPP_LITE_BUILD
+        vmem_shutdown(vm->vmem);
+#endif
         free(vm);
         return NULL;
     }
@@ -249,6 +252,9 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
     vm->gosub_stack = gosub_stack_init();
     if (!vm->gosub_stack) {
         stmt_registry_shutdown(vm->stmt_reg);
+#ifndef BPP_LITE_BUILD
+        vmem_shutdown(vm->vmem);
+#endif
         free(vm);
         return NULL;
     }
@@ -257,6 +263,9 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
     if (!vm->for_stack) {
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
+#ifndef BPP_LITE_BUILD
+        vmem_shutdown(vm->vmem);
+#endif
         free(vm);
         return NULL;
     }
@@ -266,6 +275,9 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
+#ifndef BPP_LITE_BUILD
+        vmem_shutdown(vm->vmem);
+#endif
         free(vm);
         return NULL;
     }
@@ -276,6 +288,9 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
+#ifndef BPP_LITE_BUILD
+        vmem_shutdown(vm->vmem);
+#endif
         free(vm);
         return NULL;
     }
@@ -287,6 +302,9 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
+#ifndef BPP_LITE_BUILD
+        vmem_shutdown(vm->vmem);
+#endif
         free(vm);
         return NULL;
     }
@@ -299,6 +317,9 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
+#ifndef BPP_LITE_BUILD
+        vmem_shutdown(vm->vmem);
+#endif
         free(vm);
         return NULL;
     }
@@ -312,6 +333,9 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
+#ifndef BPP_LITE_BUILD
+        vmem_shutdown(vm->vmem);
+#endif
         free(vm);
         return NULL;
     }
@@ -331,6 +355,9 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
+#ifndef BPP_LITE_BUILD
+        vmem_shutdown(vm->vmem);
+#endif
         free(vm);
         return NULL;
     }
@@ -346,6 +373,9 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
+#ifndef BPP_LITE_BUILD
+        vmem_shutdown(vm->vmem);
+#endif
         free(vm);
         return NULL;
     }

@@ -32,6 +32,7 @@
 #include "bpp_arrays.h"
 #include <string.h>
 #include <stdlib.h>
+#include "num_format.h"
 
 /* DATA handler (NOP during run) */
 BppError stmt_data_handler(VMContext *vm, LexerContext *lex) {
@@ -177,7 +178,7 @@ BppError stmt_read_handler(VMContext *vm, LexerContext *lex) {
             if (val.type == VAL_STRING) {
                 strncpy(val_str, str_data(val.as.string), sizeof(val_str) - 1);
             } else {
-                snprintf(val_str, sizeof(val_str), "%g", val.as.number);
+                num_format_display(val_str, sizeof(val_str), val.as.number, false, false);
             }
             char val_err[256] = "";
             if (!using_validate_input_string(val_str, format_mask, val_err, sizeof(val_err))) {

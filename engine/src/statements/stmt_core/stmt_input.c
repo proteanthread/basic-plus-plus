@@ -86,7 +86,7 @@ BppError stmt_input_handler(VMContext *vm, LexerContext *lex) {
 
     char var_name[256];
     size_t copy_len = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-    memcpy(var_name, tok.as.string, copy_len);
+    memcpy(var_name, tok.start, copy_len);
     var_name[copy_len] = '\0';
 
     VDev *con_dev = vdev_get(vdev, "CON:");

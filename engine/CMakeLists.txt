@@ -47,6 +47,11 @@ add_library(libbasicpp STATIC
     src/core/struct.c
     src/parser/parser.c
     src/eval/eval.c
+    src/eval/eval_helpers.c
+    src/eval/eval_ops.c
+    src/eval/eval_dispatch.c
+    src/eval/eval_builtins.c
+    src/eval/eval_rpn.c
     src/runtime/variables.c
     src/runtime/strings.c
     src/runtime/arrays.c
@@ -85,6 +90,7 @@ add_library(libbasicpp STATIC
     src/debug/dap_server.c
     src/debug/logger.c
     src/runtime/state.c
+    src/runtime/num_format.c
     src/device/vdev_fujinet.c
     src/runtime/gemini.c
     src/device/bgi/bgi_core.c
@@ -108,6 +114,11 @@ add_library(libbasicpp_lite STATIC
     src/core/dialect.c
     src/parser/parser.c
     src/eval/eval.c
+    src/eval/eval_helpers.c
+    src/eval/eval_ops.c
+    src/eval/eval_dispatch.c
+    src/eval/eval_builtins.c
+    src/eval/eval_rpn.c
     src/runtime/variables.c
     src/runtime/strings.c
     src/runtime/arrays.c
@@ -133,6 +144,7 @@ add_library(libbasicpp_lite STATIC
     src/runtime/spec.c
     src/debug/logger.c
     src/runtime/state.c
+    src/runtime/num_format.c
     src/device/bgi/bgi_core.c
     src/device/bgi/bgi_raster.c
     src/device/bgi/bgi_font.c

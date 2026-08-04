@@ -11,6 +11,7 @@
 
 #include "runtime/using.h"
 #include "device/vdev.h"
+#include "runtime/num_format.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -411,7 +412,7 @@ void using_format_output(VMContext *vm, const UsingMask *mask, int *mask_idx, BV
                 out_buf[out_idx] = '\0';
             }
         } else {
-            snprintf(out_buf, out_max, " %g ", num);
+            num_format_display(out_buf, out_max, num, true, true);
         }
     }
 

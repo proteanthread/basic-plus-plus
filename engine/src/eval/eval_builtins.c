@@ -5,2160 +5,38 @@
  */
 
 /**
- * @file eval.c
- * @brief Iterative Expression Evaluator implementation.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements mathematical, string, and relational expression evaluation
- *   using the iterative Shunting-Yard algorithm. Consumes tokens until expression termination.
- * - Why it exists: Avoids stack overflow crashes during evaluation of complex nested expressions,
- *   supporting standard BASIC operator precedence.
- * - Why it works this way: It maintains value and operator stacks in the scratch arena.
- *   Unary operators are identified contextually and transformed to internal types. Relational
- *   comparisons return standard BASIC truth values (-1.0 for true, 0.0 for false).
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Precedence rankings, support for new operators, string comparison behaviors.
- * - What cannot be changed: Memory allocation points (must remain scratch arena-bound) and C-stack independence.
- * - What to expect: Evaluating strings will reference-count results. Concatenation allocates new strings.
- * - What to do if something breaks: Check operator pop loops and trace value type transitions.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Relational operations return double values (-1.0 or 0.0). String comparison uses strcmp.
- * - Portability concerns: None. C17 compliant.
- *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add MOD (modulo), ^ (power), or logical XOR operators.
- * - How to write external extensions: External functions are parsed as identifiers followed by parentheses,
- *   routed to the domain registry.
+ * @file eval_builtins.c
+ * @brief Extracted Builtin Functions for Evaluator.
  */
 
-#include "bpp_eval.h"
-#include "bpp_file.h"
-#include "bpp_task.h"
-#include "bpp_vdev.h"
-#include "bpp_vfs.h"
-#include "bpp_metadata.h"
-#include "bpp_funcreg.h"
-#include "bpp_eval.h"
-#include "bpp_strings.h"
-#ifndef BPP_LITE_BUILD
-#include "bpp_segmented_mem.h"
-#endif
-#include "bpp_module.h"
-#include "bpp_security.h"
-#include "bpp_vnet.h"
-#include "bpp_bus.h"
-#include "bpp_dialect.h"
-#include "bpp_struct.h"
-#include "bpp_fujinet.h"
-#include "bpp_platform.h"
-#include "bpp_vcon.h"
-#include "num_format.h"
+#include "eval/eval_internal.h"
+#include "runtime/file.h"
+#include "runtime/task.h"
+#include "device/vdev.h"
+#include "runtime/vfs.h"
+#include "runtime/metadata.h"
+#include "runtime/funcreg.h"
+#include "module/module.h"
+#include "security/security.h"
+#include "eval/eval.h"
+#include "runtime/num_format.h"
+#include "runtime/vnet.h"
+#include "device/bus.h"
+#include "core/dialect.h"
+#include "core/struct.h"
+#include "device/fujinet.h"
+#include "platform/platform.h"
+#include "device/vcon.h"
+#include "runtime/variables.h"
+#include "runtime/map.h"
 
-void bpp_hash_string(const char *algo, const char *data, char *out_buf, size_t out_size);
-#include <string.h>
-#include <ctype.h>
-
-static BppDirSearch *g_dir_search = NULL;
-#include <math.h>
-#include <time.h>
-#include <stdlib.h>
-
-extern bool find_procedure(struct VMContext *vm, const char *name, BppKeywordId proc_kw, double *out_line, const char **out_text);
-
-extern int platform_inkey_char(void);
-extern int platform_mouse_x(void);
-extern int platform_mouse_y(void);
-extern int platform_mouse_btn(void);
-struct tm; /* Forward declaration */
-extern struct tm *platform_localtime(const time_t *timep, struct tm *result);
-
-extern double vm_get_last_rnd(VMContext *vm);
-extern void vm_set_last_rnd(VMContext *vm, double val);
-extern double platform_get_timer(void);
-extern double platform_get_uptime(void);
-extern double vm_get_ti_offset(VMContext *vm);
-extern void vm_set_ti_offset(VMContext *vm, double val);
-
-/**
- * @brief Parse and evaluate a Sinclair/Atari string slicing construct.
- *
- * - What it does: Extracts a substring slice from a scalar string variable. It parses the bounds
- *   specifiers (1-based indices), clipping them dynamically to the string's actual length.
- *   Supports both parentheses A$(start TO end) and square brackets A$[start TO end] (Sinclair)
- *   as well as A$[start, end] (Atari / HP TSB).
- * - Why it exists: Provides language-level compatibility for historical string slicing dialects
- *   without introducing keyword collisions in the unified namespace.
- * - Why it works this way: It parses the next token, evaluating the start and optional end
- *   expressions. It clips index bounds gracefully to emulate historical systems without throwing out of bounds.
- * - Assumptions: var_name references a scalar string. Out-of-bounds start/end values are clipped.
- * - Portability concerns: Native string operations rely on thread-safe BppStringRef reference counting.
- * - Future expansions: Supporting slice assignment is handled inside stmt_let.c.
- * - External extension hooks: None.
- */
-static BValue parse_string_slice(VMContext *vm, LexerContext *lex, const char *var_name, BppTokenType open_tok, BppError *out_err) {
-    BValue res;
-    memset(&res, 0, sizeof(res));
-    res.type = VAL_STRING;
-
-    /* Consume opening token '(' or '[' */
-    lex_next(lex);
-
-    /* Look up the scalar variable value */
-    BValue *var_val = var_lookup(vm_get_var(vm), var_name, false);
-    const char *str_val = "";
-    size_t orig_len = 0;
-    if (var_val && var_val->type == VAL_STRING && var_val->as.string) {
-        str_val = str_data(var_val->as.string);
-        orig_len = str_len(var_val->as.string);
-    }
-
-    int start = 1;
-    int end = (int)orig_len;
-
-    BppTokenType close_tok = (open_tok == TOK_LPAREN) ? TOK_RPAREN : TOK_RBRACKET;
-
-    /* Parse bounds */
-    BppToken next = lex_peek(lex);
-    if (next.type == TOK_KEYWORD && next.as.keyword == KW_TO) {
-        /* Case: (TO end) or [TO end] */
-        lex_next(lex); /* Consume 'TO' */
-        if (lex_peek(lex).type != close_tok) {
-            BValue end_val = eval_expression(vm, lex, out_err);
-            if (out_err->code != 0) return res;
-            if (end_val.type == VAL_STRING) {
-                out_err->code = 13; out_err->message = "String slice bound must be numeric";
-                return res;
-            }
-            end = (int)end_val.as.number;
-        }
-    } else if (next.type == close_tok) {
-        /* Case: () or [] -> full string */
-        /* Nothing to do, defaults are 1 and str_len */
-    } else {
-        /* Parse first bound */
-        BValue start_val = eval_expression(vm, lex, out_err);
-        if (out_err->code != 0) return res;
-        if (start_val.type == VAL_STRING) {
-            out_err->code = 13; out_err->message = "String slice bound must be numeric";
-            return res;
-        }
-        start = (int)start_val.as.number;
-
-        next = lex_peek(lex);
-        if (next.type == TOK_KEYWORD && next.as.keyword == KW_TO) {
-            lex_next(lex); /* Consume 'TO' */
-            if (lex_peek(lex).type != close_tok) {
-                BValue end_val = eval_expression(vm, lex, out_err);
-                if (out_err->code != 0) return res;
-                if (end_val.type == VAL_STRING) {
-                    out_err->code = 13; out_err->message = "String slice bound must be numeric";
-                    return res;
-                }
-                end = (int)end_val.as.number;
-            }
-        } else if (next.type == TOK_COMMA) {
-            /* Atari style A$[start, end] */
-            lex_next(lex); /* Consume ',' */
-            BValue end_val = eval_expression(vm, lex, out_err);
-            if (out_err->code != 0) return res;
-            if (end_val.type == VAL_STRING) {
-                out_err->code = 13; out_err->message = "String slice bound must be numeric";
-                return res;
-            }
-            end = (int)end_val.as.number;
-        } else {
-            /* Single index: end = start */
-            end = start;
-        }
-    }
-
-    /* Consume closing token */
-    if (lex_peek(lex).type != close_tok) {
-        out_err->code = 2; out_err->message = (open_tok == TOK_LPAREN) ? "Expected ')' in slice" : "Expected ']' in slice";
-        return res;
-    }
-    lex_next(lex);
-
-    /* Clip bounds (1-based, inclusive) */
-    if (start < 1) start = 1;
-    if (end > (int)orig_len) end = (int)orig_len;
-
-    if (start > (int)orig_len || end < start) {
-        res.as.string = str_create(vm_get_str(vm), "", 0);
-    } else {
-        size_t slice_len = (size_t)(end - start + 1);
-        res.as.string = str_create(vm_get_str(vm), str_val + (start - 1), slice_len);
-    }
-
-    return res;
-}
-
-static void split_member_chain(const char *start, size_t len, char *var_name, size_t var_name_max, char member_chain[8][64], int *member_count) {
-    *member_count = 0;
-    
-    /* Find first dot */
-    size_t dot_idx = 0;
-    while (dot_idx < len && start[dot_idx] != '.') {
-        dot_idx++;
-    }
-    
-    if (dot_idx == len) {
-        /* No dot: single variable name */
-        size_t clen = (len < var_name_max - 1) ? len : var_name_max - 1;
-        memcpy(var_name, start, clen);
-        var_name[clen] = '\0';
-        return;
-    }
-    
-    /* Copy var_name */
-    size_t clen = (dot_idx < var_name_max - 1) ? dot_idx : var_name_max - 1;
-    memcpy(var_name, start, clen);
-    var_name[clen] = '\0';
-    
-    /* Parse members */
-    size_t i = dot_idx + 1;
-    while (i < len && *member_count < 8) {
-        size_t next_dot = i;
-        while (next_dot < len && start[next_dot] != '.') {
-            next_dot++;
-        }
-        
-        size_t mlen = next_dot - i;
-        size_t copy_mlen = (mlen < 63) ? mlen : 63;
-        memcpy(member_chain[*member_count], start + i, copy_mlen);
-        member_chain[*member_count][copy_mlen] = '\0';
-        (*member_count)++;
-        
-        i = next_dot + 1;
-    }
-}
-
-#define MAX_EVAL_DEPTH 128
-
-/* Forward declarations for built-in functions */
-static bool is_builtin_function(const char *name);
-static BValue eval_builtin_function(VMContext *vm, const char *name, LexerContext *lex, bool has_parens, BppError *err);
-static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err);
-BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int argc, BppError *err);
-BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err);
-
-/* Operator precedence lookup */
-static int get_precedence(BppTokenType type) {
-    switch (type) {
-        case TOK_OR:
-        case TOK_XOR:
-            return 1; /* Logical OR, XOR */
-        case TOK_AND:
-            return 2; /* Logical AND */
-        case TOK_NOT:
-            return 3; /* Logical NOT */
-        case TOK_EQ:
-        case TOK_NE:
-        case TOK_LT:
-        case TOK_GT:
-        case TOK_LE:
-        case TOK_GE:
-            return 4; /* Relational */
-        case TOK_PLUS:
-        case TOK_MINUS:
-            return 5; /* Additive */
-        case TOK_MUL:
-        case TOK_DIV:
-            return 6; /* Multiplicative */
-        case TOK_UNARY_MINUS:
-        case TOK_UNARY_PLUS:
-            return 7; /* Unary (highest) */
-        default:
-            return 0; /* Parentheses / Symbols */
-    }
-}
-
-static bool has_precedence(VMContext *vm, BppTokenType top, BppTokenType op) {
-    BppDialect *d = vm_get_active_dialect(vm);
-    if (d && d->math_precedence == PRECEDENCE_LEFT_TO_RIGHT) {
-        int prec_top = get_precedence(top);
-        int prec_op = get_precedence(op);
-        if (prec_top >= 4 || prec_op >= 4) {
-            return prec_top >= prec_op;
-        }
-        return true;
-    }
-    return get_precedence(top) >= get_precedence(op);
-}
-
-/* Check if token type is an operator */
-static bool is_operator(BppTokenType type) {
-    return (type == TOK_PLUS || type == TOK_MINUS || type == TOK_MUL || type == TOK_DIV ||
-            type == TOK_EQ || type == TOK_NE || type == TOK_LT || type == TOK_GT ||
-            type == TOK_LE || type == TOK_GE || type == TOK_UNARY_MINUS || type == TOK_UNARY_PLUS ||
-            type == TOK_AND || type == TOK_OR || type == TOK_NOT || type == TOK_XOR);
-}
-
-/* Execute a single binary or unary operator */
-static double round_to_decimal(double val, int precision) {
-    if (val == 0.0 || !isfinite(val)) return val;
-    double factor = pow(10.0, precision - ceil(log10(fabs(val))));
-    return round(val * factor) / factor;
-}
-
-static bool execute_op(VMContext *vm, BppTokenType op, BValue *val_stack, size_t *val_ptr, BppError *err) {
-    StringContext *str = vm_get_str(vm);
-
-    if (op == TOK_UNARY_MINUS || op == TOK_UNARY_PLUS || op == TOK_NOT) {
-        if (*val_ptr < 1) {
-            err->code = 2; /* Syntax error */
-            err->message = "Missing operand for unary operator";
-            return false;
-        }
-        BValue *val = &val_stack[*val_ptr - 1];
-        if (val->type == VAL_STRING) {
-            err->code = 13; /* Type mismatch */
-            err->message = "Unary operators not supported on strings";
-            return false;
-        }
-        if (op == TOK_UNARY_MINUS) {
-            val->as.number = -val->as.number;
-        } else if (op == TOK_NOT) {
-            val->as.number = (double)(~(int)val->as.number);
-        }
-        return true;
-    }
-
-    /* Binary operators */
-    if (*val_ptr < 2) {
-        err->code = 2; /* Syntax error */
-        err->message = "Missing operand for binary operator";
-        return false;
-    }
-
-    BValue rhs = val_stack[--(*val_ptr)];
-    BValue lhs = val_stack[*val_ptr - 1];
-    BValue *res = &val_stack[*val_ptr - 1];
-
-    /* String operators */
-    if (lhs.type == VAL_STRING || rhs.type == VAL_STRING) {
-        if (lhs.type != VAL_STRING || rhs.type != VAL_STRING) {
-            err->code = 13; /* Type mismatch */
-            err->message = "Mixed string and numeric arguments";
-            return false;
-        }
-
-        if (op == TOK_PLUS) {
-            /* String Concatenation */
-            BppStringRef concat = str_concat(str, lhs.as.string, rhs.as.string);
-            if (!concat) {
-                err->code = 14; /* Out of string space */
-                err->message = "String heap limit reached in concatenation";
-                return false;
-            }
-            res->type = VAL_STRING;
-            res->as.string = concat;
-            /* Release temp inputs if needed */
-            if (lhs.as.string) str_release(str, lhs.as.string);
-            if (rhs.as.string) str_release(str, rhs.as.string);
-            return true;
-        }
-
-        /* Relational string comparisons */
-        const char *s1 = str_data(lhs.as.string);
-        const char *s2 = str_data(rhs.as.string);
-        int cmp = strcmp(s1, s2);
-        double bool_res = 0.0; /* 0.0 is False, -1.0 is True */
-
-        switch (op) {
-            case TOK_EQ: bool_res = (cmp == 0) ? -1.0 : 0.0; break;
-            case TOK_NE: bool_res = (cmp != 0) ? -1.0 : 0.0; break;
-            case TOK_LT: bool_res = (cmp < 0)  ? -1.0 : 0.0; break;
-            case TOK_GT: bool_res = (cmp > 0)  ? -1.0 : 0.0; break;
-            case TOK_LE: bool_res = (cmp <= 0) ? -1.0 : 0.0; break;
-            case TOK_GE: bool_res = (cmp >= 0) ? -1.0 : 0.0; break;
-            default:
-                err->code = 13; /* Type mismatch */
-                err->message = "Invalid operator for strings";
-                return false;
-        }
-
-        /* Release strings */
-        if (lhs.as.string) str_release(str, lhs.as.string);
-        if (rhs.as.string) str_release(str, rhs.as.string);
-
-        res->type = VAL_NUMBER;
-        res->as.number = bool_res;
-        return true;
-    }
-
-    /* Numeric operations */
-    double n1 = lhs.as.number;
-    double n2 = rhs.as.number;
-    double ans = 0.0;
-
-    switch (op) {
-        case TOK_PLUS:  ans = n1 + n2; break;
-        case TOK_MINUS: ans = n1 - n2; break;
-        case TOK_MUL:   ans = n1 * n2; break;
-        case TOK_DIV:
-            if (n2 == 0.0) {
-                err->code = 11; /* Division by zero */
-                err->message = "Division by zero";
-                return false;
-            }
-            ans = n1 / n2;
-            break;
-        case TOK_EQ: ans = n1 == n2 ? -1.0 : 0.0; break;
-        case TOK_NE: ans = n1 != n2 ? -1.0 : 0.0; break;
-        case TOK_LT: ans = n1 < n2  ? -1.0 : 0.0; break;
-        case TOK_GT: ans = n1 > n2  ? -1.0 : 0.0; break;
-        case TOK_LE: ans = n1 <= n2 ? -1.0 : 0.0; break;
-        case TOK_GE: ans = n1 >= n2 ? -1.0 : 0.0; break;
-        case TOK_AND: ans = (double)((int)n1 & (int)n2); break;
-        case TOK_OR:  ans = (double)((int)n1 | (int)n2); break;
-        case TOK_XOR: ans = (double)((int)n1 ^ (int)n2); break;
-        default:
-            err->code = 2; /* Syntax error */
-            err->message = "Invalid numeric operator";
-            return false;
-    }
-
-    if (vm_get_arithmetic_decimal(vm) && (op == TOK_PLUS || op == TOK_MINUS || op == TOK_MUL || op == TOK_DIV)) {
-        ans = round_to_decimal(ans, 12);
-    }
-
-    res->type = VAL_NUMBER;
-    res->as.number = ans;
-    return true;
-}
-
-static BValue resolve_member_access(VMContext *vm, LexerContext *lex, BValue val, BppError *out_err) {
-    BValue null_val;
-    memset(&null_val, 0, sizeof(null_val));
-
-    while (lex_peek(lex).type == TOK_PERIOD) {
-        lex_next(lex); /* Consume '.' */
-        BppToken field_tok = lex_next(lex);
-        if (field_tok.type != TOK_IDENT) {
-            out_err->code = 2; out_err->message = "Expected member identifier after '.'";
-            return null_val;
-        }
-        char field_name[256];
-        size_t flen = (field_tok.length < sizeof(field_name) - 1) ? field_tok.length : sizeof(field_name) - 1;
-        memcpy(field_name, field_tok.start, flen);
-        field_name[flen] = '\0';
-
-        /* Check if followed by '(' -> Class method call */
-        if (lex_peek(lex).type == TOK_LPAREN) {
-            lex_next(lex); /* Consume '(' */
-            
-            if (val.type != VAL_MAP || !val.as.map) {
-                out_err->code = 13; out_err->message = "Method call on non-object value";
-                return null_val;
-            }
-            BValue type_val;
-            if (!bpp_map_get(val.as.map, "__type__", &type_val) || type_val.type != VAL_STRING) {
-                out_err->code = 13; out_err->message = "Object missing class type metadata";
-                return null_val;
-            }
-            char fully_qualified_method[512];
-            snprintf(fully_qualified_method, sizeof(fully_qualified_method), "%s.%s",
-                     str_data(type_val.as.string), field_name);
-
-            /* Parse arguments */
-            BValue args[9];
-            int argc = 0;
-            
-            /* Implicit THIS */
-            args[argc++] = val;
-            bpp_map_add_ref(val.as.map);
-
-            while (true) {
-                BppToken next_tok = lex_peek(lex);
-                if (next_tok.type == TOK_RPAREN) {
-                    lex_next(lex);
-                    break;
-                }
-                if (argc >= 9) {
-                    out_err->code = 2; out_err->message = "Too many arguments in method call";
-                    for (int i = 0; i < argc; i++) {
-                        if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                        else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                    }
-                    return null_val;
-                }
-                args[argc++] = eval_expression(vm, lex, out_err);
-                if (out_err->code != 0) {
-                    for (int i = 0; i < argc - 1; i++) {
-                        if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                        else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                    }
-                    return null_val;
-                }
-                next_tok = lex_peek(lex);
-                if (next_tok.type == TOK_COMMA) {
-                    lex_next(lex);
-                } else if (next_tok.type == TOK_RPAREN) {
-                    lex_next(lex);
-                    break;
-                } else {
-                    out_err->code = 2; out_err->message = "Expected ',' or ')' in method call";
-                    for (int i = 0; i < argc; i++) {
-                        if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                        else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                    }
-                    return null_val;
-                }
-            }
-
-            /* Invoke method */
-            BValue ret_val = invoke_user_function(vm, fully_qualified_method, args, argc, out_err);
-            for (int i = 0; i < argc; i++) {
-                if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-            }
-            if (out_err->code != 0) return null_val;
-            
-            val = ret_val;
-        } else {
-            /* Standard field lookup */
-            if (val.type != VAL_MAP || !val.as.map) {
-                out_err->code = 13; out_err->message = "Member access on non-object value";
-                return null_val;
-            }
-            BValue field_val;
-            if (!bpp_map_get(val.as.map, field_name, &field_val)) {
-                out_err->code = 35; out_err->message = "Member field not defined in UDT/Class";
-                return null_val;
-            }
-            BValue old_val = val;
-            val = field_val;
-            if (val.type == VAL_STRING && val.as.string) {
-                str_add_ref(val.as.string);
-            } else if (val.type == VAL_MAP && val.as.map) {
-                bpp_map_add_ref(val.as.map);
-            }
-            if (old_val.type == VAL_MAP && old_val.as.map) {
-                bpp_map_release(vm_get_str(vm), old_val.as.map);
-            }
-        }
-    }
-    return val;
-}
-
-BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
-    BValue null_val;
-    memset(&null_val, 0, sizeof(null_val));
-
-    /* Guard against C-stack overflow from deeply nested expression evaluation.
-     * eval_expression calls itself recursively for function arguments, array
-     * subscripts, and string slices. Without a guard, pathological input like
-     * deeply nested function calls could overflow the host C stack. */
-    vm_inc_eval_depth(vm);
-    if (vm_get_eval_depth(vm) > 64) {
-        vm_dec_eval_depth(vm);
-        out_err->code = 14;
-        out_err->message = "Expression nesting too deep (limit 64)";
-        return null_val;
-    }
-
-    MemoryContext *mem = vm_get_mem(vm);
-    VariableContext *var = vm_get_var(vm);
-
-    /* Allocate Shunting-Yard stacks from scratch arena */
-    BValue *val_stack = (BValue *)mem_scratch_alloc(mem, sizeof(BValue) * MAX_EVAL_DEPTH);
-    BppTokenType *op_stack = (BppTokenType *)mem_scratch_alloc(mem, sizeof(BppTokenType) * MAX_EVAL_DEPTH);
-
-    if (!val_stack || !op_stack) {
-        out_err->code = 14; /* Out of memory */
-        out_err->message = "Evaluation stack overflow (scratch exhausted)";
-        return null_val;
-    }
-
-    size_t val_ptr = 0;
-    size_t op_ptr = 0;
-    int open_parens = 0;
-
-    bool expect_operand = true;
-    BppToken tok = lex_peek(lex);
-
-    while (tok.type != TOK_EOF && tok.type != TOK_EOL && tok.type != TOK_COMMA &&
-           tok.type != TOK_SEMICOLON && (tok.type != TOK_RPAREN || open_parens > 0) &&
-           tok.type != TOK_RBRACKET &&
-           (tok.type != TOK_KEYWORD || tok.as.keyword == KW_NONE ||
-            tok.as.keyword == KW_TASK || tok.as.keyword == KW_PLAY || tok.as.keyword == KW_HELP ||
-            tok.as.keyword == KW_SCREEN || tok.as.keyword == KW_SEEK ||
-            tok.as.keyword == KW_TIMER || tok.as.keyword == KW_KEY ||
-            tok.as.keyword == KW_REMOVE || tok.as.keyword == KW_REMOVE_STR ||
-            tok.as.keyword == KW_ALARM || tok.as.keyword == KW_ALARM_STR ||
-            tok.as.keyword == KW_RANDOMIZE)) {
-
-        /* Stop parsing if we see 'AT' identifier */
-        if (tok.type == TOK_IDENT && tok.length == 2 &&
-            (tok.start[0] == 'A' || tok.start[0] == 'a') &&
-            (tok.start[1] == 'T' || tok.start[1] == 't')) {
-            break;
-        }
-
-        /* Implied semicolon check: if we are expecting an operator, but see an operand */
-        if (!expect_operand) {
-            if (tok.type == TOK_NUMBER || tok.type == TOK_STRING || tok.type == TOK_RPN_LITERAL ||
-                tok.type == TOK_IDENT || tok.type == TOK_KEYWORD || tok.type == TOK_LPAREN) {
-                break;
-            }
-        }
-
-        /* Read the peeked token */
-        lex_next(lex);
-
-        if (tok.type == TOK_NUMBER) {
-            if (!expect_operand) {
-                out_err->code = 2; /* Syntax error */
-                out_err->message = "Expected operator, got number";
-                return null_val;
-            }
-            BValue val;
-            val.type = VAL_NUMBER;
-            val.as.number = tok.as.number;
-            val_stack[val_ptr++] = val;
-            expect_operand = false;
-        } else if (tok.type == TOK_STRING) {
-            if (!expect_operand) {
-                out_err->code = 2; /* Syntax error */
-                out_err->message = "Expected operator, got string";
-                return null_val;
-            }
-            /* Create string handle */
-            BppStringRef str_ref = str_create(vm_get_str(vm), tok.as.string, tok.length);
-            BValue val;
-            val.type = VAL_STRING;
-            val.as.string = str_ref;
-            val_stack[val_ptr++] = val;
-            expect_operand = false;
-        } else if (tok.type == TOK_RPN_LITERAL) {
-            if (!expect_operand) {
-                out_err->code = 2; /* Syntax error */
-                out_err->message = "Expected operator, got RPN literal";
-                return null_val;
-            }
-            char *rpn_str = (char *)mem_scratch_alloc(vm_get_mem(vm), tok.length + 1);
-            if (!rpn_str) {
-                out_err->code = 14;
-                out_err->message = "Scratch memory exhausted";
-                return null_val;
-            }
-            memcpy(rpn_str, tok.as.string, tok.length);
-            rpn_str[tok.length] = '\0';
-
-            LexerContext *rpn_lex = lex_init(vm_get_mem(vm), rpn_str);
-            BValue res = eval_expression_rpn(vm, rpn_lex, out_err);
-            lex_shutdown(rpn_lex);
-            if (out_err->code != 0) return null_val;
-
-            val_stack[val_ptr++] = res;
-            expect_operand = false;
-        } else if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD || tok.type == TOK_PERIOD) {
-            if (!expect_operand) {
-                out_err->code = 2; /* Syntax error */
-                out_err->message = "Expected operator, got variable, keyword or '.'";
-                return null_val;
-            }
-            /* Variable or function lookup */
-            char name_buf[256];
-            if (tok.type == TOK_PERIOD) {
-                const char *with_prefix = vm_with_stack_peek(vm);
-                if (!with_prefix) {
-                    out_err->code = 2; out_err->message = "Leading '.' outside of WITH block";
-                    return null_val;
-                }
-                BppToken sub_tok = lex_next(lex);
-                if (sub_tok.type != TOK_IDENT && sub_tok.type != TOK_KEYWORD) {
-                    out_err->code = 2; out_err->message = "Expected identifier after '.' in WITH member access";
-                    return null_val;
-                }
-                snprintf(name_buf, sizeof(name_buf), "%s.%.*s", with_prefix, (int)sub_tok.length, sub_tok.start);
-            } else {
-                size_t copy_len = (tok.length < sizeof(name_buf) - 1) ? tok.length : sizeof(name_buf) - 1;
-                memcpy(name_buf, tok.start, copy_len);
-                name_buf[copy_len] = '\0';
-            }
-
-            /* Check if namespace prefix (e.g. bits.xxx or math.xxx) */
-            if (lex_peek(lex).type == TOK_PERIOD &&
-                (strcasecmp(name_buf, "bits") == 0 || strcasecmp(name_buf, "math") == 0 ||
-                 strcasecmp(name_buf, "sound") == 0 || strcasecmp(name_buf, "music") == 0 ||
-                 strcasecmp(name_buf, "mouse") == 0 || strcasecmp(name_buf, "joystick") == 0 ||
-                 strcasecmp(name_buf, "input") == 0 || strcasecmp(name_buf, "window") == 0)) {
-                lex_next(lex); /* Consume '.' */
-                BppToken sub_tok = lex_next(lex);
-                if (sub_tok.type != TOK_IDENT && sub_tok.type != TOK_KEYWORD) {
-                    out_err->code = 2; out_err->message = "Expected identifier after '.' in namespace call";
-                    return null_val;
-                }
-                char sub_name[128];
-                size_t sub_len = (sub_tok.length < sizeof(sub_name) - 1) ? sub_tok.length : sizeof(sub_name) - 1;
-                memcpy(sub_name, sub_tok.start, sub_len);
-                sub_name[sub_len] = '\0';
-                
-                char combined[384];
-                snprintf(combined, sizeof(combined), "%s.%s", name_buf, sub_name);
-                strncpy(name_buf, combined, sizeof(name_buf) - 1);
-                name_buf[sizeof(name_buf) - 1] = '\0';
-            }
-
-            /* If name_buf refers to a VAL_ARRAY_REF (e.g., parameter passed by reference), resolve it to the original array name */
-            BValue *ref_var = var_lookup(var, name_buf, false);
-            if (ref_var && ref_var->type == VAL_ARRAY_REF && ref_var->as.string) {
-                const char *orig_name = str_data(ref_var->as.string);
-                size_t olen = strlen(orig_name);
-                if (olen < sizeof(name_buf) - 1) {
-                    memcpy(name_buf, orig_name, olen);
-                    name_buf[olen] = '\0';
-                }
-            }
-
-            bool is_func = false;
-            /* Check if followed by '(' or '[' */
-            BppTokenType next_tok_type = lex_peek(lex).type;
-            if (next_tok_type == TOK_LBRACKET) {
-                is_func = true;
-                BValue val = parse_string_slice(vm, lex, name_buf, TOK_LBRACKET, out_err);
-                if (out_err->code != 0) return null_val;
-                val_stack[val_ptr++] = val;
-                expect_operand = false;
-            } else if (next_tok_type == TOK_LPAREN) {
-                /* Disambiguate Sinclair string slicing A$(start TO end) from function calls / array accesses */
-                bool is_slicing = false;
-                if (name_buf[strlen(name_buf) - 1] == '$' && strchr(name_buf, '.') == NULL) {
-                    if (!find_procedure((struct VMContext *)vm, name_buf, KW_FUNCTION, NULL, NULL) &&
-                        !is_builtin_function(name_buf) &&
-                        !arr_exists(vm_get_arr(vm), name_buf)) {
-                        is_slicing = true;
-                    }
-                }
-                if (is_slicing) {
-                    is_func = true;
-                    BValue val = parse_string_slice(vm, lex, name_buf, TOK_LPAREN, out_err);
-                    if (out_err->code != 0) return null_val;
-                    val_stack[val_ptr++] = val;
-                    expect_operand = false;
-                } else if (is_builtin_function(name_buf)) {
-                    is_func = true;
-                    lex_next(lex); /* Consume '(' */
-                    BValue val = eval_builtin_function(vm, name_buf, lex, true, out_err);
-                    if (out_err->code != 0) return null_val;
-                    val_stack[val_ptr++] = val;
-                    expect_operand = false;
-                } else if (!arr_exists(vm_get_arr(vm), name_buf) &&
-                           !(var_lookup(var, name_buf, false) && var_lookup(var, name_buf, false)->type == VAL_ARRAY_REF && var_lookup(var, name_buf, false)->as.string)) {
-                    is_func = true;
-                    lex_next(lex); /* Consume '(' */
-
-                    /* Check if name_buf contains '.' -> Method call check */
-                    bool is_method = false;
-                    char base_name[256] = "";
-                    char member_chain[8][64];
-                    int member_count = 0;
-                    char fully_qualified_method[512] = "";
-                    BValue obj_val;
-                    memset(&obj_val, 0, sizeof(obj_val));
-
-                    if (strchr(name_buf, '.') != NULL) {
-                        if (!find_procedure((struct VMContext *)vm, name_buf, KW_FUNCTION, NULL, NULL)) {
-                            /* Not a global namespaced function: try to resolve as method call */
-                            split_member_chain(name_buf, strlen(name_buf), base_name, sizeof(base_name), member_chain, &member_count);
-                            if (member_count > 0) {
-                                BValue *var_val = var_lookup(var, base_name, false);
-                                if (var_val) {
-                                    obj_val = *var_val;
-                                    if (obj_val.type == VAL_STRING && obj_val.as.string) str_add_ref(obj_val.as.string);
-                                    else if (obj_val.type == VAL_MAP && obj_val.as.map) bpp_map_add_ref(obj_val.as.map);
-                                    
-                                    /* Walk nested fields up to last member */
-                                    bool walk_err = false;
-                                    for (int m = 0; m < member_count - 1; m++) {
-                                        if (obj_val.type != VAL_MAP || !obj_val.as.map) {
-                                            walk_err = true; break;
-                                        }
-                                        BValue next_val;
-                                        if (!bpp_map_get(obj_val.as.map, member_chain[m], &next_val)) {
-                                            walk_err = true; break;
-                                        }
-                                        BValue copy = next_val;
-                                        if (copy.type == VAL_STRING && copy.as.string) str_add_ref(copy.as.string);
-                                        else if (copy.type == VAL_MAP && copy.as.map) bpp_map_add_ref(copy.as.map);
-                                        
-                                        if (obj_val.type == VAL_MAP && obj_val.as.map) bpp_map_release(vm_get_str(vm), obj_val.as.map);
-                                        else if (obj_val.type == VAL_STRING && obj_val.as.string) str_release(vm_get_str(vm), obj_val.as.string);
-                                        obj_val = copy;
-                                    }
-                                    
-                                    if (!walk_err && obj_val.type == VAL_MAP && obj_val.as.map) {
-                                        BValue type_val;
-                                        if (bpp_map_get(obj_val.as.map, "__type__", &type_val) && type_val.type == VAL_STRING) {
-                                            snprintf(fully_qualified_method, sizeof(fully_qualified_method), "%s.%s",
-                                                     str_data(type_val.as.string), member_chain[member_count - 1]);
-                                            is_method = true;
-                                        }
-                                    }
-                                    if (!is_method) {
-                                        if (obj_val.type == VAL_MAP && obj_val.as.map) bpp_map_release(vm_get_str(vm), obj_val.as.map);
-                                        else if (obj_val.type == VAL_STRING && obj_val.as.string) str_release(vm_get_str(vm), obj_val.as.string);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    BValue args[9];
-                    int argc = 0;
-                    if (is_method) {
-                        args[argc++] = obj_val; /* Implicit THIS */
-                    }
-
-                    while (true) {
-                        BppToken next_tok = lex_peek(lex);
-                        if (next_tok.type == TOK_RPAREN) {
-                            lex_next(lex);
-                            break;
-                        }
-
-                        if (argc >= 9) {
-                            out_err->code = 2;
-                            out_err->message = "Too many arguments in function/method call";
-                            for (int i = 0; i < argc; i++) {
-                                if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                            }
-                            return null_val;
-                        }
-
-                        args[argc++] = eval_expression(vm, lex, out_err);
-                        if (out_err->code != 0) {
-                            for (int i = 0; i < argc - 1; i++) {
-                                if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                            }
-                            return null_val;
-                        }
-
-                        next_tok = lex_peek(lex);
-                        if (next_tok.type == TOK_COMMA) {
-                            lex_next(lex);
-                        } else if (next_tok.type == TOK_RPAREN) {
-                            lex_next(lex);
-                            break;
-                        } else {
-                            out_err->code = 2;
-                            out_err->message = "Expected ',' or ')' in function argument list";
-                            for (int i = 0; i < argc; i++) {
-                                if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                            }
-                            return null_val;
-                        }
-                    }
-
-                    BValue val = invoke_user_function(vm, is_method ? fully_qualified_method : name_buf, args, argc, out_err);
-                    for (int i = 0; i < argc; i++) {
-                        if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                        else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                    }
-                    if (out_err->code != 0) return null_val;
-
-                    val_stack[val_ptr++] = val;
-                    expect_operand = false;
-                } else {
-                    /* Array access! E.g. A(1, 2) or A(1 TO 5, *) */
-                    if (!arr_exists(vm_get_arr(vm), name_buf)) {
-                        BValue *var_val = var_lookup(var, name_buf, false);
-                        if (var_val && var_val->type == VAL_ARRAY_REF && var_val->as.string) {
-                            strncpy(name_buf, str_data(var_val->as.string), 256 - 1);
-                            name_buf[256 - 1] = '\0';
-                        }
-                    }
-                    lex_next(lex); /* Consume '(' */
-
-                    typedef struct { int is_slice; int start; int end; } SliceDim;
-                    SliceDim slices[4];
-                    int num_indices = 0;
-                    bool has_slice = false;
-
-                    if (lex_peek(lex).type == TOK_RPAREN) {
-                        lex_next(lex); /* Consume ')' */
-                        BValue val;
-                        val.type = VAL_ARRAY_REF;
-                        val.as.string = str_create(vm_get_str(vm), name_buf, strlen(name_buf));
-                        val_stack[val_ptr++] = val;
-                        expect_operand = false;
-                        is_func = true;
-                    } else {
-                        while (true) {
-                            if (num_indices >= 4) {
-                                out_err->code = 9; out_err->message = "Too many dimensions for array access";
-                                return null_val;
-                            }
-                            
-                            if (lex_peek(lex).type == TOK_MUL) {
-                                lex_next(lex);
-                                slices[num_indices].is_slice = 1;
-                                slices[num_indices].start = arr_get_option_base(vm_get_arr(vm));
-                                bool found = false;
-                                slices[num_indices].end = arr_ubound(vm_get_arr(vm), name_buf, num_indices + 1, &found);
-                                if (!found) {
-                                    out_err->code = 9; out_err->message = "Array dimension not found";
-                                    return null_val;
-                                }
-                                has_slice = true;
-                            } else {
-                                BValue idx_val = eval_expression(vm, lex, out_err);
-                                if (out_err->code != 0) return null_val;
-                                if (idx_val.type == VAL_STRING) {
-                                    out_err->code = 13; out_err->message = "String values are not allowed as array indices";
-                                    return null_val;
-                                }
-                                
-                                if (lex_peek(lex).type == TOK_KEYWORD && lex_peek(lex).as.keyword == KW_TO) {
-                                    lex_next(lex);
-                                    BValue end_val = eval_expression(vm, lex, out_err);
-                                    if (out_err->code != 0) return null_val;
-                                    slices[num_indices].is_slice = 1;
-                                    slices[num_indices].start = (int)idx_val.as.number;
-                                    slices[num_indices].end = (int)end_val.as.number;
-                                    has_slice = true;
-                                } else {
-                                    slices[num_indices].is_slice = 0;
-                                    slices[num_indices].start = (int)idx_val.as.number;
-                                    slices[num_indices].end = (int)idx_val.as.number;
-                                }
-                            }
-                            num_indices++;
-
-                            BppToken next_tok = lex_peek(lex);
-                            if (next_tok.type == TOK_COMMA) {
-                                lex_next(lex); /* Consume ',' */
-                            } else if (next_tok.type == TOK_RPAREN) {
-                                break;
-                            } else {
-                                out_err->code = 2; out_err->message = "Expected ',' or ')' in array index list";
-                                return null_val;
-                            }
-                        }
-                        lex_next(lex); /* Consume ')' */
-
-                        if (has_slice) {
-                            static int slice_counter = 0;
-                            char tmp_name[64];
-                            snprintf(tmp_name, sizeof(tmp_name), "__slice_%d", ++slice_counter);
-                            
-                            int base = arr_get_option_base(vm_get_arr(vm));
-                            int new_bounds[4] = {0};
-                            
-                            /* Collect bounds for dimensions that are actually slices, to reduce dimensionality if possible */
-                            for (int i = 0; i < num_indices; i++) {
-                                new_bounds[i] = (slices[i].end - slices[i].start) + base;
-                            }
-                            
-                            BppError dim_err = arr_dim(vm_get_arr(vm), tmp_name, num_indices, new_bounds);
-                            if (dim_err.code != 0) {
-                                *out_err = dim_err; return null_val;
-                            }
-                            
-                            /* Copy elements */
-                            int src_idx[4] = {0};
-                            int dst_idx[4] = {0};
-                            for(int d0 = slices[0].start, t0 = base; d0 <= slices[0].end; d0++, t0++) {
-                                int max_d1 = (num_indices > 1) ? slices[1].end : 0;
-                                for(int d1 = (num_indices > 1) ? slices[1].start : 0, t1 = base; d1 <= max_d1; d1++, t1++) {
-                                    int max_d2 = (num_indices > 2) ? slices[2].end : 0;
-                                    for(int d2 = (num_indices > 2) ? slices[2].start : 0, t2 = base; d2 <= max_d2; d2++, t2++) {
-                                        int max_d3 = (num_indices > 3) ? slices[3].end : 0;
-                                        for(int d3 = (num_indices > 3) ? slices[3].start : 0, t3 = base; d3 <= max_d3; d3++, t3++) {
-                                            src_idx[0] = d0; src_idx[1] = d1; src_idx[2] = d2; src_idx[3] = d3;
-                                            dst_idx[0] = t0; dst_idx[1] = t1; dst_idx[2] = t2; dst_idx[3] = t3;
-                                            
-                                            BValue *src_elem = arr_get_element(vm_get_arr(vm), name_buf, num_indices, src_idx, out_err);
-                                            if (out_err->code == 0 && src_elem) {
-                                                BValue *dst_elem = arr_get_element(vm_get_arr(vm), tmp_name, num_indices, dst_idx, out_err);
-                                                if (out_err->code == 0 && dst_elem) {
-                                                    *dst_elem = *src_elem;
-                                                    if (dst_elem->type == VAL_STRING && dst_elem->as.string) str_add_ref(dst_elem->as.string);
-                                                    else if (dst_elem->type == VAL_MAP && dst_elem->as.map) bpp_map_add_ref(dst_elem->as.map);
-                                                }
-                                            }
-                                            out_err->code = 0; /* Clear out of bounds errors during slice copy if any */
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            BValue val;
-                            val.type = VAL_ARRAY_REF;
-                            val.as.string = str_create(vm_get_str(vm), tmp_name, strlen(tmp_name));
-                            val_stack[val_ptr++] = val;
-                            expect_operand = false;
-                            is_func = true;
-                        } else {
-                            /* Lookup single element */
-                            int indices[4];
-                            for (int i = 0; i < num_indices; i++) indices[i] = slices[i].start;
-                            
-                            BValue *elem = arr_get_element(vm_get_arr(vm), name_buf, num_indices, indices, out_err);
-                            if (out_err->code != 0 || !elem) {
-                                return null_val;
-                            }
-
-                            /* Push copy. If string, add reference! */
-                            BValue val = *elem;
-                            if (val.type == VAL_STRING && val.as.string) {
-                                str_add_ref(val.as.string);
-                            } else if (val.type == VAL_MAP && val.as.map) {
-                                bpp_map_add_ref(val.as.map);
-                            }
-                            val = resolve_member_access(vm, lex, val, out_err);
-                            if (out_err->code != 0) return null_val;
-
-                            val_stack[val_ptr++] = val;
-                            expect_operand = false;
-                            is_func = true;
-                        }
-                    }
-                }
-            } else if (is_builtin_function(name_buf)) {
-                BValue val;
-                memset(&val, 0, sizeof(val));
-                if (strcmp(name_buf, "RND") == 0) {
-                    BppToken next = lex_peek(lex);
-                    bool has_arg = false;
-                    bool is_negative = false;
-                    if (next.type == TOK_MINUS) {
-                        LexerContext *temp = lex_init(vm_get_mem(vm), lex_get_pos(lex));
-                        if (temp) {
-                            lex_set_dialect(temp, vm_get_active_dialect(vm));
-                            lex_next(temp); /* consume '-' */
-                            BppToken sub = lex_next(temp);
-                            if (sub.type == TOK_NUMBER) {
-                                has_arg = true;
-                                is_negative = true;
-                            }
-                            lex_shutdown(temp);
-                        }
-                    } else if (next.type == TOK_NUMBER || next.type == TOK_IDENT || next.type == TOK_KEYWORD) {
-                        has_arg = true;
-                    }
-
-                    if (has_arg) {
-                        if (is_negative) {
-                            lex_next(lex); /* Consume '-' */
-                        }
-                        BppToken arg_tok = lex_next(lex); /* Consume the argument token */
-                        if (arg_tok.type == TOK_NUMBER) {
-                            double num_val = arg_tok.as.number;
-                            if (is_negative) num_val = -num_val;
-                            int base = 0;
-                            if (arg_tok.length > 2 && arg_tok.start[0] == '&') {
-                                char b = (char)toupper((unsigned char)arg_tok.start[1]);
-                                if (b == 'H') base = 16;
-                                else if (b == 'O') base = 8;
-                                else if (b == 'B') base = 2;
-                                else if (isdigit((unsigned char)arg_tok.start[1])) base = 8;
-                            }
-                            
-                            if (base > 0) {
-                                long max_val = (long)num_val;
-                                long r_val = 0;
-                                if (max_val > 0) {
-                                    r_val = rand() % (max_val + 1);
-                                }
-                                char buf[128] = "";
-                                if (base == 16) snprintf(buf, sizeof(buf), "%X", (unsigned int)r_val);
-                                else if (base == 8) snprintf(buf, sizeof(buf), "%o", (unsigned int)r_val);
-                                else if (base == 2) {
-                                    char bin[64] = "";
-                                    int idx = 0;
-                                    unsigned long tmp = r_val;
-                                    if (tmp == 0) {
-                                        strcpy(buf, "0");
-                                    } else {
-                                        while (tmp > 0) {
-                                            bin[idx++] = (tmp & 1) ? '1' : '0';
-                                            tmp >>= 1;
-                                        }
-                                        for (int j = 0; j < idx; j++) {
-                                            buf[j] = bin[idx - 1 - j];
-                                        }
-                                        buf[idx] = '\0';
-                                    }
-                                }
-                                val.type = VAL_STRING;
-                                val.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
-                            } else {
-                                long limit = (long)num_val;
-                                long r_val = 0;
-                                if (limit > 0) {
-                                    r_val = rand() % (limit + 1);
-                                } else if (limit < 0) {
-                                    r_val = -(rand() % (-limit + 1));
-                                }
-                                val.type = VAL_NUMBER;
-                                val.as.number = (double)r_val;
-                            }
-                        } else if (arg_tok.type == TOK_IDENT || arg_tok.type == TOK_KEYWORD) {
-                            char arg_name[64] = "";
-                            size_t alen = (arg_tok.length < 63) ? arg_tok.length : 63;
-                            memcpy(arg_name, arg_tok.start, alen);
-                            arg_name[alen] = '\0';
-                            for (size_t k = 0; k < alen; k++) {
-                                arg_name[k] = (char)toupper((unsigned char)arg_name[k]);
-                            }
-                            
-                            if (strcmp(arg_name, "TIME") == 0) {
-                                int h = rand() % 24;
-                                int m = rand() % 60;
-                                int s = rand() % 60;
-                                char buf[16];
-                                snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
-                                val.type = VAL_STRING;
-                                val.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
-                            } else if (strcmp(arg_name, "TI") == 0) {
-                                int h = rand() % 24;
-                                int m = rand() % 60;
-                                int s = rand() % 60;
-                                val.type = VAL_NUMBER;
-                                val.as.number = h * 10000.0 + m * 100.0 + s;
-                            } else if (strcmp(arg_name, "TIMER") == 0) {
-                                double r_sec = ((double)rand() / (double)RAND_MAX) * 86400.0;
-                                val.type = VAL_NUMBER;
-                                val.as.number = r_sec;
-                            } else {
-                                val = eval_builtin_function(vm, name_buf, lex, false, out_err);
-                            }
-                        } else {
-                            val = eval_builtin_function(vm, name_buf, lex, false, out_err);
-                        }
-                    } else {
-                        val = eval_builtin_function(vm, name_buf, lex, false, out_err);
-                    }
-                } else if (strcmp(name_buf, "RANDOMIZE") == 0) {
-                    BppToken next = lex_peek(lex);
-                    if (next.type == TOK_STRING || next.type == TOK_IDENT) {
-                        BppToken arg_tok = lex_next(lex);
-                        BValue arg_val;
-                        memset(&arg_val, 0, sizeof(arg_val));
-                        if (arg_tok.type == TOK_STRING) {
-                            arg_val.type = VAL_STRING;
-                            arg_val.as.string = str_create(vm_get_str(vm), arg_tok.as.string, arg_tok.length);
-                        } else {
-                            char var_name[256];
-                            size_t vlen = (arg_tok.length < 255) ? arg_tok.length : 255;
-                            memcpy(var_name, arg_tok.start, vlen);
-                            var_name[vlen] = '\0';
-                            BValue *lookup = var_lookup(var, var_name, false);
-                            if (lookup) {
-                                arg_val = *lookup;
-                                if (arg_val.type == VAL_STRING && arg_val.as.string) str_add_ref(arg_val.as.string);
-                                else if (arg_val.type == VAL_MAP && arg_val.as.map) bpp_map_add_ref(arg_val.as.map);
-                            }
-                        }
-
-                        const char *mode = NULL;
-                        if (arg_val.type == VAL_STRING && arg_val.as.string) {
-                            mode = str_data(arg_val.as.string);
-                        }
-                        if (mode) {
-                            if (strcmp(mode, "STRING$") == 0) {
-                                int len = 8;
-                                char *buf = (char *)calloc(1, len + 1);
-                                const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-                                for (int i = 0; i < len; i++) {
-                                    buf[i] = charset[rand() % (sizeof(charset) - 1)];
-                                }
-                                buf[len] = '\0';
-                                val.type = VAL_STRING;
-                                val.as.string = str_create(vm_get_str(vm), buf, len);
-                                free(buf);
-                            } else if (strcmp(mode, "DATE$") == 0) {
-                                int m = rand() % 12 + 1;
-                                int d = rand() % 28 + 1;
-                                int y = rand() % 100;
-                                char buf[16];
-                                snprintf(buf, sizeof(buf), "%02d-%02d-%02d", m, d, y);
-                                val.type = VAL_STRING;
-                                val.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
-                            } else if (strcmp(mode, "DAY$") == 0) {
-                                const char *days[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
-                                const char *day = days[rand() % 7];
-                                val.type = VAL_STRING;
-                                val.as.string = str_create(vm_get_str(vm), day, strlen(day));
-                            } else if (strcmp(mode, "TIME$") == 0) {
-                                int h = rand() % 24;
-                                int m = rand() % 60;
-                                int s = rand() % 60;
-                                char buf[16];
-                                snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
-                                val.type = VAL_STRING;
-                                val.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
-                            } else {
-                                size_t len = strlen(mode);
-                                char *buf = (char *)calloc(1, len + 1);
-                                strcpy(buf, mode);
-                                for (size_t i = len - 1; i > 0; i--) {
-                                    size_t j = rand() % (i + 1);
-                                    char tmp = buf[i];
-                                    buf[i] = buf[j];
-                                    buf[j] = tmp;
-                                }
-                                val.type = VAL_STRING;
-                                val.as.string = str_create(vm_get_str(vm), buf, len);
-                                free(buf);
-                            }
-                        } else {
-                            val.type = VAL_STRING;
-                            val.as.string = str_create(vm_get_str(vm), "", 0);
-                        }
-
-                        if (arg_val.type == VAL_STRING && arg_val.as.string) {
-                            str_release(vm_get_str(vm), arg_val.as.string);
-                        } else if (arg_val.type == VAL_MAP && arg_val.as.map) {
-                            bpp_map_release(vm_get_str(vm), arg_val.as.map);
-                        }
-                    } else {
-                        val = eval_builtin_function(vm, name_buf, lex, false, out_err);
-                    }
-                } else {
-                    val = eval_builtin_function(vm, name_buf, lex, false, out_err);
-                }
-                if (out_err->code != 0) return null_val;
-                val_stack[val_ptr++] = val;
-                expect_operand = false;
-                is_func = true;
-            }
-
-            if (!is_func) {
-                if (tok.type == TOK_KEYWORD) {
-                    out_err->code = 2;
-                    out_err->message = "Unexpected keyword in expression";
-                    return null_val;
-                }
-
-                BValue temp_val;
-                memset(&temp_val, 0, sizeof(temp_val));
-                bool is_special = false;
-                if (strcmp(name_buf, "ERR") == 0) {
-                    temp_val.type = VAL_NUMBER;
-                    temp_val.as.number = (double)vm_get_err_code(vm);
-                    is_special = true;
-                } else if (strcmp(name_buf, "ERL") == 0) {
-                    temp_val.type = VAL_NUMBER;
-                    temp_val.as.number = (double)vm_get_err_line(vm);
-                    is_special = true;
-                }
-
-                if (is_special) {
-                    val_stack[val_ptr++] = temp_val;
-                    expect_operand = false;
-                } else {
-                    BValue *var_val = var_lookup(var, name_buf, false);
-                    if (!var_val) {
-                        char base_name[256];
-                        char member_chain[8][64];
-                        int member_count = 0;
-                        split_member_chain(name_buf, strlen(name_buf), base_name, sizeof(base_name), member_chain, &member_count);
-                        
-                        if (member_count > 0) {
-                            var_val = var_lookup(var, base_name, false);
-                            if (var_val) {
-                                BValue val = *var_val;
-                                if (val.type == VAL_STRING && val.as.string) str_add_ref(val.as.string);
-                                else if (val.type == VAL_MAP && val.as.map) bpp_map_add_ref(val.as.map);
-                                
-                                /* Walk up to the last member */
-                                for (int m = 0; m < member_count - 1; m++) {
-                                    if (val.type != VAL_MAP || !val.as.map) {
-                                        out_err->code = 13; out_err->message = "Member access on non-object value";
-                                        return null_val;
-                                    }
-                                    BValue next_val;
-                                    if (!bpp_map_get(val.as.map, member_chain[m], &next_val)) {
-                                        out_err->code = 35; out_err->message = "Member field not found";
-                                        if (val.type == VAL_MAP && val.as.map) bpp_map_release(vm_get_str(vm), val.as.map);
-                                        else if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
-                                        return null_val;
-                                    }
-                                    BValue copy = next_val;
-                                    if (copy.type == VAL_STRING && copy.as.string) str_add_ref(copy.as.string);
-                                    else if (copy.type == VAL_MAP && copy.as.map) bpp_map_add_ref(copy.as.map);
-                                    
-                                    if (val.type == VAL_MAP && val.as.map) bpp_map_release(vm_get_str(vm), val.as.map);
-                                    else if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
-                                    val = copy;
-                                }
-                                
-                                /* Check if followed by '(' -> Method call on the resolved object 'val' */
-                                if (lex_peek(lex).type == TOK_LPAREN) {
-                                    lex_next(lex); /* Consume '(' */
-                                    if (val.type != VAL_MAP || !val.as.map) {
-                                        out_err->code = 13; out_err->message = "Method call on non-object value";
-                                        return null_val;
-                                    }
-                                    BValue type_val;
-                                    if (!bpp_map_get(val.as.map, "__type__", &type_val) || type_val.type != VAL_STRING) {
-                                        out_err->code = 13; out_err->message = "Object missing class type metadata";
-                                        return null_val;
-                                    }
-                                    char fully_qualified_method[512];
-                                    snprintf(fully_qualified_method, sizeof(fully_qualified_method), "%s.%s",
-                                             str_data(type_val.as.string), member_chain[member_count - 1]);
-                                    
-                                    BValue args[9];
-                                    int argc = 0;
-                                    args[argc++] = val;
-                                    bpp_map_add_ref(val.as.map);
-                                    
-                                    while (true) {
-                                        BppToken next_tok = lex_peek(lex);
-                                        if (next_tok.type == TOK_RPAREN) {
-                                            lex_next(lex);
-                                            break;
-                                        }
-                                        if (argc >= 9) {
-                                            out_err->code = 2; out_err->message = "Too many arguments in method call";
-                                            for (int i = 0; i < argc; i++) {
-                                                if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                                            }
-                                            return null_val;
-                                        }
-                                        args[argc++] = eval_expression(vm, lex, out_err);
-                                        if (out_err->code != 0) {
-                                            for (int i = 0; i < argc - 1; i++) {
-                                                if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                                            }
-                                            return null_val;
-                                        }
-                                        next_tok = lex_peek(lex);
-                                        if (next_tok.type == TOK_COMMA) {
-                                            lex_next(lex);
-                                        } else if (next_tok.type == TOK_RPAREN) {
-                                            lex_next(lex);
-                                            break;
-                                        } else {
-                                            out_err->code = 2; out_err->message = "Expected ',' or ')' in method call";
-                                            for (int i = 0; i < argc; i++) {
-                                                if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                                            }
-                                            return null_val;
-                                        }
-                                    }
-                                    
-                                    BValue ret_val = invoke_user_function(vm, fully_qualified_method, args, argc, out_err);
-                                    for (int i = 0; i < argc; i++) {
-                                        if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                        else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                                    }
-                                    if (out_err->code != 0) return null_val;
-                                    
-                                    val_stack[val_ptr++] = ret_val;
-                                    expect_operand = false;
-                                    tok = lex_peek(lex);
-                                    continue;
-                                }
-                                
-                                /* Standard lookup for the last field */
-                                {
-                                    int m = member_count - 1;
-                                    if (val.type != VAL_MAP || !val.as.map) {
-                                        out_err->code = 13; out_err->message = "Member access on non-object value";
-                                        return null_val;
-                                    }
-                                    BValue next_val;
-                                    if (!bpp_map_get(val.as.map, member_chain[m], &next_val)) {
-                                        out_err->code = 35; out_err->message = "Member field not found";
-                                        if (val.type == VAL_MAP && val.as.map) bpp_map_release(vm_get_str(vm), val.as.map);
-                                        else if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
-                                        return null_val;
-                                    }
-                                    BValue copy = next_val;
-                                    if (copy.type == VAL_STRING && copy.as.string) str_add_ref(copy.as.string);
-                                    else if (copy.type == VAL_MAP && copy.as.map) bpp_map_add_ref(copy.as.map);
-                                    
-                                    if (val.type == VAL_MAP && val.as.map) bpp_map_release(vm_get_str(vm), val.as.map);
-                                    else if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
-                                    val = copy;
-                                }
-                                
-                                val_stack[val_ptr++] = val;
-                                expect_operand = false;
-                                tok = lex_peek(lex);
-                                continue;
-                            }
-                        }
-                        
-                        var_val = var_lookup(var, name_buf, true);
-                        if (!var_val) {
-                            out_err->code = 2;
-                            out_err->message = "Variable not declared (OPTION EXPLICIT)";
-                            return null_val;
-                        }
-                    }
-
-                    BValue val = *var_val;
-                    if (val.type == VAL_STRING && val.as.string) {
-                        str_add_ref(val.as.string);
-                    } else if (val.type == VAL_MAP && val.as.map) {
-                        bpp_map_add_ref(val.as.map);
-                    } else if (val.type == VAL_FIELD_STRING) {
-                        /* Read from random access file buffer */
-                        int ch = val.as.field_str.channel;
-                        unsigned char *rec_buf = file_get_record_buffer(vm_get_file(vm), ch);
-                        if (rec_buf) {
-                            char *buf_slice = (char *)calloc(1, val.as.field_str.length + 1);
-                            if (!buf_slice) {
-                                out_err->code = 7; out_err->message = "Out of memory";
-                                return null_val;
-                            }
-                            memcpy(buf_slice, rec_buf + val.as.field_str.offset, val.as.field_str.length);
-                            buf_slice[val.as.field_str.length] = '\0';
-                            val.type = VAL_STRING;
-                            val.as.string = str_create(vm_get_str(vm), buf_slice, val.as.field_str.length);
-                            free(buf_slice);
-                        } else {
-                            val.type = VAL_STRING;
-                            val.as.string = str_create(vm_get_str(vm), "", 0);
-                        }
-                    }
-                    val = resolve_member_access(vm, lex, val, out_err);
-                    if (out_err->code != 0) return null_val;
-
-                    val_stack[val_ptr++] = val;
-                    expect_operand = false;
-                }
-            }
-        } else if (tok.type == TOK_LPAREN) {
-            if (!expect_operand) {
-                /* JOSS style discrete range or separate block: stop parsing */
-                break;
-            }
-            op_stack[op_ptr++] = TOK_LPAREN;
-            open_parens++;
-        } else if (tok.type == TOK_RPAREN) {
-            if (expect_operand) {
-                out_err->code = 2; /* Syntax error */
-                out_err->message = "Expected operand before ')'";
-                return null_val;
-            }
-            bool found_paren = false;
-            while (op_ptr > 0) {
-                BppTokenType top = op_stack[--op_ptr];
-                if (top == TOK_LPAREN) {
-                    found_paren = true;
-                    break;
-                }
-                if (!execute_op(vm, top, val_stack, &val_ptr, out_err)) {
-                    return null_val;
-                }
-            }
-            if (!found_paren) {
-                out_err->code = 2; /* Syntax error */
-                out_err->message = "Mismatched parentheses";
-                return null_val;
-            }
-            open_parens--;
-        } else if (is_operator(tok.type)) {
-            BppTokenType op = tok.type;
-            if (expect_operand) {
-                /* Translate to unary */
-                if (op == TOK_MINUS) op = TOK_UNARY_MINUS;
-                else if (op == TOK_PLUS) op = TOK_UNARY_PLUS;
-                else if (op == TOK_NOT) {
-                    /* TOK_NOT is unary, keep it */
-                }
-                else {
-                    out_err->code = 2; /* Syntax error */
-                    out_err->message = "Expected operand, got operator";
-                    return null_val;
-                }
-            } else {
-                /* Binary operator, but NOT cannot be binary */
-                if (op == TOK_NOT) {
-                    out_err->code = 2; /* Syntax error */
-                    out_err->message = "Unexpected NOT operator";
-                    return null_val;
-                }
-            }
-
-            while (op_ptr > 0) {
-                BppTokenType top = op_stack[op_ptr - 1];
-                if (top == TOK_LPAREN) break;
-                if (has_precedence(vm, top, op)) {
-                    op_ptr--;
-                    if (!execute_op(vm, top, val_stack, &val_ptr, out_err)) {
-                        return null_val;
-                    }
-                } else {
-                    break;
-                }
-            }
-            op_stack[op_ptr++] = op;
-            expect_operand = true;
-        } else {
-            /* Stop parsing expression */
-            break;
-        }
-
-        tok = lex_peek(lex);
-    }
-
-    /* Pop all remaining operators */
-    while (op_ptr > 0) {
-        BppTokenType top = op_stack[--op_ptr];
-        if (top == TOK_LPAREN) {
-            out_err->code = 2; /* Syntax error */
-            out_err->message = "Mismatched parentheses";
-            return null_val;
-        }
-        if (!execute_op(vm, top, val_stack, &val_ptr, out_err)) {
-            return null_val;
-        }
-    }
-
-    if (val_ptr != 1) {
-        out_err->code = 2; /* Syntax error */
-        out_err->message = "Invalid expression structure";
-        vm_dec_eval_depth(vm);
-        return null_val;
-    }
-
-    vm_dec_eval_depth(vm);
-    return val_stack[0];
-}
-
-#include <math.h>
-
-static void format_double_clean(char *buf, size_t buf_size, double val, bool leading_space, bool trailing_space) {
-    num_format_display(buf, buf_size, val, leading_space, trailing_space);
-}
-
-#include <ctype.h>
-#include <stdio.h>
-
-static bool is_builtin_function(const char *name) {
-    char uname[64];
-    size_t i = 0;
-    while (name[i] && i < 63) {
-        uname[i] = (char)toupper((unsigned char)name[i]);
-        i++;
-    }
-    uname[i] = '\0';
-
-    if (i > 0 && uname[i - 1] != '$' && i < 62) {
-        char test_name[64];
-        strcpy(test_name, uname);
-        strcat(test_name, "$");
-        if (strcmp(test_name, "CHR$") == 0 ||
-            strcmp(test_name, "STR$") == 0 ||
-            strcmp(test_name, "LEFT$") == 0 ||
-            strcmp(test_name, "RIGHT$") == 0 ||
-            strcmp(test_name, "MID$") == 0 ||
-            strcmp(test_name, "UCASE$") == 0 ||
-            strcmp(test_name, "LCASE$") == 0 ||
-            strcmp(test_name, "LTRIM$") == 0 ||
-            strcmp(test_name, "RTRIM$") == 0 ||
-            strcmp(test_name, "TRIM$") == 0 ||
-            strcmp(test_name, "SPACE$") == 0 ||
-            strcmp(test_name, "STRING$") == 0 ||
-            strcmp(test_name, "REMOVE$") == 0 ||
-            strcmp(test_name, "REPLACE$") == 0 ||
-            strcmp(test_name, "HEX$") == 0 ||
-            strcmp(test_name, "OCT$") == 0 ||
-            strcmp(test_name, "BIN$") == 0 ||
-            strcmp(test_name, "EDIT$") == 0 ||
-            strcmp(test_name, "NUM$") == 0 ||
-            strcmp(test_name, "TCASE$") == 0 ||
-            strcmp(test_name, "ICASE$") == 0 ||
-            strcmp(test_name, "REVERSE$") == 0 ||
-            strcmp(test_name, "BASEDIR$") == 0 ||
-            strcmp(test_name, "BASENAME$") == 0 ||
-            strcmp(test_name, "BASEPATH$") == 0 ||
-            strcmp(test_name, "HOSTNAME$") == 0 ||
-            strcmp(test_name, "USERNAME$") == 0 ||
-            strcmp(test_name, "PATH$") == 0 ||
-            strcmp(test_name, "FILEMOD$") == 0 ||
-            strcmp(test_name, "ERR$") == 0) {
-            strcpy(uname, test_name);
-            i = strlen(uname);
-        }
-    }
-
-    if (strcmp(uname, "INKEY$") == 0 ||
-        strcmp(uname, "PEN") == 0 ||
-        strcmp(uname, "TIME$") == 0 ||
-        strcmp(uname, "DATE$") == 0 ||
-        strcmp(uname, "TIMER") == 0 ||
-        strcmp(uname, "ALARM") == 0 ||
-        strcmp(uname, "ALARM$") == 0 ||
-        strcmp(uname, "EXISTS") == 0 ||
-        strcmp(uname, "RANDOMIZE") == 0 ||
-        strcmp(uname, "GUID$") == 0 ||
-        strcmp(uname, "TIM") == 0 ||
-        strcmp(uname, "TRUE") == 0 ||
-        strcmp(uname, "FALSE") == 0 ||
-        strcmp(uname, "TI") == 0 ||
-        strcmp(uname, "TIME") == 0 ||
-        strcmp(uname, "DATE") == 0 ||
-        strcmp(uname, "TI$") == 0 ||
-        strcmp(uname, "CLOCK$") == 0 ||
-        strcmp(uname, "TZ") == 0 ||
-        strcmp(uname, "TZ$") == 0 ||
-        strcmp(uname, "TIMEZONE$") == 0 ||
-        strcmp(uname, "UTC") == 0 ||
-        strcmp(uname, "CSRLIN") == 0 ||
-        strcmp(uname, "POS") == 0 ||
-        strcmp(uname, "LPOS") == 0 ||
-        strcmp(uname, "DAY") == 0 ||
-        strcmp(uname, "MONTH") == 0 ||
-        strcmp(uname, "YEAR") == 0 ||
-        strcmp(uname, "DAY$") == 0 ||
-        strcmp(uname, "MONTH$") == 0 ||
-        strcmp(uname, "HOURS") == 0 ||
-        strcmp(uname, "MINUTES") == 0 ||
-        strcmp(uname, "SECONDS") == 0 ||
-        strcmp(uname, "JIFFIES") == 0 ||
-        strcmp(uname, "TICKS") == 0 ||
-        strcmp(uname, "HOSTNAME$") == 0 ||
-        strcmp(uname, "USERNAME$") == 0 ||
-        strcmp(uname, "BASEDIR$") == 0 ||
-        strcmp(uname, "BASEPATH$") == 0 ||
-        strcmp(uname, "BASENAME$") == 0 ||
-        strcmp(uname, "PATH$") == 0 ||
-        strcmp(uname, "VER") == 0 ||
-        strcmp(uname, "MEM") == 0 ||
-        strcmp(uname, "SIZE") == 0 ||
-        strcmp(uname, "PLAY") == 0 ||
-        strcmp(uname, "TASK") == 0 ||
-        strcmp(uname, "SQR") == 0 ||
-        strcmp(uname, "ABS") == 0 ||
-        strcmp(uname, "SIN") == 0 ||
-        strcmp(uname, "COS") == 0 ||
-        strcmp(uname, "TAN") == 0 ||
-        strcmp(uname, "ATN") == 0 ||
-        strcmp(uname, "LOG") == 0 ||
-        strcmp(uname, "EXP") == 0 ||
-        strcmp(uname, "INT") == 0 ||
-        strcmp(uname, "FIX") == 0 ||
-        strcmp(uname, "DET") == 0 ||
-        strcmp(uname, "DOT") == 0 ||
-        strcmp(uname, "CROSS") == 0 ||
-        strcmp(uname, "RND") == 0 ||
-        strcmp(uname, "LEN") == 0 ||
-        strcmp(uname, "ASC") == 0 ||
-        strcmp(uname, "CHR$") == 0 ||
-        strcmp(uname, "CINT") == 0 ||
-        strcmp(uname, "CSNG") == 0 ||
-        strcmp(uname, "CDBL") == 0 ||
-#ifndef BPP_LITE_BUILD
-        strcmp(uname, "VARPTR") == 0 ||
-        strcmp(uname, "VARPTR$") == 0 ||
-        strcmp(uname, "VARSEG") == 0 ||
-        strcmp(uname, "SADD") == 0 ||
-#endif
-        strcmp(uname, "VAL") == 0 ||
-        strcmp(uname, "STR$") == 0 ||
-        strcmp(uname, "LEFT$") == 0 ||
-        strcmp(uname, "RIGHT$") == 0 ||
-        strcmp(uname, "MID$") == 0 ||
-        strcmp(uname, "INSTR") == 0 ||
-        strcmp(uname, "UCASE$") == 0 ||
-        strcmp(uname, "LCASE$") == 0 ||
-        strcmp(uname, "LTRIM$") == 0 ||
-        strcmp(uname, "RTRIM$") == 0 ||
-        strcmp(uname, "TRIM$") == 0 ||
-        strcmp(uname, "SPACE$") == 0 ||
-        strcmp(uname, "STRING$") == 0 ||
-        strcmp(uname, "REPLACE$") == 0 ||
-        strcmp(uname, "HEX$") == 0 ||
-        strcmp(uname, "OCT$") == 0 ||
-        strcmp(uname, "BIN$") == 0 ||
-        strcmp(uname, "EDIT$") == 0 ||
-        strcmp(uname, "NUM$") == 0 ||
-        strcmp(uname, "TCASE$") == 0 ||
-        strcmp(uname, "ICASE$") == 0 ||
-        strcmp(uname, "REVERSE$") == 0 ||
-        strcmp(uname, "REMOVE$") == 0 ||
-        strcmp(uname, "REMOVE") == 0 ||
-        strcmp(uname, "HASH") == 0 ||
-        strcmp(uname, "UBOUND") == 0 ||
-        strcmp(uname, "LBOUND") == 0 ||
-        strcmp(uname, "EOF") == 0 ||
-        strcmp(uname, "LOF") == 0 ||
-        strcmp(uname, "LOC") == 0 ||
-        strcmp(uname, "SEEK") == 0 ||
-        strcmp(uname, "HELP") == 0 ||
-        strcmp(uname, "HELP$") == 0 ||
-        strcmp(uname, "FREEFILE") == 0 ||
-        strcmp(uname, "INPUT$") == 0 ||
-        strcmp(uname, "SCREEN") == 0 ||
-        strcmp(uname, "IOCTL$") == 0 ||
-        strcmp(uname, "TXNSTATUS") == 0 ||
-        strcmp(uname, "SIOREAD$") == 0 ||
-        strcmp(uname, "SIOREADLN$") == 0 ||
-        strcmp(uname, "SIOWRITE") == 0 ||
-        strcmp(uname, "SIOSEEK") == 0 ||
-        strcmp(uname, "SIOFLUSH") == 0 ||
-        strcmp(uname, "SIOSTATUS") == 0 ||
-        strcmp(uname, "SIOAVAIL") == 0 ||
-        strcmp(uname, "BIOREAD$") == 0 ||
-        strcmp(uname, "BIOWRITE") == 0 ||
-        strcmp(uname, "BIOCOPY") == 0 ||
-        strcmp(uname, "BIOFILL") == 0 ||
-        strcmp(uname, "BIOSTATUS") == 0 ||
-        strcmp(uname, "BIOSIZE") == 0 ||
-        strcmp(uname, "BIOCHECKSUM") == 0 ||
-        strcmp(uname, "BIOCOMPARE") == 0 ||
-        strcmp(uname, "FILEATTR") == 0 ||
-        strcmp(uname, "MKI$") == 0 ||
-        strcmp(uname, "MKS$") == 0 ||
-        strcmp(uname, "MKD$") == 0 ||
-        strcmp(uname, "CVI") == 0 ||
-        strcmp(uname, "CVS") == 0 ||
-        strcmp(uname, "CVD") == 0 ||
-        strcmp(uname, "DEVICECOUNT") == 0 ||
-        strcmp(uname, "DEVICE$") == 0 ||
-        strcmp(uname, "DEVICECLASS$") == 0 ||
-        strcmp(uname, "DEVICEINFO$") == 0 ||
-        strcmp(uname, "POLL") == 0 ||
-#if BPP_SUPPORT_NET
-        strcmp(uname, "NSTATUS") == 0 ||
-        strcmp(uname, "NCONNECTED") == 0 ||
-        strcmp(uname, "NHTTPSTATUS") == 0 ||
-        strcmp(uname, "HTTP_GET$") == 0 ||
-#endif
-#if BPP_SUPPORT_BIOS
-        strcmp(uname, "MEMMAP$") == 0 ||
-#endif
-        strcmp(uname, "PEEK") == 0 ||
-        strcmp(uname, "MAP") == 0 ||
-        strcmp(uname, "MAP_NEW") == 0 ||
-        strcmp(uname, "MAP_SET") == 0 ||
-        strcmp(uname, "MAP_GET") == 0 ||
-        strcmp(uname, "MAP_GET$") == 0 ||
-        strcmp(uname, "MAP_REMOVE") == 0 ||
-        strcmp(uname, "MAP_COUNT") == 0 ||
-        strcmp(uname, "MAP_KEY$") == 0 ||
-        strcmp(uname, "MAP_HAS") == 0 ||
-        strcmp(uname, "JSON_PARSE") == 0 ||
-        strcmp(uname, "JSON_STRINGIFY$") == 0 ||
-        strcmp(uname, "XML_PARSE") == 0 ||
-        strcmp(uname, "XML_STRINGIFY$") == 0 ||
-        strcmp(uname, "USR") == 0 || strcmp(uname, "USR0") == 0 ||
-        strcmp(uname, "USR1") == 0 || strcmp(uname, "USR2") == 0 ||
-        strcmp(uname, "USR3") == 0 || strcmp(uname, "USR4") == 0 ||
-        strcmp(uname, "USR5") == 0 || strcmp(uname, "USR6") == 0 ||
-        strcmp(uname, "USR7") == 0 || strcmp(uname, "USR8") == 0 ||
-        strcmp(uname, "USR9") == 0 ||
-        strcmp(uname, "ERDEV") == 0 || strcmp(uname, "ERDEV$") == 0 ||
-        strcmp(uname, "EXTERR") == 0 ||
-        strcmp(uname, "HASH$") == 0 || strcmp(uname, "SALT$") == 0 ||
-        strcmp(uname, "AUDITCRACK") == 0 || strcmp(uname, "AUDITCRACK$") == 0 ||
-        strcmp(uname, "SANDBOXAUDIT") == 0 || strcmp(uname, "VMCHECK") == 0 ||
-        strcmp(uname, "NETHOST$") == 0 || strcmp(uname, "NETIP$") == 0 ||
-        strcmp(uname, "YAML_PARSE") == 0 ||
-        strcmp(uname, "YAML_STRINGIFY$") == 0 ||
-        strcmp(uname, "INI_PARSE") == 0 ||
-        strcmp(uname, "INI_STRINGIFY$") == 0 ||
-        strcmp(uname, "DIALECT_LOAD") == 0 ||
-        strcmp(uname, "DIALECT_REGISTER") == 0 ||
-        strcmp(uname, "DIALECT_VALIDATE") == 0 ||
-        strcmp(uname, "DIALECT_DOC$") == 0 ||
-        strcmp(uname, "ENVIRON$") == 0 ||
-        strcmp(uname, "DIR$") == 0 ||
-        strcmp(uname, "GETATTR") == 0 ||
-        strcmp(uname, "_SHL") == 0 || strcmp(uname, "BITS.SHL") == 0 ||
-        strcmp(uname, "_SHR") == 0 || strcmp(uname, "BITS.SHR") == 0 ||
-        strcmp(uname, "_READBIT") == 0 || strcmp(uname, "BITS.READ") == 0 ||
-        strcmp(uname, "_SETBIT") == 0 || strcmp(uname, "BITS.SET") == 0 ||
-        strcmp(uname, "_RESETBIT") == 0 || strcmp(uname, "BITS.RESET") == 0 ||
-        strcmp(uname, "_TOGGLEBIT") == 0 || strcmp(uname, "BITS.TOGGLE") == 0 ||
-        strcmp(uname, "_BITCOUNT") == 0 || strcmp(uname, "BITS.COUNT") == 0 ||
-        strcmp(uname, "_ACOS") == 0 || strcmp(uname, "MATH.ACOS") == 0 ||
-        strcmp(uname, "_ASIN") == 0 || strcmp(uname, "MATH.ASIN") == 0 ||
-        strcmp(uname, "_ATAN2") == 0 || strcmp(uname, "MATH.ATAN2") == 0 ||
-        strcmp(uname, "_ACOSH") == 0 || strcmp(uname, "MATH.ACOSH") == 0 ||
-        strcmp(uname, "_ASINH") == 0 || strcmp(uname, "MATH.ASINH") == 0 ||
-        strcmp(uname, "_ATANH") == 0 || strcmp(uname, "MATH.ATANH") == 0 ||
-        strcmp(uname, "_CEIL") == 0 || strcmp(uname, "MATH.CEIL") == 0 ||
-        strcmp(uname, "_HYPOT") == 0 || strcmp(uname, "MATH.HYPOT") == 0 ||
-        strcmp(uname, "_PI") == 0 || strcmp(uname, "MATH.PI") == 0 ||
-        strcmp(uname, "_D2R") == 0 || strcmp(uname, "MATH.D2R") == 0 ||
-        strcmp(uname, "_R2D") == 0 || strcmp(uname, "MATH.R2D") == 0 ||
-        strcmp(uname, "_D2G") == 0 || strcmp(uname, "MATH.D2G") == 0 ||
-        strcmp(uname, "_G2D") == 0 || strcmp(uname, "MATH.G2D") == 0 ||
-        strcmp(uname, "INP") == 0) {
-        return true;
-    }
-
-    if (funcreg_find_by_name(uname) != NULL) {
-        return true;
-    }
-
-    return false;
-}
-
-static char *eval_read_file_to_string(const char *path) {
-    FILE *fp = fopen(path, "r");
-    if (!fp) return NULL;
-    fseek(fp, 0, SEEK_END);
-    long size = ftell(fp);
-    if (size < 0) {
-        fclose(fp);
-        return NULL;
-    }
-    fseek(fp, 0, SEEK_SET);
-    char *buf = calloc(size + 1, 1);
-    if (!buf) {
-        fclose(fp);
-        return NULL;
-    }
-    size_t read_bytes = fread(buf, 1, size, fp);
-    buf[read_bytes] = '\0';
-    fclose(fp);
-    return buf;
-}
-
-static BValue eval_builtin_function(VMContext *vm, const char *name, LexerContext *lex, bool has_parens, BppError *err) {
-    BValue res;
-    res.type = VAL_NONE;
-    res.as.number = 0.0;
-
-    char uname[64];
-    size_t i = 0;
-    while (name[i] && i < 63) {
-        uname[i] = (char)toupper((unsigned char)name[i]);
-        i++;
-    }
-    uname[i] = '\0';
-
-    if (i > 0 && uname[i - 1] != '$' && i < 62) {
-        char test_name[64];
-        strcpy(test_name, uname);
-        strcat(test_name, "$");
-        if (strcmp(test_name, "CHR$") == 0 ||
-            strcmp(test_name, "STR$") == 0 ||
-            strcmp(test_name, "LEFT$") == 0 ||
-            strcmp(test_name, "RIGHT$") == 0 ||
-            strcmp(test_name, "MID$") == 0 ||
-            strcmp(test_name, "UCASE$") == 0 ||
-            strcmp(test_name, "LCASE$") == 0 ||
-            strcmp(test_name, "LTRIM$") == 0 ||
-            strcmp(test_name, "RTRIM$") == 0 ||
-            strcmp(test_name, "TRIM$") == 0 ||
-            strcmp(test_name, "SPACE$") == 0 ||
-            strcmp(test_name, "STRING$") == 0 ||
-            strcmp(test_name, "REMOVE$") == 0 ||
-            strcmp(test_name, "REPLACE$") == 0 ||
-            strcmp(test_name, "HEX$") == 0 ||
-            strcmp(test_name, "OCT$") == 0 ||
-            strcmp(test_name, "BIN$") == 0 ||
-            strcmp(test_name, "EDIT$") == 0 ||
-            strcmp(test_name, "NUM$") == 0 ||
-            strcmp(test_name, "TCASE$") == 0 ||
-            strcmp(test_name, "ICASE$") == 0 ||
-            strcmp(test_name, "REVERSE$") == 0 ||
-            strcmp(test_name, "BASEDIR$") == 0 ||
-            strcmp(test_name, "BASENAME$") == 0 ||
-            strcmp(test_name, "BASEPATH$") == 0 ||
-            strcmp(test_name, "HOSTNAME$") == 0 ||
-            strcmp(test_name, "USERNAME$") == 0 ||
-            strcmp(test_name, "PATH$") == 0 ||
-            strcmp(test_name, "FILEMOD$") == 0 ||
-            strcmp(test_name, "ERR$") == 0) {
-            strcpy(uname, test_name);
-            i = strlen(uname);
-        }
-    }
-
-    if (strcmp(uname, "UBOUND") == 0 || strcmp(uname, "LBOUND") == 0) {
-        bool is_u = (strcmp(uname, "UBOUND") == 0);
-        BppToken name_tok = lex_next(lex);
-        if (name_tok.type != TOK_IDENT) {
-            err->code = 2;
-            err->message = "Expected array name in UBOUND/LBOUND";
-            return res;
-        }
-        char arr_name[256];
-        size_t clen = (name_tok.length < sizeof(arr_name) - 1) ? name_tok.length : sizeof(arr_name) - 1;
-        memcpy(arr_name, name_tok.start, clen);
-        arr_name[clen] = '\0';
-
-        int dim = 1;
-        BppToken next_tok = lex_peek(lex);
-        if (next_tok.type == TOK_COMMA) {
-            lex_next(lex); /* Consume ',' */
-            BValue dim_val = eval_expression(vm, lex, err);
-            if (err->code != 0) return res;
-            if (dim_val.type == VAL_STRING) {
-                err->code = 13;
-                err->message = "Dimension must be numeric";
-                return res;
-            }
-            dim = (int)dim_val.as.number;
-        }
-
-        next_tok = lex_next(lex);
-        if (next_tok.type != TOK_RPAREN) {
-            err->code = 2;
-            err->message = "Expected ')' in UBOUND/LBOUND";
-            return res;
-        }
-
-        if (is_u) {
-            bool found = false;
-            int u = arr_ubound(vm_get_arr(vm), arr_name, dim, &found);
-            if (!found) {
-                err->code = 9;
-                err->message = "Array not dimensioned";
-                return res;
-            }
-            res.type = VAL_NUMBER;
-            res.as.number = (double)u;
-        } else {
-            if (!arr_exists(vm_get_arr(vm), arr_name)) {
-                err->code = 9;
-                err->message = "Array not dimensioned";
-                return res;
-            }
-            res.type = VAL_NUMBER;
-            res.as.number = (double)arr_get_option_base(vm_get_arr(vm));
-        }
-        return res;
-    }
-
-    if (strcmp(uname, "DET") == 0) {
-        if (!has_parens) {
-            res.type = VAL_NUMBER;
-            res.as.number = arr_get_last_det(vm_get_arr(vm));
-            return res;
-        }
-        BppToken name_tok = lex_next(lex);
-        if (name_tok.type != TOK_IDENT) {
-            err->code = 2; err->message = "Expected array name in DET()"; return res;
-        }
-        char arr_name[256];
-        size_t clen = (name_tok.length < sizeof(arr_name) - 1) ? name_tok.length : sizeof(arr_name) - 1;
-        memcpy(arr_name, name_tok.start, clen);
-        arr_name[clen] = '\0';
-        if (lex_next(lex).type != TOK_RPAREN) {
-            err->code = 2; err->message = "Expected ')' in DET()"; return res;
-        }
-        
-        bool found = false;
-        int d1 = arr_ubound(vm_get_arr(vm), arr_name, 1, &found);
-        int d2 = arr_ubound(vm_get_arr(vm), arr_name, 2, &found);
-        if (!found || d1 != d2 || d1 < 1) {
-            err->code = 9; err->message = "DET expects a square matrix"; return res;
-        }
-        int total_size = 0;
-        BValue *elems = arr_get_flat_elements(vm_get_arr(vm), arr_name, &total_size);
-        if (!elems) { err->code = 9; err->message = "Array not found"; return res; }
-        
-        /* Basic 2x2 or 3x3 determinant calculation for now */
-        int base = arr_get_option_base(vm_get_arr(vm));
-        int n = d1 - base + 1;
-        double det = 0.0;
-        if (n == 2) {
-            double a = elems[(1-base)*n + (1-base)].as.number;
-            double b = elems[(1-base)*n + (2-base)].as.number;
-            double c = elems[(2-base)*n + (1-base)].as.number;
-            double d = elems[(2-base)*n + (2-base)].as.number;
-            det = a*d - b*c;
-        } else if (n == 3) {
-            double a = elems[(1-base)*n + (1-base)].as.number;
-            double b = elems[(1-base)*n + (2-base)].as.number;
-            double c = elems[(1-base)*n + (3-base)].as.number;
-            double d = elems[(2-base)*n + (1-base)].as.number;
-            double e = elems[(2-base)*n + (2-base)].as.number;
-            double f = elems[(2-base)*n + (3-base)].as.number;
-            double g = elems[(3-base)*n + (1-base)].as.number;
-            double h = elems[(3-base)*n + (2-base)].as.number;
-            double i_val = elems[(3-base)*n + (3-base)].as.number;
-            det = a*(e*i_val - f*h) - b*(d*i_val - f*g) + c*(d*h - e*g);
-        } else {
-            err->code = 5; err->message = "DET only supports 2x2 and 3x3 matrices in this version"; return res;
-        }
-        res.type = VAL_NUMBER;
-        res.as.number = det;
-        return res;
-    }
-
-    if (strcmp(uname, "DOT") == 0) {
-        if (lex_next(lex).type != TOK_LPAREN) { err->code = 2; err->message = "Expected '(' in DOT()"; return res; }
-        
-        BppToken name_tok1 = lex_next(lex);
-        if (name_tok1.type != TOK_IDENT) { err->code = 2; err->message = "Expected first array name in DOT()"; return res; }
-        char arr1[256];
-        size_t clen1 = (name_tok1.length < sizeof(arr1) - 1) ? name_tok1.length : sizeof(arr1) - 1;
-        memcpy(arr1, name_tok1.start, clen1);
-        arr1[clen1] = '\0';
-        
-        if (lex_next(lex).type != TOK_COMMA) { err->code = 2; err->message = "Expected ',' in DOT()"; return res; }
-        
-        BppToken name_tok2 = lex_next(lex);
-        if (name_tok2.type != TOK_IDENT) { err->code = 2; err->message = "Expected second array name in DOT()"; return res; }
-        char arr2[256];
-        size_t clen2 = (name_tok2.length < sizeof(arr2) - 1) ? name_tok2.length : sizeof(arr2) - 1;
-        memcpy(arr2, name_tok2.start, clen2);
-        arr2[clen2] = '\0';
-        
-        if (lex_next(lex).type != TOK_RPAREN) { err->code = 2; err->message = "Expected ')' in DOT()"; return res; }
-        
-        int b1[4], b2[4];
-        int dim1 = arr_get_dimensions(vm_get_arr(vm), arr1, b1, 4);
-        int dim2 = arr_get_dimensions(vm_get_arr(vm), arr2, b2, 4);
-        
-        if (dim1 < 1 || dim2 < 1 || b1[0] != b2[0]) {
-            err->code = 9; err->message = "DOT expects two 1D arrays of same size"; return res;
-        }
-        
-        int sz1=0, sz2=0;
-        BValue *e1 = arr_get_flat_elements(vm_get_arr(vm), arr1, &sz1);
-        BValue *e2 = arr_get_flat_elements(vm_get_arr(vm), arr2, &sz2);
-        if (!e1 || !e2 || sz1 != sz2) { err->code = 9; err->message = "Array mismatch in DOT"; return res; }
-        
-        double dot = 0.0;
-        for (int idx=0; idx<sz1; idx++) {
-            dot += e1[idx].as.number * e2[idx].as.number;
-        }
-        res.type = VAL_NUMBER;
-        res.as.number = dot;
-        return res;
-    }
 
 #ifndef BPP_LITE_BUILD
-    if (strcmp(uname, "VARPTR") == 0 || strcmp(uname, "VARPTR$") == 0 || strcmp(uname, "VARSEG") == 0 || strcmp(uname, "SADD") == 0) {
-        bool is_seg = (strcmp(uname, "VARSEG") == 0);
-        bool is_sadd = (strcmp(uname, "SADD") == 0);
-        bool is_str = (strcmp(uname, "VARPTR$") == 0);
-        BppToken name_tok = lex_next(lex);
-        if (name_tok.type != TOK_IDENT) {
-            err->code = 2;
-            err->message = "Expected variable name in VARPTR/VARSEG/SADD";
-            return res;
-        }
-        char var_name[64];
-        size_t clen = (name_tok.length < 63) ? name_tok.length : 63;
-        memcpy(var_name, name_tok.start, clen);
-        var_name[clen] = '\0';
-        
-        VariableContext *var = vm_get_var(vm);
-        BValue *target = var_lookup(var, var_name, true);
-        
-        if (lex_peek(lex).type == TOK_LPAREN) {
-            lex_next(lex); /* Consume '(' */
-            while (lex_peek(lex).type != TOK_RPAREN && lex_peek(lex).type != TOK_EOF) {
-                lex_next(lex);
-            }
-            if (lex_peek(lex).type == TOK_RPAREN) lex_next(lex);
-        }
-        
-        BppToken next_tok = lex_next(lex);
-        if (next_tok.type != TOK_RPAREN) {
-            err->code = 2;
-            err->message = "Expected ')'";
-            return res;
-        }
-        
-        uint32_t handle = vmem_register_handle(vm_get_vmem(vm), target, is_sadd);
-
-        if (is_str) {
-            char desc[4];
-            int type_code = 3; /* default string */
-            if (target) {
-                if (target->type == VAL_NUMBER) {
-                    type_code = 8; /* double */
-                } else if (target->type == VAL_STRING) {
-                    type_code = 3; /* string */
-                }
-            }
-            desc[0] = (char)type_code;
-            desc[1] = (char)(handle & 0xFF);
-            desc[2] = (char)((handle >> 8) & 0xFF);
-            desc[3] = '\0';
-            res.type = VAL_STRING;
-            res.as.string = str_create(vm_get_str(vm), desc, 3);
-        } else {
-            res.type = VAL_NUMBER;
-            if (is_seg) {
-                res.as.number = (double)((handle >> 16) & 0xFFFF);
-            } else {
-                res.as.number = (double)(handle & 0xFFFF);
-            }
-        }
-        return res;
-    }
+#include "memory/segmented_mem.h"
 #endif
 
-    if (!has_parens) {
-        return eval_builtin_function_impl(vm, uname, 0, NULL, err);
-    }
-
-    BValue args[10];
-    int arg_count = 0;
-    memset(args, 0, sizeof(args));
-
-    BppToken tok = lex_peek(lex);
-    if (tok.type != TOK_RPAREN) {
-        while (true) {
-            if (arg_count >= 10) {
-                err->code = 2;
-                err->message = "Too many arguments for function";
-                break;
-            }
-            args[arg_count] = eval_expression(vm, lex, err);
-            if (err->code != 0) break;
-            arg_count++;
-
-            tok = lex_peek(lex);
-            if (tok.type == TOK_COMMA) {
-                lex_next(lex); /* Consume ',' */
-            } else if (tok.type == TOK_RPAREN) {
-                break;
-            } else {
-                err->code = 2;
-                err->message = "Expected ',' or ')' in function call";
-                break;
-            }
-        }
-    }
-
-    if (err->code == 0) {
-        tok = lex_next(lex);
-        if (tok.type != TOK_RPAREN) {
-            err->code = 2;
-            err->message = "Expected ')' to close function call";
-        }
-    }
-
-    if (err->code == 0) {
-        res = eval_builtin_function_impl(vm, uname, arg_count, args, err);
-    }
-
-    /* Standard leak-free cleanup for all args if function execution failed or parsing failed mid-way */
-    if (err->code != 0) {
-        for (int j = 0; j < arg_count; j++) {
-            if (args[j].type == VAL_STRING && args[j].as.string) {
-                str_release(vm_get_str(vm), args[j].as.string);
-                args[j].as.string = NULL;
-            } else if (args[j].type == VAL_MAP && args[j].as.map) {
-                bpp_map_release(vm_get_str(vm), args[j].as.map);
-                args[j].as.map = NULL;
-            }
-        }
-    }
-
-    return res;
-}
-
-static uint16_t compute_crc16(const unsigned char *data, size_t len) {
+BppDirSearch *g_eval_dir_search = NULL;
+uint16_t eval_compute_crc16(const unsigned char *data, size_t len) {
     uint16_t crc = 0xFFFF;
     for (size_t i = 0; i < len; ++i) {
         crc ^= (uint16_t)(data[i] << 8);
@@ -2173,7 +51,7 @@ static uint16_t compute_crc16(const unsigned char *data, size_t len) {
     return crc;
 }
 
-static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
+BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_count, BValue *args, BppError *err) {
     BValue res;
     res.type = VAL_NONE;
     res.as.number = 0.0;
@@ -2193,48 +71,48 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             err->code = 13; err->message = "SHL expects two numeric arguments"; return res;
         }
         res.type = VAL_NUMBER;
-        res.as.number = (double)((uint64_t)args[0].as.number << (uint64_t)args[1].as.number);
+        res.as.number = (double)((uint64_t)(int64_t)args[0].as.number << (uint64_t)(int64_t)args[1].as.number);
     }
     else if (strcmp(uname, "_SHR") == 0 || strcmp(uname, "BITS.SHR") == 0) {
         if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
             err->code = 13; err->message = "SHR expects two numeric arguments"; return res;
         }
         res.type = VAL_NUMBER;
-        res.as.number = (double)((uint64_t)args[0].as.number >> (uint64_t)args[1].as.number);
+        res.as.number = (double)((uint64_t)(int64_t)args[0].as.number >> (uint64_t)(int64_t)args[1].as.number);
     }
     else if (strcmp(uname, "_READBIT") == 0 || strcmp(uname, "BITS.READ") == 0) {
         if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
             err->code = 13; err->message = "READBIT expects two numeric arguments"; return res;
         }
         res.type = VAL_NUMBER;
-        res.as.number = (double)(((uint64_t)args[0].as.number >> (uint64_t)args[1].as.number) & 1);
+        res.as.number = (double)(((uint64_t)(int64_t)args[0].as.number >> (uint64_t)(int64_t)args[1].as.number) & 1);
     }
     else if (strcmp(uname, "_SETBIT") == 0 || strcmp(uname, "BITS.SET") == 0) {
         if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
             err->code = 13; err->message = "SETBIT expects two numeric arguments"; return res;
         }
         res.type = VAL_NUMBER;
-        res.as.number = (double)((uint64_t)args[0].as.number | ((uint64_t)1 << (uint64_t)args[1].as.number));
+        res.as.number = (double)((uint64_t)(int64_t)args[0].as.number | ((uint64_t)1 << (uint64_t)(int64_t)args[1].as.number));
     }
     else if (strcmp(uname, "_RESETBIT") == 0 || strcmp(uname, "BITS.RESET") == 0) {
         if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
             err->code = 13; err->message = "RESETBIT expects two numeric arguments"; return res;
         }
         res.type = VAL_NUMBER;
-        res.as.number = (double)((uint64_t)args[0].as.number & ~((uint64_t)1 << (uint64_t)args[1].as.number));
+        res.as.number = (double)((uint64_t)(int64_t)args[0].as.number & ~((uint64_t)1 << (uint64_t)(int64_t)args[1].as.number));
     }
     else if (strcmp(uname, "_TOGGLEBIT") == 0 || strcmp(uname, "BITS.TOGGLE") == 0) {
         if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
             err->code = 13; err->message = "TOGGLEBIT expects two numeric arguments"; return res;
         }
         res.type = VAL_NUMBER;
-        res.as.number = (double)((uint64_t)args[0].as.number ^ ((uint64_t)1 << (uint64_t)args[1].as.number));
+        res.as.number = (double)((uint64_t)(int64_t)args[0].as.number ^ ((uint64_t)1 << (uint64_t)(int64_t)args[1].as.number));
     }
     else if (strcmp(uname, "_BITCOUNT") == 0 || strcmp(uname, "BITS.COUNT") == 0) {
         if (arg_count != 1 || args[0].type == VAL_STRING) {
             err->code = 13; err->message = "BITCOUNT expects one numeric argument"; return res;
         }
-        uint64_t temp = (uint64_t)args[0].as.number;
+        uint64_t temp = (uint64_t)(int64_t)args[0].as.number;
         int count = 0;
         while (temp) {
             if (temp & 1) count++;
@@ -2377,7 +255,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         time_t t = time(NULL);
         struct tm tm_buf;
         struct tm *lt = platform_localtime(&t, &tm_buf);
-        char buf[32] = "";
+        char buf[64] = "";
         if (lt) {
             int hour12 = lt->tm_hour % 12;
             if (hour12 == 0) hour12 = 12;
@@ -2768,13 +646,13 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         if (strcmp(uname, "BASEDIR$") == 0) {
             if (sep) {
                 if (sep == tmp + 2 && tmp[1] == ':') {
-                    strncpy(res_buf, tmp, 3);
+                    memcpy(res_buf, tmp, 3);
                     res_buf[3] = '\0';
                 } else if (sep == tmp) {
                     strcpy(res_buf, "/");
                 } else {
                     size_t parent_len = sep - tmp;
-                    strncpy(res_buf, tmp, parent_len);
+                    memcpy(res_buf, tmp, parent_len);
                     res_buf[parent_len] = '\0';
                 }
             } else {
@@ -2947,6 +825,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
                     len = (int)args[1].as.number;
                 }
                 char *buf = (char *)calloc(1, len + 1);
+                if (!buf) { err->code = 14; err->message = "Out of memory"; return res; }
                 const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
                 for (int i = 0; i < len; i++) {
                     buf[i] = charset[rand() % (sizeof(charset) - 1)];
@@ -2979,6 +858,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             } else {
                 size_t len = strlen(mode);
                 char *buf = (char *)calloc(1, len + 1);
+                if (!buf) { err->code = 14; err->message = "Out of memory"; return res; }
                 strcpy(buf, mode);
                 for (size_t i = len - 1; i > 0; i--) {
                     size_t j = rand() % (i + 1);
@@ -3389,7 +1269,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         if (arg_count != 1 || args[0].type == VAL_STRING) {
             err->code = 13; err->message = "HEX$ expects one numeric argument"; return res;
         }
-        unsigned long uv = (unsigned long)args[0].as.number;
+        unsigned long uv = (unsigned long)(long)args[0].as.number;
         char tmp[20];
         snprintf(tmp, sizeof(tmp), "%lX", uv);
         res.type = VAL_STRING;
@@ -3399,7 +1279,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         if (arg_count != 1 || args[0].type == VAL_STRING) {
             err->code = 13; err->message = "OCT$ expects one numeric argument"; return res;
         }
-        unsigned long uv = (unsigned long)args[0].as.number;
+        unsigned long uv = (unsigned long)(long)args[0].as.number;
         char tmp[24];
         snprintf(tmp, sizeof(tmp), "%lo", uv);
         res.type = VAL_STRING;
@@ -3409,7 +1289,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         if (arg_count != 1 || args[0].type == VAL_STRING) {
             err->code = 13; err->message = "BIN$ expects one numeric argument"; return res;
         }
-        unsigned long uv = (unsigned long)args[0].as.number;
+        unsigned long uv = (unsigned long)(long)args[0].as.number;
         char raw[68];
         int raw_bits = 0;
         if (uv == 0) {
@@ -3513,7 +1393,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         }
         double val = args[0].as.number;
         char tmp[64];
-        format_double_clean(tmp, sizeof(tmp), val, false, false);
+        eval_format_double_clean(tmp, sizeof(tmp), val, false, false);
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), tmp, strlen(tmp));
     }
@@ -3590,16 +1470,16 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             if (args[0].type != VAL_STRING) {
                 err->code = 13; err->message = "Type mismatch (expected string for DIR$)"; return res;
             }
-            if (g_dir_search) platform_find_close(g_dir_search);
-            g_dir_search = platform_find_first_file(str_data(args[0].as.string), out_name, sizeof(out_name));
-            if (g_dir_search) found = 1;
+            if (g_eval_dir_search) platform_find_close(g_eval_dir_search);
+            g_eval_dir_search = platform_find_first_file(str_data(args[0].as.string), out_name, sizeof(out_name));
+            if (g_eval_dir_search) found = 1;
             str_release(vm_get_str(vm), args[0].as.string);
         } else {
-            if (g_dir_search) {
-                found = platform_find_next_file(g_dir_search, out_name, sizeof(out_name));
+            if (g_eval_dir_search) {
+                found = platform_find_next_file(g_eval_dir_search, out_name, sizeof(out_name));
                 if (!found) {
-                    platform_find_close(g_dir_search);
-                    g_dir_search = NULL;
+                    platform_find_close(g_eval_dir_search);
+                    g_eval_dir_search = NULL;
                 }
             }
         }
@@ -3640,7 +1520,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             err->code = 13; err->message = "STR$ expects one numeric argument"; return res;
         }
         char buf[64];
-        snprintf(buf, sizeof(buf), " %g", args[0].as.number);
+        num_format_display(buf, sizeof(buf), args[0].as.number, true, false);
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
     }
@@ -4209,7 +2089,8 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         const unsigned char *data = data_ref ? (const unsigned char *)str_data(data_ref) : (const unsigned char *)"";
         size_t len = data_ref ? str_len(data_ref) : 0;
         res.type = VAL_NUMBER;
-        res.as.number = (double)compute_crc16(data, len);
+        res.as.number = (double)eval_compute_crc16(data, len);
+        if (data_ref) str_release(vm_get_str(vm), data_ref);
     }
     else if (strcmp(uname, "BIOCOMPARE") == 0) {
         if (arg_count != 3 || args[0].type == VAL_STRING || args[1].type == VAL_STRING || args[2].type != VAL_STRING) {
@@ -4251,6 +2132,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
 
         res.type = VAL_NUMBER;
         res.as.number = (double)diff_pos;
+        if (data_ref) str_release(vm_get_str(vm), data_ref);
     }
     else if (strcmp(uname, "SIOREAD$") == 0) {
         if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
@@ -4487,7 +2369,10 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         }
 
         FILE *fp = file_get_handle(fctx, ch);
-        long saved_pos = fp ? ftell(fp) : 0;
+        if (!fp) {
+            err->code = 57; err->message = "BIOCOPY: file handle not available"; return res;
+        }
+        long saved_pos = ftell(fp);
 
         unsigned char *buf = (unsigned char *)calloc(1, n);
         if (!buf) {
@@ -4540,7 +2425,10 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         }
 
         FILE *fp = file_get_handle(fctx, ch);
-        long saved_pos = fp ? ftell(fp) : 0;
+        if (!fp) {
+            err->code = 57; err->message = "BIOFILL: file handle not available"; return res;
+        }
+        long saved_pos = ftell(fp);
 
         if (file_txn_status(fctx) > 0 && fp) {
             unsigned char *orig = (unsigned char *)calloc(1, n);
@@ -4798,10 +2686,11 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
     else if (strcmp(uname, "DEVICEINFO$") == 0) {
         if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type != VAL_STRING) {
             if (arg_count == 2) {
-                if (args[0].type == VAL_STRING) str_release(vm_get_str(vm), args[0].as.string);
-                if (args[1].type == VAL_STRING) str_release(vm_get_str(vm), args[1].as.string);
+                if (args[0].type == VAL_STRING) { str_release(vm_get_str(vm), args[0].as.string); args[0].as.string = NULL; }
+                if (args[1].type == VAL_STRING) { str_release(vm_get_str(vm), args[1].as.string); args[1].as.string = NULL; }
             } else if (arg_count == 1 && args[0].type == VAL_STRING) {
                 str_release(vm_get_str(vm), args[0].as.string);
+                args[0].as.string = NULL;
             }
             err->code = 13; err->message = "DEVICEINFO$ expects a numeric index and a string key"; return res;
         }
@@ -4901,6 +2790,8 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
                 body_len += read_bytes;
             }
         n_dev.dev_close(&n_dev);
+        str_release(vm_get_str(vm), args[0].as.string);
+        args[0].as.string = NULL;
         res.type = VAL_STRING;
         if (body_buf) {
             res.as.string = str_create(vm_get_str(vm), body_buf, body_len);
@@ -4945,7 +2836,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         if (vmem_peek(vm_get_vmem(vm), (uint16_t)args[0].as.number, &val) == 0) {
 #endif
             bool intercepted = false;
-            val = vdev_bus_peek((unsigned long)args[0].as.number, &intercepted);
+            val = vdev_bus_peek((unsigned long)(long)args[0].as.number, &intercepted);
 #ifndef BPP_LITE_BUILD
         }
 #endif
@@ -4969,16 +2860,17 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         }
         if (args[0].type != VAL_MAP) {
             err->code = 13; err->message = "First argument to MAP_SET must be a MAP";
-            if (args[1].type == VAL_STRING) str_release(vm_get_str(vm), args[1].as.string);
-            if (args[2].type == VAL_STRING) str_release(vm_get_str(vm), args[2].as.string);
-            if (args[2].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[2].as.map);
+            if (args[1].type == VAL_STRING) { str_release(vm_get_str(vm), args[1].as.string); args[1].as.string = NULL; }
+            if (args[2].type == VAL_STRING) { str_release(vm_get_str(vm), args[2].as.string); args[2].as.string = NULL; }
+            if (args[2].type == VAL_MAP) { bpp_map_release(vm_get_str(vm), args[2].as.map); args[2].as.map = NULL; }
             return res;
         }
         if (args[1].type != VAL_STRING) {
             err->code = 13; err->message = "Second argument to MAP_SET must be a string key";
             bpp_map_release(vm_get_str(vm), args[0].as.map);
-            if (args[2].type == VAL_STRING) str_release(vm_get_str(vm), args[2].as.string);
-            if (args[2].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[2].as.map);
+            args[0].as.map = NULL;
+            if (args[2].type == VAL_STRING) { str_release(vm_get_str(vm), args[2].as.string); args[2].as.string = NULL; }
+            if (args[2].type == VAL_MAP) { bpp_map_release(vm_get_str(vm), args[2].as.map); args[2].as.map = NULL; }
             return res;
         }
         const char *k = str_data(args[1].as.string);
@@ -4987,9 +2879,11 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             err->code = 14; err->message = "Failed to set map key";
         }
         bpp_map_release(vm_get_str(vm), args[0].as.map);
+        args[0].as.map = NULL;
         str_release(vm_get_str(vm), args[1].as.string);
-        if (args[2].type == VAL_STRING) str_release(vm_get_str(vm), args[2].as.string);
-        if (args[2].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[2].as.map);
+        args[1].as.string = NULL;
+        if (args[2].type == VAL_STRING) { str_release(vm_get_str(vm), args[2].as.string); args[2].as.string = NULL; }
+        if (args[2].type == VAL_MAP) { bpp_map_release(vm_get_str(vm), args[2].as.map); args[2].as.map = NULL; }
 
         res.type = VAL_NUMBER;
         res.as.number = set_ok ? 1.0 : 0.0;
@@ -5001,12 +2895,13 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         }
         if (args[0].type != VAL_MAP) {
             err->code = 13; err->message = "First argument to MAP_GET must be a MAP";
-            if (args[1].type == VAL_STRING) str_release(vm_get_str(vm), args[1].as.string);
+            if (args[1].type == VAL_STRING) { str_release(vm_get_str(vm), args[1].as.string); args[1].as.string = NULL; }
             return res;
         }
         if (args[1].type != VAL_STRING) {
             err->code = 13; err->message = "Second argument to MAP_GET must be a string key";
             bpp_map_release(vm_get_str(vm), args[0].as.map);
+            args[0].as.map = NULL;
             return res;
         }
         const char *k = str_data(args[1].as.string);
@@ -5028,7 +2923,9 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
             }
         }
         bpp_map_release(vm_get_str(vm), args[0].as.map);
+        args[0].as.map = NULL;
         str_release(vm_get_str(vm), args[1].as.string);
+        args[1].as.string = NULL;
 
         if (expect_str && res.type != VAL_STRING) {
             char coerce_buf[64];
@@ -5047,25 +2944,28 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         }
         if (args[0].type != VAL_MAP) {
             err->code = 13; err->message = "First argument to MAP_REMOVE must be a MAP";
-            if (args[1].type == VAL_STRING) str_release(vm_get_str(vm), args[1].as.string);
+            if (args[1].type == VAL_STRING) { str_release(vm_get_str(vm), args[1].as.string); args[1].as.string = NULL; }
             return res;
         }
         if (args[1].type != VAL_STRING) {
             err->code = 13; err->message = "Second argument to MAP_REMOVE must be a string key";
             bpp_map_release(vm_get_str(vm), args[0].as.map);
+            args[0].as.map = NULL;
             return res;
         }
         const char *k = str_data(args[1].as.string);
         bool rem_ok = bpp_map_remove(vm_get_str(vm), args[0].as.map, k);
         bpp_map_release(vm_get_str(vm), args[0].as.map);
+        args[0].as.map = NULL;
         str_release(vm_get_str(vm), args[1].as.string);
+        args[1].as.string = NULL;
         res.type = VAL_NUMBER;
         res.as.number = rem_ok ? 1.0 : 0.0;
     }
     else if (strcmp(uname, "MAP_COUNT") == 0) {
         if (arg_count != 1 || args[0].type != VAL_MAP) {
             err->code = 13; err->message = "MAP_COUNT expects one MAP argument";
-            if (arg_count == 1 && args[0].type == VAL_STRING) str_release(vm_get_str(vm), args[0].as.string);
+            if (arg_count == 1 && args[0].type == VAL_STRING) { str_release(vm_get_str(vm), args[0].as.string); args[0].as.string = NULL; }
             return res;
         }
         res.type = VAL_NUMBER;
@@ -5092,18 +2992,21 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         }
         if (args[0].type != VAL_MAP) {
             err->code = 13; err->message = "First argument to MAP_HAS must be a MAP";
-            if (args[1].type == VAL_STRING) str_release(vm_get_str(vm), args[1].as.string);
+            if (args[1].type == VAL_STRING) { str_release(vm_get_str(vm), args[1].as.string); args[1].as.string = NULL; }
             return res;
         }
         if (args[1].type != VAL_STRING) {
             err->code = 13; err->message = "Second argument to MAP_HAS must be a string key";
             bpp_map_release(vm_get_str(vm), args[0].as.map);
+            args[0].as.map = NULL;
             return res;
         }
         const char *k = str_data(args[1].as.string);
         bool has_ok = bpp_map_has(args[0].as.map, k);
         bpp_map_release(vm_get_str(vm), args[0].as.map);
+        args[0].as.map = NULL;
         str_release(vm_get_str(vm), args[1].as.string);
+        args[1].as.string = NULL;
         res.type = VAL_NUMBER;
         res.as.number = has_ok ? 1.0 : 0.0;
     }
@@ -5296,6 +3199,7 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         char val_err[512] = "";
         bool ok = dialect_validate_map(vm, args[0].as.map, val_err, sizeof(val_err));
         bpp_map_release(vm_get_str(vm), args[0].as.map);
+        args[0].as.map = NULL;
         if (!ok) {
             err->code = 5;
             static char err_msg_buf[512];
@@ -5317,11 +3221,13 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         if (!d) {
             err->code = 14; err->message = "Out of memory allocating dialect";
             bpp_map_release(vm_get_str(vm), args[0].as.map);
+            args[0].as.map = NULL;
             return res;
         }
         if (!dialect_load_from_map(vm, args[0].as.map, d, val_err, sizeof(val_err))) {
             dialect_free(d);
             bpp_map_release(vm_get_str(vm), args[0].as.map);
+            args[0].as.map = NULL;
             err->code = 5;
             static char err_msg_buf2[512];
             strncpy(err_msg_buf2, val_err, sizeof(err_msg_buf2) - 1);
@@ -5344,11 +3250,13 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
         if (!d) {
             err->code = 14; err->message = "Out of memory allocating dialect";
             bpp_map_release(vm_get_str(vm), args[0].as.map);
+            args[0].as.map = NULL;
             return res;
         }
         if (!dialect_load_from_map(vm, args[0].as.map, d, val_err, sizeof(val_err))) {
             dialect_free(d);
             bpp_map_release(vm_get_str(vm), args[0].as.map);
+            args[0].as.map = NULL;
             err->code = 5;
             static char err_msg_buf3[512];
             strncpy(err_msg_buf3, val_err, sizeof(err_msg_buf3) - 1);
@@ -5415,433 +3323,3 @@ static BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int a
     return res;
 }
 
-BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) {
-    BValue null_val;
-    memset(&null_val, 0, sizeof(null_val));
-
-    MemoryContext *mem = vm_get_mem(vm);
-    VariableContext *var = vm_get_var(vm);
-
-    /* Allocate stacks from scratch arena */
-    BValue *val_stack = (BValue *)mem_scratch_alloc(mem, sizeof(BValue) * MAX_EVAL_DEPTH);
-    if (!val_stack) {
-        out_err->code = 14;
-        out_err->message = "Evaluation stack overflow (scratch exhausted)";
-        return null_val;
-    }
-
-    size_t val_ptr = 0;
-    int open_parens = 0;
-    BppToken tok = lex_peek(lex);
-
-    while (tok.type != TOK_EOF && tok.type != TOK_EOL && tok.type != TOK_COMMA &&
-           tok.type != TOK_SEMICOLON && (tok.type != TOK_RPAREN || open_parens > 0) &&
-           tok.type != TOK_RBRACKET &&
-           (tok.type != TOK_KEYWORD || tok.as.keyword == KW_NONE ||
-            tok.as.keyword == KW_TASK || tok.as.keyword == KW_PLAY || tok.as.keyword == KW_HELP ||
-            tok.as.keyword == KW_SCREEN || tok.as.keyword == KW_SEEK ||
-            tok.as.keyword == KW_TIMER || tok.as.keyword == KW_KEY ||
-            tok.as.keyword == KW_REMOVE || tok.as.keyword == KW_REMOVE_STR ||
-            tok.as.keyword == KW_ALARM || tok.as.keyword == KW_ALARM_STR ||
-            tok.as.keyword == KW_RANDOMIZE)) {
-
-        /* Stop parsing if we see 'AT' identifier */
-        if (tok.type == TOK_IDENT && tok.length == 2 &&
-            (tok.start[0] == 'A' || tok.start[0] == 'a') &&
-            (tok.start[1] == 'T' || tok.start[1] == 't')) {
-            break;
-        }
-
-        /* Read the peeked token */
-        lex_next(lex);
-
-        if (tok.type == TOK_NUMBER) {
-            BValue val;
-            val.type = VAL_NUMBER;
-            val.as.number = tok.as.number;
-            val_stack[val_ptr++] = val;
-        } else if (tok.type == TOK_STRING) {
-            BppStringRef str_ref = str_create(vm_get_str(vm), tok.as.string, tok.length);
-            BValue val;
-            val.type = VAL_STRING;
-            val.as.string = str_ref;
-            val_stack[val_ptr++] = val;
-        } else if (tok.type == TOK_RPN_LITERAL) {
-            char *rpn_str = (char *)mem_scratch_alloc(mem, tok.length + 1);
-            if (!rpn_str) {
-                out_err->code = 14;
-                out_err->message = "Scratch memory exhausted";
-                return null_val;
-            }
-            memcpy(rpn_str, tok.as.string, tok.length);
-            rpn_str[tok.length] = '\0';
-
-            LexerContext *rpn_lex = lex_init(mem, rpn_str);
-            BValue res = eval_expression_rpn(vm, rpn_lex, out_err);
-            lex_shutdown(rpn_lex);
-            if (out_err->code != 0) return null_val;
-
-            val_stack[val_ptr++] = res;
-        } else if (tok.type == TOK_IDENT) {
-            /* Variable or function lookup */
-            char name_buf[256];
-            size_t copy_len = (tok.length < sizeof(name_buf) - 1) ? tok.length : sizeof(name_buf) - 1;
-            memcpy(name_buf, tok.start, copy_len);
-            name_buf[copy_len] = '\0';
-
-            if (strcasecmp(name_buf, "DUP") == 0) {
-                if (val_ptr < 1) {
-                    out_err->code = 24;
-                    out_err->message = "RPN stack underflow on DUP";
-                    return null_val;
-                }
-                BValue val = val_stack[val_ptr - 1];
-                if (val.type == VAL_STRING && val.as.string) {
-                    str_add_ref(val.as.string);
-                }
-                val_stack[val_ptr++] = val;
-            } else if (strcasecmp(name_buf, "DROP") == 0) {
-                if (val_ptr < 1) {
-                    out_err->code = 24;
-                    out_err->message = "RPN stack underflow on DROP";
-                    return null_val;
-                }
-                val_ptr--;
-                BValue val = val_stack[val_ptr];
-                if (val.type == VAL_STRING && val.as.string) {
-                    str_release(vm_get_str(vm), val.as.string);
-                }
-            } else if (strcasecmp(name_buf, "SWAP") == 0) {
-                if (val_ptr < 2) {
-                    out_err->code = 24;
-                    out_err->message = "RPN stack underflow on SWAP";
-                    return null_val;
-                }
-                BValue temp = val_stack[val_ptr - 1];
-                val_stack[val_ptr - 1] = val_stack[val_ptr - 2];
-                val_stack[val_ptr - 2] = temp;
-            } else if (strcasecmp(name_buf, "OVER") == 0) {
-                if (val_ptr < 2) {
-                    out_err->code = 24;
-                    out_err->message = "RPN stack underflow on OVER";
-                    return null_val;
-                }
-                BValue val = val_stack[val_ptr - 2];
-                if (val.type == VAL_STRING && val.as.string) {
-                    str_add_ref(val.as.string);
-                }
-                val_stack[val_ptr++] = val;
-            } else if (strcasecmp(name_buf, "ROT") == 0) {
-                if (val_ptr < 3) {
-                    out_err->code = 24;
-                    out_err->message = "RPN stack underflow on ROT";
-                    return null_val;
-                }
-                BValue a = val_stack[val_ptr - 3];
-                BValue b = val_stack[val_ptr - 2];
-                BValue c = val_stack[val_ptr - 1];
-                val_stack[val_ptr - 3] = b;
-                val_stack[val_ptr - 2] = c;
-                val_stack[val_ptr - 1] = a;
-            } else if (strcasecmp(name_buf, "CLEAR") == 0) {
-                while (val_ptr > 0) {
-                    val_ptr--;
-                    BValue val = val_stack[val_ptr];
-                    if (val.type == VAL_STRING && val.as.string) {
-                        str_release(vm_get_str(vm), val.as.string);
-                    }
-                }
-            } else if (strcasecmp(name_buf, "DEPTH") == 0) {
-                BValue val;
-                val.type = VAL_NUMBER;
-                val.as.number = (double)val_ptr;
-                val_stack[val_ptr++] = val;
-            } else if (strcasecmp(name_buf, "PICK") == 0) {
-                if (val_ptr < 1) {
-                    out_err->code = 24;
-                    out_err->message = "RPN stack underflow on PICK";
-                    return null_val;
-                }
-                BValue idx_val = val_stack[--val_ptr];
-                if (idx_val.type != VAL_NUMBER) {
-                    out_err->code = 13;
-                    out_err->message = "PICK index must be numeric";
-                    return null_val;
-                }
-                int n = (int)idx_val.as.number;
-                if (n < 0 || n >= (int)val_ptr) {
-                    out_err->code = 9;
-                    out_err->message = "PICK index out of bounds";
-                    return null_val;
-                }
-                BValue picked = val_stack[val_ptr - 1 - n];
-                if (picked.type == VAL_STRING && picked.as.string) {
-                    str_add_ref(picked.as.string);
-                }
-                val_stack[val_ptr++] = picked;
-            } else if (strcasecmp(name_buf, "ROLL") == 0) {
-                if (val_ptr < 1) {
-                    out_err->code = 24;
-                    out_err->message = "RPN stack underflow on ROLL";
-                    return null_val;
-                }
-                BValue idx_val = val_stack[--val_ptr];
-                if (idx_val.type != VAL_NUMBER) {
-                    out_err->code = 13;
-                    out_err->message = "ROLL index must be numeric";
-                    return null_val;
-                }
-                int n = (int)idx_val.as.number;
-                if (n < 0 || n >= (int)val_ptr) {
-                    out_err->code = 9;
-                    out_err->message = "ROLL index out of bounds";
-                    return null_val;
-                }
-                if (n > 0) {
-                    BValue rolled = val_stack[(int)val_ptr - 1 - n];
-                    for (int i = (int)val_ptr - 1 - n; i < (int)val_ptr - 1; ++i) {
-                        val_stack[i] = val_stack[i + 1];
-                    }
-                    val_stack[(int)val_ptr - 1] = rolled;
-                }
-            } else {
-                /* Check if followed by '(' */
-                if (lex_peek(lex).type == TOK_LPAREN) {
-                    lex_next(lex); /* Consume '(' */
-                    if (is_builtin_function(name_buf)) {
-                        BValue val = eval_builtin_function(vm, name_buf, lex, true, out_err);
-                        if (out_err->code != 0) return null_val;
-                        val_stack[val_ptr++] = val;
-                    } else if (!arr_exists(vm_get_arr(vm), name_buf)) {
-                        BValue args[8];
-                        int argc = 0;
-                        while (true) {
-                            BppToken next_tok = lex_peek(lex);
-                            if (next_tok.type == TOK_RPAREN) {
-                                lex_next(lex);
-                                break;
-                            }
-                            if (argc >= 8) {
-                                out_err->code = 2;
-                                out_err->message = "Too many arguments in function call";
-                                return null_val;
-                            }
-                            args[argc++] = eval_expression(vm, lex, out_err);
-                            if (out_err->code != 0) return null_val;
-                            
-                            next_tok = lex_peek(lex);
-                            if (next_tok.type == TOK_COMMA) {
-                                lex_next(lex);
-                            } else if (next_tok.type == TOK_RPAREN) {
-                                lex_next(lex);
-                                break;
-                            } else {
-                                out_err->code = 2;
-                                out_err->message = "Expected ',' or ')'";
-                                return null_val;
-                            }
-                        }
-                        BValue val = invoke_user_function(vm, name_buf, args, argc, out_err);
-                        if (out_err->code != 0) return null_val;
-                        val_stack[val_ptr++] = val;
-                    } else {
-                        /* Array access */
-                        int indices[4];
-                        int num_indices = 0;
-                        while (true) {
-                            BppToken next_tok = lex_peek(lex);
-                            if (next_tok.type == TOK_RPAREN) {
-                                lex_next(lex);
-                                break;
-                            }
-                            if (num_indices >= 4) {
-                                out_err->code = 9;
-                                out_err->message = "Subscript out of range (max 4 dimensions)";
-                                return null_val;
-                            }
-                            BValue idx_val = eval_expression(vm, lex, out_err);
-                            if (out_err->code != 0) return null_val;
-                            indices[num_indices++] = (int)idx_val.as.number;
-                            
-                            next_tok = lex_peek(lex);
-                            if (next_tok.type == TOK_COMMA) {
-                                lex_next(lex);
-                            } else if (next_tok.type == TOK_RPAREN) {
-                                lex_next(lex);
-                                break;
-                            } else {
-                                out_err->code = 2;
-                                out_err->message = "Expected ',' or ')'";
-                                return null_val;
-                            }
-                        }
-                        BValue *elem = arr_get_element(vm_get_arr(vm), name_buf, num_indices, indices, out_err);
-                        if (out_err->code != 0 || !elem) {
-                            return null_val;
-                        }
-                        BValue val = *elem;
-                        if (val.type == VAL_STRING && val.as.string) {
-                            str_add_ref(val.as.string);
-                        } else if (val.type == VAL_MAP && val.as.map) {
-                            bpp_map_add_ref(val.as.map);
-                        }
-                        val_stack[val_ptr++] = val;
-                    }
-                } else {
-                    /* Simple variable lookup */
-                    BValue *v = var_lookup(var, name_buf, false);
-                    if (!v) {
-                        char base_name[256];
-                        char member_chain[8][64];
-                        int member_count = 0;
-                        split_member_chain(name_buf, strlen(name_buf), base_name, sizeof(base_name), member_chain, &member_count);
-                        if (member_count > 0) {
-                            v = var_lookup(var, base_name, false);
-                            if (v) {
-                                BValue val = *v;
-                                if (val.type == VAL_STRING && val.as.string) str_add_ref(val.as.string);
-                                else if (val.type == VAL_MAP && val.as.map) bpp_map_add_ref(val.as.map);
-                                
-                                /* Walk up to the last member */
-                                bool walk_err = false;
-                                for (int m = 0; m < member_count - 1; m++) {
-                                    if (val.type != VAL_MAP || !val.as.map) {
-                                        walk_err = true; break;
-                                    }
-                                    BValue next_val;
-                                    if (!bpp_map_get(val.as.map, member_chain[m], &next_val)) {
-                                        walk_err = true; break;
-                                    }
-                                    BValue copy = next_val;
-                                    if (copy.type == VAL_STRING && copy.as.string) str_add_ref(copy.as.string);
-                                    else if (copy.type == VAL_MAP && copy.as.map) bpp_map_add_ref(copy.as.map);
-                                    
-                                    if (val.type == VAL_MAP && val.as.map) bpp_map_release(vm_get_str(vm), val.as.map);
-                                    else if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
-                                    val = copy;
-                                }
-                                
-                                if (!walk_err) {
-                                    /* Check if followed by '(' -> Method call */
-                                    if (lex_peek(lex).type == TOK_LPAREN) {
-                                        lex_next(lex); /* Consume '(' */
-                                        if (val.type == VAL_MAP && val.as.map) {
-                                            BValue type_val;
-                                            if (bpp_map_get(val.as.map, "__type__", &type_val) && type_val.type == VAL_STRING) {
-                                                char fully_qualified_method[512];
-                                                snprintf(fully_qualified_method, sizeof(fully_qualified_method), "%s.%s",
-                                                         str_data(type_val.as.string), member_chain[member_count - 1]);
-                                                
-                                                BValue args[9];
-                                                int argc = 0;
-                                                args[argc++] = val;
-                                                bpp_map_add_ref(val.as.map);
-                                                
-                                                while (true) {
-                                                    BppToken next_tok = lex_peek(lex);
-                                                    if (next_tok.type == TOK_RPAREN) {
-                                                        lex_next(lex);
-                                                        break;
-                                                    }
-                                                    if (argc >= 9) {
-                                                        walk_err = true; break;
-                                                    }
-                                                    args[argc++] = eval_expression(vm, lex, out_err);
-                                                    if (out_err->code != 0) {
-                                                        walk_err = true; break;
-                                                    }
-                                                    next_tok = lex_peek(lex);
-                                                    if (next_tok.type == TOK_COMMA) {
-                                                        lex_next(lex);
-                                                    } else if (next_tok.type == TOK_RPAREN) {
-                                                        lex_next(lex);
-                                                        break;
-                                                    } else {
-                                                        walk_err = true; break;
-                                                    }
-                                                }
-                                                
-                                                if (!walk_err) {
-                                                    BValue ret_val = invoke_user_function(vm, fully_qualified_method, args, argc, out_err);
-                                                    for (int i = 0; i < argc; i++) {
-                                                        if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                                        else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
-                                                    }
-                                                    if (out_err->code == 0) {
-                                                        val_stack[val_ptr++] = ret_val;
-                                                        tok = lex_peek(lex);
-                                                        continue;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        /* Standard field lookup on last member */
-                                        int m = member_count - 1;
-                                        if (val.type == VAL_MAP && val.as.map) {
-                                            BValue next_val;
-                                            if (bpp_map_get(val.as.map, member_chain[m], &next_val)) {
-                                                BValue copy = next_val;
-                                                if (copy.type == VAL_STRING && copy.as.string) str_add_ref(copy.as.string);
-                                                else if (copy.type == VAL_MAP && copy.as.map) bpp_map_add_ref(copy.as.map);
-                                                
-                                                bpp_map_release(vm_get_str(vm), val.as.map);
-                                                val_stack[val_ptr++] = copy;
-                                                tok = lex_peek(lex);
-                                                continue;
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                if (val.type == VAL_MAP && val.as.map) bpp_map_release(vm_get_str(vm), val.as.map);
-                                else if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
-                            }
-                        }
-                        
-                        /* Return uninitialized variable (numeric 0.0) */
-                        BValue val;
-                        val.type = VAL_NUMBER;
-                        val.as.number = 0.0;
-                        val_stack[val_ptr++] = val;
-                    } else {
-                        BValue val = *v;
-                        if (val.type == VAL_STRING && val.as.string) {
-                            str_add_ref(val.as.string);
-                        } else if (val.type == VAL_MAP && val.as.map) {
-                            bpp_map_add_ref(val.as.map);
-                        }
-                        val_stack[val_ptr++] = val;
-                    }
-                }
-            }
-        } else if (is_operator(tok.type)) {
-            BppTokenType op = tok.type;
-            if (val_ptr == 1 && op == TOK_MINUS) {
-                op = TOK_UNARY_MINUS;
-            }
-            if (!execute_op(vm, op, val_stack, &val_ptr, out_err)) {
-                return null_val;
-            }
-        } else if (tok.type == TOK_LPAREN) {
-            open_parens++;
-        } else if (tok.type == TOK_RPAREN) {
-            open_parens--;
-        } else {
-            out_err->code = 2;
-            out_err->message = "Unexpected token in RPN expression";
-            return null_val;
-        }
-
-        tok = lex_peek(lex);
-    }
-
-    if (val_ptr == 0) {
-        BValue zero;
-        zero.type = VAL_NUMBER;
-        zero.as.number = 0.0;
-        return zero;
-    }
-
-    return val_stack[val_ptr - 1];
-}

@@ -221,7 +221,7 @@ char *vm_state_info(VMContext *vm, const char *filename, BppError *err) {
     fclose(fp);
 
     char info_buf[256];
-    snprintf(info_buf, sizeof(info_buf), "Format: BPPSTATE, Version: %g, Current Line: %g, Program Lines: %u",
+    snprintf(info_buf, sizeof(info_buf), "Format: BPPSTATE, Version: %.16g, Current Line: %.16g, Program Lines: %u",
              (double)version / 100.0, cur_line, line_count);
 
     size_t len = strlen(info_buf);

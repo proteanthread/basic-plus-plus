@@ -53,7 +53,7 @@ BppError stmt_list_handler(VMContext *vm, LexerContext *lex) {
     BppProgramLine *lines = mem_program_get_all(mem, &count);
 
     for (size_t i = 0; i < count; ++i) {
-        vdev_printf(vdev, "%g %s\n", lines[i].line_number, lines[i].text);
+        vdev_printf(vdev, "%lld %s\n", (long long)lines[i].line_number, lines[i].text);
     }
 
     return err;
@@ -139,7 +139,7 @@ BppError stmt_option_handler(VMContext *vm, LexerContext *lex) {
 
     char opt_name[64];
     size_t clen = (tok.length < 63) ? tok.length : 63;
-    memcpy(opt_name, tok.as.string, clen);
+    memcpy(opt_name, tok.start, clen);
     opt_name[clen] = '\0';
 
     /* Normalize to upper case */
@@ -437,7 +437,7 @@ BppError stmt_save_handler(VMContext *vm, LexerContext *lex) {
     BppProgramLine *lines = mem_program_get_all(mem, &count);
 
     for (size_t i = 0; i < count; ++i) {
-        fprintf(fp, "%g %s\n", lines[i].line_number, lines[i].text);
+        fprintf(fp, "%lld %s\n", (long long)lines[i].line_number, lines[i].text);
     }
 
     fclose(fp);

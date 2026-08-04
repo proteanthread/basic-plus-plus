@@ -31,6 +31,7 @@
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "runtime/arrays.h"
+#include "runtime/num_format.h"
 #include "eval/eval.h"
 #include "device/vdev.h"
 #include <stdio.h>
@@ -47,7 +48,7 @@ static bool mat_get_array_name(LexerContext *lex, char *name_buf, size_t buf_siz
     }
     lex_next(lex); /* Consume name identifier */
     size_t copy_len = (tok.length < buf_size - 1) ? tok.length : buf_size - 1;
-    memcpy(name_buf, tok.as.string, copy_len);
+    memcpy(name_buf, tok.start, copy_len);
     name_buf[copy_len] = '\0';
     return true;
 }
@@ -60,7 +61,7 @@ static bool mat_match_ident(LexerContext *lex, const char *target) {
     }
     char name_buf[64];
     size_t copy_len = (tok.length < sizeof(name_buf) - 1) ? tok.length : sizeof(name_buf) - 1;
-    memcpy(name_buf, tok.as.string, copy_len);
+    memcpy(name_buf, tok.start, copy_len);
     name_buf[copy_len] = '\0';
 
     for (size_t i = 0; i < copy_len; i++) {
@@ -122,7 +123,9 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
                 if (val->type == VAL_STRING) {
                     vdev_printf(vdev, "%s", val->as.string ? str_data(val->as.string) : "");
                 } else {
-                    vdev_printf(vdev, "%g", val->as.number);
+                    char nbuf[64];
+                    num_format_display(nbuf, sizeof(nbuf), val->as.number, false, false);
+                    vdev_puts(vdev, nbuf);
                 }
 
                 if (i < bounds[0]) {
@@ -142,7 +145,9 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
                     if (val->type == VAL_STRING) {
                         vdev_printf(vdev, "%s", val->as.string ? str_data(val->as.string) : "");
                     } else {
-                        vdev_printf(vdev, "%g", val->as.number);
+                        char nbuf[64];
+                        num_format_display(nbuf, sizeof(nbuf), val->as.number, false, false);
+                        vdev_puts(vdev, nbuf);
                     }
 
                     if (c < bounds[1]) {
@@ -497,7 +502,9 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
             if (b_b[0] != expected_len) { err.code = 9; err.message = "Dimension mismatch"; return err; }
             
             
-            for (int i = 1; i <= expected_len; i++) {
+            int opt_base = arr_get_option_base(arr_ctx);
+            int start = (opt_base == 0) ? 0 : 1;
+            for (int i = start; i <= expected_len; i++) {
                 int src_idx[1] = {i};
                 BValue *src_elem = arr_get_element(arr_ctx, src_b, 1, src_idx, &err);
                 
@@ -615,7 +622,7 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
             if (arg_tok.type == TOK_IDENT) {
                 char test_name[64];
                 size_t clen = arg_tok.length < 63 ? arg_tok.length : 63;
-                memcpy(test_name, arg_tok.as.string, clen);
+                memcpy(test_name, arg_tok.start, clen);
                 test_name[clen] = '\0';
                 for(size_t i=0; i<clen; i++) test_name[i] = (char)toupper((unsigned char)test_name[i]);
                 
@@ -709,7 +716,7 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
     if (ptok.type == TOK_IDENT) {
         char pu[64];
         size_t clen = (ptok.length < 63) ? ptok.length : 63;
-        memcpy(pu, ptok.as.string, clen); pu[clen] = '\0';
+        memcpy(pu, ptok.start, clen); pu[clen] = '\0';
         for(size_t i=0; i<clen; i++) pu[i] = (char)toupper((unsigned char)pu[i]);
         if (strcmp(pu, "ROW") == 0) is_ext_row = true;
         else if (strcmp(pu, "COL") == 0) is_ext_col = true;
@@ -732,7 +739,9 @@ BppError stmt_mat_handler(VMContext *vm, LexerContext *lex) {
         int expected_len = is_ext_row ? b_b[1] : b_b[0];
         if (b_a[0] != expected_len) { err.code = 9; err.message = "Dimension mismatch in ROW/COL extraction"; return err; }
         
-        for (int i = 1; i <= expected_len; i++) {
+        int opt_base = arr_get_option_base(arr_ctx);
+        int start = (opt_base == 0) ? 0 : 1;
+        for (int i = start; i <= expected_len; i++) {
             int src_idx[2] = {is_ext_row ? idx : i, is_ext_row ? i : idx};
             BValue *src_elem = arr_get_element(arr_ctx, src_b, 2, src_idx, &err);
             

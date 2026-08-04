@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
     if (cmd) {
         BppError err = vm_execute_line(boot->vm, cmd);
         if (err.code != 0) {
-            vdev_printf(vdev, "?Error %d: %s in line %g\n", err.code, err.message, err.line);
+            vdev_printf(vdev, "?Error %d: %s in line %lld\n", err.code, err.message, (long long)err.line);
             boot_shutdown(boot);
             return 1;
         }
@@ -136,14 +136,14 @@ int main(int argc, char **argv) {
     if (script_file) {
         BppError err = vm_load_program_file(boot->vm, script_file);
         if (err.code != 0) {
-            vdev_printf(vdev, "?Error %d: %s during LOAD in line %g\n", err.code, err.message, err.line);
+            vdev_printf(vdev, "?Error %d: %s during LOAD in line %lld\n", err.code, err.message, (long long)err.line);
             boot_shutdown(boot);
             return 1;
         }
         vm_run_program(boot->vm);
         if (vm_has_error(boot->vm)) {
             BppError run_err = vm_get_error(boot->vm);
-            vdev_printf(vdev, "?Error %d: %s in line %g\n", run_err.code, run_err.message, run_err.line);
+            vdev_printf(vdev, "?Error %d: %s in line %lld\n", run_err.code, run_err.message, (long long)run_err.line);
             boot_shutdown(boot);
             return 1;
         }
@@ -225,7 +225,7 @@ int main(int argc, char **argv) {
             BppError err = vm_execute_line(boot->vm, ptr);
             if (err.code != 0) {
                 if (err.line != 0.0) {
-                    vdev_printf(vdev, "?%s in line %g\n", err.message, err.line);
+                    vdev_printf(vdev, "?%s in line %lld\n", err.message, (long long)err.line);
                 } else {
                     vdev_printf(vdev, "?%s\n", err.message);
                 }

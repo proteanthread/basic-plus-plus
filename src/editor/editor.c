@@ -98,7 +98,7 @@ BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
             BppProgramLine *lines = mem_program_get_all(mem, &count);
             vdev_printf(vdev, "\n--- Current Program ---\n");
             for (size_t i = 0; i < count; ++i) {
-                vdev_printf(vdev, "%g %s\n", lines[i].line_number, lines[i].text);
+                vdev_printf(vdev, "%lld %s\n", (long long)lines[i].line_number, lines[i].text);
             }
             vdev_printf(vdev, "-----------------------\n\n");
             continue;
@@ -109,7 +109,7 @@ BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
             double ln = atof(trimmed + 7);
             if (ln > 0.0) {
                 mem_program_delete(mem, ln);
-                vdev_printf(vdev, "Line %g deleted.\n", ln);
+                vdev_printf(vdev, "Line %lld deleted.\n", (long long)ln);
             } else {
                 vdev_printf(vdev, "Invalid line number.\n");
             }
@@ -136,7 +136,7 @@ BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
             }
 
             if (existing[0] != '\0') {
-                vdev_printf(vdev, "Line %g: %s\n", ln, existing);
+                vdev_printf(vdev, "Line %lld: %s\n", (long long)ln, existing);
             }
             vdev_printf(vdev, "New text: ");
             if (!con->ops.gets(con, input_buf, sizeof(input_buf))) {
@@ -148,7 +148,7 @@ BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
                 vdev_printf(vdev, "Preserved.\n");
             } else {
                 mem_program_insert(mem, ln, new_text);
-                vdev_printf(vdev, "Line %g updated.\n", ln);
+                vdev_printf(vdev, "Line %lld updated.\n", (long long)ln);
             }
         } else {
             vdev_printf(vdev, "Unknown editor command. Use L to list, 0 to exit, or enter a line number.\n");
