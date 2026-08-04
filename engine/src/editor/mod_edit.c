@@ -937,17 +937,21 @@ static char* get_selected_text_edit(void) {
     if (!sel_active) return NULL;
     int r1, c1, r2, c2;
     get_sel_bounds(&r1, &c1, &r2, &c2);
-    char *buf = (char *)calloc(1, 65536);
+    int buf_size = 65536;
+    char *buf = (char *)calloc(1, buf_size);
     if (!buf) return NULL;
     buf[0] = '\0';
     int pos = 0;
     for (int r = r1; r <= r2; r++) {
+        if (pos >= buf_size - 1) break;
         int start = (r == r1) ? c1 : 0;
         int end = (r == r2) ? c2 : (int)text_buffer[r].length;
         for (int i = start; i < end; i++) {
+            if (pos >= buf_size - 1) break;
             buf[pos++] = text_buffer[r].text[i];
         }
         if (r < r2) {
+            if (pos >= buf_size - 1) break;
             buf[pos++] = '\n';
         }
     }

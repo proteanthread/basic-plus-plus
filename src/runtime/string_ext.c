@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "num_format.h"
 
 /* SPLIT$(string$, delimiter$, index) -> String */
 BValue string_split_func(BValue *args, int argc, void *rt) {
@@ -271,7 +272,7 @@ static BValue string_join_func(BValue *args, int argc, void *rt) {
         if (flat[i].type == VAL_STRING && flat[i].as.string) {
             add_str = str_data(flat[i].as.string);
         } else if (flat[i].type == VAL_NUMBER) {
-            snprintf(temp, sizeof(temp), "%g", flat[i].as.number);
+            num_format_display(temp, sizeof(temp), flat[i].as.number, false, false);
             add_str = temp;
         } else if (flat[i].type == VAL_INTEGER) {
             snprintf(temp, sizeof(temp), "%d", (int)flat[i].as.number);

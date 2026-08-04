@@ -300,6 +300,21 @@ unsigned char *lz77_decompress(const unsigned char *src, size_t src_len, size_t 
 
 void bpp_hash_string(const char *algo, const char *data, char *out_buf, size_t out_size) {
     if (!data || !out_buf || out_size == 0) return;
+
+    /* Determine required output size based on algorithm */
+    size_t required = 0;
+    if (algo && (strcasecmp(algo, "SHA256") == 0 || strcasecmp(algo, "SHA512") == 0)) {
+        required = 65; /* 64 hex chars + null */
+    } else if (algo && strcasecmp(algo, "MD5") == 0) {
+        required = 33; /* 32 hex chars + null */
+    } else {
+        required = 65; /* Safe default */
+    }
+    if (out_size < required) {
+        out_buf[0] = '\0';
+        return;
+    }
+
     size_t len = strlen(data);
     uint64_t h = fnv1a_64(data, len);
 

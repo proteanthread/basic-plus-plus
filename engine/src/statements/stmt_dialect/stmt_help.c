@@ -379,10 +379,10 @@ BppError stmt_catalog_handler(VMContext *vm, LexerContext *lex) {
             vdev_printf(vdev, "  (None registered)\n");
         } else {
             for (int i = 0; i < reg->global_label_count; i++) {
-                vdev_printf(vdev, "  ::%-20s -> %s (Line %g)\n", 
+                vdev_printf(vdev, "  ::%-20s -> %s (Line %lld)\n", 
                             reg->global_labels[i].label_name,
                             reg->global_labels[i].filename,
-                            reg->global_labels[i].line_number);
+                            (long long)reg->global_labels[i].line_number);
             }
         }
         vdev_printf(vdev, "\n");

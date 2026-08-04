@@ -29,7 +29,7 @@ BppError stmt_randomize_handler(VMContext *vm, LexerContext *lex) {
         is_prompt = true;
     } else if (tok.type == TOK_UNKNOWN ||
                (tok.length >= 2 && strncmp(tok.start, "!?", 2) == 0) ||
-               (tok.type == TOK_IDENT && strcasecmp(tok.as.string, "RANDOM") == 0)) {
+               (tok.type == TOK_IDENT && tok.length == 6 && strncasecmp(tok.start, "RANDOM", 6) == 0)) {
         is_prompt = true;
         lex_next(lex); /* Consume prompt flag */
     }

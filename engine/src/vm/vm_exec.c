@@ -719,7 +719,7 @@ static BppError execute_directive(VMContext *vm, LexerContext *lex, BppToken dir
         }
         char opt_name[64];
         int opt_len = (int)(opt_tok.length < sizeof(opt_name) - 1 ? opt_tok.length : sizeof(opt_name) - 1);
-        memcpy(opt_name, opt_tok.as.string, opt_len);
+        memcpy(opt_name, opt_tok.start, opt_len);
         opt_name[opt_len] = '\0';
 
         BppMetadataRegistry *reg = vm_get_metadata(vm);
@@ -1510,10 +1510,10 @@ void vm_trigger_breakpoint(VMContext *vm, const char *reason) {
     VDevContext *vdev = vm->vdev;
 
     if (vdev) {
-        vdev_printf(vdev, "\n[BREAKPOINT] at line %g: %s\n", vm->current_line, reason ? reason : "unknown");
+        vdev_printf(vdev, "\n[BREAKPOINT] at line %lld: %s\n", (long long)vm->current_line, reason ? reason : "unknown");
         vdev_printf(vdev, "Commands: [s] Step, [c] Continue, [v] View Variables (VARS), [q] Quit\n");
     }
-    bpp_log_warn("Breakpoint triggered at line %g: %s", vm->current_line, reason ? reason : "unknown");
+    bpp_log_warn("Breakpoint triggered at line %lld: %s", (long long)vm->current_line, reason ? reason : "unknown");
 
     while (true) {
         if (vdev) {
@@ -1664,14 +1664,14 @@ void vm_run_program(VMContext *vm) {
         if (bpp_logger_is_trace()) {
             VDevContext *vdev = vm->vdev;
             if (vdev) {
-                vdev_printf(vdev, "[Line %g]\n", vm->current_line);
+                vdev_printf(vdev, "[Line %lld]\n", (long long)vm->current_line);
             }
-            bpp_log_info("[Line %g]", vm->current_line);
+            bpp_log_info("[Line %lld]", (long long)vm->current_line);
         }
 
         if (vm->debug_single_step) {
             char reason_buf[128];
-            snprintf(reason_buf, sizeof(reason_buf), "Line %g: %s", vm->current_line, active_lines[idx].text);
+            snprintf(reason_buf, sizeof(reason_buf), "Line %lld: %s", (long long)vm->current_line, active_lines[idx].text);
             vm_trigger_breakpoint(vm, reason_buf);
         }
 
@@ -1717,7 +1717,7 @@ void vm_run_program(VMContext *vm) {
     }
 
     if (vm->break_triggered) {
-        vdev_printf(vm->vdev, "Break at line %g\\n", vm->current_line);
+        vdev_printf(vm->vdev, "Break at line %lld\n", (long long)vm->current_line);
         vm->break_triggered = false;
     }
 }

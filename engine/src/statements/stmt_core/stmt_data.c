@@ -29,6 +29,7 @@
 #include "stmt/stmt.h"
 #include "eval/eval.h"
 #include "runtime/using.h"
+#include "runtime/num_format.h"
 #include "runtime/arrays.h"
 #include <string.h>
 #include <stdlib.h>
@@ -162,7 +163,7 @@ BppError stmt_read_handler(VMContext *vm, LexerContext *lex) {
         } else if (val_tok.type == TOK_IDENT) {
             /* Support unquoted strings */
             val.type = VAL_STRING;
-            val.as.string = str_create(vm_get_str(vm), val_tok.as.string, val_tok.length);
+            val.as.string = str_create(vm_get_str(vm), val_tok.start, val_tok.length);
         } else {
             err.code = 2;
             err.message = "Syntax error in DATA literal";
@@ -177,7 +178,7 @@ BppError stmt_read_handler(VMContext *vm, LexerContext *lex) {
             if (val.type == VAL_STRING) {
                 strncpy(val_str, str_data(val.as.string), sizeof(val_str) - 1);
             } else {
-                snprintf(val_str, sizeof(val_str), "%g", val.as.number);
+                num_format_display(val_str, sizeof(val_str), val.as.number, false, false);
             }
             char val_err[256] = "";
             if (!using_validate_input_string(val_str, format_mask, val_err, sizeof(val_err))) {

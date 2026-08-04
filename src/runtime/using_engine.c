@@ -16,6 +16,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include "num_format.h"
 
 void using_parse_mask(const char *fmt_str, UsingMask *mask) {
     mask->token_count = 0;
@@ -410,7 +411,7 @@ void using_format_output(VMContext *vm, const UsingMask *mask, int *mask_idx, BV
                 out_buf[out_idx] = '\0';
             }
         } else {
-            snprintf(out_buf, out_max, " %g ", num);
+            num_format_display(out_buf, out_max, num, true, true);
         }
     }
 

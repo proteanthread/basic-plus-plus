@@ -233,7 +233,7 @@ static void stringify_json_internal(BppMap *map, char **p_buf, size_t *p_cap, si
         BValue val = map->entries[i].val;
         if (val.type == VAL_NUMBER) {
             char num_buf[64];
-            snprintf(num_buf, sizeof(num_buf), "%g", val.as.number);
+            snprintf(num_buf, sizeof(num_buf), "%.16g", val.as.number);
             buf_append_str(p_buf, p_cap, p_len, num_buf);
         } else if (val.type == VAL_STRING) {
             const char *str = val.as.string ? str_data(val.as.string) : "";
@@ -364,7 +364,7 @@ static void stringify_xml_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
         BValue val = map->entries[i].val;
         if (val.type == VAL_NUMBER) {
             char num_buf[64];
-            snprintf(num_buf, sizeof(num_buf), "%g", val.as.number);
+            snprintf(num_buf, sizeof(num_buf), "%.16g", val.as.number);
             buf_append_str(p_buf, p_cap, p_len, num_buf);
         } else if (val.type == VAL_STRING) {
             const char *str = val.as.string ? str_data(val.as.string) : "";
@@ -472,7 +472,7 @@ static void stringify_yaml_internal(BppMap *map, char **p_buf, size_t *p_cap, si
         BValue val = map->entries[i].val;
         if (val.type == VAL_NUMBER) {
             char num_buf[64];
-            snprintf(num_buf, sizeof(num_buf), "%g\n", val.as.number);
+            snprintf(num_buf, sizeof(num_buf), "%.16g\n", val.as.number);
             buf_append_str(p_buf, p_cap, p_len, num_buf);
         } else if (val.type == VAL_STRING) {
             const char *str = val.as.string ? str_data(val.as.string) : "";
@@ -605,7 +605,7 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
 
             if (val.type == VAL_NUMBER) {
                 char num_buf[64];
-                snprintf(num_buf, sizeof(num_buf), "%g\n", val.as.number);
+                snprintf(num_buf, sizeof(num_buf), "%.16g\n", val.as.number);
                 buf_append_str(p_buf, p_cap, p_len, num_buf);
             } else if (val.type == VAL_STRING) {
                 const char *str = val.as.string ? str_data(val.as.string) : "";
@@ -633,7 +633,7 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
                 BValue sub_val = sub->entries[j].val;
                 if (sub_val.type == VAL_NUMBER) {
                     char num_buf[64];
-                    snprintf(num_buf, sizeof(num_buf), "%g\n", sub_val.as.number);
+                    snprintf(num_buf, sizeof(num_buf), "%.16g\n", sub_val.as.number);
                     buf_append_str(p_buf, p_cap, p_len, num_buf);
                 } else if (sub_val.type == VAL_STRING) {
                     const char *str = sub_val.as.string ? str_data(sub_val.as.string) : "";

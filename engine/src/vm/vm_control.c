@@ -122,7 +122,11 @@ bool vm_select_push(VMContext *vm, BValue val, bool matched, BppLineNumber line,
     if (val.type == VAL_STRING && val.as.string) {
         str_add_ref(val.as.string);
     }
-    return select_stack_push(vm->select_stack, val, matched, line, pos);
+    bool ok = select_stack_push(vm->select_stack, val, matched, line, pos);
+    if (!ok && val.type == VAL_STRING && val.as.string) {
+        str_release(vm->str, val.as.string);
+    }
+    return ok;
 }
 
 bool vm_select_pop(VMContext *vm, BppSelectFrame *out_frame) {
@@ -130,9 +134,13 @@ bool vm_select_pop(VMContext *vm, BppSelectFrame *out_frame) {
     BppSelectFrame frame;
     bool ok = select_stack_pop(vm->select_stack, &frame);
     if (ok) {
-        if (out_frame) *out_frame = frame;
-        if (frame.val.type == VAL_STRING && frame.val.as.string) {
-            str_release(vm->str, frame.val.as.string);
+        if (out_frame) {
+            *out_frame = frame; /* Ownership transfers to caller */
+        } else {
+            /* No caller to receive it, release the ref */
+            if (frame.val.type == VAL_STRING && frame.val.as.string) {
+                str_release(vm->str, frame.val.as.string);
+            }
         }
     }
     return ok;

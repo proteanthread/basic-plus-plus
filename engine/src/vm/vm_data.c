@@ -76,6 +76,8 @@ void vm_build_data_table(VMContext *vm) {
                             lex_shutdown(lex);
                             return;
                         }
+                        /* Zero-init new entries per project rules */
+                        memset(temp + (capacity / 2), 0, (capacity / 2) * sizeof(BppDataPosition));
                         vm->data_items = temp;
                     }
 

@@ -12,12 +12,31 @@ The `PRINT` keyword is an integral part of the BASIC++ dialect ecosystem. When i
 - **Side Effects**: May mutate global interpreter state, update string pools, and flush I/O buffers.
 - **Behavior Constraints**: Must be executed within a valid scope. Cannot be nested inside arbitrary expressions if it is a statement. Strict type enforcement is applied at parse time to prevent runtime fault propagation.
 
+#### Number Formatting (v6.5.1+)
+Starting in version 6.5.1, number display in `PRINT` uses an enhanced three-tier formatting system:
+- **15 Significant Digits**: User-facing numeric output displays up to 15 significant digits (increased from 6).
+- **16 Significant Digits for Serialization**: Internal number serialization for file I/O uses 16 significant digits to guarantee complete round-trip fidelity.
+- **Integer Precision Range**: Integers up to 2^53 (9,007,199,254,740,992) are displayed as clean integers without decimal points.
+- **Three-Tier Formatting Rules**:
+  1. **Exact Integers**: Whole numbers up to 2^53 format as plain integers without trailing decimals.
+  2. **Fixed-Point Range**: Fractional values in the range [0.000001, 2^53] format as fixed-point numbers with trailing decimal zeros stripped.
+  3. **Scientific Notation**: Values outside [0.000001, 2^53] default to scientific notation (e.g., `1e+20`).
+
+**Formatting Examples:**
+- `PRINT 99999999999999` outputs ` 99999999999999 `
+- `PRINT 1234567890.5` outputs ` 1234567890.5 `
+- `PRINT 1E20` outputs ` 1e+20 `
+
 ### 3. Code Examples
 ```basic
 10 REM Basic usage
 20 PRINT
 30 REM Complex combinations
 40 IF X > 0 THEN PRINT ELSE PRINT
+50 REM Number formatting examples (v6.5.1+)
+60 PRINT 99999999999999  : REM Outputs:  99999999999999 
+70 PRINT 1234567890.5    : REM Outputs:  1234567890.5 
+80 PRINT 1E20            : REM Outputs:  1e+20 
 ```
 Complex combinations involve using `PRINT` within tight loops, error handlers, and interrupt routines. Developers must ensure that all external dependencies are correctly initialized before invocation.
 

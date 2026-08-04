@@ -293,7 +293,10 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-    /* Apply assignment to all targets */
+    /* Apply assignment to all targets.
+     * For multi-target (target_count > 1), clones are created for all non-last
+     * targets. On error during a non-last target, BOTH the clone (target_val)
+     * AND the original (val) must be released to prevent memory leaks. */
     for (int t_idx = 0; t_idx < target_count; t_idx++) {
         struct LetTarget *t = &targets[t_idx];
         
@@ -310,11 +313,20 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
             }
         }
 
+        /* Macro-like helper: on error in a non-last target, release the original val too */
+        #define LET_RELEASE_ORIGINAL_ON_ERROR() do { \
+            if (t_idx < target_count - 1) { \
+                if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string); \
+                else if (val.type == VAL_MAP && val.as.map) bpp_map_release(vm_get_str(vm), val.as.map); \
+            } \
+        } while(0)
+
         if (t->is_slice) {
             if (target_val.type != VAL_STRING) {
                 err.code = 13; err.message = "Type mismatch: string slice requires string value";
                 if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
                 else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
+                LET_RELEASE_ORIGINAL_ON_ERROR();
                 return err;
             }
 
@@ -323,6 +335,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
             if (!target_var) {
                 err.code = 2; err.message = "Undeclared variable in assignment";
                 if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
+                LET_RELEASE_ORIGINAL_ON_ERROR();
                 return err;
             }
 
@@ -347,6 +360,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
             if (!new_buf) {
                 err.code = 5; err.message = "Out of memory in slice assignment";
                 if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
+                LET_RELEASE_ORIGINAL_ON_ERROR();
                 return err;
             }
 
@@ -386,6 +400,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                 if (err.code != 0 || !base_var) {
                     if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
                     else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
+                    LET_RELEASE_ORIGINAL_ON_ERROR();
                     return err;
                 }
             } else {
@@ -394,6 +409,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                     err.code = 35; err.message = "Variable not declared";
                     if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
                     else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
+                    LET_RELEASE_ORIGINAL_ON_ERROR();
                     return err;
                 }
             }
@@ -402,6 +418,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                 err.code = 13; err.message = "Member assignment on non-object variable";
                 if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
                 else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
+                LET_RELEASE_ORIGINAL_ON_ERROR();
                 return err;
             }
             BppMap *curr_map = base_var->as.map;
@@ -412,12 +429,14 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                     err.code = 35; err.message = "Member field not found";
                     if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
                     else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
+                    LET_RELEASE_ORIGINAL_ON_ERROR();
                     return err;
                 }
                 if (temp.type != VAL_MAP || !temp.as.map) {
                     err.code = 13; err.message = "Member field is not an object";
                     if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
                     else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
+                    LET_RELEASE_ORIGINAL_ON_ERROR();
                     return err;
                 }
                 curr_map = temp.as.map;
@@ -429,6 +448,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                 err.code = 35; err.message = "Member field not defined in UDT/Class";
                 if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
                 else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
+                LET_RELEASE_ORIGINAL_ON_ERROR();
                 return err;
             }
 
@@ -436,6 +456,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                 err.code = 13; err.message = "Type mismatch in member field assignment";
                 if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
                 else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
+                LET_RELEASE_ORIGINAL_ON_ERROR();
                 return err;
             }
 
@@ -450,6 +471,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
             if (err.code != 0 || !elem) {
                 if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
                 else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
+                LET_RELEASE_ORIGINAL_ON_ERROR();
                 return err;
             }
 
@@ -459,6 +481,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                 err.code = 13; err.message = "Type mismatch in array assignment";
                 if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
                 else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
+                LET_RELEASE_ORIGINAL_ON_ERROR();
                 return err;
             }
 
@@ -467,6 +490,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                 if (!struct_copy_instance(vm, elem->as.map, target_val.as.map, copy_err, sizeof(copy_err))) {
                     err.code = 13; err.message = "Type mismatch in structure assignment";
                     bpp_map_release(vm_get_str(vm), target_val.as.map);
+                    LET_RELEASE_ORIGINAL_ON_ERROR();
                     return err;
                 }
                 bpp_map_release(vm_get_str(vm), target_val.as.map);
@@ -487,6 +511,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
             if (!struct_copy_instance(vm, existing_var->as.map, target_val.as.map, copy_err, sizeof(copy_err))) {
                 err.code = 13; err.message = "Type mismatch in structure assignment";
                 bpp_map_release(vm_get_str(vm), target_val.as.map);
+                LET_RELEASE_ORIGINAL_ON_ERROR();
                 return err;
             }
             bpp_map_release(vm_get_str(vm), target_val.as.map);
@@ -514,6 +539,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                     } else {
                         err.code = 13; err.message = "TI$ expects time suffix in HHMMSS format (e.g., DD:HHMMSS)";
                         if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
+                        LET_RELEASE_ORIGINAL_ON_ERROR();
                         return err;
                     }
                 } else if (len >= 6) {
@@ -523,6 +549,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
                 } else {
                     err.code = 13; err.message = "TI$ expects string in DD:HHMMSS or HHMMSS format";
                     if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
+                    LET_RELEASE_ORIGINAL_ON_ERROR();
                     return err;
                 }
                 double new_sec = days * 86400.0 + hr * 3600.0 + min * 60.0 + sec;
@@ -531,6 +558,7 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
             } else {
                 err.code = 13; err.message = "TI$ expects a string value";
                 if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
+                LET_RELEASE_ORIGINAL_ON_ERROR();
                 return err;
             }
             if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
@@ -541,12 +569,14 @@ BppError stmt_let_handler(VMContext *vm, LexerContext *lex) {
             err.code = 13; err.message = "Type mismatch or undeclared variable in assignment";
             if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
             else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
+            LET_RELEASE_ORIGINAL_ON_ERROR();
             return err;
         }
 
         if (target_val.type == VAL_STRING && target_val.as.string) str_release(vm_get_str(vm), target_val.as.string);
         else if (target_val.type == VAL_MAP && target_val.as.map) bpp_map_release(vm_get_str(vm), target_val.as.map);
     }
+    #undef LET_RELEASE_ORIGINAL_ON_ERROR
 
 
     return err;

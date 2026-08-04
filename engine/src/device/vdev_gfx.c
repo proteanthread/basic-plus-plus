@@ -332,6 +332,7 @@ static void gfx_scroll_screen(void) {
     if (!g_pixels) return;
     int char_h = (graphics_mode == 13) ? 8 : 16;
     int pixel_rows_to_move = g_height - char_h;
+    if (pixel_rows_to_move <= 0) return;
     
     memmove(g_pixels, g_pixels + char_h * g_width, pixel_rows_to_move * g_width * sizeof(uint32_t));
     

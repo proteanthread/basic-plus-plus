@@ -107,7 +107,9 @@ BppError stmt_noise_handler(VMContext *vm, LexerContext *lex) {
 
     BValue type_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
-
+    if (type_val.type == VAL_STRING && type_val.as.string) {
+        str_release(vm_get_str(vm), type_val.as.string);
+    }
     BppToken tok = lex_next(lex);
     if (tok.type != TOK_COMMA) {
         err.code = 2; err.message = "Expected ',' in NOISE statement";
@@ -116,7 +118,17 @@ BppError stmt_noise_handler(VMContext *vm, LexerContext *lex) {
 
     BValue dur_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
-
+    if (dur_val.type == VAL_STRING && dur_val.as.string) {
+        str_release(vm_get_str(vm), dur_val.as.string);
+    }
+    if (type_val.type != VAL_NUMBER && type_val.type != VAL_INTEGER) {
+        err.code = 13; err.message = "Type mismatch: NOISE type must be numeric";
+        return err;
+    }
+    if (dur_val.type != VAL_NUMBER && dur_val.type != VAL_INTEGER) {
+        err.code = 13; err.message = "Type mismatch: NOISE duration must be numeric";
+        return err;
+    }
     int type = (int)type_val.as.number;
     double dur = dur_val.as.number;
     vdev_sound_noise(type, dur);
@@ -545,8 +557,12 @@ BppError stmt_title_handler(VMContext *vm, LexerContext *lex) {
 
     BValue val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
-
+    if (val.type != VAL_STRING || !val.as.string) {
+        err.code = 13; err.message = "Type mismatch: TITLE expects a string";
+        return err;
+    }
     platform_window_title_set(str_data(val.as.string));
+    str_release(vm_get_str(vm), val.as.string);
     return err;
 }
 
@@ -599,8 +615,12 @@ BppError stmt_icon_handler(VMContext *vm, LexerContext *lex) {
 
     BValue val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
-
+    if (val.type != VAL_STRING || !val.as.string) {
+        err.code = 13; err.message = "Type mismatch: ICON expects a string";
+        return err;
+    }
     platform_window_icon_set(str_data(val.as.string));
+    str_release(vm_get_str(vm), val.as.string);
     return err;
 }
 
@@ -654,7 +674,9 @@ BppError stmt_nwrite_handler(VMContext *vm, LexerContext *lex) {
 
     BValue ch_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
-
+    if (ch_val.type == VAL_STRING && ch_val.as.string) {
+        str_release(vm_get_str(vm), ch_val.as.string);
+    }
     BppToken tok = lex_next(lex);
     if (tok.type != TOK_COMMA) {
         err.code = 2; err.message = "Expected ',' in NWRITE";
@@ -663,12 +685,21 @@ BppError stmt_nwrite_handler(VMContext *vm, LexerContext *lex) {
 
     BValue data_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
-
+    if (ch_val.type != VAL_NUMBER && ch_val.type != VAL_INTEGER) {
+        if (data_val.type == VAL_STRING && data_val.as.string) str_release(vm_get_str(vm), data_val.as.string);
+        err.code = 13; err.message = "Type mismatch: NWRITE channel must be numeric";
+        return err;
+    }
+    if (data_val.type != VAL_STRING || !data_val.as.string) {
+        err.code = 13; err.message = "Type mismatch: NWRITE data must be a string";
+        return err;
+    }
     int channel = (int)ch_val.as.number;
     const char *data = str_data(data_val.as.string);
     size_t len = data ? strlen(data) : 0;
 
     err = vnet_send(vm_get_vnet(vm), channel, data, len);
+    str_release(vm_get_str(vm), data_val.as.string);
     return err;
 }
 
@@ -942,8 +973,13 @@ BppError stmt_statesave_handler(VMContext *vm, LexerContext *lex) {
 
     BValue val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
+    if (val.type != VAL_STRING || !val.as.string) {
+        err.code = 13; err.message = "Type mismatch: STATESAVE expects a filename string";
+        return err;
+    }
 
     err = vm_state_save(vm, str_data(val.as.string));
+    str_release(vm_get_str(vm), val.as.string);
     return err;
 }
 
@@ -953,8 +989,13 @@ BppError stmt_stateload_handler(VMContext *vm, LexerContext *lex) {
 
     BValue val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
+    if (val.type != VAL_STRING || !val.as.string) {
+        err.code = 13; err.message = "Type mismatch: STATELOAD expects a filename string";
+        return err;
+    }
 
     err = vm_state_load(vm, str_data(val.as.string));
+    str_release(vm_get_str(vm), val.as.string);
     return err;
 }
 

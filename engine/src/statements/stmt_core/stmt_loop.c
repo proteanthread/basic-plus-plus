@@ -142,7 +142,7 @@ BppError stmt_for_handler(VMContext *vm, LexerContext *lex) {
     }
     
     size_t clen = (tok.length < 63) ? tok.length : 63;
-    memcpy(loop_vars[loop_var_count], tok.as.string, clen);
+    memcpy(loop_vars[loop_var_count], tok.start, clen);
     loop_vars[loop_var_count][clen] = '\0';
     loop_var_count++;
     
@@ -161,7 +161,7 @@ BppError stmt_for_handler(VMContext *vm, LexerContext *lex) {
             return err;
         }
         clen = (var_tok.length < 63) ? var_tok.length : 63;
-        memcpy(loop_vars[loop_var_count], var_tok.as.string, clen);
+        memcpy(loop_vars[loop_var_count], var_tok.start, clen);
         loop_vars[loop_var_count][clen] = '\0';
         loop_var_count++;
         next_tok = lex_peek(lex);
@@ -330,7 +330,7 @@ BppError stmt_next_handler(VMContext *vm, LexerContext *lex) {
         lex_next(lex); /* Consume identifier */
         char var_name[64];
         size_t clen = (tok.length < 63) ? tok.length : 63;
-        memcpy(var_name, tok.as.string, clen);
+        memcpy(var_name, tok.start, clen);
         var_name[clen] = '\0';
         
         BppForFrame frame;
@@ -650,7 +650,7 @@ static BppError skip_to_next(VMContext *vm, const char *var_name) {
                     if (vtok.type == TOK_IDENT) {
                         char vname[64];
                         size_t clen = (vtok.length < 63) ? vtok.length : 63;
-                        memcpy(vname, vtok.as.string, clen);
+                        memcpy(vname, vtok.start, clen);
                         vname[clen] = '\0';
                         if (strcmp(vname, var_name) == 0) {
                             nested_depth++;
@@ -662,7 +662,7 @@ static BppError skip_to_next(VMContext *vm, const char *var_name) {
                     if (vtok.type == TOK_IDENT) {
                         char vname[64];
                         size_t clen = (vtok.length < 63) ? vtok.length : 63;
-                        memcpy(vname, vtok.as.string, clen);
+                        memcpy(vname, vtok.start, clen);
                         vname[clen] = '\0';
                         if (strcmp(vname, var_name) != 0) {
                             var_matches = false;

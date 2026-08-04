@@ -316,7 +316,7 @@ BppError stmt_net_handler(VMContext *vm, LexerContext *lex) {
 
         char var_name[256];
         size_t vlen = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-        memcpy(var_name, tok.as.string, vlen);
+        memcpy(var_name, tok.start, vlen);
         var_name[vlen] = '\0';
 
         BValue *target_var = var_lookup(vm_get_var(vm), var_name, true);
@@ -470,7 +470,7 @@ BppError stmt_gemini_handler(VMContext *vm, LexerContext *lex) {
 
     char var_name[256];
     size_t len = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-    memcpy(var_name, tok.as.string, len);
+    memcpy(var_name, tok.start, len);
     var_name[len] = '\0';
 
     /* Fetch payload */

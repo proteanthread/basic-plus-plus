@@ -24,6 +24,7 @@
 #include "stmt/stmt.h"
 #include "runtime/file.h"
 #include "eval/eval.h"
+#include "runtime/num_format.h"
 #include "device/vdev.h"
 #include "security/security.h"
 #include "runtime/vfs.h"
@@ -242,8 +243,12 @@ BppError stmt_open_handler(VMContext *vm, LexerContext *lex) {
         str_release(vm_get_str(vm), name_val.as.string);
         return err;
     }
-    if (ch_val.type == VAL_STRING) {
-        err.code = 13; err.message = "Channel must be a number";
+    if (ch_val.type == VAL_STRING && ch_val.as.string) {
+        str_release(vm_get_str(vm), ch_val.as.string);
+    }
+    if (ch_val.type != VAL_NUMBER) {
+        err.code = 13;
+        err.message = "Type mismatch";
         str_release(vm_get_str(vm), name_val.as.string);
         return err;
     }
@@ -271,8 +276,12 @@ BppError stmt_open_handler(VMContext *vm, LexerContext *lex) {
                 str_release(vm_get_str(vm), name_val.as.string);
                 return err;
             }
-            if (len_val.type == VAL_STRING) {
-                err.code = 13; err.message = "Record length must be numeric";
+            if (len_val.type == VAL_STRING && len_val.as.string) {
+                str_release(vm_get_str(vm), len_val.as.string);
+            }
+            if (len_val.type != VAL_NUMBER) {
+                err.code = 13;
+                err.message = "Type mismatch";
                 str_release(vm_get_str(vm), name_val.as.string);
                 return err;
             }
@@ -355,8 +364,12 @@ BppError stmt_close_handler(VMContext *vm, LexerContext *lex) {
         }
         BValue ch_val = eval_expression(vm, lex, &err);
         if (err.code != 0) return err;
-        if (ch_val.type == VAL_STRING) {
-            err.code = 13; err.message = "Channel must be a number";
+        if (ch_val.type == VAL_STRING && ch_val.as.string) {
+            str_release(vm_get_str(vm), ch_val.as.string);
+        }
+        if (ch_val.type != VAL_NUMBER) {
+            err.code = 13;
+            err.message = "Type mismatch";
             return err;
         }
         file_close(vm_get_file(vm), (int)ch_val.as.number);
@@ -407,6 +420,14 @@ BppError stmt_get_handler(VMContext *vm, LexerContext *lex) {
 
     BValue ch_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
+    if (ch_val.type == VAL_STRING && ch_val.as.string) {
+        str_release(vm_get_str(vm), ch_val.as.string);
+    }
+    if (ch_val.type != VAL_NUMBER) {
+        err.code = 13;
+        err.message = "Type mismatch";
+        return err;
+    }
     int channel = (int)ch_val.as.number;
 
     tok = lex_peek(lex);
@@ -422,6 +443,14 @@ BppError stmt_get_handler(VMContext *vm, LexerContext *lex) {
         } else {
             BValue rec_val = eval_expression(vm, lex, &err);
             if (err.code != 0) return err;
+            if (rec_val.type == VAL_STRING && rec_val.as.string) {
+                str_release(vm_get_str(vm), rec_val.as.string);
+            }
+            if (rec_val.type != VAL_NUMBER) {
+                err.code = 13;
+                err.message = "Type mismatch";
+                return err;
+            }
             record = (long)rec_val.as.number;
             tok = lex_peek(lex);
         }
@@ -520,6 +549,14 @@ BppError stmt_put_handler(VMContext *vm, LexerContext *lex) {
 
     BValue ch_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
+    if (ch_val.type == VAL_STRING && ch_val.as.string) {
+        str_release(vm_get_str(vm), ch_val.as.string);
+    }
+    if (ch_val.type != VAL_NUMBER) {
+        err.code = 13;
+        err.message = "Type mismatch";
+        return err;
+    }
     int channel = (int)ch_val.as.number;
 
     tok = lex_peek(lex);
@@ -535,6 +572,14 @@ BppError stmt_put_handler(VMContext *vm, LexerContext *lex) {
         } else {
             BValue rec_val = eval_expression(vm, lex, &err);
             if (err.code != 0) return err;
+            if (rec_val.type == VAL_STRING && rec_val.as.string) {
+                str_release(vm_get_str(vm), rec_val.as.string);
+            }
+            if (rec_val.type != VAL_NUMBER) {
+                err.code = 13;
+                err.message = "Type mismatch";
+                return err;
+            }
             record = (long)rec_val.as.number;
             tok = lex_peek(lex);
         }
@@ -625,6 +670,14 @@ BppError stmt_seek_handler(VMContext *vm, LexerContext *lex) {
 
     BValue ch_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
+    if (ch_val.type == VAL_STRING && ch_val.as.string) {
+        str_release(vm_get_str(vm), ch_val.as.string);
+    }
+    if (ch_val.type != VAL_NUMBER) {
+        err.code = 13;
+        err.message = "Type mismatch";
+        return err;
+    }
     int channel = (int)ch_val.as.number;
 
     tok = lex_next(lex);
@@ -635,6 +688,14 @@ BppError stmt_seek_handler(VMContext *vm, LexerContext *lex) {
 
     BValue pos_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
+    if (pos_val.type == VAL_STRING && pos_val.as.string) {
+        str_release(vm_get_str(vm), pos_val.as.string);
+    }
+    if (pos_val.type != VAL_NUMBER) {
+        err.code = 13;
+        err.message = "Type mismatch";
+        return err;
+    }
     long position = (long)pos_val.as.number;
 
     file_seek(vm_get_file(vm), channel, position);
@@ -650,6 +711,14 @@ BppError stmt_file_print_handler(VMContext *vm, LexerContext *lex) {
 
     BValue ch_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
+    if (ch_val.type == VAL_STRING && ch_val.as.string) {
+        str_release(vm_get_str(vm), ch_val.as.string);
+    }
+    if (ch_val.type != VAL_NUMBER) {
+        err.code = 13;
+        err.message = "Type mismatch";
+        return err;
+    }
     int channel = (int)ch_val.as.number;
 
     FileContext *fctx = vm_get_file(vm);
@@ -726,7 +795,7 @@ BppError stmt_file_print_handler(VMContext *vm, LexerContext *lex) {
                 str_release(vm_get_str(vm), val.as.string);
             } else {
                 char buf[64];
-                snprintf(buf, sizeof(buf), "%g", val.as.number);
+                num_format_serialize(buf, sizeof(buf), val.as.number);
                 file_puts(fctx, channel, buf);
                 col += strlen(buf);
             }
@@ -766,6 +835,14 @@ BppError stmt_file_input_handler(VMContext *vm, LexerContext *lex) {
 
     BValue ch_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
+    if (ch_val.type == VAL_STRING && ch_val.as.string) {
+        str_release(vm_get_str(vm), ch_val.as.string);
+    }
+    if (ch_val.type != VAL_NUMBER) {
+        err.code = 13;
+        err.message = "Type mismatch";
+        return err;
+    }
     int channel = (int)ch_val.as.number;
 
     FileContext *fctx = vm_get_file(vm);

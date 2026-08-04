@@ -165,7 +165,7 @@ BppError stmt_kbd_get_handler(VMContext *vm, LexerContext *lex) {
 
     char var_name[256];
     size_t copy_len = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-    memcpy(var_name, tok.as.string, copy_len);
+    memcpy(var_name, tok.start, copy_len);
     var_name[copy_len] = '\0';
 
     VariableContext *var_ctx = vm_get_var(vm);
@@ -232,7 +232,7 @@ BppError stmt_kbd_get_using_handler(VMContext *vm, LexerContext *lex) {
 
     char var_name[256];
     size_t copy_len = (tok.length < sizeof(var_name) - 1) ? tok.length : sizeof(var_name) - 1;
-    memcpy(var_name, tok.as.string, copy_len);
+    memcpy(var_name, tok.start, copy_len);
     var_name[copy_len] = '\0';
 
     VariableContext *var_ctx = vm_get_var(vm);
