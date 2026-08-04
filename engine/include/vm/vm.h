@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_vm.h
+ * @file vm.h
  * @brief Virtual Machine core execution context API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -29,8 +29,8 @@
  * - How to write external extensions: External plugins query VM state and manipulate resources through these accessors.
  */
 
-#ifndef BPP_VM_H
-#define BPP_VM_H
+#ifndef VM_H
+#define VM_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -474,4 +474,4 @@ void bytecode_set_detokenizer(DetokenizerFn fn);
  */
 DetokenizerFn bytecode_get_detokenizer(void);
 
-#endif /* BPP_VM_H */
+#endif /* VM_H */

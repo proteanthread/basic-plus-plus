@@ -49,9 +49,9 @@ endif()
 # Global include directories - NEW directory-organized headers
 include_directories(engine/include)
 
-option(BPP_USE_CUSTOM_STATIC_DIALECT "Enable custom static compile-time dialect for blite/bscript" OFF)
-if(BPP_USE_CUSTOM_STATIC_DIALECT)
-    add_compile_definitions(BPP_USE_CUSTOM_STATIC_DIALECT)
+option(BASIC_USE_CUSTOM_STATIC_DIALECT "Enable custom static compile-time dialect for blite/bscript" OFF)
+if(BASIC_USE_CUSTOM_STATIC_DIALECT)
+    add_compile_definitions(BASIC_USE_CUSTOM_STATIC_DIALECT)
 endif()
 
 # Add the engine subdirectory (replaces old src/ subdirectory)
@@ -77,7 +77,7 @@ endif()
 # --- Binary Target 1: baspp (Standard Console & SDL Combined) ---
 add_executable(baspp engine/src/bootstrap/main_baspp.c engine/src/device/vdev_gfx.c)
 target_include_directories(baspp PRIVATE engine/include engine/src/device/bgi/aalib/include)
-target_compile_definitions(baspp PRIVATE BPP_SDL_BUILD BGI_HAVE_AALIB)
+target_compile_definitions(baspp PRIVATE BASIC_SDL_BUILD BGI_HAVE_AALIB)
 if(NOT MSVC)
     target_link_libraries(baspp PRIVATE
         -Wl,--whole-archive libbasicpp -Wl,--no-whole-archive ${SDL2_LIBRARIES})
@@ -88,7 +88,7 @@ endif()
 # --- Binary Target 2: blite (Headless Lite Edition REPL) ---
 add_executable(blite engine/src/bootstrap/main_blite.c)
 target_include_directories(blite PRIVATE engine/include)
-target_compile_definitions(blite PRIVATE BPP_LITE_BUILD NO_SDL2)
+target_compile_definitions(blite PRIVATE BASIC_LITE_BUILD NO_SDL2)
 if(NOT MSVC)
     target_link_libraries(blite PRIVATE
         -Wl,--whole-archive libbasicpp_lite -Wl,--no-whole-archive)
@@ -99,7 +99,7 @@ endif()
 # --- Binary Target 3: bscript (Headless Lite Script Runner) ---
 add_executable(bscript engine/src/bootstrap/main_bscript.c)
 target_include_directories(bscript PRIVATE engine/include)
-target_compile_definitions(bscript PRIVATE BPP_LITE_BUILD NO_SDL2)
+target_compile_definitions(bscript PRIVATE BASIC_LITE_BUILD NO_SDL2)
 if(NOT MSVC)
     target_link_libraries(bscript PRIVATE
         -Wl,--whole-archive libbasicpp_lite -Wl,--no-whole-archive)
@@ -130,7 +130,7 @@ endif()
 # --- Binary Target 6: basstub (Headless Standalone Runner Stub) ---
 add_executable(basstub engine/src/bootstrap/basstub.c)
 target_include_directories(basstub PRIVATE engine/include)
-target_compile_definitions(basstub PRIVATE BPP_LITE_BUILD NO_SDL2)
+target_compile_definitions(basstub PRIVATE BASIC_LITE_BUILD NO_SDL2)
 if(NOT MSVC)
     target_link_libraries(basstub PRIVATE
         -Wl,--whole-archive libbasicpp_lite -Wl,--no-whole-archive)

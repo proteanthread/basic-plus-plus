@@ -1,6 +1,6 @@
 # Gemini Protocol client API Reference
 
-Header File: [`include/bpp_gemini.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_gemini.h)
+Header File: [`include/gemini.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/gemini.h)
 
 ## Overview
 Implements sandboxed lightweight HTTP/Gemini protocol handlers.
@@ -9,7 +9,7 @@ Implements sandboxed lightweight HTTP/Gemini protocol handlers.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_gemini.h"
+#include "gemini.h"
 
 void get_gemini() {
     gemini_request("gemini://gemini.circumlunar.space");

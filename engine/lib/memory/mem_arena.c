@@ -15,7 +15,7 @@
  * Assumptions: Alignment requirements fit standard size_t arithmetic.
  * Portability concerns: Strict C17 compliant, pure 7-bit ASCII.
  * Future expansions: Add heap fragmentation metrics and custom pool hooks.
- * External extension hooks: Exposed via bpp_memory.h.
+ * External extension hooks: Exposed via memory.h.
  */
 
 #include "memory/memory.h"

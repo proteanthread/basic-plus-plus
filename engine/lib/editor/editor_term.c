@@ -10,7 +10,7 @@
  * Why it exists: The bright_colors[] array was identically duplicated across
  *   mod_edit.c, mod_vi.c, mod_ws.c, and mod_edlin.c.
  * Why it works this way: Static const table exposed via extern declaration
- *   in bpp_editor_core.h. Each editor indexes into the shared table.
+ *   in editor_core.h. Each editor indexes into the shared table.
  * What can be changed: Color values, number of palette entries.
  * What cannot be changed: Array size must stay at 6 entries for existing code.
  * What to expect: Pure data, no side effects.
@@ -19,7 +19,7 @@
  * Assumptions: Terminal supports ANSI/VT100 escape sequences.
  * Portability concerns: Strict C17. Escape sequences are 7-bit ASCII.
  * Future expansions: 256-color and truecolor palette support.
- * External extension hooks: New editors include bpp_editor_core.h.
+ * External extension hooks: New editors include editor_core.h.
  */
 
 #include "editor/editor_core.h"

@@ -33,7 +33,7 @@
 #include "eval/eval.h"
 #include "types/config.h"
 #include "security/security.h"
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 #include "memory/segmented_mem.h"
 #endif
 #include "runtime/variables.h"
@@ -44,7 +44,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
 /**
  * @brief MOUNT <prefix$>, <target$> [, <type>]
  */
@@ -200,7 +200,7 @@ BppError stmt_out_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
 /**
  * @brief NET OPEN <channel>, <protocol$>, <host$>, <port>
  *        NET SEND <channel>, <data$>
@@ -427,7 +427,7 @@ BppError stmt_poke_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     /* 3. Delegate to vmem engine first, fallback to bus */
     if (vmem_poke(vm_get_vmem(vm), (uint16_t)addr_val.as.number, (uint8_t)val_val.as.number) == 1) {
         return err;
@@ -438,7 +438,7 @@ BppError stmt_poke_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-#if BPP_SUPPORT_GEMINI
+#if SUPPORT_GEMINI
 BppError stmt_gemini_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));

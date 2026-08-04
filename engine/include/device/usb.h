@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_usb.h
+ * @file usb.h
  * @brief USB Device Driver Subsystem interface.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -14,8 +14,8 @@
  *   VHAL device classes.
  */
 
-#ifndef BPP_USB_H
-#define BPP_USB_H
+#ifndef DEVICE_USB_H
+#define DEVICE_USB_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -50,4 +50,4 @@ void        usb_disconnect(UsbContext *ctx, int port);
 bool        usb_get_port_status(UsbContext *ctx, int port, BppUsbDevice *out_dev);
 int         usb_get_connected_count(UsbContext *ctx);
 
-#endif /* BPP_USB_H */
+#endif /* DEVICE_USB_H */

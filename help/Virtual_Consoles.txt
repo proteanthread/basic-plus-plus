@@ -798,23 +798,23 @@
   ---- Generated C Runtime ----
 
     / The compiled runtime includes: /
-    static void bpp_print(const char *s)
+    static void basic_print(const char *s)
     {
         fputs(s, stdout);
     }
 
-    static void bpp_error(const char *s)
+    static void basic_error(const char *s)
     {
         fputs(s, stderr);
     }
 
-    static void bpp_log(const char *fmt, ...)
+    static void logger(const char *fmt, ...)
     {
         / Only if LOG: was configured at compile time /
-        #ifdef BPP_LOG_FILE
+        #ifdef BASIC_LOG_FILE
         {
             va_list ap;
-            FILE *lf = fopen(BPP_LOG_FILE, "a");
+            FILE *lf = fopen(BASIC_LOG_FILE, "a");
             if (lf) {
                 time_t t = time(NULL);
                 fprintf(lf, "[%s] ", ctime(&t));
@@ -831,9 +831,9 @@
 
     BASIC                       C Output
     -------------------------   ---------------------------
-    PRINT "Hello"               bpp_print("Hello\n");
-    PRINT #2, "Error"           bpp_error("Error\n");
-    FPRINT #9, "Log msg"        bpp_log("Log msg\n");
+    PRINT "Hello"               basic_print("Hello\n");
+    PRINT #2, "Error"           basic_error("Error\n");
+    FPRINT #9, "Log msg"        logger("Log msg\n");
 
   ---- Compile-Time Configuration ----
 
@@ -845,8 +845,8 @@
 
   Becomes:
 
-    #define BPP_LOG_FILE "session.log"
-    #define BPP_ERR_FILE "errors.txt"
+    #define BASIC_LOG_FILE "session.log"
+    #define ERR_FILE "errors.txt"
 
   This way, compiled programs maintain the three-stream model
   without requiring the full VDev runtime.
@@ -856,22 +856,22 @@
   For maximum portability, compiled programs should use an
   abstract I/O layer that can be swapped at link time:
 
-    /* bpp_io.h — platform-independent I/O interface */
-    void bpp_io_init(void);
-    void bpp_io_print(const char *s);
-    void bpp_io_error(const char *s);
-    void bpp_io_log(const char *s);
-    int  bpp_io_input(char *buf, int max);
-    void bpp_io_cls(void);
-    void bpp_io_flush(void);
+    /* vdev.h — platform-independent I/O interface */
+    void vdev_init(void);
+    void vdev_print(const char *s);
+    void vdev_error(const char *s);
+    void vdev_log(const char *s);
+    int  vdev_input(char *buf, int max);
+    void vdev_cls(void);
+    void vdev_flush(void);
 
-  Default implementation (bpp_io_stdio.c):
+  Default implementation (vdev_stdio.c):
     Uses printf/fprintf/fgets — works everywhere.
 
-  Network implementation (bpp_io_net.c):
+  Network implementation (vdev_net.c):
     Uses socket send/recv — for irata.online.
 
-  Embedded implementation (bpp_io_uart.c):
+  Embedded implementation (vdev_uart.c):
     Uses UART read/write — for Raspberry Pi, Arduino.
 
 

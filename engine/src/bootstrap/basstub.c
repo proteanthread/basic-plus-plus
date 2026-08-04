@@ -81,8 +81,8 @@ int main(int argc, char **argv) {
     }
 
     /* Verify BPP magic signature */
-    unsigned char bpp_magic[4];
-    if (fread(bpp_magic, 1, 4, fp) != 4 || bpp_magic[0] != 'B' || bpp_magic[1] != 'P' || bpp_magic[2] != 'P' || bpp_magic[3] != 0x1A) {
+    unsigned char basic_magic[4];
+    if (fread(basic_magic, 1, 4, fp) != 4 || basic_magic[0] != 'B' || basic_magic[1] != 'P' || basic_magic[2] != 'P' || basic_magic[3] != 0x1A) {
         fprintf(stderr, "FATAL: Appended standalone payload contains invalid BPP magic\n");
         fclose(fp);
         return 1;

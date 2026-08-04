@@ -1,6 +1,6 @@
 # Statement Dispatcher API Reference
 
-Header File: [`include/bpp_stmt.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_stmt.h)
+Header File: [`include/stmt.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/stmt.h)
 
 ## Overview
 Registers statement handlers and dispatches execution of matched BASIC statement lines.
@@ -27,7 +27,7 @@ Registers statement handlers and dispatches execution of matched BASIC statement
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_stmt.h"
+#include "stmt.h"
 
 BppError my_stmt_handler(VMContext *vm, LexerContext *lex) {
     (void)vm; (void)lex;

@@ -1,6 +1,6 @@
 # OS Platform Abstraction API Reference
 
-Header File: [`include/bpp_platform.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_platform.h)
+Header File: [`include/platform.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/platform.h)
 
 ## Overview
 Bridges platform differences for clocks, console sizes, clipboard, and file descriptors.
@@ -67,7 +67,7 @@ Bridges platform differences for clocks, console sizes, clipboard, and file desc
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_platform.h"
+#include "platform.h"
 
 void get_metrics() {
     int w = platform_console_width();

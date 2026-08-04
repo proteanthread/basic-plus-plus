@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_dialect.h
+ * @file dialect.h
  * @brief Dialect Metaprogramming Engine configuration and API declarations.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -30,8 +30,8 @@
  * - How to write external extensions: Register C-level preprocessor callbacks or bind directly.
  */
 
-#ifndef BPP_DIALECT_H
-#define BPP_DIALECT_H
+#ifndef CORE_DIALECT_H
+#define CORE_DIALECT_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -73,4 +73,4 @@ bool        dialect_load_from_map(VMContext *vm, BppMap *map, BppDialect *d, cha
 bool        dialect_validate_map(VMContext *vm, BppMap *map, char *err_buf, size_t err_len);
 char       *dialect_generate_docs(VMContext *vm, BppDialect *d);
 
-#endif /* BPP_DIALECT_H */
+#endif /* CORE_DIALECT_H */

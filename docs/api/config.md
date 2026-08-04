@@ -1,6 +1,6 @@
 # Configuration Subsystem API Reference
 
-Header File: [`include/bpp_config.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_config.h)
+Header File: [`include/config.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/config.h)
 
 ## Overview
 Handles configuration settings, limits, dial-in setups, and memory allocations for the VM instance.
@@ -9,7 +9,7 @@ Handles configuration settings, limits, dial-in setups, and memory allocations f
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_config.h"
+#include "config.h"
 
 void setup_config() {
     BootConfig cfg;

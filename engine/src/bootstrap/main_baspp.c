@@ -103,7 +103,7 @@ static bool parse_line_number(const char *str, BppLineNumber *out_line, const ch
 
 int main(int argc, char **argv) {
     
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     bool sdl_gui = false;
     bool sdl_ondemand = false;
 #endif
@@ -118,11 +118,11 @@ int main(int argc, char **argv) {
 
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--sdl") == 0) {
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
             sdl_gui = true;
 #endif
         } else if (strcmp(argv[i], "--sdl-ondemand") == 0) {
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
             sdl_ondemand = true;
 #endif
         } else if (strcmp(argv[i], "--ws") == 0) {
@@ -155,14 +155,14 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    bpp_logger_init(log_file, out_file);
-    atexit(bpp_logger_close);
+    logger_init(log_file, out_file);
+    atexit(logger_close);
     if (debug_flag) {
-        bpp_logger_set_debug(true);
-        bpp_logger_set_trace(true);
+        logger_set_debug(true);
+        logger_set_trace(true);
     }
     if (dry_run_flag) {
-        bpp_logger_set_dry_run(true);
+        logger_set_dry_run(true);
     }
 
     /* Auto-detect editor mode from executable name (e.g. vi.exe, ws.exe) */
@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
      */
 
     /* Initialize graphics device allowance */
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     vdev_gfx_enable(sdl_gui || sdl_ondemand, sdl_gui);
 #endif
 
@@ -201,7 +201,7 @@ int main(int argc, char **argv) {
     config.is_repl = true;
     /* baspp uses dynamic host defaults, so 0 memory limits */
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     config.sdl_gui = sdl_gui;
     config.sdl_ondemand = sdl_ondemand;
 #endif
@@ -218,7 +218,7 @@ int main(int argc, char **argv) {
     }
 
     /* Check if we need to boot immediately into SDL GUI mode */
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     vdev_gfx_boot_check(boot->vm);
 #endif
 
@@ -270,14 +270,14 @@ int main(int argc, char **argv) {
     }
 
     /* Print welcome banner with RAM stats */
-    vdev_printf(vdev, "BASIC++ v%s \"%s\" [%s]\n", BPP_VERSION_STRING, BPP_VERSION_CODENAME, BPP_NAME);
-    vdev_printf(vdev, "Platform: %s (Profile: %s)\n", platform_name(), BPP_PROFILE_NAME);
+    vdev_printf(vdev, "BASIC++ v%s \"%s\" [%s]\n", BASIC_VERSION_STRING, BASIC_VERSION_CODENAME, BASIC_NAME);
+    vdev_printf(vdev, "Platform: %s (Profile: %s)\n", platform_name(), BASIC_PROFILE_NAME);
     
     size_t free_ram = mem_get_free_ram(boot->mem);
     char mem_buf[64];
     mem_format_size(free_ram, mem_buf, sizeof(mem_buf));
     vdev_printf(vdev, "%s free\n\n", mem_buf);
-    vdev_puts(vdev, BPP_READY "\n");
+    vdev_puts(vdev, BASIC_READY "\n");
     VDev *con_dev = vdev_get(vdev, "CON:");
     if (con_dev && con_dev->ops.flush) {
         con_dev->ops.flush(con_dev);
@@ -287,14 +287,14 @@ int main(int argc, char **argv) {
     VDev *con = vdev_get(vdev, "CON:");
 
     while (true) {
-        vdev_puts(vdev, BPP_PROMPT);
+        vdev_puts(vdev, BASIC_PROMPT);
         if (con && con->ops.flush) {
             con->ops.flush(con);
         }
 
         if (!con->ops.gets || !con->ops.gets(con, input_line, sizeof(input_line))) {
             if (vm_break_triggered(boot->vm)) {
-                vdev_puts(vdev, "\n" BPP_READY "\n");
+                vdev_puts(vdev, "\n" BASIC_READY "\n");
                 vm_reset_break(boot->vm);
                 continue;
             }

@@ -1,6 +1,6 @@
 # Array Manager API Reference
 
-Header File: [`include/bpp_arrays.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_arrays.h)
+Header File: [`include/arrays.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/arrays.h)
 
 ## Overview
 Provides bounds-checking multidimensional arrays, DIM, and REDIM capabilities.
@@ -30,7 +30,7 @@ Provides bounds-checking multidimensional arrays, DIM, and REDIM capabilities.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_arrays.h"
+#include "arrays.h"
 
 void create_arr(ArrayContext *ctx) {
     int bounds[2] = {10, 10};

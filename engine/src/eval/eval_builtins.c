@@ -31,7 +31,7 @@
 #include "runtime/map.h"
 
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 #include "memory/segmented_mem.h"
 #endif
 
@@ -296,12 +296,39 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         struct tm *gt = platform_gmtime(&t, &tm_buf);
         char buf[64] = "";
         if (gt) {
-            snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02dZ",
+            snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d",
                      gt->tm_year + 1900, gt->tm_mon + 1, gt->tm_mday,
                      gt->tm_hour, gt->tm_min, gt->tm_sec);
         }
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), buf, strlen(buf));
+    }
+    else if (strcmp(uname, "CLOCK") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "CLOCK expects no arguments"; return res;
+        }
+        time_t t = time(NULL);
+        struct tm tm_buf;
+        struct tm *lt = platform_localtime(&t, &tm_buf);
+        double val = 0.0;
+        if (lt) {
+            long long yr = (long long)(lt->tm_year + 1900);
+            long long mon = (long long)(lt->tm_mon + 1);
+            long long mday = (long long)lt->tm_mday;
+            long long hr = (long long)lt->tm_hour;
+            long long min = (long long)lt->tm_min;
+            long long sec = (long long)lt->tm_sec;
+            val = (double)(yr * 10000000000LL + mon * 100000000LL + mday * 1000000LL + hr * 10000LL + min * 100LL + sec);
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = val;
+    }
+    else if (strcmp(uname, "PI") == 0) {
+        if (arg_count != 0) {
+            err->code = 13; err->message = "PI expects no arguments"; return res;
+        }
+        res.type = VAL_NUMBER;
+        res.as.number = 3.141592653589793;
     }
     else if (strcmp(uname, "CSRLIN") == 0) {
         if (arg_count != 0) {
@@ -1020,7 +1047,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             err->code = 13; err->message = "PLAY function expects one numeric argument (e.g. PLAY(0))"; return res;
         }
         res.type = VAL_NUMBER;
-#ifdef BPP_LITE_BUILD
+#ifdef BASIC_LITE_BUILD
         res.as.number = 0.0;
 #else
         res.as.number = (double)vdev_music_queue_length();
@@ -2576,7 +2603,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         const char *algo = str_data(args[0].as.string);
         const char *data = str_data(args[1].as.string);
         char digest[128];
-        bpp_hash_string(algo, data, digest, sizeof(digest));
+        hash_string(algo, data, digest, sizeof(digest));
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), digest, strlen(digest));
     }
@@ -2589,7 +2616,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         char combined[1024];
         snprintf(combined, sizeof(combined), "%s:%s", salt, data);
         char digest[128];
-        bpp_hash_string("SHA256", combined, digest, sizeof(digest));
+        hash_string("SHA256", combined, digest, sizeof(digest));
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), digest, strlen(digest));
     }
@@ -2609,7 +2636,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
                 size_t len = strlen(line);
                 while (len > 0 && (line[len-1] == '\r' || line[len-1] == '\n')) line[--len] = '\0';
                 char digest[128];
-                bpp_hash_string(algo, line, digest, sizeof(digest));
+                hash_string(algo, line, digest, sizeof(digest));
                 if (strcasecmp(digest, target_hash) == 0) {
                     snprintf(found_word, sizeof(found_word), "%s", line);
                     break;
@@ -2732,7 +2759,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             res.as.number = 1.0;
         }
     }
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     else if (strcmp(uname, "NSTATUS") == 0) {
         if (arg_count != 1 || args[0].type == VAL_STRING) {
             err->code = 13; err->message = "NSTATUS expects one numeric channel argument"; return res;
@@ -2812,7 +2839,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         res.type = VAL_NUMBER;
         res.as.number = (double)vdev_bus_in((int)args[0].as.number);
     }
-#if BPP_SUPPORT_BIOS
+#if SUPPORT_BIOS
     else if (strcmp(uname, "MEMMAP$") == 0) {
         if (arg_count != 0) {
             err->code = 13; err->message = "MEMMAP$ expects no arguments"; return res;
@@ -2832,12 +2859,12 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             err->code = 70; err->message = "Permission denied: PEEK is restricted"; return res;
         }
         uint8_t val = 0;
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         if (vmem_peek(vm_get_vmem(vm), (uint16_t)args[0].as.number, &val) == 0) {
 #endif
             bool intercepted = false;
             val = vdev_bus_peek((unsigned long)(long)args[0].as.number, &intercepted);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         }
 #endif
         res.type = VAL_NUMBER;
@@ -2847,7 +2874,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         if (arg_count != 0) {
             err->code = 13; err->message = "MAP expects no arguments"; return res;
         }
-        BppMap *m = bpp_map_create();
+        BppMap *m = map_create();
         if (!m) {
             err->code = 14; err->message = "Out of memory creating map"; return res;
         }
@@ -2862,28 +2889,28 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             err->code = 13; err->message = "First argument to MAP_SET must be a MAP";
             if (args[1].type == VAL_STRING) { str_release(vm_get_str(vm), args[1].as.string); args[1].as.string = NULL; }
             if (args[2].type == VAL_STRING) { str_release(vm_get_str(vm), args[2].as.string); args[2].as.string = NULL; }
-            if (args[2].type == VAL_MAP) { bpp_map_release(vm_get_str(vm), args[2].as.map); args[2].as.map = NULL; }
+            if (args[2].type == VAL_MAP) { map_release(vm_get_str(vm), args[2].as.map); args[2].as.map = NULL; }
             return res;
         }
         if (args[1].type != VAL_STRING) {
             err->code = 13; err->message = "Second argument to MAP_SET must be a string key";
-            bpp_map_release(vm_get_str(vm), args[0].as.map);
+            map_release(vm_get_str(vm), args[0].as.map);
             args[0].as.map = NULL;
             if (args[2].type == VAL_STRING) { str_release(vm_get_str(vm), args[2].as.string); args[2].as.string = NULL; }
-            if (args[2].type == VAL_MAP) { bpp_map_release(vm_get_str(vm), args[2].as.map); args[2].as.map = NULL; }
+            if (args[2].type == VAL_MAP) { map_release(vm_get_str(vm), args[2].as.map); args[2].as.map = NULL; }
             return res;
         }
         const char *k = str_data(args[1].as.string);
-        bool set_ok = bpp_map_set(vm_get_str(vm), args[0].as.map, k, args[2]);
+        bool set_ok = map_set(vm_get_str(vm), args[0].as.map, k, args[2]);
         if (!set_ok) {
             err->code = 14; err->message = "Failed to set map key";
         }
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        map_release(vm_get_str(vm), args[0].as.map);
         args[0].as.map = NULL;
         str_release(vm_get_str(vm), args[1].as.string);
         args[1].as.string = NULL;
         if (args[2].type == VAL_STRING) { str_release(vm_get_str(vm), args[2].as.string); args[2].as.string = NULL; }
-        if (args[2].type == VAL_MAP) { bpp_map_release(vm_get_str(vm), args[2].as.map); args[2].as.map = NULL; }
+        if (args[2].type == VAL_MAP) { map_release(vm_get_str(vm), args[2].as.map); args[2].as.map = NULL; }
 
         res.type = VAL_NUMBER;
         res.as.number = set_ok ? 1.0 : 0.0;
@@ -2900,18 +2927,18 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         }
         if (args[1].type != VAL_STRING) {
             err->code = 13; err->message = "Second argument to MAP_GET must be a string key";
-            bpp_map_release(vm_get_str(vm), args[0].as.map);
+            map_release(vm_get_str(vm), args[0].as.map);
             args[0].as.map = NULL;
             return res;
         }
         const char *k = str_data(args[1].as.string);
         BValue val;
-        if (bpp_map_get(args[0].as.map, k, &val)) {
+        if (map_get(args[0].as.map, k, &val)) {
             res = val;
             if (res.type == VAL_STRING && res.as.string) {
                 str_add_ref(res.as.string);
             } else if (res.type == VAL_MAP && res.as.map) {
-                bpp_map_add_ref(res.as.map);
+                map_add_ref(res.as.map);
             }
         } else {
             if (expect_str) {
@@ -2922,7 +2949,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
                 res.as.number = 0.0;
             }
         }
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        map_release(vm_get_str(vm), args[0].as.map);
         args[0].as.map = NULL;
         str_release(vm_get_str(vm), args[1].as.string);
         args[1].as.string = NULL;
@@ -2949,13 +2976,13 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         }
         if (args[1].type != VAL_STRING) {
             err->code = 13; err->message = "Second argument to MAP_REMOVE must be a string key";
-            bpp_map_release(vm_get_str(vm), args[0].as.map);
+            map_release(vm_get_str(vm), args[0].as.map);
             args[0].as.map = NULL;
             return res;
         }
         const char *k = str_data(args[1].as.string);
-        bool rem_ok = bpp_map_remove(vm_get_str(vm), args[0].as.map, k);
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        bool rem_ok = map_remove(vm_get_str(vm), args[0].as.map, k);
+        map_release(vm_get_str(vm), args[0].as.map);
         args[0].as.map = NULL;
         str_release(vm_get_str(vm), args[1].as.string);
         args[1].as.string = NULL;
@@ -2969,8 +2996,8 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             return res;
         }
         res.type = VAL_NUMBER;
-        res.as.number = (double)bpp_map_count(args[0].as.map);
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        res.as.number = (double)map_count(args[0].as.map);
+        map_release(vm_get_str(vm), args[0].as.map);
     }
     else if (strcmp(uname, "MAP_KEY$") == 0) {
         if (arg_count != 2) {
@@ -2981,10 +3008,10 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             return res;
         }
         int idx = (int)args[1].as.number;
-        const char *k = bpp_map_key(args[0].as.map, idx);
+        const char *k = map_key(args[0].as.map, idx);
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), k ? k : "", k ? strlen(k) : 0);
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        map_release(vm_get_str(vm), args[0].as.map);
     }
     else if (strcmp(uname, "MAP_HAS") == 0) {
         if (arg_count != 2) {
@@ -2997,13 +3024,13 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         }
         if (args[1].type != VAL_STRING) {
             err->code = 13; err->message = "Second argument to MAP_HAS must be a string key";
-            bpp_map_release(vm_get_str(vm), args[0].as.map);
+            map_release(vm_get_str(vm), args[0].as.map);
             args[0].as.map = NULL;
             return res;
         }
         const char *k = str_data(args[1].as.string);
-        bool has_ok = bpp_map_has(args[0].as.map, k);
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        bool has_ok = map_has(args[0].as.map, k);
+        map_release(vm_get_str(vm), args[0].as.map);
         args[0].as.map = NULL;
         str_release(vm_get_str(vm), args[1].as.string);
         args[1].as.string = NULL;
@@ -3016,7 +3043,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             return res;
         }
         const char *json = str_data(args[0].as.string);
-        BppMap *m = bpp_map_parse_json(vm_get_str(vm), json);
+        BppMap *m = map_parse_json(vm_get_str(vm), json);
         str_release(vm_get_str(vm), args[0].as.string);
         res.type = VAL_MAP;
         res.as.map = m;
@@ -3026,8 +3053,8 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             err->code = 13; err->message = "JSON_STRINGIFY$ expects one MAP argument";
             return res;
         }
-        char *json = bpp_map_stringify_json(args[0].as.map);
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        char *json = map_stringify_json(args[0].as.map);
+        map_release(vm_get_str(vm), args[0].as.map);
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), json ? json : "", json ? strlen(json) : 0);
         free(json);
@@ -3038,7 +3065,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             return res;
         }
         const char *xml = str_data(args[0].as.string);
-        BppMap *m = bpp_map_parse_xml(vm_get_str(vm), xml);
+        BppMap *m = map_parse_xml(vm_get_str(vm), xml);
         str_release(vm_get_str(vm), args[0].as.string);
         res.type = VAL_MAP;
         res.as.map = m;
@@ -3048,8 +3075,8 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             err->code = 13; err->message = "XML_STRINGIFY$ expects one MAP argument";
             return res;
         }
-        char *xml = bpp_map_stringify_xml(args[0].as.map);
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        char *xml = map_stringify_xml(args[0].as.map);
+        map_release(vm_get_str(vm), args[0].as.map);
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), xml ? xml : "", xml ? strlen(xml) : 0);
         free(xml);
@@ -3060,7 +3087,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             return res;
         }
         const char *yaml = str_data(args[0].as.string);
-        BppMap *m = bpp_map_parse_yaml(vm_get_str(vm), yaml);
+        BppMap *m = map_parse_yaml(vm_get_str(vm), yaml);
         str_release(vm_get_str(vm), args[0].as.string);
         res.type = VAL_MAP;
         res.as.map = m;
@@ -3070,8 +3097,8 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             err->code = 13; err->message = "YAML_STRINGIFY$ expects one MAP argument";
             return res;
         }
-        char *yaml = bpp_map_stringify_yaml(args[0].as.map);
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        char *yaml = map_stringify_yaml(args[0].as.map);
+        map_release(vm_get_str(vm), args[0].as.map);
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), yaml ? yaml : "", yaml ? strlen(yaml) : 0);
         free(yaml);
@@ -3082,7 +3109,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             return res;
         }
         const char *ini = str_data(args[0].as.string);
-        BppMap *m = bpp_map_parse_ini(vm_get_str(vm), ini);
+        BppMap *m = map_parse_ini(vm_get_str(vm), ini);
         str_release(vm_get_str(vm), args[0].as.string);
         res.type = VAL_MAP;
         res.as.map = m;
@@ -3092,8 +3119,8 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             err->code = 13; err->message = "INI_STRINGIFY$ expects one MAP argument";
             return res;
         }
-        char *ini = bpp_map_stringify_ini(args[0].as.map);
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        char *ini = map_stringify_ini(args[0].as.map);
+        map_release(vm_get_str(vm), args[0].as.map);
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), ini ? ini : "", ini ? strlen(ini) : 0);
         free(ini);
@@ -3165,13 +3192,13 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         const char *parse_source = file_content ? file_content : spec_str;
         BppMap *map = NULL;
         if (strcasecmp(format, "JSON") == 0) {
-            map = bpp_map_parse_json(vm_get_str(vm), parse_source);
+            map = map_parse_json(vm_get_str(vm), parse_source);
         } else if (strcasecmp(format, "XML") == 0) {
-            map = bpp_map_parse_xml(vm_get_str(vm), parse_source);
+            map = map_parse_xml(vm_get_str(vm), parse_source);
         } else if (strcasecmp(format, "YAML") == 0) {
-            map = bpp_map_parse_yaml(vm_get_str(vm), parse_source);
+            map = map_parse_yaml(vm_get_str(vm), parse_source);
         } else if (strcasecmp(format, "INI") == 0) {
-            map = bpp_map_parse_ini(vm_get_str(vm), parse_source);
+            map = map_parse_ini(vm_get_str(vm), parse_source);
         } else {
             err->code = 5; err->message = "Unsupported spec format (expected JSON, XML, YAML, or INI)";
         }
@@ -3198,7 +3225,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         }
         char val_err[512] = "";
         bool ok = dialect_validate_map(vm, args[0].as.map, val_err, sizeof(val_err));
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        map_release(vm_get_str(vm), args[0].as.map);
         args[0].as.map = NULL;
         if (!ok) {
             err->code = 5;
@@ -3220,13 +3247,13 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         char val_err[512] = "";
         if (!d) {
             err->code = 14; err->message = "Out of memory allocating dialect";
-            bpp_map_release(vm_get_str(vm), args[0].as.map);
+            map_release(vm_get_str(vm), args[0].as.map);
             args[0].as.map = NULL;
             return res;
         }
         if (!dialect_load_from_map(vm, args[0].as.map, d, val_err, sizeof(val_err))) {
             dialect_free(d);
-            bpp_map_release(vm_get_str(vm), args[0].as.map);
+            map_release(vm_get_str(vm), args[0].as.map);
             args[0].as.map = NULL;
             err->code = 5;
             static char err_msg_buf2[512];
@@ -3235,7 +3262,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             err->message = err_msg_buf2;
             return res;
         }
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        map_release(vm_get_str(vm), args[0].as.map);
         vm_set_active_dialect(vm, d);
         res.type = VAL_NUMBER;
         res.as.number = 1.0;
@@ -3249,13 +3276,13 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         char val_err[512] = "";
         if (!d) {
             err->code = 14; err->message = "Out of memory allocating dialect";
-            bpp_map_release(vm_get_str(vm), args[0].as.map);
+            map_release(vm_get_str(vm), args[0].as.map);
             args[0].as.map = NULL;
             return res;
         }
         if (!dialect_load_from_map(vm, args[0].as.map, d, val_err, sizeof(val_err))) {
             dialect_free(d);
-            bpp_map_release(vm_get_str(vm), args[0].as.map);
+            map_release(vm_get_str(vm), args[0].as.map);
             args[0].as.map = NULL;
             err->code = 5;
             static char err_msg_buf3[512];
@@ -3264,7 +3291,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
             err->message = err_msg_buf3;
             return res;
         }
-        bpp_map_release(vm_get_str(vm), args[0].as.map);
+        map_release(vm_get_str(vm), args[0].as.map);
         
         char *docs = dialect_generate_docs(vm, d);
         dialect_free(d);

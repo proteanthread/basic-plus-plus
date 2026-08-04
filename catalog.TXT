@@ -230,7 +230,7 @@
   System & Environ:
     TI          TI$         TIME        TIME$       DATE        DATE$       
     DAY         DAY$        MONTH       MONTH$      YEAR        HOURS       
-    MINUTES     SECONDS     CLOCK$      TZ          TZ$         TIMEZONE$   
+    MINUTES     SECONDS     CLOCK$      CLOCK       PI          TZ          TZ$         TIMEZONE$   
     UTC         JIFFIES     TRUE        FALSE       ALARM       ALARM$      
     SET         GUID$       HOSTNAME    HOSTNAME$   USERNAME    USERNAME$   
   Input / Output:

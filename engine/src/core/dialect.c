@@ -82,9 +82,9 @@ bool dialect_validate_map(VMContext *vm, BppMap *map, char *err_buf, size_t err_
     }
 
     /* 1. Name Check */
-    if (bpp_map_has(map, "name")) {
+    if (map_has(map, "name")) {
         BValue val;
-        bpp_map_get(map, "name", &val);
+        map_get(map, "name", &val);
         if (val.type != VAL_STRING) {
             snprintf(err_buf, err_len, "Dialect 'name' must be a string");
             return false;
@@ -92,9 +92,9 @@ bool dialect_validate_map(VMContext *vm, BppMap *map, char *err_buf, size_t err_
     }
 
     /* 2. comment_char Check */
-    if (bpp_map_has(map, "comment_char")) {
+    if (map_has(map, "comment_char")) {
         BValue val;
-        bpp_map_get(map, "comment_char", &val);
+        map_get(map, "comment_char", &val);
         if (val.type != VAL_STRING) {
             snprintf(err_buf, err_len, "Dialect 'comment_char' must be a string");
             return false;
@@ -113,9 +113,9 @@ bool dialect_validate_map(VMContext *vm, BppMap *map, char *err_buf, size_t err_
     }
 
     /* 3. stmt_separator Check */
-    if (bpp_map_has(map, "stmt_separator")) {
+    if (map_has(map, "stmt_separator")) {
         BValue val;
-        bpp_map_get(map, "stmt_separator", &val);
+        map_get(map, "stmt_separator", &val);
         if (val.type != VAL_STRING) {
             snprintf(err_buf, err_len, "Dialect 'stmt_separator' must be a string");
             return false;
@@ -134,9 +134,9 @@ bool dialect_validate_map(VMContext *vm, BppMap *map, char *err_buf, size_t err_
     }
 
     /* 4. default_array_base Check */
-    if (bpp_map_has(map, "default_array_base")) {
+    if (map_has(map, "default_array_base")) {
         BValue val;
-        bpp_map_get(map, "default_array_base", &val);
+        map_get(map, "default_array_base", &val);
         if (val.type != VAL_NUMBER) {
             snprintf(err_buf, err_len, "Dialect 'default_array_base' must be a number");
             return false;
@@ -149,9 +149,9 @@ bool dialect_validate_map(VMContext *vm, BppMap *map, char *err_buf, size_t err_
     }
 
     /* 5. case_sensitive Check */
-    if (bpp_map_has(map, "case_sensitive")) {
+    if (map_has(map, "case_sensitive")) {
         BValue val;
-        bpp_map_get(map, "case_sensitive", &val);
+        map_get(map, "case_sensitive", &val);
         if (val.type != VAL_NUMBER) {
             snprintf(err_buf, err_len, "Dialect 'case_sensitive' must be a number/boolean");
             return false;
@@ -159,9 +159,9 @@ bool dialect_validate_map(VMContext *vm, BppMap *map, char *err_buf, size_t err_
     }
 
     /* 6. math_precedence Check */
-    if (bpp_map_has(map, "math_precedence")) {
+    if (map_has(map, "math_precedence")) {
         BValue val;
-        bpp_map_get(map, "math_precedence", &val);
+        map_get(map, "math_precedence", &val);
         if (val.type != VAL_STRING) {
             snprintf(err_buf, err_len, "Dialect 'math_precedence' must be a string ('STANDARD' or 'LEFT_TO_RIGHT')");
             return false;
@@ -174,18 +174,18 @@ bool dialect_validate_map(VMContext *vm, BppMap *map, char *err_buf, size_t err_
     }
 
     /* 7. Keywords Map Check */
-    if (bpp_map_has(map, "keywords")) {
+    if (map_has(map, "keywords")) {
         BValue val;
-        bpp_map_get(map, "keywords", &val);
+        map_get(map, "keywords", &val);
         if (val.type != VAL_MAP) {
             snprintf(err_buf, err_len, "Dialect 'keywords' must be a nested map");
             return false;
         }
         BppMap *kw_map = val.as.map;
-        for (int i = 0; i < bpp_map_count(kw_map); ++i) {
-            const char *new_key = bpp_map_key(kw_map, i);
+        for (int i = 0; i < map_count(kw_map); ++i) {
+            const char *new_key = map_key(kw_map, i);
             BValue target_val;
-            bpp_map_get(kw_map, new_key, &target_val);
+            map_get(kw_map, new_key, &target_val);
             if (target_val.type != VAL_STRING) {
                 snprintf(err_buf, err_len, "Dialect keyword mapping target for '%s' must be a string", new_key);
                 return false;
@@ -194,9 +194,9 @@ bool dialect_validate_map(VMContext *vm, BppMap *map, char *err_buf, size_t err_
     }
 
     /* 8. preprocessor_hook Check */
-    if (bpp_map_has(map, "preprocessor_hook")) {
+    if (map_has(map, "preprocessor_hook")) {
         BValue val;
-        bpp_map_get(map, "preprocessor_hook", &val);
+        map_get(map, "preprocessor_hook", &val);
         if (val.type != VAL_STRING) {
             snprintf(err_buf, err_len, "Dialect 'preprocessor_hook' must be a string");
             return false;
@@ -204,9 +204,9 @@ bool dialect_validate_map(VMContext *vm, BppMap *map, char *err_buf, size_t err_
     }
 
     /* 9. member_access_char Check */
-    if (bpp_map_has(map, "member_access_char")) {
+    if (map_has(map, "member_access_char")) {
         BValue val;
-        bpp_map_get(map, "member_access_char", &val);
+        map_get(map, "member_access_char", &val);
         if (val.type != VAL_STRING) {
             snprintf(err_buf, err_len, "Dialect 'member_access_char' must be a string");
             return false;
@@ -227,17 +227,17 @@ bool dialect_load_from_map(VMContext *vm, BppMap *map, BppDialect *d, char *err_
     }
 
     /* Read name */
-    if (bpp_map_has(map, "name")) {
+    if (map_has(map, "name")) {
         BValue val;
-        bpp_map_get(map, "name", &val);
+        map_get(map, "name", &val);
         strncpy(d->name, str_data(val.as.string), sizeof(d->name) - 1);
         d->name[sizeof(d->name) - 1] = '\0';
     }
 
     /* Read comment character */
-    if (bpp_map_has(map, "comment_char")) {
+    if (map_has(map, "comment_char")) {
         BValue val;
-        bpp_map_get(map, "comment_char", &val);
+        map_get(map, "comment_char", &val);
         const char *s = str_data(val.as.string);
         if (strlen(s) > 0) {
             d->comment_char = parse_char_value(s);
@@ -247,9 +247,9 @@ bool dialect_load_from_map(VMContext *vm, BppMap *map, BppDialect *d, char *err_
     }
 
     /* Read statement separator */
-    if (bpp_map_has(map, "stmt_separator")) {
+    if (map_has(map, "stmt_separator")) {
         BValue val;
-        bpp_map_get(map, "stmt_separator", &val);
+        map_get(map, "stmt_separator", &val);
         const char *s = str_data(val.as.string);
         if (strlen(s) > 0) {
             d->stmt_separator = parse_char_value(s);
@@ -259,24 +259,24 @@ bool dialect_load_from_map(VMContext *vm, BppMap *map, BppDialect *d, char *err_
     }
 
     /* Read array base */
-    if (bpp_map_has(map, "default_array_base")) {
+    if (map_has(map, "default_array_base")) {
         BValue val;
-        bpp_map_get(map, "default_array_base", &val);
+        map_get(map, "default_array_base", &val);
         d->default_array_base = (int)val.as.number;
         arr_set_option_base(vm_get_arr(vm), d->default_array_base);
     }
 
     /* Read case sensitive */
-    if (bpp_map_has(map, "case_sensitive")) {
+    if (map_has(map, "case_sensitive")) {
         BValue val;
-        bpp_map_get(map, "case_sensitive", &val);
+        map_get(map, "case_sensitive", &val);
         d->case_sensitive = (val.as.number != 0.0);
     }
 
     /* Read precedence option */
-    if (bpp_map_has(map, "math_precedence")) {
+    if (map_has(map, "math_precedence")) {
         BValue val;
-        bpp_map_get(map, "math_precedence", &val);
+        map_get(map, "math_precedence", &val);
         const char *s = str_data(val.as.string);
         if (strcasecmp(s, "LEFT_TO_RIGHT") == 0) {
             d->math_precedence = PRECEDENCE_LEFT_TO_RIGHT;
@@ -287,14 +287,14 @@ bool dialect_load_from_map(VMContext *vm, BppMap *map, BppDialect *d, char *err_
 
     /* Read keywords mapping list */
     d->keyword_count = 0;
-    if (bpp_map_has(map, "keywords")) {
+    if (map_has(map, "keywords")) {
         BValue val;
-        bpp_map_get(map, "keywords", &val);
+        map_get(map, "keywords", &val);
         BppMap *kw_map = val.as.map;
-        for (int i = 0; i < bpp_map_count(kw_map); ++i) {
-            const char *new_key = bpp_map_key(kw_map, i);
+        for (int i = 0; i < map_count(kw_map); ++i) {
+            const char *new_key = map_key(kw_map, i);
             BValue target_val;
-            bpp_map_get(kw_map, new_key, &target_val);
+            map_get(kw_map, new_key, &target_val);
             if (d->keyword_count < 256) {
                 BppDialectKeyword *dk = &d->keywords[d->keyword_count++];
                 strncpy(dk->name, new_key, sizeof(dk->name) - 1);
@@ -314,17 +314,17 @@ bool dialect_load_from_map(VMContext *vm, BppMap *map, BppDialect *d, char *err_
     }
 
     /* Read preprocessor hook name */
-    if (bpp_map_has(map, "preprocessor_hook")) {
+    if (map_has(map, "preprocessor_hook")) {
         BValue val;
-        bpp_map_get(map, "preprocessor_hook", &val);
+        map_get(map, "preprocessor_hook", &val);
         strncpy(d->preprocessor_hook, str_data(val.as.string), sizeof(d->preprocessor_hook) - 1);
         d->preprocessor_hook[sizeof(d->preprocessor_hook) - 1] = '\0';
     }
 
     /* Read member_access_char */
-    if (bpp_map_has(map, "member_access_char")) {
+    if (map_has(map, "member_access_char")) {
         BValue val;
-        bpp_map_get(map, "member_access_char", &val);
+        map_get(map, "member_access_char", &val);
         const char *s = str_data(val.as.string);
         if (strlen(s) > 0) {
             d->member_access_char = s[0];

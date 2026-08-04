@@ -88,7 +88,7 @@ extern int vdev_image_height(int handle);
 static BppError check_vdev_permission(void) {
     BppError err;
     memset(&err, 0, sizeof(err));
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;
         err.message = "Permission denied: Virtual device access blocked under sandbox settings";
@@ -285,7 +285,7 @@ extern void vm_set_trig_trap(VMContext *vm, int state, BppLineNumber line, int t
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 extern void *sdl_window;
 #endif
 

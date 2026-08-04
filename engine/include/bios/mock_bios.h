@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_mock_bios.h
+ * @file mock_bios.h
  * @brief Switchable IBM PC BIOS & DOS Interrupt Emulator interfaces.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -30,8 +30,8 @@
  * - External hooks: Shared libraries (.DLL/.SO) can expose these standard entry points.
  */
 
-#ifndef BPP_MOCK_BIOS_H
-#define BPP_MOCK_BIOS_H
+#ifndef BIOS_MOCK_BIOS_H
+#define BIOS_MOCK_BIOS_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -48,12 +48,12 @@
 #define VDEV_IOCTL_MEM_ALLOC 18
 #define VDEV_IOCTL_MEM_FREE 19
 #define VDEV_IOCTL_MEM_RESIZE 20
-#if defined(_WIN32) && defined(BPP_BIOS_DLL_EXPORT)
-#define BPP_BIOS_API __declspec(dllexport)
+#if defined(_WIN32) && defined(BIOS_DLL_EXPORT)
+#define BIOS_API __declspec(dllexport)
 #elif defined(_WIN32)
-#define BPP_BIOS_API
+#define BIOS_API
 #else
-#define BPP_BIOS_API __attribute__((visibility("default")))
+#define BIOS_API __attribute__((visibility("default")))
 #endif
 
 typedef struct MockBiosRegs {
@@ -113,27 +113,27 @@ extern "C" {
 /**
  * @brief Initialize conventional memory maps (IVT, BDA, signatures) for the selected PC model.
  */
-BPP_BIOS_API void mock_bios_init_mem(MockBiosContext *ctx, uint8_t *mem_segment, size_t mem_size, MockBiosModel model);
+BIOS_API void mock_bios_init_mem(MockBiosContext *ctx, uint8_t *mem_segment, size_t mem_size, MockBiosModel model);
 
 /**
  * @brief Emulate an INP instruction from a hardware port.
  */
-BPP_BIOS_API uint8_t mock_bios_in(MockBiosContext *ctx, uint16_t port);
+BIOS_API uint8_t mock_bios_in(MockBiosContext *ctx, uint16_t port);
 
 /**
  * @brief Emulate an OUT instruction to a hardware port.
  */
-BPP_BIOS_API void mock_bios_out(MockBiosContext *ctx, uint16_t port, uint8_t val);
+BIOS_API void mock_bios_out(MockBiosContext *ctx, uint16_t port, uint8_t val);
 
 /**
  * @brief Emulate execution of an x86/DOS interrupt.
  */
-BPP_BIOS_API void mock_bios_interrupt(MockBiosContext *ctx, uint8_t int_num);
-BPP_BIOS_API const char *mock_bios_model_to_string(MockBiosModel model);
-BPP_BIOS_API MockBiosModel mock_bios_model_from_string(const char *name);
+BIOS_API void mock_bios_interrupt(MockBiosContext *ctx, uint8_t int_num);
+BIOS_API const char *mock_bios_model_to_string(MockBiosModel model);
+BIOS_API MockBiosModel mock_bios_model_from_string(const char *name);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* BPP_MOCK_BIOS_H */
+#endif /* BIOS_MOCK_BIOS_H */

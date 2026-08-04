@@ -18,8 +18,8 @@
  * External extension hooks: Embedded hosts populate BppHostInterface to run BASIC++ logic.
  */
 
-#ifndef BPP_HOST_H
-#define BPP_HOST_H
+#ifndef VM_HOST_H
+#define VM_HOST_H
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -49,4 +49,4 @@ typedef struct BppHostInterface {
     void *(*get_device)(void *user_data, const char *device_name);
 } BppHostInterface;
 
-#endif /* BPP_HOST_H */
+#endif /* VM_HOST_H */

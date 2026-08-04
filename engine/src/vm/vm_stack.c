@@ -19,7 +19,7 @@
  * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
  * - What can be changed: Call frame fields, maximum depth limit parameters.
  * - What cannot be changed: Memory alignment and standard push/pop error codes.
- * - What to expect: Exceeding BPP_MAX_STACK_DEPTH will return false, triggering a stack overflow error.
+ * - What to expect: Exceeding BASIC_MAX_STACK_DEPTH will return false, triggering a stack overflow error.
  * - What to do if something breaks: Trace GOSUB calls, check stack boundary pointers, and print active frames.
  *
  * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
@@ -52,7 +52,7 @@ typedef struct GosubStack {
 GosubStack *gosub_stack_init(void) {
     GosubStack *stack = (GosubStack *)calloc(1, sizeof(GosubStack));
     if (!stack) return NULL;
-    stack->capacity = BPP_MAX_STACK_DEPTH;
+    stack->capacity = BASIC_MAX_STACK_DEPTH;
     stack->count = 0;
     stack->frames = (GosubFrame *)calloc(stack->capacity, sizeof(GosubFrame));
     if (!stack->frames) {
@@ -105,7 +105,7 @@ typedef struct ForStack {
 ForStack *for_stack_init(void) {
     ForStack *stack = (ForStack *)calloc(1, sizeof(ForStack));
     if (!stack) return NULL;
-    stack->capacity = BPP_MAX_STACK_DEPTH;
+    stack->capacity = BASIC_MAX_STACK_DEPTH;
     stack->count = 0;
     stack->frames = (BppForFrame *)calloc(stack->capacity, sizeof(BppForFrame));
     if (!stack->frames) {
@@ -205,7 +205,7 @@ typedef struct WhileStack {
 WhileStack *while_stack_init(void) {
     WhileStack *stack = (WhileStack *)calloc(1, sizeof(WhileStack));
     if (!stack) return NULL;
-    stack->capacity = BPP_MAX_STACK_DEPTH;
+    stack->capacity = BASIC_MAX_STACK_DEPTH;
     stack->count = 0;
     stack->frames = (GosubFrame *)calloc(stack->capacity, sizeof(GosubFrame));
     if (!stack->frames) {
@@ -260,7 +260,7 @@ typedef struct DoStack {
 DoStack *do_stack_init(void) {
     DoStack *stack = (DoStack *)calloc(1, sizeof(DoStack));
     if (!stack) return NULL;
-    stack->capacity = BPP_MAX_STACK_DEPTH;
+    stack->capacity = BASIC_MAX_STACK_DEPTH;
     stack->count = 0;
     stack->frames = (GosubFrame *)calloc(stack->capacity, sizeof(GosubFrame));
     if (!stack->frames) {
@@ -315,7 +315,7 @@ struct SelectStack {
 SelectStack *select_stack_init(void) {
     SelectStack *stack = (SelectStack *)calloc(1, sizeof(SelectStack));
     if (!stack) return NULL;
-    stack->capacity = BPP_MAX_STACK_DEPTH;
+    stack->capacity = BASIC_MAX_STACK_DEPTH;
     stack->count = 0;
     stack->frames = (BppSelectFrame *)calloc(stack->capacity, sizeof(BppSelectFrame));
     if (!stack->frames) {
@@ -370,7 +370,7 @@ struct SubStack {
 SubStack *sub_stack_init(void) {
     SubStack *stack = (SubStack *)calloc(1, sizeof(SubStack));
     if (!stack) return NULL;
-    stack->capacity = BPP_MAX_STACK_DEPTH;
+    stack->capacity = BASIC_MAX_STACK_DEPTH;
     stack->count = 0;
     stack->frames = (BppSubFrame *)calloc(stack->capacity, sizeof(BppSubFrame));
     if (!stack->frames) {
@@ -426,7 +426,7 @@ struct TryStack {
 TryStack *try_stack_init(void) {
     TryStack *stack = (TryStack *)calloc(1, sizeof(TryStack));
     if (!stack) return NULL;
-    stack->capacity = BPP_MAX_STACK_DEPTH;
+    stack->capacity = BASIC_MAX_STACK_DEPTH;
     stack->count = 0;
     stack->frames = (BppTryFrame *)calloc(stack->capacity, sizeof(BppTryFrame));
     if (!stack->frames) {

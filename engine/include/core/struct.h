@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_struct.h
+ * @file struct_ctx.h
  * @brief User-Defined Types (UDT) and Class structure definitions for BASIC++.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -29,8 +29,8 @@
  * - How to write external extensions: External modules query structure schemas via registry lookups.
  */
 
-#ifndef BPP_STRUCT_H
-#define BPP_STRUCT_H
+#ifndef CORE_STRUCT_H
+#define CORE_STRUCT_H
 
 #include "types/types.h"
 #include <stddef.h>
@@ -64,7 +64,7 @@ struct BppMap;
 typedef struct VMContext VMContext;
 typedef struct BppMap BppMap;
 
-#if BPP_SUPPORT_OOP
+#if SUPPORT_OOP
 void struct_registry_init(BppTypeRegistry *reg);
 bool struct_register_type(BppTypeRegistry *reg, const BppUserTypeDef *def, char *err_buf, size_t err_len);
 const BppUserTypeDef *struct_find_type(const BppTypeRegistry *reg, const char *name);
@@ -78,4 +78,4 @@ static inline BppMap *struct_instantiate(VMContext *vm, const BppTypeRegistry *r
 static inline bool struct_copy_instance(VMContext *vm, BppMap *dst, BppMap *src, char *err_buf, size_t err_len) { (void)vm; (void)dst; (void)src; (void)err_buf; (void)err_len; return false; }
 #endif
 
-#endif /* BPP_STRUCT_H */
+#endif /* CORE_STRUCT_H */

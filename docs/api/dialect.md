@@ -1,6 +1,6 @@
 # Dialect Subsystem API Reference
 
-Header File: [`include/bpp_dialect.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_dialect.h)
+Header File: [`include/dialect.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/dialect.h)
 
 ## Overview
 Maintains dialect definitions, configurations, keyword tables, and option sets.
@@ -19,7 +19,7 @@ Maintains dialect definitions, configurations, keyword tables, and option sets.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_dialect.h"
+#include "dialect.h"
 
 void configure_dialect(VMContext *vm) {
     dialect_free(vm);

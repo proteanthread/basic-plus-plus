@@ -11,7 +11,7 @@
 #include "runtime/metadata.h"
 #include "runtime/vfs.h"
 #include "runtime/vnet.h"
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 #include "memory/segmented_mem.h"
 #endif
 #include "device/usb.h"
@@ -234,7 +234,7 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
     vm->mem = mem;
     vm->str = str;
     vm->var = var;
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     vm->vmem = vmem_init(var);
 #endif
     vm->vdev = vdev;
@@ -242,7 +242,7 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
 
     vm->stmt_reg = stmt_registry_init(mem);
     if (!vm->stmt_reg) {
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         vmem_shutdown(vm->vmem);
 #endif
         free(vm);
@@ -252,7 +252,7 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
     vm->gosub_stack = gosub_stack_init();
     if (!vm->gosub_stack) {
         stmt_registry_shutdown(vm->stmt_reg);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         vmem_shutdown(vm->vmem);
 #endif
         free(vm);
@@ -263,7 +263,7 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
     if (!vm->for_stack) {
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         vmem_shutdown(vm->vmem);
 #endif
         free(vm);
@@ -275,7 +275,7 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         vmem_shutdown(vm->vmem);
 #endif
         free(vm);
@@ -288,7 +288,7 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         vmem_shutdown(vm->vmem);
 #endif
         free(vm);
@@ -302,7 +302,7 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         vmem_shutdown(vm->vmem);
 #endif
         free(vm);
@@ -317,7 +317,7 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         vmem_shutdown(vm->vmem);
 #endif
         free(vm);
@@ -333,7 +333,7 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         vmem_shutdown(vm->vmem);
 #endif
         free(vm);
@@ -355,7 +355,7 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         vmem_shutdown(vm->vmem);
 #endif
         free(vm);
@@ -373,7 +373,7 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
         for_stack_shutdown(vm->for_stack);
         gosub_stack_shutdown(vm->gosub_stack);
         stmt_registry_shutdown(vm->stmt_reg);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         vmem_shutdown(vm->vmem);
 #endif
         free(vm);
@@ -398,14 +398,14 @@ VMContext *vm_init(MemoryContext *mem, StringContext *str, VariableContext *var,
 
     register_core_statements(vm);
     vm->vfs = vfs_init(mem);
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     vm->vnet = vnet_init(mem);
 #else
     vm->vnet = NULL;
 #endif
     vm->usb = usb_init(mem);
     vm->vcon = vcon_init();
-#if BPP_SUPPORT_BIOS
+#if SUPPORT_BIOS
     vm->bios_ram = (uint8_t *)calloc(1, 1024 * 1024);
     vm->bios = (MockBiosContext *)calloc(1, sizeof(MockBiosContext));
     if (!vm->bios_ram || !vm->bios) {
@@ -470,16 +470,16 @@ void vm_shutdown(VMContext *vm) {
     try_stack_shutdown(vm->try_stack);
     arr_shutdown(vm->arr);
     file_shutdown(vm->file);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     vmem_shutdown(vm->vmem);
 #endif
     vfs_shutdown(vm->vfs);
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     vnet_shutdown(vm->vnet);
 #endif
     usb_shutdown(vm->usb);
     vcon_shutdown(vm->vcon);
-#if BPP_SUPPORT_BIOS
+#if SUPPORT_BIOS
     if (vm->bios) {
         for (int i = 0; i < 20; i++) {
             if (vm->bios->dos_handles[i]) {

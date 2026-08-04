@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_vdev.h
+ * @file vdev.h
  * @brief Virtual Device System (VDS) API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -31,8 +31,8 @@
  * - How to write external extensions: External hardware plugins (e.g. GPIO/SPI) register custom VDev tables.
  */
 
-#ifndef BPP_VDEV_H
-#define BPP_VDEV_H
+#ifndef DEVICE_VDEV_H
+#define DEVICE_VDEV_H
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -223,4 +223,4 @@ int         vdev_count(VDevContext *ctx);
 VDev       *vdev_get_by_index(VDevContext *ctx, int index);
 void        vdev_list_all(VDevContext *ctx);
 
-#endif /* BPP_VDEV_H */
+#endif /* DEVICE_VDEV_H */

@@ -26,7 +26,7 @@
  * - Portability concerns: Standard C17.
  */
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 
 #include "security/security.h"
 #include "module/module.h"
@@ -384,4 +384,4 @@ int security_restrict_count(void) {
     return restrict_ops_count + restrict_kw_count;
 }
 
-#endif /* BPP_LITE_BUILD */
+#endif /* BASIC_LITE_BUILD */

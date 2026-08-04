@@ -126,17 +126,17 @@ Generated C:
 ```c
 int main(void) {
 L10:
-    bpp_vars[0] = 5;
+    vars[0] = 5;
 L20:
-    bpp_vars[1] = 10;
+    vars[1] = 10;
 L30:
-    { double _v = (bpp_vars[0] + bpp_vars[1]);
+    { double _v = (vars[0] + vars[1]);
       if (_v == (double)(long)_v) printf("%*ld", 6, (long)_v);
       else printf("%g", _v); }
     printf("\n");
 L40:
-    goto bpp_end;
-bpp_end:
+    goto basic_end;
+basic_end:
     return 0;
 }
 ```

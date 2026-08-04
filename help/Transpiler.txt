@@ -156,9 +156,9 @@ program with the following structure:
                   - DATA/READ pool
                   - PRINT formatting
 
-  3. VARIABLES:   bpp_vars[26]     (A-Z as doubles)
-                  bpp_strvars[26]  (A$-Z$ as char[256])
-                  bpp_at_array[]   (legacy @ array)
+  3. VARIABLES:   vars[26]     (A-Z as doubles)
+                  strvars[26]  (A$-Z$ as char[256])
+                  at_array[]   (legacy @ array)
 
   4. MAIN:        int main(void) { ... }
                   Each BASIC line becomes a labeled block:
@@ -225,8 +225,8 @@ Generated program structure:
   var
     A, B, C: Real;             { A-Z variables }
     A_str, B_str: String;      { A$-Z$ strings }
-    bpp_gosub_sp: Integer;
-    bpp_gosub_stack: array[0..255] of Integer;
+    gosub_sp: Integer;
+    gosub_stack: array[0..255] of Integer;
   begin
     L10: WriteLn('Hello, World!');
     L20: A := 42;
@@ -278,14 +278,14 @@ Generated program structure:
 
   PROGRAM basic_program
     IMPLICIT NONE
-    REAL :: bpp_vars(26)          ! A-Z
-    CHARACTER(LEN=256) :: bpp_str(26)  ! A$-Z$
-    INTEGER :: bpp_gosub_sp = 0
-    INTEGER :: bpp_gosub_stack(256)
+    REAL :: vars(26)          ! A-Z
+    CHARACTER(LEN=256) :: basic_str(26)  ! A$-Z$
+    INTEGER :: gosub_sp = 0
+    INTEGER :: gosub_stack(256)
 
     10 PRINT *, 'Hello, World!'
-    20 bpp_vars(1) = 42           ! A = 42
-    30 IF (bpp_vars(1) > 10) PRINT *, bpp_vars(1)
+    20 vars(1) = 42           ! A = 42
+    30 IF (vars(1) > 10) PRINT *, vars(1)
     100 STOP
   END PROGRAM basic_program
 
@@ -515,7 +515,7 @@ A complete Python 3 translation looks like this:
   _data: list = []  # populated from DATA statements
   _data_ptr: int = 0
 
-  def bpp_read() -> float:
+  def basic_read() -> float:
       global _data_ptr
       if _data_ptr >= len(_data):
           print("OUT OF DATA", file=sys.stderr)
@@ -709,25 +709,25 @@ language. The current C89 backend includes:
 
   Shim Function      Purpose
   -------------      -------
-  bpp_dim_alloc      Allocate a DIM array
-  bpp_dim_ref        Reference a DIM array element
-  bpp_concat         String concatenation
-  bpp_left           LEFT$ function
-  bpp_right          RIGHT$ function
-  bpp_mid            MID$ function
-  bpp_chr            CHR$ function
-  bpp_str            STR$ function
-  bpp_tab            TAB function
-  bpp_read_num       DATA/READ support
-  bpp_tmp            Temporary string pool
+  dim_alloc      Allocate a DIM array
+  dim_ref        Reference a DIM array element
+  basic_concat         String concatenation
+  basic_left           LEFT$ function
+  basic_right          RIGHT$ function
+  basic_mid            MID$ function
+  basic_chr            CHR$ function
+  basic_str            STR$ function
+  basic_tab            TAB function
+  read_num       DATA/READ support
+  tmp_val            Temporary string pool
 
 When targeting a new language, you write equivalent shim
 functions in that language. For example:
 
   Pascal shim for LEFT$:
-    function bpp_left(s: String; n: Integer): String;
+    function basic_left(s: String; n: Integer): String;
     begin
-      bpp_left := Copy(s, 1, n);
+      basic_left := Copy(s, 1, n);
     end;
 
   Java shim for LEFT$:
@@ -736,7 +736,7 @@ functions in that language. For example:
     }
 
   Python 3 shim for LEFT$:
-    def bpp_left(s: str, n: int) -> str:
+    def basic_left(s: str, n: int) -> str:
       return s[:n]
 
 Some languages need very little shimming (Python 3 has
@@ -866,19 +866,19 @@ Source program:
   #include <stdlib.h>
   #include <math.h>
 
-  static double bpp_vars[26];
-  static int bpp_print_width = 14;
+  static double vars[26];
+  static int print_width = 14;
 
   int main(void) {
   L10: printf("Squares 1-10\n");
-  L20: for (bpp_vars[8]=1; bpp_vars[8]<=10; bpp_vars[8]++) {
-  L30:   { double _v=bpp_vars[8];
+  L20: for (vars[8]=1; vars[8]<=10; vars[8]++) {
+  L30:   { double _v=vars[8];
          if(_v==(double)(long)_v)
-           printf("%*ld",bpp_print_width,(long)_v);
+           printf("%*ld",print_width,(long)_v);
          else printf("%g",_v); }
-         { double _v=bpp_vars[8]*bpp_vars[8];
+         { double _v=vars[8]*vars[8];
          if(_v==(double)(long)_v)
-           printf("%*ld",bpp_print_width,(long)_v);
+           printf("%*ld",print_width,(long)_v);
          else printf("%g",_v); }
          printf("\n");
   L40: }
@@ -891,12 +891,12 @@ Source program:
   label 10, 20, 30, 40, 50;
   var
     I: Real;
-    bpp_pw: Integer;
+    pw: Integer;
   begin
-    bpp_pw := 14;
+    pw := 14;
     10: WriteLn('Squares 1-10');
     20: for I := 1 to 10 do begin
-    30:   Write(I:bpp_pw:0, (I*I):bpp_pw:0);
+    30:   Write(I:pw:0, (I*I):pw:0);
           WriteLn;
     40: end;
     50: Halt;
@@ -906,7 +906,7 @@ Source program:
 
   PROGRAM Squares
     IMPLICIT NONE
-    REAL :: bpp_vars(26)
+    REAL :: vars(26)
     INTEGER :: I
 
     10 PRINT *, 'Squares 1-10'

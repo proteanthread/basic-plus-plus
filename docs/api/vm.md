@@ -1,6 +1,6 @@
 # VM Subsystem API Reference
 
-Header File: [`include/bpp_vm.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_vm.h)
+Header File: [`include/vm.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/vm.h)
 
 ## Overview
 Provides the execution environment, bytecode dispatch, statement evaluator, and stack handling.
@@ -147,7 +147,7 @@ Provides the execution environment, bytecode dispatch, statement evaluator, and 
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_vm.h"
+#include "vm.h"
 
 void run_prog(VMContext *vm) {
     BppError err = vm_load_program_file(vm, "test.bas");

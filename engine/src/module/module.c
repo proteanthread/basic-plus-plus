@@ -42,7 +42,7 @@
  * - Adding hot-reloaded modules or metadata-driven capabilities verification.
  *
  * SECTION 11: EXTERNAL EXTENSION HOOKS
- * - Dynamic modules expose bpp_module_init entry points to hook extensions.
+ * - Dynamic modules expose module_init entry points to hook extensions.
  */
 
 #include "module/module.h"
@@ -261,7 +261,7 @@ void module_caps_string(unsigned int caps, char *buf, int buf_len) {
 }
 
 int module_load_dynamic(VMContext *vm, const char *path) {
-#if defined(BPP_FREEDOS) || defined(__ESP32__)
+#if defined(BASIC_FREEDOS) || defined(__ESP32__)
     if (vm) {
         vdev_printf(vm_get_vdev(vm), "Dynamic modules not supported on this platform.\n");
     } else {
@@ -281,12 +281,12 @@ int module_load_dynamic(VMContext *vm, const char *path) {
         }
         return -1;
     }
-    init_fn = (InitFunc)platform_get_proc_address(handle, "bpp_module_init");
+    init_fn = (InitFunc)platform_get_proc_address(handle, "module_init");
     if (!init_fn) {
         if (vm) {
-            vdev_printf(vm_get_vdev(vm), "No bpp_module_init found in %s\n", path);
+            vdev_printf(vm_get_vdev(vm), "No module_init found in %s\n", path);
         } else {
-            printf("No bpp_module_init found in %s\n", path);
+            printf("No module_init found in %s\n", path);
         }
         platform_free_library(handle);
         return -1;

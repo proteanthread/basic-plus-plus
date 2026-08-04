@@ -60,7 +60,7 @@ void task_mutex_unlock(void) {
     }
 }
 
-#if !defined(BPP_FREEDOS_16) && !defined(BPP_EMBEDDED)
+#if !defined(BASIC_FREEDOS_16) && !defined(BASIC_EMBEDDED)
 
 static void *task_thread_worker(void *param) {
     BppBasicTask *task = (BppBasicTask *)param;
@@ -81,7 +81,7 @@ static void *task_thread_worker(void *param) {
     return NULL;
 }
 
-#endif /* !BPP_FREEDOS_16 && !BPP_EMBEDDED */
+#endif /* !BASIC_FREEDOS_16 && !BASIC_EMBEDDED */
 
 void task_mgr_init(void *main_vm) {
     if (!g_mutex_initialized) {
@@ -173,7 +173,7 @@ int task_mgr_has_active_tasks(void) {
 }
 
 int task_spawn(VDevContext *vdev, const char *filename) {
-#if defined(BPP_FREEDOS_16) || defined(BPP_EMBEDDED)
+#if defined(BASIC_FREEDOS_16) || defined(BASIC_EMBEDDED)
     /* Pre-VM error path: use fprintf(stderr) since vdev may not exist on stub platforms */
     (void)vdev;
     fprintf(stderr, "Multitasking not supported on this platform preset.\n");
@@ -381,7 +381,7 @@ int task_get_status(int pid) {
 }
 
 int task_spawn_at_label(VDevContext *vdev, const char *filename, const char *label) {
-#if defined(BPP_FREEDOS_16) || defined(BPP_EMBEDDED)
+#if defined(BASIC_FREEDOS_16) || defined(BASIC_EMBEDDED)
     /* Pre-VM error path: use fprintf(stderr) since vdev may not exist on stub platforms */
     (void)vdev;
     (void)label;

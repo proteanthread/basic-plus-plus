@@ -95,7 +95,7 @@ BppMap *struct_instantiate(VMContext *vm, const BppTypeRegistry *reg, const char
         return NULL;
     }
     
-    BppMap *inst = bpp_map_create();
+    BppMap *inst = map_create();
     if (!inst) {
         snprintf(err_buf, err_len, "Out of memory in struct_instantiate");
         return NULL;
@@ -105,7 +105,7 @@ BppMap *struct_instantiate(VMContext *vm, const BppTypeRegistry *reg, const char
     BValue t_val;
     t_val.type = VAL_STRING;
     t_val.as.string = str_create(vm_get_str(vm), def->name, strlen(def->name));
-    bpp_map_set(vm_get_str(vm), inst, "__type__", t_val);
+    map_set(vm_get_str(vm), inst, "__type__", t_val);
     
     /* Pre-fill default values for each field */
     for (int i = 0; i < def->field_count; ++i) {
@@ -117,7 +117,7 @@ BppMap *struct_instantiate(VMContext *vm, const BppTypeRegistry *reg, const char
             /* Nested UDT */
             BppMap *nested_inst = struct_instantiate(vm, reg, f->nested_type, err_buf, err_len);
             if (!nested_inst) {
-                bpp_map_release(vm_get_str(vm), inst);
+                map_release(vm_get_str(vm), inst);
                 return NULL;
             }
             f_val.type = VAL_MAP;
@@ -132,7 +132,7 @@ BppMap *struct_instantiate(VMContext *vm, const BppTypeRegistry *reg, const char
                 f_val.as.number = 0.0;
             }
         }
-        bpp_map_set(vm_get_str(vm), inst, f->name, f_val);
+        map_set(vm_get_str(vm), inst, f->name, f_val);
     }
     
     return inst;
@@ -142,7 +142,7 @@ bool struct_copy_instance(VMContext *vm, BppMap *dst, BppMap *src, char *err_buf
     if (!dst || !src) return false;
     
     BValue dst_type, src_type;
-    if (!bpp_map_get(dst, "__type__", &dst_type) || !bpp_map_get(src, "__type__", &src_type)) {
+    if (!map_get(dst, "__type__", &dst_type) || !map_get(src, "__type__", &src_type)) {
         snprintf(err_buf, err_len, "Incompatible type copy: missing type metadata");
         return false;
     }
@@ -156,22 +156,22 @@ bool struct_copy_instance(VMContext *vm, BppMap *dst, BppMap *src, char *err_buf
     }
     
     /* Copy all key values */
-    for (int i = 0; i < bpp_map_count(src); ++i) {
-        const char *key = bpp_map_key(src, i);
+    for (int i = 0; i < map_count(src); ++i) {
+        const char *key = map_key(src, i);
         if (strcmp(key, "__type__") == 0) continue;
         
         BValue val;
-        bpp_map_get(src, key, &val);
+        map_get(src, key, &val);
         
         /* Add reference counts for strings or nested maps */
         if (val.type == VAL_STRING && val.as.string) {
             str_add_ref(val.as.string);
         } else if (val.type == VAL_MAP && val.as.map) {
-            bpp_map_add_ref(val.as.map);
+            map_add_ref(val.as.map);
         }
         
-        /* Set in destination (this automatically releases previous value inside bpp_map_set) */
-        bpp_map_set(vm_get_str(vm), dst, key, val);
+        /* Set in destination (this automatically releases previous value inside map_set) */
+        map_set(vm_get_str(vm), dst, key, val);
     }
     
     return true;

@@ -271,7 +271,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                 if (var_val) {
                                     obj_val = *var_val;
                                     if (obj_val.type == VAL_STRING && obj_val.as.string) str_add_ref(obj_val.as.string);
-                                    else if (obj_val.type == VAL_MAP && obj_val.as.map) bpp_map_add_ref(obj_val.as.map);
+                                    else if (obj_val.type == VAL_MAP && obj_val.as.map) map_add_ref(obj_val.as.map);
                                     
                                     /* Walk nested fields up to last member */
                                     bool walk_err = false;
@@ -280,28 +280,28 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                             walk_err = true; break;
                                         }
                                         BValue next_val;
-                                        if (!bpp_map_get(obj_val.as.map, member_chain[m], &next_val)) {
+                                        if (!map_get(obj_val.as.map, member_chain[m], &next_val)) {
                                             walk_err = true; break;
                                         }
                                         BValue copy = next_val;
                                         if (copy.type == VAL_STRING && copy.as.string) str_add_ref(copy.as.string);
-                                        else if (copy.type == VAL_MAP && copy.as.map) bpp_map_add_ref(copy.as.map);
+                                        else if (copy.type == VAL_MAP && copy.as.map) map_add_ref(copy.as.map);
                                         
-                                        if (obj_val.type == VAL_MAP && obj_val.as.map) bpp_map_release(vm_get_str(vm), obj_val.as.map);
+                                        if (obj_val.type == VAL_MAP && obj_val.as.map) map_release(vm_get_str(vm), obj_val.as.map);
                                         else if (obj_val.type == VAL_STRING && obj_val.as.string) str_release(vm_get_str(vm), obj_val.as.string);
                                         obj_val = copy;
                                     }
                                     
                                     if (!walk_err && obj_val.type == VAL_MAP && obj_val.as.map) {
                                         BValue type_val;
-                                        if (bpp_map_get(obj_val.as.map, "__type__", &type_val) && type_val.type == VAL_STRING && type_val.as.string) {
+                                        if (map_get(obj_val.as.map, "__type__", &type_val) && type_val.type == VAL_STRING && type_val.as.string) {
                                             snprintf(fully_qualified_method, sizeof(fully_qualified_method), "%s.%s",
                                                      str_data(type_val.as.string), member_chain[member_count - 1]);
                                             is_method = true;
                                         }
                                     }
                                     if (!is_method) {
-                                        if (obj_val.type == VAL_MAP && obj_val.as.map) bpp_map_release(vm_get_str(vm), obj_val.as.map);
+                                        if (obj_val.type == VAL_MAP && obj_val.as.map) map_release(vm_get_str(vm), obj_val.as.map);
                                         else if (obj_val.type == VAL_STRING && obj_val.as.string) str_release(vm_get_str(vm), obj_val.as.string);
                                     }
                                 }
@@ -327,7 +327,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                             out_err->message = "Too many arguments in function/method call";
                             for (int i = 0; i < argc; i++) {
                                 if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                                else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
                             }
                             EVAL_EARLY_RETURN;
                         }
@@ -336,7 +336,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                         if (out_err->code != 0) {
                             for (int i = 0; i < argc - 1; i++) {
                                 if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                                else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
                             }
                             EVAL_EARLY_RETURN;
                         }
@@ -352,7 +352,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                             out_err->message = "Expected ',' or ')' in function argument list";
                             for (int i = 0; i < argc; i++) {
                                 if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                                else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
                             }
                             EVAL_EARLY_RETURN;
                         }
@@ -361,7 +361,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                     BValue val = invoke_user_function(vm, is_method ? fully_qualified_method : name_buf, args, argc, out_err);
                     for (int i = 0; i < argc; i++) {
                         if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                        else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                        else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
                     }
                     if (out_err->code != 0) EVAL_EARLY_RETURN;
 
@@ -483,7 +483,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                                 if (out_err->code == 0 && dst_elem) {
                                                     *dst_elem = *src_elem;
                                                     if (dst_elem->type == VAL_STRING && dst_elem->as.string) str_add_ref(dst_elem->as.string);
-                                                    else if (dst_elem->type == VAL_MAP && dst_elem->as.map) bpp_map_add_ref(dst_elem->as.map);
+                                                    else if (dst_elem->type == VAL_MAP && dst_elem->as.map) map_add_ref(dst_elem->as.map);
                                                 }
                                             }
                                             out_err->code = 0; /* Clear out of bounds errors during slice copy if any */
@@ -513,7 +513,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                             if (val.type == VAL_STRING && val.as.string) {
                                 str_add_ref(val.as.string);
                             } else if (val.type == VAL_MAP && val.as.map) {
-                                bpp_map_add_ref(val.as.map);
+                                map_add_ref(val.as.map);
                             }
                             val = eval_resolve_member_access(vm, lex, val, out_err);
                             if (out_err->code != 0) EVAL_EARLY_RETURN;
@@ -657,7 +657,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                             if (lookup) {
                                 arg_val = *lookup;
                                 if (arg_val.type == VAL_STRING && arg_val.as.string) str_add_ref(arg_val.as.string);
-                                else if (arg_val.type == VAL_MAP && arg_val.as.map) bpp_map_add_ref(arg_val.as.map);
+                                else if (arg_val.type == VAL_MAP && arg_val.as.map) map_add_ref(arg_val.as.map);
                             }
                         }
 
@@ -722,7 +722,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                         if (arg_val.type == VAL_STRING && arg_val.as.string) {
                             str_release(vm_get_str(vm), arg_val.as.string);
                         } else if (arg_val.type == VAL_MAP && arg_val.as.map) {
-                            bpp_map_release(vm_get_str(vm), arg_val.as.map);
+                            map_release(vm_get_str(vm), arg_val.as.map);
                         }
                     } else {
                         val = eval_builtin_function(vm, name_buf, lex, false, out_err);
@@ -772,7 +772,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                             if (var_val) {
                                 BValue val = *var_val;
                                 if (val.type == VAL_STRING && val.as.string) str_add_ref(val.as.string);
-                                else if (val.type == VAL_MAP && val.as.map) bpp_map_add_ref(val.as.map);
+                                else if (val.type == VAL_MAP && val.as.map) map_add_ref(val.as.map);
                                 
                                 /* Walk up to the last member */
                                 for (int m = 0; m < member_count - 1; m++) {
@@ -781,17 +781,17 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                         EVAL_EARLY_RETURN;
                                     }
                                     BValue next_val;
-                                    if (!bpp_map_get(val.as.map, member_chain[m], &next_val)) {
+                                    if (!map_get(val.as.map, member_chain[m], &next_val)) {
                                         out_err->code = 35; out_err->message = "Member field not found";
-                                        if (val.type == VAL_MAP && val.as.map) bpp_map_release(vm_get_str(vm), val.as.map);
+                                        if (val.type == VAL_MAP && val.as.map) map_release(vm_get_str(vm), val.as.map);
                                         else if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
                                         EVAL_EARLY_RETURN;
                                     }
                                     BValue copy = next_val;
                                     if (copy.type == VAL_STRING && copy.as.string) str_add_ref(copy.as.string);
-                                    else if (copy.type == VAL_MAP && copy.as.map) bpp_map_add_ref(copy.as.map);
+                                    else if (copy.type == VAL_MAP && copy.as.map) map_add_ref(copy.as.map);
                                     
-                                    if (val.type == VAL_MAP && val.as.map) bpp_map_release(vm_get_str(vm), val.as.map);
+                                    if (val.type == VAL_MAP && val.as.map) map_release(vm_get_str(vm), val.as.map);
                                     else if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
                                     val = copy;
                                 }
@@ -804,7 +804,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                         EVAL_EARLY_RETURN;
                                     }
                                     BValue type_val;
-                                    if (!bpp_map_get(val.as.map, "__type__", &type_val) || type_val.type != VAL_STRING || !type_val.as.string) {
+                                    if (!map_get(val.as.map, "__type__", &type_val) || type_val.type != VAL_STRING || !type_val.as.string) {
                                         out_err->code = 13; out_err->message = "Object missing class type metadata";
                                         EVAL_EARLY_RETURN;
                                     }
@@ -815,7 +815,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                     BValue args[9];
                                     int argc = 0;
                                     args[argc++] = val;
-                                    bpp_map_add_ref(val.as.map);
+                                    map_add_ref(val.as.map);
                                     
                                     while (true) {
                                         BppToken next_tok = lex_peek(lex);
@@ -827,7 +827,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                             out_err->code = 2; out_err->message = "Too many arguments in method call";
                                             for (int i = 0; i < argc; i++) {
                                                 if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                                                else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
                                             }
                                             EVAL_EARLY_RETURN;
                                         }
@@ -835,7 +835,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                         if (out_err->code != 0) {
                                             for (int i = 0; i < argc - 1; i++) {
                                                 if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                                                else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
                                             }
                                             EVAL_EARLY_RETURN;
                                         }
@@ -849,7 +849,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                             out_err->code = 2; out_err->message = "Expected ',' or ')' in method call";
                                             for (int i = 0; i < argc; i++) {
                                                 if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                                                else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
                                             }
                                             EVAL_EARLY_RETURN;
                                         }
@@ -858,7 +858,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                     BValue ret_val = invoke_user_function(vm, fully_qualified_method, args, argc, out_err);
                                     for (int i = 0; i < argc; i++) {
                                         if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                                        else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                                        else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
                                     }
                                     if (out_err->code != 0) EVAL_EARLY_RETURN;
                                     
@@ -876,17 +876,17 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                                         EVAL_EARLY_RETURN;
                                     }
                                     BValue next_val;
-                                    if (!bpp_map_get(val.as.map, member_chain[m], &next_val)) {
+                                    if (!map_get(val.as.map, member_chain[m], &next_val)) {
                                         out_err->code = 35; out_err->message = "Member field not found";
-                                        if (val.type == VAL_MAP && val.as.map) bpp_map_release(vm_get_str(vm), val.as.map);
+                                        if (val.type == VAL_MAP && val.as.map) map_release(vm_get_str(vm), val.as.map);
                                         else if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
                                         EVAL_EARLY_RETURN;
                                     }
                                     BValue copy = next_val;
                                     if (copy.type == VAL_STRING && copy.as.string) str_add_ref(copy.as.string);
-                                    else if (copy.type == VAL_MAP && copy.as.map) bpp_map_add_ref(copy.as.map);
+                                    else if (copy.type == VAL_MAP && copy.as.map) map_add_ref(copy.as.map);
                                     
-                                    if (val.type == VAL_MAP && val.as.map) bpp_map_release(vm_get_str(vm), val.as.map);
+                                    if (val.type == VAL_MAP && val.as.map) map_release(vm_get_str(vm), val.as.map);
                                     else if (val.type == VAL_STRING && val.as.string) str_release(vm_get_str(vm), val.as.string);
                                     val = copy;
                                 }
@@ -910,7 +910,7 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                     if (val.type == VAL_STRING && val.as.string) {
                         str_add_ref(val.as.string);
                     } else if (val.type == VAL_MAP && val.as.map) {
-                        bpp_map_add_ref(val.as.map);
+                        map_add_ref(val.as.map);
                     } else if (val.type == VAL_FIELD_STRING) {
                         /* Read from random access file buffer */
                         int ch = val.as.field_str.channel;

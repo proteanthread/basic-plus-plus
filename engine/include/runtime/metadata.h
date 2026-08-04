@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_metadata.h
+ * @file metadata.h
  * @brief Metadata registry defining schemas for namespace resolution, cross-file global labels, and queryable docstrings.
  *
  * WHAT IT DOES:
@@ -44,8 +44,8 @@
  * Dynamic modules (.BPL/.BPE) can insert their own export names and docstrings into this registry.
  */
 
-#ifndef BPP_METADATA_H
-#define BPP_METADATA_H
+#ifndef RUNTIME_METADATA_H
+#define RUNTIME_METADATA_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -71,7 +71,7 @@ typedef struct {
     char docstring[256];
 } BppDocstring;
 
-#ifdef BPP_FREEDOS_16
+#ifdef BASIC_FREEDOS_16
   #define MAX_METADATA_BLOCKS 8
   #define MAX_BLOCK_BODY_LEN 256
 #else
@@ -145,4 +145,4 @@ void metadata_pre_scan_line(VMContext *vm, const char *filename, BppLineNumber l
  */
 void metadata_pre_scan_program(VMContext *vm, const char *filename);
 
-#endif /* BPP_METADATA_H */
+#endif /* RUNTIME_METADATA_H */

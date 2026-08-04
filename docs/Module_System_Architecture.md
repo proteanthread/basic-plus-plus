@@ -83,7 +83,7 @@ The interpreter restricts execution using three distinct runtime safety zones:
 To maintain interpreter stability and absolute isolation, external developers must follow these strict requirements:
 
 ### Avoid Platform-Specific Shared Library Divergence
-To prevent build system drift between Windows (`LoadLibrary`/`GetProcAddress`) and Posix/Linux (`dlopen`/`dlsym`), compile-time loading wrapper symbols are abstracted inside `source/core/platform.c`. Developers should compile shared modules using the cross-platform `BPP_EXPORT` macro defined in `module_api.h`.
+To prevent build system drift between Windows (`LoadLibrary`/`GetProcAddress`) and Posix/Linux (`dlopen`/`dlsym`), compile-time loading wrapper symbols are abstracted inside `source/core/platform.c`. Developers should compile shared modules using the cross-platform `BASIC_EXPORT` macro defined in `module_api.h`.
 
 ### Avoid Symbol Collisions
 To prevent namespace overlap in the global function registry, developers must prefix all exported function names with their module name (e.g. `MYMOD_PRINT`, `MYMOD_ADD`). Soft runtime signature matching validates parameter types at runtime, preventing signature collisions during parse time.

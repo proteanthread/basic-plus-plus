@@ -7,8 +7,8 @@
 ## Step 1: Define Dialect Schema
 Define a custom dialect by mapping its options:
 ```c
-#include "bpp_dialect.h"
-#include "bpp_vm.h"
+#include "dialect.h"
+#include "vm.h"
 #include <string.h>
 
 void configure_my_dialect(VMContext *vm) {

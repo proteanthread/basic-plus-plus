@@ -631,7 +631,7 @@ void render_screen(void) {
         } else {
             if (show_splash && i == (screen_rows - 1) / 3) {
                 char splash[128];
-                snprintf(splash, sizeof(splash), "BASIC++ Standard v%s", BPP_VERSION_STRING);
+                snprintf(splash, sizeof(splash), "BASIC++ Standard v%s", BASIC_VERSION_STRING);
                 int pad = (screen_cols - (int)strlen(splash)) / 2;
                 if (pad < 2) pad = 2;
                 printf("\x1b[36m~");

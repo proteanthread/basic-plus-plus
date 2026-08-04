@@ -150,13 +150,13 @@ BppError stmt_dialect_handler(VMContext *vm, LexerContext *lex) {
         const char *parse_source = file_content ? file_content : spec_str;
         BppMap *map = NULL;
         if (strcasecmp(format, "JSON") == 0) {
-            map = bpp_map_parse_json(vm_get_str(vm), parse_source);
+            map = map_parse_json(vm_get_str(vm), parse_source);
         } else if (strcasecmp(format, "XML") == 0) {
-            map = bpp_map_parse_xml(vm_get_str(vm), parse_source);
+            map = map_parse_xml(vm_get_str(vm), parse_source);
         } else if (strcasecmp(format, "YAML") == 0) {
-            map = bpp_map_parse_yaml(vm_get_str(vm), parse_source);
+            map = map_parse_yaml(vm_get_str(vm), parse_source);
         } else if (strcasecmp(format, "INI") == 0) {
-            map = bpp_map_parse_ini(vm_get_str(vm), parse_source);
+            map = map_parse_ini(vm_get_str(vm), parse_source);
         } else {
             err.code = 5; err.message = "Unsupported spec format";
         }
@@ -175,12 +175,12 @@ BppError stmt_dialect_handler(VMContext *vm, LexerContext *lex) {
         char val_err[512] = "";
         if (!d) {
             err.code = 14; err.message = "Out of memory allocating dialect";
-            bpp_map_release(vm_get_str(vm), map);
+            map_release(vm_get_str(vm), map);
             return err;
         }
         if (!dialect_load_from_map(vm, map, d, val_err, sizeof(val_err))) {
             dialect_free(d);
-            bpp_map_release(vm_get_str(vm), map);
+            map_release(vm_get_str(vm), map);
             err.code = 5;
             static char err_msg_buf[512];
             strncpy(err_msg_buf, val_err, sizeof(err_msg_buf) - 1);
@@ -188,7 +188,7 @@ BppError stmt_dialect_handler(VMContext *vm, LexerContext *lex) {
             err.message = err_msg_buf;
             return err;
         }
-        bpp_map_release(vm_get_str(vm), map);
+        map_release(vm_get_str(vm), map);
         vm_set_active_dialect(vm, d);
     }
     else if ((tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) && tok.length == 8 && strncasecmp(tok.start, "REGISTER", 8) == 0) {
@@ -205,12 +205,12 @@ BppError stmt_dialect_handler(VMContext *vm, LexerContext *lex) {
         char val_err[512] = "";
         if (!d) {
             err.code = 14; err.message = "Out of memory allocating dialect";
-            bpp_map_release(vm_get_str(vm), val.as.map);
+            map_release(vm_get_str(vm), val.as.map);
             return err;
         }
         if (!dialect_load_from_map(vm, val.as.map, d, val_err, sizeof(val_err))) {
             dialect_free(d);
-            bpp_map_release(vm_get_str(vm), val.as.map);
+            map_release(vm_get_str(vm), val.as.map);
             err.code = 5;
             static char err_msg_buf2[512];
             strncpy(err_msg_buf2, val_err, sizeof(err_msg_buf2) - 1);
@@ -218,7 +218,7 @@ BppError stmt_dialect_handler(VMContext *vm, LexerContext *lex) {
             err.message = err_msg_buf2;
             return err;
         }
-        bpp_map_release(vm_get_str(vm), val.as.map);
+        map_release(vm_get_str(vm), val.as.map);
         vm_set_active_dialect(vm, d);
     }
     else if ((tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) && tok.length == 4 && strncasecmp(tok.start, "INFO", 4) == 0) {

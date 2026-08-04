@@ -53,7 +53,7 @@ typedef struct {
     unsigned char *record_buffer; /* Phase 16: GW-BASIC Random Access File Buffer */
 } BppFileChannel;
 
-#define BPP_MAX_RANGE_LOCKS 64
+#define BASIC_MAX_RANGE_LOCKS 64
 
 typedef struct {
     int  channel;
@@ -65,8 +65,8 @@ typedef struct {
 
 struct FileContext {
     MemoryContext  *mem;
-    BppFileChannel  channels[BPP_MAX_OPEN_FILES];
-    BppGlobalLock   locks[BPP_MAX_RANGE_LOCKS];
+    BppFileChannel  channels[BASIC_MAX_OPEN_FILES];
+    BppGlobalLock   locks[BASIC_MAX_RANGE_LOCKS];
 
     /* Transaction log state */
     int             txn_mode;          /* 0 = none, 1 = explicit (TXN), 2 = implicit (ATOMIC) */
@@ -81,13 +81,13 @@ FileContext *file_init(MemoryContext *mem) {
     FileContext *ctx = (FileContext *)calloc(1, sizeof(FileContext));
     if (!ctx) return NULL;
     ctx->mem = mem;
-    for (int i = 0; i < BPP_MAX_OPEN_FILES; ++i) {
+    for (int i = 0; i < BASIC_MAX_OPEN_FILES; ++i) {
         ctx->channels[i].fp = NULL;
         ctx->channels[i].vdev = NULL;
         ctx->channels[i].filename[0] = '\0';
         ctx->channels[i].pushback_char = -1;
     }
-    for (int i = 0; i < BPP_MAX_RANGE_LOCKS; ++i) {
+    for (int i = 0; i < BASIC_MAX_RANGE_LOCKS; ++i) {
         ctx->locks[i].active = false;
     }
     ctx->txn_mode = 0;
@@ -122,7 +122,7 @@ BppError file_open(FileContext *ctx, VDevContext *vdev_ctx, int channel, const c
     BppError err;
     memset(&err, 0, sizeof(err));
 
-    if (channel < 1 || channel > BPP_MAX_OPEN_FILES) {
+    if (channel < 1 || channel > BASIC_MAX_OPEN_FILES) {
         err.code = 52; /* Bad file number */
         err.message = "Bad file number";
         return err;
@@ -181,7 +181,7 @@ BppError file_open(FileContext *ctx, VDevContext *vdev_ctx, int channel, const c
         ctx->channels[idx].mode = mode;
         ctx->channels[idx].access = access;
         ctx->channels[idx].lock_mode = lock_mode;
-        ctx->channels[idx].record_len = (record_len > 0) ? record_len : BPP_DEFAULT_RECORD_LEN;
+        ctx->channels[idx].record_len = (record_len > 0) ? record_len : BASIC_DEFAULT_RECORD_LEN;
         ctx->channels[idx].pushback_char = -1;
         if (mode == FILE_MODE_RANDOM) {
             ctx->channels[idx].record_buffer = (unsigned char *)calloc(1, ctx->channels[idx].record_len);
@@ -207,7 +207,7 @@ BppError file_open(FileContext *ctx, VDevContext *vdev_ctx, int channel, const c
     }
 
     /* Check for sharing violations across other open channels */
-    for (int i = 0; i < BPP_MAX_OPEN_FILES; ++i) {
+    for (int i = 0; i < BASIC_MAX_OPEN_FILES; ++i) {
         if (i != idx && (ctx->channels[i].fp || ctx->channels[i].vdev)) {
             if (strcmp(ctx->channels[i].filename, filename) == 0) {
                 BppFileLockMode existing_lock = ctx->channels[i].lock_mode;
@@ -251,7 +251,7 @@ BppError file_open(FileContext *ctx, VDevContext *vdev_ctx, int channel, const c
     }
 
     const char *open_target = filename;
-    if (bpp_logger_is_dry_run()) {
+    if (logger_is_dry_run()) {
         bool is_write = false;
         if (mode == FILE_MODE_OUTPUT || mode == FILE_MODE_APPEND) {
             is_write = true;
@@ -259,7 +259,7 @@ BppError file_open(FileContext *ctx, VDevContext *vdev_ctx, int channel, const c
             is_write = true;
         }
         if (is_write) {
-            bpp_log_warn("[DRY-RUN] Intercepted mutating file open for: %s (redirected to null stream)", filename);
+            log_warn("[DRY-RUN] Intercepted mutating file open for: %s (redirected to null stream)", filename);
 #if defined(_WIN32)
             open_target = "NUL";
 #else
@@ -282,7 +282,7 @@ BppError file_open(FileContext *ctx, VDevContext *vdev_ctx, int channel, const c
     ctx->channels[idx].mode = mode;
     ctx->channels[idx].access = access;
     ctx->channels[idx].lock_mode = lock_mode;
-    ctx->channels[idx].record_len = (record_len > 0) ? record_len : BPP_DEFAULT_RECORD_LEN;
+    ctx->channels[idx].record_len = (record_len > 0) ? record_len : BASIC_DEFAULT_RECORD_LEN;
     ctx->channels[idx].pushback_char = -1;
     if (mode == FILE_MODE_RANDOM) {
         ctx->channels[idx].record_buffer = (unsigned char *)calloc(1, ctx->channels[idx].record_len);
@@ -300,7 +300,7 @@ BppError file_open(FileContext *ctx, VDevContext *vdev_ctx, int channel, const c
 }
 
 void file_close(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -320,7 +320,7 @@ void file_close(FileContext *ctx, int channel) {
     }
 
     /* Release any range locks held by this channel */
-    for (int i = 0; i < BPP_MAX_RANGE_LOCKS; ++i) {
+    for (int i = 0; i < BASIC_MAX_RANGE_LOCKS; ++i) {
         if (ctx->locks[i].active && ctx->locks[i].channel == channel) {
             ctx->locks[i].active = false;
         }
@@ -331,36 +331,36 @@ void file_close(FileContext *ctx, int channel) {
 }
 
 unsigned char *file_get_record_buffer(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return NULL;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return NULL;
     int idx = channel - 1;
     return ctx->channels[idx].record_buffer;
 }
 
 void file_close_all(FileContext *ctx) {
     if (!ctx) return;
-    for (int i = 0; i < BPP_MAX_OPEN_FILES; ++i) {
+    for (int i = 0; i < BASIC_MAX_OPEN_FILES; ++i) {
         file_close(ctx, i + 1);
     }
 }
 
 bool file_is_open(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return false;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return false;
     int idx = channel - 1;
     return (ctx->channels[idx].fp != NULL || ctx->channels[idx].vdev != NULL);
 }
 
 FILE *file_get_handle(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return NULL;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return NULL;
     return ctx->channels[channel - 1].fp;
 }
 
 BppFileMode file_get_mode(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return FILE_MODE_INPUT;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return FILE_MODE_INPUT;
     return ctx->channels[channel - 1].mode;
 }
 
 long file_lof(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return 0;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return 0;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -384,7 +384,7 @@ long file_lof(FileContext *ctx, int channel) {
 }
 
 long file_loc(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return 0;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return 0;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -407,7 +407,7 @@ long file_loc(FileContext *ctx, int channel) {
 }
 
 bool file_eof(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return true;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return true;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -431,7 +431,7 @@ bool file_eof(FileContext *ctx, int channel) {
 }
 
 void file_seek(FileContext *ctx, int channel, long position) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -456,17 +456,17 @@ void file_seek(FileContext *ctx, int channel, long position) {
 }
 
 int file_get_record_len(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return 0;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return 0;
     return ctx->channels[channel - 1].record_len;
 }
 
 VDev *file_get_vdev(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return NULL;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return NULL;
     return ctx->channels[channel - 1].vdev;
 }
 
 int file_getc(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return -1;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return -1;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -488,14 +488,14 @@ int file_getc(FileContext *ctx, int channel) {
 }
 
 int file_ungetc(FileContext *ctx, int channel, int c) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return -1;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return -1;
     int idx = channel - 1;
     ctx->channels[idx].pushback_char = c;
     return c;
 }
 
 char *file_gets(FileContext *ctx, int channel, char *buf, size_t size) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES || !buf || size == 0) return NULL;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES || !buf || size == 0) return NULL;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -521,7 +521,7 @@ char *file_gets(FileContext *ctx, int channel, char *buf, size_t size) {
 }
 
 int file_puts(FileContext *ctx, int channel, const char *s) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES || !s) return -1;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES || !s) return -1;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -557,7 +557,7 @@ int file_printf(FileContext *ctx, int channel, const char *fmt, ...) {
 }
 
 int file_putc(FileContext *ctx, int channel, int c) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return -1;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return -1;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -573,7 +573,7 @@ int file_putc(FileContext *ctx, int channel, int c) {
 }
 
 int file_flush(FileContext *ctx, int channel) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return -1;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return -1;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -590,7 +590,7 @@ int file_flush(FileContext *ctx, int channel) {
 
 BppError file_lock_range(FileContext *ctx, int channel, long start, long end) {
     BppError err; memset(&err, 0, sizeof(err));
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) {
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) {
         err.code = 52; err.message = "Bad file number";
         return err;
     }
@@ -602,7 +602,7 @@ BppError file_lock_range(FileContext *ctx, int channel, long start, long end) {
     }
 
     /* Check for overlap against existing locks */
-    for (int i = 0; i < BPP_MAX_RANGE_LOCKS; ++i) {
+    for (int i = 0; i < BASIC_MAX_RANGE_LOCKS; ++i) {
         if (ctx->locks[i].active && strcmp(ctx->locks[i].filename, chan->filename) == 0) {
             /* If it's a different channel OR we don't allow same-channel overlaps, fail */
             if (ctx->locks[i].channel != channel) {
@@ -615,7 +615,7 @@ BppError file_lock_range(FileContext *ctx, int channel, long start, long end) {
     }
 
     /* Find empty slot */
-    for (int i = 0; i < BPP_MAX_RANGE_LOCKS; ++i) {
+    for (int i = 0; i < BASIC_MAX_RANGE_LOCKS; ++i) {
         if (!ctx->locks[i].active) {
             ctx->locks[i].active = true;
             ctx->locks[i].channel = channel;
@@ -633,13 +633,13 @@ BppError file_lock_range(FileContext *ctx, int channel, long start, long end) {
 
 BppError file_unlock_range(FileContext *ctx, int channel, long start, long end) {
     BppError err; memset(&err, 0, sizeof(err));
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) {
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) {
         err.code = 52; err.message = "Bad file number";
         return err;
     }
     
     bool found = false;
-    for (int i = 0; i < BPP_MAX_RANGE_LOCKS; ++i) {
+    for (int i = 0; i < BASIC_MAX_RANGE_LOCKS; ++i) {
         if (ctx->locks[i].active && ctx->locks[i].channel == channel && 
             ctx->locks[i].start == start && ctx->locks[i].end == end) {
             ctx->locks[i].active = false;
@@ -656,13 +656,13 @@ BppError file_unlock_range(FileContext *ctx, int channel, long start, long end) 
 
 BppError file_check_overlap(FileContext *ctx, int channel, long start, long end) {
     BppError err; memset(&err, 0, sizeof(err));
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES) return err;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES) return err;
 
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
     if (!chan->fp && !chan->vdev) return err;
 
-    for (int i = 0; i < BPP_MAX_RANGE_LOCKS; ++i) {
+    for (int i = 0; i < BASIC_MAX_RANGE_LOCKS; ++i) {
         if (ctx->locks[i].active && ctx->locks[i].channel != channel) {
             if (strcmp(ctx->locks[i].filename, chan->filename) == 0) {
                 if (!(end < ctx->locks[i].start || start > ctx->locks[i].end)) {
@@ -676,7 +676,7 @@ BppError file_check_overlap(FileContext *ctx, int channel, long start, long end)
 }
 
 int file_read(FileContext *ctx, int channel, void *buf, int len) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES || !buf || len <= 0) return -1;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES || !buf || len <= 0) return -1;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -719,7 +719,7 @@ int file_read(FileContext *ctx, int channel, void *buf, int len) {
 }
 
 int file_write(FileContext *ctx, int channel, const void *buf, int len) {
-    if (!ctx || channel < 1 || channel > BPP_MAX_OPEN_FILES || !buf || len <= 0) return -1;
+    if (!ctx || channel < 1 || channel > BASIC_MAX_OPEN_FILES || !buf || len <= 0) return -1;
     int idx = channel - 1;
     BppFileChannel *chan = &ctx->channels[idx];
 
@@ -752,7 +752,7 @@ void file_txn_begin(FileContext *ctx, int mode, bool use_file) {
     ctx->txn_entry_count = 0;
     ctx->txn_use_file = use_file;
     if (use_file) {
-        snprintf(ctx->txn_journal_file, sizeof(ctx->txn_journal_file), "bpp_txn_journal.tmp");
+        snprintf(ctx->txn_journal_file, sizeof(ctx->txn_journal_file), "txn_journal.tmp");
         FILE *f = fopen(ctx->txn_journal_file, "wb");
         if (f) fclose(f);
     } else {

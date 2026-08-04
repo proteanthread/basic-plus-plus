@@ -1,6 +1,6 @@
 # BGI Graphics Interface API Reference
 
-Header File: [`include/bpp_bgi.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_bgi.h)
+Header File: [`include/bgi.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bgi.h)
 
 ## Overview
 Provides Borland Graphics Interface retro graphics mode, shapes, and drawing primitives.
@@ -54,7 +54,7 @@ Provides Borland Graphics Interface retro graphics mode, shapes, and drawing pri
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_bgi.h"
+#include "bgi.h"
 
 void draw_line() {
     BGI_line(NULL, 0, 0, 100, 100);

@@ -38,7 +38,7 @@ static BppError stmt_xset_handler(VMContext *vm, LexerContext *lex, bool is_rset
     if (err.code != 0) return err;
 
     if (val.type != VAL_STRING) {
-        if (val.type == VAL_MAP) bpp_map_release(vm_get_str(vm), val.as.map);
+        if (val.type == VAL_MAP) map_release(vm_get_str(vm), val.as.map);
         err.code = 13; /* Type mismatch */
         err.message = "LSET/RSET requires a string expression";
         return err;

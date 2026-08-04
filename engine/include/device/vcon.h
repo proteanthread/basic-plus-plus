@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_vcon.h
+ * @file vcon.h
  * @brief Virtual Consoles & Virtual Terminals (VCON/VTERM) interface.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -15,8 +15,8 @@
  *   them to the active console viewport.
  */
 
-#ifndef BPP_VCON_H
-#define BPP_VCON_H
+#ifndef DEVICE_VCON_H
+#define DEVICE_VCON_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -52,4 +52,4 @@ void         vcon_get_cursor(VConContext *ctx, int index, int *row, int *col);
 int          vcon_get_char_at(VConContext *ctx, int index, int row, int col);
 int          vcon_get_attr_at(VConContext *ctx, int index, int row, int col);
 
-#endif /* BPP_VCON_H */
+#endif /* DEVICE_VCON_H */

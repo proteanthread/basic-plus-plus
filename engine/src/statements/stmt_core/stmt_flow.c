@@ -290,9 +290,9 @@ BppError stmt_system_handler(VMContext *vm, LexerContext *lex) {
         }
 
         if (strcmp(query, "PLATFORM") == 0) {
-            vdev_printf(vdev, "%s (%s)\n", platform_name(), BPP_PROFILE_NAME);
+            vdev_printf(vdev, "%s (%s)\n", platform_name(), BASIC_PROFILE_NAME);
         } else if (strcmp(query, "VERSION") == 0) {
-            vdev_printf(vdev, "%s v%s \"%s\"\n", BPP_NAME, BPP_VERSION_STRING, BPP_VERSION_CODENAME);
+            vdev_printf(vdev, "%s v%s \"%s\"\n", BASIC_NAME, BASIC_VERSION_STRING, BASIC_VERSION_CODENAME);
         } else if (strcmp(query, "MEMORY") == 0) {
             size_t free_ram = mem_get_free_ram(vm_get_mem(vm));
             size_t total_ram = free_ram + mem_get_used_ram(vm_get_mem(vm));
@@ -319,7 +319,7 @@ BppError stmt_system_handler(VMContext *vm, LexerContext *lex) {
     }
 
     /* Print full summary */
-    vdev_printf(vdev, "Platform: %s (%s)\n", platform_name(), BPP_PROFILE_NAME);
+    vdev_printf(vdev, "Platform: %s (%s)\n", platform_name(), BASIC_PROFILE_NAME);
 #if defined(_MSC_VER)
     vdev_printf(vdev, "Compiler: MSVC %d\n", _MSC_VER);
 #elif defined(__GNUC__) && !defined(__clang__)
@@ -334,7 +334,7 @@ BppError stmt_system_handler(VMContext *vm, LexerContext *lex) {
                 (int)sizeof(void*),
                 (int)sizeof(int),
                 (int)sizeof(long));
-    vdev_printf(vdev, "%s v%s \"%s\"\n", BPP_NAME, BPP_VERSION_STRING, BPP_VERSION_CODENAME);
+    vdev_printf(vdev, "%s v%s \"%s\"\n", BASIC_NAME, BASIC_VERSION_STRING, BASIC_VERSION_CODENAME);
     vdev_printf(vdev, "Security: %s\n", security_level_name(security_get_level()));
     vdev_printf(vdev, "Modules: %d registered\n", module_count());
 

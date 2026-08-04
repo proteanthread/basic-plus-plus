@@ -299,7 +299,7 @@ BppError stmt_open_handler(VMContext *vm, LexerContext *lex) {
         resolved[sizeof(resolved) - 1] = '\0';
     }
 
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     /* VNet Routing check */
     if (strncmp(resolved, "NET:TCP:", 8) == 0 || strncmp(resolved, "NET:UDP:", 8) == 0) {
         char protocol[16];
@@ -1011,7 +1011,7 @@ BppError stmt_line_input_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-#ifdef BPP_LITE_BUILD
+#ifdef BASIC_LITE_BUILD
 BppError stmt_line_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -1207,7 +1207,7 @@ BppError stmt_field_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
     int channel = (int)ch_val.as.number;
-    if (channel < 1 || channel > BPP_MAX_OPEN_FILES) {
+    if (channel < 1 || channel > BASIC_MAX_OPEN_FILES) {
         err.code = 52; err.message = "Bad file number";
         return err;
     }

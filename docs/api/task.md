@@ -1,6 +1,6 @@
 # Multitasking Subsystem API Reference
 
-Header File: [`include/bpp_task.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_task.h)
+Header File: [`include/task.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/task.h)
 
 ## Overview
 Controls cooperative thread execution, task spawn, wait, yield, and priority channels.
@@ -25,7 +25,7 @@ Controls cooperative thread execution, task spawn, wait, yield, and priority cha
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_task.h"
+#include "task.h"
 
 void yield_task(VMContext *vm) {
     task_yield(vm);

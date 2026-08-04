@@ -1,6 +1,6 @@
 # User-Defined Structures API Reference
 
-Header File: [`include/bpp_struct.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_struct.h)
+Header File: [`include/struct_ctx.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/struct_ctx.h)
 
 ## Overview
 Implements custom structured types (TYPE ... END TYPE) in the runtime.
@@ -21,7 +21,7 @@ Implements custom structured types (TYPE ... END TYPE) in the runtime.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_struct.h"
+#include "struct_ctx.h"
 
 void run_struct(VMContext *vm) {
     (void)vm;

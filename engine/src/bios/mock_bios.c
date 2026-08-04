@@ -29,7 +29,7 @@
  * - What to do if something breaks: Check address bounds in read_mem/write_mem callbacks.
  */
 
-#define BPP_BIOS_DLL_EXPORT
+#define BIOS_DLL_EXPORT
 #include "bios/mock_bios.h"
 #include <string.h>
 #include <stdio.h>

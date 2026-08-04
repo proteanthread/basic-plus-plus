@@ -1,6 +1,6 @@
 # State Persistence API Reference
 
-Header File: [`include/bpp_state.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_state.h)
+Header File: [`include/state.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/state.h)
 
 ## Overview
 Saves and loads virtual machine state context structures.
@@ -15,7 +15,7 @@ Saves and loads virtual machine state context structures.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_state.h"
+#include "state.h"
 
 void save_state(VMContext *vm) {
     (void)vm;

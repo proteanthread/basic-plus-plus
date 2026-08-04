@@ -152,14 +152,14 @@ int main(int argc, char **argv) {
     }
 
     /* Print welcome banner with RAM stats */
-    vdev_printf(vdev, "BASIC++ v%s \"%s\" [%s]\n", BPP_VERSION_STRING, BPP_VERSION_CODENAME, BPP_NAME);
-    vdev_printf(vdev, "Platform: %s (Profile: %s)\n", platform_name(), BPP_PROFILE_NAME);
+    vdev_printf(vdev, "BASIC++ v%s \"%s\" [%s]\n", BASIC_VERSION_STRING, BASIC_VERSION_CODENAME, BASIC_NAME);
+    vdev_printf(vdev, "Platform: %s (Profile: %s)\n", platform_name(), BASIC_PROFILE_NAME);
     
     size_t free_ram = mem_get_free_ram(boot->mem);
     char mem_buf[64];
     mem_format_size(free_ram, mem_buf, sizeof(mem_buf));
     vdev_printf(vdev, "%s free\n\n", mem_buf);
-    vdev_puts(vdev, BPP_READY "\n");
+    vdev_puts(vdev, BASIC_READY "\n");
     VDev *con_dev = vdev_get(vdev, "CON:");
     if (con_dev && con_dev->ops.flush) {
         con_dev->ops.flush(con_dev);
@@ -169,14 +169,14 @@ int main(int argc, char **argv) {
     VDev *con = vdev_get(vdev, "CON:");
 
     while (true) {
-        vdev_puts(vdev, BPP_PROMPT);
+        vdev_puts(vdev, BASIC_PROMPT);
         if (con && con->ops.flush) {
             con->ops.flush(con);
         }
 
         if (!con->ops.gets || !con->ops.gets(con, input_line, sizeof(input_line))) {
             if (vm_break_triggered(boot->vm)) {
-                vdev_puts(vdev, "\n" BPP_READY "\n");
+                vdev_puts(vdev, "\n" BASIC_READY "\n");
                 vm_reset_break(boot->vm);
                 continue;
             }

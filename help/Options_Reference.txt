@@ -237,7 +237,7 @@ Config File Names
 |----------|----------|
 | Linux | baspp.cfg |
 | Windows | basicpp.cfg |
-| FreeDOS | bpp.cfg |
+| FreeDOS | baspp.cfg |
 
 Config File Search Order
 
@@ -249,7 +249,7 @@ Configuration Priority Chain
 Settings are applied in this order (highest priority last):
 
 1. Compiled defaults (built into the interpreter binary)
-2. Config file (baspp.cfg / basicpp.cfg / bpp.cfg)
+2. Config file (baspp.cfg / basicpp.cfg / baspp.cfg)
 3. Command-line switches (-d, -s, -S, -f)
 4. Runtime commands (DIALECT, SECURITY, OPTION STRICT)
 

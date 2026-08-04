@@ -105,7 +105,7 @@ To solve this, `core/lite_stubs.c` must be included in your minimalist build. It
 
 ```c
 // Inside source/core/lite_stubs.c
-#ifdef BPP_LITE_BUILD
+#ifdef BASIC_LITE_BUILD
 
 // A macro to easily stub out omitted language keywords
 #define PARSER_STUB(name) \

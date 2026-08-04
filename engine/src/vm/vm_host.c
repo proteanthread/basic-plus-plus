@@ -15,7 +15,7 @@
  * Assumptions: VMContext is initialized.
  * Portability concerns: Strict C17 compliant, pure 7-bit ASCII.
  * Future expansions: Add capability flags negotiation to vm_create_host_interface.
- * External extension hooks: Exposed via bpp_vm.h.
+ * External extension hooks: Exposed via vm.h.
  */
 
 #include "vm/host.h"

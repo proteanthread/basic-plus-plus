@@ -41,8 +41,8 @@ BASIC++ is written in ANSI/ISO C17 with no external dependencies, allowing it to
 
 Select your target environment by passing compiler defines:
 1.  **Standard Profile** (Default): For desktop systems and Raspberry Pi SBCs running Linux.
-2.  **Lite Profile** (`BPP_LITE_BUILD`): For microcontrollers. It uses integer-only 32-bit math, disables graphics, bypasses config files, disables the compiler/transpiler, and gates sound to a parameterless `BEEP`.
-3.  **Embedded Configuration** (`BPP_EMBEDDED`): Tightens static bounds in `config.h` (e.g. 8 KB program, 4 KB variables, 8 KB string pool, 2 KB stack) for platforms with limited SRAM.
+2.  **Lite Profile** (`BASIC_LITE_BUILD`): For microcontrollers. It uses integer-only 32-bit math, disables graphics, bypasses config files, disables the compiler/transpiler, and gates sound to a parameterless `BEEP`.
+3.  **Embedded Configuration** (`BASIC_EMBEDDED`): Tightens static bounds in `config.h` (e.g. 8 KB program, 4 KB variables, 8 KB string pool, 2 KB stack) for platforms with limited SRAM.
 
 ---
 
@@ -118,9 +118,9 @@ void setup() {
 void loop() {}
 ```
 
-#### ESP32 Memory Budget (BPP_EMBEDDED Profile)
+#### ESP32 Memory Budget (BASIC_EMBEDDED Profile)
 
-The following memory estimates are verified from `config.h` when the `BPP_EMBEDDED` define is active. This breakdown shows that the interpreter fits comfortably within the ESP32's available SRAM after the Wi-Fi/BT/RTOS stacks claim their share.
+The following memory estimates are verified from `config.h` when the `BASIC_EMBEDDED` define is active. This breakdown shows that the interpreter fits comfortably within the ESP32's available SRAM after the Wi-Fi/BT/RTOS stacks claim their share.
 
 | Pool / Component | Size |
 |---|---|
@@ -137,7 +137,7 @@ The following memory estimates are verified from `config.h` when the `BPP_EMBEDD
 
 > **Fits within ESP32 ~200 KB available SRAM** (after Wi-Fi/BT/FreeRTOS allocation from the 520 KB total).
 
-**Key `config.h` limits under `BPP_EMBEDDED`:**
+**Key `config.h` limits under `BASIC_EMBEDDED`:**
 
 | Define | Value |
 |---|---|
@@ -158,7 +158,7 @@ The following memory estimates are verified from `config.h` when the `BPP_EMBEDD
 
 #### PSRAM Expansion (ESP32-WROVER)
 
-ESP32-WROVER modules include 4–8 MB of external PSRAM (SPI RAM). When the `BPP_PSRAM` define is active, larger pool sizes can be configured beyond the conservative `BPP_EMBEDDED` defaults — for example, expanding the program buffer to 32 KB or the string pool to 32 KB — while still staying within the microcontroller's memory envelope.
+ESP32-WROVER modules include 4–8 MB of external PSRAM (SPI RAM). When the `BASIC_PSRAM` define is active, larger pool sizes can be configured beyond the conservative `BASIC_EMBEDDED` defaults — for example, expanding the program buffer to 32 KB or the string pool to 32 KB — while still staying within the microcontroller's memory envelope.
 
 To enable PSRAM in PlatformIO, add `-DBPP_PSRAM -DBOARD_HAS_PSRAM` to `build_flags` and call `ps_malloc()` or `heap_caps_malloc(MALLOC_CAP_SPIRAM)` for the enlarged pools.
 
@@ -167,7 +167,7 @@ To enable PSRAM in PlatformIO, add `-DBPP_PSRAM -DBOARD_HAS_PSRAM` to `build_fla
 ### Arduino Boards (Due/Mega)
 Arduino Due (ARM Cortex-M3, 96 KB SRAM) and Mega 2560 (AVR, 8 KB SRAM) require strict `config.h` tuning.
 
-1.  **Arduino Due**: Define `BPP_EMBEDDED` in `config.h` to enforce micro-pools (8 KB program, 4 KB variables).
+1.  **Arduino Due**: Define `BASIC_EMBEDDED` in `config.h` to enforce micro-pools (8 KB program, 4 KB variables).
 2.  **Arduino Mega 2560**: Tighten program buffers to 2 KB and variables to 1 KB to prevent SRAM exhaustion. Only Palo Alto Tiny BASIC should be registered.
 
 ---
@@ -181,8 +181,8 @@ add_executable(blite
     # list CORE source files here
 )
 target_compile_definitions(blite PRIVATE
-    BPP_LITE_BUILD
-    BPP_EMBEDDED
+    BASIC_LITE_BUILD
+    BASIC_EMBEDDED
 )
 target_compile_options(blite PRIVATE
     -Os -flto -ffunction-sections -fdata-sections
@@ -212,7 +212,7 @@ void basicpp_task(void *pvParameters) {
 }
 
 void app_main() {
-    xTaskCreate(basicpp_task, "bpp_task", 16384, NULL, 5, NULL);
+    xTaskCreate(basicpp_task, "task", 16384, NULL, 5, NULL);
 }
 ```
 

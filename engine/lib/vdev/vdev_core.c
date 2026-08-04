@@ -15,7 +15,7 @@
  * Assumptions: Device names are 7-bit ASCII strings.
  * Portability concerns: Strict C17 compliant, pure 7-bit ASCII.
  * Future expansions: Add dynamic device unregistration and event queues.
- * External extension hooks: Exposed via bpp_vdev.h.
+ * External extension hooks: Exposed via vdev.h.
  */
 
 #include "device/vdev.h"

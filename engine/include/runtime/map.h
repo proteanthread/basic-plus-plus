@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_map.h
+ * @file runtime/map.h
  * @brief Reference-counted dictionary/map structure and serialization.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -26,8 +26,8 @@
  * - Portability concerns: ANSI/ISO C17 compliant.
  */
 
-#ifndef BPP_MAP_H
-#define BPP_MAP_H
+#ifndef RUNTIME_MAP_H
+#define RUNTIME_MAP_H
 
 #include "types/types.h"
 #include <stdbool.h>
@@ -45,29 +45,29 @@ struct BppMap {
 };
 
 /* Map lifecycle APIs */
-BppMap     *bpp_map_create(void);
-void        bpp_map_add_ref(BppMap *map);
-void        bpp_map_release(void *str_ctx, BppMap *map);
+BppMap     *map_create(void);
+void        map_add_ref(BppMap *map);
+void        map_release(void *str_ctx, BppMap *map);
 
 /* Map modification/query APIs */
-bool        bpp_map_set(void *str_ctx, BppMap *map, const char *key, BValue val);
-bool        bpp_map_get(BppMap *map, const char *key, BValue *out_val);
-bool        bpp_map_remove(void *str_ctx, BppMap *map, const char *key);
-int         bpp_map_count(BppMap *map);
-const char *bpp_map_key(BppMap *map, int index);
-bool        bpp_map_has(BppMap *map, const char *key);
+bool        map_set(void *str_ctx, BppMap *map, const char *key, BValue val);
+bool        map_get(BppMap *map, const char *key, BValue *out_val);
+bool        map_remove(void *str_ctx, BppMap *map, const char *key);
+int         map_count(BppMap *map);
+const char *map_key(BppMap *map, int index);
+bool        map_has(BppMap *map, const char *key);
 
 /* Serialization APIs */
-BppMap     *bpp_map_parse_json(void *str_ctx, const char *json);
-char       *bpp_map_stringify_json(BppMap *map);
+BppMap     *map_parse_json(void *str_ctx, const char *json);
+char       *map_stringify_json(BppMap *map);
 
-BppMap     *bpp_map_parse_xml(void *str_ctx, const char *xml);
-char       *bpp_map_stringify_xml(BppMap *map);
+BppMap     *map_parse_xml(void *str_ctx, const char *xml);
+char       *map_stringify_xml(BppMap *map);
 
-BppMap     *bpp_map_parse_yaml(void *str_ctx, const char *yaml);
-char       *bpp_map_stringify_yaml(BppMap *map);
+BppMap     *map_parse_yaml(void *str_ctx, const char *yaml);
+char       *map_stringify_yaml(BppMap *map);
 
-BppMap     *bpp_map_parse_ini(void *str_ctx, const char *ini);
-char       *bpp_map_stringify_ini(BppMap *map);
+BppMap     *map_parse_ini(void *str_ctx, const char *ini);
+char       *map_stringify_ini(BppMap *map);
 
-#endif /* BPP_MAP_H */
+#endif /* RUNTIME_MAP_H */

@@ -1,6 +1,6 @@
 # Function Registry API Reference
 
-Header File: [`include/bpp_funcreg.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_funcreg.h)
+Header File: [`include/funcreg.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/funcreg.h)
 
 ## Overview
 Manages built-in functions, modular extensions registry, and DEF FN overrides.
@@ -18,7 +18,7 @@ Manages built-in functions, modular extensions registry, and DEF FN overrides.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_funcreg.h"
+#include "funcreg.h"
 
 BValue custom_func(BValue *args, int argc, void *rt) {
     (void)args; (void)argc; (void)rt;

@@ -8,8 +8,8 @@
  * @brief Advanced array operations (MAP, FILTER, REDUCE, JOIN, Aggregates)
  */
 
-#ifndef BPP_MOD_ARRAYEXT_H
-#define BPP_MOD_ARRAYEXT_H
+#ifndef MODULE_ARRAYEXT_H
+#define MODULE_ARRAYEXT_H
 
 #include "vm/vm.h"
 #include "types/types.h"
@@ -28,4 +28,4 @@ BValue arrayext_func_aggregate(VMContext *vm, LexerContext *lex, int agg_type, B
 #define AGG_MAX 2
 #define AGG_SUM 3
 
-#endif /* BPP_MOD_ARRAYEXT_H */
+#endif /* MODULE_ARRAYEXT_H */

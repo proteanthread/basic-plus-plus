@@ -15,7 +15,7 @@
  * Assumptions: OS system clock is accessible.
  * Portability concerns: Strict C17 compliant, pure 7-bit ASCII.
  * Future expansions: Add target hardware board detection hooks for embedded systems.
- * External extension hooks: Exposed via bpp_platform.h.
+ * External extension hooks: Exposed via platform.h.
  */
 
 #include "platform/platform.h"

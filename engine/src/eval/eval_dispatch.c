@@ -33,7 +33,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 #include "memory/segmented_mem.h"
 #endif
 
@@ -103,6 +103,8 @@ bool eval_is_builtin_function(const char *name) {
         strcmp(uname, "DATE") == 0 ||
         strcmp(uname, "TI$") == 0 ||
         strcmp(uname, "CLOCK$") == 0 ||
+        strcmp(uname, "CLOCK") == 0 ||
+        strcmp(uname, "PI") == 0 ||
         strcmp(uname, "TZ") == 0 ||
         strcmp(uname, "TZ$") == 0 ||
         strcmp(uname, "TIMEZONE$") == 0 ||
@@ -151,7 +153,7 @@ bool eval_is_builtin_function(const char *name) {
         strcmp(uname, "CINT") == 0 ||
         strcmp(uname, "CSNG") == 0 ||
         strcmp(uname, "CDBL") == 0 ||
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         strcmp(uname, "VARPTR") == 0 ||
         strcmp(uname, "VARPTR$") == 0 ||
         strcmp(uname, "VARSEG") == 0 ||
@@ -222,13 +224,13 @@ bool eval_is_builtin_function(const char *name) {
         strcmp(uname, "DEVICECLASS$") == 0 ||
         strcmp(uname, "DEVICEINFO$") == 0 ||
         strcmp(uname, "POLL") == 0 ||
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
         strcmp(uname, "NSTATUS") == 0 ||
         strcmp(uname, "NCONNECTED") == 0 ||
         strcmp(uname, "NHTTPSTATUS") == 0 ||
         strcmp(uname, "HTTP_GET$") == 0 ||
 #endif
-#if BPP_SUPPORT_BIOS
+#if SUPPORT_BIOS
         strcmp(uname, "MEMMAP$") == 0 ||
 #endif
         strcmp(uname, "PEEK") == 0 ||
@@ -528,7 +530,7 @@ BValue eval_builtin_function(VMContext *vm, const char *name, LexerContext *lex,
         return res;
     }
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     if (strcmp(uname, "VARPTR") == 0 || strcmp(uname, "VARPTR$") == 0 || strcmp(uname, "VARSEG") == 0 || strcmp(uname, "SADD") == 0) {
         bool is_seg = (strcmp(uname, "VARSEG") == 0);
         bool is_sadd = (strcmp(uname, "SADD") == 0);
@@ -644,7 +646,7 @@ BValue eval_builtin_function(VMContext *vm, const char *name, LexerContext *lex,
                 str_release(vm_get_str(vm), args[j].as.string);
                 args[j].as.string = NULL;
             } else if (args[j].type == VAL_MAP && args[j].as.map) {
-                bpp_map_release(vm_get_str(vm), args[j].as.map);
+                map_release(vm_get_str(vm), args[j].as.map);
                 args[j].as.map = NULL;
             }
         }

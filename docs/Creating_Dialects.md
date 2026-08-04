@@ -191,9 +191,9 @@ bppc --dialect my_dialect.ini include/custom_dialect_static.h
 ### Compiling Custom Dialect Binaries
 To build `blite` and `bscript` with the statically generated custom dialect active from boot:
 1. Generate the `custom_dialect_static.h` header in the search path (e.g. inside `include/`).
-2. Compile the binaries with the `BPP_USE_CUSTOM_STATIC_DIALECT` compiler option enabled:
+2. Compile the binaries with the `BASIC_USE_CUSTOM_STATIC_DIALECT` compiler option enabled:
    - **CMake**: Enforce `-DBPP_USE_CUSTOM_STATIC_DIALECT=ON` during configuration.
-   - **MSVC / MSBuild**: Define the preprocessor macro `BPP_USE_CUSTOM_STATIC_DIALECT`.
+   - **MSVC / MSBuild**: Define the preprocessor macro `BASIC_USE_CUSTOM_STATIC_DIALECT`.
 
 This compiles a custom footprint-optimized executable with zero runtime BppMap allocation overhead.
 

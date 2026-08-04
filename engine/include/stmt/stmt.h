@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_stmt.h
+ * @file stmt.h
  * @brief Statement Registry and Command Dispatcher API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -33,8 +33,8 @@
  *   to the registry at runtime.
  */
 
-#ifndef BPP_STMT_H
-#define BPP_STMT_H
+#ifndef STMT_H
+#define STMT_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -92,4 +92,4 @@ BppError stmt_break_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_vars_handler(VMContext *vm, LexerContext *lex);
 const char *error_get_message(int code);
 
-#endif /* BPP_STMT_H */
+#endif /* STMT_H */

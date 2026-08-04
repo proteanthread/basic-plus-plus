@@ -179,8 +179,8 @@ char *net_gemini_fetch(VMContext *vm, const char *url, BppError *out_err) {
     }
 
     /* Resolve host and connect */
-    BppSocket sock = platform_socket_connect(host, port, BPP_SOCK_STREAM, out_err);
-    if (sock == BPP_INVALID_SOCKET) {
+    BppSocket sock = platform_socket_connect(host, port, BASIC_SOCK_STREAM, out_err);
+    if (sock == BASIC_INVALID_SOCKET) {
         return NULL;
     }
 

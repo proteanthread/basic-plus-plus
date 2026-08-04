@@ -103,10 +103,10 @@ Excluding these files entirely from your compilation target will significantly r
 
 ## 3. Preprocessor Feature Gates (`config.h`)
 
-To configure compile-time gates for `blite`, define `BPP_LITE_BUILD` at compilation. This activates the following gates:
+To configure compile-time gates for `blite`, define `BASIC_LITE_BUILD` at compilation. This activates the following gates:
 
 ```c
-#ifdef BPP_LITE_BUILD
+#ifdef BASIC_LITE_BUILD
   // Limit settings for Lite profile
   #undef MAX_NAMED_VARS
   #define MAX_NAMED_VARS 64
@@ -116,17 +116,17 @@ To configure compile-time gates for `blite`, define `BPP_LITE_BUILD` at compilat
   #define LINE_NUMBER_MAX 16384
 
   // Feature gates for blite
-  #undef BPP_SUPPORT_GRAPHICS
-  #undef BPP_SUPPORT_SOUND
-  #undef BPP_SUPPORT_FILEMGMT
-  #undef BPP_SUPPORT_MAT
-  #undef BPP_SUPPORT_STRUCT
-  #undef BPP_SUPPORT_ERRHAND
-  #undef BPP_SUPPORT_SHELL
-  #undef BPP_SUPPORT_DEBUG
-  #undef BPP_SUPPORT_COMPILER
-  #undef BPP_SUPPORT_VFS
-  #undef BPP_SUPPORT_TXN
+  #undef SUPPORT_GRAPHICS
+  #undef SUPPORT_SOUND
+  #undef SUPPORT_FILEMGMT
+  #undef SUPPORT_MAT
+  #undef SUPPORT_STRUCT
+  #undef SUPPORT_ERRHAND
+  #undef SUPPORT_SHELL
+  #undef SUPPORT_DEBUG
+  #undef SUPPORT_COMPILER
+  #undef SUPPORT_VFS
+  #undef SUPPORT_TXN
 #endif
 ```
 
@@ -187,7 +187,7 @@ SECTIONS
 
 ## 7. Dialect Suitability in BASIC++ Lite
 
-When running under the memory-constrained `BPP_LITE_BUILD` profile, selecting an appropriate BASIC dialect is critical for stability and feature availability:
+When running under the memory-constrained `BASIC_LITE_BUILD` profile, selecting an appropriate BASIC dialect is critical for stability and feature availability:
 
 ### Highly Suited Dialects
 *   **Palo Alto Tiny BASIC (`PATB`)**: Best choice for microcontrollers with extremely limited memory (< 16 KB SRAM, e.g. Arduino Mega). Since PATB is integer-only and defines a tiny keyword list, it naturally matches the compiler gates of the Lite profile and has the smallest memory signature.

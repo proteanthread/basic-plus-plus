@@ -148,7 +148,7 @@ static const KeywordMap k_keywords[] = {
     {"BSAVE",  KW_BSAVE},
     {"BRUN",   KW_BRUN},
     {"USING",  KW_USING},
-#if BPP_SUPPORT_EDITOR
+#if SUPPORT_EDITOR
     {"EDIT",   KW_EDIT},
 #endif
     {"SECURITY", KW_SECURITY},
@@ -160,7 +160,7 @@ static const KeywordMap k_keywords[] = {
     {"UNLOAD",   KW_UNLOAD},
     {"TASK",     KW_TASK},
     {"WAIT",     KW_WAIT},
-#if BPP_SUPPORT_MAT
+#if SUPPORT_MAT
     {"MAT",      KW_MAT},
 #endif
     {"ARRAY",    KW_ARRAY},
@@ -210,7 +210,7 @@ static const KeywordMap k_keywords[] = {
     {"STRIG",    KW_STRIG},
     {"FILTER",   KW_FILTER},
     {"REDUCE",   KW_REDUCE},
-#if BPP_SUPPORT_EDITOR
+#if SUPPORT_EDITOR
     {"RENUM",    KW_RENUM},
     {"DELETE",   KW_DELETE},
 #endif
@@ -218,21 +218,21 @@ static const KeywordMap k_keywords[] = {
     {"CATALOG",  KW_CATALOG},
     {"DEVICES",  KW_DEVICES},
     {"IOCTL",    KW_IOCTL},
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     {"MOUNT",    KW_MOUNT},
     {"UMOUNT",   KW_UMOUNT},
 #endif
     {"UNSAVE",   KW_UNSAVE},
     {"CHVT",     KW_CHVT},
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     {"NET",      KW_NET},
 #endif
     {"OUT",      KW_OUT},
     {"POKE",     KW_POKE},
-#if BPP_SUPPORT_BIOS
+#if SUPPORT_BIOS
     {"BIOS",     KW_BIOS},
 #endif
-#if BPP_SUPPORT_GEMINI
+#if SUPPORT_GEMINI
     {"GEMINI",   KW_GEMINI},
 #endif
     {"UNLESS",   KW_UNLESS},
@@ -244,7 +244,7 @@ static const KeywordMap k_keywords[] = {
     {"METADATA", KW_METADATA},
     {"DIALECT",  KW_DIALECT},
     {"DEFINE",   KW_DEFINE},
-#if BPP_SUPPORT_OOP
+#if SUPPORT_OOP
     {"TYPE",     KW_TYPE},
     {"CLASS",    KW_CLASS},
 #endif
@@ -997,7 +997,16 @@ BppToken lex_next(LexerContext *ctx) {
     switch (c) {
         case '+': tok.type = TOK_PLUS; break;
         case '-': tok.type = TOK_MINUS; break;
-        case '*': tok.type = TOK_MUL; break;
+        case '^': tok.type = TOK_POW; break;
+        case '*':
+            if (*ctx->pos == '*') {
+                ctx->pos++;
+                tok.length = 2;
+                tok.type = TOK_POW;
+            } else {
+                tok.type = TOK_MUL;
+            }
+            break;
         case '/': tok.type = TOK_DIV; break;
         case '=': tok.type = TOK_EQ; break;
         case '.': tok.type = TOK_PERIOD; break;

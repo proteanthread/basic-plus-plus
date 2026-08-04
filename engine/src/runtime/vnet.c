@@ -58,7 +58,7 @@ VNetContext *vnet_init(MemoryContext *mem) {
     ctx->mem = mem;
     ctx->initialized = false;
     for (int i = 0; i < VNET_MAX_CHANNELS; ++i) {
-        ctx->channels[i].sock = BPP_INVALID_SOCKET;
+        ctx->channels[i].sock = BASIC_INVALID_SOCKET;
         ctx->channels[i].connected = false;
         ctx->channels[i].protocol[0] = '\0';
         ctx->channels[i].host[0] = '\0';
@@ -100,15 +100,15 @@ BppError vnet_open(VNetContext *ctx, int channel, const char *protocol, const ch
         return err;
     }
 
-    if (ctx->channels[channel].sock != BPP_INVALID_SOCKET) {
+    if (ctx->channels[channel].sock != BASIC_INVALID_SOCKET) {
         err.code = 55; /* File already open */
         err.message = "Network channel already open";
         return err;
     }
 
-    int socktype = (strcmp(protocol, "UDP") == 0) ? BPP_SOCK_DGRAM : BPP_SOCK_STREAM;
+    int socktype = (strcmp(protocol, "UDP") == 0) ? BASIC_SOCK_DGRAM : BASIC_SOCK_STREAM;
     BppSocket sock = platform_socket_connect(host, port, socktype, &err);
-    if (sock == BPP_INVALID_SOCKET) {
+    if (sock == BASIC_INVALID_SOCKET) {
         return err;
     }
 
@@ -143,14 +143,14 @@ BppError vnet_open_host(VNetContext *ctx, int channel, int port) {
         return err;
     }
 
-    if (ctx->channels[channel].sock != BPP_INVALID_SOCKET) {
+    if (ctx->channels[channel].sock != BASIC_INVALID_SOCKET) {
         err.code = 55;
         err.message = "Network channel already open";
         return err;
     }
 
     BppSocket sock = platform_socket_listen(port, &err);
-    if (sock == BPP_INVALID_SOCKET) {
+    if (sock == BASIC_INVALID_SOCKET) {
         return err;
     }
 
@@ -183,13 +183,13 @@ BppError vnet_accept(VNetContext *ctx, int listen_channel, int client_channel, c
         return err;
     }
 
-    if (ctx->channels[listen_channel].sock == BPP_INVALID_SOCKET) {
+    if (ctx->channels[listen_channel].sock == BASIC_INVALID_SOCKET) {
         err.code = 52;
         err.message = "Listening channel not open";
         return err;
     }
 
-    if (ctx->channels[client_channel].sock != BPP_INVALID_SOCKET) {
+    if (ctx->channels[client_channel].sock != BASIC_INVALID_SOCKET) {
         err.code = 55;
         err.message = "Client channel already open";
         return err;
@@ -197,7 +197,7 @@ BppError vnet_accept(VNetContext *ctx, int listen_channel, int client_channel, c
 
     BppSocket listen_sock = ctx->channels[listen_channel].sock;
     BppSocket client_sock = platform_socket_accept(listen_sock, client_ip_buf, ip_buf_len, &err);
-    if (client_sock == BPP_INVALID_SOCKET) {
+    if (client_sock == BASIC_INVALID_SOCKET) {
         err.code = 0; /* No incoming connection at this moment (non-blocking) */
         return err;
     }
@@ -223,7 +223,7 @@ BppError vnet_send(VNetContext *ctx, int channel, const char *data, size_t len) 
     memset(&err, 0, sizeof(err));
 
     if (!ctx) ctx = g_vnet_ctx;
-    if (!ctx || channel < 0 || channel >= VNET_MAX_CHANNELS || ctx->channels[channel].sock == BPP_INVALID_SOCKET) {
+    if (!ctx || channel < 0 || channel >= VNET_MAX_CHANNELS || ctx->channels[channel].sock == BASIC_INVALID_SOCKET) {
         err.code = 52;
         err.message = "Channel not open";
         return err;
@@ -245,7 +245,7 @@ BppError vnet_recv(VNetContext *ctx, int channel, char *buf, size_t max_len, siz
     if (out_len) *out_len = 0;
 
     if (!ctx) ctx = g_vnet_ctx;
-    if (!ctx || channel < 0 || channel >= VNET_MAX_CHANNELS || ctx->channels[channel].sock == BPP_INVALID_SOCKET) {
+    if (!ctx || channel < 0 || channel >= VNET_MAX_CHANNELS || ctx->channels[channel].sock == BASIC_INVALID_SOCKET) {
         err.code = 52;
         err.message = "Channel not open";
         return err;
@@ -277,9 +277,9 @@ BppError vnet_recv(VNetContext *ctx, int channel, char *buf, size_t max_len, siz
 void vnet_close(VNetContext *ctx, int channel) {
     if (!ctx) ctx = g_vnet_ctx;
     if (ctx && channel >= 0 && channel < VNET_MAX_CHANNELS) {
-        if (ctx->channels[channel].sock != BPP_INVALID_SOCKET) {
+        if (ctx->channels[channel].sock != BASIC_INVALID_SOCKET) {
             platform_socket_close(ctx->channels[channel].sock);
-            ctx->channels[channel].sock = BPP_INVALID_SOCKET;
+            ctx->channels[channel].sock = BASIC_INVALID_SOCKET;
             ctx->channels[channel].connected = false;
         }
     }
@@ -288,7 +288,7 @@ void vnet_close(VNetContext *ctx, int channel) {
 int vnet_status(VNetContext *ctx, int channel) {
     if (!ctx) ctx = g_vnet_ctx;
     if (!ctx || channel < 0 || channel >= VNET_MAX_CHANNELS) return 0;
-    return (ctx->channels[channel].sock != BPP_INVALID_SOCKET) ? 1 : 0;
+    return (ctx->channels[channel].sock != BASIC_INVALID_SOCKET) ? 1 : 0;
 }
 
 bool vnet_connected(VNetContext *ctx, int channel) {

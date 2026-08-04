@@ -20,7 +20,7 @@
  * Assumptions: Single-threaded access. Lines are null-terminated.
  * Portability concerns: Strict C17. No platform calls.
  * Future expansions: Rectangular (column) selection mode.
- * External extension hooks: Called via bpp_editor_core.h API.
+ * External extension hooks: Called via editor_core.h API.
  */
 
 #include "editor/editor_core.h"

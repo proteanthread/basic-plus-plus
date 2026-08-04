@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_file.h
+ * @file file.h
  * @brief Portable File System Channel manager API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -16,7 +16,7 @@
  *   tracked by index (1-based) rather than raw pointers.
  *
  * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Maximum open file limits (BPP_MAX_OPEN_FILES).
+ * - What can be changed: Maximum open file limits (BASIC_MAX_OPEN_FILES).
  * - What cannot be changed: Virtual channel indexes mapping and bounds.
  * - What to expect: Accessing unopened channels returns BppError.
  * - What to do if something breaks: If file corruption occurs, check record length alignment.
@@ -30,8 +30,8 @@
  * - How to write external extensions: Plugins write to open files using channel descriptors.
  */
 
-#ifndef BPP_FILE_H
-#define BPP_FILE_H
+#ifndef RUNTIME_FILE_H
+#define RUNTIME_FILE_H
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -176,4 +176,4 @@ BppError     file_txn_rollback(FileContext *ctx);
 int          file_txn_entry_count(FileContext *ctx);
 void         file_txn_log_write(FileContext *ctx, int channel, long position, const void *old_data, int len);
 
-#endif /* BPP_FILE_H */
+#endif /* RUNTIME_FILE_H */

@@ -17,7 +17,7 @@
  *   sharing the core logic. Growth uses doubling strategy with minimum floors.
  * What can be changed: Minimum capacity floors (128 bytes, 256 lines), growth
  *   factors. Add undo/redo recording calls.
- * What cannot be changed: TextLine struct layout (must match bpp_editor_core.h).
+ * What cannot be changed: TextLine struct layout (must match editor_core.h).
  *   The calloc zero-initialization requirement for new lines.
  * What to expect: Fast O(n) line insertions, safe capacity growth with OOM
  *   error reporting via stderr.
@@ -26,7 +26,7 @@
  * Assumptions: Single-threaded access. Lines are 7-bit ASCII strings.
  * Portability concerns: Strict C17. No platform-specific calls.
  * Future expansions: Add undo/redo stack recording per mutation.
- * External extension hooks: New editors include bpp_editor_core.h and call
+ * External extension hooks: New editors include editor_core.h and call
  *   these functions directly.
  */
 

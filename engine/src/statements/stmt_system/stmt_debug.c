@@ -95,9 +95,9 @@ BppError stmt_assert_handler(VMContext *vm, LexerContext *lex) {
             snprintf(reason, sizeof(reason), "Assertion failed");
         }
 
-        bpp_log_error("%s", reason);
+        log_error("%s", reason);
 
-        if (bpp_logger_is_debug()) {
+        if (logger_is_debug()) {
             vm_trigger_breakpoint(vm, reason);
         } else {
             err.code = 99; /* Custom assertion failure code */
@@ -126,8 +126,8 @@ BppError stmt_tron_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
-    bpp_logger_set_trace(true);
-    bpp_log_info("Trace turned ON (TRON)");
+    logger_set_trace(true);
+    log_info("Trace turned ON (TRON)");
     return err;
 }
 
@@ -136,8 +136,8 @@ BppError stmt_troff_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
     (void)vm; (void)lex;
-    bpp_logger_set_trace(false);
-    bpp_log_info("Trace turned OFF (TROFF)");
+    logger_set_trace(false);
+    log_info("Trace turned OFF (TROFF)");
     return err;
 }
 
@@ -147,8 +147,8 @@ BppError stmt_break_handler(VMContext *vm, LexerContext *lex) {
     memset(&err, 0, sizeof(err));
     (void)lex;
 
-    bpp_log_info("Manual breakpoint hit (BREAK)");
-    if (bpp_logger_is_debug()) {
+    log_info("Manual breakpoint hit (BREAK)");
+    if (logger_is_debug()) {
         vm_trigger_breakpoint(vm, "Manual breakpoint (BREAK statement)");
     } else {
         /* In non-debug mode, BREAK is treated as a log info trace (no-op) */

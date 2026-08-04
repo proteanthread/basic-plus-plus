@@ -27,7 +27,7 @@
  * - Portability concerns: None. C17 standard compliant.
  */
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 
 #include "stmt/stmt.h"
 #include "eval/eval.h"
@@ -159,5 +159,5 @@ BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-#endif /* BPP_LITE_BUILD */
+#endif /* BASIC_LITE_BUILD */
 

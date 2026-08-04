@@ -23,8 +23,8 @@ This document serves as the single authoritative guide for compiling, configurin
 FreeDOS runs in 16-bit real mode, which imposes a strict **640 KB conventional memory limit** on all executables. The standard build profile of BASIC++ includes 16 dialects and multiple optional modules (USB, FujiNet, UPnP, etc.), which requires generous allocations (~90 MB) and will instantly crash on real-mode DOS.
 
 To run on FreeDOS, we compile:
-1. **BASIC++ Standard Slim** (`BPP_FREEDOS`): Excludes the 14 optional dialects and USB/FujiNet/UPnP modules to fit within conventional memory.
-2. **BASIC++ Lite** (`BPP_LITE_BUILD`): An ultra-minimal, integer-only version of the interpreter (`blite.exe`) with a strict **256 KB memory safety floor**.
+1. **BASIC++ Standard Slim** (`BASIC_FREEDOS`): Excludes the 14 optional dialects and USB/FujiNet/UPnP modules to fit within conventional memory.
+2. **BASIC++ Lite** (`BASIC_LITE_BUILD`): An ultra-minimal, integer-only version of the interpreter (`blite.exe`) with a strict **256 KB memory safety floor**.
 
 ---
 
@@ -49,7 +49,7 @@ make watcom386
 make watcom LITE=1
 ```
 
-All targets generate the binary `bpp.exe` (or `blite.exe` for Lite) in the project root directory.
+All targets generate the binary `baspp.exe` (or `blite.exe` for Lite) in the project root directory.
 
 ### Native FreeDOS Build Scripts
 If compiling directly on a FreeDOS machine, use the native scripts:
@@ -70,11 +70,11 @@ wmake -f makefd clean
 ## 3. Memory Budgets & Gating
 
 > [!IMPORTANT]
-> **FreeDOS Gating Rule**: Under FreeDOS (`BPP_FREEDOS`), the highly constrained low-memory pools (32 KB program buffer, 16 KB string pool, etc.) are **only enabled when compiling the Lite build** (`BPP_LITE_BUILD` via `make watcom LITE=1`). 
+> **FreeDOS Gating Rule**: Under FreeDOS (`BASIC_FREEDOS`), the highly constrained low-memory pools (32 KB program buffer, 16 KB string pool, etc.) are **only enabled when compiling the Lite build** (`BASIC_LITE_BUILD` via `make watcom LITE=1`). 
 > 
 > Standard 16-bit (`watcom`) and 32-bit (`watcom386`) builds without `LITE=1` use the modern default pool sizes (8 MB program, 16 MB string pool) and require conventional memory tuning or a DOS memory extender.
 
-### Memory Pools for FreeDOS Lite (`BPP_FREEDOS` + `BPP_LITE_BUILD`)
+### Memory Pools for FreeDOS Lite (`BASIC_FREEDOS` + `BASIC_LITE_BUILD`)
 
 When both gates are active, the memory budget fits comfortably inside conventional RAM:
 
@@ -128,7 +128,7 @@ To ensure the smallest memory allocation on DOS:
 1.  **OpenWatcom Size Flags**:
     Compile with `-os` (optimize for size) and `-bt=dos` (target DOS).
 2.  **Define Static Bounds (`config.h`)**:
-    Tighten pools in `config.h` under the `BPP_FREEDOS` + `BPP_LITE_BUILD` gate if fitting on extremely memory-constrained systems (e.g. 256 KB).
+    Tighten pools in `config.h` under the `BASIC_FREEDOS` + `BASIC_LITE_BUILD` gate if fitting on extremely memory-constrained systems (e.g. 256 KB).
 3.  **Dialect Pruning**:
     Only compile Palo Alto Tiny BASIC or GW-BASIC. Exclude other dialect files to let the linker strip unused dialect routines.
 4.  **Watcom Linker Optimization Directives**:
@@ -146,11 +146,11 @@ If compiling a custom build (especially for 32-bit `watcom386` with extended mem
 
 ### Adding a Dialect (e.g. QBasic)
 
-1.  **dialect.h**: Remove the `#ifndef BPP_FREEDOS` guard around the declaration:
+1.  **dialect.h**: Remove the `#ifndef BASIC_FREEDOS` guard around the declaration:
     ```c
     void dialect_register_qbasic(void);
     ```
-2.  **dialect.c**: Remove the `#ifndef BPP_FREEDOS` guard around the registration call:
+2.  **dialect.c**: Remove the `#ifndef BASIC_FREEDOS` guard around the registration call:
     ```c
     dialect_register_qbasic();
     ```
@@ -161,7 +161,7 @@ If compiling a custom build (especially for 32-bit `watcom386` with extended mem
 
 ### Restoring Optional Modules
 Follow the same procedure:
-1.  Remove the `#ifndef BPP_FREEDOS` guard around the module registration in `source/core/boot.c`.
+1.  Remove the `#ifndef BASIC_FREEDOS` guard around the module registration in `source/core/boot.c`.
 2.  Add the module `.obj` file to `WATCOM_OBJS` in the Makefile.
 3.  Rebuild with `make watcom` / `make watcom386`.
 

@@ -35,7 +35,7 @@
 #include <stdbool.h>
 
 
-#if BPP_SUPPORT_JSON
+#if SUPPORT_JSON
 static void stringify_json_internal(BppMap *map, char **p_buf, size_t *p_cap, size_t *p_len);
 #endif
 
@@ -45,7 +45,7 @@ static const char *skip_ws(const char *p) {
     return p;
 }
 
-#if BPP_SUPPORT_INI
+#if SUPPORT_INI
 static const char *skip_inline_ws(const char *p) {
     while (*p && (*p == ' ' || *p == '\t')) p++;
     return p;
@@ -81,7 +81,7 @@ static void buf_append_char(char **p_buf, size_t *p_cap, size_t *p_len, char c) 
     (*p_buf)[*p_len] = '\0';
 }
 
-#if BPP_SUPPORT_JSON
+#if SUPPORT_JSON
 
 /* Helper: parse a JSON string token */
 static char *parse_json_string(const char **p_in) {
@@ -119,7 +119,7 @@ static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
         }
     } else if (*p == '{') {
         p++; /* skip '{' */
-        BppMap *sub = bpp_map_create();
+        BppMap *sub = map_create();
         if (sub) {
             p = skip_ws(p);
             if (*p == '}') {
@@ -145,11 +145,11 @@ static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
                         free(k);
                         break;
                     }
-                    bpp_map_set(str_ctx, sub, k, v);
+                    map_set(str_ctx, sub, k, v);
                     if (v.type == VAL_STRING && v.as.string) {
                         str_release((StringContext *)str_ctx, v.as.string);
                     } else if (v.type == VAL_MAP && v.as.map) {
-                        bpp_map_release(str_ctx, v.as.map);
+                        map_release(str_ctx, v.as.map);
                     }
                     free(k);
                     p = skip_ws(p);
@@ -168,7 +168,7 @@ static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
             }
         }
         if (!*ok && sub) {
-            bpp_map_release(str_ctx, sub);
+            map_release(str_ctx, sub);
         }
     } else if (isdigit((unsigned char)*p) || *p == '-' || *p == '+') {
         char *endptr;
@@ -199,7 +199,7 @@ static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
     return val;
 }
 
-BppMap *bpp_map_parse_json(void *str_ctx, const char *json) {
+BppMap *map_parse_json(void *str_ctx, const char *json) {
     if (!json) return NULL;
     const char *p = json;
     bool ok = false;
@@ -210,7 +210,7 @@ BppMap *bpp_map_parse_json(void *str_ctx, const char *json) {
     if (val.type == VAL_STRING && val.as.string) {
         str_release((StringContext *)str_ctx, val.as.string);
     } else if (val.type == VAL_MAP && val.as.map) {
-        bpp_map_release(str_ctx, val.as.map);
+        map_release(str_ctx, val.as.map);
     }
     return NULL;
 }
@@ -251,7 +251,7 @@ static void stringify_json_internal(BppMap *map, char **p_buf, size_t *p_cap, si
     buf_append_char(p_buf, p_cap, p_len, '}');
 }
 
-char *bpp_map_stringify_json(BppMap *map) {
+char *map_stringify_json(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
     char *buf = (char *)calloc(1, cap);
@@ -261,20 +261,20 @@ char *bpp_map_stringify_json(BppMap *map) {
     return buf;
 }
 #else
-BppMap *bpp_map_parse_json(void *str_ctx, const char *json) {
+BppMap *map_parse_json(void *str_ctx, const char *json) {
     (void)str_ctx; (void)json;
     return NULL;
 }
-char *bpp_map_stringify_json(BppMap *map) {
+char *map_stringify_json(BppMap *map) {
     (void)map;
     return NULL;
 }
 #endif
 
 /* XML Parser & Stringifier */
-#if BPP_SUPPORT_XML
-BppMap *bpp_map_parse_xml(void *str_ctx, const char *xml) {
-    BppMap *map = bpp_map_create();
+#if SUPPORT_XML
+BppMap *map_parse_xml(void *str_ctx, const char *xml) {
+    BppMap *map = map_create();
     if (!xml || !map) return map;
 
     const char *p = xml;
@@ -312,12 +312,12 @@ BppMap *bpp_map_parse_xml(void *str_ctx, const char *xml) {
             if (*p == '<' && *(p + 1) != '/') {
                 /* Nested child tag - parse recursively */
                 free(val_str);
-                BppMap *sub = bpp_map_parse_xml(str_ctx, val_start);
+                BppMap *sub = map_parse_xml(str_ctx, val_start);
                 BValue val;
                 val.type = VAL_MAP;
                 val.as.map = sub;
-                bpp_map_set(str_ctx, map, tag, val);
-                bpp_map_release(str_ctx, sub);
+                map_set(str_ctx, map, tag, val);
+                map_release(str_ctx, sub);
             } else {
                 /* Simple text content */
                 BValue val;
@@ -331,7 +331,7 @@ BppMap *bpp_map_parse_xml(void *str_ctx, const char *xml) {
                     val.type = VAL_STRING;
                     val.as.string = str_create((StringContext *)str_ctx, val_str, strlen(val_str));
                 }
-                bpp_map_set(str_ctx, map, tag, val);
+                map_set(str_ctx, map, tag, val);
                 if (val.type == VAL_STRING && val.as.string) {
                     str_release((StringContext *)str_ctx, val.as.string);
                 }
@@ -382,7 +382,7 @@ static void stringify_xml_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
     }
 }
 
-char *bpp_map_stringify_xml(BppMap *map) {
+char *map_stringify_xml(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
     char *buf = (char *)calloc(1, cap);
@@ -392,19 +392,19 @@ char *bpp_map_stringify_xml(BppMap *map) {
     return buf;
 }
 #else
-BppMap *bpp_map_parse_xml(void *str_ctx, const char *xml) {
+BppMap *map_parse_xml(void *str_ctx, const char *xml) {
     (void)str_ctx; (void)xml;
-    return bpp_map_create();
+    return map_create();
 }
-char *bpp_map_stringify_xml(BppMap *map) {
+char *map_stringify_xml(BppMap *map) {
     (void)map;
     return NULL;
 }
 #endif
 
 /* YAML Parser & Stringifier */
-BppMap *bpp_map_parse_yaml(void *str_ctx, const char *yaml) {
-    BppMap *map = bpp_map_create();
+BppMap *map_parse_yaml(void *str_ctx, const char *yaml) {
+    BppMap *map = map_create();
     if (!yaml || !map) return map;
 
     const char *p = yaml;
@@ -448,7 +448,7 @@ BppMap *bpp_map_parse_yaml(void *str_ctx, const char *yaml) {
                 val.type = VAL_STRING;
                 val.as.string = str_create((StringContext *)str_ctx, val_str, strlen(val_str));
             }
-            bpp_map_set(str_ctx, map, tag, val);
+            map_set(str_ctx, map, tag, val);
             if (val.type == VAL_STRING && val.as.string) {
                 str_release((StringContext *)str_ctx, val.as.string);
             }
@@ -490,7 +490,7 @@ static void stringify_yaml_internal(BppMap *map, char **p_buf, size_t *p_cap, si
     }
 }
 
-char *bpp_map_stringify_yaml(BppMap *map) {
+char *map_stringify_yaml(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
     char *buf = (char *)calloc(1, cap);
@@ -501,9 +501,9 @@ char *bpp_map_stringify_yaml(BppMap *map) {
 }
 
 /* INI Parser & Stringifier */
-#if BPP_SUPPORT_INI
-BppMap *bpp_map_parse_ini(void *str_ctx, const char *ini) {
-    BppMap *map = bpp_map_create();
+#if SUPPORT_INI
+BppMap *map_parse_ini(void *str_ctx, const char *ini) {
+    BppMap *map = map_create();
     if (!ini || !map) return map;
 
     const char *p = ini;
@@ -534,14 +534,14 @@ BppMap *bpp_map_parse_ini(void *str_ctx, const char *ini) {
 
                 /* Create section map if not exists */
                 BValue val;
-                if (bpp_map_get(map, sect, &val) && val.type == VAL_MAP) {
+                if (map_get(map, sect, &val) && val.type == VAL_MAP) {
                     current_section = val.as.map;
                 } else {
-                    BppMap *sub = bpp_map_create();
+                    BppMap *sub = map_create();
                     val.type = VAL_MAP;
                     val.as.map = sub;
-                    bpp_map_set(str_ctx, map, sect, val);
-                    bpp_map_release(str_ctx, sub);
+                    map_set(str_ctx, map, sect, val);
+                    map_release(str_ctx, sub);
                     current_section = sub;
                 }
             }
@@ -586,7 +586,7 @@ BppMap *bpp_map_parse_ini(void *str_ctx, const char *ini) {
                 val.type = VAL_STRING;
                 val.as.string = str_create((StringContext *)str_ctx, val_str, strlen(val_str));
             }
-            bpp_map_set(str_ctx, current_section, tag, val);
+            map_set(str_ctx, current_section, tag, val);
             if (val.type == VAL_STRING && val.as.string) {
                 str_release((StringContext *)str_ctx, val.as.string);
             }
@@ -654,7 +654,7 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
     }
 }
 
-char *bpp_map_stringify_ini(BppMap *map) {
+char *map_stringify_ini(BppMap *map) {
     size_t cap = 256;
     size_t len = 0;
     char *buf = (char *)calloc(1, cap);
@@ -664,11 +664,11 @@ char *bpp_map_stringify_ini(BppMap *map) {
     return buf;
 }
 #else
-BppMap *bpp_map_parse_ini(void *str_ctx, const char *ini) {
+BppMap *map_parse_ini(void *str_ctx, const char *ini) {
     (void)str_ctx; (void)ini;
-    return bpp_map_create();
+    return map_create();
 }
-char *bpp_map_stringify_ini(BppMap *map) {
+char *map_stringify_ini(BppMap *map) {
     (void)map;
     return NULL;
 }

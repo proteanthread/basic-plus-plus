@@ -42,7 +42,7 @@ BppError stmt_beep_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     /* Security Check: requires virtual device access */
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70; /* Permission Denied */
@@ -78,7 +78,7 @@ BppError stmt_beep_handler(VMContext *vm, LexerContext *lex) {
         double freq = 261.63 * pow(2.0, pitch / 12.0);
 
         if (duration > 0.0 && freq > 20.0 && freq < 20000.0) {
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
             vdev_play_sound_freq(freq, duration);
 #else
             (void)freq; (void)duration;

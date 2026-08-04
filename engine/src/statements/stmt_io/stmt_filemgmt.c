@@ -7,7 +7,7 @@
  * - Why it exists: Provides users with shell-like utilities to list, create, delete,
  *   rename, and navigate directories on the host filesystem.
  * - Why it works this way: It evaluates expression paths and delegates execution to
- *   cross-platform abstractions declared in bpp_platform.h.
+ *   cross-platform abstractions declared in platform.h.
  *
  * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
  * - What can be changed: Default listing formats or output alignments.
@@ -88,8 +88,8 @@ BppError stmt_kill_handler(VMContext *vm, LexerContext *lex) {
 
     const char *filename = str_data(file_val.as.string);
     int rc = 0;
-    if (bpp_logger_is_dry_run()) {
-        bpp_log_warn("[DRY-RUN] Intercepted KILL statement for: %s (no-op)", filename);
+    if (logger_is_dry_run()) {
+        log_warn("[DRY-RUN] Intercepted KILL statement for: %s (no-op)", filename);
     } else {
         rc = platform_remove(filename);
     }
@@ -155,8 +155,8 @@ BppError stmt_mkdir_handler(VMContext *vm, LexerContext *lex) {
 
     const char *path = str_data(path_val.as.string);
     int rc = 0;
-    if (bpp_logger_is_dry_run()) {
-        bpp_log_warn("[DRY-RUN] Intercepted MKDIR statement for: %s (no-op)", path);
+    if (logger_is_dry_run()) {
+        log_warn("[DRY-RUN] Intercepted MKDIR statement for: %s (no-op)", path);
     } else {
         rc = platform_mkdir(path);
     }
@@ -189,8 +189,8 @@ BppError stmt_rmdir_handler(VMContext *vm, LexerContext *lex) {
 
     const char *path = str_data(path_val.as.string);
     int rc = 0;
-    if (bpp_logger_is_dry_run()) {
-        bpp_log_warn("[DRY-RUN] Intercepted RMDIR statement for: %s (no-op)", path);
+    if (logger_is_dry_run()) {
+        log_warn("[DRY-RUN] Intercepted RMDIR statement for: %s (no-op)", path);
     } else {
         rc = platform_rmdir(path);
     }
@@ -242,8 +242,8 @@ BppError stmt_name_handler(VMContext *vm, LexerContext *lex) {
     const char *oldname = str_data(old_val.as.string);
     const char *newname = str_data(new_val.as.string);
     int rc = 0;
-    if (bpp_logger_is_dry_run()) {
-        bpp_log_warn("[DRY-RUN] Intercepted NAME rename statement from %s to %s (no-op)", oldname, newname);
+    if (logger_is_dry_run()) {
+        log_warn("[DRY-RUN] Intercepted NAME rename statement from %s to %s (no-op)", oldname, newname);
     } else {
         rc = platform_rename(oldname, newname);
     }

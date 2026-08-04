@@ -11,7 +11,7 @@
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
  * - What it does: Implements REGEX_MATCH and REGEX_REPLACE$ built-in functions.
  * - Why it exists: Provides pattern matching and string substitution using platform regex wrappers.
- * - Why it works this way: Routes matching and replacing through bpp_platform wrappers to
+ * - Why it works this way: Routes matching and replacing through platform wrappers to
  *   avoid dependencies on external/non-standard C++ regex engines.
  */
 

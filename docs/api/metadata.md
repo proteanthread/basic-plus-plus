@@ -1,6 +1,6 @@
 # Metadata Subsystem API Reference
 
-Header File: [`include/bpp_metadata.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_metadata.h)
+Header File: [`include/metadata.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/metadata.h)
 
 ## Overview
 Handles compiler annotations, pragmas, directives, and metadata headers.
@@ -23,7 +23,7 @@ Handles compiler annotations, pragmas, directives, and metadata headers.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_metadata.h"
+#include "metadata.h"
 
 void print_meta(VMContext *vm) {
     (void)vm;

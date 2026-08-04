@@ -1,6 +1,6 @@
 # FujiNet Emulation Layer API Reference
 
-Header File: [`include/bpp_fujinet.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_fujinet.h)
+Header File: [`include/fujinet.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/fujinet.h)
 
 ## Overview
 Mimics retro Atari/Commodore FujiNet network interface device specifications.
@@ -18,7 +18,7 @@ Mimics retro Atari/Commodore FujiNet network interface device specifications.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_fujinet.h"
+#include "fujinet.h"
 
 void init_fujinet() {
     fujinet_initialize();

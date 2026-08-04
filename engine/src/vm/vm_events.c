@@ -11,7 +11,7 @@
 #include "runtime/metadata.h"
 #include "runtime/vfs.h"
 #include "runtime/vnet.h"
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 #include "memory/segmented_mem.h"
 #endif
 #include "device/usb.h"
@@ -38,7 +38,7 @@
 double platform_get_timer(void);
 double platform_get_uptime(void);
 int platform_inkey_char(void);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 int vdev_music_note_count(void);
 #endif
 
@@ -312,7 +312,7 @@ void vm_trigger_event_polling(VMContext *vm) {
     }
 
     /* 3. Play Check */
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     int current_notes = vdev_music_note_count();
     if (vm->play_state == 1 && vm->play_note_threshold > 0) {
         if (current_notes < vm->play_note_threshold) {

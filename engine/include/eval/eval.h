@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_eval.h
+ * @file eval.h
  * @brief Iterative Expression Evaluator API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -32,8 +32,8 @@
  *   can be evaluated by integrating them into the token dispatch loop.
  */
 
-#ifndef BPP_EVAL_H
-#define BPP_EVAL_H
+#ifndef EVAL_H
+#define EVAL_H
 
 #include "types/types.h"
 #include "lexer/lexer.h"
@@ -53,4 +53,4 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *err);
  */
 BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int argc, BppError *err);
 
-#endif /* BPP_EVAL_H */
+#endif /* EVAL_H */

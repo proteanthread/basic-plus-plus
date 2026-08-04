@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_gemini.h
+ * @file gemini.h
  * @brief Gemini Protocol TLS Client API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -15,8 +15,8 @@
  *   and receives the status and body response payload.
  */
 
-#ifndef BPP_GEMINI_H
-#define BPP_GEMINI_H
+#ifndef RUNTIME_GEMINI_H
+#define RUNTIME_GEMINI_H
 
 #include "vm/vm.h"
 
@@ -29,4 +29,4 @@
  */
 char *net_gemini_fetch(VMContext *vm, const char *url, BppError *out_err);
 
-#endif /* BPP_GEMINI_H */
+#endif /* RUNTIME_GEMINI_H */

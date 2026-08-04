@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_platform.h
+ * @file platform.h
  * @brief Cross-Platform Abstraction API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -31,8 +31,8 @@
  * - How to write external extensions: External plugins use these APIs to perform platform actions safely.
  */
 
-#ifndef BPP_PLATFORM_H
-#define BPP_PLATFORM_H
+#ifndef PLATFORM_H
+#define PLATFORM_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -175,9 +175,9 @@ const char *platform_library_last_error(void);
 /* Cross-platform Socket API */
 #include <stdint.h>
 typedef intptr_t BppSocket;
-#define BPP_INVALID_SOCKET ((BppSocket)-1)
-#define BPP_SOCK_STREAM 1
-#define BPP_SOCK_DGRAM  2
+#define BASIC_INVALID_SOCKET ((BppSocket)-1)
+#define BASIC_SOCK_STREAM 1
+#define BASIC_SOCK_DGRAM  2
 
 #include "types/types.h"
 int platform_net_init(void);
@@ -231,4 +231,4 @@ void platform_cleanup_workspace(bool full_cleanup);
 char *platform_clipboard_get(void);
 void platform_clipboard_set(const char *text);
 
-#endif /* BPP_PLATFORM_H */
+#endif /* PLATFORM_H */

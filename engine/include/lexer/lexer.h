@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_lexer.h
+ * @file lexer.h
  * @brief Ephemeral Lexer/Tokenizer API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -31,8 +31,8 @@
  * - How to write external extensions: Custom dialects register alias keyword strings that map to these base IDs.
  */
 
-#ifndef BPP_LEXER_H
-#define BPP_LEXER_H
+#ifndef LEXER_H
+#define LEXER_H
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -53,6 +53,7 @@ typedef enum {
     TOK_MINUS,          /* - */
     TOK_MUL,            /* * */
     TOK_DIV,            /* / */
+    TOK_POW,            /* ^ or ** */
     TOK_EQ,             /* = */
     TOK_NE,             /* <> */
     TOK_LT,             /* < */
@@ -385,4 +386,4 @@ BppKeywordId lex_find_keyword_by_name(const char *name);
 void keyword_clear_custom(void);
 BppKeywordId keyword_register_custom(const char *name);
 
-#endif /* BPP_LEXER_H */
+#endif /* LEXER_H */

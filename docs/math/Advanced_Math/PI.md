@@ -18,7 +18,7 @@ Implemented in `builtins_math.c` via the `builtin_pi()` function.
 This function integrates into the `FCAT_MATH` built-in registry.
 
 ## 5. Implementation Details
-Returns the hardcoded macro `BPP_PI` which is defined as `3.14159265358979323846`. Takes 0 arguments.
+Returns the hardcoded macro `BASIC_PI` which is defined as `3.14159265358979323846`. Takes 0 arguments.
 **Troubleshooting**: If execution yields a runtime error, verify the memory bounds and that argument parsing aligns with `min_args` and `max_args` constraints in `funcreg_add()`. Avoid providing null pointers or uninitialized BValues to the handler.
 
 ## 6. Cross-References / See Also

@@ -16,15 +16,15 @@
  * What cannot be changed: TextLine struct layout (binary compat with editors).
  * What to expect: All editors share one copy of buffer, term, and selection code.
  * What to do if something breaks: Check that editors include this header and
- *   link against the bpp_editor_core library target.
+ *   link against the editor_core library target.
  * Assumptions: 7-bit ASCII text lines, single-threaded editor access.
  * Portability concerns: Strict C17. Terminal code uses platform abstraction.
  * Future expansions: Undo/redo stack, syntax highlighting hooks.
  * External extension hooks: New editor personalities include this header.
  */
 
-#ifndef BPP_EDITOR_CORE_H
-#define BPP_EDITOR_CORE_H
+#ifndef EDITOR_CORE_H
+#define EDITOR_CORE_H
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -117,4 +117,4 @@ void editor_core_delete_selected_text(EditorSelection *sel,
                                       TextLine *lines, int *num_lines,
                                       int *cx, int *cy);
 
-#endif /* BPP_EDITOR_CORE_H */
+#endif /* EDITOR_CORE_H */

@@ -1,6 +1,6 @@
 # Virtual Bus API Reference
 
-Header File: [`include/bpp_bus.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_bus.h)
+Header File: [`include/bus.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bus.h)
 
 ## Overview
 Controls abstract device communication bus protocols and device attachment.
@@ -21,7 +21,7 @@ Controls abstract device communication bus protocols and device attachment.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_bus.h"
+#include "bus.h"
 
 void attach_bus() {
     bus_attach_device(0, "USB:");

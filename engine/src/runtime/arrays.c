@@ -80,7 +80,7 @@ static void normalize_name(char *dest, const char *src, size_t max_len) {
 }
 
 /* Portable C17 strdup replacement */
-static char *bpp_strdup(const char *src) {
+static char *basic_strdup(const char *src) {
     size_t len = strlen(src);
     char *dest = (char *)calloc(1, len + 1);
     if (dest) {
@@ -108,7 +108,7 @@ static void free_entry(ArrayContext *ctx, ArrayEntry *entry) {
             if (entry->elements[i].type == VAL_STRING && entry->elements[i].as.string) {
                 str_release(ctx->str, entry->elements[i].as.string);
             } else if (entry->elements[i].type == VAL_MAP && entry->elements[i].as.map) {
-                bpp_map_release(ctx->str, entry->elements[i].as.map);
+                map_release(ctx->str, entry->elements[i].as.map);
             }
         }
         free(entry->elements);
@@ -183,7 +183,7 @@ BppError arr_dim(ArrayContext *ctx, const char *name, int num_dims, const int *b
         return err;
     }
 
-    entry->name = bpp_strdup(norm);
+    entry->name = basic_strdup(norm);
     if (!entry->name) {
         free(entry);
         err.code = 14;

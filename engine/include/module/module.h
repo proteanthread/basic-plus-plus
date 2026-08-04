@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_module.h
+ * @file module.h
  * @brief Module System manager API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -24,8 +24,8 @@
  * - Portability concerns: Stubbed on FreeDOS. Standard C17.
  */
 
-#ifndef BPP_MODULE_H
-#define BPP_MODULE_H
+#ifndef MODULE_H
+#define MODULE_H
 
 #include "security/security.h"
 
@@ -80,4 +80,4 @@ void                 module_caps_string(unsigned int caps, char *buf, int buf_le
 struct VMContext;
 int                  module_load_dynamic(struct VMContext *vm, const char *path);
 
-#endif /* BPP_MODULE_H */
+#endif /* MODULE_H */

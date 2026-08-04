@@ -5,7 +5,7 @@
 
 ## Tier 1 — Embedding & Lifecycle
 
-### `bpp_boot.h`
+### `boot.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
@@ -13,15 +13,15 @@
 
 ---
 
-### `bpp_config.h`
+### `config.h`
 
 ---
 
-### `bpp_version.h`
+### `basic_version.h`
 
 ---
 
-### `bpp_vm.h`
+### `vm.h`
 #### Structs:
 - `VMContext VMContext`
 - `VDevContext VDevContext`
@@ -163,7 +163,7 @@
 
 ## Tier 2 — Language Core
 
-### `bpp_arrays.h`
+### `arrays.h`
 #### Structs:
 - `ArrayContext ArrayContext`
 #### Functions:
@@ -186,7 +186,7 @@
 
 ---
 
-### `bpp_eval.h`
+### `eval.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
@@ -195,7 +195,7 @@
 
 ---
 
-### `bpp_lexer.h`
+### `lexer.h`
 #### Structs:
 - `LexerContext LexerContext`
 - `BppDialect BppDialect`
@@ -213,7 +213,7 @@
 
 ---
 
-### `bpp_stmt.h`
+### `stmt.h`
 #### Structs:
 - `StmtRegistry StmtRegistry`
 #### Functions:
@@ -233,7 +233,7 @@
 
 ---
 
-### `bpp_types.h`
+### `types.h`
 #### Structs:
 - `BppString BppString`
 - `BppMap BppMap`
@@ -241,7 +241,7 @@
 
 ---
 
-### `bpp_variables.h`
+### `variables.h`
 #### Structs:
 - `VariableContext VariableContext`
 #### Functions:
@@ -265,7 +265,7 @@
 
 ---
 
-### `bpp_strings.h`
+### `strings.h`
 #### Structs:
 - `StringContext StringContext`
 #### Functions:
@@ -287,7 +287,7 @@
 
 ## Tier 3 — Runtime Extensions
 
-### `bpp_file.h`
+### `file.h`
 #### Structs:
 - `FileContext FileContext`
 #### Functions:
@@ -324,7 +324,7 @@
 
 ---
 
-### `bpp_funcreg.h`
+### `funcreg.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
@@ -336,23 +336,23 @@
 
 ---
 
-### `bpp_map.h`
+### `runtime/map.h`
 #### Structs:
 - `BppMapEntry`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
-| `bpp_map_add_ref` | `void` | `BppMap *map` |
-| `bpp_map_release` | `void` | `void *str_ctx, BppMap *map` |
-| `bpp_map_set` | `bool` | `void *str_ctx, BppMap *map, const char *key, BValue val` |
-| `bpp_map_get` | `bool` | `BppMap *map, const char *key, BValue *out_val` |
-| `bpp_map_remove` | `bool` | `void *str_ctx, BppMap *map, const char *key` |
-| `bpp_map_count` | `int` | `BppMap *map` |
-| `bpp_map_has` | `bool` | `BppMap *map, const char *key` |
+| `map_add_ref` | `void` | `BppMap *map` |
+| `map_release` | `void` | `void *str_ctx, BppMap *map` |
+| `map_set` | `bool` | `void *str_ctx, BppMap *map, const char *key, BValue val` |
+| `map_get` | `bool` | `BppMap *map, const char *key, BValue *out_val` |
+| `map_remove` | `bool` | `void *str_ctx, BppMap *map, const char *key` |
+| `map_count` | `int` | `BppMap *map` |
+| `map_has` | `bool` | `BppMap *map, const char *key` |
 
 ---
 
-### `bpp_metadata.h`
+### `metadata.h`
 #### Structs:
 - `VMContext VMContext`
 #### Functions:
@@ -368,7 +368,7 @@
 
 ---
 
-### `bpp_spec.h`
+### `spec.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
@@ -380,7 +380,7 @@
 
 ---
 
-### `bpp_struct.h`
+### `struct_ctx.h`
 #### Structs:
 - `BppTypeRegistry`
 - `VMContext VMContext`
@@ -394,7 +394,7 @@
 
 ---
 
-### `bpp_task.h`
+### `task.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
@@ -415,7 +415,7 @@
 
 ## Tier 4 — Virtual Devices & I/O
 
-### `bpp_bus.h`
+### `bus.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
@@ -430,7 +430,7 @@
 
 ---
 
-### `bpp_fujinet.h`
+### `fujinet.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
@@ -442,11 +442,11 @@
 
 ---
 
-### `bpp_gemini.h`
+### `gemini.h`
 
 ---
 
-### `bpp_usb.h`
+### `usb.h`
 #### Structs:
 - `UsbContext UsbContext`
 #### Functions:
@@ -460,7 +460,7 @@
 
 ---
 
-### `bpp_vcon.h`
+### `vcon.h`
 #### Structs:
 - `VConContext VConContext`
 #### Functions:
@@ -478,7 +478,7 @@
 
 ---
 
-### `bpp_vdev.h`
+### `vdev.h`
 #### Structs:
 - `VDev VDev`
 - `VDevContext VDevContext`
@@ -510,7 +510,7 @@
 
 ---
 
-### `bpp_vfs.h`
+### `vfs.h`
 #### Structs:
 - `VfsContext VfsContext`
 #### Functions:
@@ -524,7 +524,7 @@
 
 ---
 
-### `bpp_vnet.h`
+### `vnet.h`
 #### Structs:
 - `VNetContext VNetContext`
 #### Functions:
@@ -546,7 +546,7 @@
 
 ## Tier 5 — Graphics
 
-### `bpp_bgi.h`
+### `bgi.h`
 #### Structs:
 - `BGI_VideoMode`
 - `BGI_Context`
@@ -592,7 +592,7 @@
 
 ---
 
-### `bpp_mock_bios.h`
+### `mock_bios.h`
 #### Structs:
 - `MockBiosRegs`
 - `MockBiosContext`
@@ -601,17 +601,17 @@
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
-| `mock_bios_init_mem` | `BPP_BIOS_API void` | `MockBiosContext *ctx, uint8_t *mem_segment, size_t mem_size, MockBiosModel model` |
-| `mock_bios_in` | `BPP_BIOS_API uint8_t` | `MockBiosContext *ctx, uint16_t port` |
-| `mock_bios_out` | `BPP_BIOS_API void` | `MockBiosContext *ctx, uint16_t port, uint8_t val` |
-| `mock_bios_interrupt` | `BPP_BIOS_API void` | `MockBiosContext *ctx, uint8_t int_num` |
-| `mock_bios_model_from_string` | `BPP_BIOS_API MockBiosModel` | `const char *name` |
+| `mock_bios_init_mem` | `BIOS_API void` | `MockBiosContext *ctx, uint8_t *mem_segment, size_t mem_size, MockBiosModel model` |
+| `mock_bios_in` | `BIOS_API uint8_t` | `MockBiosContext *ctx, uint16_t port` |
+| `mock_bios_out` | `BIOS_API void` | `MockBiosContext *ctx, uint16_t port, uint8_t val` |
+| `mock_bios_interrupt` | `BIOS_API void` | `MockBiosContext *ctx, uint8_t int_num` |
+| `mock_bios_model_from_string` | `BIOS_API MockBiosModel` | `const char *name` |
 
 ---
 
 ## Tier 6 — Security & Modules
 
-### `bpp_module.h`
+### `module.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
@@ -627,7 +627,7 @@
 
 ---
 
-### `bpp_security.h`
+### `security.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
@@ -665,7 +665,7 @@
 
 ## Tier 7 — Platform & Memory
 
-### `bpp_memory.h`
+### `memory.h`
 #### Structs:
 - `MemoryContext MemoryContext`
 #### Functions:
@@ -685,7 +685,7 @@
 
 ---
 
-### `bpp_platform.h`
+### `platform.h`
 #### Structs:
 - `BppDirSearch BppDirSearch`
 #### Functions:
@@ -745,7 +745,7 @@
 
 ---
 
-### `bpp_segmented_mem.h`
+### `segmented_mem.h`
 #### Structs:
 - `VMemContext VMemContext`
 #### Functions:
@@ -762,7 +762,7 @@
 
 ## Tier 8 — Dialect & Configuration
 
-### `bpp_dialect.h`
+### `dialect.h`
 #### Structs:
 - `BppDialect`
 #### Functions:
@@ -774,7 +774,7 @@
 
 ---
 
-### `bpp_editor.h`
+### `editor.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
@@ -789,26 +789,26 @@
 
 ---
 
-### `bpp_logger.h`
+### `logger.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
-| `bpp_logger_init` | `bool` | `const char *log_path, const char *out_path` |
-| `bpp_logger_close` | `void` | `void` |
-| `bpp_log_info` | `void` | `const char *fmt, ...` |
-| `bpp_log_warn` | `void` | `const char *fmt, ...` |
-| `bpp_log_error` | `void` | `const char *fmt, ...` |
-| `bpp_log_write_out` | `void` | `const char *buf, size_t len` |
-| `bpp_logger_set_debug` | `void` | `bool debug` |
-| `bpp_logger_is_debug` | `bool` | `void` |
-| `bpp_logger_set_dry_run` | `void` | `bool dry_run` |
-| `bpp_logger_is_dry_run` | `bool` | `void` |
-| `bpp_logger_set_trace` | `void` | `bool trace` |
-| `bpp_logger_is_trace` | `bool` | `void` |
+| `logger_init` | `bool` | `const char *log_path, const char *out_path` |
+| `logger_close` | `void` | `void` |
+| `log_info` | `void` | `const char *fmt, ...` |
+| `log_warn` | `void` | `const char *fmt, ...` |
+| `log_error` | `void` | `const char *fmt, ...` |
+| `log_write_out` | `void` | `const char *buf, size_t len` |
+| `logger_set_debug` | `void` | `bool debug` |
+| `logger_is_debug` | `bool` | `void` |
+| `logger_set_dry_run` | `void` | `bool dry_run` |
+| `logger_is_dry_run` | `bool` | `void` |
+| `logger_set_trace` | `void` | `bool trace` |
+| `logger_is_trace` | `bool` | `void` |
 
 ---
 
-### `bpp_state.h`
+### `state.h`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|

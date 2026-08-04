@@ -1,6 +1,6 @@
 # Virtual Networking API Reference
 
-Header File: [`include/bpp_vnet.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_vnet.h)
+Header File: [`include/vnet.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/vnet.h)
 
 ## Overview
 Supports standard TCP/IP networking, sockets client listener connections.
@@ -27,7 +27,7 @@ Supports standard TCP/IP networking, sockets client listener connections.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_vnet.h"
+#include "vnet.h"
 
 void net_open(VMContext *vm) {
     vnet_open_socket(vm, "TCP:google.com:80");

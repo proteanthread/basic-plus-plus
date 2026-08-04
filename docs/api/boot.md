@@ -1,6 +1,6 @@
 # Boot Subsystem API Reference
 
-Header File: [`include/bpp_boot.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_boot.h)
+Header File: [`include/boot.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/boot.h)
 
 ## Overview
 Handles the bootstrapping of the BASIC++ environment, initializing the VM and virtual devices.
@@ -14,7 +14,7 @@ Handles the bootstrapping of the BASIC++ environment, initializing the VM and vi
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_boot.h"
+#include "boot.h"
 
 int main() {
     BootConfig config;
