@@ -1,6 +1,6 @@
 # USB Peripherals Abstraction API Reference
 
-Header File: [`include/bpp_usb.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_usb.h)
+Header File: [`include/usb.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/usb.h)
 
 ## Overview
 Implements the abstract USB device controller and serial pipe operations.
@@ -21,7 +21,7 @@ Implements the abstract USB device controller and serial pipe operations.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_usb.h"
+#include "usb.h"
 
 void write_usb() {
     usb_write_pipe(0, (const unsigned char *)"DATA", 4);

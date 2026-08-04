@@ -19,7 +19,7 @@
 # - What cannot be changed: The directory-organized include structure
 #   (engine/include/<category>/), C17 compliance requirements.
 # - What to expect: All include paths are relative to engine/include/.
-#   Source files use #include "vm/vm.h" not #include "bpp_vm.h".
+#   Source files use #include "vm/vm.h" not #include "vm.h".
 # - What to do if something breaks: Check that include_directories
 #   points to engine/include/ and all subdirectories exist.
 #
@@ -152,7 +152,7 @@ add_library(libbasicpp_lite STATIC
     src/device/bgi/aalib/aalib.c
 )
 target_include_directories(libbasicpp_lite PUBLIC ${ENGINE_INCLUDE_DIR} ${AALIB_INCLUDE_DIR})
-target_compile_definitions(libbasicpp_lite PRIVATE BPP_LITE_BUILD NO_SDL2 BGI_HAVE_AALIB)
+target_compile_definitions(libbasicpp_lite PRIVATE BASIC_LITE_BUILD NO_SDL2 BGI_HAVE_AALIB)
 
 # =====================================================================
 # POSIX Definitions for UNIX builds

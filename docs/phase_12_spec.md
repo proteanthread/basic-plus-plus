@@ -42,7 +42,7 @@ To verify that the documentation is completely accurate and aligned with the cod
   - Assert that all code blocks compile with **zero compilation warnings and zero errors**.
 
 ### B. API Alignment Audit
-- **Public API Completeness Check**: A validation script will verify that every public function, struct, and enum cataloged in [PUBLIC_API_AUDIT.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/api/PUBLIC_API_AUDIT.md) is mentioned and documented in its respective subsystem reference sheet (e.g. all functions from `bpp_boot.h` must have matching entries in `boot.md`).
+- **Public API Completeness Check**: A validation script will verify that every public function, struct, and enum cataloged in [PUBLIC_API_AUDIT.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/api/PUBLIC_API_AUDIT.md) is mentioned and documented in its respective subsystem reference sheet (e.g. all functions from `boot.h` must have matching entries in `boot.md`).
 
 ### C. Cross-Platform Executable Regression Testing
 - **Target Boundaries**: Test the standard interactive/graphical editions:

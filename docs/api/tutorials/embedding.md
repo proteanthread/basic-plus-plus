@@ -7,9 +7,9 @@
 ## Step 1: Complete Embedding Program
 Below is a complete, compile-ready C program showing the configuration, booting, statement execution, and shutdown sequence:
 ```c
-#include "bpp_boot.h"
-#include "bpp_vm.h"
-#include "bpp_config.h"
+#include "boot.h"
+#include "vm.h"
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

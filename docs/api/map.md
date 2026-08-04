@@ -1,6 +1,6 @@
 # Map Data Structure API Reference
 
-Header File: [`include/bpp_map.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_map.h)
+Header File: [`include/runtime/map.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/runtime/map.h)
 
 ## Overview
 Implements an optimized hash map/dictionary for modern associative collections in BASIC++.
@@ -12,18 +12,18 @@ Implements an optimized hash map/dictionary for modern associative collections i
 ### Functions
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
-| `bpp_map_add_ref` | `void` | `BppMap *map` |
-| `bpp_map_release` | `void` | `void *str_ctx, BppMap *map` |
-| `bpp_map_set` | `bool` | `void *str_ctx, BppMap *map, const char *key, BValue val` |
-| `bpp_map_get` | `bool` | `BppMap *map, const char *key, BValue *out_val` |
-| `bpp_map_remove` | `bool` | `void *str_ctx, BppMap *map, const char *key` |
-| `bpp_map_count` | `int` | `BppMap *map` |
-| `bpp_map_has` | `bool` | `BppMap *map, const char *key` |
+| `map_add_ref` | `void` | `BppMap *map` |
+| `map_release` | `void` | `void *str_ctx, BppMap *map` |
+| `map_set` | `bool` | `void *str_ctx, BppMap *map, const char *key, BValue val` |
+| `map_get` | `bool` | `BppMap *map, const char *key, BValue *out_val` |
+| `map_remove` | `bool` | `void *str_ctx, BppMap *map, const char *key` |
+| `map_count` | `int` | `BppMap *map` |
+| `map_has` | `bool` | `BppMap *map, const char *key` |
 
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_map.h"
+#include "runtime/map.h"
 
 void run_map(VMContext *vm) {
     BppMap *m = map_create(vm);

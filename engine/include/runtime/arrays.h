@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_arrays.h
+ * @file arrays.h
  * @brief Dynamic Array Management Subsystem API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -30,8 +30,8 @@
  * - How to write external extensions: Plugins query array elements using arr_get_element.
  */
 
-#ifndef BPP_ARRAYS_H
-#define BPP_ARRAYS_H
+#ifndef RUNTIME_ARRAYS_H
+#define RUNTIME_ARRAYS_H
 
 #include <stdbool.h>
 
@@ -98,4 +98,4 @@ void          arr_set_last_det(ArrayContext *ctx, double val);
 bool arr_serialize(ArrayContext *ctx, void *fp);
 bool arr_deserialize(ArrayContext *ctx, void *fp);
 
-#endif /* BPP_ARRAYS_H */
+#endif /* RUNTIME_ARRAYS_H */

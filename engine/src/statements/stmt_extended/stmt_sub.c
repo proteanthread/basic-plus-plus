@@ -672,7 +672,7 @@ BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int a
         /* Verify it has __type__ metadata */
         BValue type_val;
         memset(&type_val, 0, sizeof(type_val));
-        if (bpp_map_get(args[0].as.map, "__type__", &type_val) && type_val.type == VAL_STRING) {
+        if (map_get(args[0].as.map, "__type__", &type_val) && type_val.type == VAL_STRING) {
             is_method = true;
             method_this = args[0].as.map;
         }
@@ -704,7 +704,7 @@ BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int a
             if (p_var->type == VAL_STRING && p_var->as.string) {
                 str_add_ref(p_var->as.string);
             } else if (p_var->type == VAL_MAP && p_var->as.map) {
-                bpp_map_add_ref(p_var->as.map);
+                map_add_ref(p_var->as.map);
             }
         }
     }
@@ -723,7 +723,7 @@ BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int a
                     if (local_var->type == VAL_STRING && local_var->as.string) {
                         str_add_ref(local_var->as.string);
                     } else if (local_var->type == VAL_MAP && local_var->as.map) {
-                        bpp_map_add_ref(local_var->as.map);
+                        map_add_ref(local_var->as.map);
                     }
                 }
             }
@@ -862,14 +862,14 @@ BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int a
                     if (old_val.type == VAL_STRING && old_val.as.string) {
                         str_release(vm_get_str(vm), old_val.as.string);
                     } else if (old_val.type == VAL_MAP && old_val.as.map) {
-                        bpp_map_release(vm_get_str(vm), old_val.as.map);
+                        map_release(vm_get_str(vm), old_val.as.map);
                     }
                     
                     method_this->entries[i].val = *local_var;
                     if (local_var->type == VAL_STRING && local_var->as.string) {
                         str_add_ref(local_var->as.string);
                     } else if (local_var->type == VAL_MAP && local_var->as.map) {
-                        bpp_map_add_ref(local_var->as.map);
+                        map_add_ref(local_var->as.map);
                     }
                 }
             }

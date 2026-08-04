@@ -479,7 +479,7 @@ BppError stmt_fcolor_handler(VMContext *vm, LexerContext *lex) {
 }
 
 BppError stmt_clear_handler(VMContext *vm, LexerContext *lex) {
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     return stmt_cls_handler(vm, lex);
 #else
     BppError err;
@@ -570,7 +570,7 @@ BppError stmt_cursor_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-#ifdef BPP_LITE_BUILD
+#ifdef BASIC_LITE_BUILD
 int platform_mouse_x(void) { return 0; }
 int platform_mouse_y(void) { return 0; }
 int platform_mouse_btn(void) { return 0; }
@@ -643,7 +643,7 @@ BppError stmt_bsave_handler(VMContext *vm, LexerContext *lex) {
     }
 
     /* Dump memory */
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     VMemContext *vmem = vm_get_vmem(vm);
     for (int i = 0; i < length; ++i) {
         uint8_t b = 0;
@@ -697,7 +697,7 @@ BppError stmt_bload_handler(VMContext *vm, LexerContext *lex) {
     }
 
     /* Memory inject */
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     VMemContext *vmem = vm_get_vmem(vm);
     int current_offset = offset >= 0 ? offset : 0;
     int ch;

@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_variables.h
+ * @file variables.h
  * @brief Variable storage, scoping, and lookup API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -33,8 +33,8 @@
  * - How to write external extensions: External plugins read and write variables through the VM context using these lookup APIs.
  */
 
-#ifndef BPP_VARIABLES_H
-#define BPP_VARIABLES_H
+#ifndef RUNTIME_VARIABLES_H
+#define RUNTIME_VARIABLES_H
 
 #include <stdbool.h>
 #include "types/types.h"
@@ -111,4 +111,4 @@ void var_print_all(VariableContext *ctx, void *vdev_ptr);
 bool var_serialize(VariableContext *ctx, void *fp);
 bool var_deserialize(VariableContext *ctx, void *fp);
 
-#endif /* BPP_VARIABLES_H */
+#endif /* RUNTIME_VARIABLES_H */

@@ -104,7 +104,7 @@ static const BuiltinHelpEntry g_builtin_help[] = {
     {"BSAVE", "Program Mgmt & Editing", "BSAVE", "Save binary memory image"},
     {"BRUN", "Program Mgmt & Editing", "BRUN", "Load and execute binary program"},
     {"USING", "Introspection", "USING", "Built-in command or function: USING"},
-#if BPP_SUPPORT_EDITOR
+#if SUPPORT_EDITOR
     {"EDIT", "Program Mgmt & Editing", "EDIT", "Edit a program line"},
 #endif
     {"SECURITY", "System & Environ", "SECURITY", "System operation or file query"},
@@ -116,40 +116,40 @@ static const BuiltinHelpEntry g_builtin_help[] = {
     {"UNLOAD", "Program Mgmt & Editing", "UNLOAD", "Unload module or program"},
     {"TASK", "Control Flow", "TASK", "Multi-tasking thread spawn"},
     {"WAIT", "Devices & Network", "WAIT", "Wait for hardware port state"},
-#if BPP_SUPPORT_MAT
+#if SUPPORT_MAT
     {"MAT", "Variables & Memory", "MAT", "Matrix operations"},
 #endif
     {"ARRAY", "Uncategorized", "ARRAY", "No description available."},
     {"MAP", "Uncategorized", "MAP", "No description available."},
     {"FILTER", "Uncategorized", "FILTER", "No description available."},
     {"REDUCE", "Uncategorized", "REDUCE", "No description available."},
-#if BPP_SUPPORT_EDITOR
+#if SUPPORT_EDITOR
     {"RENUM", "Program Mgmt & Editing", "RENUM", "Renumber program lines"},
 #endif
-#if BPP_SUPPORT_EDITOR
+#if SUPPORT_EDITOR
     {"DELETE", "Program Mgmt & Editing", "DELETE", "Delete program lines"},
 #endif
     {"HELP", "Introspection", "HELP", "Show this help (or HELP keyword)"},
     {"CATALOG", "Introspection", "CATALOG", "List all commands & functions"},
     {"DEVICES", "Uncategorized", "DEVICES", "No description available."},
     {"IOCTL", "Devices & Network", "IOCTL", "Send control string to device"},
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     {"MOUNT", "Devices & Network", "MOUNT", "Mount a VFS path"},
 #endif
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     {"UMOUNT", "Devices & Network", "UMOUNT", "Unmount a VFS path"},
 #endif
     {"UNSAVE", "Program Mgmt & Editing", "UNSAVE", "Delete saved program (alias for KILL)"},
     {"CHVT", "Uncategorized", "CHVT", "No description available."},
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     {"NET", "Uncategorized", "NET", "No description available."},
 #endif
     {"OUT", "Devices & Network", "OUT", "Write to a hardware port"},
     {"POKE", "Variables & Memory", "POKE", "Write byte to virtual memory"},
-#if BPP_SUPPORT_BIOS
+#if SUPPORT_BIOS
     {"BIOS", "Devices & Network", "BIOS", "Access mock BIOS interrupt or switch memory map model (string)"},
 #endif
-#if BPP_SUPPORT_GEMINI
+#if SUPPORT_GEMINI
     {"GEMINI", "Input / Output", "GEMINI", "Network protocol handler"},
 #endif
     {"UNLESS", "Introspection", "UNLESS", "Built-in command or function: UNLESS"},
@@ -161,10 +161,10 @@ static const BuiltinHelpEntry g_builtin_help[] = {
     {"METADATA", "Uncategorized", "METADATA", "No description available."},
     {"DIALECT", "System & Environ", "DIALECT", "System environment query/control"},
     {"DEFINE", "Uncategorized", "DEFINE", "No description available."},
-#if BPP_SUPPORT_OOP
+#if SUPPORT_OOP
     {"TYPE", "Variables & Memory", "TYPE", "Define a user-defined type"},
 #endif
-#if BPP_SUPPORT_OOP
+#if SUPPORT_OOP
     {"CLASS", "Variables & Memory", "CLASS", "Define OOP Class block"},
 #endif
     {"BORDER", "Uncategorized", "BORDER", "No description available."},
@@ -281,19 +281,19 @@ static const BuiltinHelpEntry g_builtin_help[] = {
     {"DEVICECLASS$", "Uncategorized", "DEVICECLASS$", "No description available."},
     {"DEVICEINFO$", "Uncategorized", "DEVICEINFO$", "No description available."},
     {"POLL", "Uncategorized", "POLL", "No description available."},
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     {"NSTATUS", "Input / Output", "NSTATUS", "Network socket operation"},
 #endif
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     {"NCONNECTED", "Input / Output", "NCONNECTED", "Network socket operation"},
 #endif
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     {"NHTTPSTATUS", "Input / Output", "NHTTPSTATUS", "Network socket operation"},
 #endif
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     {"HTTP_GET$", "Devices & Network", "HTTP_GET$", "Perform HTTP GET request"},
 #endif
-#if BPP_SUPPORT_BIOS
+#if SUPPORT_BIOS
     {"MEMMAP$", "Introspection", "MEMMAP$", "Get name of currently active BIOS memory map model"},
 #endif
     {"PEEK", "Variables & Memory", "PEEK", "Read byte from virtual memory"},
@@ -305,24 +305,24 @@ static const BuiltinHelpEntry g_builtin_help[] = {
     {"MAP_COUNT", "Uncategorized", "MAP_COUNT", "No description available."},
     {"MAP_KEY$", "Uncategorized", "MAP_KEY$", "No description available."},
     {"MAP_HAS", "Uncategorized", "MAP_HAS", "No description available."},
-#if BPP_SUPPORT_JSON
+#if SUPPORT_JSON
     {"JSON_PARSE", "Uncategorized", "JSON_PARSE", "No description available."},
 #endif
-#if BPP_SUPPORT_JSON
+#if SUPPORT_JSON
     {"JSON_STRINGIFY$", "Uncategorized", "JSON_STRINGIFY$", "No description available."},
 #endif
-#if BPP_SUPPORT_XML
+#if SUPPORT_XML
     {"XML_PARSE", "Uncategorized", "XML_PARSE", "No description available."},
 #endif
-#if BPP_SUPPORT_XML
+#if SUPPORT_XML
     {"XML_STRINGIFY$", "Uncategorized", "XML_STRINGIFY$", "No description available."},
 #endif
     {"YAML_PARSE", "Uncategorized", "YAML_PARSE", "No description available."},
     {"YAML_STRINGIFY$", "Uncategorized", "YAML_STRINGIFY$", "No description available."},
-#if BPP_SUPPORT_INI
+#if SUPPORT_INI
     {"INI_PARSE", "Uncategorized", "INI_PARSE", "No description available."},
 #endif
-#if BPP_SUPPORT_INI
+#if SUPPORT_INI
     {"INI_STRINGIFY$", "Uncategorized", "INI_STRINGIFY$", "No description available."},
 #endif
     {"DIALECT_LOAD", "Uncategorized", "DIALECT_LOAD", "No description available."},
@@ -397,7 +397,9 @@ static const BuiltinHelpEntry g_builtin_help[] = {
     {"HOURS", "System & Environ", "HOURS", "Get numeric UTC hour (0-23)"},
     {"MINUTES", "System & Environ", "MINUTES", "Get numeric UTC minute (0-59)"},
     {"SECONDS", "System & Environ", "SECONDS", "Get numeric UTC second (0-59)"},
-    {"CLOCK$", "System & Environ", "CLOCK$", "Get current UTC date and time in ISO 8601 format"},
+    {"CLOCK$", "System & Environ", "CLOCK$", "Get current date and time string in YYYY-MM-DD HH:MM:SS format"},
+    {"CLOCK", "System & Environ", "CLOCK", "Get current numeric local date and time in YYYYMMDDhhmmss format"},
+    {"PI", "Math & Trigonometry", "PI", "Mathematical constant Pi (3.141592653589793)"},
     {"TZ", "System & Environ", "TZ", "Get numeric timezone offset (formatted as +/-HHMM)"},
     {"TZ$", "System & Environ", "TZ$", "Get local timezone abbreviation"},
     {"TIMEZONE$", "System & Environ", "TIMEZONE$", "Get full timezone name string"},

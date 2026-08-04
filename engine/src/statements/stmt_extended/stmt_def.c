@@ -25,7 +25,7 @@
  * - Dynamic resolution of implicit typings during subsequent allocations.
  *
  * SECTION 7: WHAT TO DO IF SOMETHING BREAKS
- * - Verify token types in include/bpp_lexer.h and registry in src/vm/vm.c.
+ * - Verify token types in include/lexer.h and registry in src/vm/vm.c.
  *
  * SECTION 8: ASSUMPTIONS
  * - The active procedure name from vm_get_active_proc(vm) matches VariableContext scoping.

@@ -1150,7 +1150,7 @@ static void execute_menu_edit(void) {
     } else if (menu_col == 5) {
         if (menu_row == 0) {
             char about_msg[128];
-            snprintf(about_msg, sizeof(about_msg), "BASIC++ Standard %s", BPP_VERSION_STRING);
+            snprintf(about_msg, sizeof(about_msg), "BASIC++ Standard %s", BASIC_VERSION_STRING);
             show_message(" About ", about_msg);
         }
     }

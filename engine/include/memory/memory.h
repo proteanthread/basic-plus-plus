@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_memory.h
+ * @file memory.h
  * @brief Memory context and allocation manager API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -32,8 +32,8 @@
  * - How to write external extensions: Extensions query memory stats or request scratch buffers via these APIs.
  */
 
-#ifndef BPP_MEMORY_H
-#define BPP_MEMORY_H
+#ifndef MEMORY_H
+#define MEMORY_H
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -140,4 +140,4 @@ size_t mem_get_used_ram(MemoryContext *ctx);
  */
 void mem_format_size(size_t bytes, char *buf, size_t buf_size);
 
-#endif /* BPP_MEMORY_H */
+#endif /* MEMORY_H */

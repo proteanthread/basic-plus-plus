@@ -13,11 +13,11 @@
  *   as well as setting, getting, and removing keys.
  * - Why it exists: Provides the runtime execution support for the VAL_MAP BValue type.
  * - Why it works this way: It maintains entries in a dynamic array. Lookups scan the array
- *   case-insensitively using strcasecmp (defined via bpp_config.h mapping to _stricmp on Windows).
+ *   case-insensitively using strcasecmp (defined via config.h mapping to _stricmp on Windows).
  *
  * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
  * - What can be changed: Internal entry arrays can be replaced with a hash table for O(1) performance.
- * - What cannot be changed: Opaque BppMap struct layout without updating include/bpp_map.h.
+ * - What cannot be changed: Opaque BppMap struct layout without updating include/runtime/map.h.
  * - What to expect: Releasing a map will recursively release its string and map values.
  *
  * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
@@ -32,7 +32,7 @@
 #include <string.h>
 
 
-BppMap *bpp_map_create(void) {
+BppMap *map_create(void) {
     BppMap *map = (BppMap *)calloc(1, sizeof(BppMap));
     if (!map) return NULL;
     map->ref_count = 1;
@@ -46,13 +46,13 @@ BppMap *bpp_map_create(void) {
     return map;
 }
 
-void bpp_map_add_ref(BppMap *map) {
+void map_add_ref(BppMap *map) {
     if (map) {
         map->ref_count++;
     }
 }
 
-void bpp_map_release(void *str_ctx, BppMap *map) {
+void map_release(void *str_ctx, BppMap *map) {
     if (!map) return;
     map->ref_count--;
     if (map->ref_count <= 0) {
@@ -61,7 +61,7 @@ void bpp_map_release(void *str_ctx, BppMap *map) {
             if (map->entries[i].val.type == VAL_STRING && map->entries[i].val.as.string) {
                 str_release((StringContext *)str_ctx, map->entries[i].val.as.string);
             } else if (map->entries[i].val.type == VAL_MAP && map->entries[i].val.as.map) {
-                bpp_map_release(str_ctx, map->entries[i].val.as.map);
+                map_release(str_ctx, map->entries[i].val.as.map);
             }
         }
         free(map->entries);
@@ -69,7 +69,7 @@ void bpp_map_release(void *str_ctx, BppMap *map) {
     }
 }
 
-bool bpp_map_set(void *str_ctx, BppMap *map, const char *key, BValue val) {
+bool map_set(void *str_ctx, BppMap *map, const char *key, BValue val) {
     if (!map || !key) return false;
 
     /* Search for existing key case-insensitively */
@@ -79,14 +79,14 @@ bool bpp_map_set(void *str_ctx, BppMap *map, const char *key, BValue val) {
             if (map->entries[i].val.type == VAL_STRING && map->entries[i].val.as.string) {
                 str_release((StringContext *)str_ctx, map->entries[i].val.as.string);
             } else if (map->entries[i].val.type == VAL_MAP && map->entries[i].val.as.map) {
-                bpp_map_release(str_ctx, map->entries[i].val.as.map);
+                map_release(str_ctx, map->entries[i].val.as.map);
             }
             /* Set new value */
             map->entries[i].val = val;
             if (val.type == VAL_STRING && val.as.string) {
                 str_add_ref(val.as.string);
             } else if (val.type == VAL_MAP && val.as.map) {
-                bpp_map_add_ref(val.as.map);
+                map_add_ref(val.as.map);
             }
             return true;
         }
@@ -113,13 +113,13 @@ bool bpp_map_set(void *str_ctx, BppMap *map, const char *key, BValue val) {
     if (val.type == VAL_STRING && val.as.string) {
         str_add_ref(val.as.string);
     } else if (val.type == VAL_MAP && val.as.map) {
-        bpp_map_add_ref(val.as.map);
+        map_add_ref(val.as.map);
     }
     map->count++;
     return true;
 }
 
-bool bpp_map_get(BppMap *map, const char *key, BValue *out_val) {
+bool map_get(BppMap *map, const char *key, BValue *out_val) {
     if (!map || !key || !out_val) return false;
     for (int i = 0; i < map->count; ++i) {
         if (strcasecmp(map->entries[i].key, key) == 0) {
@@ -130,7 +130,7 @@ bool bpp_map_get(BppMap *map, const char *key, BValue *out_val) {
     return false;
 }
 
-bool bpp_map_remove(void *str_ctx, BppMap *map, const char *key) {
+bool map_remove(void *str_ctx, BppMap *map, const char *key) {
     if (!map || !key) return false;
     for (int i = 0; i < map->count; ++i) {
         if (strcasecmp(map->entries[i].key, key) == 0) {
@@ -139,7 +139,7 @@ bool bpp_map_remove(void *str_ctx, BppMap *map, const char *key) {
             if (map->entries[i].val.type == VAL_STRING && map->entries[i].val.as.string) {
                 str_release((StringContext *)str_ctx, map->entries[i].val.as.string);
             } else if (map->entries[i].val.type == VAL_MAP && map->entries[i].val.as.map) {
-                bpp_map_release(str_ctx, map->entries[i].val.as.map);
+                map_release(str_ctx, map->entries[i].val.as.map);
             }
             /* Shift remainder down */
             for (int j = i; j < map->count - 1; ++j) {
@@ -154,16 +154,16 @@ bool bpp_map_remove(void *str_ctx, BppMap *map, const char *key) {
     return false;
 }
 
-int bpp_map_count(BppMap *map) {
+int map_count(BppMap *map) {
     return map ? map->count : 0;
 }
 
-const char *bpp_map_key(BppMap *map, int index) {
+const char *map_key(BppMap *map, int index) {
     if (!map || index < 0 || index >= map->count) return NULL;
     return map->entries[index].key;
 }
 
-bool bpp_map_has(BppMap *map, const char *key) {
+bool map_has(BppMap *map, const char *key) {
     if (!map || !key) return false;
     for (int i = 0; i < map->count; ++i) {
         if (strcasecmp(map->entries[i].key, key) == 0) {

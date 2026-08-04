@@ -313,7 +313,7 @@ static bool write_static_header(const char *path, DialectConfig *config) {
     fprintf(out, "#ifndef CUSTOM_DIALECT_STATIC_H\n");
     fprintf(out, "#define CUSTOM_DIALECT_STATIC_H\n\n");
     fprintf(out, "#include <string.h>\n");
-    fprintf(out, "#include \"bpp_dialect.h\"\n\n");
+    fprintf(out, "#include \"dialect.h\"\n\n");
     fprintf(out, "static inline void init_custom_static_dialect(BppDialect *d) {\n");
     fprintf(out, "    snprintf(d->name, sizeof(d->name), \"%s\");\n", config->name);
     
@@ -634,7 +634,7 @@ static bool compile_to_bpp(const char *source_text, const char *out_bpp_path) {
     return true;
 }
 
-static bool package_standalone(const char *bpp_path, const char *out_exe_path, const char *argv0, const char *stub_filename) {
+static bool package_standalone(const char *basic_path, const char *out_exe_path, const char *argv0, const char *stub_filename) {
     if (g_debug_mode) {
         printf("[DEBUG] Packaging standalone binary: '%s' using stub: '%s'\n", out_exe_path, stub_filename);
     }
@@ -681,12 +681,12 @@ static bool package_standalone(const char *bpp_path, const char *out_exe_path, c
     fclose(fstub);
     
     if (g_debug_mode) {
-        printf("[DEBUG] Appending BPP payload from '%s'...\n", bpp_path);
+        printf("[DEBUG] Appending BPP payload from '%s'...\n", basic_path);
     }
-    FILE *fbpp = fopen(bpp_path, "rb");
+    FILE *fbpp = fopen(basic_path, "rb");
     if (!fbpp) {
         fclose(fout);
-        fprintf(stderr, "Error: Could not read temporary BPP payload '%s'\n", bpp_path);
+        fprintf(stderr, "Error: Could not read temporary BPP payload '%s'\n", basic_path);
         return false;
     }
     
@@ -734,7 +734,7 @@ static bool package_standalone(const char *bpp_path, const char *out_exe_path, c
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        printf("BASIC++ Compiler (bppc) - v%s\n\n", BPP_VERSION_STRING);
+        printf("BASIC++ Compiler (bppc) - v%s\n\n", BASIC_VERSION_STRING);
         printf("Usage:\n");
         printf("  bppc <input.bas> <output.bpp>                         (Compile to Bytecode)\n");
         printf("  bppc --standalone <input.bas> <output.exe>            (Compile Standalone Binary for Host OS)\n");
@@ -795,7 +795,7 @@ int main(int argc, char **argv) {
     int arg_idx = 1;
     while (arg_idx < argc) {
         if (strcmp(argv[arg_idx], "--help") == 0 || strcmp(argv[arg_idx], "-h") == 0 || strcmp(argv[arg_idx], "-?") == 0) {
-            printf("BASIC++ Compiler (bppc) - v%s\n\n", BPP_VERSION_STRING);
+            printf("BASIC++ Compiler (bppc) - v%s\n\n", BASIC_VERSION_STRING);
             printf("Usage:\n");
             printf("  bppc <input.bas> <output.bpp>                         (Compile to Bytecode)\n");
             printf("  bppc --standalone <input.bas> <output.exe>            (Compile Standalone Binary for Host OS)\n");
@@ -834,7 +834,7 @@ int main(int argc, char **argv) {
             printf("THIS SOFTWARE IS NOT TO BE SOLD.\n");
             return 0;
         } else if (strcmp(argv[arg_idx], "--version") == 0) {
-            printf("bppc version %s (synchronized with BASIC++ %s)\n", BPP_VERSION_STRING, BPP_VERSION_STRING);
+            printf("bppc version %s (synchronized with BASIC++ %s)\n", BASIC_VERSION_STRING, BASIC_VERSION_STRING);
             return 0;
         } else if (strcmp(argv[arg_idx], "--debug") == 0) {
             g_debug_mode = true;

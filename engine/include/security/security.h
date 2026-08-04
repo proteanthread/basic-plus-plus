@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_security.h
+ * @file security.h
  * @brief Security sandbox and restriction registry API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -24,8 +24,8 @@
  * - Portability concerns: Fully standard C17.
  */
 
-#ifndef BPP_SECURITY_H
-#define BPP_SECURITY_H
+#ifndef SECURITY_H
+#define SECURITY_H
 
 typedef enum {
     SEC_OPEN = 0,        /* All operations permitted */
@@ -60,7 +60,7 @@ typedef enum {
     SECOP_COUNT = 19
 } BppSecOperation;
 
-#ifdef BPP_LITE_BUILD
+#ifdef BASIC_LITE_BUILD
 #define security_init(level) ((void)(level))
 #define security_get_level() (SEC_OPEN)
 #define security_set_level(level) ((void)(level))
@@ -101,4 +101,4 @@ void        security_restrict_list(void);
 int         security_restrict_count(void);
 #endif
 
-#endif /* BPP_SECURITY_H */
+#endif /* SECURITY_H */

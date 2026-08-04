@@ -21,7 +21,7 @@
  * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
  * - What can be changed: Default palette values, max mode count, synthesis
  *   algorithms for indexed-to-ARGB conversion.
- * - What cannot be changed: BGI_Context struct layout (must match bpp_bgi.h).
+ * - What cannot be changed: BGI_Context struct layout (must match bgi.h).
  * - What to expect: BGI_init() must be called before any other BGI_* calls.
  * - What to do if something breaks: Verify calloc succeeded, check mode
  *   handle bounds, ensure palette_size <= 256.

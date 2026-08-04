@@ -92,7 +92,7 @@ static bool parse_line_number(const char *str, BppLineNumber *out_line, const ch
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        printf("BASIC++ Script Runner (bscript) v%s \"%s\" (Profile: %s)\n", BPP_VERSION_STRING, BPP_VERSION_CODENAME, BPP_PROFILE_NAME);
+        printf("BASIC++ Script Runner (bscript) v%s \"%s\" (Profile: %s)\n", BASIC_VERSION_STRING, BASIC_VERSION_CODENAME, BASIC_PROFILE_NAME);
         printf("Usage: bscript <filename.bas>\n");
         return 1;
     }

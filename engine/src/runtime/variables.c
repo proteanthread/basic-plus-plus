@@ -102,7 +102,7 @@ static void normalize_name(VariableContext *ctx, char *dest, const char *src, si
 }
 
 /* Portable C17 strdup replacement to avoid POSIX warnings and dependencies */
-static char *bpp_strdup(const char *src) {
+static char *basic_strdup(const char *src) {
     size_t len = strlen(src);
     char *dest = (char *)calloc(1, len + 1);
     if (dest) {
@@ -111,7 +111,7 @@ static char *bpp_strdup(const char *src) {
     return dest;
 }
 
-static int bpp_strcasecmp(const char *s1, const char *s2) {
+static int basic_strcasecmp(const char *s1, const char *s2) {
     while (*s1 && *s2) {
         int c1 = (unsigned char)*s1;
         int c2 = (unsigned char)*s2;
@@ -208,7 +208,7 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
     while (entry) {
         if (strcmp(entry->name, lookup_name) == 0) {
             BValue *res = &entry->value;
-            if (bpp_strcasecmp(name, "_CLIPBOARD$") == 0) {
+            if (basic_strcasecmp(name, "_CLIPBOARD$") == 0) {
                 char *clip = platform_clipboard_get();
                 if (clip) {
                     if (res->as.string) {
@@ -217,18 +217,18 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
                     res->as.string = str_create(ctx->str, clip, strlen(clip));
                     free(clip);
                 }
-            } else if (bpp_strcasecmp(name, "HMOUSE") == 0 || bpp_strcasecmp(name, "_HMOUSE") == 0) {
+            } else if (basic_strcasecmp(name, "HMOUSE") == 0 || basic_strcasecmp(name, "_HMOUSE") == 0) {
                 int col = 1, row = 1;
                 platform_mouse_get_position(&col, &row);
                 res->type = VAL_NUMBER;
                 res->as.number = col;
-            } else if (bpp_strcasecmp(name, "VMOUSE") == 0 || bpp_strcasecmp(name, "_VMOUSE") == 0) {
+            } else if (basic_strcasecmp(name, "VMOUSE") == 0 || basic_strcasecmp(name, "_VMOUSE") == 0) {
                 int col = 1, row = 1;
                 platform_mouse_get_position(&col, &row);
                 res->type = VAL_NUMBER;
                 res->as.number = row;
-            } else if (bpp_strcasecmp(name, "MOUSE") == 0 || bpp_strcasecmp(name, "_MOUSE") == 0 ||
-                       bpp_strcasecmp(name, "MOUSE$") == 0 || bpp_strcasecmp(name, "_MOUSE$") == 0) {
+            } else if (basic_strcasecmp(name, "MOUSE") == 0 || basic_strcasecmp(name, "_MOUSE") == 0 ||
+                       basic_strcasecmp(name, "MOUSE$") == 0 || basic_strcasecmp(name, "_MOUSE$") == 0) {
                 int col = 1, row = 1;
                 platform_mouse_get_position(&col, &row);
                 int hover_char = 32;
@@ -243,7 +243,7 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
                 }
                 res->type = VAL_STRING;
                 res->as.string = str_create(ctx->str, buf, 1);
-            } else if (bpp_strcasecmp(name, "TRIG") == 0 || bpp_strcasecmp(name, "_TRIG") == 0) {
+            } else if (basic_strcasecmp(name, "TRIG") == 0 || basic_strcasecmp(name, "_TRIG") == 0) {
                 int mask = 0;
                 if (platform_mouse_get_button(0)) mask |= 1;
                 if (platform_mouse_get_button(1)) mask |= 2;
@@ -269,7 +269,7 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
     VarEntry *new_entry = (VarEntry *)calloc(1, sizeof(VarEntry));
     if (!new_entry) return NULL;
 
-    new_entry->name = bpp_strdup(lookup_name);
+    new_entry->name = basic_strdup(lookup_name);
     if (!new_entry->name) {
         free(new_entry);
         return NULL;
@@ -279,7 +279,7 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
     size_t len = strlen(lookup_name);
     char last = lookup_name[len - 1];
 
-    if (last == '$' || bpp_strcasecmp(name, "MOUSE") == 0 || bpp_strcasecmp(name, "_MOUSE") == 0) {
+    if (last == '$' || basic_strcasecmp(name, "MOUSE") == 0 || basic_strcasecmp(name, "_MOUSE") == 0) {
         new_entry->value.type = VAL_STRING;
         new_entry->value.as.string = NULL; /* Empty string */
     } else if (last == '%') {
@@ -301,24 +301,24 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
     new_entry->next = ctx->buckets[bucket];
     ctx->buckets[bucket] = new_entry;
 
-    if (bpp_strcasecmp(name, "_CLIPBOARD$") == 0) {
+    if (basic_strcasecmp(name, "_CLIPBOARD$") == 0) {
         char *clip = platform_clipboard_get();
         if (clip) {
             new_entry->value.as.string = str_create(ctx->str, clip, strlen(clip));
             free(clip);
         }
-    } else if (bpp_strcasecmp(name, "HMOUSE") == 0 || bpp_strcasecmp(name, "_HMOUSE") == 0) {
+    } else if (basic_strcasecmp(name, "HMOUSE") == 0 || basic_strcasecmp(name, "_HMOUSE") == 0) {
         int col = 1, row = 1;
         platform_mouse_get_position(&col, &row);
         new_entry->value.type = VAL_NUMBER;
         new_entry->value.as.number = col;
-    } else if (bpp_strcasecmp(name, "VMOUSE") == 0 || bpp_strcasecmp(name, "_VMOUSE") == 0) {
+    } else if (basic_strcasecmp(name, "VMOUSE") == 0 || basic_strcasecmp(name, "_VMOUSE") == 0) {
         int col = 1, row = 1;
         platform_mouse_get_position(&col, &row);
         new_entry->value.type = VAL_NUMBER;
         new_entry->value.as.number = row;
-    } else if (bpp_strcasecmp(name, "MOUSE") == 0 || bpp_strcasecmp(name, "_MOUSE") == 0 ||
-               bpp_strcasecmp(name, "MOUSE$") == 0 || bpp_strcasecmp(name, "_MOUSE$") == 0) {
+    } else if (basic_strcasecmp(name, "MOUSE") == 0 || basic_strcasecmp(name, "_MOUSE") == 0 ||
+               basic_strcasecmp(name, "MOUSE$") == 0 || basic_strcasecmp(name, "_MOUSE$") == 0) {
         int col = 1, row = 1;
         platform_mouse_get_position(&col, &row);
         int hover_char = 32;
@@ -330,7 +330,7 @@ BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missin
         char buf[2] = {(char)hover_char, 0};
         new_entry->value.type = VAL_STRING;
         new_entry->value.as.string = str_create(ctx->str, buf, 1);
-    } else if (bpp_strcasecmp(name, "TRIG") == 0 || bpp_strcasecmp(name, "_TRIG") == 0) {
+    } else if (basic_strcasecmp(name, "TRIG") == 0 || basic_strcasecmp(name, "_TRIG") == 0) {
         int mask = 0;
         if (platform_mouse_get_button(0)) mask |= 1;
         if (platform_mouse_get_button(1)) mask |= 2;
@@ -350,19 +350,19 @@ bool var_assign(VariableContext *ctx, const char *name, BValue val) {
         return false; /* Explicit declaration violation or OOM */
     }
 
-    if (bpp_strcasecmp(name, "_CLIPBOARD$") == 0 && val.type == VAL_STRING) {
+    if (basic_strcasecmp(name, "_CLIPBOARD$") == 0 && val.type == VAL_STRING) {
         const char *text = str_data(val.as.string);
         platform_clipboard_set(text ? text : "");
-    } else if (bpp_strcasecmp(name, "HMOUSE") == 0 || bpp_strcasecmp(name, "_HMOUSE") == 0) {
+    } else if (basic_strcasecmp(name, "HMOUSE") == 0 || basic_strcasecmp(name, "_HMOUSE") == 0) {
         int col = 1, row = 1;
         platform_mouse_get_position(&col, &row);
         platform_mouse_set_position((int)val.as.number, row);
-    } else if (bpp_strcasecmp(name, "VMOUSE") == 0 || bpp_strcasecmp(name, "_VMOUSE") == 0) {
+    } else if (basic_strcasecmp(name, "VMOUSE") == 0 || basic_strcasecmp(name, "_VMOUSE") == 0) {
         int col = 1, row = 1;
         platform_mouse_get_position(&col, &row);
         platform_mouse_set_position(col, (int)val.as.number);
-    } else if (bpp_strcasecmp(name, "MOUSE") == 0 || bpp_strcasecmp(name, "_MOUSE") == 0 ||
-               bpp_strcasecmp(name, "MOUSE$") == 0 || bpp_strcasecmp(name, "_MOUSE$") == 0) {
+    } else if (basic_strcasecmp(name, "MOUSE") == 0 || basic_strcasecmp(name, "_MOUSE") == 0 ||
+               basic_strcasecmp(name, "MOUSE$") == 0 || basic_strcasecmp(name, "_MOUSE$") == 0) {
         if (val.type == VAL_STRING) {
             const char *str = str_data(val.as.string);
             if (str && str[0]) {
@@ -403,11 +403,11 @@ bool var_assign(VariableContext *ctx, const char *name, BValue val) {
             return false; /* Type mismatch */
         }
         if (var->as.map) {
-            bpp_map_release(ctx->str, var->as.map);
+            map_release(ctx->str, var->as.map);
         }
         var->as.map = val.as.map;
         if (var->as.map) {
-            bpp_map_add_ref(var->as.map);
+            map_add_ref(var->as.map);
         }
     } else if (val.type == VAL_MAP) {
         if (var->type == VAL_STRING || var->type == VAL_INTEGER) {
@@ -416,7 +416,7 @@ bool var_assign(VariableContext *ctx, const char *name, BValue val) {
         var->type = VAL_MAP;
         var->as.map = val.as.map;
         if (var->as.map) {
-            bpp_map_add_ref(var->as.map);
+            map_add_ref(var->as.map);
         }
     } else if (val.type == VAL_ARRAY_REF) {
         if (var->type == VAL_STRING || var->type == VAL_INTEGER) {
@@ -425,7 +425,7 @@ bool var_assign(VariableContext *ctx, const char *name, BValue val) {
         if (var->type == VAL_ARRAY_REF && var->as.string) {
             str_release(ctx->str, var->as.string);
         } else if (var->type == VAL_MAP && var->as.map) {
-            bpp_map_release(ctx->str, var->as.map);
+            map_release(ctx->str, var->as.map);
         }
         var->type = VAL_ARRAY_REF;
         var->as.string = val.as.string;
@@ -445,7 +445,7 @@ bool var_assign(VariableContext *ctx, const char *name, BValue val) {
         if (var->type == VAL_ARRAY_REF && var->as.string) {
             str_release(ctx->str, var->as.string);
         } else if (var->type == VAL_MAP && var->as.map) {
-            bpp_map_release(ctx->str, var->as.map);
+            map_release(ctx->str, var->as.map);
         }
         var->type = VAL_NUMBER;
         var->as.number = val.as.number;
@@ -475,7 +475,7 @@ void var_clear_all(VariableContext *ctx) {
             if ((entry->value.type == VAL_STRING || entry->value.type == VAL_ARRAY_REF) && entry->value.as.string) {
                 str_release(ctx->str, entry->value.as.string);
             } else if (entry->value.type == VAL_MAP && entry->value.as.map) {
-                bpp_map_release(ctx->str, entry->value.as.map);
+                map_release(ctx->str, entry->value.as.map);
             }
             free(entry);
             entry = next;
@@ -522,7 +522,7 @@ BValue *var_declare(VariableContext *ctx, const char *name) {
     VarEntry *new_entry = (VarEntry *)calloc(1, sizeof(VarEntry));
     if (!new_entry) return NULL;
 
-    new_entry->name = bpp_strdup(lookup_name);
+    new_entry->name = basic_strdup(lookup_name);
     if (!new_entry->name) {
         free(new_entry);
         return NULL;
@@ -582,7 +582,7 @@ void var_clear_scope(VariableContext *ctx, const char *prefix) {
                 if ((temp->value.type == VAL_STRING || temp->value.type == VAL_ARRAY_REF) && temp->value.as.string) {
                     str_release(ctx->str, temp->value.as.string);
                 } else if (temp->value.type == VAL_MAP && temp->value.as.map) {
-                    bpp_map_release(ctx->str, temp->value.as.map);
+                    map_release(ctx->str, temp->value.as.map);
                 }
                 free(temp->name);
                 free(temp);
@@ -690,7 +690,7 @@ void var_print_all(VariableContext *ctx, void *vdev_ptr) {
     if (vdev) {
         vdev_printf(vdev, "--- Active Variables ---\n");
     }
-    bpp_log_info("--- Active Variables ---");
+    log_info("--- Active Variables ---");
 
     int count = 0;
     for (int i = 0; i < HASH_BUCKETS; ++i) {
@@ -714,7 +714,7 @@ void var_print_all(VariableContext *ctx, void *vdev_ptr) {
             if (vdev) {
                 vdev_printf(vdev, "  %s = %s\n", entry->name, val_buf);
             }
-            bpp_log_info("  %s = %s", entry->name, val_buf);
+            log_info("  %s = %s", entry->name, val_buf);
             count++;
             entry = entry->next;
         }
@@ -723,7 +723,7 @@ void var_print_all(VariableContext *ctx, void *vdev_ptr) {
     if (vdev) {
         vdev_printf(vdev, "Total variables: %d\n", count);
     }
-    bpp_log_info("Total variables: %d", count);
+    log_info("Total variables: %d", count);
 }
 
 bool var_serialize(VariableContext *ctx, void *fp) {
@@ -849,7 +849,7 @@ bool var_deserialize(VariableContext *ctx, void *fp) {
                     return false;
                 }
                 a_buf[a_len] = '\0';
-                val.as.array_name = bpp_strdup(a_buf);
+                val.as.array_name = basic_strdup(a_buf);
                 free(a_buf);
             } else {
                 val.as.array_name = NULL;
@@ -938,7 +938,7 @@ void var_clear_for_chain(VariableContext *ctx) {
                 if ((entry->value.type == VAL_STRING || entry->value.type == VAL_ARRAY_REF) && entry->value.as.string) {
                     str_release(ctx->str, entry->value.as.string);
                 } else if (entry->value.type == VAL_MAP && entry->value.as.map) {
-                    bpp_map_release(ctx->str, entry->value.as.map);
+                    map_release(ctx->str, entry->value.as.map);
                 }
                 free(entry);
             }

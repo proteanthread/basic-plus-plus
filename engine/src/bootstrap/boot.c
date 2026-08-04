@@ -42,7 +42,7 @@
 #include "device/fujinet.h"
 #include "lexer/lexer.h"
 #include "core/dialect.h"
-#ifdef BPP_USE_CUSTOM_STATIC_DIALECT
+#ifdef BASIC_USE_CUSTOM_STATIC_DIALECT
 #include "core/custom_dialect_static.h"
 #endif
 #include <stdlib.h>
@@ -56,7 +56,7 @@ int g_is_repl = 0;
 void mod_mathext_register(void);
 void register_crypto_functions(void);
 void register_string_ext_functions(void);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 void register_arrayext_functions(void);
 #endif
 void register_array_sort_functions(void);
@@ -101,7 +101,7 @@ BootContext *boot_execute(const BootConfig *config) {
     
     register_crypto_functions();
     register_string_ext_functions();
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     register_arrayext_functions();
 #endif
     register_regex_functions();
@@ -111,10 +111,10 @@ BootContext *boot_execute(const BootConfig *config) {
     platform_init();
 
     /* Phase 1: Core Memory System Initialization */
-    size_t prog_mem = config->prog_mem ? config->prog_mem : boot_get_mem_size("BPP_PROG_MEM", BPP_DEFAULT_PROG_MEM);
-    size_t var_mem  = config->var_mem ? config->var_mem : boot_get_mem_size("BPP_VAR_MEM", BPP_DEFAULT_VAR_MEM);
-    size_t str_mem  = config->str_mem ? config->str_mem : boot_get_mem_size("BPP_STR_MEM", BPP_DEFAULT_STR_MEM);
-    size_t scratch  = config->scratch_mem ? config->scratch_mem : boot_get_mem_size("BPP_SCRATCH_MEM", BPP_DEFAULT_SCRATCH_MEM);
+    size_t prog_mem = config->prog_mem ? config->prog_mem : boot_get_mem_size("BASIC_PROG_MEM", BASIC_DEFAULT_PROG_MEM);
+    size_t var_mem  = config->var_mem ? config->var_mem : boot_get_mem_size("BASIC_VAR_MEM", BASIC_DEFAULT_VAR_MEM);
+    size_t str_mem  = config->str_mem ? config->str_mem : boot_get_mem_size("BASIC_STR_MEM", BASIC_DEFAULT_STR_MEM);
+    size_t scratch  = config->scratch_mem ? config->scratch_mem : boot_get_mem_size("BASIC_SCRATCH_MEM", BASIC_DEFAULT_SCRATCH_MEM);
 
     ctx->mem = mem_init(prog_mem, var_mem, str_mem, scratch);
     if (!ctx->mem) {
@@ -135,7 +135,7 @@ BootContext *boot_execute(const BootConfig *config) {
         return NULL;
     }
 
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     /* Initialize FujiNet system and register virtual devices */
     fujinet_init_system(ctx->vm);
     vdev_register(ctx->vdev, fujinet_create_n_dev(ctx->vm));
@@ -178,7 +178,7 @@ BootContext *boot_execute(const BootConfig *config) {
     module_register(&stdlib_mod);
     module_activate("STDLIB", ctx->vm);
 
-#if BPP_SUPPORT_MAT
+#if SUPPORT_MAT
     /* Register and activate MATHEXT built-in module */
     mod_mathext_register();
     module_activate("MATHEXT", ctx->vm);
@@ -189,11 +189,11 @@ BootContext *boot_execute(const BootConfig *config) {
 
     /* Phase 6: Standard Library (Registered inside vm_init) */
     
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     /* Dialect selection is a NOP under unified universal BASIC++ */
 #endif
 
-#ifdef BPP_USE_CUSTOM_STATIC_DIALECT
+#ifdef BASIC_USE_CUSTOM_STATIC_DIALECT
     BppDialect *d_custom = dialect_create();
     if (d_custom) {
         init_custom_static_dialect(d_custom);
@@ -244,7 +244,7 @@ void boot_shutdown(BootContext *ctx) {
     /* Shutdown Task Manager */
     task_mgr_shutdown();
 
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     /* Shutdown FujiNet System */
     fujinet_shutdown_system();
 #endif

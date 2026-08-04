@@ -185,7 +185,9 @@ int eval_get_precedence(BppTokenType type) {
             return 6; /* Multiplicative */
         case TOK_UNARY_MINUS:
         case TOK_UNARY_PLUS:
-            return 7; /* Unary (highest) */
+            return 7; /* Unary */
+        case TOK_POW:
+            return 8; /* Exponentiation (highest operator precedence) */
         default:
             return 0; /* Parentheses / Symbols */
     }
@@ -201,12 +203,16 @@ bool eval_has_precedence(VMContext *vm, BppTokenType top, BppTokenType op) {
         }
         return true;
     }
+    if (top == TOK_POW && op == TOK_POW) {
+        return false; /* Right-associative: 2^3^2 => 2^(3^2) */
+    }
     return eval_get_precedence(top) >= eval_get_precedence(op);
 }
 
 /* Check if token type is an operator */
 bool eval_is_operator(BppTokenType type) {
     return (type == TOK_PLUS || type == TOK_MINUS || type == TOK_MUL || type == TOK_DIV ||
+            type == TOK_POW ||
             type == TOK_EQ || type == TOK_NE || type == TOK_LT || type == TOK_GT ||
             type == TOK_LE || type == TOK_GE || type == TOK_UNARY_MINUS || type == TOK_UNARY_PLUS ||
             type == TOK_AND || type == TOK_OR || type == TOK_NOT || type == TOK_XOR);

@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_bus.h
+ * @file bus.h
  * @brief Virtual Hardware Port & MMIO Bus interface.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -14,8 +14,8 @@
  *   and BIOS structures.
  */
 
-#ifndef BPP_BUS_H
-#define BPP_BUS_H
+#ifndef DEVICE_BUS_H
+#define DEVICE_BUS_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -37,4 +37,4 @@ void vdev_bus_set_model(MockBiosModel model);
 MockBiosModel vdev_bus_get_model(void);
 void vdev_bus_set_ram(uint8_t *ram, size_t size);
 
-#endif /* BPP_BUS_H */
+#endif /* DEVICE_BUS_H */

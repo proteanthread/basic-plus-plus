@@ -1,6 +1,6 @@
 # Security Sandbox API Reference
 
-Header File: [`include/bpp_security.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_security.h)
+Header File: [`include/security.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/security.h)
 
 ## Overview
 Enforces permission checks, capabilities restrictions, and security policies on system calls.
@@ -30,7 +30,7 @@ Enforces permission checks, capabilities restrictions, and security policies on 
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_security.h"
+#include "security.h"
 
 void check_sec() {
     if (security_check(SECOP_FILE_READ, 0) != 0) {

@@ -11,7 +11,7 @@
 #include "runtime/metadata.h"
 #include "runtime/vfs.h"
 #include "runtime/vnet.h"
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 #include "memory/segmented_mem.h"
 #endif
 #include "device/usb.h"

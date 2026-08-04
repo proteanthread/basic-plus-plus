@@ -1,6 +1,6 @@
 # Module Loader API Reference
 
-Header File: [`include/bpp_module.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_module.h)
+Header File: [`include/module.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/module.h)
 
 ## Overview
 Implements validation, registration, activation, and loading pipeline of shared library plugins.
@@ -22,7 +22,7 @@ Implements validation, registration, activation, and loading pipeline of shared 
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_module.h"
+#include "module.h"
 
 void load_mod() {
     module_load_dynamic(NULL, "custom_plugin.dll");

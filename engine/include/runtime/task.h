@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_task.h
+ * @file task.h
  * @brief Multitasking Task Manager API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -24,8 +24,8 @@
  * - Portability concerns: Stubbed on FreeDOS. Standard C17.
  */
 
-#ifndef BPP_TASK_H
-#define BPP_TASK_H
+#ifndef RUNTIME_TASK_H
+#define RUNTIME_TASK_H
 
 #include "device/vdev.h"
 #include "platform/platform.h"
@@ -67,4 +67,4 @@ void task_kill(VDevContext *vdev, int pid);
 void task_join(int pid);
 int  task_get_status(int pid);
 
-#endif /* BPP_TASK_H */
+#endif /* RUNTIME_TASK_H */

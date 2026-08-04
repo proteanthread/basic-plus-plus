@@ -1979,7 +1979,7 @@ BppError stmt_sound_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     /* Security Check: requires virtual device access */
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;
@@ -2035,7 +2035,7 @@ BppError stmt_play_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     /* Security Check: requires virtual device access */
     if (security_check(SECOP_VDEV, 0) != 0) {
         err.code = 70;

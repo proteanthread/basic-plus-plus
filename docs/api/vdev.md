@@ -1,6 +1,6 @@
 # Virtual Device framework API Reference
 
-Header File: [`include/bpp_vdev.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_vdev.h)
+Header File: [`include/vdev.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/vdev.h)
 
 ## Overview
 Exposes virtual hardware/device operations hooks (VDevOps) for custom peripherals.
@@ -39,7 +39,7 @@ Exposes virtual hardware/device operations hooks (VDevOps) for custom peripheral
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_vdev.h"
+#include "vdev.h"
 
 extern VDev vdev_console_create(void);
 

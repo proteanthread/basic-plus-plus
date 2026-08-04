@@ -80,21 +80,21 @@ BppSocket platform_socket_connect(const char *host, int port, int socktype, BppE
     
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = (socktype == BPP_SOCK_DGRAM) ? SOCK_DGRAM : SOCK_STREAM;
+    hints.ai_socktype = (socktype == BASIC_SOCK_DGRAM) ? SOCK_DGRAM : SOCK_STREAM;
     
     if (getaddrinfo(host, port_str, &hints, &res) != 0) {
         if (err) { err->code = 57; err->message = "Host resolution failed"; }
-        return BPP_INVALID_SOCKET;
+        return BASIC_INVALID_SOCKET;
     }
     
     SOCKET sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (sock == INVALID_SOCKET) {
         freeaddrinfo(res);
         if (err) { err->code = 57; err->message = "Socket creation failed"; }
-        return BPP_INVALID_SOCKET;
+        return BASIC_INVALID_SOCKET;
     }
     
-    if (socktype == BPP_SOCK_STREAM) {
+    if (socktype == BASIC_SOCK_STREAM) {
         if (connect(sock, res->ai_addr, (int)res->ai_addrlen) == SOCKET_ERROR) {
 #if defined(_WIN32)
             closesocket(sock);
@@ -103,7 +103,7 @@ BppSocket platform_socket_connect(const char *host, int port, int socktype, BppE
 #endif
             freeaddrinfo(res);
             if (err) { err->code = 57; err->message = "Connection failed"; }
-            return BPP_INVALID_SOCKET;
+            return BASIC_INVALID_SOCKET;
         }
     }
     
@@ -112,7 +112,7 @@ BppSocket platform_socket_connect(const char *host, int port, int socktype, BppE
 #else
     (void)host; (void)port; (void)socktype;
     if (err) { err->code = 57; err->message = "Networking not supported on this platform preset"; }
-    return BPP_INVALID_SOCKET;
+    return BASIC_INVALID_SOCKET;
 #endif
 }
 
@@ -208,7 +208,7 @@ BppSocket platform_socket_listen(int port, BppError *err) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET) {
         if (err) { err->code = 57; err->message = "Socket creation failed"; }
-        return BPP_INVALID_SOCKET;
+        return BASIC_INVALID_SOCKET;
     }
 
     int opt = 1;
@@ -231,7 +231,7 @@ BppSocket platform_socket_listen(int port, BppError *err) {
         close(sock);
 #endif
         if (err) { err->code = 57; err->message = "Socket bind failed"; }
-        return BPP_INVALID_SOCKET;
+        return BASIC_INVALID_SOCKET;
     }
 
     if (listen(sock, 5) == SOCKET_ERROR) {
@@ -241,13 +241,13 @@ BppSocket platform_socket_listen(int port, BppError *err) {
         close(sock);
 #endif
         if (err) { err->code = 57; err->message = "Socket listen failed"; }
-        return BPP_INVALID_SOCKET;
+        return BASIC_INVALID_SOCKET;
     }
 
     return (BppSocket)sock;
 #else
     (void)port; if (err) { err->code = 57; err->message = "Sockets not supported"; }
-    return BPP_INVALID_SOCKET;
+    return BASIC_INVALID_SOCKET;
 #endif
 }
 
@@ -257,7 +257,7 @@ BppSocket platform_socket_accept(BppSocket listen_sock, char *client_ip_buf, int
     socklen_t addr_len = sizeof(addr);
     SOCKET client_sock = accept((SOCKET)listen_sock, &addr, &addr_len);
     if (client_sock == INVALID_SOCKET) {
-        return BPP_INVALID_SOCKET;
+        return BASIC_INVALID_SOCKET;
     }
 
     if (client_ip_buf && ip_buf_len > 0) {
@@ -275,7 +275,7 @@ BppSocket platform_socket_accept(BppSocket listen_sock, char *client_ip_buf, int
 #else
     (void)listen_sock; (void)client_ip_buf; (void)ip_buf_len;
     if (err) { err->code = 57; err->message = "Sockets not supported"; }
-    return BPP_INVALID_SOCKET;
+    return BASIC_INVALID_SOCKET;
 #endif
 }
 

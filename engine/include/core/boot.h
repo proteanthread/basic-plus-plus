@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_boot.h
+ * @file boot.h
  * @brief Deterministic 9-Phase Boot Controller API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -31,8 +31,8 @@
  * - How to write external extensions: External plugins compile hooks and register during boot Phase 5.
  */
 
-#ifndef BPP_BOOT_H
-#define BPP_BOOT_H
+#ifndef CORE_BOOT_H
+#define CORE_BOOT_H
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -76,4 +76,4 @@ BootContext *boot_execute(const BootConfig *config);
 void boot_shutdown(BootContext *ctx);
 void boot_shutdown_ex(BootContext *ctx, bool force_exit);
 
-#endif /* BPP_BOOT_H */
+#endif /* CORE_BOOT_H */

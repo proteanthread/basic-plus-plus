@@ -7,7 +7,7 @@
 ## Step 1: Implement Function Handler
 Implement the function signature taking values and returning a result:
 ```c
-#include "bpp_funcreg.h"
+#include "funcreg.h"
 
 BValue fn_my_func(BValue *args, int argc, void *rt) {
     (void)rt;

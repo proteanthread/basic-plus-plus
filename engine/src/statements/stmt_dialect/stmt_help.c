@@ -36,7 +36,7 @@
  * - Adding sub-topic help search, fuzzy keyword matching, or interactive pagination.
  *
  * SECTION 11: EXTERNAL EXTENSION HOOKS
- * - Dynamic modules can register help details via bpp_module_init entry points.
+ * - Dynamic modules can register help details via module_init entry points.
  */
 
 #include "vm/vm.h"

@@ -100,7 +100,7 @@ CATALOG
 Keywords within each category are sorted alphabetically. The final line shows total counts.
 
 > [!NOTE]
-> The `CATALOG` command is **unavailable** in BASIC++ Lite builds. It is excluded by the `BPP_LITE_BUILD` preprocessor guard in `help.h`. In Lite builds, use `HELP` for keyword reference.
+> The `CATALOG` command is **unavailable** in BASIC++ Lite builds. It is excluded by the `BASIC_LITE_BUILD` preprocessor guard in `help.h`. In Lite builds, use `HELP` for keyword reference.
 
 ---
 

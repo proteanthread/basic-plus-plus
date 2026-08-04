@@ -1,6 +1,6 @@
 # Virtual Console API Reference
 
-Header File: [`include/bpp_vcon.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_vcon.h)
+Header File: [`include/vcon.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/vcon.h)
 
 ## Overview
 Manages standard character I/O, cursor controls, print formatting, and escape sequences.
@@ -25,7 +25,7 @@ Manages standard character I/O, cursor controls, print formatting, and escape se
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_vcon.h"
+#include "vcon.h"
 
 void print_con(VMContext *vm) {
     vcon_write(vm, (const uint8_t *)"Hello", 5);

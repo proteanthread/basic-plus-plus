@@ -1,6 +1,6 @@
 # Version Subsystem API Reference
 
-Header File: [`include/bpp_version.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_version.h)
+Header File: [`include/basic_version.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/basic_version.h)
 
 ## Overview
 Exposes compilation date, version strings, build tags, and feature flags.
@@ -9,11 +9,11 @@ Exposes compilation date, version strings, build tags, and feature flags.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_version.h"
+#include "basic_version.h"
 #include <stdio.h>
 
 void print_version() {
-    printf("Version: %s\n", bpp_version_string());
+    printf("Version: %s\n", basic_version_string());
 }
 ```
 

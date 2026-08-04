@@ -1,6 +1,6 @@
 # Editor Integration API Reference
 
-Header File: [`include/bpp_editor.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_editor.h)
+Header File: [`include/editor.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/editor.h)
 
 ## Overview
 Binds editor modes (MS-DOS EDIT clone, Vi, WordStar) to standard virtual console widgets.
@@ -21,7 +21,7 @@ Binds editor modes (MS-DOS EDIT clone, Vi, WordStar) to standard virtual console
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_editor.h"
+#include "editor.h"
 
 void start_edit() {
     // Editor start

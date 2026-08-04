@@ -129,7 +129,7 @@ static int con_putc(VDev *dev, int c) {
         vcon_write_char(g_vcon_context, active_idx, c);
     }
     char c_str[2] = {(char)c, '\0'};
-    bpp_log_write_out(c_str, 1);
+    log_write_out(c_str, 1);
     int res = putchar(c);
     console_draw_mouse_cursor();
     return res;
@@ -147,7 +147,7 @@ static int con_puts(VDev *dev, const char *s) {
         }
     }
     if (s) {
-        bpp_log_write_out(s, strlen(s));
+        log_write_out(s, strlen(s));
     }
     int res = fputs(s, stdout);
     console_draw_mouse_cursor();
@@ -203,19 +203,19 @@ VDev vdev_console_create(void) {
     return dev;
 }
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 extern void vdev_gfx_beep(VDevContext *ctx);
 #endif
 
 void vdev_play_beep(VDevContext *ctx) {
-#ifdef BPP_LITE_BUILD
+#ifdef BASIC_LITE_BUILD
     vdev_putc(ctx, '\a');
 #else
     vdev_gfx_beep(ctx);
 #endif
 }
 
-#ifdef BPP_LITE_BUILD
+#ifdef BASIC_LITE_BUILD
 void vdev_music_clear(void) {
     /* Stub for Lite builds */
 }

@@ -7,9 +7,9 @@
 ## Step 1: Implement Statement Handler
 Define a function matching the parser signature:
 ```c
-#include "bpp_stmt.h"
-#include "bpp_lexer.h"
-#include "bpp_eval.h"
+#include "stmt.h"
+#include "lexer.h"
+#include "eval.h"
 #include <stdio.h>
 #include <string.h>
 

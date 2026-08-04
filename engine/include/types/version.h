@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_version.h
+ * @file basic_version.h
  * @brief Version information for the BASIC++ interpreter.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -16,7 +16,7 @@
  *
  * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
  * - What can be changed: The major, minor, patch numbers, codename, and release date when releasing new features.
- * - What cannot be changed: The macro names themselves (BPP_VERSION_MAJOR, etc.) as the interpreter REPL and build files query them.
+ * - What cannot be changed: The macro names themselves (BASIC_VERSION_MAJOR, etc.) as the interpreter REPL and build files query them.
  * - What to expect: Changes here will propagate to all binary editions and self-test reports during compilation.
  * - What to do if something breaks: Ensure the version definitions compile without syntax errors and that the date format remains a string.
  *
@@ -29,14 +29,14 @@
  * - How to write external extensions: External plugins can query the version from the VM context to check version compatibility.
  */
 
-#ifndef BPP_VERSION_H
-#define BPP_VERSION_H
+#ifndef TYPES_VERSION_H
+#define TYPES_VERSION_H
 
-#define BPP_VERSION_MAJOR    6
-#define BPP_VERSION_MINOR    5
-#define BPP_VERSION_PATCH    1
-#define BPP_VERSION_STRING   "6.5.1"
-#define BPP_VERSION_DATE     "2026-08-03"
-#define BPP_VERSION_CODENAME "Phoenix"
+#define BASIC_VERSION_MAJOR    6
+#define BASIC_VERSION_MINOR    5
+#define BASIC_VERSION_PATCH    1
+#define BASIC_VERSION_STRING   "6.5.1"
+#define BASIC_VERSION_DATE     "2026-08-03"
+#define BASIC_VERSION_CODENAME "Phoenix"
 
-#endif /* BPP_VERSION_H */
+#endif /* TYPES_VERSION_H */

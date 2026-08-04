@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_fujinet.h
+ * @file fujinet.h
  * @brief FujiNet Virtual Device Driver API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -14,8 +14,8 @@
  * - Why it works this way: It bridges standard BASIC++ I/O channel calls to Winsock/POSIX sockets and host OS time.
  */
 
-#ifndef BPP_FUJINET_H
-#define BPP_FUJINET_H
+#ifndef DEVICE_FUJINET_H
+#define DEVICE_FUJINET_H
 
 #include "device/vdev.h"
 #include "vm/vm.h"
@@ -45,4 +45,4 @@ VDev fujinet_create_fuji_dev(VMContext *vm);
  */
 VDev fujinet_create_clock_dev(VMContext *vm);
 
-#endif /* BPP_FUJINET_H */
+#endif /* DEVICE_FUJINET_H */

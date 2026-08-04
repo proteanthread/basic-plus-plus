@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_spec.h
+ * @file spec.h
  * @brief Dynamic Keyword Specification & Feature Registry API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -15,8 +15,8 @@
  *   to dynamic lexer keyword IDs and companion BASIC++ library file paths.
  */
 
-#ifndef BPP_SPEC_H
-#define BPP_SPEC_H
+#ifndef RUNTIME_SPEC_H
+#define RUNTIME_SPEC_H
 
 #include <stdbool.h>
 
@@ -80,4 +80,4 @@ int spec_get_count(void);
  */
 SpecObject *spec_get_by_index(int idx);
 
-#endif /* BPP_SPEC_H */
+#endif /* RUNTIME_SPEC_H */

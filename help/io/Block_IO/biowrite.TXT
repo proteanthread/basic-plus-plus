@@ -9,7 +9,7 @@ Writes a raw binary string payload directly into a block device. Because BASIC++
 3. Code Examples
 `basic
 10 REM Write signature to block
-20 WROTE = BIOWRITE(1, "BPP_MAGIC")
+20 WROTE = BIOWRITE(1, "BASIC_MAGIC")
 30 PRINT "WROTE "; WROTE; " BYTES"
 `
 

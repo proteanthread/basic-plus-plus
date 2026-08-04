@@ -1,6 +1,6 @@
 # Virtual Filesystem API Reference
 
-Header File: [`include/bpp_vfs.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_vfs.h)
+Header File: [`include/vfs.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/vfs.h)
 
 ## Overview
 Provides a sandboxed unified directory structure mapping memory buffers or disk to paths.
@@ -21,7 +21,7 @@ Provides a sandboxed unified directory structure mapping memory buffers or disk 
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_vfs.h"
+#include "vfs.h"
 
 void mount_vfs(VfsContext *ctx) {
     vfs_mount(ctx, "/ram", "/tmp", MNT_DIR);

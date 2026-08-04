@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_vfs.h
+ * @file vfs.h
  * @brief Virtual Filesystem (VFS) Mount & Path virtualization interface.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -16,8 +16,8 @@
  *   a thread-safe manner.
  */
 
-#ifndef BPP_VFS_H
-#define BPP_VFS_H
+#ifndef RUNTIME_VFS_H
+#define RUNTIME_VFS_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -57,4 +57,4 @@ void        vfs_set_search_path(VfsContext *ctx, const char *path);
 const char *vfs_get_category_path(VfsContext *ctx, const char *category);
 void        vfs_set_category_path(VfsContext *ctx, const char *category, const char *path);
 
-#endif /* BPP_VFS_H */
+#endif /* RUNTIME_VFS_H */

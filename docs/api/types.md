@@ -1,6 +1,6 @@
 # Type System API Reference
 
-Header File: [`include/bpp_types.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_types.h)
+Header File: [`include/types.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/types.h)
 
 ## Overview
 Defines core value representation (BValue) for numbers, strings, arrays, and objects.
@@ -14,7 +14,7 @@ Defines core value representation (BValue) for numbers, strings, arrays, and obj
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_types.h"
+#include "types.h"
 #include <stdio.h>
 
 void show_val(BValue val) {

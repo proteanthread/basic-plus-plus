@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_segmented_mem.h
+ * @file segmented_mem.h
  * @brief Virtual Segment Emulator for BASIC++
  * 
  * What it does: Provides safe emulation of legacy 16-bit segmented memory (DEF SEG, VARPTR, PEEK, POKE).
@@ -15,8 +15,8 @@
  * Portability concerns: None, strictly hardware independent.
  */
 
-#ifndef BPP_SEGMENTED_MEM_H
-#define BPP_SEGMENTED_MEM_H
+#ifndef MEMORY_SEGMENTED_MEM_H
+#define MEMORY_SEGMENTED_MEM_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -41,4 +41,4 @@ BValue *vmem_resolve_handle(VMemContext *ctx, uint32_t handle, bool *is_string_d
 int vmem_peek(VMemContext *ctx, uint16_t address, uint8_t *out_val);
 int vmem_poke(VMemContext *ctx, uint16_t address, uint8_t val);
 
-#endif /* BPP_SEGMENTED_MEM_H */
+#endif /* MEMORY_SEGMENTED_MEM_H */

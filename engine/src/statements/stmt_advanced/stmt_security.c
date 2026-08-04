@@ -15,7 +15,7 @@
  * - What to do if something breaks: Trace parsing tokens and check enum translations.
  */
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 
 #include "stmt/stmt.h"
 #include "lexer/lexer.h"
@@ -227,5 +227,5 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-#endif /* BPP_LITE_BUILD */
+#endif /* BASIC_LITE_BUILD */
 

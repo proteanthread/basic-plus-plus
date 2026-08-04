@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_vnet.h
+ * @file vnet.h
  * @brief Virtual Network Stack & Sockets (VNet) interface.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -14,8 +14,8 @@
  *   to virtual network channels.
  */
 
-#ifndef BPP_VNET_H
-#define BPP_VNET_H
+#ifndef RUNTIME_VNET_H
+#define RUNTIME_VNET_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -47,4 +47,4 @@ int  vnet_http_status(VNetContext *ctx, int channel);
 /* VDev interface registration wrapper */
 VDev vnet_create_vdev(VNetContext *ctx, const char *name, const char *protocol, const char *host, int port);
 
-#endif /* BPP_VNET_H */
+#endif /* RUNTIME_VNET_H */

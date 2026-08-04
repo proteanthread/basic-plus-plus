@@ -19,7 +19,7 @@
  * Assumptions: Lines are null-terminated 7-bit ASCII.
  * Portability concerns: Strict C17. Uses _fullpath (Win) vs realpath (POSIX).
  * Future expansions: Syntax highlighting token boundary tracking.
- * External extension hooks: Called via bpp_editor_core.h API.
+ * External extension hooks: Called via editor_core.h API.
  */
 
 #include "editor/editor_core.h"

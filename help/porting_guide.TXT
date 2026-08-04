@@ -63,7 +63,7 @@ in `lite_stubs.c` (see Section 4).
 Define these macros in your build environment (CFLAGS) to bypass subsystems 
 globally without editing source files:
 
-* BPP_LITE_BUILD: 
+* BASIC_LITE_BUILD: 
   Disables heavy sub-system initialization in boot.c, drastically reducing 
   memory footprint. Mandatory for microcontrollers.
 * NO_SDL2: 
@@ -71,7 +71,7 @@ globally without editing source files:
   Severing this dependency makes the build purely POSIX/CLI driven.
 * INPUT_CONSOLE:
   Forces standard library console input instead of event-driven SDL input.
-* BPP_NO_NETWORK:
+* BASIC_NO_NETWORK:
   Disables the internal VFS networking socket wrappers (removes `<winsock2.h>`).
 
 *** EXTREME MEMORY TUNING FOR ARDUINO / ESP32 ***

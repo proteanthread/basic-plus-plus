@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_types.h
+ * @file types.h
  * @brief Core types, value representations, and structured errors for BASIC++.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -32,8 +32,8 @@
  * - How to write external extensions: External plugins interact with the VM using BValue structures.
  */
 
-#ifndef BPP_TYPES_H
-#define BPP_TYPES_H
+#ifndef TYPES_H
+#define TYPES_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -119,4 +119,4 @@ typedef struct {
     const char      *file;       /* Host source file containing the emitter */
 } BppError;
 
-#endif /* BPP_TYPES_H */
+#endif /* TYPES_H */

@@ -9,13 +9,13 @@
  * Why it exists: Provides Ring 1 data structure utilities independent of VM context.
  * Why it works this way: Uses dynamic arrays with case-insensitive key lookup.
  * What can be changed: Internal storage array can be upgraded to hash bucket arrays.
- * What cannot be changed: BppMap public functions exposed via bpp_collections.h.
+ * What cannot be changed: BppMap public functions exposed via runtime/collections.h.
  * What to expect: Reliable key-value storage and JSON/XML/YAML/INI string conversion.
  * What to do if something breaks: Check key allocation and free routines.
  * Assumptions: Keys are 7-bit ASCII strings.
  * Portability concerns: Strict C17 compliant, pure 7-bit ASCII.
  * Future expansions: Add BSON binary serialization support.
- * External extension hooks: Exposed via bpp_collections.h.
+ * External extension hooks: Exposed via runtime/collections.h.
  */
 
 #include "runtime/collections.h"
@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-BppMap *bpp_map_create(void) {
+BppMap *map_create(void) {
     BppMap *map = (BppMap *)calloc(1, sizeof(BppMap));
     if (!map) return NULL;
     map->ref_count = 1;
@@ -37,13 +37,13 @@ BppMap *bpp_map_create(void) {
     return map;
 }
 
-void bpp_map_add_ref(BppMap *map) {
+void map_add_ref(BppMap *map) {
     if (map) {
         map->ref_count++;
     }
 }
 
-void bpp_map_release(void *str_ctx, BppMap *map) {
+void map_release(void *str_ctx, BppMap *map) {
     (void)str_ctx;
     if (!map) return;
     map->ref_count--;

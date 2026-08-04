@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_funcreg.h
+ * @file funcreg.h
  * @brief Dynamic Function Registry system API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -28,8 +28,8 @@
  * - How to write external extensions: Custom library modules register callbacks using funcreg_register.
  */
 
-#ifndef BPP_FUNCREG_H
-#define BPP_FUNCREG_H
+#ifndef RUNTIME_FUNCREG_H
+#define RUNTIME_FUNCREG_H
 
 #include "types/types.h"
 #include "lexer/lexer.h"
@@ -96,4 +96,4 @@ int                  funcreg_override(BppKeywordId kw, FuncHandler handler);
 int                  funcreg_count(void);
 const FunctionEntry *funcreg_get(int index);
 
-#endif /* BPP_FUNCREG_H */
+#endif /* RUNTIME_FUNCREG_H */

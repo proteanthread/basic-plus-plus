@@ -18,8 +18,8 @@
  * External extension hooks: Shared across all BASIC++ target executables and plugins.
  */
 
-#ifndef BPP_COLLECTIONS_H
-#define BPP_COLLECTIONS_H
+#ifndef RUNTIME_COLLECTIONS_H
+#define RUNTIME_COLLECTIONS_H
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -38,8 +38,8 @@ typedef struct BppMap {
     BppMapEntry *entries;
 } BppMap;
 
-BppMap *bpp_map_create(void);
-void    bpp_map_add_ref(BppMap *map);
-void    bpp_map_release(void *str_ctx, BppMap *map);
+BppMap *map_create(void);
+void    map_add_ref(BppMap *map);
+void    map_release(void *str_ctx, BppMap *map);
 
-#endif /* BPP_COLLECTIONS_H */
+#endif /* RUNTIME_COLLECTIONS_H */

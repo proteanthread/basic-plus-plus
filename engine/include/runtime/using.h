@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_using.h
+ * @file using.h
  * @brief Unified bidirectional USING formatting & validation engine declarations.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -15,8 +15,8 @@
  *   supporting inline conditions, attributes, and auto-skip character matching.
  */
 
-#ifndef BPP_USING_H
-#define BPP_USING_H
+#ifndef RUNTIME_USING_H
+#define RUNTIME_USING_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -67,4 +67,4 @@ bool using_validate_input_string(const char *input, const char *mask_str, char *
 void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE *stream);
 void print_using_internal(VMContext *vm, LexerContext *lex, int channel);
 
-#endif /* BPP_USING_H */
+#endif /* RUNTIME_USING_H */

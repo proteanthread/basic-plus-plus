@@ -41,8 +41,8 @@
 /* ======================================================================
  * Helper macro to define a mode descriptor inline
  * ====================================================================== */
-#define BGI_DEF_MODE(name_str, id, w, h, bpp, pal_sz, layout, ar) \
-    { name_str, id, w, h, bpp, pal_sz, NULL, layout, 0, 0, ar, 60.0f }
+#define BGI_DEF_MODE(name_str, id, w, h, bits_per_pixel, pal_sz, layout, ar) \
+    { name_str, id, w, h, bits_per_pixel, pal_sz, NULL, layout, 0, 0, ar, 60.0f }
 
 /* ======================================================================
  * Heritage Mode Descriptor Table

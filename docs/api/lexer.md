@@ -1,6 +1,6 @@
 # Lexer Subsystem API Reference
 
-Header File: [`include/bpp_lexer.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_lexer.h)
+Header File: [`include/lexer.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/lexer.h)
 
 ## Overview
 Provides ephemeral tokenizer functionality for scanning BASIC source statements into tokens.
@@ -25,7 +25,7 @@ Provides ephemeral tokenizer functionality for scanning BASIC source statements 
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_lexer.h"
+#include "lexer.h"
 
 void tokenize(const char *source) {
     LexerContext *lex = lex_init(NULL, source);

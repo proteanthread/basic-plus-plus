@@ -1,6 +1,6 @@
 # Variables Subsystem API Reference
 
-Header File: [`include/bpp_variables.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_variables.h)
+Header File: [`include/variables.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/variables.h)
 
 ## Overview
 Manages variables, lexical scoping, globals, and lookups.
@@ -31,7 +31,7 @@ Manages variables, lexical scoping, globals, and lookups.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_variables.h"
+#include "variables.h"
 
 void set_var(VMContext *vm) {
     BValue val = bval_float(42.0);

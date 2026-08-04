@@ -111,6 +111,14 @@ bool eval_execute_op(VMContext *vm, BppTokenType op, BValue *val_stack, size_t *
         case TOK_PLUS:  ans = n1 + n2; break;
         case TOK_MINUS: ans = n1 - n2; break;
         case TOK_MUL:   ans = n1 * n2; break;
+        case TOK_POW:
+            ans = pow(n1, n2);
+            if (isnan(ans) || isinf(ans)) {
+                err->code = 5;
+                err->message = "Overflow or invalid power operation";
+                return false;
+            }
+            break;
         case TOK_DIV:
             if (n2 == 0.0) {
                 err->code = 11; /* Division by zero */
@@ -168,7 +176,7 @@ BValue eval_resolve_member_access(VMContext *vm, LexerContext *lex, BValue val, 
                 return null_val;
             }
             BValue type_val;
-            if (!bpp_map_get(val.as.map, "__type__", &type_val) || type_val.type != VAL_STRING || !type_val.as.string) {
+            if (!map_get(val.as.map, "__type__", &type_val) || type_val.type != VAL_STRING || !type_val.as.string) {
                 out_err->code = 13; out_err->message = "Object missing class type metadata";
                 return null_val;
             }
@@ -182,7 +190,7 @@ BValue eval_resolve_member_access(VMContext *vm, LexerContext *lex, BValue val, 
             
             /* Implicit THIS */
             args[argc++] = val;
-            bpp_map_add_ref(val.as.map);
+            map_add_ref(val.as.map);
 
             while (true) {
                 BppToken next_tok = lex_peek(lex);
@@ -194,7 +202,7 @@ BValue eval_resolve_member_access(VMContext *vm, LexerContext *lex, BValue val, 
                     out_err->code = 2; out_err->message = "Too many arguments in method call";
                     for (int i = 0; i < argc; i++) {
                         if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                        else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                        else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
                     }
                     return null_val;
                 }
@@ -202,7 +210,7 @@ BValue eval_resolve_member_access(VMContext *vm, LexerContext *lex, BValue val, 
                 if (out_err->code != 0) {
                     for (int i = 0; i < argc - 1; i++) {
                         if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                        else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                        else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
                     }
                     return null_val;
                 }
@@ -216,7 +224,7 @@ BValue eval_resolve_member_access(VMContext *vm, LexerContext *lex, BValue val, 
                     out_err->code = 2; out_err->message = "Expected ',' or ')' in method call";
                     for (int i = 0; i < argc; i++) {
                         if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                        else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                        else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
                     }
                     return null_val;
                 }
@@ -226,7 +234,7 @@ BValue eval_resolve_member_access(VMContext *vm, LexerContext *lex, BValue val, 
             BValue ret_val = invoke_user_function(vm, fully_qualified_method, args, argc, out_err);
             for (int i = 0; i < argc; i++) {
                 if (args[i].type == VAL_STRING) str_release(vm_get_str(vm), args[i].as.string);
-                else if (args[i].type == VAL_MAP) bpp_map_release(vm_get_str(vm), args[i].as.map);
+                else if (args[i].type == VAL_MAP) map_release(vm_get_str(vm), args[i].as.map);
             }
             if (out_err->code != 0) return null_val;
             
@@ -238,7 +246,7 @@ BValue eval_resolve_member_access(VMContext *vm, LexerContext *lex, BValue val, 
                 return null_val;
             }
             BValue field_val;
-            if (!bpp_map_get(val.as.map, field_name, &field_val)) {
+            if (!map_get(val.as.map, field_name, &field_val)) {
                 out_err->code = 35; out_err->message = "Member field not defined in UDT/Class";
                 return null_val;
             }
@@ -247,10 +255,10 @@ BValue eval_resolve_member_access(VMContext *vm, LexerContext *lex, BValue val, 
             if (val.type == VAL_STRING && val.as.string) {
                 str_add_ref(val.as.string);
             } else if (val.type == VAL_MAP && val.as.map) {
-                bpp_map_add_ref(val.as.map);
+                map_add_ref(val.as.map);
             }
             if (old_val.type == VAL_MAP && old_val.as.map) {
-                bpp_map_release(vm_get_str(vm), old_val.as.map);
+                map_release(vm_get_str(vm), old_val.as.map);
             }
         }
     }

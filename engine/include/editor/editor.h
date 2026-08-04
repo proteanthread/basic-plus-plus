@@ -3,8 +3,8 @@
  * This file is part of BASIC++ - a modular, portable BASIC language framework.
  * See LICENSE for terms. See docs/ for programmer guides.
  */
-#ifndef BPP_EDITOR_H
-#define BPP_EDITOR_H
+#ifndef EDITOR_H
+#define EDITOR_H
 
 #include "vm/vm.h"
 #include <stdbool.h>
@@ -29,4 +29,4 @@ int mod_vi_main(VMContext *vm, const char *filename);
 int mod_edit_main(VMContext *vm, const char *filename);
 int mod_edlin_main(VMContext *vm, const char *filename);
 
-#endif /* BPP_EDITOR_H */
+#endif /* EDITOR_H */

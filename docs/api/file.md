@@ -1,6 +1,6 @@
 # File I/O Subsystem API Reference
 
-Header File: [`include/bpp_file.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_file.h)
+Header File: [`include/file.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/file.h)
 
 ## Overview
 Controls file descriptors, legacy channel mappings, binary, random-access, and sequential modes.
@@ -44,7 +44,7 @@ Controls file descriptors, legacy channel mappings, binary, random-access, and s
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_file.h"
+#include "file.h"
 
 void open_file(FileContext *ctx, VDevContext *vdev_ctx) {
     file_open(ctx, vdev_ctx, 1, "data.txt", FILE_MODE_OUTPUT, FILE_ACCESS_DEFAULT, FILE_LOCK_DEFAULT, 0);

@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_strings.h
+ * @file strings.h
  * @brief Isolated string manager API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -32,8 +32,8 @@
  *   without violating the isolated heap boundaries.
  */
 
-#ifndef BPP_STRINGS_H
-#define BPP_STRINGS_H
+#ifndef RUNTIME_STRINGS_H
+#define RUNTIME_STRINGS_H
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -93,4 +93,4 @@ void str_release(StringContext *ctx, BppStringRef ref);
  */
 void str_gc(StringContext *ctx);
 
-#endif /* BPP_STRINGS_H */
+#endif /* RUNTIME_STRINGS_H */

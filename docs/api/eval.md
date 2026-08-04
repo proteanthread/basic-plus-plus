@@ -1,6 +1,6 @@
 # Expression Evaluator API Reference
 
-Header File: [`include/bpp_eval.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_eval.h)
+Header File: [`include/eval.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/eval.h)
 
 ## Overview
 Calculates math, logic, and string expressions using the VM operator stacks.
@@ -15,7 +15,7 @@ Calculates math, logic, and string expressions using the VM operator stacks.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_eval.h"
+#include "eval.h"
 
 void evaluate(VMContext *vm, const char *expr) {
     BppError err;

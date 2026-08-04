@@ -41,6 +41,6 @@ Dual Syntax Convention
 
 Build Flags
 ===========
-  BPP_SDL2             ON  (baspp default) — Full SDL2 backend
-  BPP_HEADLESS         ON  (blite/bscript) — No graphics or sound
-  BPP_FRAMEBUFFER_ONLY OFF — Software framebuffer only, no SDL2 window
+  BASIC_SDL2             ON  (baspp default) — Full SDL2 backend
+  BASIC_HEADLESS         ON  (blite/bscript) — No graphics or sound
+  BASIC_FRAMEBUFFER_ONLY OFF — Software framebuffer only, no SDL2 window

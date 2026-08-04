@@ -1,6 +1,6 @@
 # Memory Manager API Reference
 
-Header File: [`include/bpp_memory.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_memory.h)
+Header File: [`include/memory.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/memory.h)
 
 ## Overview
 Implements raw allocation tracing, double-free protection, heap size controls, and debugging bounds.
@@ -27,7 +27,7 @@ Implements raw allocation tracing, double-free protection, heap size controls, a
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_memory.h"
+#include "memory.h"
 
 void alloc_mem() {
     void *ptr = mem_alloc_tracked(128, "MySubsystem");

@@ -1,6 +1,6 @@
 # Language Specification API Reference
 
-Header File: [`include/bpp_spec.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_spec.h)
+Header File: [`include/spec.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/spec.h)
 
 ## Overview
 Queries compiler capability layers and dialect compatibility definitions.
@@ -18,7 +18,7 @@ Queries compiler capability layers and dialect compatibility definitions.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_spec.h"
+#include "spec.h"
 
 void check_spec() {
     SpecObject *obj = spec_find_by_name("MYKEYWORD");

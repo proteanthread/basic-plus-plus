@@ -4,7 +4,7 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 /**
- * @file bpp_bgi.h
+ * @file bgi.h
  * @brief BASIC++ Graphics Interface (BGI) — Virtual Display Controller API.
  *
  * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
@@ -41,8 +41,8 @@
  *   call BGI_register_mode(). The mode becomes available immediately.
  */
 
-#ifndef BPP_BGI_H
-#define BPP_BGI_H
+#ifndef DEVICE_BGI_H
+#define DEVICE_BGI_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -412,4 +412,4 @@ void BGI_register_heritage_modes(BGI_Context *ctx);
 /** Get the global BGI context (singleton for the BASIC++ engine). */
 BGI_Context *BGI_get_global_context(void);
 
-#endif /* BPP_BGI_H */
+#endif /* DEVICE_BGI_H */

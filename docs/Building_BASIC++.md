@@ -6,7 +6,7 @@
 ## Table of Contents
 
 - Overview
-  - Feature Gates (BPP_SUPPORT_* Macros)
+  - Feature Gates (SUPPORT_* Macros)
   - Console vs SDL Builds
 - Quick Start
   - Linux / MinGW (gcc)
@@ -54,8 +54,8 @@ platforms:
 |----------------|------------------|-----------------|----------------|
 | Linux / MinGW  | gcc / clang      | 64-bit ELF/PE   | `baspp`        |
 | Windows 11     | MSVC (`cl.exe`)  | 64-bit PE       | `basicpp.exe`  |
-| FreeDOS        | OpenWatcom 16-bit| 16-bit DOS MZ   | `bpp.exe`      |
-| FreeDOS        | OpenWatcom 32-bit| 32-bit DOS/4GW  | `bpp.exe`      |
+| FreeDOS        | OpenWatcom 16-bit| 16-bit DOS MZ   | `baspp.exe`      |
+| FreeDOS        | OpenWatcom 32-bit| 32-bit DOS/4GW  | `baspp.exe`      |
 
 The core language engine is largely identical across platforms, with
 platform-specific adaptations isolated in `core/platform.c` and
@@ -64,33 +64,33 @@ branches that control build profiles and feature availability:
 
 | Macro            | Purpose                                          |
 |------------------|--------------------------------------------------|
-| `BPP_FREEDOS`   | FreeDOS / OpenWatcom build profile               |
-| `BPP_EMBEDDED`  | Embedded / bare-metal build profile              |
-| `BPP_LITE_BUILD`| BASIC++ Lite minimal build (undefines all features) |
+| `BASIC_FREEDOS`   | FreeDOS / OpenWatcom build profile               |
+| `BASIC_EMBEDDED`  | Embedded / bare-metal build profile              |
+| `BASIC_LITE_BUILD`| BASIC++ Lite minimal build (undefines all features) |
 | `INPUT_CONSOLE` | Console-mode build (defines `BASICPP_NAME` as `'BASIC++ Standard'`) |
 
 For a complete file-by-file reference, see `source/SOURCE_TREE.txt`.
 
-### Feature Gates (BPP_SUPPORT_* Macros)
+### Feature Gates (SUPPORT_* Macros)
 
-`config.h` defines a set of `BPP_SUPPORT_*` macros that act as compile-time
+`config.h` defines a set of `SUPPORT_*` macros that act as compile-time
 feature gates.  Each macro enables or disables an entire subsystem:
 
 | Macro                   | Subsystem                              |
 |-------------------------|----------------------------------------|
-| `BPP_SUPPORT_GRAPHICS`  | SDL2 graphics and SCREEN modes         |
-| `BPP_SUPPORT_SOUND`     | SOUND, PLAY, BEEP audio support        |
-| `BPP_SUPPORT_FILEMGMT`  | File management (OPEN, CLOSE, etc.)    |
-| `BPP_SUPPORT_MAT`       | MAT (matrix) operations               |
-| `BPP_SUPPORT_STRUCT`    | Structured programming (SUB, FUNCTION) |
-| `BPP_SUPPORT_ERRHAND`   | Error handling (ON ERROR, RESUME)      |
-| `BPP_SUPPORT_SHELL`     | SHELL command / OS access              |
-| `BPP_SUPPORT_DEBUG`     | TRON, TROFF, DEBUG commands            |
-| `BPP_SUPPORT_COMPILER`  | COMPILE command (C transpiler)         |
-| `BPP_SUPPORT_VFS`       | Virtual File System                    |
-| `BPP_SUPPORT_TXN`       | Transaction support                    |
+| `SUPPORT_GRAPHICS`  | SDL2 graphics and SCREEN modes         |
+| `SUPPORT_SOUND`     | SOUND, PLAY, BEEP audio support        |
+| `SUPPORT_FILEMGMT`  | File management (OPEN, CLOSE, etc.)    |
+| `SUPPORT_MAT`       | MAT (matrix) operations               |
+| `SUPPORT_STRUCT`    | Structured programming (SUB, FUNCTION) |
+| `SUPPORT_ERRHAND`   | Error handling (ON ERROR, RESUME)      |
+| `SUPPORT_SHELL`     | SHELL command / OS access              |
+| `SUPPORT_DEBUG`     | TRON, TROFF, DEBUG commands            |
+| `SUPPORT_COMPILER`  | COMPILE command (C transpiler)         |
+| `SUPPORT_VFS`       | Virtual File System                    |
+| `SUPPORT_TXN`       | Transaction support                    |
 
-When `BPP_LITE_BUILD` is defined, **all** `BPP_SUPPORT_*` macros are
+When `BASIC_LITE_BUILD` is defined, **all** `SUPPORT_*` macros are
 undefined, producing the smallest possible binary (BASIC++ Lite).
 
 ### Console vs SDL Builds
@@ -145,7 +145,7 @@ cd source
 make watcom
 ```
 
-Output: `../bpp.exe` (16-bit DOS, large memory model)
+Output: `../baspp.exe` (16-bit DOS, large memory model)
 
 > [!WARNING]
 > The 16-bit build may hit the 640K conventional memory limit with all
@@ -158,7 +158,7 @@ cd source
 make watcom386
 ```
 
-Output: `../bpp.exe` (32-bit, DOS/4GW protected mode)
+Output: `../baspp.exe` (32-bit, DOS/4GW protected mode)
 
 ### Debug Build (gcc)
 
@@ -479,7 +479,7 @@ After building, verify the interpreter:
 ```bash
 ./baspp -v                        # Linux
 basicpp.exe -v                    # Windows
-bpp.exe -v                        # FreeDOS
+baspp.exe -v                        # FreeDOS
 ```
 
 Expected: `BASIC++ 4.2.3`

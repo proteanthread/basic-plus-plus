@@ -298,7 +298,7 @@ unsigned char *lz77_decompress(const unsigned char *src, size_t src_len, size_t 
     return dst;
 }
 
-void bpp_hash_string(const char *algo, const char *data, char *out_buf, size_t out_size) {
+void hash_string(const char *algo, const char *data, char *out_buf, size_t out_size) {
     if (!data || !out_buf || out_size == 0) return;
 
     /* Determine required output size based on algorithm */

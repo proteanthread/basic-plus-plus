@@ -11,7 +11,7 @@
 #include "runtime/metadata.h"
 #include "runtime/vfs.h"
 #include "runtime/vnet.h"
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 #include "memory/segmented_mem.h"
 #endif
 #include "device/usb.h"
@@ -112,7 +112,7 @@ BppError stmt_defdbl_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_defstr_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_defusr_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_unsave_handler(VMContext *vm, LexerContext *lex);
-#if BPP_SUPPORT_OOP
+#if SUPPORT_OOP
 BppError stmt_type_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_class_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_enum_handler(VMContext *vm, LexerContext *lex);
@@ -179,7 +179,7 @@ BppError stmt_call_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_declare_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_end_sub_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_end_function_handler(VMContext *vm, LexerContext *lex);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 BppError stmt_screen_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_color_handler(VMContext *vm, LexerContext *lex);
 #endif
@@ -195,7 +195,7 @@ BppError stmt_bload_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_bsave_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_brun_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_line_handler(VMContext *vm, LexerContext *lex);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 BppError stmt_circle_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_pset_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_preset_handler(VMContext *vm, LexerContext *lex);
@@ -204,10 +204,10 @@ BppError stmt_paint_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_sound_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_play_handler(VMContext *vm, LexerContext *lex);
 #endif
-#if BPP_SUPPORT_EDITOR
+#if SUPPORT_EDITOR
 BppError stmt_edit_handler(VMContext *vm, LexerContext *lex);
 #endif
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 BppError stmt_security_handler(VMContext *vm, LexerContext *lex);
 #endif
 BppError stmt_module_handler(VMContext *vm, LexerContext *lex);
@@ -215,38 +215,38 @@ BppError stmt_task_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_help_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_remove_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_remove_str_handler(VMContext *vm, LexerContext *lex);
-#if BPP_SUPPORT_MAT
+#if SUPPORT_MAT
 BppError stmt_mat_handler(VMContext *vm, LexerContext *lex);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 BppError stmt_arrayext_handler(VMContext *vm, LexerContext *lex);
 #endif
 #endif
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 BppError stmt_defseg_handler(VMContext *vm, LexerContext *lex);
 #endif
-#if BPP_SUPPORT_EDITOR
+#if SUPPORT_EDITOR
 BppError stmt_renum_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_delete_handler(VMContext *vm, LexerContext *lex);
 #endif
 BppError stmt_catalog_handler(VMContext *vm, LexerContext *lex);
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
 BppError stmt_mount_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_umount_handler(VMContext *vm, LexerContext *lex);
 #endif
 BppError stmt_chvt_handler(VMContext *vm, LexerContext *lex);
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
 BppError stmt_net_handler(VMContext *vm, LexerContext *lex);
 #endif
 BppError stmt_out_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_poke_handler(VMContext *vm, LexerContext *lex);
-#if BPP_SUPPORT_BIOS
+#if SUPPORT_BIOS
 BppError stmt_bios_handler(VMContext *vm, LexerContext *lex);
 #endif
-#if BPP_SUPPORT_GEMINI
+#if SUPPORT_GEMINI
 BppError stmt_gemini_handler(VMContext *vm, LexerContext *lex);
 #endif
 
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
 BppError stmt_gr_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_hgr_handler(VMContext *vm, LexerContext *lex);
 BppError stmt_hgr2_handler(VMContext *vm, LexerContext *lex);
@@ -351,7 +351,7 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_PEN,    stmt_pen_handler,    "PEN",    STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_STRIG,  stmt_strig_handler,  "STRIG",  STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_ERROR,  stmt_error_statement_handler, "ERROR", STMT_FLAG_BOTH);
-#if BPP_SUPPORT_TRY
+#if SUPPORT_TRY
     stmt_register(vm->stmt_reg, KW_TRY,      stmt_try_handler,      "TRY",      STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_CATCH,    stmt_catch_handler,    "CATCH",    STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_THROW,    stmt_throw_handler,    "THROW",    STMT_FLAG_BOTH);
@@ -359,10 +359,10 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_ALIAS,    stmt_alias_handler,    "ALIAS",    STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_DIALECT,  stmt_dialect_handler,  "DIALECT",  STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_METADATA, stmt_metadata_handler, "METADATA", STMT_FLAG_BOTH);
-#if BPP_SUPPORT_TRY
+#if SUPPORT_TRY
     stmt_register(vm->stmt_reg, KW_RESUME, stmt_resume_handler, "RESUME", STMT_FLAG_PROGRAM);
 #endif
-#if BPP_SUPPORT_OOP
+#if SUPPORT_OOP
     stmt_register(vm->stmt_reg, KW_TYPE,   stmt_type_handler,   "TYPE",   STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_CLASS,  stmt_class_handler,  "CLASS",  STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_ENUM,   stmt_enum_handler,   "ENUM",   STMT_FLAG_PROGRAM);
@@ -385,7 +385,7 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_VARS,   stmt_vars_handler,   "VARS",   STMT_FLAG_BOTH);
 
     /* Phase 3 & 4 Registrations */
-#if BPP_SUPPORT_FILES
+#if SUPPORT_FILES
     stmt_register(vm->stmt_reg, KW_OPEN,   stmt_open_handler,   "OPEN",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_FIELD,  stmt_field_handler,  "FIELD",  STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_CLOSE,  stmt_close_handler,  "CLOSE",  STMT_FLAG_BOTH);
@@ -414,7 +414,7 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_UNLOCK, stmt_unlock_handler, "UNLOCK", STMT_FLAG_PROGRAM);
 
     /* Transaction statement registrations */
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     stmt_register(vm->stmt_reg, KW_TXN,      stmt_txn_handler,      "TXN",      STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_ATOMIC,   stmt_atomic_handler,   "ATOMIC",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_COMMIT,   stmt_commit_handler,   "COMMIT",   STMT_FLAG_BOTH);
@@ -437,14 +437,14 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_CURSOR,  stmt_cursor_handler,   "CURSOR",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_LOCATE,  stmt_locate_handler,   "LOCATE",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_SHARED,  stmt_shared_handler,   "SHARED",   STMT_FLAG_BOTH);
-#if BPP_SUPPORT_GRAPHICS
-#ifndef BPP_LITE_BUILD
+#if SUPPORT_GRAPHICS
+#ifndef BASIC_LITE_BUILD
     stmt_register(vm->stmt_reg, KW_SCREEN,  stmt_screen_handler,   "SCREEN",   STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_COLOR,   stmt_color_handler,    "COLOR",    STMT_FLAG_BOTH);
 #endif
     stmt_register(vm->stmt_reg, KW_BEEP,    stmt_beep_handler,     "BEEP",     STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_LINE,    stmt_line_handler,     "LINE",     STMT_FLAG_PROGRAM);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     stmt_register(vm->stmt_reg, KW_CIRCLE,  stmt_circle_handler,   "CIRCLE",   STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_PSET,    stmt_pset_handler,     "PSET",     STMT_FLAG_PROGRAM);
     stmt_register(vm->stmt_reg, KW_PRESET,  stmt_preset_handler,   "PRESET",   STMT_FLAG_PROGRAM);
@@ -454,40 +454,40 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_PLAY,    stmt_play_handler,     "PLAY",     STMT_FLAG_PROGRAM);
 #endif
 #endif
-#if BPP_SUPPORT_EDITOR
+#if SUPPORT_EDITOR
     stmt_register(vm->stmt_reg, KW_EDIT,    stmt_edit_handler,     "EDIT",     STMT_FLAG_BOTH);
 #endif
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     stmt_register(vm->stmt_reg, KW_SECURITY, stmt_security_handler, "SECURITY", STMT_FLAG_BOTH);
 #endif
-#if BPP_SUPPORT_MODULE
+#if SUPPORT_MODULE
     stmt_register(vm->stmt_reg, KW_MODULE,   stmt_module_handler,   "MODULE",   STMT_FLAG_BOTH);
 #endif
-#if BPP_SUPPORT_TASK
+#if SUPPORT_TASK
     stmt_register(vm->stmt_reg, KW_TASK,     stmt_task_handler,     "TASK",     STMT_FLAG_BOTH);
 #endif
-#if BPP_SUPPORT_MAT
+#if SUPPORT_MAT
     stmt_register(vm->stmt_reg, KW_MAT,      stmt_mat_handler,      "MAT",      STMT_FLAG_BOTH);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     stmt_register(vm->stmt_reg, KW_ARRAY,    stmt_arrayext_handler, "ARRAY",    STMT_FLAG_BOTH);
 #endif
 #endif
-#if BPP_SUPPORT_EDITOR
+#if SUPPORT_EDITOR
     stmt_register(vm->stmt_reg, KW_RENUM,    stmt_renum_handler,    "RENUM",    STMT_FLAG_IMMEDIATE);
     stmt_register(vm->stmt_reg, KW_DELETE,   stmt_delete_handler,   "DELETE",   STMT_FLAG_IMMEDIATE);
 #endif
-#if BPP_SUPPORT_HELP
+#if SUPPORT_HELP
     stmt_register(vm->stmt_reg, KW_HELP,     stmt_help_handler,     "HELP",     STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_CATALOG,  stmt_catalog_handler,  "CATALOG",  STMT_FLAG_BOTH);
 #endif
     stmt_register(vm->stmt_reg, KW_REMOVE,     stmt_remove_handler,     "REMOVE",     STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_REMOVE_STR, stmt_remove_str_handler, "REMOVE$",    STMT_FLAG_BOTH);
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     stmt_register(vm->stmt_reg, KW_MOUNT,    stmt_mount_handler,    "MOUNT",    STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_UMOUNT,   stmt_umount_handler,   "UMOUNT",   STMT_FLAG_BOTH);
 #endif
     stmt_register(vm->stmt_reg, KW_CHVT,     stmt_chvt_handler,     "CHVT",     STMT_FLAG_BOTH);
-#if BPP_SUPPORT_NET
+#if SUPPORT_NET
     stmt_register(vm->stmt_reg, KW_GET,      stmt_get_handler,      "GET",      STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_BGET,     stmt_get_handler,      "BGET",     STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_PUT,      stmt_put_handler,      "PUT",      STMT_FLAG_BOTH);
@@ -495,14 +495,14 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_NET,      stmt_net_handler,      "NET",      STMT_FLAG_BOTH);
 #endif
     stmt_register(vm->stmt_reg, KW_OUT,      stmt_out_handler,      "OUT",      STMT_FLAG_BOTH);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
     stmt_register(vm->stmt_reg, KW_DEFSEG,   stmt_defseg_handler,   "DEF SEG",  STMT_FLAG_BOTH);
 #endif
     stmt_register(vm->stmt_reg, KW_POKE,     stmt_poke_handler,     "POKE",     STMT_FLAG_BOTH);
-#if BPP_SUPPORT_BIOS
+#if SUPPORT_BIOS
     stmt_register(vm->stmt_reg, KW_BIOS,     stmt_bios_handler,     "BIOS",     STMT_FLAG_BOTH);
 #endif
-#if BPP_SUPPORT_GEMINI
+#if SUPPORT_GEMINI
     stmt_register(vm->stmt_reg, KW_GEMINI,   stmt_gemini_handler,   "GEMINI",   STMT_FLAG_BOTH);
 #endif
 
@@ -532,8 +532,8 @@ void register_core_statements(VMContext *vm) {
     stmt_register(vm->stmt_reg, KW_STATELOAD,  stmt_stateload_handler,  "_STATELOAD",  STMT_FLAG_BOTH);
 
     /* Legacy dialect compatibility statements */
-#if BPP_SUPPORT_GRAPHICS
-#ifndef BPP_LITE_BUILD
+#if SUPPORT_GRAPHICS
+#ifndef BASIC_LITE_BUILD
     stmt_register(vm->stmt_reg, KW_GR,       stmt_gr_handler,       "GR",       STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_HGR,      stmt_hgr_handler,      "HGR",      STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_HGR2,     stmt_hgr2_handler,     "HGR2",     STMT_FLAG_BOTH);
@@ -561,17 +561,17 @@ void register_core_statements(VMContext *vm) {
 #endif
 
     stmt_register(vm->stmt_reg, KW_PAUSE,    stmt_pause_handler,    "PAUSE",    STMT_FLAG_BOTH);
-#if BPP_SUPPORT_FILES
+#if SUPPORT_FILES
     stmt_register(vm->stmt_reg, KW_GET,      stmt_get_handler,      "GET",      STMT_FLAG_BOTH);
     stmt_register(vm->stmt_reg, KW_BGET,     stmt_get_handler,      "BGET",     STMT_FLAG_BOTH);
 #endif
     stmt_register(vm->stmt_reg, KW_SYS,      stmt_sys_handler,      "SYS",      STMT_FLAG_BOTH);
-#if BPP_SUPPORT_TRY
+#if SUPPORT_TRY
     stmt_register(vm->stmt_reg, KW_ONERR,    stmt_onerr_handler,    "ONERR",    STMT_FLAG_BOTH);
 #endif
 }
 
-#if BPP_SUPPORT_BIOS
+#if SUPPORT_BIOS
 uint8_t bios_read_mem_cb(void *user_data, uint32_t addr) {
     VMContext *vm = (VMContext *)user_data;
     bool intercepted = false;
@@ -679,7 +679,7 @@ static BppError execute_directive(VMContext *vm, LexerContext *lex, BppToken dir
     dir_name[len] = '\0';
 
     if (strcasecmp(dir_name, "BIOS") == 0) {
-#if BPP_SUPPORT_BIOS
+#if SUPPORT_BIOS
         BppToken model_tok = lex_next(lex);
         char m_name[64];
         if (model_tok.type == TOK_STRING) {
@@ -1083,7 +1083,7 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
                 if (res.type == VAL_STRING && res.as.string) {
                     str_release(vm_get_str(vm), res.as.string);
                 } else if (res.type == VAL_MAP && res.as.map) {
-                    bpp_map_release(vm_get_str(vm), res.as.map);
+                    map_release(vm_get_str(vm), res.as.map);
                 }
             }
             return err;
@@ -1133,7 +1133,7 @@ BppError execute_single_statement(VMContext *vm, LexerContext *lex) {
                 if (res.type == VAL_STRING && res.as.string) {
                     str_release(vm_get_str(vm), res.as.string);
                 } else if (res.type == VAL_MAP && res.as.map) {
-                    bpp_map_release(vm_get_str(vm), res.as.map);
+                    map_release(vm_get_str(vm), res.as.map);
                 }
             }
             return err;
@@ -1513,7 +1513,7 @@ void vm_trigger_breakpoint(VMContext *vm, const char *reason) {
         vdev_printf(vdev, "\n[BREAKPOINT] at line %lld: %s\n", (long long)vm->current_line, reason ? reason : "unknown");
         vdev_printf(vdev, "Commands: [s] Step, [c] Continue, [v] View Variables (VARS), [q] Quit\n");
     }
-    bpp_log_warn("Breakpoint triggered at line %lld: %s", (long long)vm->current_line, reason ? reason : "unknown");
+    log_warn("Breakpoint triggered at line %lld: %s", (long long)vm->current_line, reason ? reason : "unknown");
 
     while (true) {
         if (vdev) {
@@ -1661,12 +1661,12 @@ void vm_run_program(VMContext *vm) {
         BppProgramLine *active_lines = is_lib ? lib_lines : lines;
         size_t active_count = is_lib ? lib_count : count;
 
-        if (bpp_logger_is_trace()) {
+        if (logger_is_trace()) {
             VDevContext *vdev = vm->vdev;
             if (vdev) {
                 vdev_printf(vdev, "[Line %lld]\n", (long long)vm->current_line);
             }
-            bpp_log_info("[Line %lld]", (long long)vm->current_line);
+            log_info("[Line %lld]", (long long)vm->current_line);
         }
 
         if (vm->debug_single_step) {
@@ -1680,7 +1680,7 @@ void vm_run_program(VMContext *vm) {
         }
 
         BppError err = vm_execute_line(vm, active_lines[idx].text);
-#ifndef BPP_LITE_BUILD
+#ifndef BASIC_LITE_BUILD
         vdev_gfx_poll_events();
 #endif
         if (err.code != 0) {

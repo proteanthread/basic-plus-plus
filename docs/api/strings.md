@@ -1,6 +1,6 @@
 # Strings Subsystem API Reference
 
-Header File: [`include/bpp_strings.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_strings.h)
+Header File: [`include/strings.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/strings.h)
 
 ## Overview
 Implements the internal string pool, garbage collection, and utility string functions.
@@ -26,7 +26,7 @@ Implements the internal string pool, garbage collection, and utility string func
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_strings.h"
+#include "strings.h"
 
 void test_str(VMContext *vm) {
     BppStringRef s = str_create(vm_get_str(vm), "Hello", 5);

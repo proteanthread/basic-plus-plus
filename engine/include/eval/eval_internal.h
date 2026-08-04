@@ -35,8 +35,8 @@
  *   eval_bi_*.c files and register implementations through eval_builtin_function_impl.
  */
 
-#ifndef BPP_EVAL_INTERNAL_H
-#define BPP_EVAL_INTERNAL_H
+#ifndef EVAL_INTERNAL_H
+#define EVAL_INTERNAL_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -190,7 +190,7 @@ extern double platform_get_timer(void);
 extern double platform_get_uptime(void);
 extern double vm_get_ti_offset(VMContext *vm);
 extern void vm_set_ti_offset(VMContext *vm, double val);
-extern void bpp_hash_string(const char *algo, const char *data,
+extern void hash_string(const char *algo, const char *data,
                             char *out_buf, size_t out_size);
 
-#endif /* BPP_EVAL_INTERNAL_H */
+#endif /* EVAL_INTERNAL_H */

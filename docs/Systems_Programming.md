@@ -367,7 +367,7 @@ and executes the transpiled BASIC++ kernel.
 #include "config.h"
 
 // Forward declaration of the transpiled BASIC++ entry function
-extern void bpp_program_entry(void);
+extern void program_entry(void);
 
 // Simulated hardware initialization
 void init_hardware_subsystems(void) {
@@ -384,7 +384,7 @@ int main(void) {
     printf("[Kernel Init] Handing execution to BASIC++ Kernel...\n\n");
 
     // 3. Jump to the transpiled BASIC++ code block
-    bpp_program_entry();
+    program_entry();
 
     // 4. If the BASIC program exits, halt the CPU
     printf("\n[Kernel Halt] Kernel reached end of execution block. Halting.\n");

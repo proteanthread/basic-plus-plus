@@ -1,6 +1,6 @@
 # Segmented Memory (RAMBANK) API Reference
 
-Header File: [`include/bpp_segmented_mem.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/bpp_segmented_mem.h)
+Header File: [`include/segmented_mem.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/segmented_mem.h)
 
 ## Overview
 Mimics legacy banked/segmented memory architectures using virtual page lookups.
@@ -22,7 +22,7 @@ Mimics legacy banked/segmented memory architectures using virtual page lookups.
 ## C Integration Example
 The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "bpp_segmented_mem.h"
+#include "segmented_mem.h"
 
 void read_bank(VMemContext *ctx) {
     uint8_t val = 0;

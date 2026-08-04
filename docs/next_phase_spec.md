@@ -23,7 +23,7 @@ This specification defines the next major development phase for BASIC++, organiz
 | v5 migration | Proactive: port v5 code as features are implemented, archive to `v5/` |
 | HELP/CATALOG | Full catch-up audit + regeneration from keyword scan |
 | Status tracking | `IMPLEMENTATION_STATUS.md` + code comments + CATALOG metadata |
-| Hardware abstraction | Configurable: `BPP_SDL2`, `BPP_HEADLESS`, `BPP_FRAMEBUFFER_ONLY` build flags |
+| Hardware abstraction | Configurable: `BASIC_SDL2`, `BASIC_HEADLESS`, `BASIC_FRAMEBUFFER_ONLY` build flags |
 | Keyword naming | Dual syntax: GW-BASIC classic + modern dot-access (interchangeable) |
 | Compiler/transpiler | Full sync: every new feature includes `bppc` + `trans` updates |
 | Execution order | All sub-phases in parallel via sub-agents |
@@ -43,7 +43,7 @@ This specification defines the next major development phase for BASIC++, organiz
 - Port and supersede `source/dialect/dialect.c` (35 KB) from v5
 - Port `source/config/` (4 files: `override.c`, `parser_config.c`, `scope.c`, `scope_stack.c`)
 - Support loading dialect definitions from `.ini`, `.json`, `.yaml` files
-- Integrate with existing `src/core/dialect.c` (15 KB) and `include/bpp_dialect.h`
+- Integrate with existing `src/core/dialect.c` (15 KB) and `include/dialect.h`
 - Enable keyword aliasing, syntax mode switching, and compatibility layers
 
 **Syntax (classic)**:
@@ -136,7 +136,7 @@ c = Color.Green
 enum Color { Red = 1, Green = 2, Blue = 4 }
 ```
 
-**Implementation**: New statement file `src/statements/stmt_enum.c`. Integrate with type system in `bpp_types.h`. ENUM values are compile-time integer constants stored in the variable table.
+**Implementation**: New statement file `src/statements/stmt_enum.c`. Integrate with type system in `types.h`. ENUM values are compile-time integer constants stored in the variable table.
 
 ---
 
@@ -189,7 +189,7 @@ END WITH
 | `NOISE type, dur` | `sound.noise(type, dur)` | Generate noise |
 
 **Virtual device**: New `src/device/vdev_sound.c`
-**Build flags**: `BPP_SDL2` uses SDL2_mixer; `BPP_HEADLESS` uses null audio; `BPP_FRAMEBUFFER_ONLY` uses PC speaker emulation
+**Build flags**: `BASIC_SDL2` uses SDL2_mixer; `BASIC_HEADLESS` uses null audio; `BASIC_FRAMEBUFFER_ONLY` uses PC speaker emulation
 **v5 code to port**: `source/sound/parser_sound.c` (9 KB)
 
 ---
@@ -342,71 +342,71 @@ Create `docs/api/` with per-subsystem docs organized by abstraction layer:
 **Tier 1 — Embedding & Lifecycle** (Start here for new developers)
 | Header | API Doc | Topic |
 |--------|---------|-------|
-| `bpp_boot.h` | `docs/api/boot.md` | Initialization, shutdown, entry points |
-| `bpp_vm.h` | `docs/api/vm.md` | VM lifecycle, execution, line dispatch |
-| `bpp_config.h` | `docs/api/config.md` | Configuration, options, dialect selection |
-| `bpp_version.h` | `docs/api/version.md` | Version constants |
+| `boot.h` | `docs/api/boot.md` | Initialization, shutdown, entry points |
+| `vm.h` | `docs/api/vm.md` | VM lifecycle, execution, line dispatch |
+| `config.h` | `docs/api/config.md` | Configuration, options, dialect selection |
+| `basic_version.h` | `docs/api/version.md` | Version constants |
 
 **Tier 2 — Language Core**
 | Header | API Doc | Topic |
 |--------|---------|-------|
-| `bpp_lexer.h` | `docs/api/lexer.md` | Tokenizer, keyword table, token types |
-| `bpp_eval.h` | `docs/api/eval.md` | Expression evaluation, operator dispatch |
-| `bpp_stmt.h` | `docs/api/stmt.md` | Statement dispatch, registration |
-| `bpp_types.h` | `docs/api/types.md` | Type system, value representation |
-| `bpp_variables.h` | `docs/api/variables.md` | Variable storage, scoping |
-| `bpp_arrays.h` | `docs/api/arrays.md` | Array management, DIM, REDIM |
-| `bpp_strings.h` | `docs/api/strings.md` | String pool, string operations |
+| `lexer.h` | `docs/api/lexer.md` | Tokenizer, keyword table, token types |
+| `eval.h` | `docs/api/eval.md` | Expression evaluation, operator dispatch |
+| `stmt.h` | `docs/api/stmt.md` | Statement dispatch, registration |
+| `types.h` | `docs/api/types.md` | Type system, value representation |
+| `variables.h` | `docs/api/variables.md` | Variable storage, scoping |
+| `arrays.h` | `docs/api/arrays.md` | Array management, DIM, REDIM |
+| `strings.h` | `docs/api/strings.md` | String pool, string operations |
 
 **Tier 3 — Runtime Extensions**
 | Header | API Doc | Topic |
 |--------|---------|-------|
-| `bpp_file.h` | `docs/api/file.md` | File I/O, channels, modes |
-| `bpp_funcreg.h` | `docs/api/funcreg.md` | Function registry, DEF FN |
-| `bpp_map.h` | `docs/api/map.md` | Map/dictionary data structure |
-| `bpp_struct.h` | `docs/api/struct.md` | User-defined types (TYPE) |
-| `bpp_task.h` | `docs/api/task.md` | Cooperative multitasking |
-| `bpp_spec.h` | `docs/api/spec.md` | Language specification queries |
-| `bpp_metadata.h` | `docs/api/metadata.md` | Directives, pragmas |
+| `file.h` | `docs/api/file.md` | File I/O, channels, modes |
+| `funcreg.h` | `docs/api/funcreg.md` | Function registry, DEF FN |
+| `runtime/map.h` | `docs/api/map.md` | Map/dictionary data structure |
+| `struct_ctx.h` | `docs/api/struct.md` | User-defined types (TYPE) |
+| `task.h` | `docs/api/task.md` | Cooperative multitasking |
+| `spec.h` | `docs/api/spec.md` | Language specification queries |
+| `metadata.h` | `docs/api/metadata.md` | Directives, pragmas |
 
 **Tier 4 — Virtual Devices & I/O**
 | Header | API Doc | Topic |
 |--------|---------|-------|
-| `bpp_vdev.h` | `docs/api/vdev.md` | Virtual device framework |
-| `bpp_vcon.h` | `docs/api/vcon.md` | Virtual console |
-| `bpp_vfs.h` | `docs/api/vfs.md` | Virtual filesystem |
-| `bpp_vnet.h` | `docs/api/vnet.md` | Virtual networking |
-| `bpp_bus.h` | `docs/api/bus.md` | Virtual bus |
-| `bpp_usb.h` | `docs/api/usb.md` | USB device abstraction |
-| `bpp_fujinet.h` | `docs/api/fujinet.md` | FujiNet retro networking |
-| `bpp_gemini.h` | `docs/api/gemini.md` | Gemini protocol |
+| `vdev.h` | `docs/api/vdev.md` | Virtual device framework |
+| `vcon.h` | `docs/api/vcon.md` | Virtual console |
+| `vfs.h` | `docs/api/vfs.md` | Virtual filesystem |
+| `vnet.h` | `docs/api/vnet.md` | Virtual networking |
+| `bus.h` | `docs/api/bus.md` | Virtual bus |
+| `usb.h` | `docs/api/usb.md` | USB device abstraction |
+| `fujinet.h` | `docs/api/fujinet.md` | FujiNet retro networking |
+| `gemini.h` | `docs/api/gemini.md` | Gemini protocol |
 
 **Tier 5 — Graphics**
 | Header | API Doc | Topic |
 |--------|---------|-------|
-| `bpp_bgi.h` | `docs/api/bgi.md` | BGI Graphics Interface |
-| `bpp_mock_bios.h` | `docs/api/mock_bios.md` | Mock BIOS for heritage hardware |
+| `bgi.h` | `docs/api/bgi.md` | BGI Graphics Interface |
+| `mock_bios.h` | `docs/api/mock_bios.md` | Mock BIOS for heritage hardware |
 
 **Tier 6 — Security & Modules**
 | Header | API Doc | Topic |
 |--------|---------|-------|
-| `bpp_security.h` | `docs/api/security.md` | Security sandbox, capability system |
-| `bpp_module.h` | `docs/api/module.md` | Module loading, validation pipeline |
+| `security.h` | `docs/api/security.md` | Security sandbox, capability system |
+| `module.h` | `docs/api/module.md` | Module loading, validation pipeline |
 | `mod_arrayext.h` | `docs/api/mod_arrayext.md` | Array extension module |
 
 **Tier 7 — Platform & Memory**
 | Header | API Doc | Topic |
 |--------|---------|-------|
-| `bpp_platform.h` | `docs/api/platform.md` | OS abstraction layer |
-| `bpp_memory.h` | `docs/api/memory.md` | Memory management |
-| `bpp_segmented_mem.h` | `docs/api/segmented_mem.md` | Segmented memory (RAMBANK) |
+| `platform.h` | `docs/api/platform.md` | OS abstraction layer |
+| `memory.h` | `docs/api/memory.md` | Memory management |
+| `segmented_mem.h` | `docs/api/segmented_mem.md` | Segmented memory (RAMBANK) |
 
 **Tier 8 — Dialect & Configuration**
 | Header | API Doc | Topic |
 |--------|---------|-------|
-| `bpp_dialect.h` | `docs/api/dialect.md` | Dialect system |
-| `bpp_logger.h` | `docs/api/logger.md` | Logging infrastructure |
-| `bpp_editor.h` | `docs/api/editor.md` | Editor integration |
+| `dialect.h` | `docs/api/dialect.md` | Dialect system |
+| `logger.h` | `docs/api/logger.md` | Logging infrastructure |
+| `editor.h` | `docs/api/editor.md` | Editor integration |
 | `custom_dialect_static.h` | `docs/api/custom_dialect.md` | Static dialect definitions |
 
 Each doc includes: Overview, Initialization, Public Functions (signature + description + example), Callbacks/Hooks, Error Handling, Embedding Example, and Tutorial.
@@ -465,12 +465,12 @@ Every new keyword/feature added in Phases 11a/b/c must also update:
 New build flags for the configurable hardware abstraction:
 
 ```cmake
-option(BPP_SDL2 "Enable SDL2 backend for graphics, sound, and input" ON)
-option(BPP_HEADLESS "Build headless (no graphics/sound)" OFF)
-option(BPP_FRAMEBUFFER_ONLY "Software framebuffer only, no SDL2 window" OFF)
+option(BASIC_SDL2 "Enable SDL2 backend for graphics, sound, and input" ON)
+option(BASIC_HEADLESS "Build headless (no graphics/sound)" OFF)
+option(BASIC_FRAMEBUFFER_ONLY "Software framebuffer only, no SDL2 window" OFF)
 ```
 
-These are mutually exclusive. `baspp` defaults to `BPP_SDL2`. `blite`/`bscript` default to `BPP_HEADLESS`.
+These are mutually exclusive. `baspp` defaults to `BASIC_SDL2`. `blite`/`bscript` default to `BASIC_HEADLESS`.
 
 ---
 

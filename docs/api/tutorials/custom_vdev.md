@@ -7,7 +7,7 @@
 ## Step 1: Complete Custom Device Program
 Below is a complete device definition and registration sequence:
 ```c
-#include "bpp_vdev.h"
+#include "vdev.h"
 #include <stdio.h>
 #include <stdint.h>
 
