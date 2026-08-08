@@ -62,14 +62,14 @@ order, similar to how a hardware interrupt controller works:
   Priority   Event Class        DOS Equivalent
   --------   ---------------    ----------------------
   Highest    BREAK (Ctrl+C)     INT 23h (SIGINT)
-  Tier 1     TIMER              INT 1Ch (timer tick)
-  Tier 1.5   KEY                INT 09h (keyboard)
-  Tier 2     DEVICE (VDev)      Hardware IRQs
-  Tier 2.5   COM (serial)       INT 0Ch/0Bh (COM1/COM2)
-  Tier 2.5   PEN (pointer)      INT 33h (mouse driver)
-  Tier 2.5   MOUSE              INT 33h
-  Tier 2.5   STRIG (joystick)   INT 0Fh (game port)
-  Tier 2.5   PLAY (music)       Sound Blaster IRQ
+  Level 1    TIMER              INT 1Ch (timer tick)
+  Level 1.5  KEY                INT 09h (keyboard)
+  Level 2    DEVICE (VDev)      Hardware IRQs
+  Level 2.5  COM (serial)       INT 0Ch/0Bh (COM1/COM2)
+  Level 2.5  PEN (pointer)      INT 33h (mouse driver)
+  Level 2.5  MOUSE              INT 33h
+  Level 2.5  STRIG (joystick)   INT 0Fh (game port)
+  Level 2.5  PLAY (music)       Sound Blaster IRQ
   Lowest     Deferred queue     Software interrupts
 
 When an event fires:
@@ -281,7 +281,7 @@ Scan code reference:
   Delete     83           F10         68
 
 ------------------------------------------------------------
-## 4. Device I/O Events (VDev Tier 2)
+## 4. Device I/O Events (VDev Layer)
 ------------------------------------------------------------
 
 ### 4.1 How Device Events Work

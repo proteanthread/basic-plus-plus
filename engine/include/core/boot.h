@@ -61,7 +61,6 @@ typedef struct {
     bool   is_repl;
     bool   sdl_gui;
     bool   sdl_ondemand;
-    const struct BppDialect *dialect_config; /* Optional static dialect config */
 } BootConfig;
 
 /**
@@ -75,5 +74,15 @@ BootContext *boot_execute(const BootConfig *config);
  */
 void boot_shutdown(BootContext *ctx);
 void boot_shutdown_ex(BootContext *ctx, bool force_exit);
+
+/**
+ * @brief High-level helper: boots system with default dynamic memory allocations.
+ */
+VMContext *boot_system(size_t heap_size);
+
+/**
+ * @brief High-level helper: shuts down system given a VMContext pointer.
+ */
+void boot_shutdown_vm(VMContext *vm);
 
 #endif /* CORE_BOOT_H */

@@ -275,8 +275,6 @@ Each level overrides the one before it. Runtime commands always have the final s
 ## See Also
 
 - [Quick_Reference](Quick_Reference.md) — Complete keyword listing
-- [Creating_Dialects](Creating_Dialects.md) — Dialect configuration
 - [Using_Aliases](Using_Aliases.md) — ALIAS command reference
-- [Mixing_Dialects](Mixing_Dialects.md) — Multi-dialect programming
 
 *@COPYLEFT ALL WRONGS RESERVED*

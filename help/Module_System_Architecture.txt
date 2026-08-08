@@ -33,7 +33,7 @@ All modular additions belong to one of four isolated classes:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    Purpose: Define keyword interpretation, token mapping rules, and syntax compatibility limits.
    Emulation Profiles: GW-BASIC, Palo Alto Tiny BASIC, Commodore 64 BASIC, Sinclair, etc.
-*   Boundary Rules: Dialects configure the Lexer and Parser levels and map dialect-specific keywords to library calls. They are strictly prohibited from modifying core memory-model rules or introducing new virtual machine opcodes.
+*   Boundary Rules: Dialects configure the Lexer and Parser levels and map implementation-specific keywords to library calls. They are strictly prohibited from modifying core memory-model rules or introducing new virtual machine opcodes.
 
 
 3. Device Modules (MOD_DEVICE)

@@ -1,0 +1,57 @@
+# BASIC++ v6.5.2 Engine Semantic Source Map (`SOURCE_MAP.md`)
+
+This document provides a comprehensive semantic mapping linking all keywords, statements, built-in functions, virtual devices, and runtime features to their precise C source file, header surface, CMake micro-library target, and documentation references.
+
+---
+
+## 1. Feature & Keyword Semantic Mapping Matrix
+
+| Category | Keywords / Features | C Source File (`engine/src/`) | C Header Surface (`engine/include/`) | CMake Target | Documentation Page |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Metaprogramming** | `ALIAS`, `OPERATOR ALIAS` | `statements/dialect/alias.c` | `statements/dialect/alias.h` | `stmt_alias` | `docs/DEVELOPER_GUIDE.md` |
+| **Metaprogramming** | `SCOPE`, `SCOPE DISABLE`, `SCOPE HOOK`, `SCOPE PRIVATE` | `statements/dialect/scope.c`, `scope/scope.c` | `statements/dialect/scope.h`, `scope/scope.h` | `stmt_scope` | `docs/DEVELOPER_GUIDE.md` |
+| **Metaprogramming** | `KEYWORD`, `KEYWORD SET`, `KEYWORD GET`, `KEYWORD LIST` | `statements/dialect/keyword.c`, `runtime/keyword_props.c` | `statements/dialect/keyword.h`, `runtime/keyword_props.h` | `stmt_keyword` | `docs/DEVELOPER_GUIDE.md` |
+| **Metaprogramming** | `OVERRIDE`, `OVERRIDE WITH GOSUB`, `OVERRIDE WITH SUB` | `statements/dialect/override.c`, `runtime/override.c` | `statements/dialect/override.h`, `runtime/override.h` | `stmt_override` | `docs/DEVELOPER_GUIDE.md` |
+| **OOP & Modules** | `MODULE`, `MODULE END`, `MODULE IMPORT` | `statements/oop/module.c`, `module/module.c` | `statements/dialect/module_stmt.h`, `module/module.h` | `stmt_module` | `docs/DEVELOPER_GUIDE.md` |
+| **Control Flow** | `IF`, `THEN`, `ELSE`, `ELSEIF`, `END IF` | `statements/core/if.c` | `statements/core/if.h` | `stmt_if` | `docs/language/control.md` |
+| **Control Flow** | `FOR`, `TO`, `STEP`, `NEXT` | `statements/loops/for.c`, `next.c` | `statements/loops/for.h`, `next.h` | `stmt_for`, `stmt_next` | `docs/language/loops.md` |
+| **Control Flow** | `DO`, `LOOP`, `WHILE`, `UNTIL` | `statements/loops/do.c`, `loop.c` | `statements/loops/do.h`, `loop.h` | `stmt_do`, `stmt_loop` | `docs/language/loops.md` |
+| **Control Flow** | `GOTO`, `GOSUB`, `RETURN` | `statements/core/goto.c`, `gosub.c` | `statements/core/goto.h`, `gosub.h` | `stmt_goto`, `stmt_gosub` | `docs/language/control.md` |
+| **Console I/O** | `PRINT`, `PRINT USING`, `INPUT`, `LINE INPUT` | `statements/core/print.c`, `input.c` | `statements/core/print.h`, `input.h` | `stmt_print`, `stmt_input` | `docs/language/io.md` |
+| **File I/O** | `OPEN`, `CLOSE`, `GET`, `PUT`, `FIELD`, `SEEK`, `FILES`, `KILL` | `statements/filesystem/*.c` | `statements/filesystem/*.h` | `stmt_file_io` | `docs/language/file_io.md` |
+| **Graphics** | `SCREEN`, `CLS`, `COLOR`, `LINE`, `CIRCLE`, `PSET`, `DRAW`, `PAINT` | `statements/graphics/*.c` | `statements/graphics/*.h` | `stmt_graphics` | `docs/language/graphics.md` |
+| **Audio** | `BEEP`, `SOUND`, `PLAY`, `VOICE` | `statements/sound/*.c` | `statements/sound/*.h` | `stmt_sound` | `docs/language/sound.md` |
+| **Matrices** | `MAT READ`, `MAT PRINT`, `MAT INPUT`, `MAT ADD`, `MAT INV` | `statements/matrices/*.c` | `statements/matrices/*.h` | `stmt_matrix` | `docs/language/matrix.md` |
+| **Variables** | `DIM`, `LET`, `REDIM`, `OPTION BASE`, `OPTION EXPLICIT` | `statements/variables/*.c` | `statements/variables/*.h` | `stmt_vars` | `docs/language/variables.md` |
+| **Diagnostics** | `SELFTEST`, `TRACE`, `ASSERT` | `statements/dialect/selftest.c`, `debug/debug.c` | `statements/dialect/selftest.h`, `debug/debug.h` | `stmt_selftest` | `docs/language/debug.md` |
+| **System & Hardware**| `PEEK`, `POKE`, `DEF SEG`, `INP`, `OUT`, `BIOS` | `statements/system/*.c` | `statements/system/*.h` | `stmt_system` | `docs/language/system.md` |
+| **Event Handling** | `ON ERROR`, `ON KEY`, `ON TIMER`, `ON COM`, `TRY`, `CATCH` | `statements/event/*.c` | `statements/event/*.h` | `stmt_event` | `docs/language/events.md` |
+
+---
+
+## 2. Modular Static Library Target Spectrum (`libboot` -> `libadvanced`)
+
+1. **`libboot`**: Core boot phase sequence controller (`common.c`).
+2. **`libplatform`**: OS platform abstraction (`plat_console`, `plat_fs`, `plat_sys`, `plat_time`, `plat_thread`, `plat_dl`, `plat_net`, `plat_regex`, `plat_clipboard`). Encapsulates all Win32 vs POSIX `#ifdef` logic. Upper layers have zero OS-specific code.
+3. **`libkernel`**: Core VM context, lexer, memory manager, security sandbox, BIOS virtualization, virtual device bus (`vdev`, `vcon`).
+4. **`libengine`**: AST evaluator, parser, runtime functions, variables, strings, bytecode execution loop.
+5. **`libhardware`**: Segmented memory (`vmem`), BGI rasterizer, FujiNet hardware emulation.
+6. **`libserver`**: Network socket operations (`vnet`), Gemini protocol, background tasks, VFS, crypto, regex.
+7. **`libscript`**: Headless batch script runner and file I/O operations (`file.c`).
+8. **`libcore`**: Foundational REPL, numeric formatting, print using engine, metadata registry, map serialization.
+9. **`libflex`**: Dynamic metaprogramming (`ALIAS`, `OVERRIDE`, `SCOPE`), module loader, mathext, arrayext.
+10. **`libstandard`**: Standard TUI workstation, multi-window TUI editor multiplexer, DAP debug server.
+11. **`libadvanced`**: Desktop visual graphics (`bgi_core`, `aalib`, `gfx.c`), multimedia, SDL2/OpenGL bindings.
+12. **`libext`**: Open-ended user and third-party extension template.
+
+---
+
+## 3. Developer Extensibility Quick Reference
+
+To add a new keyword or statement:
+1. Register in `BppKeywordId` enum (`engine/include/lexer/lexer.h`).
+2. Add keyword text string in `k_keywords[]` (`engine/src/lexer/lexer.c`).
+3. Create statement handler `stmt_<name>.c` and header `<name>.h`.
+4. Register handler in `engine/src/vm/exec.c` via `stmt_register()`.
+5. Add micro-library target to `engine/CMakeLists.txt` for `libcore` (or `libstandard` if extended feature).
+6. Register help entry in `engine/src/runtime/help_data.h` and update `docs/` and `help/`.

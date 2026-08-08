@@ -6,32 +6,47 @@
 
 /**
  * @file parser.c
- * @brief Statement Registry and Command Dispatcher implementation.
+ * @brief Statement Registration Table and Command Dispatcher implementation for BASIC++.
  *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements statement registration and command lookup. Matches keywords
- *   against registered statement handlers.
- * - Why it exists: Decouples statement logic from the core parser dispatch loop. Prevents
- *   regression errors where adding a command breaks parsing of others.
- * - Why it works this way: It maintains a dynamic array of entries containing the KeywordId, name,
- *   flags, and BppStmtHandler callback pointer. Dispatches are routed via linear scan (very fast
- *   for typical statement counts).
+ * 1. WHAT IT DOES:
+ * Implements `stmt_registry_init()`, `stmt_registry_cleanup()`, `stmt_register()`, `stmt_lookup()`, and keyword-to-handler dispatch lookups.
  *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Internal lookup structures (hash map vs sorted registry), capacities.
- * - What cannot be changed: Callback structures conforming to the BppStmtHandler signature.
- * - What to expect: Registering a command adds it dynamically to the parser's lookup targets.
- * - What to do if something breaks: If statements aren't dispatched or return unknown, verify
- *   that the statement registered at boot and that the lexer produces the correct KeywordId.
+ * 2. WHY IT EXISTS:
+ * Decouples statement parsing and handler dispatch from the VM core, allowing modular keyword handler registration without editing VM switch statements.
  *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Handlers return a structured error. Linear scanning is sufficient for speed.
- * - Portability concerns: None. C17 compliant.
+ * 3. WHY IT WORKS THIS WAY:
+ * Stores registered statement handlers (`BppStmtHandler`) keyed by `BppKeywordId` in dynamic arrays (`StmtEntry`), performing fast lookups for the VM execution loop.
  *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add statement alias mappings or pre-dispatch validations.
- * - How to write external extensions: External plugins call stmt_register at load time to add
- *   custom commands to the execution registry.
+ * 4. DEPENDENCIES & COMPILATION:
+ * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "stmt/stmt.h", <stdlib.h>, <string.h>.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Included in all editions ('baspp', 'bpp', 'bs').
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Register new keyword handlers via `stmt_register()`.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * `BppStmtHandler` function signature contract: `(VMContext *ctx, BValue *result)`.
+ *
+ * 8. WHAT TO EXPECT:
+ * `stmt_lookup(kw)` returns pointer to registered `BppStmtHandler` callback or NULL if statement is unhandled.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Check keyword registration sequence during VM boot in `boot.c`.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * `stmt_registry_init()` executed before boot registration loop.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. Zero pointer casting to integer types.
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/lexer/lexer.c
+ * Prerequisite Header Files:
+ * - engine/include/stmt/stmt.h
+ * - engine/include/lexer/lexer.h
  */
 
 #include "stmt/stmt.h"

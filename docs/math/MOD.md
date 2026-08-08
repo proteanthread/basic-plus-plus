@@ -146,7 +146,7 @@ To verify the correct operational behavior of `MOD`, you can execute the followi
     *Expected output:* Program throws a `HOW?` or `Division by zero` error message and halts.
 
 6.  **Exit Interpreter:**
-    Type `SYSTEM` or `QUIT` (depending on current dialect settings) or press `Ctrl+C`.
+    Type `SYSTEM` or `QUIT` (depending on current configuration settings) or press `Ctrl+C`.
 
 
 ### 9. Memory Management & Garbage Collection Profile

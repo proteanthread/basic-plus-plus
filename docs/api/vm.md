@@ -24,7 +24,6 @@ Provides the execution environment, bytecode dispatch, statement evaluator, and 
 - `DoStack DoStack`
 - `SelectStack SelectStack`
 - `SubStack SubStack`
-- `BppDialect BppDialect`
 - `SelectStack SelectStack`
 - `SubStack SubStack`
 
@@ -93,8 +92,6 @@ Provides the execution environment, bytecode dispatch, statement evaluator, and 
 | `vm_set_current_line` | `void` | `VMContext *vm, BppLineNumber line` |
 | `vm_set_arithmetic_decimal` | `void` | `VMContext *vm, bool enable` |
 | `vm_get_arithmetic_decimal` | `bool` | `VMContext *vm` |
-| `vm_set_active_dialect` | `void` | `VMContext *vm, BppDialect *d` |
-| `vm_set_defining_dialect` | `void` | `VMContext *vm, BppDialect *d` |
 | `vm_get_last_rnd` | `double` | `VMContext *vm` |
 | `vm_set_last_rnd` | `void` | `VMContext *vm, double val` |
 | `vm_save_state` | `void` | `VMContext *vm, BppVMState *state` |

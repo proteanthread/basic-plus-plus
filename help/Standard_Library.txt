@@ -22,7 +22,7 @@ Core functions include:
 - LEN(s$)
 - CHR$(n)
 - STR$(n)
-These functions cannot be overridden by DEFINE SPECIFICATION or Dialect configuration unless the interpreter security is explicitly set to SEC_OPEN.
+These functions cannot be overridden by DEFINE SPECIFICATION or configuration unless the interpreter security is explicitly set to SEC_OPEN.
 - Math: ABS, SGN, INT, SQR, SIN, COS, TAN, ATN, LOG, EXP
 - Strings: LEFT$, RIGHT$, MID$, INSTR, LEN, CHR$, STR$
 - Misc: RND(n) (Upgraded to deterministic PCG32 generator)

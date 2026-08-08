@@ -6,31 +6,46 @@
 
 /**
  * @file vdev.c
- * @brief Virtual Device System context and registry table.
+ * @brief Virtual Device System context, device registry table, and console redirection router for BASIC++.
  *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements the registry table for virtual devices, name-based lookups,
- *   and console redirection helpers (vdev_printf, vdev_puts, vdev_putc).
- * - Why it exists: Prevents the core interpreter from directly calling OS I/O APIs.
- *   This makes routing output to console, graphics framebuffers, or files a simple registration change.
- * - Why it works this way: It maintains a static size array of VDev slots. Lookups normalize
- *   queries to upper case. Console helpers lookup "CON:" and execute its registered operations.
+ * 1. WHAT IT DOES:
+ * Implements `vdev_init()`, `vdev_register()`, `vdev_lookup()`, `vdev_printf()`, `vdev_puts()`, `vdev_putc()`.
  *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: MAX_VDEVS capacity limit (16 by default).
- * - What cannot be changed: Opaque VDevContext definition and the rule that all console calls must redirect to "CON:".
- * - What to expect: vdev_printf formats strings into a stack buffer before calling the target device puts.
- * - What to do if something breaks: If vdev_printf outputs nothing, check if the "CON:" device has been
- *   successfully registered and that its puts pointer is valid.
+ * 2. WHY IT EXISTS:
+ * Decouples core VM console/file operations from OS stdio, enforcing virtual device abstraction ("CON:", "PRN:", "SCRN:").
  *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: CON: is always registered. vsnprintf is C17 compliant and doesn't overflow.
- * - Portability concerns: vsnprintf output buffers are allocated on the stack (1024 bytes), which is safe for core sizes.
+ * 3. WHY IT WORKS THIS WAY:
+ * Maintains a fixed array of `VDev` slots (`MAX_VDEVS = 64`), performing upper-case device name lookups and routing all console output through registered device callbacks.
  *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add hotplug and async notification messages to the registry.
- * - How to write external extensions: External platforms register their own keyboard/screen devices
- *   under names like "CON:" to capture output.
+ * 4. DEPENDENCIES & COMPILATION:
+ * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "device/vdev.h", <string.h>, <ctype.h>, <stdio.h>, <stdarg.h>, <stdlib.h>.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Included in all editions ('baspp', 'bpp', 'bs').
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Increase `MAX_VDEVS` or register custom virtual devices (`vdev_register`).
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * Mandatory output redirection through virtual devices — direct raw `printf`/`putchar` calls in statements are strictly prohibited.
+ *
+ * 8. WHAT TO EXPECT:
+ * `vdev_printf()` formats text into a stack buffer and dispatches to the active "CON:" device output handler.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * If output is silent, verify "CON:" device registration in `vdev_init()`.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Valid `VDevContext` allocated on engine startup.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. 1024-byte bounded stack buffer for formatted text dispatches.
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/device/vcon.c
+ * Prerequisite Header Files:
+ * - engine/include/device/vdev.h
  */
 
 #include "device/vdev.h"
@@ -132,6 +147,16 @@ int vdev_putc(VDevContext *ctx, int c) {
         return con->ops.putc(con, c);
     }
     return -1;
+}
+
+char *vdev_gets(VDevContext *ctx, char *buf, size_t size) {
+    if (!ctx || !buf || size == 0) return NULL;
+
+    VDev *con = vdev_get(ctx, "CON:");
+    if (con && con->ops.gets) {
+        return con->ops.gets(con, buf, size);
+    }
+    return fgets(buf, (int)size, stdin);
 }
 
 int vdev_read(VDev *d, void *buf, int len) {

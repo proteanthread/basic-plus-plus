@@ -21,7 +21,7 @@ Writes a single byte directly to the specified memory offset within the current 
 5. Implementation Details
 POKE is a statement (not a function). It passes the offset and value to the sandbox VM memory allocator.
 Edge Cases & Boundary Conditions:
-- Byte Overflow Restrictions: If value exceeds 255 (e.g., POKE 1000, 300), the VM will perform a modulo wrap value AND 255 or throw an Overflow error depending on dialect strictness flags.
+- Byte Overflow Restrictions: If value exceeds 255 (e.g., POKE 1000, 300), the VM will perform a modulo wrap value AND 255 or throw an Overflow error depending on strictness flags.
 - Write Protections: Attempting to POKE into virtual ROM areas (like the mock BIOS ROM boot block) is intercepted by the memory manager and quietly ignored or flags a Permission Denied error, guaranteeing core system stability.
 - Troubleshooting: If WHAT? AT LINE X occurs, ensure you are not assigning it like a variable (A = POKE...), as POKE does not return a value.
 

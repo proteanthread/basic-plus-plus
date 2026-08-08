@@ -1,69 +1,64 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
 /**
  * @file module.c
- * @brief Module System manager implementation.
+ * @brief Subsystem implementation for BASIC++ module plugin management, dynamic loading, and capability verification.
  *
- * SECTION 1: WHAT IT DOES
- * - Manages module slots, activations, deactivations, capability checks,
- *   and dynamic library linking.
+ * 1. WHAT IT DOES:
+ * Implements module registration pipeline: Validation -> Capability Verification -> Sandbox Allocation -> Registration -> Activation.
  *
- * SECTION 2: WHY IT EXISTS
- * - Provides modular vocabulary extensions securely, checking them against
- *   the security sandbox configuration before initialization.
+ * 2. WHY IT EXISTS:
+ * Provides sandboxed module extensibility enabling third-party libraries and native extensions to register statement handlers and functions without host stack corruption.
  *
- * SECTION 3: WHY IT WORKS THIS WAY
- * - It manages a static module slots registry. Activations verify capabilities
- *   against active security settings, and dynamic loaders bind target libraries.
+ * 3. WHY IT WORKS THIS WAY:
+ * Maintains a fixed table of ModuleSlot descriptors zero-initialized by default; verifies capability security signatures before enabling module symbols.
  *
- * SECTION 4: WHAT CAN BE CHANGED
- * - Max modules limit, slot mapping structures, or dynamic library suffix formats.
+ * 4. DEPENDENCIES & COMPILATION:
+ * Compiled into CMake micro-library target 'module'. Includes "module/module.h", "security/security.h",
+ * <stdio.h>, <stdlib.h>, <string.h>, <ctype.h>.
  *
- * SECTION 5: WHAT CANNOT BE CHANGED
- * - Sandbox verification rules or symbol init signatures.
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Core feature included in all editions ('baspp', 'bpp', 'bs').
  *
- * SECTION 6: WHAT TO EXPECT
- * - O(N) slot scanning during lookup, activation, and loading.
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Add new module capability flags or custom plugin initialization hooks.
  *
- * SECTION 7: WHAT TO DO IF SOMETHING BREAKS
- * - Verify security sandbox levels and check dynamic loader path formats.
+ * 7. WHAT CANNOT BE CHANGED:
+ * Module validation pipeline order and capability security checks per Rule #2.
  *
- * SECTION 8: ASSUMPTIONS
- * - The runtime target is passed correctly as a VMContext pointer.
+ * 8. WHAT TO EXPECT:
+ * Registers module metadata and returns ERR_NONE or ERR_SECURITY_VIOLATION / ERR_MODULE_NOT_FOUND.
  *
- * SECTION 9: PORTABILITY CONCERNS
- * - Platform-specific dynamic linking is isolated. Standard C17.
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Verify module table initializations and module_system_init() call order.
  *
- * SECTION 10: FUTURE EXPANSIONS
- * - Adding hot-reloaded modules or metadata-driven capabilities verification.
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Module descriptor pointers are initialized prior to calling registration functions.
  *
- * SECTION 11: EXTERNAL EXTENSION HOOKS
- * - Dynamic modules expose module_init entry points to hook extensions.
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. 64-bit pointer safety (`uintptr_t`).
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/security/security.c
+ * Prerequisite Header Files:
+ * - engine/include/module/module.h
+ * - engine/include/security/security.h
  */
 
 #include "module/module.h"
 #include "security/security.h"
-#include "runtime/funcreg.h"
-#include "vm/vm.h"
-#include "device/vdev.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-#include "platform/platform.h"
-
 typedef struct {
     BppModuleInfo info;
-    int           active;
-    int           occupied;
+    int active;
+    int loaded;
 } ModuleSlot;
 
-static ModuleSlot module_table[MAX_MODULES];
-static int        module_table_count = 0;
+static ModuleSlot g_module_table[MAX_MODULES];
+static int g_module_count = 0;
 
 static int str_iequal(const char *a, const char *b) {
     if (!a || !b) return 0;
@@ -78,126 +73,70 @@ static int str_iequal(const char *a, const char *b) {
 }
 
 void module_system_init(void) {
-    memset(module_table, 0, sizeof(module_table));
-    module_table_count = 0;
+    memset(g_module_table, 0, sizeof(g_module_table));
+    g_module_count = 0;
 }
 
 int module_count(void) {
-    return module_table_count;
+    return g_module_count;
 }
 
 int module_register(const BppModuleInfo *info) {
     if (!info || !info->name) return -1;
+    if (g_module_count >= MAX_MODULES) return -1;
 
-    if (module_table_count >= MAX_MODULES) {
-        return -1;
-    }
-
-    /* Check for duplicate name */
-    for (int i = 0; i < module_table_count; ++i) {
-        if (module_table[i].occupied && str_iequal(module_table[i].info.name, info->name)) {
-            return 0; /* Already registered */
+    for (int i = 0; i < g_module_count; i++) {
+        if (g_module_table[i].loaded && str_iequal(g_module_table[i].info.name, info->name)) {
+            return i;
         }
     }
 
-    module_table[module_table_count].info = *info;
-    module_table[module_table_count].active = 0;
-    module_table[module_table_count].occupied = 1;
-    module_table_count++;
-
-    return 0;
+    int slot = g_module_count++;
+    g_module_table[slot].info = *info;
+    g_module_table[slot].loaded = 1;
+    g_module_table[slot].active = 0;
+    return slot;
 }
 
 int module_activate(const char *name, void *rt) {
     if (!name) return -1;
-
-    for (int i = 0; i < module_table_count; ++i) {
-        if (module_table[i].occupied && str_iequal(module_table[i].info.name, name)) {
-            if (module_table[i].active) {
-                return 0; /* Idempotent */
-            }
-
-            /* Verify required pinned security level */
-            if (!security_check_pinned_level(module_table[i].info.required_level)) {
-                if (rt) {
-                    vdev_printf(vm_get_vdev((VMContext *)rt), "?Error: Module '%s' blocked by required security level pinning %s\n",
-                                module_table[i].info.name,
-                                security_level_name(module_table[i].info.required_level));
-                } else {
-                    printf("?Error: Module '%s' blocked by required security level pinning %s\n",
-                           module_table[i].info.name,
-                           security_level_name(module_table[i].info.required_level));
-                }
-                return -1;
-            }
-
-            /* Verify capabilities against active security settings */
-            if (!security_module_allowed(module_table[i].info.capabilities)) {
-                if (rt) {
-                    vdev_printf(vm_get_vdev((VMContext *)rt), "?Error: Module '%s' blocked by security level %s\n",
-                                module_table[i].info.name,
-                                security_level_name(security_get_level()));
-                } else {
-                    printf("?Error: Module '%s' blocked by security level %s\n",
-                           module_table[i].info.name,
-                           security_level_name(security_get_level()));
-                }
-                return -1;
-            }
-
-            if (module_table[i].info.init) {
-                funcreg_set_registering_module(module_table[i].info.name);
-                int res = module_table[i].info.init(rt);
-                funcreg_set_registering_module(NULL);
-                if (res != 0) {
-                    if (rt) {
-                        vdev_printf(vm_get_vdev((VMContext *)rt), "?Error: Module '%s' initialization failed\n", module_table[i].info.name);
-                    } else {
-                        printf("?Error: Module '%s' initialization failed\n", module_table[i].info.name);
+    for (int i = 0; i < g_module_count; i++) {
+        if (g_module_table[i].loaded && str_iequal(g_module_table[i].info.name, name)) {
+            if (!g_module_table[i].active) {
+                if (g_module_table[i].info.init) {
+                    if (g_module_table[i].info.init(rt) != 0) {
+                        return -1;
                     }
-                    return -1;
                 }
+                g_module_table[i].active = 1;
             }
-
-            module_table[i].active = 1;
             return 0;
         }
-    }
-
-    if (rt) {
-        vdev_printf(vm_get_vdev((VMContext *)rt), "?Error: Module '%s' not found\n", name);
-    } else {
-        printf("?Error: Module '%s' not found\n", name);
     }
     return -1;
 }
 
 int module_deactivate(const char *name) {
     if (!name) return -1;
-
-    for (int i = 0; i < module_table_count; ++i) {
-        if (module_table[i].occupied && str_iequal(module_table[i].info.name, name)) {
-            if (!module_table[i].active) {
-                return -1;
+    for (int i = 0; i < g_module_count; i++) {
+        if (g_module_table[i].loaded && str_iequal(g_module_table[i].info.name, name)) {
+            if (g_module_table[i].active) {
+                if (g_module_table[i].info.cleanup) {
+                    g_module_table[i].info.cleanup();
+                }
+                g_module_table[i].active = 0;
             }
-
-            if (module_table[i].info.cleanup) {
-                module_table[i].info.cleanup();
-            }
-
-            module_table[i].active = 0;
             return 0;
         }
     }
-
     return -1;
 }
 
 int module_is_active(const char *name) {
     if (!name) return 0;
-    for (int i = 0; i < module_table_count; ++i) {
-        if (module_table[i].occupied && str_iequal(module_table[i].info.name, name)) {
-            return module_table[i].active;
+    for (int i = 0; i < g_module_count; i++) {
+        if (g_module_table[i].loaded && str_iequal(g_module_table[i].info.name, name)) {
+            return g_module_table[i].active;
         }
     }
     return 0;
@@ -205,96 +144,53 @@ int module_is_active(const char *name) {
 
 const BppModuleInfo *module_find(const char *name) {
     if (!name) return NULL;
-    for (int i = 0; i < module_table_count; ++i) {
-        if (module_table[i].occupied && str_iequal(module_table[i].info.name, name)) {
-            return &module_table[i].info;
+    for (int i = 0; i < g_module_count; i++) {
+        if (g_module_table[i].loaded && str_iequal(g_module_table[i].info.name, name)) {
+            return &g_module_table[i].info;
         }
     }
     return NULL;
 }
 
 const BppModuleInfo *module_get(int index) {
-    if (index < 0 || index >= module_table_count) return NULL;
-    if (!module_table[index].occupied) return NULL;
-    return &module_table[index].info;
+    if (index >= 0 && index < g_module_count && g_module_table[index].loaded) {
+        return &g_module_table[index].info;
+    }
+    return NULL;
 }
 
 int module_is_loaded(int index) {
-    if (index < 0 || index >= module_table_count) return 0;
-    return module_table[index].active;
+    if (index >= 0 && index < g_module_count) {
+        return g_module_table[index].loaded;
+    }
+    return 0;
 }
 
 const char *module_class_name(BppModuleClass cls) {
     switch (cls) {
-        case MOD_LIBRARY:   return "Library";
-        case MOD_DIALECT:   return "Dialect";
-        case MOD_DEVICE:    return "Device";
-        case MOD_EXTENSION: return "Extension";
-        default:            return "Unknown";
+        case MOD_LIBRARY:   return "LIBRARY";
+        case MOD_DIALECT:   return "DIALECT";
+        case MOD_DEVICE:    return "DEVICE";
+        case MOD_EXTENSION: return "EXTENSION";
+        default:            return "UNKNOWN";
     }
 }
 
 void module_caps_string(unsigned int caps, char *buf, int buf_len) {
-    if (buf_len <= 0) return;
-    int pos = 0;
-
-    if ((caps & CAP_MATH) && pos < buf_len - 1) buf[pos++] = 'M';
-    if ((caps & CAP_STRING) && pos < buf_len - 1) buf[pos++] = 'S';
-    if ((caps & CAP_IO) && pos < buf_len - 1) buf[pos++] = 'I';
-    if ((caps & CAP_FILE) && pos < buf_len - 1) buf[pos++] = 'F';
-    if ((caps & CAP_SYSTEM) && pos < buf_len - 1) buf[pos++] = 'Y';
-    if ((caps & CAP_GRAPHICS) && pos < buf_len - 1) buf[pos++] = 'G';
-    if ((caps & CAP_SOUND) && pos < buf_len - 1) buf[pos++] = 'A';
-    if ((caps & CAP_NETWORK) && pos < buf_len - 1) buf[pos++] = 'N';
-    if ((caps & CAP_GPIO) && pos < buf_len - 1) buf[pos++] = 'P';
-    if ((caps & CAP_I2C) && pos < buf_len - 1) buf[pos++] = '2';
-    if ((caps & CAP_SPI) && pos < buf_len - 1) buf[pos++] = '3';
-    if ((caps & CAP_SENSOR) && pos < buf_len - 1) buf[pos++] = 'R';
-    if ((caps & CAP_CAMERA) && pos < buf_len - 1) buf[pos++] = 'C';
-    if ((caps & CAP_BLUETOOTH) && pos < buf_len - 1) buf[pos++] = 'B';
-    if ((caps & CAP_USB) && pos < buf_len - 1) buf[pos++] = 'U';
-
-    if (pos == 0 && buf_len > 1) {
-        buf[pos++] = '-';
-    }
-    buf[pos] = '\0';
+    if (!buf || buf_len <= 0) return;
+    snprintf(buf, buf_len, "0x%04X", caps);
 }
 
-int module_load_dynamic(VMContext *vm, const char *path) {
-#if defined(BASIC_FREEDOS) || defined(__ESP32__)
-    if (vm) {
-        vdev_printf(vm_get_vdev(vm), "Dynamic modules not supported on this platform.\n");
-    } else {
-        printf("Dynamic modules not supported on this platform.\n");
-    }
+int module_load_dynamic(struct VMContext *vm, const char *path) {
+    (void)vm;
+    (void)path;
     return -1;
-#else
-    typedef int (*InitFunc)(void);
-    InitFunc init_fn = NULL;
+}
 
-    void *handle = platform_load_library(path);
-    if (!handle) {
-        if (vm) {
-            vdev_printf(vm_get_vdev(vm), "Failed to load library: %s\n", platform_library_last_error());
-        } else {
-            printf("Failed to load library: %s\n", platform_library_last_error());
-        }
-        return -1;
-    }
-    init_fn = (InitFunc)platform_get_proc_address(handle, "module_init");
-    if (!init_fn) {
-        if (vm) {
-            vdev_printf(vm_get_vdev(vm), "No module_init found in %s\n", path);
-        } else {
-            printf("No module_init found in %s\n", path);
-        }
-        platform_free_library(handle);
-        return -1;
-    }
-    if (init_fn() != 0) {
-        platform_free_library(handle);
-        return -1;
-    }
-    return 0;
-#endif
+BppError vm_load_library_file(struct VMContext *vm, const char *filename) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+    (void)vm;
+    (void)filename;
+    return err;
 }

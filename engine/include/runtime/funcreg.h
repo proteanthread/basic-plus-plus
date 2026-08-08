@@ -69,7 +69,7 @@ typedef struct {
     int             min_args;    /* minimum arguments */
     int             max_args;    /* maximum arguments */
     FuncSafety      safety;      /* FSAFE_PURE ... FSAFE_SYSTEM */
-    int             overridable; /* 1=dialect can replace */
+    int             overridable; /* 1=can be overridden */
     FuncHandler     handler;     /* C function pointer */
     const char     *help_text;   /* help docstring */
     const char     *module_name; /* module that registered this function */

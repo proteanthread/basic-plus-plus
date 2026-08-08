@@ -13,7 +13,7 @@ Table of Contents
   - Sound
   - Memory Access
   - Screen Memory
-- Dialect Configuration
+- configuration
 - Example Programs
   - Simple color demo
   - Number guessing game (Spectrum style)
@@ -133,7 +133,7 @@ Each attribute byte: FBPPPIII
 
 ---
 
-Dialect Configuration
+configuration
 
 | Property | Value |
 |----------|-------|
@@ -195,7 +195,6 @@ Number guessing game (Spectrum style)
 See Also
 
 - Quick_Reference — Complete keyword listing
-- Specific_Machine_Dialects — All 16 dialects explained
 - Older_Dialects — MEMMAP "SPECTRUM" details
 - Memory_Maps — All 12 memory map presets
 

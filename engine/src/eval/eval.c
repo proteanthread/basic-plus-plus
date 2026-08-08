@@ -1,43 +1,55 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
 /**
  * @file eval.c
- * @brief Iterative Expression Evaluator implementation.
+ * @brief Master non-recursive Shunting-Yard expression evaluator for BASIC++.
  *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements the main mathematical, string, and relational expression parser
- *   using the iterative Shunting-Yard algorithm. Consumes tokens until expression termination.
- * - Why it exists: Avoids stack overflow crashes during evaluation of complex nested expressions,
- *   supporting standard BASIC operator precedence.
- * - Why it works this way: It maintains value and operator stacks in the scratch arena.
- *   Unary operators are identified contextually and transformed to internal types. Relational
- *   comparisons return standard BASIC truth values (-1.0 for true, 0.0 for false).
+ * 1. WHAT IT DOES:
+ * Implements `eval_expression()`, consuming tokens, managing value/operator stacks, evaluating operators (+, -, *, /, ^, MOD, AND, OR, XOR, NOT, relational), array subscripts, string slicing, and function calls.
  *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Precedence rankings, support for new operators, string comparison behaviors.
- * - What cannot be changed: Memory allocation points (must remain scratch arena-bound) and C-stack independence.
- * - What to expect: Evaluating strings will reference-count results. Concatenation allocates new strings.
- * - What to do if something breaks: Check operator pop loops and trace value type transitions.
+ * 2. WHY IT EXISTS:
+ * Serves as the core expression evaluation engine for all BASIC statement handlers and VM execution steps without host stack recursion per Rule #2.
  *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Relational operations return double values (-1.0 or 0.0). String comparison uses strcmp.
- * - Portability concerns: None. C17 compliant.
+ * 3. WHY IT WORKS THIS WAY:
+ * Utilizes iterative Shunting-Yard algorithm with value and operator stacks; enforces evaluation depth limit (64) to prevent host stack overflow; returns tagged `BValue` structs with refcounted strings per Rule #3.
  *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add MOD (modulo), ^ (power), or logical XOR operators.
- * - How to write external extensions: External functions are parsed as identifiers followed by parentheses,
- *   routed to the domain registry.
+ * 4. DEPENDENCIES & COMPILATION:
+ * Compiled into CMake micro-library target 'eval'. Includes "eval/eval_internal.h", "runtime/variables.h",
+ * "runtime/map.h", "core/struct.h", "runtime/funcreg.h", "runtime/file.h".
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Core feature included in all editions ('baspp', 'bpp', 'bs').
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Add new operators or custom operator precedence levels in Shunting-Yard precedence tables.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * Refcount ownership invariant: Every `BValue` containing `VAL_STRING` returned by `eval_expression()` holds an INCREMENTED refcount; caller MUST call `str_release()` (Rule #3). Relational truth values MUST evaluate to -1.0 (true) or 0.0 (false).
+ *
+ * 8. WHAT TO EXPECT:
+ * Returns BValue result (VAL_NUMBER, VAL_STRING, VAL_ERROR) and sets `out_err`.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Trace stack push/pop balance and check operator precedence handling in precedence table.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Valid initialized VMContext, LexerContext, and out_err pointer.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. Floating-point comparisons and IEEE 754 float math.
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/eval/dispatch.c
+ * - engine/src/runtime/variables.c
+ * - engine/src/core/string.c
+ * Prerequisite Header Files:
+ * - engine/include/eval/eval.h
+ * - engine/include/eval/dispatch.h
+ * - engine/include/runtime/variables.h
  */
 
 #include "eval/eval_internal.h"
 #include "runtime/variables.h"
 #include "runtime/map.h"
-#include "core/dialect.h"
-#include "module/module.h"
 #include "core/struct.h"
 #include "runtime/funcreg.h"
 #include "runtime/file.h"
@@ -534,7 +546,6 @@ BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err) {
                     if (next.type == TOK_MINUS) {
                         LexerContext *temp = lex_init(vm_get_mem(vm), lex_get_pos(lex));
                         if (temp) {
-                            lex_set_dialect(temp, vm_get_active_dialect(vm));
                             lex_next(temp); /* consume '-' */
                             BppToken sub = lex_next(temp);
                             if (sub.type == TOK_NUMBER) {

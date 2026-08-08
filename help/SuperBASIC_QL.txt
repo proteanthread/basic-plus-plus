@@ -17,7 +17,7 @@ Table of Contents
   - DEF PROCedure / DEF FuNction
 - QDOS and Memory Map
   - Display Modes
-- Dialect Configuration
+- configuration
 - Example Programs
   - Fibonacci sequence (structured)
   - Using SELECT CASE
@@ -166,7 +166,7 @@ Display Modes
 
 ---
 
-Dialect Configuration
+configuration
 
 | Property | Value |
 |----------|-------|
@@ -236,7 +236,6 @@ Using SELECT CASE
 See Also
 
 - Quick_Reference — Complete keyword listing
-- Specific_Machine_Dialects — All 16 dialects explained
 - Memory_Maps — MEMMAP "QL" details
 - Structured_BASIC — Structured programming tutorial
 

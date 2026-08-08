@@ -2401,7 +2401,6 @@ COMPLETE EXAMPLE:
 =====================================================================
 
   B_Programmers_Guide.txt       Language reference
-  K_Creating_Dialects.txt       Dialect modules
   L_Advanced_DEF.txt            DEF FN user functions
   Q_Security.txt                Security system reference
   R_Virtual_Devices.txt         VDev device drivers

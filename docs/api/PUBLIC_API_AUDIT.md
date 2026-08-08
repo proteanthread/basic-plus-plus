@@ -3,7 +3,7 @@
 > **Status**: AUTOMATED AUDIT — Completed
 > This document catalogs all public functions, structs, and enums exposed by the 38 public header files in `include/` for third-party embedding.
 
-## Tier 1 — Embedding & Lifecycle
+## Subsystem Layer 1 — Embedding & Lifecycle
 
 ### `boot.h`
 #### Functions:
@@ -40,7 +40,6 @@
 - `DoStack DoStack`
 - `SelectStack SelectStack`
 - `SubStack SubStack`
-- `BppDialect BppDialect`
 - `SelectStack SelectStack`
 - `SubStack SubStack`
 #### Functions:
@@ -108,8 +107,6 @@
 | `vm_set_current_line` | `void` | `VMContext *vm, BppLineNumber line` |
 | `vm_set_arithmetic_decimal` | `void` | `VMContext *vm, bool enable` |
 | `vm_get_arithmetic_decimal` | `bool` | `VMContext *vm` |
-| `vm_set_active_dialect` | `void` | `VMContext *vm, BppDialect *d` |
-| `vm_set_defining_dialect` | `void` | `VMContext *vm, BppDialect *d` |
 | `vm_get_last_rnd` | `double` | `VMContext *vm` |
 | `vm_set_last_rnd` | `void` | `VMContext *vm, double val` |
 | `vm_save_state` | `void` | `VMContext *vm, BppVMState *state` |
@@ -161,7 +158,7 @@
 
 ---
 
-## Tier 2 — Language Core
+## Subsystem Layer 2 — Language Core
 
 ### `arrays.h`
 #### Structs:
@@ -198,7 +195,6 @@
 ### `lexer.h`
 #### Structs:
 - `LexerContext LexerContext`
-- `BppDialect BppDialect`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
@@ -206,7 +202,6 @@
 | `lex_next` | `BppToken` | `LexerContext *ctx` |
 | `lex_peek` | `BppToken` | `LexerContext *ctx` |
 | `lex_set_pos` | `void` | `LexerContext *ctx, const char *pos` |
-| `lex_set_dialect` | `void` | `LexerContext *ctx, BppDialect *dialect` |
 | `lex_find_keyword_by_name` | `BppKeywordId` | `const char *name` |
 | `keyword_clear_custom` | `void` | `void` |
 | `keyword_register_custom` | `BppKeywordId` | `const char *name` |
@@ -285,7 +280,7 @@
 ---
 
 
-## Tier 3 — Runtime Extensions
+## Subsystem Layer 3 — Runtime Extensions
 
 ### `file.h`
 #### Structs:
@@ -413,7 +408,7 @@
 
 ---
 
-## Tier 4 — Virtual Devices & I/O
+## Subsystem Layer 4 — Virtual Devices & I/O
 
 ### `bus.h`
 #### Functions:
@@ -544,7 +539,7 @@
 
 ---
 
-## Tier 5 — Graphics
+## Subsystem Layer 5 — Graphics
 
 ### `bgi.h`
 #### Structs:
@@ -592,24 +587,43 @@
 
 ---
 
-### `mock_bios.h`
+### `bios.h`
 #### Structs:
-- `MockBiosRegs`
-- `MockBiosContext`
+- `BiosRegs`
+- `BiosContext`
+- `BiosDataArea`
+- `BiosMemoryMap`
 #### Enums:
-- `MockBiosModel`
+- `BiosModel`
+- `BiosRevision`
+- `BiosClockMode`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
-| `mock_bios_init_mem` | `BIOS_API void` | `MockBiosContext *ctx, uint8_t *mem_segment, size_t mem_size, MockBiosModel model` |
-| `mock_bios_in` | `BIOS_API uint8_t` | `MockBiosContext *ctx, uint16_t port` |
-| `mock_bios_out` | `BIOS_API void` | `MockBiosContext *ctx, uint16_t port, uint8_t val` |
-| `mock_bios_interrupt` | `BIOS_API void` | `MockBiosContext *ctx, uint8_t int_num` |
-| `mock_bios_model_from_string` | `BIOS_API MockBiosModel` | `const char *name` |
+| `bios_create` | `BiosContext*` | `BiosModel model` |
+| `bios_destroy` | `void` | `BiosContext* ctx` |
+| `bios_init` | `bool` | `BiosContext* ctx` |
+| `bios_set_model` | `void` | `BiosContext* ctx, BiosModel model` |
+| `bios_get_model` | `BiosModel` | `const BiosContext* ctx` |
+| `bios_set_revision` | `void` | `BiosContext* ctx, BiosRevision revision` |
+| `bios_get_revision` | `BiosRevision` | `const BiosContext* ctx` |
+| `bios_get_part_number` | `const char*` | `const BiosContext* ctx` |
+| `bios_set_clock_mode` | `void` | `BiosContext* ctx, BiosClockMode mode` |
+| `bios_get_clock_mode` | `BiosClockMode` | `const BiosContext* ctx` |
+| `bios_set_clock_freq` | `void` | `BiosContext* ctx, double mhz` |
+| `bios_get_clock_freq` | `double` | `const BiosContext* ctx` |
+| `bios_peek` | `uint8_t` | `BiosContext* ctx, uint32_t addr` |
+| `bios_poke` | `void` | `BiosContext* ctx, uint32_t addr, uint8_t val` |
+| `bios_poke_raw` | `void` | `BiosContext* ctx, uint32_t addr, uint8_t val` |
+| `bios_inp` | `uint8_t` | `BiosContext* ctx, uint16_t port` |
+| `bios_out` | `void` | `BiosContext* ctx, uint16_t port, uint8_t val` |
+| `bios_interrupt` | `bool` | `BiosContext* ctx, uint8_t int_num, BiosRegs* regs` |
+| `bios_register_interrupt` | `bool` | `BiosContext* ctx, uint8_t int_num, BiosIntHandlerFn handler, void* user_data` |
+| `bios_post_code` | `void` | `BiosContext* ctx, uint8_t code` |
 
 ---
 
-## Tier 6 — Security & Modules
+## Subsystem Layer 6 — Security & Modules
 
 ### `module.h`
 #### Functions:
@@ -663,7 +677,7 @@
 
 ---
 
-## Tier 7 — Platform & Memory
+## Subsystem Layer 7 — Platform & Memory
 
 ### `memory.h`
 #### Structs:
@@ -760,17 +774,13 @@
 
 ---
 
-## Tier 8 — Dialect & Configuration
+## Subsystem Layer 8 — Dialect & Configuration
 
 ### `dialect.h`
 #### Structs:
-- `BppDialect`
 #### Functions:
 | Function | Return Type | Arguments |
 |----------|-------------|-----------|
-| `dialect_free` | `void` | `BppDialect *d` |
-| `dialect_load_from_map` | `bool` | `VMContext *vm, BppMap *map, BppDialect *d, char *err_buf, size_t err_len` |
-| `dialect_validate_map` | `bool` | `VMContext *vm, BppMap *map, char *err_buf, size_t err_len` |
 
 ---
 

@@ -50,7 +50,7 @@ The runtime extracts the arguments, ensuring all three are valid string values (
   - No `ERR_OUT_OF_BOUNDS` is thrown for string length excesses; instead, the string is truncated safely to 255 characters.
 - **Modification Constraints:** 
   - *What CAN be changed:* Optimization of the substring search algorithm (e.g., using Boyer-Moore instead of a naive byte-by-byte scan) can be implemented if performance bottlenecks are identified.
-  - *What CANNOT be changed:* The 255-character maximum output buffer size is deeply entrenched in string pool constants and legacy compatibility expectations; removing it would require an overhaul of `strpool_store` and legacy dialect constraints.
+  - *What CANNOT be changed:* The 255-character maximum output buffer size is deeply entrenched in string pool constants and legacy compatibility expectations; removing it would require an overhaul of `strpool_store` and legacy compatibility constraints.
 
 ### 6. Cross-References / See Also
 - `INSTR`

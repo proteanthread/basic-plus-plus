@@ -68,9 +68,6 @@ These must be compiled and linked together to produce a functional blite binary:
 39. source/memory/builtins_memory.c (peek and poke variables)
 40. source/system/builtins_system.c (runtime variables resolver)
 41. source/system/builtins_io.c (text screen helper variables)
-42. source/dialect/dialect.c (active dialect tables)
-43. source/dialect/dialect_gwbs.c (GW-BASIC dialect)
-44. source/dialect/dialect_ecma116.c (ECMA-116 dialect)
 45. source/modules/module.c (module initialization stub)
 46. source/modules/mod_stdlib.c (standard library registration stub)
 47. source/runtime/runtime.c (runtime state container)
@@ -78,7 +75,7 @@ These must be compiled and linked together to produce a functional blite binary:
 49. source/misc/parser_misc.c (miscellaneous statements)
 50. source/spec.c (dialect syntax specification tables)
 51. source/display/ldisdbl.c (double precision float emulation)
-52. source/config/config_file.c (dialect configuration file handling)
+52. source/config/config_file.c (configuration file handling)
 53. source/modules/stdlib_core.c (core standard library helpers)
 54. source/modules/stdlib_dialect.c (dialect library helpers)
 55. source/core/error_registry.c (numeric error code mapping)
@@ -97,7 +94,6 @@ Excluding these files entirely from your compilation target will significantly r
 *   Graphics & Sound: parser_graphics.c, gfxbuf.c, builtins_graphics.c, parser_sound.c (except parameterless BEEP inside parser_misc.c), parser_display.c
 *   Advanced Features: parser_shell.c, parser_txn.c, txn.c, builtins_txn.c, builtins_net.c, builtins_sio.c, builtins_bio.c, parser_virtual.c
 *   Extensions: modules/mod_usb.c, modules/mod_fujinet.c, modules/mod_upnp.c, modules/mod_jit.c, modules/ext_lib.c, modules/ext_func.c, modules/ext_feature.c, modules/ext_plugin.c, modules/lib_space.c, modules/bpl_format.c, modules/parser_block.c, modules/gw_math_mbf.c, modules/gw_memory.c, modules/gw_sdl2.c, modules/gw_plugin.c, modules/gw_serial.c, modules/mod_gwbasic.c
-*   Dialects: dialect_patb.c, dialect_trs1.c, dialect_trs2.c, dialect_ecma55.c, dialect_qbasic.c, dialect_aint.c, dialect_asft.c, dialect_atari.c, dialect_c64.c, dialect_coco.c, dialect_mbasic.c, dialect_sinclair.c, dialect_superbasic.c, dialect_sbasic.c
 
 ---
 
@@ -161,7 +157,6 @@ For extreme microcontrollers (e.g., ATmega platforms with only a few kilobytes o
 1.  Reduce Symbol Table Count: Change MAX_NAMED_VARS from 64 to 26 (which permits exactly one active variable per letter, A to Z).
 2.  Prune String Pool Space: Set MAX_STRING_POOL to 512 or 1024 bytes.
 3.  Minimize the Stack: Set MAX_STACK_DEPTH down to 8 or 16 (reduces memory consumption during nested GOSUB or expression calls).
-4.  Single-Dialect Compilation: Modify source/dialect/dialect.c to compile and register only a single dialect (such as Palo Alto Tiny BASIC) and comment out the registration of all other dialects. This allows the compiler to completely strip out unused dialect files and dialect metadata tables, saving flash space.
 5.  16-bit Integer Downsizing: Change default integer storage types from 32-bit long (int32_t) to 16-bit short (int16_t) if the target microcontroller has an 8-bit or 16-bit registers (e.g., AVR ATmega).
 
 ---

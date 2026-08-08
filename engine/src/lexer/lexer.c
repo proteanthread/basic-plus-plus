@@ -6,33 +6,51 @@
 
 /**
  * @file lexer.c
- * @brief Ephemeral Lexer/Tokenizer implementation.
+ * @brief Ephemeral Lexer and Tokenizer implementation for BASIC++.
  *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Converts a raw line of BASIC code into a sequence of transient tokens.
- *   Skips whitespace, scans numbers, strings, operators, and identifiers, mapping keywords case-insensitively.
- * - Why it exists: Provides an isolated lexical analysis layer that does not allocate persistent heap memory.
- * - Why it works this way: It traverses the string using standard pointer arithmetic. Peeking is implemented
- *   by saving the position, scanning, and rolling back, ensuring zero storage overhead for lookahead.
- *   Comments (REM or ') skip the rest of the line and return EOL.
+ * 1. WHAT IT DOES:
+ * Implements `lexer_init()`, `lexer_next()`, `lexer_peek()`, `lexer_rollback()`, scanning source code lines into ephemeral tokens (`Token`).
  *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Add mappings to the static keyword table, update symbol character matches.
- * - What cannot be changed: The case-insensitive normalization rules and EOF scanning loop bounds.
- * - What to expect: Tokens point directly to the source buffer, so tokens are only valid while the source line exists.
- * - What to do if something breaks: Check character checks (like isspace/isdigit) and ensure correct pointer boundaries.
+ * 2. WHY IT EXISTS:
+ * Performs zero-copy, ephemeral lexical analysis converting text source into tokens without heap allocation or permanent AST AST tokenization.
  *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Character pointers are ASCII. Numbers compile to double using strtod.
- * - Portability concerns: strtod is standard, but Watcom on FreeDOS must be linked with floating-point libraries.
+ * 3. WHY IT WORKS THIS WAY:
+ * Scans tokens using pointer arithmetic into source text, matching keywords via case-insensitive lookup table (`KeywordMap`), parsing numbers with `strtod`, and string literals.
  *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add new multi-character operator scans (e.g. ^, **, \).
- * - How to write external extensions: New keywords are added to the mapping table or handled by dialect layers.
+ * 4. DEPENDENCIES & COMPILATION:
+ * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "lexer/lexer.h", "types/config.h", <string.h>, <ctype.h>, <stdlib.h>.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Included in all editions ('baspp', 'bpp', 'bs').
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Register new keywords in `keywords` table and update `BppKeywordId` enum in `lexer/lexer.h`.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * Ephemeral token invariant (tokens point directly into current source line buffer and are valid only during line evaluation).
+ *
+ * 8. WHAT TO EXPECT:
+ * `lexer_next()` returns `Token` with `type`, `start` pointer, `length`, and numerical value (`as.number`) if `TOK_NUMBER`.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Verify keyword table order and string length checks in `lookup_keyword()`.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Valid non-NULL source string passed to `lexer_init()`.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. ASCII character classification (`isspace`, `isalpha`, `isdigit`).
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/types/config.c
+ * Prerequisite Header Files:
+ * - engine/include/lexer/lexer.h
+ * - engine/include/types/config.h
  */
 
 #include "lexer/lexer.h"
-#include "core/dialect.h"
+
 #include "types/config.h"
 #include <string.h>
 #include <ctype.h>
@@ -132,6 +150,7 @@ static const KeywordMap k_keywords[] = {
     {"PSET",   KW_PSET},
     {"PRESET", KW_PRESET},
     {"CLS",    KW_CLS},
+    {"HOME",   KW_HOME},
     {"LSET",   KW_LSET},
     {"DEFSEG", KW_DEFSEG},
     {"RSET",   KW_RSET},
@@ -151,18 +170,19 @@ static const KeywordMap k_keywords[] = {
 #if SUPPORT_EDITOR
     {"EDIT",   KW_EDIT},
 #endif
-    {"SECURITY", KW_SECURITY},
-    {"MODULE",   KW_MODULE},
     {"LEVEL",    KW_LEVEL},
     {"RESTRICT", KW_RESTRICT},
     {"RESET",    KW_RESET},
     {"INFO",     KW_INFO},
     {"UNLOAD",   KW_UNLOAD},
-    {"TASK",     KW_TASK},
     {"WAIT",     KW_WAIT},
 #if SUPPORT_MAT
     {"MAT",      KW_MAT},
 #endif
+    {"MUX",      KW_MUX},
+    {"DEMUX",    KW_DEMUX},
+    {"UNPACK",   KW_UNPACK},
+    {"BITMUX",   KW_BITMUX},
     {"ARRAY",    KW_ARRAY},
     {"ENUM",     KW_ENUM},
     {"WITH",     KW_WITH},
@@ -205,44 +225,26 @@ static const KeywordMap k_keywords[] = {
     {"_STATESAVE",    KW_STATESAVE},
     {"_STATELOAD",    KW_STATELOAD},
     {"MAP",      KW_MAP},
-    {"COM",      KW_COM},
-    {"PEN",      KW_PEN},
-    {"STRIG",    KW_STRIG},
     {"FILTER",   KW_FILTER},
     {"REDUCE",   KW_REDUCE},
-#if SUPPORT_EDITOR
     {"RENUM",    KW_RENUM},
+    {"REFORMAT", KW_REFORMAT},
     {"DELETE",   KW_DELETE},
-#endif
     {"HELP",     KW_HELP},
     {"CATALOG",  KW_CATALOG},
     {"DEVICES",  KW_DEVICES},
-    {"IOCTL",    KW_IOCTL},
-#if SUPPORT_NET
-    {"MOUNT",    KW_MOUNT},
-    {"UMOUNT",   KW_UMOUNT},
-#endif
     {"UNSAVE",   KW_UNSAVE},
-    {"CHVT",     KW_CHVT},
-#if SUPPORT_NET
-    {"NET",      KW_NET},
-#endif
-    {"OUT",      KW_OUT},
     {"POKE",     KW_POKE},
-#if SUPPORT_BIOS
-    {"BIOS",     KW_BIOS},
-#endif
-#if SUPPORT_GEMINI
-    {"GEMINI",   KW_GEMINI},
-#endif
     {"UNLESS",   KW_UNLESS},
     {"DEMAND",   KW_DEMAND},
     {"TRY",      KW_TRY},
     {"CATCH",    KW_CATCH},
     {"THROW",    KW_THROW},
     {"ALIAS",    KW_ALIAS},
+    {"SCOPE",    KW_SCOPE},
+    {"KEYWORD",  KW_KEYWORD},
+    {"OVERRIDE", KW_OVERRIDE},
     {"METADATA", KW_METADATA},
-    {"DIALECT",  KW_DIALECT},
     {"DEFINE",   KW_DEFINE},
 #if SUPPORT_OOP
     {"TYPE",     KW_TYPE},
@@ -272,10 +274,6 @@ static const KeywordMap k_keywords[] = {
     {"PROCEDURE", KW_PROCEDURE},
     {"ENDFUNC",  KW_ENDFUNC},
     {"ENDPROC",  KW_ENDPROC},
-    {"TXN",      KW_TXN},
-    {"ATOMIC",   KW_ATOMIC},
-    {"COMMIT",   KW_COMMIT},
-    {"ROLLBACK", KW_ROLLBACK},
     {"TIMER",    KW_TIMER},
     {"ALARM",    KW_ALARM},
     {"ALARM$",   KW_ALARM_STR},
@@ -298,6 +296,20 @@ static const KeywordMap k_keywords[] = {
     {"TROFF",      KW_TROFF},
     {"BREAK",      KW_BREAK},
     {"VARS",       KW_VARS},
+    {"CHECK",      KW_CHECK},
+    {"VERIFY",     KW_VERIFY},
+    {"TEST",       KW_TEST},
+    {"ENDTEST",    KW_ENDTEST},
+    {"TRACE",      KW_TRACE},
+    {"DEBUG",      KW_DEBUG},
+    {"CONT",       KW_CONT},
+    {"BACKTRACE",  KW_BACKTRACE},
+    {"DUMP",       KW_DUMP},
+    {"VER",        KW_VER},
+    {"VER$",       KW_VER_STR},
+    {"VARPTR",     KW_VARPTR},
+    {"VARPTR$",    KW_VARPTR_STR},
+    {"VERSION",    KW_VERSION},
     {"REMOVE",     KW_REMOVE},
     {"REMOVE$",    KW_REMOVE_STR},
     {"AND",      KW_AND},
@@ -311,14 +323,10 @@ struct LexerContext {
     MemoryContext *mem;
     const char    *source;
     const char    *pos;
-    BppDialect    *dialect;
+
 };
 
-void lex_set_dialect(LexerContext *ctx, BppDialect *dialect) {
-    if (ctx) {
-        ctx->dialect = dialect;
-    }
-}
+
 
 LexerContext *lex_init(MemoryContext *mem, const char *source) {
     if (!source) return NULL;
@@ -327,7 +335,7 @@ LexerContext *lex_init(MemoryContext *mem, const char *source) {
     ctx->mem = mem;
     ctx->source = source;
     ctx->pos = source;
-    ctx->dialect = NULL;
+
     return ctx;
 }
 
@@ -483,8 +491,7 @@ BppToken lex_next(LexerContext *ctx) {
         if (len > 0) {
             /* Check if it's a known directive */
             bool is_directive = false;
-            if (match_directive(ident_start, len, "DIALECT")) is_directive = true;
-            else if (match_directive(ident_start, len, "OPTION")) is_directive = true;
+            if (match_directive(ident_start, len, "OPTION")) is_directive = true;
             else if (match_directive(ident_start, len, "INCLUDE")) is_directive = true;
             else if (match_directive(ident_start, len, "IMPORT")) is_directive = true;
             else if (match_directive(ident_start, len, "KEYWORD")) is_directive = true;
@@ -558,23 +565,15 @@ BppToken lex_next(LexerContext *ctx) {
         return tok;
     }
 
-    char sep = ':';
-    if (ctx->dialect && ctx->dialect->stmt_separator != 0) {
-        sep = ctx->dialect->stmt_separator;
-    }
-    if (*ctx->pos == sep || *ctx->pos == ':') {
+    if (*ctx->pos == ':') {
         tok.type = TOK_EOL;
         tok.length = 1;
         ctx->pos++;
         return tok;
     }
 
-    /* Skip single-quote or custom comment */
-    char comm = '\'';
-    if (ctx->dialect && ctx->dialect->comment_char != 0) {
-        comm = ctx->dialect->comment_char;
-    }
-    if (*ctx->pos == comm || *ctx->pos == '\'' || (*ctx->pos == '!' && *(ctx->pos + 1) != '=')) {
+    /* Skip single-quote comment */
+    if (*ctx->pos == '\'' || (*ctx->pos == '!' && *(ctx->pos + 1) != '=')) {
         /* Consume till EOL or EOF */
         while (*ctx->pos && *ctx->pos != '\n') {
             ctx->pos++;
@@ -746,8 +745,7 @@ BppToken lex_next(LexerContext *ctx) {
     if (isalpha((unsigned char)*ctx->pos) || *ctx->pos == '_') {
         const char *start = ctx->pos;
         ctx->pos++;
-        char mac = (ctx->dialect) ? ctx->dialect->member_access_char : '\0';
-        while (isalnum((unsigned char)*ctx->pos) || *ctx->pos == '_' || (*ctx->pos == '.' && mac != '.')) {
+        while (isalnum((unsigned char)*ctx->pos) || *ctx->pos == '_' || *ctx->pos == '.') {
             ctx->pos++;
         }
         /* Match suffix */
@@ -759,9 +757,8 @@ BppToken lex_next(LexerContext *ctx) {
 
         /* Compare case-insensitively or case-sensitively with keyword tables */
         bool is_kw = false;
-        bool case_sens = (ctx->dialect && ctx->dialect->case_sensitive);
+        bool case_sens = false;
 
-        /* Check custom dialect keywords first */
         if (!is_kw && tok.length >= 3 && strncasecmp(start, "REM", 3) == 0) {
             char c4 = (tok.length > 3) ? start[3] : '\0';
             if (c4 != '$' && c4 != '%' && c4 != '&' && c4 != '!' && c4 != '#' &&
@@ -806,36 +803,7 @@ BppToken lex_next(LexerContext *ctx) {
             }
         }
 
-        if (ctx->dialect) {
-            for (int i = 0; i < ctx->dialect->keyword_count; ++i) {
-                size_t kw_len = strlen(ctx->dialect->keywords[i].name);
-                if (tok.length == kw_len) {
-                    bool match = true;
-                    for (size_t j = 0; j < kw_len; ++j) {
-                        char a = start[j];
-                        char b = ctx->dialect->keywords[i].name[j];
-                        if (case_sens) {
-                            if (a != b) { match = false; break; }
-                        } else {
-                            if (toupper((unsigned char)a) != toupper((unsigned char)b)) { match = false; break; }
-                        }
-                    }
-                    if (match) {
-                        BppKeywordId kw_id = ctx->dialect->keywords[i].id;
-                        if (kw_id == KW_AND) tok.type = TOK_AND;
-                        else if (kw_id == KW_OR) tok.type = TOK_OR;
-                        else if (kw_id == KW_NOT) tok.type = TOK_NOT;
-                        else if (kw_id == KW_XOR) tok.type = TOK_XOR;
-                        else {
-                            tok.type = TOK_KEYWORD;
-                            tok.as.keyword = kw_id;
-                        }
-                        is_kw = true;
-                        break;
-                    }
-                }
-            }
-        }
+
 
         /* Check core k_keywords */
         if (!is_kw) {
@@ -984,13 +952,7 @@ BppToken lex_next(LexerContext *ctx) {
 
     /* Single character operators and punctuation */
     char c = *ctx->pos;
-    char member_access_char = (ctx->dialect) ? ctx->dialect->member_access_char : '\0';
-    if (member_access_char != 0 && c == member_access_char) {
-        tok.type = TOK_PERIOD;
-        tok.length = 1;
-        ctx->pos++;
-        return tok;
-    }
+
     ctx->pos++;
     tok.length = 1;
 

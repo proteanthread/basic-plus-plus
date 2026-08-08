@@ -4,22 +4,22 @@
 
 | Keyword | Description |
 |---|---|
-| `CSRLIN` | The CSRLIN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `GRAPHICS` | The GRAPHICS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `POS` | The POS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `SCREEN` | The SCREEN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `VIEW` | The VIEW keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `WINDOW` | The WINDOW keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `CSRLIN` | The CSRLIN keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `GRAPHICS` | The GRAPHICS keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `POS` | The POS keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `SCREEN` | The SCREEN keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `VIEW` | The VIEW keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `WINDOW` | The WINDOW keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Advanced_Drawing
 
 | Keyword | Description |
 |---|---|
-| `CIRCLE` | The CIRCLE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `DRAW` | The DRAW keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `DRAWTO` | The DRAWTO keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `LINE` | The LINE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `PAINT` | The PAINT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `CIRCLE` | The CIRCLE keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `DRAW` | The DRAW keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `DRAWTO` | The DRAWTO keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `LINE` | The LINE keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `PAINT` | The PAINT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Advanced_Math
 
@@ -56,7 +56,7 @@
 | `PDIF` | Returns the positive difference between two numeric expressions. If the first argument is greater than the second, it returns arg1 - arg2. Otherwise, it returns 0.0. |
 | `PI` | Returns the mathematical constant Pi (approximately 3.141592653589793). |
 | `REAL` | Extracts the real part of a complex number. If passed a standard non-complex numeric, it returns the numeric value itself. |
-| `RND` | Generates a random number. The behavior is dialect-dependent (e.g. GW-BASIC vs Palo Alto Tiny BASIC). In GW-BASIC mode: if argument > 0, returns a float in [0, 1). If 0, repeats the last random value. If < 0, seeds the generator with the absolute value. |
+| `RND` | Generates a random number. The behavior is implementation-dependent (e.g. GW-BASIC vs Palo Alto Tiny BASIC). In GW-BASIC mode: if argument > 0, returns a float in [0, 1). If 0, repeats the last random value. If < 0, seeds the generator with the absolute value. |
 | `ROUND` | Rounds a numeric expression to a specified number of decimal places. Positive places round to decimals, zero to integer, negative to powers of ten. |
 | `SGN` | Returns the mathematical sign of the expression: -1 for negative, 0 for zero, and 1 for positive. |
 | `SIN` | Returns the sine of an angle. The angle is interpreted in radians or degrees depending on the active OPTION ANGLE state. |
@@ -82,8 +82,8 @@
 | Keyword | Description |
 |---|---|
 | `BEEP` | The BEEP command controls the rudimentary auditory feedback mechanism of the BASIC++ interpreter. |
-| `PLAY` | The PLAY keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `SOUND` | The SOUND keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PLAY` | The PLAY keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `SOUND` | The SOUND keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Audio_Output
 
@@ -97,11 +97,11 @@
 
 | Keyword | Description |
 |---|---|
-| `AT` | The AT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `PLOT` | The PLOT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `POINT` | The POINT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `PRESET` | The PRESET keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `PSET` | The PSET keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `AT` | The AT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `PLOT` | The PLOT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `POINT` | The POINT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `PRESET` | The PRESET keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `PSET` | The PSET keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Branching
 
@@ -125,17 +125,17 @@
 
 | Keyword | Description |
 |---|---|
-| `PCOPY` | The PCOPY keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PCOPY` | The PCOPY keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Color_Modifiers
 
 | Keyword | Description |
 |---|---|
-| `BORDER` | The BORDER keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `COLOR` | The COLOR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `INK` | The INK keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `PALETTE` | The PALETTE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `PAPER` | The PAPER keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `BORDER` | The BORDER keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `COLOR` | The COLOR keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `INK` | The INK keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `PALETTE` | The PALETTE keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `PAPER` | The PAPER keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Config_Environment
 
@@ -147,9 +147,9 @@
 
 | Keyword | Description |
 |---|---|
-| `ALIAS` | Provides a comprehensive API for keyword aliasing, operator aliasing, and loading entire language packs. Allows developers and users to map native keywords to alternative strings, supporting localization (e.g., mapping PRINT to ESCRIBIR in Spanish) or syntactic sugar. Useful for dialect morphing and dynamic overrides. |
+| `ALIAS` | Provides a comprehensive API for keyword aliasing, operator aliasing, and loading entire language packs. Allows developers and users to map native keywords to alternative strings, supporting localization (e.g., mapping PRINT to ESCRIBIR in Spanish) or syntactic sugar. Useful for language customization and dynamic overrides. |
 | `KEYWORD` | An introspection and configuration command that allows viewing and modifying internal parser properties for specific keywords at runtime. Useful for dynamic syntax adjustments, allowing users to override keyword traits like spacing and context. |
-| `OPTION` | Configures and modifies core interpreter behavior dynamically. It covers array bounds (BASE), syntax strictness (STRICT), trigonometry modes (ANGLE), output formatting (TAB, ZONE), casing rules (KEYWORD), and arithmetic models (ARITHMETIC). This command is crucial for enforcing dialect compliance. |
+| `OPTION` | Configures and modifies core interpreter behavior dynamically. It covers array bounds (BASE), syntax strictness (STRICT), trigonometry modes (ANGLE), output formatting (TAB, ZONE), casing rules (KEYWORD), and arithmetic models (ARITHMETIC). This command is crucial for enforcing standards compliance. |
 | `OVERRIDE` | Allows a user to completely rewrite how the parser interprets a given keyword by overriding it with a text macro or alternative syntax without modifying the original user code. Powerful for metaprogramming and dynamic replacements. |
 | `SCOPE` | A powerful security and hooking mechanism that allows users to enable/disable specific keywords, or inject execution hooks (BEFORE, AFTER, OVERRIDE) whenever a specific keyword is invoked. It is restricted to security level 0 or 1. It acts as an advanced debugger capability or sandbox constrainer. |
 
@@ -157,19 +157,19 @@
 
 | Keyword | Description |
 |---|---|
-| `CSRLIN` | The CSRLIN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `POS` | The POS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `CSRLIN` | The CSRLIN keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `POS` | The POS keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Console_Display
 
 | Keyword | Description |
 |---|---|
-| `CLS` | The CLS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `COLOR` | The COLOR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `CONSOLE` | The CONSOLE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `HOME` | The HOME keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `LOCATE` | The LOCATE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `WIDTH` | The WIDTH keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `CLS` | The CLS keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `COLOR` | The COLOR keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `CONSOLE` | The CONSOLE keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `HOME` | The HOME keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `LOCATE` | The LOCATE keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `WIDTH` | The WIDTH keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Conversion
 
@@ -209,22 +209,22 @@
 
 | Keyword | Description |
 |---|---|
-| `CHDIR` | The CHDIR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `CURDIRDOLLAR` | The CURDIR$ keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `CHDIR` | The CHDIR keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `CURDIRDOLLAR` | The CURDIR$ keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 | `CWDDOLLAR` | The CWD$ built-in string function returns the name of the current working directory. Unlike PWD$, which returns the complete absolute path, CWD$ isolates and returns only the final directory component (the current folder name). |
-| `MKDIR` | The MKDIR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `PWD` | The PWD keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `MKDIR` | The MKDIR keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `PWD` | The PWD keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 | `PWDDOLLAR` | The PWD$ built-in string function returns the complete absolute path of the current working directory. Unlike CWD$, which returns only the final folder name, PWD$ provides the full directory hierarchy starting from the root of the filesystem or drive letter. |
-| `RMDIR` | The RMDIR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `RMDIR` | The RMDIR keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Display_Configuration
 
 | Keyword | Description |
 |---|---|
-| `CONSOLE` | The CONSOLE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `DISPLAY` | The DISPLAY keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `GRAPHICS` | The GRAPHICS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `SCREEN` | The SCREEN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `CONSOLE` | The CONSOLE keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `DISPLAY` | The DISPLAY keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `GRAPHICS` | The GRAPHICS keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `SCREEN` | The SCREEN keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Environment
 
@@ -232,7 +232,7 @@
 |---|---|
 | `CLOCK$` | The CLOCK$ system variable retrieves the current system date and time as a fully formatted, human-readable string. |
 | `DATE$` | The DATE$ system variable returns the current system date as a string formatted as MM-DD-YYYY. |
-| `ENVIRON` | The ENVIRON command is used to set or modify operating system environment variables for the current BASIC++ process. Unlike internal dialect toggles (which are managed via commands like OPTION or OVERRIDE), ENVIRON specifically targets the underlying OS environment block. |
+| `ENVIRON` | The ENVIRON command is used to set or modify operating system environment variables for the current BASIC++ process. Unlike internal configuration toggles (which are managed via commands like OPTION or OVERRIDE), ENVIRON specifically targets the underlying OS environment block. |
 | `ENVIRON$` | The ENVIRON$ function retrieves the string value of a specified operating system environment variable. If the requested environment variable does not exist, the function returns an empty string (""). |
 | `ENVIRONSTR` | No description available |
 | `HOSTNAME$` | The HOSTNAME$ function returns the network name (hostname) of the local computer running the BASIC++ interpreter as a string. |
@@ -281,18 +281,18 @@
 
 | Keyword | Description |
 |---|---|
-| `DIR` | The DIR keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `FILES` | The FILES keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `NAME` | The NAME keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `SCRATCH` | The SCRATCH keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `DIR` | The DIR keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `FILES` | The FILES keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `NAME` | The NAME keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `SCRATCH` | The SCRATCH keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Hardware_Ports
 
 | Keyword | Description |
 |---|---|
-| `INP` | The INP keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `OUT` | The OUT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `WAIT` | The WAIT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `INP` | The INP keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `OUT` | The OUT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `WAIT` | The WAIT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Hyperbolic_Trigonometry
 
@@ -305,7 +305,7 @@
 
 | Keyword | Description |
 |---|---|
-| `PEN` | The PEN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PEN` | The PEN keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Introspection
 
@@ -333,11 +333,11 @@
 
 | Keyword | Description |
 |---|---|
-| `INKEY` | The INKEY keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `INKEY` | The INKEY keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 | `INKEYDOLLAR` | The INKEY$ built-in string variable reads a single character from the keyboard buffer. Unlike INPUT$ or INPUT, INKEY$ is non-blocking, meaning it immediately returns control to the program even if no key was pressed. |
-| `INPUT` | The INPUT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `INPUTDOLLAR` | The INPUT$ keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `KEY` | The KEY keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `INPUT` | The INPUT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `INPUTDOLLAR` | The INPUT$ keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `KEY` | The KEY keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 | `ONKEYDOLLAR` | The ONKEY$ built-in string variable functions as an event-aware counterpart to INKEY$. It reads a single character from the keyboard buffer in a non-blocking manner, returning immediately to the caller. |
 
 ## Loops
@@ -406,12 +406,12 @@
 
 | Keyword | Description |
 |---|---|
-| `ACCESS` | The ACCESS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `ASK` | The ASK keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `FILEMOD` | The FILEMOD keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `LOCK` | The LOCK keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `SET` | The SET keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `UNLOCK` | The UNLOCK keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `ACCESS` | The ACCESS keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `ASK` | The ASK keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `FILEMOD` | The FILEMOD keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `LOCK` | The LOCK keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `SET` | The SET keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `UNLOCK` | The UNLOCK keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Multitasking
 
@@ -423,11 +423,11 @@
 
 | Keyword | Description |
 |---|---|
-| `IMAGE` | The IMAGE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `PRINT` | The PRINT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `SPC` | The SPC keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `TAB` | The TAB keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `WRITE` | The WRITE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `IMAGE` | The IMAGE keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `PRINT` | The PRINT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `SPC` | The SPC keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `TAB` | The TAB keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `WRITE` | The WRITE keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Packing
 
@@ -448,8 +448,8 @@
 
 | Keyword | Description |
 |---|---|
-| `LLIST` | The LLIST keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `LPRINT` | The LPRINT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `LLIST` | The LLIST keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `LPRINT` | The LPRINT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Procedures
 
@@ -473,11 +473,11 @@
 
 | Keyword | Description |
 |---|---|
-| `FIELD` | The FIELD keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `GET` | The GET keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `POINTER` | The POINTER keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `PUT` | The PUT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `SEEK` | The SEEK keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `FIELD` | The FIELD keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `GET` | The GET keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `POINTER` | The POINTER keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `PUT` | The PUT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `SEEK` | The SEEK keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Scope
 
@@ -490,12 +490,12 @@
 
 | Keyword | Description |
 |---|---|
-| `CLOSE` | The CLOSE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `EOF` | The EOF keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `LOC` | The LOC keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `LOF` | The LOF keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `OPEN` | The OPEN keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `RESET` | The RESET keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `CLOSE` | The CLOSE keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `EOF` | The EOF keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `LOC` | The LOC keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `LOF` | The LOF keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `OPEN` | The OPEN keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `RESET` | The RESET keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## String_Case_Conversion
 
@@ -615,7 +615,7 @@
 | Keyword | Description |
 |---|---|
 | `ASSERT` | The ASSERT statement is an advanced diagnostic and unit testing tool embedded directly into the BASIC++ syntax. It allows programmers to assert that a specific condition must be true at a given point in execution. If the condition evaluates to true, the program continues silently with no interruption. If the condition evaluates to false (zero), the interpreter halts program execution and throws an assertion error, typically printing the line number and the optional custom error message. |
-| `SELFTEST` | The SELFTEST command is a powerful internal diagnostic utility built directly into the BASIC++ interpreter. When invoked, it pauses standard script execution and runs a series of hardcoded, highly rigorous C-level unit tests against the interpreter's core subsystems. It verifies the integrity of the Lexer, Value system, String pool, Function registry, Memory allocator, Dialect configuration, Parser precedence, Control flow mechanisms, Virtual File System (VFS), and SDL graphics contexts. |
+| `SELFTEST` | The SELFTEST command is a powerful internal diagnostic utility built directly into the BASIC++ interpreter. When invoked, it pauses standard script execution and runs a series of hardcoded, highly rigorous C-level unit tests against the interpreter's core subsystems. It verifies the integrity of the Lexer, Value system, String pool, Function registry, Memory allocator, configuration, Parser precedence, Control flow mechanisms, Virtual File System (VFS), and SDL graphics contexts. |
 
 ## Utility_Math
 
@@ -629,11 +629,11 @@
 
 | Keyword | Description |
 |---|---|
-| `MOUNT` | The MOUNT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `MOUNTS` | The MOUNTS keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `UMOUNT` | The UMOUNT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `UNLOAD` | The UNLOAD keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `VPATH` | The VPATH keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `MOUNT` | The MOUNT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `MOUNTS` | The MOUNTS keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `UMOUNT` | The UMOUNT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `UNLOAD` | The UNLOAD keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `VPATH` | The VPATH keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Variables
 
@@ -662,9 +662,9 @@
 
 | Keyword | Description |
 |---|---|
-| `PMAP` | The PMAP keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `VIEW` | The VIEW keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `WINDOW` | The WINDOW keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `PMAP` | The PMAP keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `VIEW` | The VIEW keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `WINDOW` | The WINDOW keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Virtual_Memory
 
@@ -678,11 +678,11 @@
 
 | Keyword | Description |
 |---|---|
-| `BRIGHT` | The BRIGHT keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `FLASH` | The FLASH keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `INVERSE` | The INVERSE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `OVER` | The OVER keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
-| `REVERSE` | The REVERSE keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations. |
+| `BRIGHT` | The BRIGHT keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `FLASH` | The FLASH keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `INVERSE` | The INVERSE keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `OVER` | The OVER keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
+| `REVERSE` | The REVERSE keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations. |
 
 ## Workspace
 

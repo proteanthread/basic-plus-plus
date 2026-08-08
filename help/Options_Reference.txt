@@ -275,8 +275,6 @@ Summary Table
 See Also
 
 - Quick_Reference — Complete keyword listing
-- Creating_Dialects — Dialect configuration
 - Using_Aliases — ALIAS command reference
-- Mixing_Dialects — Multi-dialect programming
 
 @COPYLEFT ALL WRONGS RESERVED

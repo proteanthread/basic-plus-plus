@@ -1,7 +1,49 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+/**
+ * @file eval_builtins.c
+ * @brief Standard built-in math, string, bitwise, system, and type evaluation functions for BASIC++.
  *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
+ * 1. WHAT IT DOES:
+ * Implements standard built-in functions: ABS, SQR, SIN, COS, TAN, ATN, EXP, LOG, INT, FIX, SGN, RND, VAL, STR$, CHR$, ASC, LEN, LEFT$, RIGHT$, MID$, INSTR, UCASE$, LCASE$, SPACE$, STRING$, HEX$, OCT$, BIN$, PEEK, PEEK16, PEEK32, FRE, VARPTR, STRPTR, INP, POS, CSRLIN.
+ *
+ * 2. WHY IT EXISTS:
+ * Provides essential built-in mathematical, string manipulation, system query, and bitwise evaluation logic.
+ *
+ * 3. WHY IT WORKS THIS WAY:
+ * Built-in functions receive argument `BValue` arrays, perform bounded conversions and safety checks, and return evaluated `BValue` results.
+ *
+ * 4. DEPENDENCIES & COMPILATION:
+ * Compiled into CMake micro-library target 'eval'. Includes "eval/dispatch.h", "eval/eval.h",
+ * "vm/vm.h", "runtime/variables.h", "device/vdev.h", <math.h>, <stdlib.h>, <string.h>, <ctype.h>.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Core feature included in all editions ('baspp', 'bpp', 'bs').
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Register new built-in function handlers in `eval_builtins_register()`.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * Floating-point accuracy bounds and string return refcount rules.
+ *
+ * 8. WHAT TO EXPECT:
+ * Returns BValue result or ERR_ILLEGAL_FUNCTION_CALL / ERR_TYPE_MISMATCH.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Verify argument index bounds and check zero-division / domain range checks.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Valid args array and correct argc passed by evaluator.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. 64-bit pointer safety (`uintptr_t` for VARPTR/STRPTR). Pure 7-bit ASCII text output.
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/eval/dispatch.c
+ * - engine/src/core/string.c
+ * Prerequisite Header Files:
+ * - engine/include/eval/dispatch.h
+ * - engine/include/eval/eval.h
+ * - engine/include/vm/vm.h
  */
 
 /**
@@ -11,25 +53,66 @@
 
 #include "eval/eval_internal.h"
 #include "runtime/file.h"
-#include "runtime/task.h"
 #include "device/vdev.h"
 #include "runtime/vfs.h"
 #include "runtime/metadata.h"
 #include "runtime/funcreg.h"
-#include "module/module.h"
 #include "security/security.h"
 #include "eval/eval.h"
 #include "runtime/num_format.h"
 #include "runtime/vnet.h"
 #include "device/bus.h"
-#include "core/dialect.h"
+#include "bios/bios.h"
 #include "core/struct.h"
 #include "device/fujinet.h"
 #include "platform/platform.h"
 #include "device/vcon.h"
 #include "runtime/variables.h"
 #include "runtime/map.h"
-
+#include "runtime/mux.h"
+#include "eval/microplex.h"
+#include "eval/functions/string/pack.h"
+#include "eval/functions/math/rnd.h"
+#include "eval/functions/math/int.h"
+#include "eval/functions/math/fix.h"
+#include "eval/functions/math/sgn.h"
+#include "eval/functions/math/acos.h"
+#include "eval/functions/math/asin.h"
+#include "eval/functions/math/atan2.h"
+#include "eval/functions/math/ceil.h"
+#include "eval/functions/math/floor.h"
+#include "eval/functions/math/round.h"
+#include "eval/functions/math/clamp.h"
+#include "eval/functions/math/lerp.h"
+#include "eval/functions/math/pi.h"
+#include "eval/functions/bits/shl.h"
+#include "eval/functions/bits/shr.h"
+#include "eval/functions/bits/readbit.h"
+#include "eval/functions/bits/setbit.h"
+#include "eval/functions/bits/resetbit.h"
+#include "eval/functions/bits/togglebit.h"
+#include "eval/functions/bits/bitcount.h"
+#include "eval/functions/string/instr.h"
+#include "eval/functions/string/ucase.h"
+#include "eval/functions/string/lcase.h"
+#include "eval/functions/string/ltrim.h"
+#include "eval/functions/string/rtrim.h"
+#include "eval/functions/string/trim.h"
+#include "eval/functions/string/space.h"
+#include "eval/functions/string/string.h"
+#include "eval/functions/string/hex.h"
+#include "eval/functions/string/oct.h"
+#include "eval/functions/string/bin.h"
+#include "eval/functions/system/date.h"
+#include "eval/functions/system/time.h"
+#include "eval/functions/system/timer.h"
+#include "eval/functions/system/clock_str.h"
+#include "eval/functions/system/clock_num.h"
+#include "eval/functions/system/ticks.h"
+#include "eval/functions/system/fre.h"
+#include "eval/functions/system/environ.h"
+#include "eval/functions/system/peek.h"
+#include "eval/functions/system/inp.h"
 
 #ifndef BASIC_LITE_BUILD
 #include "memory/segmented_mem.h"
@@ -56,50 +139,134 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
     res.type = VAL_NONE;
     res.as.number = 0.0;
 
-    if (strcmp(uname, "SQR") == 0) {
-        if (arg_count != 1 || args[0].type == VAL_STRING) {
-            err->code = 13; err->message = "SQR expects one numeric argument"; return res;
-        }
-        if (args[0].as.number < 0.0) {
-            err->code = 5; err->message = "SQR of negative number"; return res;
-        }
-        res.type = VAL_NUMBER;
-        res.as.number = sqrt(args[0].as.number);
+    if (strcmp(uname, "PACK$") == 0 || strcmp(uname, "PACK") == 0) {
+        return func_pack_eval(vm, uname, arg_count, args, err);
     }
-    else if (strcmp(uname, "_SHL") == 0 || strcmp(uname, "BITS.SHL") == 0) {
-        if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
-            err->code = 13; err->message = "SHL expects two numeric arguments"; return res;
-        }
-        res.type = VAL_NUMBER;
-        res.as.number = (double)((uint64_t)(int64_t)args[0].as.number << (uint64_t)(int64_t)args[1].as.number);
+    else if (strcmp(uname, "MICROPLEX$") == 0 || strcmp(uname, "MICROPLEX") == 0) {
+        return func_microplex_eval(vm, uname, arg_count, args, err);
     }
-    else if (strcmp(uname, "_SHR") == 0 || strcmp(uname, "BITS.SHR") == 0) {
-        if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
-            err->code = 13; err->message = "SHR expects two numeric arguments"; return res;
-        }
-        res.type = VAL_NUMBER;
-        res.as.number = (double)((uint64_t)(int64_t)args[0].as.number >> (uint64_t)(int64_t)args[1].as.number);
+    else if (strcmp(uname, "RND") == 0) {
+        return func_rnd_eval(vm, uname, arg_count, args, err);
     }
-    else if (strcmp(uname, "_READBIT") == 0 || strcmp(uname, "BITS.READ") == 0) {
-        if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
-            err->code = 13; err->message = "READBIT expects two numeric arguments"; return res;
-        }
-        res.type = VAL_NUMBER;
-        res.as.number = (double)(((uint64_t)(int64_t)args[0].as.number >> (uint64_t)(int64_t)args[1].as.number) & 1);
+    else if (strcmp(uname, "INT") == 0) {
+        return func_int_eval(vm, uname, arg_count, args, err);
     }
-    else if (strcmp(uname, "_SETBIT") == 0 || strcmp(uname, "BITS.SET") == 0) {
-        if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
-            err->code = 13; err->message = "SETBIT expects two numeric arguments"; return res;
-        }
-        res.type = VAL_NUMBER;
-        res.as.number = (double)((uint64_t)(int64_t)args[0].as.number | ((uint64_t)1 << (uint64_t)(int64_t)args[1].as.number));
+    else if (strcmp(uname, "FIX") == 0) {
+        return func_fix_eval(vm, uname, arg_count, args, err);
     }
-    else if (strcmp(uname, "_RESETBIT") == 0 || strcmp(uname, "BITS.RESET") == 0) {
-        if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
-            err->code = 13; err->message = "RESETBIT expects two numeric arguments"; return res;
-        }
-        res.type = VAL_NUMBER;
-        res.as.number = (double)((uint64_t)(int64_t)args[0].as.number & ~((uint64_t)1 << (uint64_t)(int64_t)args[1].as.number));
+    else if (strcmp(uname, "SGN") == 0) {
+        return func_sgn_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_ACOS") == 0 || strcmp(uname, "ACOS") == 0 || strcmp(uname, "MATH.ACOS") == 0) {
+        return func_acos_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_ASIN") == 0 || strcmp(uname, "ASIN") == 0 || strcmp(uname, "MATH.ASIN") == 0) {
+        return func_asin_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_ATAN2") == 0 || strcmp(uname, "ATAN2") == 0 || strcmp(uname, "MATH.ATAN2") == 0) {
+        return func_atan2_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_CEIL") == 0 || strcmp(uname, "CEIL") == 0 || strcmp(uname, "MATH.CEIL") == 0) {
+        return func_ceil_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_FLOOR") == 0 || strcmp(uname, "FLOOR") == 0 || strcmp(uname, "MATH.FLOOR") == 0) {
+        return func_floor_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_ROUND") == 0 || strcmp(uname, "ROUND") == 0 || strcmp(uname, "MATH.ROUND") == 0) {
+        return func_round_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_CLAMP") == 0 || strcmp(uname, "CLAMP") == 0 || strcmp(uname, "MATH.CLAMP") == 0) {
+        return func_clamp_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_LERP") == 0 || strcmp(uname, "LERP") == 0 || strcmp(uname, "MATH.LERP") == 0) {
+        return func_lerp_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_PI") == 0 || strcmp(uname, "PI") == 0 || strcmp(uname, "MATH.PI") == 0) {
+        return func_pi_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_SHL") == 0 || strcmp(uname, "SHL") == 0 || strcmp(uname, "BITS.SHL") == 0) {
+        return func_shl_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_SHR") == 0 || strcmp(uname, "SHR") == 0 || strcmp(uname, "BITS.SHR") == 0) {
+        return func_shr_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_READBIT") == 0 || strcmp(uname, "READBIT") == 0 || strcmp(uname, "BITS.READ") == 0) {
+        return func_readbit_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_SETBIT") == 0 || strcmp(uname, "SETBIT") == 0 || strcmp(uname, "BITS.SET") == 0) {
+        return func_setbit_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_RESETBIT") == 0 || strcmp(uname, "RESETBIT") == 0 || strcmp(uname, "BITS.RESET") == 0) {
+        return func_resetbit_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_TOGGLEBIT") == 0 || strcmp(uname, "TOGGLEBIT") == 0 || strcmp(uname, "BITS.TOGGLE") == 0) {
+        return func_togglebit_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "_BITCOUNT") == 0 || strcmp(uname, "BITCOUNT") == 0 || strcmp(uname, "BITS.COUNT") == 0) {
+        return func_bitcount_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "INSTR") == 0 || strcmp(uname, "INSTR$") == 0) {
+        return func_instr_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "UCASE$") == 0) {
+        return func_ucase_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "LCASE$") == 0) {
+        return func_lcase_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "LTRIM$") == 0) {
+        return func_ltrim_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "RTRIM$") == 0) {
+        return func_rtrim_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "TRIM$") == 0) {
+        return func_trim_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "SPACE$") == 0) {
+        return func_space_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "STRING$") == 0) {
+        return func_string_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "HEX$") == 0) {
+        return func_hex_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "OCT$") == 0) {
+        return func_oct_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "BIN$") == 0) {
+        return func_bin_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "DATE$") == 0 || strcmp(uname, "DATE") == 0) {
+        return func_date_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "TIME$") == 0 || strcmp(uname, "TIME") == 0) {
+        return func_time_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "TIMER") == 0 || strcmp(uname, "TI") == 0) {
+        return func_timer_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "CLOCK$") == 0) {
+        return func_clock_str_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "CLOCK") == 0) {
+        return func_clock_num_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "TI$") == 0) {
+        return func_ticks_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "FRE") == 0 || strcmp(uname, "MEM") == 0) {
+        return func_fre_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "ENVIRON$") == 0) {
+        return func_environ_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "PEEK") == 0) {
+        return func_peek_eval(vm, uname, arg_count, args, err);
+    }
+    else if (strcmp(uname, "INP") == 0) {
+        return func_inp_eval(vm, uname, arg_count, args, err);
     }
     else if (strcmp(uname, "_TOGGLEBIT") == 0 || strcmp(uname, "BITS.TOGGLE") == 0) {
         if (arg_count != 2 || args[0].type == VAL_STRING || args[1].type == VAL_STRING) {
@@ -334,17 +501,21 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         if (arg_count != 0) {
             err->code = 13; err->message = "CSRLIN expects no arguments"; return res;
         }
-        extern int g_cursor_y;
+        int r = 0, c = 0;
+        VConContext *vcon = vm_get_vcon(vm);
+        if (vcon) vcon_get_cursor(vcon, 0, &r, &c);
         res.type = VAL_NUMBER;
-        res.as.number = (double)(g_cursor_y + 1);
+        res.as.number = (double)(r + 1);
     }
     else if (strcmp(uname, "POS") == 0) {
         if (arg_count != 1) {
             err->code = 13; err->message = "POS expects 1 argument"; return res;
         }
-        extern int g_cursor_x;
+        int r = 0, c = 0;
+        VConContext *vcon = vm_get_vcon(vm);
+        if (vcon) vcon_get_cursor(vcon, 0, &r, &c);
         res.type = VAL_NUMBER;
-        res.as.number = (double)(g_cursor_x + 1);
+        res.as.number = (double)(c + 1);
     }
     else if (strcmp(uname, "LPOS") == 0) {
         if (arg_count != 1) {
@@ -1052,25 +1223,6 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
 #else
         res.as.number = (double)vdev_music_queue_length();
 #endif
-    }
-    else if (strcmp(uname, "TASK") == 0) {
-        if (arg_count != 1) {
-            err->code = 13; err->message = "TASK function expects one argument"; return res;
-        }
-        if (args[0].type == VAL_STRING) {
-            const char *filename = str_data(args[0].as.string);
-            int pid = task_spawn(vm_get_vdev(vm), filename);
-            str_release(vm_get_str(vm), args[0].as.string);
-            res.type = VAL_NUMBER;
-            res.as.number = (double)pid;
-        } else if (args[0].type == VAL_NUMBER) {
-            int pid = (int)args[0].as.number;
-            int status = task_get_status(pid);
-            res.type = VAL_NUMBER;
-            res.as.number = (double)status;
-        } else {
-            err->code = 13; err->message = "Type mismatch: TASK function expects filename string or numeric PID";
-        }
     }
     else if (strcmp(uname, "LEN") == 0) {
         if (arg_count != 1 || args[0].type != VAL_STRING) {
@@ -2839,17 +2991,7 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         res.type = VAL_NUMBER;
         res.as.number = (double)vdev_bus_in((int)args[0].as.number);
     }
-#if SUPPORT_BIOS
-    else if (strcmp(uname, "MEMMAP$") == 0) {
-        if (arg_count != 0) {
-            err->code = 13; err->message = "MEMMAP$ expects no arguments"; return res;
-        }
-        MockBiosModel model = vdev_bus_get_model();
-        const char *m_name = mock_bios_model_to_string(model);
-        res.type = VAL_STRING;
-        res.as.string = str_create(vm_get_str(vm), m_name, strlen(m_name));
-    }
-#endif
+
     else if (strcmp(uname, "PEEK") == 0) {
         if (arg_count != 1 || args[0].type == VAL_STRING) {
             err->code = 13; err->message = "PEEK expects one numeric address argument"; return res;
@@ -2858,15 +3000,21 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         if (security_check(SECOP_MEM_READ, 0) != 0) {
             err->code = 70; err->message = "Permission denied: PEEK is restricted"; return res;
         }
-        uint8_t val = 0;
+        uint32_t addr_raw = (uint32_t)args[0].as.number;
+        uint32_t phys_addr = addr_raw;
 #ifndef BASIC_LITE_BUILD
-        if (vmem_peek(vm_get_vmem(vm), (uint16_t)args[0].as.number, &val) == 0) {
-#endif
-            bool intercepted = false;
-            val = vdev_bus_peek((unsigned long)(long)args[0].as.number, &intercepted);
-#ifndef BASIC_LITE_BUILD
+        uint16_t def_seg = vmem_get_def_seg(vm_get_vmem(vm));
+        if (def_seg != 0 && addr_raw < 0x10000U) {
+            phys_addr = ((uint32_t)def_seg << 4) + addr_raw;
         }
 #endif
+        uint8_t val = 0;
+        if (vm_get_bios(vm)) {
+            val = bios_peek(vm_get_bios(vm), phys_addr);
+        } else {
+            bool intercepted = false;
+            val = vdev_bus_peek(phys_addr, &intercepted);
+        }
         res.type = VAL_NUMBER;
         res.as.number = (double)val;
     }
@@ -3124,185 +3272,6 @@ BValue eval_builtin_function_impl(VMContext *vm, const char *uname, int arg_coun
         res.type = VAL_STRING;
         res.as.string = str_create(vm_get_str(vm), ini ? ini : "", ini ? strlen(ini) : 0);
         free(ini);
-    }
-    else if (strcmp(uname, "DIALECT_LOAD") == 0) {
-        if (arg_count != 1 && arg_count != 2) {
-            err->code = 13; err->message = "DIALECT_LOAD expects 1 or 2 arguments (filepath$ [, format$])";
-            return res;
-        }
-        if (args[0].type != VAL_STRING) {
-            err->code = 13; err->message = "DIALECT_LOAD expects string representation of dialect spec or file path";
-            if (arg_count == 2 && args[1].type == VAL_STRING) {
-                str_release(vm_get_str(vm), args[1].as.string);
-            }
-            return res;
-        }
-        if (arg_count == 2 && args[1].type != VAL_STRING) {
-            str_release(vm_get_str(vm), args[0].as.string);
-            err->code = 13; err->message = "DIALECT_LOAD expects string format (JSON, XML, YAML, or INI) as the second argument";
-            return res;
-        }
-        
-        const char *spec_str = str_data(args[0].as.string);
-        char *file_content = NULL;
-        const char *format = NULL;
-        
-        if (arg_count == 2) {
-            format = str_data(args[1].as.string);
-            FILE *temp_fp = fopen(spec_str, "r");
-            if (temp_fp) {
-                fclose(temp_fp);
-                file_content = eval_read_file_to_string(spec_str);
-            }
-        } else {
-            FILE *temp_fp = fopen(spec_str, "r");
-            if (!temp_fp) {
-                str_release(vm_get_str(vm), args[0].as.string);
-                err->code = 5; err->message = "Dialect spec file not found or invalid format";
-                return res;
-            }
-            fclose(temp_fp);
-            file_content = eval_read_file_to_string(spec_str);
-            if (!file_content) {
-                str_release(vm_get_str(vm), args[0].as.string);
-                err->code = 5; err->message = "Failed to read dialect spec file";
-                return res;
-            }
-            
-            const char *ext = strrchr(spec_str, '.');
-            if (ext) {
-                if (strcasecmp(ext, ".json") == 0) {
-                    format = "JSON";
-                } else if (strcasecmp(ext, ".ini") == 0) {
-                    format = "INI";
-                } else if (strcasecmp(ext, ".xml") == 0) {
-                    format = "XML";
-                } else if (strcasecmp(ext, ".yaml") == 0 || strcasecmp(ext, ".yml") == 0) {
-                    format = "YAML";
-                }
-            }
-            if (!format) {
-                free(file_content);
-                str_release(vm_get_str(vm), args[0].as.string);
-                err->code = 5; err->message = "Could not infer dialect format from file extension (expected .json, .ini, .xml, .yaml)";
-                return res;
-            }
-        }
-        
-        const char *parse_source = file_content ? file_content : spec_str;
-        BppMap *map = NULL;
-        if (strcasecmp(format, "JSON") == 0) {
-            map = map_parse_json(vm_get_str(vm), parse_source);
-        } else if (strcasecmp(format, "XML") == 0) {
-            map = map_parse_xml(vm_get_str(vm), parse_source);
-        } else if (strcasecmp(format, "YAML") == 0) {
-            map = map_parse_yaml(vm_get_str(vm), parse_source);
-        } else if (strcasecmp(format, "INI") == 0) {
-            map = map_parse_ini(vm_get_str(vm), parse_source);
-        } else {
-            err->code = 5; err->message = "Unsupported spec format (expected JSON, XML, YAML, or INI)";
-        }
-        
-        if (file_content) free(file_content);
-        str_release(vm_get_str(vm), args[0].as.string);
-        if (arg_count == 2) {
-            str_release(vm_get_str(vm), args[1].as.string);
-        }
-        
-        if (err->code == 0) {
-            if (!map) {
-                err->code = 5; err->message = "Failed to parse dialect spec content";
-            } else {
-                res.type = VAL_MAP;
-                res.as.map = map;
-            }
-        }
-    }
-    else if (strcmp(uname, "DIALECT_VALIDATE") == 0) {
-        if (arg_count != 1 || args[0].type != VAL_MAP) {
-            err->code = 13; err->message = "DIALECT_VALIDATE expects one MAP argument";
-            return res;
-        }
-        char val_err[512] = "";
-        bool ok = dialect_validate_map(vm, args[0].as.map, val_err, sizeof(val_err));
-        map_release(vm_get_str(vm), args[0].as.map);
-        args[0].as.map = NULL;
-        if (!ok) {
-            err->code = 5;
-            static char err_msg_buf[512];
-            strncpy(err_msg_buf, val_err, sizeof(err_msg_buf) - 1);
-            err_msg_buf[sizeof(err_msg_buf) - 1] = '\0';
-            err->message = err_msg_buf;
-            return res;
-        }
-        res.type = VAL_NUMBER;
-        res.as.number = 1.0;
-    }
-    else if (strcmp(uname, "DIALECT_REGISTER") == 0) {
-        if (arg_count != 1 || args[0].type != VAL_MAP) {
-            err->code = 13; err->message = "DIALECT_REGISTER expects one MAP argument";
-            return res;
-        }
-        BppDialect *d = dialect_create();
-        char val_err[512] = "";
-        if (!d) {
-            err->code = 14; err->message = "Out of memory allocating dialect";
-            map_release(vm_get_str(vm), args[0].as.map);
-            args[0].as.map = NULL;
-            return res;
-        }
-        if (!dialect_load_from_map(vm, args[0].as.map, d, val_err, sizeof(val_err))) {
-            dialect_free(d);
-            map_release(vm_get_str(vm), args[0].as.map);
-            args[0].as.map = NULL;
-            err->code = 5;
-            static char err_msg_buf2[512];
-            strncpy(err_msg_buf2, val_err, sizeof(err_msg_buf2) - 1);
-            err_msg_buf2[sizeof(err_msg_buf2) - 1] = '\0';
-            err->message = err_msg_buf2;
-            return res;
-        }
-        map_release(vm_get_str(vm), args[0].as.map);
-        vm_set_active_dialect(vm, d);
-        res.type = VAL_NUMBER;
-        res.as.number = 1.0;
-    }
-    else if (strcmp(uname, "DIALECT_DOC$") == 0) {
-        if (arg_count != 1 || args[0].type != VAL_MAP) {
-            err->code = 13; err->message = "DIALECT_DOC$ expects one MAP argument";
-            return res;
-        }
-        BppDialect *d = dialect_create();
-        char val_err[512] = "";
-        if (!d) {
-            err->code = 14; err->message = "Out of memory allocating dialect";
-            map_release(vm_get_str(vm), args[0].as.map);
-            args[0].as.map = NULL;
-            return res;
-        }
-        if (!dialect_load_from_map(vm, args[0].as.map, d, val_err, sizeof(val_err))) {
-            dialect_free(d);
-            map_release(vm_get_str(vm), args[0].as.map);
-            args[0].as.map = NULL;
-            err->code = 5;
-            static char err_msg_buf3[512];
-            strncpy(err_msg_buf3, val_err, sizeof(err_msg_buf3) - 1);
-            err_msg_buf3[sizeof(err_msg_buf3) - 1] = '\0';
-            err->message = err_msg_buf3;
-            return res;
-        }
-        map_release(vm_get_str(vm), args[0].as.map);
-        
-        char *docs = dialect_generate_docs(vm, d);
-        dialect_free(d);
-        
-        if (!docs) {
-            err->code = 14; err->message = "Failed to generate dialect documentation";
-        } else {
-            res.type = VAL_STRING;
-            res.as.string = str_create(vm_get_str(vm), docs, strlen(docs));
-            free(docs);
-        }
     }
     else {
         const FunctionEntry *entry = funcreg_find_by_name(uname);

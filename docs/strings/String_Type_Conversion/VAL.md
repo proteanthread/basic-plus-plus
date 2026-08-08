@@ -70,7 +70,7 @@ The execution flow begins when `VAL` is evaluated, dispatching control to `bval_
 
 **Edge Cases & Boundary Trapping:**
 - **Silenced Exceptions:** `VAL` never raises `ERR_TYPE_MISMATCH` or `ERR_WHAT` regarding its *content* (e.g., `VAL("HELLO")`). It strictly treats unparseable data as `0`.
-- **Modification Constraints:** *What CAN be changed:* `MAX_LINE_LENGTH` boundary offsets. *What CANNOT be changed:* The dual-pass integer-to-float tier structure. We must prefer returning an integer variant if no decimal exists to conserve memory density.
+- **Modification Constraints:** *What CAN be changed:* `MAX_LINE_LENGTH` boundary offsets. *What CANNOT be changed:* The dual-pass integer-to-float level structure. We must prefer returning an integer variant if no decimal exists to conserve memory density.
 
 ### 6. Cross-References / See Also
 - [STR$](STR$.md)

@@ -92,8 +92,6 @@ To shrink the footprint of BASIC++, remove the following directories or files fr
 - *Production Note:* The 412-keyword `selftests_all.c` framework takes up massive amounts of static string literal space. It must **always** be omitted from production microcontroller builds.
 
 ### Legacy Dialect Compatibility (Saves ~200KB)
-- **Omit Directory:** `source/dialect/` (Except `dialect.c`)
-- *Production Note:* BASIC++ supports runtime switching (`dialect_gwbs.c`, `dialect_qbasic.c`, `dialect_ecma116.c`). In a custom build, rely on the default strict parser and omit these files to save ROM space.
 
 ---
 
@@ -130,16 +128,16 @@ By adding `PARSER_STUB(pi_parse_X)` for every missing file, the linker succeeds.
 
 ---
 
-## 6. Target Tiers and Example Makefiles
+## 6. Target Profiles and Example Makefiles
 
-Below are example Makefile configurations for three primary "Tiers" of BASIC++.
+Below are example Makefile configurations for three primary "Profiles" of BASIC++.
 
-### Tier 1: Headless Microcontroller (Arduino, ESP32, FreeRTOS)
+### Profile 1: Headless Microcontroller (Arduino, ESP32, FreeRTOS)
 **Target Profile:** 40KB ROM, <64KB RAM. No OS. Serial output only.
 **Macros:** `-DBPP_LITE_BUILD -DNO_SDL2 -DINPUT_CONSOLE -DBPP_NO_NETWORK`
 
 ```makefile
-# Tier 1 Makefile (BareMetal / Microcontroller)
+# Profile 1 Makefile (BareMetal / Microcontroller)
 CC = gcc
 CFLAGS = -std=c17 -Os -DBPP_LITE_BUILD -DNO_SDL2 -DINPUT_CONSOLE -DBPP_NO_NETWORK
 INCLUDES = -I./source/core -I./source
@@ -157,47 +155,46 @@ all:
 ```
 *Optimization Note:* On AVR chips, modify `memory.c` to pre-allocate a static array rather than calling `malloc()` for the heap pool.
 
-### Tier 2: Terminal CLI Desktop (Linux `baspp-console`, Win `basicpp-console.exe`)
+### Profile 2: Terminal CLI Desktop (Linux `baspp-console`, Win `basicpp-console.exe`)
 **Target Profile:** 1.5MB ROM, 2MB RAM. POSIX/Windows OS. Full File I/O and Networking. No Graphics.
 **Macros:** `-DNO_SDL2 -DINPUT_CONSOLE`
 
 ```makefile
-# Tier 2 Makefile (POSIX Terminal / Win32 Console)
+# Profile 2 Makefile (POSIX Terminal / Win32 Console)
 CC = gcc
 CFLAGS = -std=c17 -O3 -DNO_SDL2 -DINPUT_CONSOLE
 INCLUDES = -I./source
 
 # Include CORE_SRC + File I/O + Networking + Math + Arrays
-TIER2_SRC = $(CORE_SRC) \
+PROFILE2_SRC = $(CORE_SRC) \
     source/io/parser_fileio.c source/io/fileio.c source/io/vfs.c \
     source/io/parser_net.c source/io/vdev_net.c source/io/builtins_net.c \
     source/math/builtins_math.c source/arrays/parser_mat.c \
     source/system/builtins_system.c
 
 all:
-	$(CC) $(CFLAGS) $(INCLUDES) -o baspp-console $(TIER2_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -o baspp-console $(PROFILE2_SRC)
 ```
 
-### Tier 3: Full SDL Desktop Environment (`basicpp.exe`)
+### Profile 3: Full SDL Desktop Environment (`basicpp.exe`)
 **Target Profile:** 5MB ROM, 32MB RAM. POSIX/Windows OS. Virtual VGA, sound emulation, fully featured.
 **Macros:** *(None)*
 
 ```makefile
-# Tier 3 Makefile (Full SDL2 Build)
+# Profile 3 Makefile (Full SDL2 Build)
 CC = gcc
 CFLAGS = -std=c17 -O3 
 INCLUDES = -I./source -I/usr/include/SDL2
 LIBS = -lSDL2 -lSDL2main -lm
 
-# Include TIER2_SRC + Graphics + Sound + SDL2 Emu + Debug Tests
-TIER3_SRC = $(TIER2_SRC) \
+# Include PROFILE2_SRC + Graphics + Sound + SDL2 Emu + Debug Tests
+PROFILE3_SRC = $(PROFILE2_SRC) \
     source/graphics/parser_graphics.c source/graphics/gfxbuf.c \
     source/sound/parser_sound.c source/display/parser_display.c \
     source/modules/sdl2_emu.c source/debug.c source/selftests_all.c \
-    source/dialect/dialect_gwbs.c source/dialect/dialect_qbasic.c
 
 all:
-	$(CC) $(CFLAGS) $(INCLUDES) -o basicpp $(TIER3_SRC) $(LIBS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o basicpp $(PROFILE3_SRC) $(LIBS)
 ```
 
 ---

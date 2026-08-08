@@ -73,7 +73,7 @@ TABLE OF CONTENTS
   32. GW-BASIC Device Names in BASIC++
   33. Commodore Device Numbers in BASIC++
   34. Using Legacy OPEN Syntax with Modern Devices
-  35. Cross-Dialect Device Compatibility Table
+  35. cross-platform Device Compatibility Table
   36. Routing Legacy I/O Through Modern VDevs
   37. Routing Modern I/O Through Legacy Patterns
 
@@ -1320,7 +1320,7 @@ Legacy syntax works with modern VDev devices:
 
 
 =====================================================================
-35. CROSS-DIALECT DEVICE COMPATIBILITY TABLE
+35. cross-platform DEVICE COMPATIBILITY TABLE
 =====================================================================
 
   Operation      GW-BASIC        Commodore       Atari
@@ -1833,7 +1833,6 @@ The VDev system hides platform differences:
   W_Virtual_Filesystem.txt      File access architecture (deep dive)
   M_External_Modules.txt        Building device modules
   Q_Security.txt                Security system reference
-  F_Mixing_Dialects.txt         Mixing features across dialects
   J_Implementing_Dialects.txt   Implementing retro dialect accuracy
   T_Compiling_BASIC_Programs.txt Cross-platform compilation
 
@@ -2193,8 +2192,6 @@ For device module authors:
   W_Virtual_Filesystem.txt      File access and device file resolution
   M_External_Modules.txt        Building device modules
   Q_Security.txt                Security system reference
-  K_Creating_Dialects.txt       Dialect + device integration
-  F_Mixing_Dialects.txt         Mixing features across dialects
 
 
 =====================================================================

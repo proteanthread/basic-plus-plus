@@ -474,7 +474,7 @@ static void stringify_yaml_internal(BppMap *map, char **p_buf, size_t *p_cap, si
 
         BValue val = map->entries[i].val;
         if (val.type == VAL_NUMBER) {
-            char num_buf[64];
+            char num_buf[128];
             char tbuf[64];
             num_format_serialize(tbuf, sizeof(tbuf), val.as.number);
             snprintf(num_buf, sizeof(num_buf), "%s\n", tbuf);
@@ -609,7 +609,7 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
             buf_append_str(p_buf, p_cap, p_len, k_fmt);
 
             if (val.type == VAL_NUMBER) {
-                char num_buf[64];
+                char num_buf[128];
                 char tbuf[64];
                 num_format_serialize(tbuf, sizeof(tbuf), val.as.number);
                 snprintf(num_buf, sizeof(num_buf), "%s\n", tbuf);
@@ -639,7 +639,7 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
 
                 BValue sub_val = sub->entries[j].val;
                 if (sub_val.type == VAL_NUMBER) {
-                    char num_buf[64];
+                    char num_buf[128];
                     char tbuf[64];
                     num_format_serialize(tbuf, sizeof(tbuf), sub_val.as.number);
                     snprintf(num_buf, sizeof(num_buf), "%s\n", tbuf);

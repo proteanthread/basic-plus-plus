@@ -1,80 +1,57 @@
-# Phase 14 Specification — Classic GW-BASIC Extensions & BGI Palette Integration
+# GW-BASIC Compatibility & Feature Restoration Specification
 
 ## Executive Summary
-This specification defines the design and implementation guidelines for **Phase 14 (Classic GW-BASIC Extensions & BGI Palette Integration)**. 
-The goal of this phase is to restore compatibility for key interactive text layout functions, macro string integrations, and graphics palette operations from vintage GW-BASIC:
-1. **Screen Cursor & Text Inspection**: `CSRLIN`, `POS(n)`, and `LPOS(n)`.
-2. **Variable Address Pointers**: `VARPTR` and `VARPTR$`.
-3. **Function Key Mapping & Trapping**: `KEY` statements and `ON KEY(n) GOSUB` events.
-4. **Color Palette Manipulation**: `PALETTE` and `PALETTE USING` integrated into the BGI (BASIC++ Graphics Interface) layout.
+This document provides the authoritative specification and user guide for all **GW-BASIC compatible features, statements, functions, commands, and keywords** implemented in BASIC++.
 
 ---
 
-## 1. Screen Cursor & Text Inspection
-
-### 1.1: Cursor Row Position (`CSRLIN`)
-- **Syntax**: `row = CSRLIN`
-- **Description**: Returns the current line/row coordinate (1-indexed, usually 1–25 or 1-40 depending on screen size) of the console text cursor.
-- **Implementation**: Queries row index directly from the active Virtual Console (`vdev_vcon.c`) or terminal state.
-
-### 1.2: Cursor Column Position (`POS`)
-- **Syntax**: `col = POS(n)`
-- **Description**: Returns the current column coordinate (1-indexed, usually 1–80) of the console text cursor. The parameter `n` is a dummy argument (usually `0`) that is evaluated but has no effect.
-- **Implementation**: Queries column index from the active Virtual Console.
-
-### 1.3: Printer Column Position (`LPOS`)
-- **Syntax**: `col = LPOS(n)`
-- **Description**: Returns the current carriage column position of the virtual line printer (LPT1). The parameter `n` specifies the printer channel/port.
-- **Implementation**: Tracks column offset updated during printer `LPRINT` stream writes.
+## 1. Console & Text Screen Display
+- `CLS [n]`: Clears display: `CLS -1` (text viewport), `CLS -2` (graphics viewport), `CLS -3` (full display buffer, default without arguments), or `CLS n` (`0`–`15` background color clear and active background color update). Emits standard ANSI cursor position reset (`\033[2J\033[H`) through `VConContext`.
+- `COLOR [fg] [, bg [, border]]`: Configures text foreground (0-15), background (0-15), and border colors using standard 16-color ANSI SGR escape sequences.
+- `LOCATE [row] [, col [, vis]]`: Moves text cursor to 1-indexed `(row, col)` coordinate and toggles cursor visibility (`vis = 0` hides, `vis = 1` shows).
+- `HOME [n]`: Moves text cursor to top-left corner `(1, 1)` without clearing text matrix or screen buffer; optionally changes text foreground color to `n` (`0`–`15`).
+- `CSRLIN`: Returns live text cursor row coordinate (1-25).
+- `POS(0)`: Returns live text cursor column coordinate (1-80).
+- `SCREEN [mode]`: Switches visual screen modes (0 = text, 1-13 = graphics).
 
 ---
 
-## 2. Variable Address Pointers (Macro Integration)
-
-### 2.1: Variable Address Offset (`VARPTR`)
-- **Syntax**: `addr = VARPTR(var)`
-- **Description**: Returns the physical memory address (cast to double/integer representation) of the specified variable's value structure.
-- **Implementation**: Resolves the variable in the active symbol table and returns its pointer offset.
-
-### 2.2: Variable Descriptor String (`VARPTR$`)
-- **Syntax**: `desc$ = VARPTR$(var)`
-- **Description**: Returns a 3-byte string representation of the variable's type and memory location offset.
-  - Byte 1: Type descriptor code.
-  - Bytes 2-3: 16-bit address offset of the variable.
-- **Usage**: Used to pass variables by descriptor reference to macro strings in graphics/sound engines, e.g. `PLAY "O=" + VARPTR$(octave)`.
+## 2. File I/O & Random Access Buffers
+- `OPEN "mode", #n, "filespec" [, reclen]`: Classic GW-BASIC file open syntax.
+- `OPEN "filespec" FOR mode AS #n [LEN=reclen]`: Modern QBASIC file open syntax.
+- `CLOSE [[#]n1...]` / `RESET`: Flushes and closes specific or all open file channels (1-16).
+- `FIELD [#]n, width AS var1$ [, width AS var2...]`: Maps fixed-width string variables directly to random-access file record buffer slices.
+- `GET [#]n [, record_num]`: Reads structured record bytes from random-access or binary file channels into record buffer.
+- `PUT [#]n [, record_num]`: Writes record buffer bytes directly to random-access disk files.
+- `PRINT #n, expression_list`: Writes formatted text data items to open sequential file streams.
+- `INPUT #n, var_list` / `LINE INPUT #n, string_var`: Reads delimited values or full line strings from sequential files.
+- `WRITE #n, expression_list`: Exports CSV-formatted double-quoted strings and serialized numbers to disk files.
 
 ---
 
-## 3. Function Key Mapping & Trapping
-
-### 3.1: Function Key Configurations (`KEY`)
-- **Syntax**:
-  - `KEY ON`: Enables display of function key labels (F1 to F10) on the bottom (25th) row of the text mode screen.
-  - `KEY OFF`: Hides/clears the function key labels.
-  - `KEY LIST`: Prints a complete list of current function key assignments.
-  - `KEY n, string$`: Programs function key `n` (1–10 or 1-12) to output `string$` when pressed.
-- **Implementation**: Adds a key macro lookup table to `vdev_console` and registers a Row 25 overlay painter.
-
-### 3.2: Key Trap Event (`ON KEY(n) GOSUB`)
-- **Syntax**: `ON KEY(n) GOSUB line` / `KEY(n) ON` / `KEY(n) OFF` / `KEY(n) STOP`
-- **Description**: Configures and enables an event-driven trap that executes a subroutine when function key `n` is pressed.
+## 3. Data & Memory Management
+- `DATA constant1 [, constant2...]`: Stores static numeric and string literals.
+- `READ var1 [, var2...]`: Sequential reading of DATA literals into target variables.
+- `RESTORE [line_num]`: Resets DATA read pointer to beginning of program or specified line number.
+- `OPTION BASE {0 | 1}`: Configures 0-indexed or 1-indexed array subscript base.
+- `OPTION EXPLICIT`: Enforces mandatory explicit variable declarations (`DIM`/`LET`).
+- `SWAP var1, var2`: In-place value exchange between two numeric or string variables.
+- `LSET var$ = expr$` / `RSET var$ = expr$`: Left or right justifies string expressions within fixed-length string variables or FIELD buffers.
+- `ERASE array_name1 [, array_name2...]`: Deallocates array memory buffers.
+- `CLEAR`: Clears all variables and array allocations.
 
 ---
 
-## 4. Color Palette Manipulation (BGI Integration)
-
-### 4.1: Color Map Redirection (`PALETTE`)
-- **Syntax**: `PALETTE [color_idx, actual_color]`
-- **Description**: Maps a screen color index `color_idx` to `actual_color` from the active display mode's available hardware palette. Calling `PALETTE` without arguments restores the mode's default hardware color definitions.
-- **BGI Integration**: Updates the color lookup table (LUT) registers in the BGI renderer (`bgi_modes.c` and `vdev_gfx.c`) so that subsequent drawing operations (like `LINE` or `CIRCLE`) immediately reflect the mapped color.
-
-### 4.2: Bulk Palette Mapping (`PALETTE USING`)
-- **Syntax**: `PALETTE USING integer_array(start_idx)`
-- **Description**: Re-maps all palette indices simultaneously using values from an integer array starting at `start_idx`.
-- **Implementation**: Traverses the array elements and populates the BGI color LUT.
+## 4. Error Trapping & Recovery
+- `ON ERROR GOTO {line | 0}`: Enables asynchronous error handler routine or disables error trapping (`0`).
+- `RESUME [0 | NEXT | line]`: Clears active error status and resumes execution at faulting statement, next line, or target line.
+- `ERROR n`: Simulates runtime error code `n`.
 
 ---
 
-## 5. Verification & Safety Guidelines
-- **Unified Testing**: Create a new test suite [tests/system/test_gwbasic_ext.bas](file:///c:/Users/rtdos/GitHub/basic-plus-plus/tests/system/test_gwbasic_ext.bas) verifying `CSRLIN`, `POS`, `LPOS`, `VARPTR`, and `PALETTE`.
-- **API Parity**: Document all new keywords in `help/` and `docs/` and register them in `help_data.h` and `catalog.TXT`.
+## 5. Keyboard Input, Soft-Keys & Program Management
+- `KEY ON` / `KEY OFF`: Toggles row 25 function soft-key label display.
+- `KEY n, "string"`: Customizes function key `n` label string.
+- `ON KEY(n) GOSUB line`: Sets interrupt handler for function key presses.
+- `VERSION "x.y.z"`: Tags in-code program version number.
+- `VER` / `VER$([target$])`: Queries host engine or tagged program version.

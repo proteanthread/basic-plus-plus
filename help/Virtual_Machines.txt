@@ -1879,7 +1879,6 @@ automatically.
   B_Programmers_Guide.txt     Language reference
   I_File_IO.txt               File operations
   J_Older_Dialects.txt        Dialect compatibility
-  K_Creating_Dialects.txt     Writing custom dialects
   M_External_Modules.txt      External module system
   O_Graphics_Sound.txt        Graphics and sound commands
   P_Debugging.txt             TRON/TROFF and breakpoints
@@ -2038,7 +2037,6 @@ the VM is running.  The VM handles this gracefully:
   A_Users_Guide.txt           Getting started with BASIC++
   B_Programmers_Guide.txt     Language reference
   I_File_IO.txt               File I/O + device-backed channels
-  K_Creating_Dialects.txt     Writing custom dialects
   M_External_Modules.txt      External module system
   O_Graphics_Sound.txt        Graphics and sound commands
   P_Debugging.txt             TRON/TROFF and breakpoints

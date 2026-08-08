@@ -31,7 +31,7 @@ Troubleshooting: If execution yields a syntax error or a type mismatch, ensure t
 - TI$, TIMER, JIFFIES, TICKS
 
 7. Historical Context
-A classic Commodore BASIC system variable (TI). In C64 BASIC, TI incremented 60 times a second. We maintain this for cross-dialect portability and emulator compatibility.
+A classic Commodore BASIC system variable (TI). In C64 BASIC, TI incremented 60 times a second. We maintain this for cross-platform portability and emulator compatibility.
 
 8. Manual Testing Guide
 1. Run basicpp-console.exe

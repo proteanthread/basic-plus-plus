@@ -3,16 +3,10 @@
  * This file is part of BASIC++ - a modular, portable BASIC language framework.
  * See LICENSE for terms. See docs/ for programmer guides.
  */
+
 /**
  * @file vcon.h
- * @brief Virtual Consoles & Virtual Terminals (VCON/VTERM) interface.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Declares text grids, cursor tracking, and ANSI/VT100 parsing
- *   for multiple virtual terminal buffers.
- * - Why it exists: Emulates Unix/Linux-style TTY/PTY multiplexing for visual shells.
- * - Why it works this way: It maintains separate framebuffers in memory and maps
- *   them to the active console viewport.
+ * @brief Virtual Console (`CON:`) screen matrix, cursor, and ANSI attribute context header.
  */
 
 #ifndef DEVICE_VCON_H
@@ -45,11 +39,19 @@ void         vcon_shutdown(VConContext *ctx);
 
 bool         vcon_select(VConContext *ctx, int index);
 int          vcon_get_active_index(VConContext *ctx);
-void         vcon_write_char(VConContext *ctx, int index, int c);
-void         vcon_write_string(VConContext *ctx, int index, const char *s);
 void         vcon_clear(VConContext *ctx, int index);
+void         vcon_write_char(VConContext *ctx, int index, int c);
+void         vcon_locate(VConContext *ctx, int index, int row, int col);
 void         vcon_get_cursor(VConContext *ctx, int index, int *row, int *col);
 int          vcon_get_char_at(VConContext *ctx, int index, int row, int col);
 int          vcon_get_attr_at(VConContext *ctx, int index, int row, int col);
+void         vcon_set_color(VConContext *ctx, int index, int fg, int bg);
+void         vcon_clear_screen(VConContext *ctx, int index, int mode);
+void         vcon_set_view_print(VConContext *ctx, int index, int top, int bottom);
+void         vcon_set_width(VConContext *ctx, int index, int cols);
+void         vcon_set_key_labels_visible(VConContext *ctx, bool visible);
+void         vcon_set_key_label(VConContext *ctx, int key_idx, const char *text);
+const char  *vcon_get_key_label(VConContext *ctx, int key_idx);
+bool         vcon_get_key_labels_visible(VConContext *ctx);
 
 #endif /* DEVICE_VCON_H */

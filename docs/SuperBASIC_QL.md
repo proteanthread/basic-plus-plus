@@ -17,7 +17,7 @@
   - DEF PROCedure / DEF FuNction
 - QDOS and Memory Map
   - Display Modes
-- Dialect Configuration
+- configuration
 - Example Programs
   - Fibonacci sequence (structured)
   - Using SELECT CASE
@@ -166,7 +166,7 @@ The Sinclair QL used a Motorola 68008 with 24-bit addressing. The real address s
 
 ---
 
-## Dialect Configuration
+## configuration
 
 | Property | Value |
 |----------|-------|
@@ -236,7 +236,6 @@ The Sinclair QL used a Motorola 68008 with 24-bit addressing. The real address s
 ## See Also
 
 - [Quick_Reference](Quick_Reference.md) — Complete keyword listing
-- [Specific_Machine_Dialects](Specific_Machine_Dialects.md) — All 16 dialects explained
 - [Memory_Maps](Memory_Maps.md) — MEMMAP "QL" details
 - [Structured_BASIC](Structured_BASIC.md) — Structured programming tutorial
 

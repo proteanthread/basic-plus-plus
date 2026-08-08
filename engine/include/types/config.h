@@ -62,8 +62,7 @@
 #define BASIC_COPYRIGHT "@COPYLEFT ALL WRONGS RESERVED"
 #define BASIC_READY "Ready."
 
-/* Default Dialect at boot if not specified via command line */
-#define BASIC_DEFAULT_DIALECT "BASIC++"
+
 
 /* Bitness detection */
 #if defined(_WIN64) || defined(__x86_64__) || defined(__ppc64__) || defined(__aarch64__) || (defined(__WORDSIZE) && __WORDSIZE == 64) || (defined(__SIZEOF_POINTER__) && __SIZEOF_POINTER__ == 8)
@@ -174,12 +173,14 @@
 #endif
 
 #ifdef BASIC_LITE_BUILD
+  #undef SUPPORT_HELP
+  #define SUPPORT_HELP 1
   #undef SUPPORT_MAT
-  #define SUPPORT_MAT 0
+  #define SUPPORT_MAT 1
   #undef SUPPORT_NET
-  #define SUPPORT_NET 0
+  #define SUPPORT_NET 1
   #undef SUPPORT_GEMINI
-  #define SUPPORT_GEMINI 0
+  #define SUPPORT_GEMINI 1
   #undef SUPPORT_BIOS
   #define SUPPORT_BIOS 0
   #undef SUPPORT_JSON
@@ -190,11 +191,11 @@
   #define SUPPORT_INI 0
   #define SUPPORT_YAML 1
   #undef SUPPORT_OOP
-  #define SUPPORT_OOP 0
+  #define SUPPORT_OOP 1
   #undef SUPPORT_EDITOR
   #define SUPPORT_EDITOR 0
   #undef SUPPORT_FILES
-  #define SUPPORT_FILES 1 /* Keep active but modifiable */
+  #define SUPPORT_FILES 1
 #else
   #ifndef SUPPORT_MAT
     #define SUPPORT_MAT 1

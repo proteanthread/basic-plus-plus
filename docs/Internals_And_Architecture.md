@@ -20,7 +20,6 @@ TABLE OF CONTENTS
   12. Error Handling (errors.h / errors.c)
   13. Virtual Devices (vdev.h / vdev.c)
   14. Function Registry (funcreg.h / funcreg.c)
-  15. Dialect Engine (dialect.h / dialect.c)
   16. Module System (module.h / module.c)
   17. Security Model (security.h / security.c)
   18. VM Dispatch Layer (vm.h / vm.c)
@@ -145,7 +144,7 @@ The full boot sequence (main.c, lines 138-191):
    9    mod_stdlib_register()     Register standard library module
   10    mod_usb_register()        Register USB module (inactive)
   11    module_activate("STDLIB") Activate standard library
-  12    dialect_apply()           Apply dialect-specific overrides
+  12    dialect_apply()           Apply implementation-specific overrides
   13    fileio_channels_init()    Open file channel table
   14    vm_init()                 Build VM opcode dispatch table
   15    gfxbuf_init()             Clear graphics framebuffer
@@ -171,7 +170,7 @@ WHY THIS ORDER MATTERS:
 
   * dialect_apply() must follow both funcreg_init() and
     module_activate() because it patches the registry with
-    dialect-specific overrides.
+    implementation-specific overrides.
 
   * runtime_init() must come last because it wires up pointers
     to the memory system, program store, and VDev layer, all
@@ -852,7 +851,7 @@ built-in functions, statements, and operators.
     * Disabling functions (QBasic has no INP/OUT in Tiny mode)
     * Changing function behavior (PRINT differences between
       dialects)
-    * Adding dialect-specific extensions (CoCo BASIC extras)
+    * Adding implementation-specific extensions (CoCo BASIC extras)
 
 14.4  Registering New Functions
 
@@ -866,11 +865,10 @@ built-in functions, statements, and operators.
 
 
 =====================================================================
-15. DIALECT ENGINE (dialect.h / dialect.c)
 =====================================================================
 
 BASIC++ can emulate multiple BASIC dialects at runtime.  The
-dialect engine controls which keywords, functions, and behaviors
+core engine controls which keywords, functions, and behaviors
 are active.
 
 15.1  Available Dialects
@@ -971,7 +969,7 @@ functions, statements, and device drivers.
 17. SECURITY MODEL (security.h / security.c)
 =====================================================================
 
-BASIC++ implements a six-tier security model that controls
+BASIC++ implements a six-level security model that controls
 what operations programs can perform.
 
 17.1  Security Levels
@@ -1321,7 +1319,6 @@ This section provides quick recipes for common extension tasks.
 23.3  Adding a New Dialect
 
   1. Add a DialectType enum value in dialect.h
-  2. Create a DialectConfig in dialect.c describing the keyword
      set, function set, and behavior flags
   3. Add a case to dialect_init() for the new dialect
   4. Test with DIALECT MYBASIC

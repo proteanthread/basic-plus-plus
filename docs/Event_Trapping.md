@@ -16,8 +16,8 @@
   - 2 Event Enable/Disable
   - 3 How Event Polling Works
   - 4 ON BREAK — OS Signal Handler
-  - 5 Device I/O Events (VDev Tier 2)
-  - 6 UPnP / Network Events (Tier 5)
+  - 5 Device I/O Events (VDev Layer)
+  - 6 UPnP / Network Events (Network Subsystem)
 - ON TRAP — The Hybrid Event Router
   - 1 Syntax
   - 2 Event Classes
@@ -264,7 +264,7 @@ BASIC++ supports countdown and daily repeating alarms with `ON ALARM` and `ON AL
     - `SET ALARM$(time) UNSET`: Completely delete and clear the daily alarm.
     - `ALARM$ ON / OFF / STOP` controls the global daily alarms state.
 
-### 3.5 Device I/O Events (VDev Tier 2)
+### 3.5 Device I/O Events (VDev Layer)
 
 Any registered virtual device (VDev) with the `VDCAP_EVENT` capability can
 fire events.  This covers USB hotplug, printer status changes, mouse input,
@@ -333,10 +333,10 @@ Event type constants (from runtime.h):
 | `EVTYPE_BREAK` | 8     | ON BREAK                  |
 | `EVTYPE_FILEIO`| 9     | ON FILEIO                 |
 
-### 3.6 UPnP / Network Events (Tier 5)
+### 3.6 UPnP / Network Events (Network Subsystem)
 
 The UPnP module (`MODULE "UPNP"`) registers `UPNP:` and `SOAP:` virtual
-devices with `VDCAP_EVENT`.  These are polled by the same Tier 2 device
+devices with `VDCAP_EVENT`.  These are polled by the same device
 event loop.
 
 **Event types:**
@@ -382,7 +382,7 @@ ON TRAP(n) GOSUB line       Set trap for event class n as subroutine
 | 4     | PEN     | Light pen activated                        |
 | 5     | STRIG   | Joystick button pressed                    |
 | 6     | PLAY    | Music buffer needs filling                 |
-| 7     | DEVICE  | Device I/O event (VDev Tier 2)             |
+| 7     | DEVICE  | Device I/O event (VDev Layer)              |
 | 8     | BREAK   | OS signal / Ctrl+C (SIGINT, SIGTERM)       |
 | 9     | FILEIO  | File I/O completion event                  |
 
@@ -493,7 +493,6 @@ The `ERL` variable holds the line number where the error occurred.
 
 | Feature                | ON ERROR GOTO   | TRAP n     | WHEN/USE   | ON TRAP     |
 |------------------------|-----------------|------------|------------|-------------|
-| **Dialect**            | GW-BASIC, QBasic| Atari BASIC| ECMA-116   | BASIC++     |
 | **Scope**              | Global          | Global     | Block-local| Per-event   |
 | **Resume options**     | RESUME / NEXT   | *(limited)*| RETRY/CONT | RETURN      |
 | **Multiple handlers**  | No              | No         | Nested     | Yes (by class)|

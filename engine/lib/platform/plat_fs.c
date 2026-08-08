@@ -3,6 +3,61 @@
  * This file is part of BASIC++ - a modular, portable BASIC language framework.
  * See LICENSE for terms. See docs/ for programmer guides.
  */
+
+/**
+ * @file plat_fs.c
+ * @brief Cross-platform file system, path normalization, and directory enumeration implementation.
+ *
+ * 1. WHAT IT DOES:
+ *    Implements OS-agnostic file system operations: `plat_fs_exists()`, `plat_fs_mkdir()`, `plat_fs_rmdir()`, `plat_fs_delete()`,
+ *    `plat_fs_rename()`, `plat_fs_normalize_path()` (converting `\` to `/`), and `plat_fs_list_directory()` for `FILES` / `DIR$` statements.
+ *
+ * 2. WHY IT EXISTS:
+ *    Encapsulates platform-dependent directory and file handling routines across Win32 APIs (`FindFirstFile`/`FindNextFile`, `CreateDirectoryA`)
+ *    and POSIX APIs (`opendir`/`readdir`, `mkdir`, `unlink`).
+ *
+ * 3. WHY IT WORKS THIS WAY:
+ *    Guarantees consistent forward-slash `/` path handling across all OS platforms, preventing path separator mismatch bugs in BASIC scripts.
+ *
+ * 4. DEPENDENCIES & COMPILATION:
+ *    - Required Headers: `platform/plat_fs.h`, `<sys/stat.h>`, `<dirent.h>` (UNIX), `<windows.h>` (Windows)
+ *    - CMake Target: `plat_fs` micro-library linked into `libbasicpp` and `libbasicpp_lite`.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ *    - Included in all target executables (`baspp`, `bpp`, `bs`).
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ *    - To add wildcard pattern matching (`*.BAS`): update `plat_fs_match_glob()`.
+ *    - To add file permission queries: extend `plat_fs_stat()`.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ *    - Path normalization MUST ensure null-terminated strings and double-slash stripping.
+ *    - Cross-platform error code translation to `BppError` (`ERR_FILE_NOT_FOUND`, `ERR_PATH_NOT_FOUND`, `ERR_ACCESS_DENIED`).
+ *
+ * 8. WHAT TO EXPECT:
+ *    - Returns true/false or `BppError` status.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ *    - Verify path length buffer sizes (at least 256 bytes for DOS paths, 1024 for POSIX paths).
+ *    - Inspect Win32 `GetLastError()` or POSIX `errno` mapping.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ *     - Input path strings must be non-NULL.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ *     - Strict C17 compliance (`-std=c17`).
+ *     - Requires `_POSIX_C_SOURCE=200809L` for `stat` and `readdir` on UNIX.
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ *     - Prerequisite C Source Files: OS runtime system headers (`<dirent.h>` / `<sys/stat.h>` on UNIX, `<windows.h>` on Windows).
+ *     - Prerequisite Header Surfaces: `engine/include/platform/plat_fs.h`, `engine/include/types/errors.h`.
+ */
+
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 #include "platform/platform.h"
 #include <stdio.h>
 #include <stdlib.h>

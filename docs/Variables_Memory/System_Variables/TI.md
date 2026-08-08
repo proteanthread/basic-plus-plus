@@ -31,7 +31,7 @@ Lexed as KW_TI (DFLAG_ALL). Internally, it maps to `vdev_get_time()` or similar 
 - TI$, TIMER, JIFFIES, TICKS
 
 ## 7. Historical Context
-A classic Commodore BASIC system variable (TI). In C64 BASIC, TI incremented 60 times a second. We maintain this for cross-dialect portability and emulator compatibility.
+A classic Commodore BASIC system variable (TI). In C64 BASIC, TI incremented 60 times a second. We maintain this for cross-platform portability and emulator compatibility.
 
 ## 8. Manual Testing Guide
 1. Run basicpp-console.exe

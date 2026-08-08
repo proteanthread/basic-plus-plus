@@ -3072,7 +3072,6 @@ When writing a new device module, verify:
   M_External_Modules.txt        Module + device packaging
   Q_Security.txt                Capability gates for devices
   U_Memory_Maps.txt             MEMMAP for device memory
-  K_Creating_Dialects.txt       Dialect + device integration
 
 
 =====================================================================

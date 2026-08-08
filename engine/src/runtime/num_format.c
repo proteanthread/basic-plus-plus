@@ -44,7 +44,7 @@
  *
  * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
  * - A third variant (num_format_custom) could accept a precision parameter
- *   for dialect-configurable display widths.
+ *   for configurable display widths.
  * - If BASIC++ adds integer types (INT32, INT64), dedicated integer formatters
  *   should be added rather than routing through these double formatters.
  */

@@ -71,7 +71,7 @@ The interpreter provides a comprehensive implementation of BASIC with a union-mo
 BASIC++ supports three fundamental data types:
 
 - **Integers** — 32-bit signed (`long`), providing a range of −2,147,483,648 to +2,147,483,647. All integer division is truncating (e.g., `7 / 3` evaluates to `2`).
-- **Floating-point** — Double-precision IEEE 754 (`double`), activated via numeric literals containing a decimal point (e.g., `3.14`) or via dialect configuration. Supports the full suite of transcendental functions: `SIN`, `COS`, `TAN`, `ATN`, `SQR`, `LOG`, `EXP`.
+- **Floating-point** — Double-precision IEEE 754 (`double`), activated via numeric literals containing a decimal point (e.g., `3.14`) or via configuration. Supports the full suite of transcendental functions: `SIN`, `COS`, `TAN`, `ATN`, `SQR`, `LOG`, `EXP`.
 - **Strings** — Variable-length character sequences up to 255 characters, managed via a pooled allocator. String variables are denoted by the `$` suffix (e.g., `A$`, `NAME$`).
 
 ### 2.2 Variable Storage
@@ -140,7 +140,7 @@ The interpreter implements over 430 keywords spanning the following categories:
 
 **Security:** `SECURITY LEVEL`, `SECURITY REPORT`
 
-**Extensibility:** `DIALECT`, `ALIAS`, `MODULE`, `OPTION STRICT`, `COMPILE`
+**Extensibility:** `ALIAS`, `MODULE`, `OPTION STRICT`, `COMPILE`
 
 ### 2.5 Environment Directives
 
@@ -548,13 +548,10 @@ A comprehensive documentation suite of 774 reference manuals and tutorials (incl
 | `Quick_Reference.txt` | Alphabetical keyword reference card |
 | `Self_Programming.txt` | Meta-programming and self-modification |
 | `Scripting_Functions.txt` | Shell integration, pipes, redirects |
-| `Mixing_Dialects.txt` | Multi-dialect programming |
 | `Using_Aliases.txt` | Keyword remapping with ALIAS |
 | `Arrays_And_Matrices.txt` | DIM, REDIM, MAT operations, sorting |
 | `File_IO.txt` | Sequential, random-access, binary files |
 | `flowchart.txt` | Visual flowcharts and architecture diagrams |
-| `Older_Dialects.txt` | Emulating classic systems and memory maps |
-| `Creating_Dialects.txt` | Building custom dialect configurations |
 | `Advanced_DEF.txt` | DEF FN, FUNCTION/SUB, closures |
 | `External_Modules.txt` | Modules, plug-ins, system services |
 | `Error_Handling.txt` | ON ERROR, RESUME, ERR, ERL |

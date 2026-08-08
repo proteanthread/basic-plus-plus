@@ -1630,7 +1630,7 @@ Digit position
 ---------------------------------------------------------------------
 
   All file errors raise ERR_HOW ("HOW?").  The error system
-  uses a simple three-tier model:
+  uses a simple three-level model:
 
     ERR_WHAT   Syntax error (bad OPEN statement syntax)
     ERR_HOW    Runtime error (file not found, wrong mode, etc.)

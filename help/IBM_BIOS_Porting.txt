@@ -1,0 +1,59 @@
+Porting the Authentic IBM PC/XT/AT/PCjr BIOS Micro-Library (libbios)
+===================================================================
+Version 6.5.1
+
+This document describes how to extract and port the BASIC++ Authentic IBM BIOS Micro-Library (libbios: bios.c, bios_pc.c, bios_xt.c, bios_at.c, bios_jr.c and bios.h) into other external projects—such as bare-metal kernels, standalone x86/8086 emulators, legacy interpreter environments, UEFI CSM boot modules, or educational firmware simulation tools.
+
+---
+
+1. Overview & Architecture
+
+libbios is a self-contained, strict C17 micro-library with zero external dependencies on the BASIC++ interpreter. It provides 100% authentic IBM PC (5150), XT (5160), AT (5170), and PCjr (4860) firmware emulation, complete real-mode 1MB memory maps, BIOS Data Area (BDA at 0x400), Interrupt Vector Tables (0x000-0x3FF), hardware port I/O registers (8254 PIT, 8259 PIC, 6845 CRTC, 8042 KBD, CMOS RTC, SN76496 PSG, Sound Blaster DSP, OPL2 FM synthesis), software interrupt services (INT 10h-1Ah, INT 21h, INT 33h, VBE 2.0/3.0, EMS 4.0, XMS 3.0), POST diagnostic code logging (Port 0x80), and fine-grained historical BIOS revision support.
+
+       +---------------------------------------------+
+       |             Your External Project           |
+       |  (Bare-Metal OS, Emulator, or UEFI CSM)     |
+       +----------------------------+----------------+
+                                    |
+                    BiosContext     |  Memory Map &
+                     Handle         |  Interrupt API
+                                    v
+       +---------------------------------------------+
+       |   Authentic IBM BIOS Micro-Library (libbios)  |
+       |  (bios.c, bios_pc.c, bios_xt.c, bios_at.c)    |
+       +-----+------------------+---------------+-----+
+             |                  |               |
+             v                  v               v
+       +-----------+      +-----------+   +-----------+
+       |    BDA    |      |    IVT    |   | Hardware  |
+       | (0x400-4FF|      | (0x000-3FF|   | Port I/O  |
+       +-----------+      +-----------+   +-----------+
+
+---
+
+2. API Usage Reference
+
+Context Lifecycle:
+  BiosContext* ctx = bios_create(BIOS_MODEL_IBM_PC);
+  bios_set_revision(ctx, BIOS_REV_PC_1981_04_24);
+  const char* part_no = bios_get_part_number(ctx);
+  bios_init(ctx);
+  bios_destroy(ctx);
+
+Memory & Interrupt Services:
+  uint8_t val = bios_peek(ctx, 0xFFFF5);
+  bios_poke(ctx, 0x0413, 0x80);
+  bios_poke_raw(ctx, 0xFFFF5, '0');
+  BiosRegs regs = { .ax = 0x0003 };
+  bios_interrupt(ctx, 0x10, &regs);
+  bios_register_interrupt(ctx, 0x80, my_custom_int_handler, user_data);
+
+---
+
+3. Porting Checklist for External Projects
+
+1. Copy engine/include/bios/*.h into your project's include directory.
+2. Copy engine/src/bios/*.c into your project's source directory.
+3. Add -std=c17 to your C compiler flags.
+4. On POSIX/UNIX targets, add -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700 -D_GNU_SOURCE.
+5. Link libbios statically or dynamically with your executable.
