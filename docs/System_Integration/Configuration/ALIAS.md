@@ -5,12 +5,11 @@
 ALIAS LIST | CLEAR | COUNT
 ALIAS REMOVE "name"
 ALIAS SAVE "file" | LOAD "file"
-ALIAS LANG "code" | LANG LIST | LANG CLEAR
 ALIAS OPER LIST
 ALIAS "op" = "name"`
 
 ## 2. Description & Usage
-Provides a comprehensive API for keyword aliasing, operator aliasing, and loading entire language packs. Allows developers and users to map native keywords to alternative strings, supporting localization (e.g., mapping PRINT to ESCRIBIR in Spanish) or syntactic sugar. Useful for language customization and dynamic overrides.
+Provides a comprehensive API for keyword aliasing, operator aliasing, and loading entire language packs. Allows developers and users to map native keywords to alternative strings, or syntactic sugar. Useful for language customization and dynamic overrides.
 
 **Advanced NLP Depth: Edge Cases & Boundary Conditions:**
 - **Lexical Precedence**: When ALIAS interacts with other language constructs, the parser resolves it strictly before variable evaluation. If an identifier matches exactly, it triggers the routine.
@@ -21,7 +20,6 @@ Provides a comprehensive API for keyword aliasing, operator aliasing, and loadin
 ```basic
 ALIAS PRINT = "ECHO"
 ECHO "Hello World!"
-ALIAS LANG "ES" ' Loads Spanish keyword mappings
 ALIAS LIST ' Displays current mappings
 ```
 
