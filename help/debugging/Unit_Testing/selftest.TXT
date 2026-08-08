@@ -7,7 +7,7 @@ Parameters:
 - component_name$ (Optional): A string expression specifying a particular subsystem to test (e.g., "LEXER", "MATH", "STRINGS", "MEMORY"). If omitted, the interpreter runs the complete, exhaustive diagnostic suite across all subsystems. Note the strict string keyword suffix constraint is not enforced on the argument itself, but the argument must evaluate to a string type.
 
 2. Description & Usage
-The SELFTEST command is a powerful internal diagnostic utility built directly into the BASIC++ interpreter. When invoked, it pauses standard script execution and runs a series of hardcoded, highly rigorous C-level unit tests against the interpreter's core subsystems. It verifies the integrity of the Lexer, Value system, String pool, Function registry, Memory allocator, Dialect configuration, Parser precedence, Control flow mechanisms, Virtual File System (VFS), and SDL graphics contexts.
+The SELFTEST command is a powerful internal diagnostic utility built directly into the BASIC++ interpreter. When invoked, it pauses standard script execution and runs a series of hardcoded, highly rigorous C-level unit tests against the interpreter's core subsystems. It verifies the integrity of the Lexer, Value system, String pool, Function registry, Memory allocator, configuration, Parser precedence, Control flow mechanisms, Virtual File System (VFS), and SDL graphics contexts.
 
 This command acts as a built-in regression suite to guarantee that the compiled binary is functioning correctly on the host operating system before running complex BASIC scripts.
 

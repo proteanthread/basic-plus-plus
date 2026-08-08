@@ -51,7 +51,6 @@ Select your target environment by passing compiler defines:
 To prevent binary bloat, configure your build system to compile only the CORE files:
 
 The CORE Files (Required — 61 Files)
-main.c, memory.c, errors.c, value.c, stringpool.c, platform.c, security.c, boot.c, rpn.c, console.c, lite_stubs.c, lexer.c, keyword_props.c, alias_lang.c, parser.c, parser_expr.c, parser_flow.c, parser_loops.c, parser_io.c, vfs.c, parser_vars.c, parser_assign.c, builtins_string.c, builtins_math.c, funcreg.c, parser_deffn.c, builtins.c, parser_help.c, help.c, parser_config.c, override.c, scope.c, scope_stack.c, parser_progmgmt.c, parser_cmds.c, vdev.c, vm.c, memmap.c, builtins_memory.c, builtins_system.c, builtins_io.c, dialect.c, dialect_gwbs.c, dialect_ecma116.c, module.c, mod_stdlib.c, runtime.c, exec.c, parser_misc.c, spec.c, ldisdbl.c, config_file.c, stdlib_core.c, stdlib_dialect.c, error_registry.c, pcode_compiler.c, pcode_emit.c, vm_exec.c, task.c, format_using.c, format_input.c.
 
 The OPTIONAL Files (Exclude)
 Exclude transpiler modules (ast.c, codegen.c, bytecode.c, detok.c), matrix math (parser_mat.c), exception handler (parser_errhand.c), file operations (parser_filemgmt.c, parser_blockio.c, parser_streamio.c, fileio.c, builtins_fileio.c), net modules (vdev_net.c, builtins_net.c), graphics & sound (parser_graphics.c, gfxbuf.c, builtins_graphics.c, parser_sound.c, parser_display.c), and plugins/modules (all files in modules/).
@@ -99,7 +98,6 @@ build_src_filter =
     -<codegen/*>
     -<modules/*>
     -<dialect/dialect_*.c>
-    +<dialect/dialect_gwbs.c>
 
 
 C++ Wrapper (main.cpp):

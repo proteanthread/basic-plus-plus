@@ -92,8 +92,6 @@ To shrink the footprint of BASIC++, remove the following directories or files fr
 - *Production Note:* The 412-keyword `selftests_all.c` framework takes up massive amounts of static string literal space. It must **always** be omitted from production microcontroller builds.
 
 ### Legacy Dialect Compatibility (Saves ~200KB)
-- **Omit Directory:** `source/dialect/` (Except `dialect.c`)
-- *Production Note:* BASIC++ supports runtime switching (`dialect_gwbs.c`, `dialect_qbasic.c`, `dialect_ecma116.c`). In a custom build, rely on the default strict parser and omit these files to save ROM space.
 
 ---
 

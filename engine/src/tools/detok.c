@@ -1,22 +1,43 @@
 /**
  * @file detok.c
- * @brief GW-BASIC binary file detokenizer tool.
+ * @brief Legacy GW-BASIC Tokenized Binary File Detokenizer Tool implementation.
  *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Decodes tokenized GW-BASIC binary program files (.bas) back into human-readable ASCII text.
- * - Why it exists: Fulfills the requirement to decode legacy binary-encoded GW-BASIC programs.
- * - Why it works this way: Legacy files start with 0xFF signature byte. For each line, it reads the next line pointer,
- *   line number (2-byte unsigned short), and translates token code bytes (>= 0x80) back to keywords using a mapping table.
+ * 1. WHAT IT DOES:
+ * Implements `detok_main()`, decoding tokenized 0xFF-header binary GW-BASIC files (`.BAS`) into plain text ASCII BASIC code.
  *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Token keyword dictionary mappings.
- * - What cannot be changed: Structural pointer offsets decoding.
- * - What to expect: Safely detokenizing standard GW-BASIC files.
- * - What to do if something breaks: If keywords detokenize to gibberish, verify token hex mappings.
+ * 2. WHY IT EXISTS:
+ * Provides standalone utility functionality to decode legacy 1980s GW-BASIC tokenized binary files into modern text formats.
  *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Input file is binary formatted GW-BASIC.
- * - Portability concerns: Multi-byte reads must be handled in an endian-safe manner.
+ * 3. WHY IT WORKS THIS WAY:
+ * Parses line-pointer offsets, 16-bit line numbers, and maps byte tokens (>= 0x80) and 2-byte tokens (0xFF Prefix) to ASCII keywords via `k_gw_tokens` tables.
+ *
+ * 4. DEPENDENCIES & COMPILATION:
+ * Compiled into standalone CMake target 'detok'. Includes <stdio.h>, <stdlib.h>, <string.h>, <stdbool.h>.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Excluded from 'libbasicpp' and 'libbasicpp_lite'. Compiled into standalone executable target 'detok'.
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Update `k_gw_tokens` dictionary tables for QuickBASIC token extensions.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * Legacy GW-BASIC 0xFF file header signature and 16-bit line offset parsing math.
+ *
+ * 8. WHAT TO EXPECT:
+ * Command-line binary input results in pure 7-bit ASCII BASIC source printed to stdout or written to output file.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Verify 0xFF magic byte signature and endian-safe 16-bit word decoding.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Input file exists and contains valid GW-BASIC binary tokens.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. Endian-safe 16-bit integer unpacking.
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files: None (Standalone execution payload).
+ * Prerequisite Header Files: None.
  */
 
 #include <stdio.h>

@@ -65,7 +65,6 @@ globally without editing source files:
 
 * BASIC_LITE_BUILD: 
   Disables heavy sub-system initialization in boot.c, drastically reducing 
-  memory footprint and bypassing dialect loading. Mandatory for microcontrollers.
 * NO_SDL2: 
   Removes GUI hooks and directs PRINT to terminal standard output (stdin/stdout).
   Severing this dependency makes the build purely POSIX/CLI driven.

@@ -30,8 +30,8 @@
  * - How to write external extensions: Register C-level preprocessor callbacks or bind directly.
  */
 
-#ifndef CORE_DIALECT_H
-#define CORE_DIALECT_H
+#ifndef DIALECT_H
+#define DIALECT_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -73,4 +73,4 @@ bool        dialect_load_from_map(VMContext *vm, BppMap *map, BppDialect *d, cha
 bool        dialect_validate_map(VMContext *vm, BppMap *map, char *err_buf, size_t err_len);
 char       *dialect_generate_docs(VMContext *vm, BppDialect *d);
 
-#endif /* CORE_DIALECT_H */
+#endif /* DIALECT_H */

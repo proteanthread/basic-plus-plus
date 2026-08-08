@@ -3,6 +3,63 @@
  * This file is part of BASIC++ - a modular, portable BASIC language framework.
  * See LICENSE for terms. See docs/ for programmer guides.
  */
+
+/**
+ * @file plat_console.c
+ * @brief Cross-platform OS console terminal I/O abstraction implementation.
+ *
+ * 1. WHAT IT DOES:
+ *    Implements OS-native console terminal raw/cooked mode toggling (`plat_console_set_raw_mode()`), cursor positioning,
+ *    terminal size queries (`plat_console_get_size()`), non-blocking keystroke reads (`plat_console_read_key()`), and ANSI color attribute translation.
+ *
+ * 2. WHY IT EXISTS:
+ *    Abstracts OS-specific console API differences between Win32 console handles (`GetStdHandle`, `GetConsoleScreenBufferInfo`, `ReadConsoleInput`)
+ *    and POSIX termios / ANSI terminal control sequences (`tcgetattr`, `tcsetattr`, `ioctl(TIOCGWINSZ)`).
+ *
+ * 3. WHY IT WORKS THIS WAY:
+ *    Provides unified `plat_console_*` C functions wrapped around conditionally compiled `#ifdef _WIN32` and POSIX branches.
+ *    Virtual Console (`VConContext`) calls these functions exclusively to manipulate physical terminal outputs.
+ *
+ * 4. DEPENDENCIES & COMPILATION:
+ *    - Required Headers: `platform/plat_console.h`, `<termios.h>` (UNIX), `<windows.h>` (Windows)
+ *    - CMake Target: `plat_console` micro-library linked into `libbasicpp` and `libbasicpp_lite`.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ *    - Included in `baspp` (Standard Desktop) and `bpp` (Lite REPL).
+ *    - Included in `bs` (Script Runner) for headless standard output streams.
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ *    - To extend function key mapping (`F1`..`F12`, Home, End): extend ANSI escape sequence parser `plat_console_parse_ansi()`.
+ *    - To change terminal color palette mapping: update `plat_console_attr_to_ansi()`.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ *    - `plat_console_restore()` MUST restore original terminal attributes on program exit.
+ *    - Non-blocking key poll logic must return 0 immediately if no key is pending.
+ *
+ * 8. WHAT TO EXPECT:
+ *    - `plat_console_read_key()` returns non-zero key code if available, 0 if queue is empty.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ *    - Check console handle validity (`GetStdHandle(STD_INPUT_HANDLE)` or `STDIN_FILENO`).
+ *    - Verify `termios` flags clearing (`ICANON`, `ECHO`) on UNIX targets.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ *     - Terminal file descriptors (0, 1, 2) are valid standard streams.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ *     - Strict C17 compliance (`-std=c17`).
+ *     - POSIX feature test macros (`_POSIX_C_SOURCE=200809L`) enabled for UNIX targets in CMake.
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ *     - Prerequisite C Source Files: OS runtime system headers (`<termios.h>` / `<unistd.h>` on UNIX, `<windows.h>` on Windows).
+ *     - Prerequisite Header Surfaces: `engine/include/platform/plat_console.h`, `engine/include/types/errors.h`.
+ */
+
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
 #include "platform/platform.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -492,4 +549,35 @@ void platform_mouse_get_cursor(int *char_code, int *attrib) {
 
 bool platform_mouse_is_visible(void) {
     return g_mouse_cursor_visible;
+}
+
+int platform_inkey_char(void) {
+    if (platform_kbhit()) {
+        return platform_getch();
+    }
+    return 0;
+}
+
+int platform_mouse_x(void) {
+    int col = 1, row = 1;
+    platform_mouse_get_position(&col, &row);
+    return col;
+}
+
+int platform_mouse_y(void) {
+    int col = 1, row = 1;
+    platform_mouse_get_position(&col, &row);
+    return row;
+}
+
+int platform_mouse_btn(int btn) {
+    return platform_mouse_get_button(btn);
+}
+
+int gfx_get_char_at(int row, int col) {
+    return platform_screen_get_char(row, col);
+}
+
+int gfx_get_attr_at(int row, int col) {
+    return platform_screen_get_attr(row, col);
 }

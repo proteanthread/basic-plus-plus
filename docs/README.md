@@ -17,9 +17,9 @@
   - 4. Implemented Directives
   - 5. Environment Directives
   - 6. Input/Output Operations
-- Section 2: Multi-Dialect Engine
+- Section 2: Multi-core engine
   - 1. Supported Dialects
-  - 2. Dialect Switching
+  - 2. mode switching
   - 3. Strict Mode
   - 4. Keyword Aliasing
 - Section 3: Security Sandboxing
@@ -67,7 +67,7 @@ I don't care what you do with my code, just don't take my code and sell it and/o
 
 ## Abstract
 
-A portable, multi-dialect BASIC interpreter written in 115 C17 source files and 60 header files (~90,000 lines of code). Organized into 28 domain subdirectories with a modular, layered architecture. Zero external dependencies -- compiles on any platform with a standards-compliant C compiler.
+A portable, multi-platform BASIC interpreter written in 115 C17 source files and 60 header files (~90,000 lines of code). Organized into 28 domain subdirectories with a modular, layered architecture. Zero external dependencies -- compiles on any platform with a standards-compliant C compiler.
 
 BASIC++ ships with 16 historically accurate dialect profiles, a runtime dialect-switching engine, a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 70 documentation files.
 
@@ -79,21 +79,21 @@ Designed for small memory footprints and readable source code. Runs on Windows 1
 
 ## Section 1: Core Features
 
-The interpreter provides a comprehensive implementation of BASIC with support for 16 distinct dialect profiles, runtime dialect switching, and a union-mode parser that accepts the combined keyword set of all supported dialects by default.
+The interpreter provides a comprehensive implementation of BASIC with support for 16 distinct dialect profiles, runtime mode switching, and a union-mode parser that accepts the combined keyword set of all supported dialects by default.
 
 ### 1.1. Data Types
 
 BASIC++ supports three fundamental data types:
 
 - **Integers** — 32-bit signed (`long`), providing a range of −2,147,483,648 to +2,147,483,647. All integer division is truncating (e.g., `7 / 3` evaluates to `2`).
-- **Floating-point** — Double-precision IEEE 754 (`double`), activated via numeric literals containing a decimal point (e.g., `3.14`) or via dialect configuration. Supports the full suite of transcendental functions: `SIN`, `COS`, `TAN`, `ATN`, `SQR`, `LOG`, `EXP`.
+- **Floating-point** — Double-precision IEEE 754 (`double`), activated via numeric literals containing a decimal point (e.g., `3.14`) or via configuration. Supports the full suite of transcendental functions: `SIN`, `COS`, `TAN`, `ATN`, `SQR`, `LOG`, `EXP`.
 - **Strings** — Variable-length character sequences up to 255 characters, managed via a pooled allocator. String variables are denoted by the `$` suffix (e.g., `A$`, `NAME$`).
 
 ### 1.2. Variable Storage
 
-The variable system provides three tiers of storage:
+The variable system provides three levels of storage:
 
-| Tier | Capacity | Scope | Description |
+| Level | Capacity | Scope | Description |
 |:-----|:---------|:------|:------------|
 | Single-letter | 26 numeric (`A`–`Z`), 26 string (`A$`–`Z$`) | Global | Direct array-index lookup, zero overhead |
 | Named variables | Up to 4,096 identifiers, 31 characters max | Global | Hash-based lookup (e.g., `SCORE`, `PLAYER_NAME$`) |
@@ -189,7 +189,7 @@ The core implementation provides multiple output pathways:
 ---
 
 
-## Section 2: Multi-Dialect Engine
+## Section 2: Multi-core engine
 
 BASIC++ is unique in its ability to emulate 12 historically accurate BASIC dialects within a single interpreter. Each dialect profile configures statement separators, operator behavior, ready prompts, print zone widths, feature gates, and keyword availability.
 
@@ -210,7 +210,7 @@ BASIC++ is unique in its ability to emulate 12 historically accurate BASIC diale
 | `C64B` | Commodore BASIC v2 | 1982 | `READY.` | `:` | Microsoft 6502. PEEK/POKE/SYS, limited error handling |
 | `COCO` | Color Computer BASIC | 1980 | `OK` | `:` | Microsoft Extended Color BASIC for Tandy CoCo |
 
-### 2.2. Dialect Switching
+### 2.2. mode switching
 
 Dialects can be switched at any time during a session:
 
@@ -254,7 +254,7 @@ BASIC++ integrates features from classic conversational dialects (JOSS, FOCAL, M
 
 ## Section 3: Security Sandboxing
 
-BASIC++ includes a three-tier security model that controls access to sensitive operations. This is critical for environments where untrusted BASIC programs may be executed (e.g., BBS systems, educational labs, online services).
+BASIC++ includes a three-level security model that controls access to sensitive operations. This is critical for environments where untrusted BASIC programs may be executed (e.g., BBS systems, educational labs, online services).
 
 ### 3.1. Security Levels
 
@@ -288,7 +288,6 @@ The interpreter is organized into 29 compilation units:
 | `memory.c/h` | Pool allocator, program store, scratch buffer |
 | `value.c/h` | Tagged union value system (int, float, string) |
 | `stringpool.c/h` | Compact string allocator with GC-safe pooling |
-| `dialect.c/h` | 12 dialect profiles, strict mode, feature gating |
 | `errors.c/h` | Error codes, BASIC-style error messages |
 | `fileio.c/h` | Sequential, random-access, and binary file I/O |
 | `vdev.c/h` | Virtual device layer (console, error, file, user) |
@@ -555,7 +554,7 @@ This classification refers to functionality for BASIC source code amalgamation, 
 
 ### 11.3. Modules
 
-This classification defines the primary system for C-level code extensibility. A "Module" is a compiled C-code entity that adds new keywords and syntactic features to the interpreter. This system is responsible for language syntax modification, enabling the creation of dialect-specific feature sets (e.g., adding a GRAPHICS module to provide `PSET` and `LINE`, or a SOUND module to provide `PLAY`). This is the mechanism by which the interpreter evolves from "Core" to "Full" BASIC.
+This classification defines the primary system for C-level code extensibility. A "Module" is a compiled C-code entity that adds new keywords and syntactic features to the interpreter. This system is responsible for language syntax modification, enabling the creation of implementation-specific feature sets (e.g., adding a GRAPHICS module to provide `PSET` and `LINE`, or a SOUND module to provide `PLAY`). This is the mechanism by which the interpreter evolves from "Core" to "Full" BASIC.
 
 ### 11.4. Plugins
 
@@ -577,12 +576,10 @@ A comprehensive documentation suite of 36 reference manuals and tutorials is inc
 | `Quick_Reference.txt` | Alphabetical keyword reference card |
 | `Self_Programming.txt` | Meta-programming and self-modification |
 | `Scripting_Functions.txt` | Shell integration, pipes, redirects |
-| `Mixing_Dialects.txt` | Multi-dialect programming |
 | `Using_Aliases.txt` | Keyword remapping with ALIAS |
 | `Arrays_And_Matrices.txt` | DIM, REDIM, MAT operations, sorting |
 | `File_IO.txt` | Sequential, random-access, binary files |
 | `Older_Dialects.txt` | Emulating classic systems and memory maps |
-| `Creating_Dialects.txt` | Building custom dialect configurations |
 | `Advanced_DEF.txt` | DEF FN, FUNCTION/SUB, closures |
 | `External_Modules.txt` | Modules, plug-ins, system services |
 | `Error_Handling.txt` | ON ERROR, RESUME, ERR, ERL |

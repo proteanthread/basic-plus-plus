@@ -9,7 +9,7 @@ Milestone 11:
 
   1. Stream I/O (SIO)  — sequential byte/line operations
   2. Block I/O  (BIO)  — random-access position-addressed reads/writes
-  3. Device Aliases     — cross-dialect device name mapping
+  3. Device Aliases     — cross-platform device name mapping
   4. Transactions       — ATOMIC blocks and TXN journaling
 
 These subsystems work alongside the traditional PRINT#/INPUT#/
@@ -47,7 +47,7 @@ TABLE OF CONTENTS
    20. Tutorial: Using C64 Device Numbers
    21. Tutorial: Custom Aliases with DEVMAP
    22. Alias Direction and Safety
-   23. Cross-Dialect Device Mapping Table
+   23. cross-platform Device Mapping Table
 
   Part IV:  Transactions (ATOMIC / TXN)
    24. What Are Transactions?
@@ -77,7 +77,7 @@ TABLE OF CONTENTS
 
 SIO (Stream I/O) functions provide a uniform, low-level interface
 for sequential byte-stream operations.  Unlike traditional
-PRINT#/INPUT# which are text-oriented and dialect-specific, SIO
+PRINT#/INPUT# which are text-oriented and implementation-specific, SIO
 functions work at the byte level and behave identically across
 all dialects.
 
@@ -733,7 +733,7 @@ Problem: Initialize a file with a header, then copy a section.
     - Need block operations (BIOFILL, BIOCOPY)
     - Working with device registers or USB endpoints
     - Position-addressed I/O (0-based byte offsets)
-    - Cross-dialect portability (BIO works the same everywhere)
+    - cross-platform portability (BIO works the same everywhere)
 
   MIXING IS FINE.  On the same channel:
     FIELD #1, 20 AS N$, 10 AS P$
@@ -990,7 +990,7 @@ may enforce its own restrictions.
 
 
 =====================================================================
-23. CROSS-DIALECT DEVICE MAPPING TABLE
+23. cross-platform DEVICE MAPPING TABLE
 =====================================================================
 
 This table shows how every classic device name maps to a
@@ -1472,7 +1472,6 @@ Best practices:
 
   Secure_Coding.md       Security gates for file/device access
 
-  Creating_Dialects.md   How dialect profiles configure aliases
 
   Virtual_Network.md     NET: VDev for network I/O
 

@@ -5,28 +5,52 @@
  */
 /**
  * @file vm.h
- * @brief Virtual Machine core execution context API.
+ * @brief Public interface header for Virtual Machine core execution context API.
  *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Declares the opaque VMContext and functions to access core subsystem managers
- *   (memory, variables, strings, virtual devices) and run programs.
- * - Why it exists: Serves as the central state coordinator for the fetch-decode-execute loop.
- * - Why it works this way: It isolates individual subsystems behind accessor functions. The parser,
- *   lexer, and statement handlers use this interface instead of reading a monolithic RuntimeState struct.
+ * 1. WHAT IT DOES:
+ * Declares `VMContext` structure, lifecycle functions (`vm_create`, `vm_destroy`, `vm_exec`), and subsystem accessors (`vm_get_mem`, `vm_get_var`, `vm_get_str`, etc.).
  *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Additional context accessor declarations, VM lifecycle status codes.
- * - What cannot be changed: Opaque context pointer structures.
- * - What to expect: Initializing a VMContext allocates all sub-managers cleanly.
- * - What to do if something breaks: If accessor returns NULL, check the boot initialization phases.
+ * 2. WHY IT EXISTS:
+ * Serves as the central state coordinator for the fetch-decode-execute loop and AST evaluation engine.
  *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Thread safety is not required. All pointer access is serial.
- * - Portability concerns: None. C17 standard compliant.
+ * 3. WHY IT WORKS THIS WAY:
+ * Isolates individual subsystems behind accessor functions (`vm_get_*`), enabling parser, lexer, statement handlers, and evaluators to interact cleanly with the VM.
  *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add plugin registration and event hooks inside the execution loop.
- * - How to write external extensions: External plugins query VM state and manipulate resources through these accessors.
+ * 4. DEPENDENCIES & COMPILATION:
+ * Included across all engine subsystems. Includes "types/types.h", "memory/memory.h", "runtime/strings.h",
+ * "runtime/variables.h", "runtime/arrays.h", "runtime/metadata.h", <stdbool.h>, <stddef.h>, <stdint.h>, <stdio.h>.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Included in all editions ('baspp', 'bpp', 'bs').
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Add new context accessor prototypes or VM execution flag bitmasks.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * Core struct field positions and public accessor function signatures.
+ *
+ * 8. WHAT TO EXPECT:
+ * Declares all core VM management types, state flags, and execution loop prototypes.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Verify header guard VM_H and include prerequisites (`<stdbool.h>`, `<stdint.h>`).
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Single-threaded VM execution per `VMContext` instance.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. 64-bit pointer safe (`uintptr_t`).
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/vm/context.c
+ * - engine/src/vm/exec.c
+ * Prerequisite Header Files:
+ * - engine/include/types/types.h
+ * - engine/include/memory/memory.h
+ * - engine/include/runtime/strings.h
+ * - engine/include/runtime/variables.h
+ * - engine/include/runtime/arrays.h
  */
 
 #ifndef VM_H
@@ -81,10 +105,16 @@ void       vm_dec_eval_depth(VMContext *vm);
 void       vm_reset_error_state(VMContext *vm);
 void       vm_clear_aliases(VMContext *vm);
 void       vm_reset_for_run(VMContext *vm);
-void        vm_register_alias(VMContext *vm, const char *name, const char *expansion);
+void       vm_register_alias(VMContext *vm, const char *name, const char *expansion);
 const char *vm_lookup_alias(VMContext *vm, const char *name);
+bool       vm_remove_alias(VMContext *vm, const char *name);
+int        vm_get_alias_count(VMContext *vm);
+void       vm_register_operator_alias(VMContext *vm, const char *op_name, const char *expansion);
+const char *vm_lookup_operator_alias(VMContext *vm, const char *op_name);
+void       vm_clear_operator_aliases(VMContext *vm);
 BppError   vm_load_program_file(VMContext *vm, const char *filename);
 BppError   vm_bload_program_from_stream(VMContext *vm, FILE *fp);
+BppError   vm_load_bytecode_buffer(VMContext *vm, const unsigned char *buf, size_t len);
 void       vm_stop(VMContext *vm);
 
 /**
@@ -104,13 +134,10 @@ VDevContext     *vm_get_vdev(VMContext *vm);
 FileContext     *vm_get_file(VMContext *vm);
 VfsContext      *vm_get_vfs(VMContext *vm);
 VNetContext     *vm_get_vnet(VMContext *vm);
-UsbContext      *vm_get_usb(VMContext *vm);
 VConContext     *vm_get_vcon(VMContext *vm);
-MockBiosContext *vm_get_bios(VMContext *vm);
 VMemContext     *vm_get_vmem(VMContext *vm);
-uint8_t         *vm_get_bios_ram(VMContext *vm);
-void             vm_get_bios_registers(VMContext *vm, uint32_t *ax, uint32_t *bx, uint32_t *cx, uint32_t *dx, uint32_t *flags);
-void             vm_set_bios_registers(VMContext *vm, uint32_t ax, uint32_t bx, uint32_t cx, uint32_t dx, uint32_t flags);
+typedef struct BiosContext BiosContext;
+BiosContext     *vm_get_bios(VMContext *vm);
 BppLineNumber    vm_get_current_line(VMContext *vm);
 const char      *vm_get_current_stmt_pos(VMContext *vm);
 StmtRegistry    *vm_get_stmt_registry(VMContext *vm);
@@ -147,6 +174,15 @@ void             vm_trigger_error_trap(VMContext *vm, int code, BppLineNumber li
 void             vm_trigger_breakpoint(VMContext *vm, const char *reason);
 bool             vm_get_single_step(VMContext *vm);
 void             vm_set_single_step(VMContext *vm, bool enable);
+
+bool             vm_is_in_test(VMContext *vm);
+void             vm_set_in_test(VMContext *vm, bool in_test, const char *test_name);
+void             vm_get_test_metrics(VMContext *vm, int *pass, int *fail, int *total);
+void             vm_inc_test_pass(VMContext *vm);
+void             vm_inc_test_fail(VMContext *vm);
+void             vm_inc_test_total(VMContext *vm);
+bool             vm_get_debug_active(VMContext *vm);
+void             vm_set_debug_active(VMContext *vm, bool active);
 
 /* Event trapping APIs */
 void vm_set_timer_trap(VMContext *vm, double seconds, BppLineNumber line);
@@ -283,12 +319,6 @@ bool       vm_get_opt_eh(VMContext *vm);
 void       vm_set_current_line(VMContext *vm, BppLineNumber line);
 void       vm_set_arithmetic_decimal(VMContext *vm, bool enable);
 bool       vm_get_arithmetic_decimal(VMContext *vm);
-
-typedef struct BppDialect BppDialect;
-BppDialect *vm_get_active_dialect(VMContext *vm);
-void        vm_set_active_dialect(VMContext *vm, BppDialect *d);
-BppDialect *vm_get_defining_dialect(VMContext *vm);
-void        vm_set_defining_dialect(VMContext *vm, BppDialect *d);
 
 double      vm_get_last_rnd(VMContext *vm);
 void        vm_set_last_rnd(VMContext *vm, double val);
@@ -473,5 +503,12 @@ void bytecode_set_detokenizer(DetokenizerFn fn);
  * @brief Get the currently registered custom detokenizer.
  */
 DetokenizerFn bytecode_get_detokenizer(void);
+
+
+typedef struct BppDialect BppDialect;
+BppDialect *vm_get_active_dialect(VMContext *vm);
+void        vm_set_active_dialect(VMContext *vm, BppDialect *d);
+BppDialect *vm_get_defining_dialect(VMContext *vm);
+void        vm_set_defining_dialect(VMContext *vm, BppDialect *d);
 
 #endif /* VM_H */

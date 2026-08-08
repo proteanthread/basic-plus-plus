@@ -359,7 +359,7 @@ Event-driven mouse handling:
   MOUSE ON              ' start receiving events
 
   (The ON MOUSE GOSUB handler fires via the standard
-   event polling loop in exec.c, Tier 2.5.)
+   event polling loop in exec.c, subsystem layer.)
 
 Example -- click detection:
 

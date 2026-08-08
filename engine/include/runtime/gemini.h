@@ -15,8 +15,8 @@
  *   and receives the status and body response payload.
  */
 
-#ifndef RUNTIME_GEMINI_H
-#define RUNTIME_GEMINI_H
+#ifndef GEMINI_H
+#define GEMINI_H
 
 #include "vm/vm.h"
 
@@ -29,4 +29,4 @@
  */
 char *net_gemini_fetch(VMContext *vm, const char *url, BppError *out_err);
 
-#endif /* RUNTIME_GEMINI_H */
+#endif /* GEMINI_H */

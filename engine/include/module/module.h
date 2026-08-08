@@ -28,6 +28,8 @@
 #define MODULE_H
 
 #include "security/security.h"
+#include "types/errors.h"
+#include "types/types.h"
 
 #define MAX_MODULES 16
 
@@ -79,5 +81,6 @@ const char          *module_class_name(BppModuleClass cls);
 void                 module_caps_string(unsigned int caps, char *buf, int buf_len);
 struct VMContext;
 int                  module_load_dynamic(struct VMContext *vm, const char *path);
+BppError             vm_load_library_file(struct VMContext *vm, const char *filename);
 
 #endif /* MODULE_H */

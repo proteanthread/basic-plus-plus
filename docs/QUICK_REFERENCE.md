@@ -339,6 +339,7 @@
 - **LEN** - Length of a string
 - **LTRIM** - String manipulation function
 - **MCASE** - String manipulation function
+- **MICROPLEX$** - Interleave two strings character-by-character
 - **MID** - String manipulation function
 - **MID$** - Substring function
 - **OCT** - Number base conversion
@@ -366,8 +367,6 @@
 - **CURDIR$** - Current directory (alias for CWD$)
 - **DATE** - Get or set the system date
 - **DELAY** - Pause execution for milliseconds
-- **DIALECT** - System environment query/control
-- **DIALECT$** - System environment query/control
 - **ENVIRON** - System environment query/control
 - **ERDEV** - Error device code of last device error
 - **ERRORLEVEL** - Last shell exit code

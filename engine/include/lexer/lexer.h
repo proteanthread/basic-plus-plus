@@ -28,7 +28,7 @@
  *
  * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
  * - How future expansion can occur safely: Add additional keywords to BppKeywordId and token codes to BppTokenType.
- * - How to write external extensions: Custom dialects register alias keyword strings that map to these base IDs.
+ * - How to write external extensions: Custom extensions register alias keyword strings that map to these base IDs.
  */
 
 #ifndef LEXER_H
@@ -175,6 +175,7 @@ typedef enum {
     KW_PSET,
     KW_PRESET,
     KW_CLS,
+    KW_HOME,
     KW_LSET,
     KW_VARPTR,
     KW_VARSEG,
@@ -208,6 +209,10 @@ typedef enum {
     KW_TASK,
     KW_WAIT,
     KW_MAT,
+    KW_MUX,
+    KW_DEMUX,
+    KW_UNPACK,
+    KW_BITMUX,
     KW_ARRAY,
     KW_MAP,
     KW_COM,
@@ -216,6 +221,7 @@ typedef enum {
     KW_FILTER,
     KW_REDUCE,
     KW_RENUM,
+    KW_REFORMAT,
     KW_DELETE,
     KW_HELP,
     KW_CATALOG,
@@ -236,8 +242,10 @@ typedef enum {
     KW_CATCH,
     KW_THROW,
     KW_ALIAS,
+    KW_SCOPE,
+    KW_KEYWORD,
+    KW_OVERRIDE,
     KW_METADATA,
-    KW_DIALECT,
     KW_DEFINE,
     KW_ENUM,
     KW_WITH,
@@ -323,6 +331,19 @@ typedef enum {
     KW_TROFF,
     KW_BREAK,
     KW_VARS,
+    KW_CHECK,
+    KW_VERIFY,
+    KW_TEST,
+    KW_ENDTEST,
+    KW_TRACE,
+    KW_DEBUG,
+    KW_CONT,
+    KW_BACKTRACE,
+    KW_DUMP,
+    KW_VER,
+    KW_VER_STR,
+    KW_VARPTR_STR,
+    KW_VERSION,
     KW_REMOVE,
     KW_REMOVE_STR,
     KW_AND,
@@ -379,8 +400,6 @@ void lex_set_pos(LexerContext *ctx, const char *pos);
 /**
  * @brief Convert a keyword ID back to its standard string name.
  */
-typedef struct BppDialect BppDialect;
-void lex_set_dialect(LexerContext *ctx, BppDialect *dialect);
 const char *lex_keyword_name(BppKeywordId kw);
 BppKeywordId lex_find_keyword_by_name(const char *name);
 void keyword_clear_custom(void);

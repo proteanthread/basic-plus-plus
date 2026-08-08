@@ -148,15 +148,11 @@ If compiling a custom build (especially for 32-bit `watcom386` with extended mem
 
 1.  **dialect.h**: Remove the `#ifndef BASIC_FREEDOS` guard around the declaration:
     ```c
-    void dialect_register_qbasic(void);
     ```
-2.  **dialect.c**: Remove the `#ifndef BASIC_FREEDOS` guard around the registration call:
     ```c
-    dialect_register_qbasic();
     ```
 3.  **Makefile**: Add `dialect_qbasic.obj` to `WATCOM_OBJS` and add the compile directive:
     ```makefile
-    $(WCC) $(WCFLAGS) -fo=dialect_qbasic.obj dialect/dialect_qbasic.c
     ```
 
 ### Restoring Optional Modules

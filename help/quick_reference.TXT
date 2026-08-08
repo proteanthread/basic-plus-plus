@@ -339,6 +339,7 @@ StringFunctions
 - LEN
 - LTRIM
 - MCASE
+- MICROPLEX$
 - MID
 - MID$
 - OCT

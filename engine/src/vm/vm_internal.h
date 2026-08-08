@@ -4,6 +4,58 @@
  * See LICENSE for terms. See docs/ for programmer guides.
  */
 
+/**
+ * @file vm_internal.h
+ * @brief Internal VM context structures, execution state layout, and private subsystem interfaces for BASIC++.
+ *
+ * 1. WHAT IT DOES:
+ * Defines full definition of `VMContext` struct, execution control structures (`ForFrame`, `WhileFrame`, `DoFrame`, `SelectFrame`), and private VM helper functions.
+ *
+ * 2. WHY IT EXISTS:
+ * Encapsulates internal VM structures from public API consumers while making them accessible across `engine/src/vm/` implementation files.
+ *
+ * 3. WHY IT WORKS THIS WAY:
+ * Private header file included only within `engine/src/vm/` `.c` files and internal subsystem modules.
+ *
+ * 4. DEPENDENCIES & COMPILATION:
+ * Included in `engine/src/vm/*.c`. Includes "vm/vm.h", "types/types.h", "memory/memory.h", "runtime/strings.h", "runtime/variables.h", "device/vdev.h".
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Included in all editions ('baspp', 'bpp', 'bs').
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Add private struct fields to `VMContext` or internal function prototypes for VM execution steps.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * Private header invariant: must never be included directly by external user programs or public API headers.
+ *
+ * 8. WHAT TO EXPECT:
+ * Defines full concrete `VMContext` struct layout and stack frame structures.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Verify header guard VM_INTERNAL_H and struct field alignment.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Included only within VM engine implementation `.c` files.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. 64-bit pointer safe (`uintptr_t`).
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/vm/context.c
+ * - engine/src/vm/exec.c
+ * Prerequisite Header Files:
+ * - engine/include/vm/vm.h
+ * - engine/include/types/types.h
+ */
+
+/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
+ *
+ * This file is part of BASIC++ - a modular, portable BASIC language framework.
+ * See LICENSE for terms. See docs/ for programmer guides.
+ */
+
 #ifndef VM_INTERNAL_H
 #define VM_INTERNAL_H
 
@@ -34,18 +86,15 @@ void vdev_image_free_all(void);
 
 #endif
 
-#include "device/usb.h"
 #include "runtime/file.h"
 #include "device/vcon.h"
 #include "device/bus.h"
-#include "bios/mock_bios.h"
 #include "runtime/spec.h"
 #include "security/security.h"
 #include "eval/eval.h"
 #include "debug/logger.h"
 #include "runtime/variables.h"
 #include "platform/platform.h"
-#include "core/dialect.h"
 #include "core/struct.h"
 
 extern void console_hide_mouse_cursor(void);
@@ -105,7 +154,10 @@ typedef struct {
     char expansion[256];
 } BppAlias;
 
+typedef struct BppDialect BppDialect;
 struct VMContext {
+    BppDialect      *active_dialect;
+    BppDialect      *defining_dialect;
     MemoryContext   *mem;
     StringContext   *str;
     VariableContext *var;
@@ -114,6 +166,8 @@ struct VMContext {
     BppAlias         aliases[64];
     int              alias_count;
     int              alias_expansion_depth;
+    BppAlias         oper_aliases[64];
+    int              oper_alias_count;
     GosubStack      *gosub_stack;
     ForStack        *for_stack;
     WhileStack      *while_stack;
@@ -129,9 +183,7 @@ struct VMContext {
     VNetContext     *vnet;
     UsbContext      *usb;
     VConContext     *vcon;
-    MockBiosContext *bios;
-    uint8_t         *bios_ram;
-    MockBiosRegs     regs;
+    BiosContext     *bios;
     bool             opt_eh;
     bool             opt_arithmetic_decimal;
     BppDataPosition *data_items;
@@ -141,6 +193,22 @@ struct VMContext {
     /* Debugger Hooks */
     void (*debug_hook)(struct VMContext *vm, const char *event_type, int line_num, const char *symbol, void *user_data);
     void *debug_user_data;
+
+    /* Unit Testing Suite State */
+    bool             in_test;
+    char             test_name[128];
+    int              test_pass;
+    int              test_fail;
+    int              test_total;
+
+    /* Interactive Debugger State */
+    bool             debug_active;
+    bool             debug_trap_on_error;
+    bool             single_step_mode;
+    int              watchpoint_count;
+    char             watchpoints[16][32];
+    BppLineNumber    breakpoints[16];
+    int              breakpoint_count;
 
     /* Error trapping state */
     BppLineNumber    error_trap_line;
@@ -180,9 +248,6 @@ struct VMContext {
     /* Pointer mapping for execution text copies */
     const char      *active_line_original;
     const char      *active_line_copy;
-    BppDialect      *active_dialect;
-    BppDialect      *defining_dialect;
-    bool             in_preprocessor_hook;
     double           jiffies_multiplier;
 
     /* WITH block context stack */

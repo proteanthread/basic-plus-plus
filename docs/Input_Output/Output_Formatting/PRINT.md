@@ -7,17 +7,17 @@ PRINT [parameters]
 - **parameters**: Varies depending on specific dialect and configuration. The parser strictly checks for valid token sequences and type matches.
 
 ### 2. Description & Usage
-The `PRINT` keyword is an integral part of the BASIC++ dialect ecosystem. When invoked, it initiates a complex chain of state mutations.
+The `PRINT` keyword is an integral part of the BASIC++ language system. When invoked, it initiates a complex chain of state mutations.
 - **Edge Cases**: Out-of-memory bounds checking, invalid argument type conversions, unexpected EOF conditions, and cross-platform path handling.
 - **Side Effects**: May mutate global interpreter state, update string pools, and flush I/O buffers.
 - **Behavior Constraints**: Must be executed within a valid scope. Cannot be nested inside arbitrary expressions if it is a statement. Strict type enforcement is applied at parse time to prevent runtime fault propagation.
 
 #### Number Formatting (v6.5.1+)
-Starting in version 6.5.1, number display in `PRINT` uses an enhanced three-tier formatting system:
+Starting in version 6.5.1, number display in `PRINT` uses an enhanced three-level formatting system:
 - **15 Significant Digits**: User-facing numeric output displays up to 15 significant digits (increased from 6).
 - **16 Significant Digits for Serialization**: Internal number serialization for file I/O uses 16 significant digits to guarantee complete round-trip fidelity.
 - **Integer Precision Range**: Integers up to 2^53 (9,007,199,254,740,992) are displayed as clean integers without decimal points.
-- **Three-Tier Formatting Rules**:
+- **Three-Level Formatting Rules**:
   1. **Exact Integers**: Whole numbers up to 2^53 format as plain integers without trailing decimals.
   2. **Fixed-Point Range**: Fractional values in the range [0.000001, 2^53] format as fixed-point numbers with trailing decimal zeros stripped.
   3. **Scientific Notation**: Values outside [0.000001, 2^53] default to scientific notation (e.g., `1e+20`).
@@ -45,7 +45,7 @@ Implemented within the core interpreter subsystem, typically found in `parser.c`
 
 ### 5. Implementation Details
 The `PRINT` command is processed by the lexical analyzer which emits a specific token (e.g., `TOKEN_PRINT`). The abstract syntax tree (AST) node for this keyword contains strict pointers to its arguments. 
-- **Architectural Narrative**: The memory manager allocates necessary structures. The VFS layer or hardware abstraction layer is queried. The dialect engine validates ECMA-116/GW-BASIC compatibility rules.
+- **Architectural Narrative**: The memory manager allocates necessary structures. The VFS layer or hardware abstraction layer is queried. The core engine validates ECMA-116/GW-BASIC compatibility rules.
 - **Struct Mutations**: Modifies the `Environment` struct, updating the program counter (PC) and potentially the error state (`err_code`).
 - **Error States**: Triggers `ERR_SYNTAX` on malformed arguments, `ERR_OOM` on memory allocation failure, and `ERR_IO` on underlying OS failures.
 - **What can be changed**: The behavior can be extended via the modular plugin system.

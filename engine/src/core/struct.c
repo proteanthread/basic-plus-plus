@@ -6,23 +6,49 @@
 
 /**
  * @file struct.c
- * @brief User-Defined Types (UDT) and Classes registry and runtime implementation.
+ * @brief User-Defined Types (UDT / TYPE...END TYPE) and Classes registry implementation for BASIC++.
  *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements the type registry, instantiation, and field copying for custom records and classes.
- * - Why it exists: Provides QBasic compatibility for user-defined records and OOP layout management.
- * - Why it works this way: Custom records are instantiated as structured BppMaps with defaults.
- *   Nested UDTs are instantiated recursively.
+ * 1. WHAT IT DOES:
+ * Implements `struct_registry_init()`, `struct_define()`, `struct_lookup()`, `struct_instantiate()`, and `struct_copy()`.
  *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Default registry capacity and initial values for fields.
- * - What cannot be changed: Structural type checking rules.
- * - What to expect: Type lookup returns a const pointer to the registry entry.
- * - What to do if something breaks: Check type names casing and verify reference counts during nested UDT copies.
+ * 2. WHY IT EXISTS:
+ * Provides QBASIC `TYPE...END TYPE` user-defined records and OOP class layout registry parity.
  *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Relies on memory context allocations. Case-insensitive name comparisons.
- * - Portability concerns: Standard C17 compliant.
+ * 3. WHY IT WORKS THIS WAY:
+ * Registers field names, types, and array dimensions in `BppTypeInfo` structures; instantiates instances as structured `BppMap` instances with default zero-initialization.
+ *
+ * 4. DEPENDENCIES & COMPILATION:
+ * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "core/struct.h", "runtime/map.h", "runtime/strings.h", "vm/vm.h", <string.h>, <ctype.h>, <stdlib.h>, <stdio.h>.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Included in all editions ('baspp', 'bpp', 'bs').
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Support class inheritance (`TYPE Extending Base`) or access control modifiers (`PRIVATE`, `PUBLIC`).
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * Mandatory zero-initialization of UDT fields and case-insensitive record type lookup.
+ *
+ * 8. WHAT TO EXPECT:
+ * `struct_instantiate()` returns a `BValue` of type `VAL_MAP` containing pre-allocated UDT fields.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Trace field reference count releases during nested UDT overwrites in `struct_copy()`.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Active `VMContext` with initialized memory manager.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. Case-folding via `toupper((unsigned char)c)`.
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/runtime/map.c
+ * - engine/src/runtime/strings.c
+ * Prerequisite Header Files:
+ * - engine/include/core/struct.h
+ * - engine/include/runtime/map.h
+ * - engine/include/runtime/strings.h
  */
 
 #include "core/struct.h"

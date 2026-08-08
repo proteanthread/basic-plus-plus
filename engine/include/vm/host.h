@@ -5,17 +5,47 @@
  */
 
 /**
- * What it does: Defines the BppHostInterface function-pointer contract for decoupling.
- * Why it exists: Enables VM, Python, Lua, or embedded hosts to drive statement & expression execution.
- * Why it works this way: Abstracts I/O, variables, error reporting, and devices into callback pointers.
- * What can be changed: Add optional function pointers to the interface with default NULL checks.
- * What cannot be changed: Core input/output/error callback signatures.
- * What to expect: Clean decoupling of execution logic from interpreter VM internals.
- * What to do if something breaks: Ensure host callbacks handle NULL inputs gracefully.
- * Assumptions: user_data carries host-specific context pointer (e.g. VMContext*).
- * Portability concerns: Strict C17 compliant, pure 7-bit ASCII.
- * Future expansions: Add asynchronous event dispatch callbacks.
- * External extension hooks: Embedded hosts populate BppHostInterface to run BASIC++ logic.
+ * @file host.h
+ * @brief Public interface header for VM host interface abstraction layer (BppHostInterface).
+ *
+ * 1. WHAT IT DOES:
+ * Declares `BppHostInterface` function-pointer structure and helper creation function `vm_create_host_interface()`.
+ *
+ * 2. WHY IT EXISTS:
+ * Decouples execution statements, plugins, and embedded scripting runtimes from internal VM structures.
+ *
+ * 3. WHY IT WORKS THIS WAY:
+ * Groups I/O, variable, and error callback function pointers together with an opaque `user_data` pointer.
+ *
+ * 4. DEPENDENCIES & COMPILATION:
+ * Included in `vm/vm.h` and statement handlers. Includes "types/errors.h", <stddef.h>, <stdbool.h>.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Included in all editions ('baspp', 'bpp', 'bs').
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Add optional callback function pointers with NULL checks in caller implementations.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * Existing function pointer parameter types and return signatures.
+ *
+ * 8. WHAT TO EXPECT:
+ * Declares `BppHostInterface` struct and `vm_create_host_interface()` API prototype.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Verify header guard VM_HOST_H and include prerequisites (`<stddef.h>`, `<stdbool.h>`).
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * `user_data` carries host-specific context pointer (typically `VMContext*`).
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. 64-bit pointer safe (`void* user_data`).
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/vm/host.c
+ * Prerequisite Header Files:
+ * - engine/include/types/errors.h
  */
 
 #ifndef VM_HOST_H

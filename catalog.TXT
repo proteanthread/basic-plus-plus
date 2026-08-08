@@ -131,7 +131,6 @@
   Uncategorized:
     METADATA    
   System & Environ:
-    DIALECT     
   Uncategorized:
     DEFINE      
   Variables & Memory:
@@ -198,8 +197,7 @@
   Uncategorized:
     MAP_NEW     MAP_SET     MAP_GET     MAP_GET$    MAP_REMOVE  MAP_COUNT   
     MAP_KEY$    MAP_HAS     JSON_PARSE  JSON_STRINGIFY$XML_PARSE   XML_STRINGIFY$
-    YAML_PARSE  YAML_STRINGIFY$INI_PARSE   INI_STRINGIFY$DIALECT_LOADDIALECT_REGISTER
-    DIALECT_VALIDATEDIALECT_DOC$ENVIRON$    DIR$        GETATTR     
+    YAML_PARSE  YAML_STRINGIFY$INI_PARSE   INI_STRINGIFY$ENVIRON$    DIR$        GETATTR     
   Devices & Network:
     INP         
   BGI Graphics:

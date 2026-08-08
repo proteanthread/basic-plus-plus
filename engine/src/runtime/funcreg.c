@@ -30,7 +30,6 @@
  */
 
 #include "runtime/funcreg.h"
-#include "module/module.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -87,11 +86,6 @@ const FunctionEntry *funcreg_find_by_name(const char *name) {
     if (!name) return NULL;
     for (int i = 0; i < funcreg_table_count; i++) {
         if (str_iequal(funcreg_table[i].name, name)) {
-            if (funcreg_table[i].module_name) {
-                if (!module_is_active(funcreg_table[i].module_name)) {
-                    continue; /* Skip inactive module functions */
-                }
-            }
             return &funcreg_table[i];
         }
     }

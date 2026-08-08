@@ -13,7 +13,7 @@ OPTION RPN [ON | OFF]
 OPTION ARITHMETIC NATIVE | DECIMAL`
 
 ## 2. Description & Usage
-Configures and modifies core interpreter behavior dynamically. It covers array bounds (BASE), syntax strictness (STRICT), trigonometry modes (ANGLE), output formatting (TAB, ZONE), casing rules (KEYWORD), and arithmetic models (ARITHMETIC). This command is crucial for enforcing dialect compliance.
+Configures and modifies core interpreter behavior dynamically. It covers array bounds (BASE), syntax strictness (STRICT), trigonometry modes (ANGLE), output formatting (TAB, ZONE), casing rules (KEYWORD), and arithmetic models (ARITHMETIC). This command is crucial for enforcing standards compliance.
 
 **Advanced NLP Depth: Edge Cases & Boundary Conditions:**
 - **Lexical Precedence**: When OPTION interacts with other language constructs, the parser resolves it strictly before variable evaluation. If an identifier matches exactly, it triggers the routine.

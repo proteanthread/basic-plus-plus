@@ -83,7 +83,6 @@ Lines starting with `#` are comments. Blank lines are ignored.
 
 - **STATEMENT** — Registers a new executable statement keyword
 - **FUNCTION** — Registers a new callable function keyword
-- **DIALECT** — Defines a dialect configuration
 - **MODULE** — Defines a loadable module
 - **LIBRARY** — Defines a library package
 - **DEVICE** — Defines a virtual device driver

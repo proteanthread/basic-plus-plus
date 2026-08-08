@@ -20,7 +20,7 @@
   - SCRATCH
   - UNSAVE
 - Complex Numbers
-- Dialect Configuration
+- configuration
 - Complete Function Reference
 - See Also
 
@@ -259,7 +259,7 @@ Complex numbers support standard arithmetic (`+`, `-`, `*`, `/`) and can be used
 
 ---
 
-## Dialect Configuration
+## configuration
 
 | Property | Value |
 |----------|-------|
@@ -310,7 +310,5 @@ Plus all standard BASIC functions: `ABS`, `ATN`, `COS`, `EXP`, `FIX`, `INT`, `LO
 ## See Also
 
 - [Quick_Reference](Quick_Reference.md) — Complete keyword listing
-- [Specific_Machine_Dialects](Specific_Machine_Dialects.md) — All 16 dialects explained
-- [Mixing_Dialects](Mixing_Dialects.md) — Using features from multiple dialects
 
 *@COPYLEFT ALL WRONGS RESERVED*

@@ -10,13 +10,13 @@
 
 ## 2. Description & Usage
 
-The `ENVIRON` command is used to set or modify operating system environment variables for the current BASIC++ process. Unlike internal dialect toggles (which are managed via commands like `OPTION` or `OVERRIDE`), `ENVIRON` specifically targets the underlying OS environment block. 
+The `ENVIRON` command is used to set or modify operating system environment variables for the current BASIC++ process. Unlike internal configuration toggles (which are managed via commands like `OPTION` or `OVERRIDE`), `ENVIRON` specifically targets the underlying OS environment block. 
 
 When you set a variable with `ENVIRON`, it becomes available to any child processes spawned by the `SHELL` command. It does not permanently change the environment of the parent shell (e.g., CMD or bash) that launched BASIC++. 
 
 **Difference between `ENVIRON` and `ENVIRON$`:**
 It is crucial to understand the distinction between `ENVIRON` and `ENVIRON$`:
-- **`ENVIRON`** is a **command/statement** used to *set* environment variables at the OS level. It cannot be used in expressions to retrieve values. While sometimes colloquially thought of as setting "internal dialect settings", it strictly modifies the OS environment block. (Internal dialect config is usually handled by `OPTION`).
+- **`ENVIRON`** is a **command/statement** used to *set* environment variables at the OS level. It cannot be used in expressions to retrieve values. While sometimes colloquially thought of as setting "internal configuration settings", it strictly modifies the OS environment block. (Internal configuration is usually handled by `OPTION`).
 - **`ENVIRON$`** is a **function** used to *read* OS environment variables. It returns a string value and is used within expressions.
 
 ## 3. Code Examples

@@ -8,7 +8,6 @@ Provides ephemeral tokenizer functionality for scanning BASIC source statements 
 ## Exposed API Entities
 ### Structs & Types
 - `LexerContext LexerContext`
-- `BppDialect BppDialect`
 
 ### Functions
 | Function | Return Type | Arguments |
@@ -17,7 +16,6 @@ Provides ephemeral tokenizer functionality for scanning BASIC source statements 
 | `lex_next` | `BppToken` | `LexerContext *ctx` |
 | `lex_peek` | `BppToken` | `LexerContext *ctx` |
 | `lex_set_pos` | `void` | `LexerContext *ctx, const char *pos` |
-| `lex_set_dialect` | `void` | `LexerContext *ctx, BppDialect *dialect` |
 | `lex_find_keyword_by_name` | `BppKeywordId` | `const char *name` |
 | `keyword_clear_custom` | `void` | `void` |
 | `keyword_register_custom` | `BppKeywordId` | `const char *name` |

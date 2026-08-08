@@ -6,32 +6,47 @@
 
 /**
  * @file mem_system.c
- * @brief Memory context and allocator implementation.
+ * @brief Engine Memory Context, Arena Allocator, and Program Line Buffer implementation for BASIC++.
  *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements arena allocators for ephemeral scratch memory, variable pools,
- *   string heap tracking, and program line insertion, deletion, and sorting.
- * - Why it exists: Provides an isolated memory management boundary that ensures no subsystem
- *   can corrupt memory belonging to other subsystems. It also supports RAM statistics for user reporting.
- * - Why it works this way: It uses a simple bump allocator for scratch memory (resetting it per statement)
- *   and a sorted array with binary search for program storage. This keeps the binary search logic O(log N)
- *   while avoiding complex pointer trees.
+ * 1. WHAT IT DOES:
+ * Implements `mem_create()`, `mem_destroy()`, `mem_scratch_alloc()`, `mem_scratch_reset()`, `mem_store_line()`, `mem_get_line()`, `mem_delete_line()`, managing statement scratch arenas and line tables.
  *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Resize limits or pool initialization parameters.
- * - What cannot be changed: Memory alignment properties (must maintain 8-byte alignment for doubles).
- * - What to expect: Changes here will propagate to parsing, variable lookups, and REPL operations.
- * - What to do if something breaks: Check for off-by-one errors in binary search, verify alignment bounds,
- *   and trace scratch buffer usage.
+ * 2. WHY IT EXISTS:
+ * Encapsulates all heap memory management within bounded memory pools (e.g. 640 MB for `baspp`, 384 MB for `bpp`, 64 MB for `bs`), guaranteeing safe zero-initialization and clean resets.
  *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Standard calloc/malloc are used only on init. double and pointer sizes are 8-byte aligned.
- * - Portability concerns: OpenWatcom C16 requires careful handling of large memory segments (far pointers).
- *   On 16-bit systems, size_t is 16-bit, so pools are capped under 64KB.
+ * 3. WHY IT WORKS THIS WAY:
+ * Uses a bump allocator for statement scratch memory (reset per line) and a sorted line array for program storage using binary search for O(log N) line lookups.
  *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add additional pools (e.g. object heaps) inside MemoryContext.
- * - How to write external extensions: External extensions request memory using the mem_scratch_alloc API.
+ * 4. DEPENDENCIES & COMPILATION:
+ * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "memory/memory.h", "types/config.h", <stdlib.h>, <string.h>, <stdio.h>, <stdint.h>.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Included in all editions ('baspp', 'bpp', 'bs').
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Adjust default pool capacities or add specialized subsystem pools.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * Mandatory 8-byte alignment for doubles and 64-bit pointers; zero-initialization on allocation (`calloc` / `memset`).
+ *
+ * 8. WHAT TO EXPECT:
+ * `mem_scratch_alloc()` returns 8-byte aligned memory from the statement scratch pool; `mem_scratch_reset()` invalidates all scratch pointers in O(1).
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Trace binary search bounds in `mem_get_line()` or inspect pool exhaustion in `mem_scratch_alloc()`.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Valid `MemoryContext` pointer initialized via `mem_create()`.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. Uses `uintptr_t` for alignment arithmetic.
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/types/config.c
+ * Prerequisite Header Files:
+ * - engine/include/memory/memory.h
+ * - engine/include/types/config.h
  */
 
 #include "memory/memory.h"
@@ -68,6 +83,9 @@ struct MemoryContext {
     BppProgramLine *lib_lines;
     size_t          lib_lines_count;
     size_t          lib_lines_capacity;
+
+    /* Program Version Tag */
+    char            program_version[32];
 };
 
 /* Align size to 8-byte boundary for performance and safety */
@@ -286,6 +304,22 @@ void mem_program_clear(MemoryContext *ctx) {
     }
     ctx->lines_count = 0;
     ctx->lines_mem_used = 0;
+    ctx->program_version[0] = '\0';
+}
+
+void mem_program_set_version(MemoryContext *ctx, const char *ver_str) {
+    if (!ctx) return;
+    if (!ver_str) {
+        ctx->program_version[0] = '\0';
+        return;
+    }
+    strncpy(ctx->program_version, ver_str, sizeof(ctx->program_version) - 1);
+    ctx->program_version[sizeof(ctx->program_version) - 1] = '\0';
+}
+
+const char *mem_program_get_version(MemoryContext *ctx) {
+    if (!ctx) return "";
+    return ctx->program_version;
 }
 
 void *mem_string_alloc(MemoryContext *ctx, size_t size) {

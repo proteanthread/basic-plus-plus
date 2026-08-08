@@ -6,7 +6,7 @@
 
 Phase 11a — Foundation (Language Core)
 ======================================
-  11a.1: Dialect Configuration Layer (src/dialect/ — EMPTY, needs implementation)
+  11a.1: configuration Layer (src/dialect/ — EMPTY, needs implementation)
   11a.2: Bit Manipulation Functions (_SHL, _SHR, _READBIT, _SETBIT, _RESETBIT, _TOGGLEBIT, _BITCOUNT)
   11a.3: Extended Math Functions (_ACOS, _ASIN, _ATAN2, _ACOSH, _ASINH, _ATANH, _CEIL, _HYPOT, _PI, _D2R, _R2D, _D2G, _G2D)
   11a.4: ENUM Support (ENUM...END ENUM)

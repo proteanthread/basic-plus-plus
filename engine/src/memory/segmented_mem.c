@@ -6,14 +6,47 @@
 
 /**
  * @file segmented_mem.c
- * @brief Virtual Segment Emulator for BASIC++
- * 
- * What it does: Safe emulation of segmented memory.
- * Why it exists: Prevent raw pointer dereferencing in 64-bit space.
- * Why it works this way: Uses an opaque handle array.
- * What can be changed: Internal handle storage capacity.
- * What cannot be changed: The 16-bit segmented logic behavior.
- * Portability concerns: None.
+ * @brief Virtual Segmented Memory Emulator (`DEF SEG`, `PEEK`, `POKE`, `VARPTR`) for BASIC++.
+ *
+ * 1. WHAT IT DOES:
+ * Implements `vmem_init()`, `vmem_destroy()`, `vmem_set_def_seg()`, `vmem_peek()`, `vmem_poke()`, `vmem_varptr()`.
+ *
+ * 2. WHY IT EXISTS:
+ * Emulates GW-BASIC / QBASIC 16-bit segmented memory (`DEF SEG = &HA000`) safely on modern 64-bit operating systems without raw memory dereferences or segmentation faults.
+ *
+ * 3. WHY IT WORKS THIS WAY:
+ * Maps 16-bit segments and 16-bit offsets to opaque handles and virtualized buffer regions registered in `HandleEntry` tables.
+ *
+ * 4. DEPENDENCIES & COMPILATION:
+ * Compiled into CMake library target 'libbasicpp' (excluded from 'libbasicpp_lite'). Includes "memory/segmented_mem.h", "runtime/strings.h", <stdlib.h>, <string.h>.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Included in Desktop Standard Edition ('baspp'). Excluded from Lite ('bpp') and Script Runner ('bs').
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Add memory-mapped virtual hardware regions for sound/graphics framebuffer emulation.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * Opaque handle tracking invariant — raw host virtual addresses must never be returned to BASIC scripts.
+ *
+ * 8. WHAT TO EXPECT:
+ * `vmem_varptr()` returns a pseudo-32-bit handle representing the variable address; `vmem_peek()` returns byte value (0..255).
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Trace handle allocation and array bounds in `HandleEntry` lookups.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Valid `VMemContext` pointer initialized via `vmem_init()`.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. 64-bit pointer safe (`uintptr_t`).
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/runtime/strings.c
+ * Prerequisite Header Files:
+ * - engine/include/memory/segmented_mem.h
+ * - engine/include/runtime/strings.h
  */
 
 #include "memory/segmented_mem.h"

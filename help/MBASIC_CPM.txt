@@ -14,7 +14,7 @@ Table of Contents
   - String Functions
   - File I/O
   - Differences from GW-BASIC
-- Dialect Configuration
+- configuration
 - Example Programs
   - Classic "Guess the Number" (MBASIC style)
   - File I/O example
@@ -127,7 +127,7 @@ MBASIC predates several GW-BASIC features:
 
 ---
 
-Dialect Configuration
+configuration
 
 | Property | Value |
 |----------|-------|
@@ -211,7 +211,5 @@ Bill Gates personally wrote much of the original 8080 BASIC on a PDP-10 at Harva
 See Also
 
 - Quick_Reference — Complete keyword listing
-- Specific_Machine_Dialects — All 16 dialects explained
-- Creating_Dialects — Dialect configuration tutorial
 
 @COPYLEFT ALL WRONGS RESERVED

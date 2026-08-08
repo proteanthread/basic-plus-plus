@@ -85,7 +85,7 @@ If `MID$` truncates inappropriately or begins throwing segmentation faults under
 
 ## 7. Historical Context
 
-In legacy frameworks, `MID$` was famously hostile towards zero or negative arguments, aggressively halting the machine state via Error 5. The modern architecture in BASIC++ intercepts mathematically erratic bounds gracefully without compromising determinism. Furthermore, some legacy parsers enforced complex parameter matrices for handling the 2-argument variant, whereas BASIC++ dynamically populates the omitted length directly at the wrapper tier (`MAX_STRING_LENGTH`), maintaining extremely tight execution efficiency.
+In legacy frameworks, `MID$` was famously hostile towards zero or negative arguments, aggressively halting the machine state via Error 5. The modern architecture in BASIC++ intercepts mathematically erratic bounds gracefully without compromising determinism. Furthermore, some legacy parsers enforced complex parameter matrices for handling the 2-argument variant, whereas BASIC++ dynamically populates the omitted length directly at the wrapper level (`MAX_STRING_LENGTH`), maintaining extremely tight execution efficiency.
 
 ## 8. Manual Testing Guide
 

@@ -60,26 +60,6 @@ typedef enum {
     SECOP_COUNT = 19
 } BppSecOperation;
 
-#ifdef BASIC_LITE_BUILD
-#define security_init(level) ((void)(level))
-#define security_get_level() (SEC_OPEN)
-#define security_set_level(level) ((void)(level))
-#define security_level_name(level) ((void)(level), "OPEN")
-#define security_find_level_by_name(name) ((void)(name), 0)
-#define security_check(op, line_num) ((void)(op), (void)(line_num), 0)
-#define security_module_allowed(caps) ((void)(caps), 1)
-#define security_check_pinned_level(req) ((void)(req), 1)
-#define security_check_mem(addr, sz) ((void)(addr), (void)(sz), 0)
-#define security_check_port(port, ln) ((void)(port), (void)(ln), 0)
-#define security_check_path(path, ln) ((void)(path), (void)(ln), 0)
-#define security_check_file_path(path, ln) ((void)(path), (void)(ln), 0)
-#define security_restrict_op(op) ((void)(op), 0)
-#define security_is_op_restricted(op) ((void)(op), 0)
-#define security_restrict_keyword(kw) ((void)(kw), 0)
-#define security_is_keyword_restricted(kw) ((void)(kw), 0)
-#define security_restrict_list() ((void)0)
-#define security_restrict_count() (0)
-#else
 void        security_init(BppSecLevel level);
 BppSecLevel security_get_level(void);
 void        security_set_level(BppSecLevel level);
@@ -99,6 +79,5 @@ int         security_restrict_keyword(int kw_id);
 int         security_is_keyword_restricted(int kw_id);
 void        security_restrict_list(void);
 int         security_restrict_count(void);
-#endif
 
 #endif /* SECURITY_H */

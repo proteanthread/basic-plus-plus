@@ -6,29 +6,47 @@
 
 /**
  * @file bppc.c
- * @brief BASIC++ to C17 compiler/transpiler tool.
+ * @brief BASIC++ to C17 Transpiler and Compiler tool implementation.
  *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Transpiles BASIC++ source code (.bas) into native C17 source code (.c),
- *   which can then be compiled directly by host compilers (gcc, clang, MSVC, OpenWatcom).
- * - Why it exists: Provides high-performance compiled binaries from BASIC scripts, bypassing interpreter overhead.
- * - Why it works this way: It parses line numbers and translates BASIC control flow (GOTO, GOSUB)
- *   directly into native C labels and loops. It translates PRINT, LET, and INPUT statements
- *   to standard runtime library function calls.
+ * 1. WHAT IT DOES:
+ * Implements `bppc_main()`, transpiling BASIC++ source code (`.bas`) into portable, native C17 source code (`.c`) or appending bytecode to a C17 VM stub.
  *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Translation maps for statements, generated header boilerplate.
- * - What cannot be changed: Structural GOTO labeling or type safety runtime mappings.
- * - What to expect: Generating compilation outputs for complex multi-line files.
- * - What to do if something breaks: Check generated label formatting and braces nesting.
+ * 2. WHY IT EXISTS:
+ * Serves as the official compiler target (`bppc`/`bppc.exe`) producing high-performance native executables from BASIC++ scripts.
  *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Input files are valid BASIC++ scripts.
- * - Portability concerns: Generated C code uses standard C17 features.
+ * 3. WHY IT WORKS THIS WAY:
+ * Translates line numbers and control flow (`GOTO`, `GOSUB`, `FOR`, `WHILE`) into native C labels, switch loops, and runtime library function calls (`libbasicpp`).
  *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - Future expansions: Add native WebAssembly codegen backend.
- * - External extension hooks: Exposed via transpiler CLI flags.
+ * 4. DEPENDENCIES & COMPILATION:
+ * Compiled into standalone CMake target 'bppc'. Includes "types/version.h", "types/config.h", <stdio.h>, <stdlib.h>, <string.h>, <ctype.h>, <stdbool.h>, <stdint.h>.
+ *
+ * 5. EDITION INCLUSION & EXCLUSION:
+ * Excluded from 'libbasicpp' and 'libbasicpp_lite'. Compiled into standalone executable target 'bppc'.
+ *
+ * 6. HOW TO MODIFY OR EXTEND IT:
+ * Extend codegen output in `transpile_line()` to translate new BASIC++ statements into C17 calls.
+ *
+ * 7. WHAT CANNOT BE CHANGED:
+ * C17 codegen compliance invariant — transpiled `.c` output must compile without warnings on GCC, Clang, and MSVC.
+ *
+ * 8. WHAT TO EXPECT:
+ * Input BASIC source produces clean C17 code featuring explicit line-number labels and static allocations.
+ *
+ * 9. WHAT TO DO IF SOMETHING BREAKS:
+ * Inspect generated `.c` code for missing label declarations or unmatched loop scope braces.
+ *
+ * 10. ASSUMPTIONS & PRECONDITIONS:
+ * Source file parsed contains valid BASIC++ syntax.
+ *
+ * 11. PORTABILITY & C17 CONCERNS:
+ * Strict C17 compliance. Transpiled C source links against `libbasicpp`.
+ *
+ * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
+ * Prerequisite Source Files:
+ * - engine/src/types/config.c
+ * Prerequisite Header Files:
+ * - engine/include/types/version.h
+ * - engine/include/types/config.h
  */
 
 #include <stdio.h>
@@ -67,28 +85,7 @@ static bool parse_line_number(const char *str, int *out_line, const char **out_t
 
 /* Legcy C Transpiler removed. Use dedicated trans tool. */
 
-typedef struct {
-    char name[64];
-    char comment_char;
-    char stmt_separator;
-    int default_array_base;
-    bool case_sensitive;
-    char math_precedence[32];
-    int keyword_count;
-    char keywords_name[128][64];
-    char keywords_mapped[128][64];
-} DialectConfig;
 
-static char get_char_value(const char *val) {
-    if (val[0] == '\\' && val[1] != '\0') {
-        if (val[1] == 'n') return '\n';
-        if (val[1] == 'r') return '\r';
-        if (val[1] == 't') return '\t';
-        if (val[1] == '\\') return '\\';
-        if (val[1] == '\'') return '\'';
-    }
-    return val[0];
-}
 
 static char *read_file_to_string(const char *path) {
     FILE *fp = fopen(path, "rb");
@@ -111,241 +108,7 @@ static char *read_file_to_string(const char *path) {
     return buf;
 }
 
-static bool parse_dialect_json(const char *json, DialectConfig *config) {
-    memset(config, 0, sizeof(DialectConfig));
-    config->default_array_base = 0;
-    config->case_sensitive = false;
-    snprintf(config->math_precedence, sizeof(config->math_precedence), "PRECEDENCE_STANDARD");
-    config->comment_char = '\'';
-    config->stmt_separator = ':';
-    snprintf(config->name, sizeof(config->name), "CUSTOM_STATIC");
 
-    const char *p = json;
-    while (*p) {
-        while (*p && isspace((unsigned char)*p)) p++;
-        if (*p == '\0') break;
-
-        if (*p == '"') {
-            p++;
-            const char *key_start = p;
-            while (*p && *p != '"') p++;
-            if (*p != '"') return false;
-            size_t key_len = p - key_start;
-            char key[128];
-            if (key_len >= sizeof(key)) key_len = sizeof(key) - 1;
-            memcpy(key, key_start, key_len);
-            key[key_len] = '\0';
-            p++; /* consume '"' */
-
-            while (*p && (isspace((unsigned char)*p) || *p == ':')) p++;
-
-            if (*p == '"') {
-                p++;
-                const char *val_start = p;
-                while (*p && *p != '"') p++;
-                size_t val_len = p - val_start;
-                char val[128];
-                if (val_len >= sizeof(val)) val_len = sizeof(val) - 1;
-                memcpy(val, val_start, val_len);
-                val[val_len] = '\0';
-                p++; /* consume '"' */
-
-                if (strcmp(key, "name") == 0) {
-                    size_t copy_len = strlen(val);
-                    if (copy_len >= sizeof(config->name)) copy_len = sizeof(config->name) - 1;
-                    memcpy(config->name, val, copy_len);
-                    config->name[copy_len] = '\0';
-                } else if (strcmp(key, "comment_char") == 0) {
-                    config->comment_char = get_char_value(val);
-                } else if (strcmp(key, "stmt_separator") == 0) {
-                    config->stmt_separator = get_char_value(val);
-                } else if (strcmp(key, "math_precedence") == 0) {
-                    if (strcasecmp(val, "LEFT_TO_RIGHT") == 0) {
-                        snprintf(config->math_precedence, sizeof(config->math_precedence), "PRECEDENCE_LEFT_TO_RIGHT");
-                    }
-                }
-            } else if (isdigit((unsigned char)*p)) {
-                int val = (int)strtol(p, NULL, 10);
-                while (*p && isdigit((unsigned char)*p)) p++;
-                if (strcmp(key, "default_array_base") == 0) {
-                    config->default_array_base = val;
-                } else if (strcmp(key, "case_sensitive") == 0) {
-                    config->case_sensitive = (val != 0);
-                }
-            } else if (*p == '{') {
-                if (strcmp(key, "keywords") == 0) {
-                    p++;
-                    while (*p && *p != '}') {
-                        while (*p && (isspace((unsigned char)*p) || *p == ',')) p++;
-                        if (*p == '}') break;
-                        if (*p == '"') {
-                            p++;
-                            const char *k_start = p;
-                            while (*p && *p != '"') p++;
-                            size_t k_len = p - k_start;
-                            char kw_name[64];
-                            if (k_len >= sizeof(kw_name)) k_len = sizeof(kw_name) - 1;
-                            memcpy(kw_name, k_start, k_len);
-                            kw_name[k_len] = '\0';
-                            p++; /* consume '"' */
-
-                            while (*p && (isspace((unsigned char)*p) || *p == ':')) p++;
-
-                            if (*p == '"') {
-                                p++;
-                                const char *m_start = p;
-                                while (*p && *p != '"') p++;
-                                size_t m_len = p - m_start;
-                                char kw_mapped[64];
-                                if (m_len >= sizeof(kw_mapped)) m_len = sizeof(kw_mapped) - 1;
-                                memcpy(kw_mapped, m_start, m_len);
-                                kw_mapped[m_len] = '\0';
-                                p++; /* consume '"' */
-
-                                if (config->keyword_count < 128) {
-                                    snprintf(config->keywords_name[config->keyword_count], sizeof(config->keywords_name[config->keyword_count]), "%s", kw_name);
-                                    snprintf(config->keywords_mapped[config->keyword_count], sizeof(config->keywords_mapped[config->keyword_count]), "%s", kw_mapped);
-                                    config->keyword_count++;
-                                }
-                            }
-                        } else {
-                            p++;
-                        }
-                    }
-                    if (*p == '}') p++;
-                }
-            }
-        } else {
-            p++;
-        }
-    }
-    return true;
-}
-
-static bool parse_dialect_ini(const char *ini, DialectConfig *config) {
-    memset(config, 0, sizeof(DialectConfig));
-    config->default_array_base = 0;
-    config->case_sensitive = false;
-    snprintf(config->math_precedence, sizeof(config->math_precedence), "PRECEDENCE_STANDARD");
-    config->comment_char = '\'';
-    config->stmt_separator = ':';
-    snprintf(config->name, sizeof(config->name), "CUSTOM_STATIC");
-
-    bool in_keywords = false;
-    const char *p = ini;
-    while (*p) {
-        char line[256];
-        size_t idx = 0;
-        while (*p && *p != '\n' && idx < sizeof(line) - 1) {
-            line[idx++] = *p++;
-        }
-        line[idx] = '\0';
-        if (*p == '\n') p++;
-
-        char *trimmed = trim(line);
-        if (trimmed[0] == '\0' || trimmed[0] == ';') continue;
-
-        if (trimmed[0] == '[' && trimmed[strlen(trimmed) - 1] == ']') {
-            if (strcasecmp(trimmed, "[keywords]") == 0) {
-                in_keywords = true;
-            } else {
-                in_keywords = false;
-            }
-            continue;
-        }
-
-        char *eq = strchr(trimmed, '=');
-        if (eq) {
-            *eq = '\0';
-            char *key = trim(trimmed);
-            char *val = trim(eq + 1);
-
-            if (val[0] == '"' && val[strlen(val) - 1] == '"') {
-                val[strlen(val) - 1] = '\0';
-                val++;
-            }
-
-            if (in_keywords) {
-                if (config->keyword_count < 128) {
-                    snprintf(config->keywords_name[config->keyword_count], sizeof(config->keywords_name[config->keyword_count]), "%s", key);
-                    snprintf(config->keywords_mapped[config->keyword_count], sizeof(config->keywords_mapped[config->keyword_count]), "%s", val);
-                    config->keyword_count++;
-                }
-            } else {
-                if (strcmp(key, "name") == 0) {
-                    strncpy(config->name, val, sizeof(config->name) - 1);
-                } else if (strcmp(key, "comment_char") == 0) {
-                    config->comment_char = get_char_value(val);
-                } else if (strcmp(key, "stmt_separator") == 0) {
-                    config->stmt_separator = get_char_value(val);
-                } else if (strcmp(key, "math_precedence") == 0) {
-                    if (strcasecmp(val, "LEFT_TO_RIGHT") == 0) {
-                        snprintf(config->math_precedence, sizeof(config->math_precedence), "PRECEDENCE_LEFT_TO_RIGHT");
-                    }
-                } else if (strcmp(key, "default_array_base") == 0) {
-                    config->default_array_base = (int)strtol(val, NULL, 10);
-                } else if (strcmp(key, "case_sensitive") == 0) {
-                    config->case_sensitive = ((int)strtol(val, NULL, 10) != 0);
-                }
-            }
-        }
-    }
-    return true;
-}
-
-static bool write_static_header(const char *path, DialectConfig *config) {
-    FILE *out = fopen(path, "w");
-    if (!out) return false;
-    
-    fprintf(out, "/*\n"
-                 " * What it does: Auto-generated static dialect configuration for custom lightweight builds.\n"
-                 " * Why it exists: Provides compile-time dialect maps to minimize memory footprint in blite and bscript.\n"
-                 " * Why it works this way: Hardcodes dialect parameters into a static struct initializer to bypass runtime parsing.\n"
-                 " * What can be changed: Do not edit this file directly; regenerate it using `bppc --dialect`.\n"
-                 " * What cannot be changed: Structure initialization and mapping tables.\n"
-                 " * What to expect: Standardized initialization function `init_custom_static_dialect`.\n"
-                 " * What to do if something breaks: Regenerate using the transpiler or check source dialect config.\n"
-                 " * Assumptions: Target d must be a valid BppDialect pointer.\n"
-                 " * Portability concerns: ANSI C17 compatible.\n"
-                 " * Future expansions: Re-run bppc compilation tool.\n"
-                 " * External extension hooks: Standard BppDialect struct mappings.\n"
-                 " */\n");
-    fprintf(out, "#ifndef CUSTOM_DIALECT_STATIC_H\n");
-    fprintf(out, "#define CUSTOM_DIALECT_STATIC_H\n\n");
-    fprintf(out, "#include <string.h>\n");
-    fprintf(out, "#include \"dialect.h\"\n\n");
-    fprintf(out, "static inline void init_custom_static_dialect(BppDialect *d) {\n");
-    fprintf(out, "    snprintf(d->name, sizeof(d->name), \"%s\");\n", config->name);
-    
-    if (config->comment_char == '\n') fprintf(out, "    d->comment_char = '\\\\n';\n");
-    else if (config->comment_char == '\r') fprintf(out, "    d->comment_char = '\\\\r';\n");
-    else if (config->comment_char == '\t') fprintf(out, "    d->comment_char = '\\\\t';\n");
-    else if (config->comment_char == '\\') fprintf(out, "    d->comment_char = '\\\\\\\\';\n");
-    else if (config->comment_char == '\'') fprintf(out, "    d->comment_char = '\\\\\'';\n");
-    else fprintf(out, "    d->comment_char = '%c';\n", config->comment_char);
-
-    if (config->stmt_separator == '\n') fprintf(out, "    d->stmt_separator = '\\\\n';\n");
-    else if (config->stmt_separator == '\r') fprintf(out, "    d->stmt_separator = '\\\\r';\n");
-    else if (config->stmt_separator == '\t') fprintf(out, "    d->stmt_separator = '\\\\t';\n");
-    else if (config->stmt_separator == '\\') fprintf(out, "    d->stmt_separator = '\\\\\\\\';\n");
-    else if (config->stmt_separator == '\'') fprintf(out, "    d->stmt_separator = '\\\\\'';\n");
-    else fprintf(out, "    d->stmt_separator = '%c';\n", config->stmt_separator);
-
-    fprintf(out, "    d->default_array_base = %d;\n", config->default_array_base);
-    fprintf(out, "    d->case_sensitive = %s;\n", config->case_sensitive ? "true" : "false");
-    fprintf(out, "    d->math_precedence = %s;\n", config->math_precedence);
-    fprintf(out, "    d->keyword_count = %d;\n", config->keyword_count);
-    
-    for (int i = 0; i < config->keyword_count; ++i) {
-        fprintf(out, "    snprintf(d->keywords[%d].name, sizeof(d->keywords[%d].name), \"%s\");\n", i, i, config->keywords_name[i]);
-        fprintf(out, "    snprintf(d->keywords[%d].mapped_to, sizeof(d->keywords[%d].mapped_to), \"%s\");\n", i, i, config->keywords_mapped[i]);
-    }
-    
-    fprintf(out, "}\n\n");
-    fprintf(out, "#endif\n");
-    fclose(out);
-    return true;
-}
 
 static void write_le16(unsigned char *buf, uint16_t val) {
     buf[0] = (unsigned char)(val & 0xFF);
@@ -740,7 +503,7 @@ int main(int argc, char **argv) {
         printf("  bppc --standalone <input.bas> <output.exe>            (Compile Standalone Binary for Host OS)\n");
         printf("  bppc --standalone --windows <input.bas> <output.exe>  (Compile Standalone Binary for Windows)\n");
         printf("  bppc --standalone --linux <input.bas> <output>        (Compile Standalone Binary for Linux)\n");
-        printf("  bppc --dialect <dialect.json|ini> [hdr.h]             (Compile Dialect Header)\n\n");
+        printf("\n");
         printf("Switches:\n");
         printf("  --help, -h, -?   Display this command usage information.\n");
         printf("  --about          Display information about the bppc compiler.\n");
@@ -750,41 +513,7 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    if (strcmp(argv[1], "--dialect") == 0) {
-        const char *config_file = argv[2];
-        const char *out_header = (argc >= 4) ? argv[3] : "custom_dialect_static.h";
 
-        char *content = read_file_to_string(config_file);
-        if (!content) {
-            fprintf(stderr, "Error: Could not read dialect file '%s'\n", config_file);
-            return 1;
-        }
-
-        DialectConfig config;
-        bool parse_ok = false;
-        const char *ext = strrchr(config_file, '.');
-        if (ext && strcasecmp(ext, ".json") == 0) {
-            parse_ok = parse_dialect_json(content, &config);
-        } else if (ext && (strcasecmp(ext, ".ini") == 0 || strcasecmp(ext, ".cfg") == 0)) {
-            parse_ok = parse_dialect_ini(content, &config);
-        } else {
-            parse_ok = parse_dialect_json(content, &config);
-        }
-        free(content);
-
-        if (!parse_ok) {
-            fprintf(stderr, "Error: Failed to parse dialect configuration file '%s'\n", config_file);
-            return 1;
-        }
-
-        if (!write_static_header(out_header, &config)) {
-            fprintf(stderr, "Error: Failed to write static dialect header '%s'\n", out_header);
-            return 1;
-        }
-
-        printf("Successfully generated static dialect header '%s' from '%s'\n", out_header, config_file);
-        return 0;
-    }
 
     bool is_standalone = false;
     bool target_windows = false;
@@ -801,7 +530,7 @@ int main(int argc, char **argv) {
             printf("  bppc --standalone <input.bas> <output.exe>            (Compile Standalone Binary for Host OS)\n");
             printf("  bppc --standalone --windows <input.bas> <output.exe>  (Compile Standalone Binary for Windows)\n");
             printf("  bppc --standalone --linux <input.bas> <output>        (Compile Standalone Binary for Linux)\n");
-            printf("  bppc --dialect <dialect.json|ini> [hdr.h]             (Compile Dialect Header)\n\n");
+            printf("\n");
             printf("Switches:\n");
             printf("  --help, -h, -?   Display this command usage information.\n");
             printf("  --about          Display information about the bppc compiler.\n");

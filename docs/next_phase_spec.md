@@ -32,26 +32,23 @@ This specification defines the next major development phase for BASIC++, organiz
 
 ## Phase 11a — Foundation (Language Core)
 
-### 11a.1: Dialect Configuration Layer
+### 11a.1: configuration Layer
 
 **Status**: ⚠️ `src/dialect/` is EMPTY — core architectural requirement
 
-**Goal**: Implement the dialect configuration system that allows users to declare their own dialects using shared VM and virtual device abstractions.
+**Goal**: Implement the configuration system that allows users to declare their own dialects using shared VM and virtual device abstractions.
 
 **Key deliverables**:
-- Populate `src/dialect/` with the dialect configuration engine
-- Port and supersede `source/dialect/dialect.c` (35 KB) from v5
+- Populate `src/dialect/` with the configuration engine
 - Port `source/config/` (4 files: `override.c`, `parser_config.c`, `scope.c`, `scope_stack.c`)
 - Support loading dialect definitions from `.ini`, `.json`, `.yaml` files
-- Integrate with existing `src/core/dialect.c` (15 KB) and `include/dialect.h`
 - Enable keyword aliasing, syntax mode switching, and compatibility layers
 
 **Syntax (classic)**:
 ```basic
 DIALECT "gwbasic"          ' Switch to GW-BASIC compatibility mode
 DIALECT "qbasic"           ' Switch to QBasic mode
-DIALECT LOAD "custom.json" ' Load user-defined dialect
-DIALECT INFO               ' Display current dialect configuration
+DIALECT INFO               ' Display current configuration
 ```
 
 **Syntax (modern)**:
@@ -61,7 +58,6 @@ dialect.load("custom.json")
 print dialect.info()
 ```
 
-**v5 code to port**: `source/config/` (4 files), `source/dialect/dialect.c` (35 KB)
 **Archive to v5/**: After porting, move originals to `v5/`
 
 ---
@@ -339,7 +335,7 @@ These were in the previous `next_phase_spec.md` and are already partially implem
 
 Create `docs/api/` with per-subsystem docs organized by abstraction layer:
 
-**Tier 1 — Embedding & Lifecycle** (Start here for new developers)
+**Subsystem Layer 1 — Embedding & Lifecycle** (Start here for new developers)
 | Header | API Doc | Topic |
 |--------|---------|-------|
 | `boot.h` | `docs/api/boot.md` | Initialization, shutdown, entry points |
@@ -347,7 +343,7 @@ Create `docs/api/` with per-subsystem docs organized by abstraction layer:
 | `config.h` | `docs/api/config.md` | Configuration, options, dialect selection |
 | `basic_version.h` | `docs/api/version.md` | Version constants |
 
-**Tier 2 — Language Core**
+**Subsystem Layer 2 — Language Core**
 | Header | API Doc | Topic |
 |--------|---------|-------|
 | `lexer.h` | `docs/api/lexer.md` | Tokenizer, keyword table, token types |
@@ -358,7 +354,7 @@ Create `docs/api/` with per-subsystem docs organized by abstraction layer:
 | `arrays.h` | `docs/api/arrays.md` | Array management, DIM, REDIM |
 | `strings.h` | `docs/api/strings.md` | String pool, string operations |
 
-**Tier 3 — Runtime Extensions**
+**Subsystem Layer 3 — Runtime Extensions**
 | Header | API Doc | Topic |
 |--------|---------|-------|
 | `file.h` | `docs/api/file.md` | File I/O, channels, modes |
@@ -369,7 +365,7 @@ Create `docs/api/` with per-subsystem docs organized by abstraction layer:
 | `spec.h` | `docs/api/spec.md` | Language specification queries |
 | `metadata.h` | `docs/api/metadata.md` | Directives, pragmas |
 
-**Tier 4 — Virtual Devices & I/O**
+**Subsystem Layer 4 — Virtual Devices & I/O**
 | Header | API Doc | Topic |
 |--------|---------|-------|
 | `vdev.h` | `docs/api/vdev.md` | Virtual device framework |
@@ -381,27 +377,27 @@ Create `docs/api/` with per-subsystem docs organized by abstraction layer:
 | `fujinet.h` | `docs/api/fujinet.md` | FujiNet retro networking |
 | `gemini.h` | `docs/api/gemini.md` | Gemini protocol |
 
-**Tier 5 — Graphics**
+**Subsystem Layer 5 — Graphics**
 | Header | API Doc | Topic |
 |--------|---------|-------|
 | `bgi.h` | `docs/api/bgi.md` | BGI Graphics Interface |
 | `mock_bios.h` | `docs/api/mock_bios.md` | Mock BIOS for heritage hardware |
 
-**Tier 6 — Security & Modules**
+**Subsystem Layer 6 — Security & Modules**
 | Header | API Doc | Topic |
 |--------|---------|-------|
 | `security.h` | `docs/api/security.md` | Security sandbox, capability system |
 | `module.h` | `docs/api/module.md` | Module loading, validation pipeline |
 | `mod_arrayext.h` | `docs/api/mod_arrayext.md` | Array extension module |
 
-**Tier 7 — Platform & Memory**
+**Subsystem Layer 7 — Platform & Memory**
 | Header | API Doc | Topic |
 |--------|---------|-------|
 | `platform.h` | `docs/api/platform.md` | OS abstraction layer |
 | `memory.h` | `docs/api/memory.md` | Memory management |
 | `segmented_mem.h` | `docs/api/segmented_mem.md` | Segmented memory (RAMBANK) |
 
-**Tier 8 — Dialect & Configuration**
+**Subsystem Layer 8 — Dialect & Configuration**
 | Header | API Doc | Topic |
 |--------|---------|-------|
 | `dialect.h` | `docs/api/dialect.md` | Dialect system |
@@ -478,7 +474,6 @@ These are mutually exclusive. `baspp` defaults to `BASIC_SDL2`. `blite`/`bscript
 
 | Sub-Phase | v5 Files to Port | Archive After |
 |-----------|-----------------|---------------|
-| 11a | `source/dialect/dialect.c`, `source/config/` (4 files) | Move to `v5/` |
 | 11b | `source/sound/parser_sound.c` | Move to `v5/` |
 | 11c | `source/io/builtins_net.c`, `vdev_net.c`, `parser_net.c`, `source/virtual/vm_snapshot.c` | Move to `v5/` |
 | C2 | `source/help/` (17 files) — reference for help data | Move to `v5/` |

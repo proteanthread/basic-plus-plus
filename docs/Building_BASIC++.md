@@ -183,7 +183,6 @@ LEXER_SOURCES   = lexer/lexer.c lexer/keyword_props.c ...
 PARSER_SOURCES  = parser/parser.c parser/parser_expr.c
 FLOW_SOURCES    = flow/parser_flow.c flow/parser_loops.c
 IO_SOURCES      = io/parser_io.c io/fileio.c ...
-DIALECT_SOURCES = dialect/dialect.c dialect/dialect_gwbs.c ...
 MODULES_SOURCES = modules/module.c modules/mod_stdlib.c ...
 ```
 
@@ -306,17 +305,12 @@ only specific dialects:
 ```makefile
 # Example: ECMA-55 + Tiny BASIC only
 DIALECT_SOURCES = \
-    dialect/dialect.c \
     dialect/dialect_patb.c dialect/dialect_ecma55.c
 ```
 
-**Step 2.** Edit `dialect/dialect.c` — `dialect_register_all()`:
 
 ```c
-void dialect_register_all(void)
 {
-    dialect_register_patb();
-    dialect_register_ecma55();
     /* All other calls removed */
 }
 ```
@@ -330,10 +324,7 @@ void dialect_register_all(void)
 | PATB | `dialect_patb.c`       | Palo Alto Tiny BASIC (1976)          |
 | TRS1 | `dialect_trs1.c`       | TRS-80 Level I (1977)                |
 | TRS2 | `dialect_trs2.c`       | TRS-80 Level II / Model III (1978)   |
-| GWBS | `dialect_gwbs.c`       | GW-BASIC / BASICA (1983)             |
 | EC55 | `dialect_ecma55.c`     | ECMA-55 Minimal BASIC (1984)         |
-| E116 | `dialect_ecma116.c`    | ECMA-116 Full BASIC (1991)           |
-| QBAS | `dialect_qbasic.c`     | QBasic (1991)                        |
 | AINT | `dialect_aint.c`       | Apple II Integer BASIC (1977)        |
 | ASFT | `dialect_asft.c`       | Applesoft BASIC (1978)               |
 | ATAR | `dialect_atari.c`      | Atari BASIC (1979)                   |
@@ -427,7 +418,6 @@ $(WCC) $(WCFLAGS) -fo=newfile.obj subdir/newfile.c
 > Don't forget to also update:
 > - `help/help.c` — if adding new BASIC keywords
 > - `source/SOURCE_TREE.txt` — always
-> - `dialect/dialect.c` — if adding a new dialect
 > - `core/main.c` — if adding a new module
 
 ---

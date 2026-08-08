@@ -184,6 +184,11 @@ int vdev_puts(VDevContext *ctx, const char *s);
 int vdev_putc(VDevContext *ctx, int c);
 
 /**
+ * @brief Read a line of input from the virtual console ("CON:").
+ */
+char *vdev_gets(VDevContext *ctx, char *buf, size_t size);
+
+/**
  * @brief Play standard system beep (800 Hz, 0.25s) or print bell char fallback.
  */
 void vdev_play_beep(VDevContext *ctx);

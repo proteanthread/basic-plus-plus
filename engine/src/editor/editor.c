@@ -161,3 +161,5 @@ BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
 
 #endif /* BASIC_LITE_BUILD */
 
+typedef int bpp_editor_translation_unit_dummy;
+

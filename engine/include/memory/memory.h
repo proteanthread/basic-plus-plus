@@ -82,6 +82,10 @@ bool mem_program_insert(MemoryContext *ctx, BppLineNumber line, const char *text
  */
 bool mem_program_delete(MemoryContext *ctx, BppLineNumber line);
 
+/* Friendly aliases */
+#define mem_program_store(ctx, line, text) mem_program_insert((ctx), (line), (text))
+#define mem_program_remove(ctx, line)      mem_program_delete((ctx), (line))
+
 /**
  * @brief Retrieve a BASIC program line's text.
  * @return Text pointer or NULL if line doesn't exist.
@@ -99,6 +103,16 @@ BppProgramLine *mem_program_get_all(MemoryContext *ctx, size_t *count);
  * @brief Clear the program store (NEW command).
  */
 void mem_program_clear(MemoryContext *ctx);
+
+/**
+ * @brief Set the active program version string.
+ */
+void mem_program_set_version(MemoryContext *ctx, const char *ver_str);
+
+/**
+ * @brief Get the active program version string (or empty string if untagged).
+ */
+const char *mem_program_get_version(MemoryContext *ctx);
 
 /**
  * @brief Insert a program line into the companion library program store.

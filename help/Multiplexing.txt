@@ -1,0 +1,37 @@
+UNIFIED MULTIPLEXING & HEADLESS ARCHITECTURE IN BASIC++
+
+OVERVIEW
+BASIC++ supports a unified, ultra-granular C17 micro-library architecture designed for maximum portability across headless servers, daemons, CI/CD script runners, resource-restricted IoT microcontrollers, and desktop visual environments.
+
+1. HEADLESS & MICRO-LIBRARY ARCHITECTURE
+Monolithic aggregated libraries (libbasicpp and libbasicpp_lite) have been eliminated in favor of fine-grained static micro-libraries.
+
+Key Features:
+- Headless Execution Profile (SET_HEADLESS_LIBS): Compiles binaries (blite, bscript, basstub) with zero SDL2, zero GUI, zero BGI, and zero editor dependencies.
+- Custom Dialect Composition: Link only the micro-libraries needed for your target environment.
+- Self-Registering Feature Introspection: Unlinked micro-libraries leave zero byte footprint and omit keywords from HELP and CATALOG.
+
+2. MULTIPLEXING SYNTAX REFERENCE
+- MUX target, arr1, arr2 [, STRIDE s]
+  Interleaves arrays or vectors element-by-element or with custom stride.
+
+- DEMUX arr1, arr2 FROM source [, STRIDE s]
+  De-interleaves composite array into destination vectors.
+
+- MAT MUX C = A, B
+  Dartmouth BASIC MAT extension for matrix row/col interleaving.
+
+- b$ = PACK$(var1, var2, arr())
+  Packs heterogeneous variables/arrays into binary byte string.
+
+- UNPACK b$, var1, var2, arr()
+  Unpacks binary byte string back into target variables/arrays.
+
+- STREAM.MUX #dst, #src1, #src2
+  Multiplexes multiple virtual device channel handles over a single stream pipe.
+
+- res$ = MICROPLEX$(str1$, str2$)
+  Performs character-by-character interleaving of two string parameters.
+
+- BITMUX dst, src1, src2 [, BITS n]
+  Performs bitwise interleaving of numeric array elements using optional bit width (1..32 bits, default 8).

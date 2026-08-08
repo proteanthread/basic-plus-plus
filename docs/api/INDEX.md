@@ -23,13 +23,13 @@ int main(void) {
 }
 ```
 
-Link against `libbasicpp.a` (Linux) or `libbasicpp.lib` (Windows).
+Link against `libadvanced` (Desktop Edition), `libcore` (Lite REPL), or `libscript` (Script Runner).
 
 ---
 
-## API Documentation by Tier
+## API Documentation by Subsystem Layer
 
-### Tier 1 — Embedding & Lifecycle
+### Subsystem Layer 1 — Embedding & Lifecycle
 *Start here. These are the entry points for integrating BASIC++ into your application.*
 
 | API Doc | Header | Description |
@@ -39,7 +39,7 @@ Link against `libbasicpp.a` (Linux) or `libbasicpp.lib` (Windows).
 | [config.md](config.md) | `config.h` | Configuration, options, dialect selection |
 | [version.md](version.md) | `basic_version.h` | Version constants and queries |
 
-### Tier 2 — Language Core
+### Subsystem Layer 2 — Language Core
 *Understand how BASIC++ parses and evaluates programs.*
 
 | API Doc | Header | Description |
@@ -52,7 +52,7 @@ Link against `libbasicpp.a` (Linux) or `libbasicpp.lib` (Windows).
 | [arrays.md](arrays.md) | `arrays.h` | Array management, DIM, REDIM |
 | [strings.md](strings.md) | `strings.h` | String pool, string operations |
 
-### Tier 3 — Runtime Extensions
+### Subsystem Layer 3 — Runtime Extensions
 *Extend the interpreter with files, functions, data structures, and tasks.*
 
 | API Doc | Header | Description |
@@ -65,7 +65,7 @@ Link against `libbasicpp.a` (Linux) or `libbasicpp.lib` (Windows).
 | [spec.md](spec.md) | `spec.h` | Language specification queries |
 | [metadata.md](metadata.md) | `metadata.h` | Directives, pragmas, annotations |
 
-### Tier 4 — Virtual Devices & I/O
+### Subsystem Layer 4 — Virtual Devices & I/O
 *The virtual device layer abstracts all hardware interaction.*
 
 | API Doc | Header | Description |
@@ -79,15 +79,15 @@ Link against `libbasicpp.a` (Linux) or `libbasicpp.lib` (Windows).
 | [fujinet.md](fujinet.md) | `fujinet.h` | FujiNet retro networking |
 | [gemini.md](gemini.md) | `gemini.h` | Gemini protocol |
 
-### Tier 5 — Graphics
+### Subsystem Layer 5 — Graphics
 *The BASIC++ Graphics Interface (BGI) and hardware emulation.*
 
 | API Doc | Header | Description |
 |---------|--------|-------------|
 | [bgi.md](bgi.md) | `bgi.h` | BGI Graphics Interface |
-| [mock_bios.md](mock_bios.md) | `mock_bios.h` | Mock BIOS for heritage hardware |
+| [bios.md](bios.md) | `bios.h` | Authentic IBM PC/XT/AT/PCjr BIOS Micro-Library |
 
-### Tier 6 — Security & Modules
+### Subsystem Layer 6 — Security & Modules
 *Sandbox, capability system, and external module loading.*
 
 | API Doc | Header | Description |
@@ -96,7 +96,7 @@ Link against `libbasicpp.a` (Linux) or `libbasicpp.lib` (Windows).
 | [module.md](module.md) | `module.h` | Module loading, validation pipeline |
 | [mod_arrayext.md](mod_arrayext.md) | `mod_arrayext.h` | Array extension module |
 
-### Tier 7 — Platform & Memory
+### Subsystem Layer 7 — Platform & Memory
 *OS abstraction and memory management internals.*
 
 | API Doc | Header | Description |
@@ -105,8 +105,8 @@ Link against `libbasicpp.a` (Linux) or `libbasicpp.lib` (Windows).
 | [memory.md](memory.md) | `memory.h` | Memory management |
 | [segmented_mem.md](segmented_mem.md) | `segmented_mem.h` | Segmented memory (RAMBANK) |
 
-### Tier 8 — Dialect & Configuration
-*Dialect configuration, logging, and editor integration.*
+### Subsystem Layer 8 — Dialect & Configuration
+*configuration, logging, and editor integration.*
 
 | API Doc | Header | Description |
 |---------|--------|-------------|

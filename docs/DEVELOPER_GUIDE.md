@@ -1,0 +1,230 @@
+# BASIC++ v6.5.2 Developer & Contributor Guide (`DEVELOPER_GUIDE.md`)
+
+Welcome to the BASIC++ v6.5.2 Developer & Contributor Guide. This document provides step-by-step instructions on how to extend, modify, customize, and selectively compile BASIC++ to your exact specifications.
+
+---
+
+## Table of Contents
+1. [How to Add a New Keyword or Statement](#1-how-to-add-a-new-keyword-or-statement)
+2. [How to Add a New Built-in Function](#2-how-to-add-a-new-built-in-function)
+3. [How to Modify or Override Existing Keywords & Syntax](#3-how-to-modify-or-override-existing-keywords--syntax)
+4. [Selective Compilation & Feature Inclusion Gate Protocol](#4-selective-compilation--feature-inclusion-gate-protocol)
+5. [Auto-Populating Error Handling & Help Subsystems](#5-auto-populating-error-handling--help-subsystems)
+
+---
+
+## 1. How to Add a New Keyword or Statement
+
+Adding a new statement to BASIC++ requires 6 distinct steps across the engine:
+
+### Step 1: Register Keyword ID in Lexer Enum
+Edit [engine/include/lexer/lexer.h](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/include/lexer/lexer.h) and add your keyword to `BppKeywordId`:
+```c
+typedef enum {
+    ...
+    KW_MYSTMT,    /* My custom statement */
+    KW_COUNT
+} BppKeywordId;
+```
+
+### Step 2: Register Keyword String in Lexer Keyword Table
+Edit [engine/src/lexer/lexer.c](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/lexer/lexer.c) and add the uppercase text string to `k_keywords[]` in exact matching position with your enum:
+```c
+static const char *k_keywords[] = {
+    ...
+    "MYSTMT",
+    NULL
+};
+```
+
+### Step 3: Implement Statement Handler & Header
+Create a dedicated header [engine/include/statements/custom/mystmt.h](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/include/statements/custom/mystmt.h) and source file [engine/src/statements/custom/stmt_mystmt.c](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/custom/stmt_mystmt.c):
+
+```c
+/* Standard 12-point documentation header */
+
+#include "statements/custom/mystmt.h"
+#include "vm/vm.h"
+#include "eval/eval.h"
+#include "types/errors.h"
+
+BppError stmt_mystmt_exec(BppVM *vm, BppParserContext *pctx) {
+    if (!vm || !pctx) return ERR_NULL_POINTER;
+
+    /* Parse arguments using eval_expression() */
+    BValue val = eval_expression(pctx);
+    if (val.type == VAL_ERROR) return val.as.error;
+
+    /* Perform custom logic */
+    /* ... */
+
+    /* Always release string resources if evaluated */
+    if (val.type == VAL_STRING) {
+        str_release(val.as.string);
+    }
+
+    return ERR_NONE;
+}
+```
+
+### Step 4: Register Statement in VM Execution Engine
+Edit [engine/src/vm/exec.c](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/vm/exec.c):
+```c
+#include "statements/custom/mystmt.h"
+
+/* In vm_exec_init() or statement registration table: */
+stmt_register(vm->stmt_reg, KW_MYSTMT, stmt_mystmt_exec, "MYSTMT", STMT_FLAG_BOTH);
+```
+
+### Step 5: Add Micro-Library Target in CMake
+Edit [engine/CMakeLists.txt](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/CMakeLists.txt):
+```cmake
+add_library(stmt_mystmt OBJECT src/statements/custom/stmt_mystmt.c)
+target_include_directories(stmt_mystmt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set_target_properties(stmt_mystmt PROPERTIES C_STANDARD 17 C_STANDARD_REQUIRED ON)
+
+# Add to foundational core library (or accumulative standard library):
+target_sources(libcore PRIVATE $<TARGET_OBJECTS:stmt_mystmt>)
+
+# If extended standard statement, add to libstandard (which links libcore publicly):
+target_sources(libstandard PRIVATE $<TARGET_OBJECTS:stmt_mystmt>)
+```
+
+### Step 6: Register Help Documentation & Catalog Entry
+Edit [engine/src/runtime/help_data.h](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/runtime/help_data.h), [help/MYSTMT.txt](file:///c:/Users/rtdos/GitHub/basic-plus-plus/help/MYSTMT.txt), and [docs/MYSTMT.md](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/MYSTMT.md).
+
+---
+
+## 2. How to Add a New Built-in Function
+
+Built-in functions (trigonometric, string manipulation, bitwise, array introspection) evaluate as expressions in the AST evaluator.
+
+### Step 1: Implement Function Handler
+Create or edit a function module under `engine/src/eval/functions/` (e.g. `math_funcs.c`, `str_funcs.c`):
+```c
+BValue func_myfn(BppVM *vm, BValue *args, int arg_count) {
+    if (arg_count != 1) return val_make_error(ERR_WRONG_NUMBER_OF_ARGS);
+    if (args[0].type != VAL_NUMBER) return val_make_error(ERR_TYPE_MISMATCH);
+
+    double result = args[0].as.number * 2.0;
+    return val_make_number(result);
+}
+```
+
+### Step 2: Register Function in Dispatch Table
+Edit [engine/src/eval/dispatch.c](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/eval/dispatch.c) to map the function name string `"MYFN$"` or `"MYFN"` to your function handler.
+
+---
+
+## 3. How to Modify or Override Existing Keywords & Syntax
+
+BASIC++ v6.5.2 provides two ways to modify or override syntax:
+
+### Method A: Native BASIC++ Metaprogramming (No C Recompilation Needed)
+- **Rename Keyword**: Use `ALIAS`
+  ```basic
+  ALIAS "ESCREVER" FOR "PRINT"
+  ESCREVER "Olá, Mundo!"
+  ```
+- **Operator Alias**: Rename operators
+  ```basic
+  ALIAS OPERATOR "E" FOR "AND"
+  IF A = 1 E B = 2 THEN PRINT "SIM"
+  ```
+- **Intercept Statement Execution**: Use `SCOPE HOOK`
+  ```basic
+  SCOPE HOOK BEFORE "PRINT" GOSUB 5000
+  ```
+- **Replace Statement Routine**: Use `OVERRIDE`
+  ```basic
+  OVERRIDE "PRINT" WITH GOSUB 9000
+  ```
+
+### Method B: Engine Source Level Customization
+To permanently change standard keyword behavior:
+1. Locate statement handler using `SOURCE_MAP.md` (e.g. `engine/src/statements/core/print.c`).
+2. Modify parameter parsing or execution logic in the `stmt_*_exec` function.
+3. Rebuild `baspp`, `bpp`, or `bs` using CMake.
+
+---
+
+## 4. Selective Compilation & Feature Inclusion Gate Protocol
+
+BASIC++ decouples full desktop capabilities from lightweight REPLs and script runners through CMake target configurations:
+
+### Executable Profiles & Target Footprints
+- **`baspp` (Standard Desktop Edition)**: Links `libadvanced` (accumulates `libstandard` -> `libflex` -> `libcore` -> `libscript` -> `libserver` -> `libhardware` -> `libengine` -> `libkernel` -> `libplatform` -> `libboot`). Includes SDL2 graphics, audio, TUI editor, segmented `vmem`. Default memory allocation: **640 MB**.
+- **`bpp` (Lite REPL Edition)**: Links `libcore` (accumulates `libscript` -> `libserver` -> `libhardware` -> `libengine` -> `libkernel` -> `libplatform` -> `libboot`). Excludes SDL2 graphics, audio, TUI editor, segmented `vmem`. Optimized for IoT/terminals. Default memory allocation: **384 MB**.
+- **`bs` (Script Runner Edition)**: Links `libscript` (accumulates `libserver` -> `libhardware` -> `libengine` -> `libkernel` -> `libplatform` -> `libboot`). Headless non-interactive batch runner. Default memory allocation: **64 MB**.
+
+### Selective Compilation Commands
+To compile **ONLY** the standard desktop REPL without building extra tools:
+```powershell
+# Windows MSVC Build
+cmake --build build_win --target baspp --config Release
+
+# Linux GCC Build
+cmake --build build_linux --target baspp
+```
+
+To compile **ONLY** the headless script runner for server pipelines:
+```powershell
+cmake --build build_win --target bs --config Release
+```
+
+### The 11-Modular Library Architecture & `libplatform` OS Decoupling
+BASIC++ features an 11-modular library spectrum with clean accumulative dependency flow (`libboot` -> `libplatform` -> `libkernel` -> `libengine` -> `libhardware` -> `libserver` -> `libscript` -> `libcore` -> `libflex` -> `libstandard` -> `libadvanced` -> `libext`):
+
+1. **`libboot`**: Core boot phase sequence controller (`common.c`). Zero dependencies.
+2. **`libplatform`**: OS platform abstraction (`plat_console`, `plat_fs`, `plat_sys`, `plat_time`, `plat_thread`, `plat_dl`, `plat_net`, `plat_regex`, `plat_clipboard`). Encapsulates all Win32 vs POSIX `#ifdef` logic. Upper layers have **zero OS-specific code**.
+   - Platform variants: `libplatform_win32`, `libplatform_posix`, `libplatform_dos`, `libplatform_mcu`.
+3. **`libkernel`**: Core VM context, lexer, memory manager, security sandbox, BIOS virtualization, virtual device bus (`vdev`, `vcon`).
+4. **`libengine`**: AST evaluator, parser, runtime functions, variables, strings, bytecode execution loop.
+5. **`libhardware`**: Segmented memory (`vmem`), BGI rasterizer, FujiNet hardware emulation.
+6. **`libserver`**: Network socket operations (`vnet`), Gemini protocol, background tasks, VFS, crypto, regex.
+7. **`libscript`**: Headless batch script runner and file I/O operations (`file.c`).
+8. **`libcore`**: Foundational REPL, numeric formatting, print using engine, metadata registry, map serialization.
+9. **`libflex`**: Dynamic metaprogramming (`ALIAS`, `OVERRIDE`, `SCOPE`), module loader, mathext, arrayext.
+10. **`libstandard`**: Standard TUI workstation, multi-window TUI editor multiplexer, DAP debug server.
+11. **`libadvanced`**: Desktop visual graphics (`bgi_core`, `aalib`, `gfx.c`), multimedia, SDL2/OpenGL bindings.
+12. **`libext`**: Open-ended user and third-party extension template.
+
+---
+
+## 5. Auto-Populating Error Handling & Help Subsystems
+
+### Auto-Populating Error Codes
+1. Add new error code enum to [engine/include/types/errors.h](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/include/types/errors.h):
+   ```c
+   typedef enum {
+       ...
+       ERR_CUSTOM_ERROR = 95,
+   } BppError;
+   ```
+2. Add string message mapping in [engine/src/types/errors.c](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/types/errors.c):
+   ```c
+   case ERR_CUSTOM_ERROR: return "Custom feature initialization failed";
+   ```
+
+### Auto-Populating Interactive HELP & CATALOG
+1. Add plain text help entry to [engine/src/runtime/help_data.h](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/runtime/help_data.h).
+2. The engine's interactive `HELP <keyword>` and `CATALOG` commands automatically query this registry at runtime without needing manual string parsers.
+
+---
+
+## 6. The Mandatory 12-Point Header Architecture Standard
+
+Every `.c` and `.h` file in `engine/src/` and `engine/include/` MUST begin with a customized 12-point header block detailing:
+1. **WHAT IT DOES**: Precise operations, functions, structs, and commands implemented.
+2. **WHY IT EXISTS**: Exact architectural context in BASIC++.
+3. **WHY IT WORKS THIS WAY**: State machine, zero-alloc design, and algorithms.
+4. **DEPENDENCIES & COMPILATION**: Direct headers and CMake micro-library target name.
+5. **EDITION INCLUSION & EXCLUSION**: `baspp` vs `bpp` vs `bs` target inclusion rules.
+6. **HOW TO MODIFY OR EXTEND IT**: Step-by-step developer customization guide.
+7. **WHAT CANNOT BE CHANGED**: Critical invariants, public API contracts, and memory ownership rules.
+8. **WHAT TO EXPECT**: Side-effects, error codes, and return values.
+9. **WHAT TO DO IF SOMETHING BREAKS**: Debugging steps, trace points, and assertions.
+10. **ASSUMPTIONS & PRECONDITIONS**: Required initialized VM context and parameters.
+11. **PORTABILITY & C17 CONCERNS**: C17 compliance, 64-bit pointer safety (`uintptr_t`), and ASCII string rules.
+12. **COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES**: Explicit list of all required `.c` source files and `.h` header files.
+

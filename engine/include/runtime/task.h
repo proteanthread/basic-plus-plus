@@ -24,8 +24,8 @@
  * - Portability concerns: Stubbed on FreeDOS. Standard C17.
  */
 
-#ifndef RUNTIME_TASK_H
-#define RUNTIME_TASK_H
+#ifndef TASK_H
+#define TASK_H
 
 #include "device/vdev.h"
 #include "platform/platform.h"
@@ -67,4 +67,4 @@ void task_kill(VDevContext *vdev, int pid);
 void task_join(int pid);
 int  task_get_status(int pid);
 
-#endif /* RUNTIME_TASK_H */
+#endif /* TASK_H */

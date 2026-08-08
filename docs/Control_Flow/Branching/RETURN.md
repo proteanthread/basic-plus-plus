@@ -17,7 +17,7 @@ Place `RETURN` at the logical end of your subroutines to transfer control back t
 **Edge Cases & Boundary Conditions:**
 *   **Empty Stack:** If `RETURN` is executed when the call stack is empty (i.e., execution "fell into" a subroutine without a preceding `GOSUB`), an `ERR_RETURN_WITHOUT_GOSUB` is thrown.
 *   **Target Not Found (with parameter):** If the optional `line_number` or `label` does not exist, an `ERR_UNDEFINED_LINE` or `ERR_UNDEFINED_LABEL` occurs.
-*   **Nested Loops and RETURN:** Returning from within a `FOR...NEXT` or `WHILE...WEND` block back to the main program leaves the loop context un-terminated on the loop stack. This can lead to an `ERR_NEXT_WITHOUT_FOR` or memory leaks depending on dialect strictness.
+*   **Nested Loops and RETURN:** Returning from within a `FOR...NEXT` or `WHILE...WEND` block back to the main program leaves the loop context un-terminated on the loop stack. This can lead to an `ERR_NEXT_WITHOUT_FOR` or memory leaks depending on strictness.
 
 ### 3. Code Examples
 

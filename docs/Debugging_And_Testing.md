@@ -213,7 +213,7 @@ Value system...... PASS
 String pool....... PASS
 Function registry. PASS
 Memory pool....... PASS
-Dialect Config.... PASS
+configuration.... PASS
 Parser Precedence. PASS (X = 14, expected 14)
 Loop Control Flow. PASS (Y = 15, expected 15)
 VFS File I/O...... PASS
