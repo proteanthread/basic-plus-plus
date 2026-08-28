@@ -1,0 +1,23 @@
+C17 API REFERENCE: STATEMENT DISPATCH SUBSYSTEM (stmt/stmt.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Statement Dispatch Subsystem manages statement handler registration,
+keyword token mapping, execution behavior flags, and procedure resolution.
+
+2. STATEMENT FLAGS
+- STMT_FLAG_IMMEDIATE: Executable in direct REPL mode without line numbers.
+- STMT_FLAG_PROGRAM:   Executable in numbered program lines.
+- STMT_FLAG_BOTH:      Executable in both REPL and program lines.
+
+3. CORE API FUNCTIONS
+- stmt_registry_init(mem) -> StmtRegistry *
+- stmt_registry_shutdown(reg)
+- stmt_register(reg, kw, handler, name, flags)
+- stmt_lookup(reg, kw) -> BppStmtHandler
+- find_procedure(vm, name, proc_kw, out_line, out_text) -> bool
+- vm_call_sub_procedure(vm, sub_name, args, count, ret_pos) -> BppError
+
+4. INVARIANTS & SAFETY RULES
+- Statement handlers must consume tokens via lex_next() or return err.code != 0.
+- All temporary strings evaluated in handlers must be released via str_release().

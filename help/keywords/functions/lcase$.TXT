@@ -1,0 +1,17 @@
+LCASE$ Lowercase String Conversion Function
+======================================================================
+
+The LCASE$ function converts all uppercase letters in a string to
+lowercase.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    lower_str$ = LCASE$(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT LCASE$("HELLO WORLD")   : REM Outputs "hello world"

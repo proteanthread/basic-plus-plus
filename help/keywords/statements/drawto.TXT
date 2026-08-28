@@ -1,0 +1,30 @@
+DRAWTO Absolute Coordinate Line Drawing Statement
+=================================================
+
+Draws a line from the current graphics pen location to the specified (x,y) coordinates.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    DRAWTO x%, y%
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Coordinates outside screen bounds.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Updates internal pen coordinates to (x, y).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SCREEN 12
+    20 PSET (100, 100), 15
+    30 DRAWTO 200, 200

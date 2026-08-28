@@ -1,0 +1,31 @@
+LOC File Channel Current Pointer Position Function
+==================================================
+
+Returns the current byte offset or record position within an open file channel.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    position& = LOC(filenum%)
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 52 (ERR_BAD_FILE_NUMBER): File channel is not open.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Returns byte offset in sequential/binary files, record number in random files.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 OPEN "R", #1, "DATA.DAT", 64
+    20 GET #1, 5
+    30 PRINT "Current Record: "; LOC(1) : REM Outputs 5
+    40 CLOSE #1

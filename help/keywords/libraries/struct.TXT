@@ -1,0 +1,13 @@
+struct User-Defined Structures & Types (libengine)
+======================================================================
+
+The struct library implements user-defined record types (TYPE...END TYPE)
+and member field resolution.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - C-compatible field layout and struct padding.
+  - Dot-notation member dereferencing.
+  - Direct binary file serialization via GET and PUT.

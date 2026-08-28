@@ -1,0 +1,33 @@
+EOF End of File Detection Function
+==================================
+
+Returns -1 (TRUE) if the end of the specified file channel has been reached, or 0 (FALSE) otherwise.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    is_eof% = EOF(filenum%)
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 52 (ERR_BAD_FILE_NUMBER): Channel is not open.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Essential for sequential file reading loops.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 OPEN "I", #1, "DATA.TXT"
+    20 WHILE NOT EOF(1)
+    30   LINE INPUT #1, L$
+    40   PRINT L$
+    50 WEND
+    60 CLOSE #1

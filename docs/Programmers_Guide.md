@@ -1,160 +1,64 @@
-# BASIC++ Programmer's Guide
+# BASIC++ v6.5.2 Programmer's Guide
 
-**Version 4.2.3**
+## 1. LANGUAGE OVERVIEW
 
-## Table of Contents
+BASIC++ is a structured, multi-dialect BASIC interpreter and compiler targeting ISO C17 hosts. Programs are written as numbered or unnumbered source lines, tokenized ephemerally by the lexer, parsed into AST nodes, and executed by a non-recursive virtual machine. The VM maintains all execution state — call stacks, loop frames, expression evaluation — on heap-managed structures rather than the host C stack, which allows deeply nested BASIC programs to execute without risk of host stack overflow.
 
-1. [Language Overview](#1-language-overview)
-2. [Data Types](#2-data-types)
-3. [Variables](#3-variables)
-4. [Operators](#4-operators)
-5. [Control Flow](#5-control-flow)
-6. [Loops](#6-loops)
-7. [Subroutines and Functions](#7-subroutines-and-functions)
-8. [String Handling](#8-string-handling)
-9. [Arrays](#9-arrays)
-10. [Input/Output](#10-inputoutput)
-11. [Math Functions](#11-math-functions)
-12. [Type Conversion](#12-type-conversion)
-13. [Miscellaneous Functions](#13-miscellaneous-functions)
-14. [Statement Syntax Reference](#14-statement-syntax-reference)
+The language provides six value types internally represented by the BValue tagged union: VAL_NONE (uninitialized), VAL_NUMBER (double-precision floating point), VAL_INTEGER (optimized integer path), VAL_STRING (reference-counted string handle), VAL_MAP (dictionary), and VAL_ARRAY_REF (symbolic array reference). The programmer sees these as numbers and strings, with type suffixes (%, !, #, $) controlling the interpretation. All numeric computation defaults to double precision unless the active dialect or explicit type declaration specifies otherwise.
 
----
+## 2. PROGRAM STRUCTURE
 
-## 1. Language Overview
+A BASIC++ program is a sequence of lines, each beginning with a line number from 1 to 65529 followed by one or more statements separated by colons. The maximum line length is 255 characters. Lines are stored sorted by line number. Entering a new line with an existing number replaces the old line. Entering a line number with no statement deletes that line.
 
-BASIC++ follows the BASIC language family syntax. Programs are sequences of numbered lines executed in order. The interpreter supports both direct mode (immediate execution) and program mode (stored execution via `RUN`).
+Multiple statements on a single line are separated by the colon character: `10 A = 5 : B = 10 : PRINT A + B`. The REM statement and its shorthand apostrophe form cause the remainder of the line to be treated as a comment. Statements after REM on the same line are not executed, even if separated by colons.
 
-Every statement begins with a keyword (`PRINT`, `LET`, `IF`, `FOR`, etc.). Multiple statements can appear on one line separated by colons:
+Programs execute sequentially from the lowest line number unless redirected by GOTO, GOSUB, or control-flow structures. Execution ends when an END statement is reached, when the last line executes without a successor, or when a STOP statement pauses the program.
 
-```basic
-10 A = 5 : B = 10 : PRINT A + B
-```
+## 3. VARIABLES AND SCOPE
 
----
+Variable names consist of a letter followed by up to 30 alphanumeric characters. Names are case-insensitive. A type suffix at the end of the name determines its data type: `%` for integer, `!` for single precision, `#` for double precision, and `$` for string. Without a suffix, the default type is double-precision floating point, unless overridden by DEFINT, DEFSNG, DEFDBL, or DEFSTR declarations that set default types for ranges of starting letters.
 
-## 2. Data Types
+Variables declared inside SUB or FUNCTION blocks are local to that procedure. The SHARED statement makes specific main-program variables visible within a procedure. The STATIC keyword preserves a local variable's value between calls. The LOCAL keyword explicitly declares a variable as local, which is the default in procedures.
 
-| Type | Size | Range | Examples |
-|------|------|-------|----------|
-| `INTEGER` | 32-bit signed | −2,147,483,648 to 2,147,483,647 | `0`, `-5`, `42`, `&HFF`, `&O77`, `&B1010` |
-| `FLOAT` | 64-bit double | ~5e−324 to ~1.7e+308 | `3.14`, `-0.001`, `1.5E+10`, `2.997E8` |
-| `STRING` | 0–255 bytes | — | `"Hello, World!"` |
+OPTION EXPLICIT requires all variables to be explicitly declared with DIM or DECLARE before use. Without OPTION EXPLICIT, variables are implicitly created on first assignment with a default value of zero (numeric) or empty string (string).
 
-Type is determined by context:
+The COMMON statement marks variables for preservation across CHAIN operations. Variables not marked as COMMON are cleared when CHAIN loads a new program unless the ALL option is used.
 
-| Suffix | Type | Example |
-|--------|------|---------|
-| `$` | String | `A$`, `NAME$` |
-| `%` | Integer | `A%`, `COUNT%` |
-| `!` | Single-precision | `A!` |
-| `#` | Double-precision | `A#` |
-| *(none)* | Double-precision (default) | `A`, `TOTAL` |
+## 4. NUMERIC OPERATIONS
 
----
+Numeric expressions support standard arithmetic operators: addition (+), subtraction (-), multiplication (*), division (/), integer division (\), exponentiation (^), and modulus (MOD). Integer division truncates the result toward zero. The MOD operator returns the remainder of integer division.
 
-## 3. Variables
+Operator precedence from highest to lowest is: function calls, exponentiation (^), unary negation (-), multiplication and division (* /), integer division (\), modulus (MOD), addition and subtraction (+ -), relational operators (= <> < > <= >=), NOT, AND, OR, XOR, EQV, IMP. Parentheses override this order.
 
-### Single-letter variables (all dialects)
+Built-in numeric functions include ABS (absolute value), SGN (sign), INT (floor), FIX (truncate toward zero), CINT (round to integer), SQR (square root), SIN, COS, TAN, ATN (arctangent), ASIN, ACOS, SINH, COSH, TANH, LOG (natural log), LOG2, LOG10, EXP, PI, ROUND, MIN, MAX, AVG, MED, CLAMP, FLOOR, CEIL, LERP, DEGREES, RADIANS, ANGLE, EPS, INF, and MAXNUM.
 
-- `A` through `Z` — Numeric (26 variables)
-- `A$` through `Z$` — String (26 variables)
+RND returns a pseudo-random number between 0 and 1. RANDOMIZE seeds the random number generator: RANDOMIZE with no argument prompts for a seed; RANDOMIZE TIMER uses the current time.
 
-### Named variables (extended dialects)
+Bitwise operations treat numeric values as integers and operate on their binary representation. The operators AND, OR, NOT, XOR, EQV, and IMP function as both logical and bitwise operators depending on context. SHL and SHR perform left and right bit shifts. BITCOUNT, READBIT, SETBIT, RESETBIT, and TOGGLEBIT provide individual bit manipulation.
 
-```basic
-SCORE, PLAYER_NAME$, TOTAL.COUNT
-```
+## 5. STRING OPERATIONS
 
-Up to 31 characters, case-insensitive.
+String expressions use the concatenation operator (+) to join strings. The comparison operators work on strings using lexicographic (case-sensitive) comparison. Attempting to compare a string with a number produces Error 13 (Type mismatch).
 
-### Special variables
+Core string functions include LEN (length), LEFT$ (left substring), RIGHT$ (right substring), MID$ (middle substring), INSTR (find substring position), CHR$ (character from code), ASC (code from character), STR$ (number to string), VAL (string to number), HEX$ (hexadecimal conversion), OCT$ (octal conversion), BIN$ (binary conversion), SPACE$ (repeated spaces), and STRING$ (repeated character).
 
-| Variable | Description |
-|----------|-------------|
-| `ERR` | Last error number |
-| `ERL` | Line where last error occurred |
-| `ERRORLEVEL` | Exit code of last `SHELL` command |
-| `TIMER` | Seconds since midnight (float) |
-| `DATE$` | Current date `"MM-DD-YYYY"` |
-| `TIME$` | Current time `"HH:MM:SS"` |
-| `INKEY$` | Non-blocking keyboard read |
+Case conversion functions include UCASE$ (uppercase), LCASE$ (lowercase), TCASE$ (title case), and MCASE$ (mixed case). Trimming functions include LTRIM$ (left trim), RTRIM$ (right trim), and TRIM$ (both sides). REPLACE$ performs substring replacement. REVERSE$ reverses a string. EDIT$ provides multiple string transformations controlled by a bitmask argument.
 
-### Constants
+MID$ can appear on the left side of an assignment to replace characters within an existing string: `MID$(A$, 3, 2) = "XY"` replaces two characters starting at position 3.
 
-```basic
-CONST PI = 3.14159
-CONST MAX.SIZE = 100
-```
+String memory is managed through the StringContext subsystem using reference-counted handles. Each string created by a function or concatenation operation allocates from the string heap. The garbage collector (str_gc) reclaims unreferenced strings when the heap reaches capacity. Programs that generate many temporary strings in tight loops should be aware that string heap pressure can trigger compaction pauses.
 
----
+## 6. ARRAYS
 
-## 4. Operators
+DIM declares arrays with one to three dimensions. The default lower bound is 0, producing DIM A(10) with elements A(0) through A(10). OPTION BASE 1 changes the lower bound to 1 for all subsequent DIM statements. The maximum total element count across all arrays is 4,194,304 on modern builds, 2,048 on FreeDOS, and 512 on embedded targets.
 
-### Arithmetic
+REDIM re-declares an array, clearing existing data. REDIM PRESERVE resizes while keeping existing elements. ERASE removes an array from memory. LBOUND(array, dimension) and UBOUND(array, dimension) return the lower and upper bounds.
 
-| Operator | Description |
-|----------|-------------|
-| `+` | Addition / string concatenation |
-| `-` | Subtraction / unary negation |
-| `*` | Multiplication |
-| `/` | Division (float result) |
-| `\` | Integer division |
-| `MOD` | Modulo (remainder) |
-| `^` | Exponentiation |
+Array elements are passed to functions and assigned to variables as ordinary values. Entire arrays cannot be passed as function arguments in the GW-BASIC dialect; use MAT operations or loop-based element access instead.
 
-### Relational
+## 7. CONTROL STRUCTURES
 
-| Operator | Description |
-|----------|-------------|
-| `=` | Equal |
-| `<>` | Not equal (also `><`) |
-| `<` | Less than |
-| `>` | Greater than |
-| `<=` | Less than or equal (also `=<`) |
-| `>=` | Greater than or equal (also `=>`) |
-
-### Logical
-
-| Operator | Description |
-|----------|-------------|
-| `AND` | Bitwise/logical AND |
-| `OR` | Bitwise/logical OR |
-| `NOT` | Bitwise/logical NOT |
-| `XOR` | Bitwise/logical XOR |
-| `EQV` | Logical equivalence |
-| `IMP` | Logical implication |
-
-### String
-
-```basic
-"Hello" + " " + "World"    ' Concatenation
-```
-
-### Precedence (highest to lowest)
-
-1. `^`
-2. Unary `-`, `NOT`
-3. `*`, `/`, `\`
-4. `MOD`
-5. `+`, `-`
-6. Relational (`=` `<>` `<` `>` `<=` `>=`)
-7. `AND`
-8. `OR`, `XOR`, `EQV`, `IMP`
-
----
-
-## 5. Control Flow
-
-### IF/THEN/ELSE
-
-```basic
-IF condition THEN statement(s) [ELSE statement(s)]
-IF condition THEN line_number [ELSE line_number]
-IF condition GOTO line_number
-```
-
-**Block IF** (QBasic style):
+IF...THEN...ELSE provides conditional execution. The single-line form executes the THEN clause if the condition is true, the ELSE clause otherwise. The block form spans multiple lines and supports ELSEIF:
 
 ```basic
 IF condition THEN
@@ -166,291 +70,66 @@ ELSE
 END IF
 ```
 
-### ON GOTO / ON GOSUB
+FOR...NEXT iterates a loop variable from a start value to a target value. The STEP (or BY) clause specifies the increment. A negative STEP counts downward. The loop body executes at least once if the start value satisfies the termination condition. EXIT FOR leaves the loop immediately.
 
-```basic
-ON expression GOTO line1, line2, line3
-ON expression GOSUB line1, line2, line3
-```
+WHILE...WEND repeats while a condition remains true. DO...LOOP provides four variants: DO WHILE (pre-test with WHILE), DO UNTIL (pre-test with UNTIL), LOOP WHILE (post-test with WHILE), and LOOP UNTIL (post-test with UNTIL). EXIT DO leaves the loop.
 
-The expression is evaluated as an integer (1-based index).
+SELECT CASE matches an expression against CASE values, ranges (CASE 1 TO 10), comparisons (CASE IS > 100), or lists (CASE 1, 3, 5). CASE ELSE handles unmatched values. END SELECT terminates the block.
 
-### GOTO
+GOSUB...RETURN provides traditional subroutine calling with a return address pushed onto the GOSUB stack. The stack depth limit is 1023 on modern builds. ON n GOSUB routes to one of several subroutine entry points based on the value of n.
 
-```basic
-GOTO line_number
-```
+## 8. PROCEDURES
 
-Unconditional branch.
+SUB and FUNCTION define named procedures with parameter lists and local variable scopes. CALL invokes a SUB. Functions are invoked by name in expressions. The DECLARE statement provides forward declarations for procedures defined later in the program.
 
-### STOP / END / CONT
+Parameters are passed by value for numeric types and by reference for string types and arrays. LOCAL, STATIC, and SHARED control variable visibility and lifetime within procedures.
 
-| Command | Description |
-|---------|-------------|
-| `STOP` | Halt and enter direct mode (resume with `CONT`) |
-| `END` | Terminate program |
-| `CONT` | Continue after `STOP` or Ctrl+C |
+SUB and FUNCTION blocks maintain separate stack frames tracked by the SubStack in the VM. Each call pushes a BppSubFrame containing the procedure name, return line, return position, and a flag indicating whether it is a function. The maximum nesting depth for procedure calls shares the stack depth limit with GOSUB.
 
----
+## 9. ERROR HANDLING
 
-## 6. Loops
+ON ERROR GOTO line establishes a global error handler. When a runtime error occurs, the VM records the error code (vm_get_err_code), the error line (vm_get_err_line), and the statement position, then transfers execution to the handler line. Inside the handler, ERR returns the error code, ERL returns the line where the error occurred, and ERR$ returns the error message.
 
-### FOR/NEXT
+RESUME returns from the handler to retry the failing statement. RESUME NEXT skips it and continues with the next statement. RESUME line jumps to a specific line. ON ERROR GOTO 0 disables the handler.
 
-```basic
-FOR i = start TO end [STEP increment]
-  statements
-NEXT [i]
-```
+TRY...CATCH...END TRY provides structured exception handling. The TRY block establishes a protected region. If an error occurs within the TRY block, execution transfers to the CATCH block. THROW raises a user-defined exception with a numeric code. The TryStack in the VM saves and restores all loop and call stack depths to ensure correct unwinding.
 
-Examples:
+Error codes follow the GW-BASIC/QBASIC numbering system defined in engine/include/types/errors.h. Key codes include: 1 (NEXT without FOR), 2 (Syntax error), 3 (RETURN without GOSUB), 4 (Out of DATA), 5 (Illegal function call), 6 (Overflow), 7 (Out of memory), 8 (Undefined line number), 9 (Subscript out of range), 10 (Duplicate definition), 11 (Division by zero), 12 (Illegal direct), 13 (Type mismatch), 14 (Out of string space), 17 (Cannot continue), 52 (Bad file number), 53 (File not found), 54 (Bad file mode), 55 (File already open), 62 (Input past end), 70 (Permission denied).
 
-```basic
-FOR I = 1 TO 10 : PRINT I : NEXT I
-FOR I = 10 TO 0 STEP -1 : PRINT I : NEXT I
-FOR I = 0 TO 1 STEP 0.1 : PRINT I : NEXT I
-```
+## 10. FILE I/O
 
-### WHILE/WEND
+Files are accessed through numbered channels using OPEN, which associates a filename, mode, and channel number. The four modes are INPUT (sequential read), OUTPUT (sequential write), APPEND (write at end), and RANDOM (record-based access with a fixed record length set by the LEN clause, defaulting to 128 bytes).
 
-```basic
-WHILE condition
-  statements
-WEND
-```
+Sequential file operations use INPUT #n, LINE INPUT #n, PRINT #n, and WRITE #n. Random file operations use FIELD to define record structure, GET #n to read a record, and PUT #n to write a record. Binary file operations use BGET and BPUT for raw byte transfers.
 
-Example:
+FREEFILE returns the next available channel number. EOF(n) tests for end of file. LOC(n) returns the current position. LOF(n) returns the file length. SEEK #n, position sets the file position. CLOSE closes specific channels. RESET closes all channels.
 
-```basic
-I = 0
-WHILE I < 10
-  PRINT I
-  I = I + 1
-WEND
-```
+File management commands include FILES (list directory contents), DIR (list filenames), KILL (delete a file), NAME (rename a file), MKDIR (create directory), RMDIR (remove directory), CHDIR (change directory), and PWD (print working directory).
 
-### DO/LOOP (QBasic dialect)
+## 11. METAPROGRAMMING
 
-```basic
-DO WHILE condition : statements : LOOP
-DO UNTIL condition : statements : LOOP
-DO : statements : LOOP WHILE condition
-DO : statements : LOOP UNTIL condition
-```
+ALIAS creates alternate names for keywords: `ALIAS "ESCRIBIR" FOR "PRINT"` allows using ESCRIBIR as a synonym for PRINT. ALIAS OPERATOR creates alternate names for operators. Aliases are resolved at the lexer level before parsing.
 
----
+OVERRIDE replaces the normal execution of a statement with a custom BASIC++ subroutine: `OVERRIDE "PRINT" WITH GOSUB 9000` routes all PRINT execution through the subroutine at line 9000.
 
-## 7. Subroutines and Functions
+SCOPE controls keyword visibility and attaches hooks: `SCOPE HOOK BEFORE "PRINT" GOSUB 5000` executes the subroutine at line 5000 before every PRINT statement. `SCOPE RESTRICT "SHELL"` disables the SHELL statement. `SCOPE ENABLE "SHELL"` re-enables it.
 
-### GOSUB/RETURN
+KEYWORD provides additional keyword customization capabilities at the language level.
 
-```basic
-GOSUB line_number   ' Jump to subroutine
-RETURN              ' Return to caller
-```
+## 12. MODULES AND EXTENSIONS
 
-Example:
+MODULE LOAD loads a BASIC++ module file: `MODULE LOAD "mathext"`. Modules go through a validation and capability verification pipeline before being registered with the VM. MODULE UNLOAD removes a loaded module. MODULE LIST shows active modules.
 
-```basic
-10 GOSUB 1000
-20 END
-1000 PRINT "In subroutine"
-1010 RETURN
-```
+The module system enforces security sandboxing. Modules cannot directly modify VM instructions, execute host code bypasses, or corrupt internal stacks. Module capabilities are verified against the active SecurityContext before activation.
 
-### DEF FN
+## 13. DEBUGGING
 
-```basic
-DEF FN SQUARE(X) = X * X
-PRINT FN SQUARE(5)    ' prints 25
-```
+TRON enables line-number trace output during execution. TROFF disables it. DEBUG ON enables verbose debug output. BREAK sets a breakpoint at a line number. CONT continues execution from a breakpoint or STOP. VARS displays all variable values. DUMP shows internal state. BACKTRACE prints the call stack.
 
-### FUNCTION/END FUNCTION (extended dialect)
+ASSERT tests a condition and raises an error if it fails: `ASSERT A > 0`. TEST and ENDTEST bracket a test block. SELFTEST runs the built-in validation suite.
 
-```basic
-FUNCTION name(params)
-  statements
-  name = return_value
-END FUNCTION
-```
-
-### SUB/END SUB
-
-```basic
-SUB name(params)
-  statements
-END SUB
-
-CALL name(args)     ' Invoke a SUB
-```
-
----
-
-## 8. String Handling
-
-| Function | Description |
-|----------|-------------|
-| `LEFT$(s$, n)` | First n characters |
-| `RIGHT$(s$, n)` | Last n characters |
-| `MID$(s$, start, n)` | Substring from position start |
-| `LEN(s$)` | Length |
-| `ASC(s$)` | ASCII code of first character |
-| `CHR$(n)` | Character from ASCII code |
-| `STR$(n)` | Number to string |
-| `VAL(s$)` | String to number |
-| `INSTR(h$, n$)` | Find n$ in h$ (1-based, 0=not found) |
-| `UCASE$(s$)` | Convert to uppercase |
-| `LCASE$(s$)` | Convert to lowercase |
-| `LTRIM$(s$)` | Remove leading spaces |
-| `RTRIM$(s$)` | Remove trailing spaces |
-| `SPACE$(n)` | String of n spaces |
-| `STRING$(n, ch)` | String of n copies of character ch |
-| `HEX$(n)` | Hex representation |
-| `OCT$(n)` | Octal representation |
-
-**String assignment:**
-
-```basic
-A$ = "Hello"
-A$ = LEFT$("Hello World", 5)
-```
-
-**MID$ as statement** (replace substring):
-
-```basic
-MID$(A$, 3, 2) = "XX"
-```
-
----
-
-## 9. Arrays
-
-### Declaration
-
-```basic
-DIM A(10)           ' 1D array, indices 0-10 (or 1-10)
-DIM A(5, 5)         ' 2D array
-DIM A$(20)          ' String array
-OPTION BASE 0       ' Indices start at 0 (default)
-OPTION BASE 1       ' Indices start at 1
-```
-
-### Access
-
-```basic
-A(5) = 42
-PRINT A(5)
-A$(3) = "Hello"
-```
-
-### ERASE
-
-```basic
-ERASE A             ' Delete array A, reclaim memory
-```
-
-See [Advanced_Matrices](Advanced_Matrices.md) for MAT operations.
-
----
-
-## 10. Input/Output
-
-### PRINT
-
-```basic
-PRINT expression
-PRINT expr1; expr2          ' No space between items
-PRINT expr1, expr2          ' Tab-separated (14-column zones)
-PRINT expr1,, expr2         ' Skip a tab zone (double comma)
-PRINT USING "##.##"; value  ' Formatted output
-PRINT #n, expression        ' Write to file channel
-```
-
-### INPUT
-
-```basic
-INPUT variable
-INPUT "Prompt: "; variable
-INPUT A, B, C               ' Multiple variables
-INPUT #n, variable           ' Read from file channel
-LINE INPUT variable          ' Read entire line (no parsing)
-LINE INPUT #n, variable      ' Read line from file
-```
-
-### WRITE
-
-```basic
-WRITE expression             ' Quoted strings, comma-delimited
-WRITE #n, expression         ' Write to file
-```
-
-See [File_IO](File_IO.md) for complete file operations.
-
----
-
-## 11. Math Functions
-
-| Function | Description |
-|----------|-------------|
-| `ABS(x)` | Absolute value |
-| `ATN(x)` | Arctangent (radians) |
-| `COS(x)` | Cosine |
-| `EXP(x)` | e raised to x |
-| `FIX(x)` | Truncate toward zero |
-| `INT(x)` | Floor (largest integer ≤ x) |
-| `LOG(x)` | Natural logarithm |
-| `RND[(x)]` | Random number (0 to 1); parens optional |
-| `SGN(x)` | Sign: −1, 0, or 1 |
-| `SIN(x)` | Sine |
-| `SQR(x)` | Square root |
-| `TAN(x)` | Tangent |
-| `CINT(x)` | Round to integer |
-| `CSNG(x)` | Convert to single-precision |
-| `CDBL(x)` | Convert to double-precision |
-
----
-
-## 12. Type Conversion
-
-| Function | Description | Example |
-|----------|-------------|---------|
-| `VAL(s$)` | String to number | `VAL("42") = 42` |
-| `STR$(n)` | Number to string | `STR$(42) = " 42"` |
-| `CHR$(n)` | ASCII code to character | |
-| `ASC(s$)` | Character to ASCII code | |
-| `HEX$(n)` | Number to hex string | |
-| `OCT$(n)` | Number to octal string | |
-| `CINT(x)` | Float to integer (rounded) | |
-| `CVI(s$)` | 2-byte string to integer | |
-| `CVS(s$)` | 4-byte string to single float | |
-| `CVD(s$)` | 8-byte string to double float | |
-| `MKI$(n)` | Integer to 2-byte string | |
-| `MKS$(n)` | Single to 4-byte string | |
-| `MKD$(n)` | Double to 8-byte string | |
-
----
-
-## 13. Miscellaneous Functions
-
-| Function | Description |
-|----------|-------------|
-| `FRE(0)` | Free string space |
-| `FRE(-1)` | Free stack space |
-| `FRE(-2)` | Free array space |
-| `PEEK(addr)` | Read byte from virtual memory |
-| `POKE addr, v` | Write byte to virtual memory |
-| `INP(port)` | Read from I/O port (mapped to memory) |
-| `OUT port, v` | Write to I/O port |
-| `ENVIRON$(v$)` | Get environment variable |
-| `TIMER` | Seconds since midnight |
-| `POS(0)` | Current cursor column |
-| `CSRLIN` | Current cursor row |
-| `LPOS(0)` | Printer head position |
-| `SPC(n)` | Print n spaces (in PRINT) |
-| `TAB(n)` | Move to column n (in PRINT) |
-
----
-
-## 14. Statement Syntax Reference
-
-See [Quick_Reference](Quick_Reference.md) for the complete alphabetical list of every keyword, statement, function, and command.
+## 14. VIRTUAL DEVICES
+
+BASIC++ virtualizes all I/O through virtual devices. The console is accessed through the VCon (virtual console) interface. Files are accessed through the VDev (virtual device) layer. Network operations go through VNet. The virtual filesystem (VFS) provides an abstraction over the host filesystem.
+
+DEVICES lists all registered virtual devices. MOUNT and UMOUNT attach and detach virtual device entries. DEVMAP displays the current device slot mapping.

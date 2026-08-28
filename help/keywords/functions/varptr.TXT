@@ -1,0 +1,35 @@
+VARPTR Variable Pointer Function
+======================================================================
+
+The VARPTR function returns the virtual memory address offset of a
+variable, array element, or file control block.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    addr% = VARPTR(variable_name)
+    addr% = VARPTR(array_element)
+    addr% = VARPTR(#file_number)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Returns offset in current data segment.
+  - Used with PEEK, POKE, and C interop.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  2           ERR_SYNTAX_ERROR      Invalid variable name
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 X% = 500
+    20 PRINT "Address of X%: "; HEX$(VARPTR(X%))

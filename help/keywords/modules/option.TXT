@@ -1,0 +1,36 @@
+OPTION Compiler and Runtime Configuration Statement
+======================================================================
+
+The OPTION statement sets compiler, array indexing, and dialect flags.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    OPTION BASE 0 | 1
+    OPTION EXPLICIT
+    OPTION DIALECT dialect_name$
+    OPTION STRICT
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - OPTION BASE 0|1: Sets default lower bound for DIM arrays.
+  - OPTION EXPLICIT: Requires explicit variable declaration.
+  - OPTION STRICT: Enforces type safety.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  10          ERR_DUPLICATE_DEF     OPTION BASE placed after DIM
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 OPTION BASE 1
+    20 DIM A(10)

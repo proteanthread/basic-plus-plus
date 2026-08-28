@@ -1,215 +1,63 @@
-# MBASIC (Microsoft BASIC for CP/M) Dialect Reference
+# BASIC++ v6.5.2 MBASIC / CP/M BASIC Dialect
 
-**Version 4.2.3**
+## 1. HISTORY
 
----
+MBASIC (Microsoft BASIC for CP/M) was the dominant BASIC implementation on CP/M systems in the late 1970s and early 1980s. Written by Microsoft, MBASIC was the direct ancestor of BASICA and GW-BASIC for the IBM PC. Programs written for MBASIC are largely compatible with GW-BASIC, but there are differences in file I/O, memory management, and available functions.
 
-## Table of Contents
+## 2. MBASIC COMPATIBILITY IN BASIC++
 
-- History
-  - Lineage
-- Activation
-- Key Features
-  - Core Language
-  - String Functions
-  - File I/O
-  - Differences from GW-BASIC
-- configuration
-- Example Programs
-  - Classic "Guess the Number" (MBASIC style)
-  - File I/O example
-- Historical Significance
-- See Also
+BASIC++ runs MBASIC programs through its GW-BASIC compatible dialect (GWBS, the default). Since GW-BASIC is a direct descendant of MBASIC, most MBASIC programs run without modification. The following sections document differences and adaptations.
 
----
+## 3. FILE I/O DIFFERENCES
 
-**Dialect Code:** `MBAS`
+MBASIC file I/O differs from GW-BASIC in syntax:
 
----
+MBASIC: `OPEN "I", 1, "DATA.TXT"` (mode letter, no # sign, no AS keyword)
+GW-BASIC: `OPEN "DATA.TXT" FOR INPUT AS #1`
 
-## History
+BASIC++ accepts both forms. The MBASIC short form maps mode letters: "I" = INPUT, "O" = OUTPUT, "R" = RANDOM, "A" = APPEND.
 
-MBASIC was Microsoft's BASIC interpreter for CP/M, the dominant operating system for 8-bit microcomputers running Intel 8080 and Zilog Z80 processors. It was one of the earliest and most important products from Microsoft, founded by Bill Gates and Paul Allen.
+MBASIC: `PRINT #1, Data$` (no AS keyword needed)
+GW-BASIC: `PRINT #1, Data$` (same syntax)
 
-### Lineage
+Both styles work identically in BASIC++.
 
-| Year | Product |
-|------|---------|
-| 1975 | Altair BASIC (first Microsoft product, for MITS Altair 8800) |
-| 1977 | MBASIC 4.51 for CP/M (8080/Z80 systems) |
-| 1978 | MBASIC 5.x with extended features |
-| 1981 | BASICA for IBM PC (ROM-based, required IBM hardware) |
-| 1983 | GW-BASIC (Generic Wonder BASIC, ran on any PC clone) |
+## 4. MEMORY FUNCTIONS
 
-MBASIC is the direct ancestor of GW-BASIC, BASICA, and ultimately QBasic and Visual Basic. Every Microsoft BASIC dialect traces its roots back to the original MBASIC for CP/M.
+MBASIC used FRE("") to force garbage collection and FRE(0) to report free memory. BASIC++ supports both. USR(n) for machine-language calls works the same way through the host callback interface.
 
-MBASIC ran on hundreds of CP/M machines including:
-- Osborne 1, Kaypro II, Morrow Micro Decision
-- North Star Horizon, Cromemco System Three
-- NEC PC-8001, Sharp MZ-80K
-- S-100 bus systems (IMSAI, Polymorphic, etc.)
+PEEK and POKE in MBASIC accessed the CP/M address space (Z80 memory map at 0x0000-0xFFFF). In BASIC++, PEEK and POKE access the BIOS emulation space. CP/M-specific addresses (BDOS entry point at 0x0005, TPA start at 0x0100) are not meaningful in the BASIC++ context.
 
-It was typically loaded from an 8-inch floppy disk and operated in 48K–64K of RAM, with the interpreter itself using about 20K.
+## 5. LINE LENGTH
 
----
+MBASIC supported line lengths up to 255 characters. BASIC++ has no practical line length limit on modern builds.
 
-## Activation
+## 6. VARIABLE NAME LENGTH
 
-```basic
-DIALECT "MBAS"
-```
+MBASIC recognized only the first two characters of variable names: COUNTER and CO were the same variable. BASIC++ uses the full variable name. Programs that relied on two-character truncation may need review.
 
-This changes:
-- Statement separator: `:` (colon)
-- `LET` is optional
-- `THEN` is required in IF statements
-- Maximum line number: 65529
-- Ready prompt: `Ok`
-- Print zone width: 14
-- No `CLS` (terminal-independent)
-- `WHILE/WEND` available (added in MBASIC 5.x)
-- No `DO/LOOP` (came later with GW-BASIC)
-- Extended variable names
+## 7. PRINT ZONES
 
----
+MBASIC used 14-column print zones (same as GW-BASIC). BASIC++ maintains the same 14-column zone width for compatibility.
 
-## Key Features
+## 8. STRING FUNCTIONS
 
-### Core Language
+MBASIC supported the same core string functions as GW-BASIC: LEFT$, RIGHT$, MID$, LEN, STR$, VAL, CHR$, ASC, INSTR, STRING$, SPACE$. All are available in BASIC++.
 
-MBASIC established the "Microsoft BASIC standard" that all subsequent Microsoft BASICs would follow:
+MBASIC did not have UCASE$, LCASE$, TRIM$, LTRIM$, or RTRIM$ — these are GW-BASIC and BASIC++ additions.
 
-- Single and double precision floating point
-- String variables with `$` suffix
-- `DIM` arrays (up to 255 dimensions, though 1D and 2D most common)
-- Multi-statement lines with `:` separator
-- Automatic line numbering (no optional line numbers yet)
-- `DEF FN` for user-defined functions
-- `ON GOTO` / `ON GOSUB` computed branches
-- `WHILE/WEND` loops (MBASIC 5.x+)
-- Error trapping with `ON ERROR GOTO`
+## 9. ERROR HANDLING
 
-### String Functions
+MBASIC supported ON ERROR GOTO and RESUME. ERR returned the error code and ERL returned the error line number. These work identically in BASIC++. The error code values are compatible.
 
-All the classic Microsoft string functions were present:
+## 10. GRAPHICS AND SOUND
 
-| Function | Function | Function |
-|----------|----------|----------|
-| `LEFT$(s$, n)` | `LEN(s$)` | `MID$(s$, p, n)` |
-| `RIGHT$(s$, n)` | `ASC(s$)` | `CHR$(n)` |
-| `STR$(n)` | `VAL(s$)` | `INSTR(s$, t$)` |
-| `STRING$(n, c)` | `SPACE$(n)` | `HEX$(n)` |
-| `OCT$(n)` | | |
+MBASIC on CP/M had no built-in graphics or sound statements (CP/M did not define a standard graphics interface). Programs that used custom POKE sequences for terminal-specific graphics will need adaptation to BASIC++ SCREEN modes.
 
-### File I/O
+## 11. MIGRATION TIPS
 
-MBASIC supported sequential file I/O through CP/M's BDOS:
-
-```basic
-OPEN "I", #1, "DATA.DAT"     ' Open for input
-OPEN "O", #1, "DATA.DAT"     ' Open for output
-OPEN "R", #1, "DATA.DAT"     ' Open for random access
-CLOSE #1
-PRINT #1, expr
-INPUT #1, var
-LINE INPUT #1, var$
-```
-
-### Differences from GW-BASIC
-
-MBASIC predates several GW-BASIC features:
-- No `SOUND` or `PLAY` (no PC speaker)
-- No `SCREEN` modes (CP/M terminals were character-only)
-- No `PCOPY`, `PALETTE`, `VIEW`, `WINDOW` (no graphics)
-- No `DO/LOOP` (only `WHILE/WEND` and `FOR/NEXT`)
-- No `KEY ON/OFF/LIST` (no function key bar)
-- `LOCATE` works differently (terminal-dependent via ANSI)
-
----
-
-## configuration
-
-| Property | Value |
-|----------|-------|
-| Dialect ID | `DIALECT_MBASIC` |
-| Short code | `"MBAS"` |
-| Dialect flag | `DFLAG_MBAS` (bit 12) |
-| Separator | `:` (colon) |
-| LET required | No |
-| THEN required | Yes |
-| Max line number | 65529 |
-| Ready prompt | `"Ok"` |
-| Print zone width | 14 |
-| CLS available | No |
-| Floating point | Yes |
-| Strings | Yes |
-| Arrays | Yes (DIM) |
-| FOR/NEXT | Yes |
-| WHILE/WEND | Yes |
-| DO/LOOP | No |
-| DATA/READ | Yes |
-| DEF FN | Yes |
-| Extended variables | Yes |
-| ON ERROR | Yes |
-| TRON/TROFF | Yes |
-| MERGE/CHAIN | Yes |
-
----
-
-## Example Programs
-
-### Classic "Guess the Number" (MBASIC style)
-
-```basic
-10 PRINT "GUESS THE NUMBER"
-20 PRINT "I'M THINKING OF A NUMBER BETWEEN 1 AND 100."
-30 RANDOMIZE
-40 N = INT(RND * 100) + 1
-50 G = 0
-60 INPUT "YOUR GUESS"; X
-70 G = G + 1
-80 IF X < N THEN PRINT "TOO LOW.": GOTO 60
-90 IF X > N THEN PRINT "TOO HIGH.": GOTO 60
-100 PRINT "YOU GOT IT IN"; G; "TRIES!"
-110 END
-```
-
-### File I/O example
-
-```basic
-10 OPEN "O", #1, "TEST.DAT"
-20 FOR I = 1 TO 5
-30   PRINT #1, I; ","; I * I
-40 NEXT I
-50 CLOSE #1
-60 PRINT "Data written."
-70 OPEN "I", #1, "TEST.DAT"
-80 WHILE NOT EOF(1)
-90   LINE INPUT #1, L$
-100  PRINT L$
-110 WEND
-120 CLOSE #1
-130 END
-```
-
----
-
-## Historical Significance
-
-MBASIC holds a unique place in computing history:
-
-1. It was Microsoft's **first commercial product** (Altair BASIC, 1975)
-2. It established Microsoft's business model (OEM licensing)
-3. It defined the "Microsoft BASIC standard" syntax
-4. It ran on more different hardware platforms than any other single program in the 1970s–80s
-5. Its descendants (GW-BASIC, QBasic, Visual Basic) powered a generation of programmers
-
-Bill Gates personally wrote much of the original 8080 BASIC on a PDP-10 at Harvard, cross-assembling for the Altair before he had access to the actual hardware.
-
----
-
-## See Also
-
-- [Quick_Reference](Quick_Reference.md) — Complete keyword listing
-
-*@COPYLEFT ALL WRONGS RESERVED*
+1. Replace MBASIC short-form OPEN with the GW-BASIC long form for clarity.
+2. Check variable names — if two variables differ only after the second character, rename them.
+3. Replace any CP/M-specific PEEK/POKE addresses with BASIC++ VDev calls.
+4. Add SCREEN mode selection for any graphics output.
+5. CP/M file handling: MBASIC filenames were 8.3 format (e.g., "MYFILE.BAS"). BASIC++ supports long filenames on modern systems.

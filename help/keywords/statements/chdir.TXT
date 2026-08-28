@@ -1,0 +1,31 @@
+CHDIR Change Working Directory Statement
+========================================
+
+Changes the active working directory for file resolution in the process and VFS.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    CHDIR path_expression$
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 76 (ERR_PATH_NOT_FOUND): Directory path does not exist.
+  - Error 70 (ERR_PERMISSION_DENIED): Security sandbox violation.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Changes process working directory and VFS context path.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 CHDIR "DATA_FILES"
+    20 FILES
+    30 CHDIR ".."

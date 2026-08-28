@@ -1,65 +1,154 @@
-
-BASIC++ Graphics Modes Reference
-================================
-
-This document catalogs every display, text, and graphics mode available in BASIC++ under both the GW-BASIC SCREEN command and the Atari 8-bit GRAPHICS command. Modes are sorted by resolution (lowest resolution to highest resolution, measured in total pixel count).
-
----
+======================================================================
+  BASIC++ V6.5.2 GRAPHICS MODES
+======================================================================
 
 
-Display Configuration Modifiers (Atari GRAPHICS)
-------------------------------------------------
-The 64 Atari 8-bit graphics modes come from the sixteen base GRAPHICS modes (0–15), each with four screen configuration modifiers:
-   Normal / Split Screen (+0): Graphics mode on top, 4-line text window on bottom. (Split screen text width is 40 columns for standard modes, and 80 columns for 256-color modes 64-127).
-   No Text Window (+16): Full-screen graphics.
-   Split Screen (+32): (Same as +0; keeps graphics memory available below the screen).
-   No Text Window + Split Screen (+48): (Same as +16).
+======================================================================
+  1. THE BGI GRAPHICS SYSTEM
+======================================================================
 
-Thus, modes 0–15, 16–31 (= mode +16), 32–47 (= mode +32), and 48–63 (= mode +48).
-Custom 256-color modes are mapped to modes 64–127 (base + 64).
-
----
+BASIC++ uses the BGI (BASIC++ Graphics Interface) for all pixel-level graphics operations. The BGI is a layered rasterizer implemented in engine/src/device/bgi/ that supports classic GW-BASIC/QBASIC screen modes, custom resolution modes, and retro hardware mode emulation. BGI is part of the libhardware library and requires the libadvanced library (SDL2) for actual display output. On text-only terminals, AAlib (engine/src/device/bgi/aalib/aalib.c) provides ASCII art approximation of graphics output.
 
 
-Graphics Modes Map (Sorted by Resolution)
------------------------------------------
+======================================================================
+  2. STANDARD SCREEN MODES
+======================================================================
 
-| Command | Mode ID | Resolution | Total Pixels | Colors / Mode Type | Description |
-|:---|:---|:---|:---|:---|:---|
-| GRAPHICS | 3, 19, 35, 51 | 40 × 24 | 960 | 2 colors | Atari Mode 3 (Very low-res blocks) |
-| GRAPHICS | 4, 20, 36, 52 | 80 × 48 | 3,840 | 4 colors | Atari Mode 4 (Low-res blocks / character grid) |
-| GRAPHICS | 6, 22, 38, 54 | 160 × 48 | 7,680 | 4 colors | Atari Mode 6 (Wide medium-res blocks) |
-| GRAPHICS | 5, 21, 37, 53 | 80 × 96 | 7,680 | 4 colors | Atari Mode 5 (Low-res graphics) |
-| GRAPHICS | 7, 23, 39, 55 | 160 × 96 | 15,360 | 4 colors | Atari Mode 7 (Medium-res graphics) |
-| GRAPHICS | 9, 25, 41, 57 | 80 × 192 | 15,360 | 9 colors | Atari Mode 9 (GTIA Mode / 16 hues of 1 luma) |
-| GRAPHICS | 10, 26, 42, 58 | 80 × 192 | 15,360 | 9 colors | Atari Mode 10 (GTIA Mode / 8 colors + background) |
-| GRAPHICS | 11, 27, 43, 59 | 80 × 192 | 15,360 | 16 colors | Atari Mode 11 (GTIA Mode / 16 lumas of 1 hue) |
-| GRAPHICS | 9+64, 25+64, ...| 80 × 192 | 15,360 | 256 colors | Custom 256-color GTIA modes (80x4 text window) |
-| GRAPHICS | 1, 17, 33, 49 | 160 × 192 | 30,720 | 5 colors | Atari Mode 1 (Text mode 20x24 grid) |
-| GRAPHICS | 2, 18, 34, 50 | 160 × 192 | 30,720 | 5 colors | Atari Mode 2 (Text mode 20x12 grid) |
-| GRAPHICS | 12, 28, 44, 60 | 160 × 192 | 30,720 | 2 colors | Atari Mode 12 (ANTIC 4 text-like resolution) |
-| GRAPHICS | 13, 29, 45, 61 | 160 × 192 | 30,720 | 2 colors | Atari Mode 13 (ANTIC 5 text-like resolution) |
-| GRAPHICS | 14, 30, 46, 62 | 160 × 192 | 30,720 | 4 colors | Atari Mode 14 (Medium-high res graphics) |
-| SCREEN | 3 | 160 × 200 | 32,000 | 16 colors | Tandy / PCjr Low-Res Mode |
-| GRAPHICS | 0, 16, 32, 48 | 320 × 192 | 61,440 | 2 colors | Atari Mode 0 (Text mode 40x24 grid) |
-| GRAPHICS | 8, 24, 40, 56 | 320 × 192 | 61,440 | 4 colors | Atari Mode 8 (High-resolution graphics) |
-| GRAPHICS | 15, 31, 47, 63 | 320 × 192 | 61,440 | 4 colors | Atari Mode 15 (High-resolution graphics / ANTIC F) |
-| SCREEN | 1, 4, 5, 13 | 320 × 200 | 64,000 | 4 / 256 colors | GW-BASIC CGA (1,4,5) / VGA (13) Modes |
-| SCREEN | 7 | 320 × 200 | 64,000 | 16 colors | GW-BASIC EGA Mode |
-| SCREEN | 14 | 320 × 200 | 64,000 | 16 colors | Plantronics High-Color Mode |
-| SCREEN | 2, 6 | 640 × 200 | 128,000 | 2 colors | GW-BASIC CGA High-Res Modes |
-| SCREEN | 8 | 640 × 200 | 128,000 | 16 colors | GW-BASIC EGA High-Res Mode |
-| SCREEN | 9 (Tandy) | 640 × 200 | 128,000 | 16 colors | Tandy High-Res Mode |
-| SCREEN | 14 (Amstrad) | 640 × 200 | 128,000 | 16 colors | Amstrad Color Mode |
-| SCREEN | 15 (Plantronics) | 640 × 200 | 128,000 | 4 colors | Plantronics High-Res Mode |
-| SCREEN | 9 (EGA/VGA) | 640 × 350 | 224,000 | 16 colors | GW-BASIC EGA High-Res Mode |
-| SCREEN | 10 | 640 × 350 | 224,000 | 4 colors | GW-BASIC EGA Monochrome Mode |
-| SCREEN | 15 (Others) | 640 × 350 | 224,000 | 2 colors | Monochrome EGA/VGA compatible mode |
-| SCREEN | 0 (HGC) | 720 × 348 | 250,560 | Monochrome | Hercules Graphics Card Text Mode |
-| SCREEN | 3 (HGC) | 720 × 348 | 250,560 | Monochrome | Hercules Graphics Card Graphics Mode |
-| SCREEN | 0 (VGA) | 640 × 400 | 256,000 | 16 colors | Standard Text Mode (80x25 grid) |
-| SCREEN | 0 (Tandy/PCjr)| 640 × 200 | 128,000 | 16 colors | Tandy Text Mode |
-| SCREEN | 14 (AT&T) | 640 × 400 | 256,000 | 16 colors | AT&T High-Res Mode |
-| SCREEN | 15 (PC98) | 640 × 400 | 256,000 | 16 colors | NEC PC-9801 Mode |
-| SCREEN | 11 | 640 × 480 | 307,200 | 2 colors | GW-BASIC VGA Mode |
-| SCREEN | 12 | 640 × 480 | 307,200 | 16 colors | GW-BASIC VGA Mode |
+The SCREEN statement selects a display mode. BASIC++ supports all GW-BASIC and QBASIC screen modes:
+
+| Mode | Resolution | Colors | Text | Type |
+|------|-----------|--------|------|------|
+| 0 | Text only | 16 | 80x25 | Text |
+| 1 | 320x200 | 4 | 40x25 | CGA |
+| 2 | 640x200 | 2 | 80x25 | CGA |
+| 3 | 720x348 | 2 | 80x25 | Hercules |
+| 4 | 320x200 | 4 | 40x25 | EGA |
+| 7 | 320x200 | 16 | 40x25 | EGA |
+| 8 | 640x200 | 16 | 80x25 | EGA |
+| 9 | 640x350 | 16 | 80x25 | EGA |
+| 10 | 640x350 | 4 | 80x25 | EGA mono |
+| 11 | 640x480 | 2 | 80x30 | VGA |
+| 12 | 640x480 | 16 | 80x30 | VGA |
+| 13 | 320x200 | 256 | 40x25 | VGA/MCGA |
+
+10 SCREEN 12        ' 640x480, 16 colors
+20 LINE (0,0)-(639,479), 15
+30 CIRCLE (320,240), 100, 14
+
+SCREEN 0 returns to text mode. SCREEN mode, colorswitch, activepage, visualpage provides full control over color and paging.
+
+
+======================================================================
+  3. CUSTOM RESOLUTION MODES
+======================================================================
+
+BASIC++ extends standard modes with custom resolution initializers:
+
+**SET SCREEN width, height [, bpp [, text_cols [, text_rows [, fps]]]]** ? Full-screen graphics mode. Defaults to 256 colors (8 bpp) and zero text window rows:
+
+10 SET SCREEN 800, 600          ' 800x600, 256 colors, full graphics
+20 SET SCREEN 1024, 768, 24     ' 1024x768, 24-bit true color
+
+**SET GRAPHICS width, height [, bpp [, text_cols [, text_rows [, fps]]]]** ? Split-screen mode with a text window at the bottom. Defaults to 16 colors (4 bpp) and a text window of 80 columns by 4 rows:
+
+10 SET GRAPHICS 640, 400         ' 640x400, 16 colors, 4-row text window
+20 SET GRAPHICS 640, 480, 8, 80, 6  ' 640x480, 256 colors, 6-row text window
+
+**SET MODE n** ? Selects from 42 predefined retro hardware mode profiles that emulate specific historical computer display configurations.
+
+
+======================================================================
+  4. RETRO HARDWARE MODES
+======================================================================
+
+SET MODE provides access to retro display configurations:
+
+| Mode | System | Resolution | Colors |
+|------|--------|-----------|--------|
+| 0 | IBM MDA | 720x350 | Mono |
+| 1 | IBM CGA Low | 320x200 | 4 |
+| 2 | IBM CGA High | 640x200 | 2 |
+| 3 | Tandy/PCjr | 320x200 | 16 |
+| 4 | Tandy/PCjr Hi | 640x200 | 4 |
+| 5 | EGA Low | 320x200 | 16 |
+| 6 | EGA High | 640x350 | 16 |
+| 7 | VGA Low | 320x200 | 256 |
+| 8 | VGA Med | 640x480 | 16 |
+| 9 | VGA High | 640x480 | 256 |
+| 10 | SVGA | 800x600 | 256 |
+| 11 | Apple II Lo | 40x48 | 16 |
+| 12 | Apple II Hi | 280x192 | 6 |
+| 13 | C64 | 320x200 | 16 |
+| 14 | C64 Multi | 160x200 | 4 |
+| 15 | Atari 800 Gr.0 | 40x24 | 2 |
+| 16 | ZX Spectrum | 256x192 | 15 |
+| 17 | MSX | 256x192 | 16 |
+| 18 | Amiga Lo | 320x200 | 32 |
+| 19 | Amiga Hi | 640x200 | 16 |
+| 20 | Atari ST Low | 320x200 | 16 |
+| 21 | Atari ST Med | 640x200 | 4 |
+| 22 | Atari ST High | 640x400 | 2 |
+
+
+======================================================================
+  5. GRAPHICS STATEMENTS
+======================================================================
+
+PSET (x, y), color ? Set a pixel. PRESET (x, y) ? Reset a pixel to background.
+
+LINE (x1,y1)-(x2,y2), color ? Draw a line. LINE (x1,y1)-(x2,y2), color, B ? Draw a rectangle. LINE (x1,y1)-(x2,y2), color, BF ? Draw a filled rectangle.
+
+CIRCLE (x,y), radius, color ? Draw a circle. CIRCLE (x,y), radius, color, start, end ? Draw an arc. CIRCLE (x,y), radius, color, start, end, aspect ? Draw an ellipse.
+
+PAINT (x,y), fill_color, border_color ? Flood fill an area.
+
+DRAW "command string" ? Execute a graphics macro language for turtle-style drawing. Commands: U (up), D (down), L (left), R (right), E (up-right), F (down-right), G (down-left), H (up-left), M x,y (move), B (move without drawing), N (return after drawing), C (set color), A (set angle), S (set scale).
+
+
+======================================================================
+  6. COLOR AND PALETTE
+======================================================================
+
+PALETTE attribute, color ? Remap a color attribute to a different physical color. PALETTE resets all attributes to defaults.
+
+COLOR fg, bg ? Set drawing colors. The available colors depend on the active screen mode.
+
+The BGI palette system (engine/src/device/bgi/bgi_palette.c) maps logical color indices to physical RGB values. The default palette for 16-color modes uses the standard CGA/EGA colors. For 256-color modes, the default uses a standard VGA palette.
+
+
+======================================================================
+  7. VIEWPORT AND COORDINATES
+======================================================================
+
+VIEW (x1,y1)-(x2,y2) ? Define a graphics viewport (clipping rectangle). All drawing operations are clipped to the viewport. VIEW SCREEN uses absolute coordinates; VIEW without SCREEN uses viewport-relative coordinates.
+
+WINDOW (x1,y1)-(x2,y2) ? Define a logical coordinate system. Maps the physical pixel coordinates to logical values. WINDOW SCREEN places (0,0) at the top-left (screen coordinates). WINDOW without SCREEN places (0,0) at the bottom-left (math coordinates).
+
+PMAP(coordinate, function) ? Convert between physical and logical coordinates.
+
+
+======================================================================
+  8. PAGE FLIPPING
+======================================================================
+
+PCOPY source, destination ? Copy one video page to another. Used for double-buffered animation:
+
+10 SCREEN 7, , 0, 1      ' Draw on page 0, display page 1
+20 ' Draw frame on page 0
+30 PCOPY 0, 1             ' Copy completed frame to display page
+
+
+======================================================================
+  9. IMAGE OPERATIONS
+======================================================================
+
+PUTIMAGE stores a screen region to an array: GET (x1,y1)-(x2,y2), array. PUTIMAGE draws the stored region: PUT (x, y), array, action. The action can be PSET, PRESET, AND, OR, or XOR.
+
+FREEIMAGE releases the memory used by a stored image.
+
+
+======================================================================
+  10. FONT RENDERING
+======================================================================
+
+The BGI font system (engine/src/device/bgi/bgi_font.c) provides built-in fonts for text rendering in graphics modes. ROM fonts at 1x1, 2x1, and 2x2 scaling factors are available for split-screen text windows. OUTTEXTXY x, y, "text" draws a string at the specified graphics coordinates.

@@ -1,0 +1,33 @@
+C17 API REFERENCE: FILESYSTEM & CHANNEL RUNTIME (runtime/file.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The File Runtime Subsystem manages open file channels (1..256), sequential
+streams, random-access record buffers, binary I/O, range locks, and transactions.
+
+2. KEY TYPES & STRUCTS
+- BppFileMode: FILE_MODE_INPUT, OUTPUT, APPEND, BINARY, RANDOM.
+- BppFileAccess: FILE_ACCESS_READ, WRITE, READ_WRITE.
+- BppFileLockMode: FILE_LOCK_SHARED, READ, WRITE, READ_WRITE.
+- FileContext: Opaque channel table and lock registry.
+
+3. CORE API FUNCTIONS
+- file_init(mem) -> FileContext *
+- file_shutdown(ctx)
+- file_open(ctx, vdev, channel, filename, mode, access, lock, reclen) -> BppError
+- file_close(ctx, channel)
+- file_close_all(ctx)
+- file_is_open(ctx, channel) -> bool
+- file_eof(ctx, channel) -> bool
+- file_loc(ctx, channel) -> long
+- file_lof(ctx, channel) -> uint64_t
+- file_seek(ctx, channel, byte_offset) -> bool
+- file_read(ctx, channel, buf, count) -> size_t
+- file_write(ctx, channel, buf, count) -> size_t
+- file_get_record_buffer(ctx, channel) -> unsigned char *
+- file_lock_range(ctx, channel, start, end) -> bool
+- file_unlock_range(ctx, channel, start, end) -> bool
+
+4. ARCHITECTURAL INVARIANTS
+- Channel indices strictly validated between 1 and 256.
+- Automatic buffer flushing and range lock clearing on close.

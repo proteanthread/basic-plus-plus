@@ -1,0 +1,19 @@
+BASIC++ FUNCTION REFERENCE: CVD
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  result# = CVD(string_8_bytes)
+
+Unpacks an 8-byte binary string into a 64-bit double-precision floating-point
+number. Inverse of MKD$.
+
+2. PARAMETERS & RETURN VALUES
+- string_8_bytes: String expression of exactly 8 bytes.
+- Returns: Double-precision floating-point number.
+
+3. ERROR CODES
+- Error 5 (ERR_ILLEGAL_FUNCTION_CALL): String length is not 8 bytes.
+- Error 13 (ERR_TYPE_MISMATCH): Non-string argument.
+
+4. EXAMPLES
+  10 E# = CVD(D$)

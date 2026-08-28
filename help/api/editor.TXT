@@ -1,0 +1,29 @@
+C17 API REFERENCE: TUI EDITOR MULTIPLEXER (editor/editor.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The TUI Editor Subsystem provides an interactive text user interface (TUI)
+code editing environment and multiplexer plugin architecture.
+
+2. BUILT-IN EDITORS
+- EDIT:  QuickBASIC / MS-DOS style pull-down menu editor.
+- VI:    Modal editing with normal, insert, and visual modes.
+- WS:    WordStar / Turbo Pascal diamond key navigation.
+- EDLIN: Line-oriented editor matching MS-DOS 1.0-5.0 EDLIN.
+
+3. KEY TYPES & STRUCTS
+- BppEditorPlugin: Common plugin interface (name, run_editor callback).
+
+4. CORE API FUNCTIONS
+- tui_multiplexer_init()
+- tui_multiplexer_shutdown()
+- editor_manager_init(vm)
+- editor_manager_run(vm, editor_name, filename) -> int
+- mod_ws_main(vm, filename) -> int
+- mod_vi_main(vm, filename) -> int
+- mod_edit_main(vm, filename) -> int
+- mod_edlin_main(vm, filename) -> int
+
+5. ARCHITECTURAL INVARIANTS
+- Guarantees full terminal cooked mode and cursor state restoration.
+- Linked in Standard Desktop target (baspp); excluded from bpp and bs.

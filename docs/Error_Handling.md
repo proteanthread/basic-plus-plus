@@ -1,302 +1,207 @@
-# Error Handling in BASIC++
+# BASIC++ v6.5.2 Error Handling Reference
 
-**Version 4.2.3**
+## 1. THE ERROR SYSTEM
 
+BASIC++ uses a structured error system with GW-BASIC/QBASIC-compatible numeric error codes. When a runtime error occurs, the VM sets the error code, records the BASIC line number where the fault occurred, and stores a readable error message string. If no error handler is active, the interpreter prints the error message and line number, then returns to the prompt. If an error handler is active (established by ON ERROR GOTO), the VM transfers execution to the handler line instead.
 
----
+The error state is represented internally by the BppError structure, which contains the error code (1-255), the error category (syntax, runtime, system, or internal), the error message text, the BASIC line number, the column position, and the host source file name for diagnostic purposes. This structure is defined in engine/include/types/types.h.
 
-## Table of Contents
+## 2. TRAPPING ERRORS WITH ON ERROR GOTO
 
-- Error Trapping
-  - ON ERROR GOTO
-  - ON ERROR GOTO 0
-- Error Variables
-- RESUME Statements
-- ERROR Statement
-- Error Codes
-- BEEP on Error
-- Error Handling Patterns
-  - Simple Guard
-  - Retry with Timeout
-  - Graceful Degradation
-  - Error Logging
-- Notes
-
----
-
-BASIC++ provides structured error handling compatible with GW-BASIC and QBasic error trapping.
-
----
-
-## 1. Error Trapping
-
-### ON ERROR GOTO
+ON ERROR GOTO line establishes a global error handler. After this statement executes, any subsequent runtime error transfers execution to the specified line number rather than printing an error message and stopping:
 
 ```basic
-10 ON ERROR GOTO 1000
-20 PRINT 1/0              ' Division by zero!
-30 PRINT "This won't print"
+10 ON ERROR GOTO 100
+20 OPEN "NOFILE.TXT" FOR INPUT AS #1
+30 PRINT "File opened successfully"
 40 END
-1000 PRINT "Error"; ERR; "at line"; ERL
-1010 RESUME NEXT
+100 PRINT "Error"; ERR; "on line"; ERL
+110 RESUME NEXT
 ```
 
-When an error occurs, execution jumps to the handler line.
+When the OPEN on line 20 fails because the file does not exist, the VM sets ERR to 53 (File not found) and ERL to 20, then jumps to line 100. The handler prints the error details and RESUME NEXT returns execution to line 30, skipping the failed OPEN.
 
-### ON ERROR GOTO 0
+ON ERROR GOTO 0 disables error trapping and restores the default behavior of printing errors and stopping execution. If an error occurs while ON ERROR GOTO 0 is active, the program stops immediately.
 
-Disable error trapping (errors halt the program):
+## 3. THE ERROR VARIABLES
 
-```basic
-10 ON ERROR GOTO 0       ' Default behavior
-```
+ERR returns the numeric error code of the most recent error. It is zero if no error has occurred since the last CLEAR or RUN. The value persists until the next error occurs or until ERR is explicitly cleared.
 
----
+ERL returns the line number where the most recent error occurred. For errors in immediate mode, ERL returns 0. ERL is a double-precision value because BASIC++ supports fractional line numbers.
 
-## 2. Error Variables
+ERR$ returns the error message text as a string: "Syntax error", "Type mismatch", "File not found", and so on. This is a BASIC++ extension not present in GW-BASIC.
 
-| Variable | Description |
-|----------|-------------|
-| `ERR` | The error number of the last error |
-| `ERL` | The line number where the error occurred |
+## 4. RESUME VARIANTS
 
-```basic
-1000 PRINT "Error #"; ERR
-1010 PRINT "At line "; ERL
-1020 IF ERR = 11 THEN PRINT "Division by zero"
-1030 IF ERR = 6  THEN PRINT "Overflow"
-1040 RESUME NEXT
-```
+RESUME (or RESUME 0) returns from the error handler and re-executes the statement that caused the error. Use this when the handler has corrected the condition that caused the error (for example, creating a missing file or providing a default value).
 
-### ERR$() Function
+RESUME NEXT returns from the error handler and continues execution at the statement immediately following the one that caused the error. This is the most common handler exit for errors that should be skipped.
 
-Returns a human-readable string name for a given error code:
+RESUME line returns from the error handler and transfers execution to the specified line number. This allows routing to an alternative code path after an error.
 
-```basic
-PRINT ERR$(11)     ' Output: "Division by zero"
-PRINT ERR$(53)     ' Output: "File not found"
-PRINT ERR$(ERR)    ' Name of last error
-```
+Calling RESUME outside of an error handler produces Error 20 (RESUME without error). Using RESUME after ON ERROR GOTO 0 has disabled trapping produces the same error.
 
-**Syntax:** `result$ = ERR$(error_code)`
+## 5. THE ERROR STATEMENT
 
-Internally, ERR$() calls `builtin_err_str()` which looks up the error code in the error registry. If the code is not registered, returns an empty string.
-
-### Custom Error Registration
-
-Modules and extensions can register custom error strings with the error registry:
-
-```c
-error_registry_register(200, "Custom error");
-```
-
-The error registry supports three layers:
-1. **Core errors** — `ERR_WHAT` (1), `ERR_HOW` (2), `ERR_SORRY` (3)
-2. **GW-BASIC codes** — Standard codes 1-77
-3. **Custom errors** — User-registered codes (200-255 reserved for applications)
-
-The registry is initialized at startup by `error_registry_init()` which registers all built-in GW-BASIC error strings.
-
-```basic
-' Using custom errors in BASIC:
-ERROR 200              ' Raises custom error 200
-PRINT ERR$(200)        ' Prints registered name
-```
-
-### Error Suppress API
-
-The error suppress system allows ON ERROR GOTO handlers to silently catch errors without printing messages to the console:
-
-| Function | Description |
-|----------|-------------|
-| `error_set_suppress(1)` | Suppress error message output (errors still set the flag) |
-| `error_set_suppress(0)` | Restore normal error message output |
-| `error_get_suppress()` | Query current suppress state (returns 0 or 1) |
-
-When suppress is active:
-- `error_raise()` sets the error flag but does NOT print the message
-- `ERR` and `ERL` are still updated normally
-- The ON ERROR GOTO handler still fires
-
-This is used internally by ON ERROR GOTO to prevent double-printing of error messages. It can also be saved and restored across pre-scan phases.
-
----
-
-## 3. RESUME Statements
-
-| Statement | Description |
-|-----------|-------------|
-| `RESUME` | Retry the statement that caused the error |
-| `RESUME NEXT` | Skip the failed statement, continue with the next |
-| `RESUME line` | Jump to a specific line |
-
-```basic
-' RESUME — retry after fixing the problem
-1000 A = 1              ' Set a safe value
-1010 RESUME              ' Retry the failed line
-
-' RESUME NEXT — skip and continue
-1000 PRINT "Skipping error at line"; ERL
-1010 RESUME NEXT
-
-' RESUME line — jump to specific recovery point
-1000 PRINT "Recovering..."
-1010 RESUME 100          ' Continue from line 100
-```
-
----
-
-## 4. ERROR Statement
-
-Trigger an error deliberately:
-
-```basic
-ERROR 5                  ' Raise error #5
-ERROR 200                ' User-defined error
-```
-
-Useful for:
-- Testing error handlers
-- Signaling custom error conditions
-- Chaining error handling
-
----
-
-## 5. Error Codes
-
-### The Three-Message Engine Model
-At the core execution level, the interpreter uses a classic Tiny BASIC three-message model to report errors on screen. These correspond to internal `ErrorCode` values:
-
-*   **`WHAT?`** (`ERR_WHAT`): Syntax errors, unexpected tokens, or malformed statements.
-*   **`HOW?`** (`ERR_HOW`): Logic or runtime execution errors (e.g. dividing by zero, GOTO to non-existent line, NEXT without FOR).
-*   **`SORRY.`** (`ERR_SORRY`): Resource limits exceeded (e.g. out of memory, stack overflow, too many lines).
-
-### Numeric Error Code Mapping (GW-BASIC Compatibility)
-When error trapping is active (`ON ERROR GOTO`), or when using `ERR` and `ERR$`, these categories map to standard numeric codes:
-
-| Code | Description |
-|------|-------------|
-| 1 | NEXT without FOR |
-| 2 | Syntax error |
-| 3 | RETURN without GOSUB |
-| 4 | Out of DATA |
-| 5 | Illegal function call |
-| 6 | Overflow |
-| 7 | Out of memory |
-| 8 | Undefined line number |
-| 9 | Subscript out of range |
-| 10 | Duplicate definition |
-| 11 | Division by zero |
-| 12 | Illegal direct |
-| 13 | Type mismatch |
-| 14 | Out of string space |
-| 15 | String too long |
-| 16 | String formula too complex |
-| 17 | Can't continue |
-| 18 | Undefined user function |
-| 19 | No RESUME |
-| 20 | RESUME without error |
-| 24 | Device timeout |
-| 25 | Device fault |
-| 27 | Out of paper |
-| 50 | FIELD overflow |
-| 51 | Internal error |
-| 52 | Bad file number |
-| 53 | File not found |
-| 54 | Bad file mode |
-| 55 | File already open |
-| 57 | Device I/O error |
-| 58 | File already exists |
-| 61 | Disk full |
-| 62 | Input past end |
-| 63 | Bad record number |
-| 64 | Bad file name |
-| 67 | Too many files |
-| 68 | Device unavailable |
-| 69 | Communication buffer overflow |
-| 70 | Permission denied |
-| 71 | Disk not ready |
-| 72 | Disk media error |
-| 73 | Advanced feature |
-| 74 | Rename across disks |
-| 75 | Path/file access error |
-| 76 | Path not found |
-| 77 | Advanced feature not available |
-
-**User-defined errors:** 200–255 are reserved for applications.
-
----
-
-## 6. BEEP on Error
-
-```basic
-BEEP ON                  ' Enable error beep (default)
-BEEP OFF                 ' Disable error beep
-```
-
-The beep is suppressed during batch execution and redirected output.
-
----
-
-## 7. Error Handling Patterns
-
-### A. Simple Guard
+ERROR n deliberately triggers a runtime error with the specified code. This is used to test error handlers and to raise custom application-level errors:
 
 ```basic
 10 ON ERROR GOTO 100
-20 OPEN "data.txt" FOR INPUT AS #1
-30 ' Process file...
-40 CLOSE #1
-50 ON ERROR GOTO 0
-60 END
-100 IF ERR = 53 THEN PRINT "File not found!" : END
-110 ON ERROR GOTO 0 : ERROR ERR  ' Re-raise unknown
+20 ERROR 200
+30 END
+100 IF ERR = 200 THEN PRINT "Custom error caught"
+110 RESUME NEXT
 ```
 
-### B. Retry with Timeout
+Error codes 1 through 76 are reserved for system errors. Codes 200 through 255 are available for application-defined errors. Using ERROR with a code in the reserved range triggers the corresponding system error behavior.
+
+## 6. STRUCTURED EXCEPTION HANDLING WITH TRY/CATCH
+
+BASIC++ extends traditional error handling with TRY...CATCH...END TRY blocks that provide structured exception handling with automatic stack unwinding:
+
+```basic
+10 TRY
+20   OPEN "MISSING.TXT" FOR INPUT AS #1
+30   INPUT #1, A$
+40   CLOSE #1
+50 CATCH
+60   PRINT "Failed to read file: "; ERR$
+70 END TRY
+80 PRINT "Continuing normally"
+```
+
+If any statement inside the TRY block raises an error, execution transfers immediately to the CATCH block. After the CATCH block completes, execution continues at the statement after END TRY. If no error occurs, the CATCH block is skipped entirely.
+
+TRY blocks can be nested. Each TRY pushes a BppTryFrame onto the TryStack, which records the CATCH line, the END TRY line, and the current depths of all internal stacks (GOSUB, FOR, WHILE, DO, SELECT, SUB). When an error triggers a CATCH, the VM restores all stack depths to their values at the time the TRY was entered, ensuring that partially-executed loops and subroutine calls are properly unwound.
+
+THROW n raises a user-defined exception with the specified error code. THROW can be used inside or outside TRY blocks. If a TRY block is active, the nearest CATCH handles it. If no TRY block is active but ON ERROR GOTO is set, the error handler receives it. If neither is active, the program stops with the error.
+
+## 7. ECMA-116 EXCEPTION HANDLING
+
+The ECMA-116 Full BASIC dialect provides an alternative exception handling syntax:
+
+```basic
+10 WHEN EXCEPTION IN
+20   OPEN "MISSING.TXT" FOR INPUT AS #1
+30 USE
+40   PRINT "Error caught: "; EXTEXT$
+50 END WHEN
+```
+
+WHEN EXCEPTION IN establishes a protected block. USE begins the exception handler. END WHEN terminates the block. Inside the USE handler, EXTYPE returns the exception type code and EXTEXT$ returns the exception text. CAUSE EXCEPTION raises an exception. RETRY re-enters the protected block from the beginning. CONTINUE resumes at the statement after the one that caused the exception.
+
+## 8. ERROR CODE REFERENCE
+
+The following error codes are defined in engine/include/types/errors.h:
+
+| Code | Name | Description |
+|------|------|-------------|
+| 0 | ERR_OK | No error |
+| 1 | ERR_NEXT_WITHOUT_FOR | NEXT encountered without matching FOR |
+| 2 | ERR_SYNTAX | Malformed statement or unexpected token |
+| 3 | ERR_RETURN_WITHOUT_GOSUB | RETURN with no GOSUB on the stack |
+| 4 | ERR_OUT_OF_DATA | READ with no remaining DATA items |
+| 5 | ERR_ILLEGAL_FUNCTION_CALL | Argument out of valid range |
+| 6 | ERR_OVERFLOW | Numeric result exceeds representable range |
+| 7 | ERR_OUT_OF_MEMORY | Memory allocation failed |
+| 8 | ERR_UNDEFINED_LINE | GOTO/GOSUB target line does not exist |
+| 9 | ERR_SUBSCRIPT_OUT_OF_RANGE | Array index outside declared bounds |
+| 10 | ERR_REDIM_ARRAY | Attempt to re-dimension a static array |
+| 11 | ERR_DIVISION_BY_ZERO | Division or MOD with a zero divisor |
+| 12 | ERR_ILLEGAL_DIRECT | Statement not allowed in immediate mode |
+| 13 | ERR_TYPE_MISMATCH | Numeric operation on string or vice versa |
+| 14 | ERR_OUT_OF_STRING_SPACE | String heap exhausted |
+| 15 | ERR_STRING_TOO_LONG | String exceeds 255 characters |
+| 16 | ERR_STRING_FORMULA_TOO_COMPLEX | Expression too deeply nested |
+| 17 | ERR_CANNOT_CONTINUE | CONT after program modification |
+| 18 | ERR_UNDEFINED_USER_FUNCTION | FN reference to undefined DEF FN |
+| 19 | ERR_NO_RESUME | Error handler did not issue RESUME |
+| 20 | ERR_RESUME_WITHOUT_ERROR | RESUME issued outside error handler |
+| 24 | ERR_DEVICE_TIMEOUT | Device did not respond |
+| 25 | ERR_DEVICE_FAULT | Device hardware failure |
+| 27 | ERR_OUT_OF_PAPER | Printer out of paper |
+| 29 | ERR_WHILE_WITHOUT_WEND | WHILE with no matching WEND |
+| 30 | ERR_FOR_WITHOUT_NEXT | FOR with no matching NEXT |
+| 35 | ERR_FIELD_NOT_DEFINED | FIELD referenced before definition |
+| 52 | ERR_BAD_FILE_NUMBER | Channel not open or out of range |
+| 53 | ERR_FILE_NOT_FOUND | Specified file does not exist |
+| 54 | ERR_BAD_FILE_MODE | Operation incompatible with file mode |
+| 55 | ERR_FILE_ALREADY_OPEN | Channel already in use |
+| 56 | ERR_FIELD_OVERFLOW | FIELD total exceeds record length |
+| 57 | ERR_DEVICE_IO_ERROR | Read or write operation failed |
+| 58 | ERR_FILE_ALREADY_EXISTS | File exists and cannot be overwritten |
+| 59 | ERR_BAD_RECORD_LENGTH | Record length mismatch |
+| 61 | ERR_DISK_FULL | No free space on target volume |
+| 62 | ERR_INPUT_PAST_END | Reading past end of file |
+| 63 | ERR_BAD_RECORD_NUMBER | Record number out of range |
+| 64 | ERR_BAD_FILE_NAME | Filename contains invalid characters |
+| 67 | ERR_TOO_MANY_FILES | Maximum open file count (16) exceeded |
+| 68 | ERR_DEVICE_UNAVAILABLE | Requested device not present |
+| 70 | ERR_PERMISSION_DENIED | Operation blocked by security level |
+| 71 | ERR_DISK_NOT_READY | Removable media not inserted |
+| 72 | ERR_DISK_MEDIA_ERROR | Physical media read/write failure |
+| 73 | ERR_ADVANCED_FEATURE_DISABLED | Feature not available in this edition |
+| 74 | ERR_RENAME_ACROSS_DISKS | Cannot rename across drive boundaries |
+| 75 | ERR_PATH_FILE_ACCESS_ERROR | Path access denied by OS |
+| 76 | ERR_PATH_NOT_FOUND | Directory path does not exist |
+
+## 9. ERROR CATEGORIES
+
+Errors are classified into four categories defined by the BppErrorCategory enum:
+
+ERR_CAT_SYNTAX covers parse-time errors (Error 2) where the lexer or parser encounters an unexpected token, a malformed expression, or an unterminated string literal.
+
+ERR_CAT_RUNTIME covers execution-time errors including type mismatches, overflow, division by zero, undefined line references, and all control-flow stack violations (NEXT without FOR, RETURN without GOSUB, WEND without WHILE).
+
+ERR_CAT_SYSTEM covers device, file, and operating system errors including all file I/O errors (52-76), device timeouts and faults (24-27), and permission denied (70).
+
+ERR_CAT_INTERNAL covers compiler limits, VM panics, and internal fault conditions that indicate a bug in the interpreter rather than a problem in the user's program.
+
+## 10. COMMON ERROR HANDLING PATTERNS
+
+### Retry on failure
 
 ```basic
 10 ON ERROR GOTO 100
-20 TRIES = 0
-30 OPEN "lockfile.dat" FOR OUTPUT AS #1
-40 PRINT #1, "locked"
-50 CLOSE #1
-60 END
-100 TRIES = TRIES + 1
-110 IF TRIES > 5 THEN PRINT "Failed!" : END
-120 PRINT "Retry #"; TRIES
-130 SHELL "sleep 1"
-140 RESUME
+20 OPEN "CONFIG.DAT" FOR INPUT AS #1
+30 ON ERROR GOTO 0
+40 REM ... continue with file
+50 END
+100 IF ERR = 53 THEN
+110   PRINT "Creating default config..."
+120   OPEN "CONFIG.DAT" FOR OUTPUT AS #1
+130   PRINT #1, "DEFAULT=1"
+140   CLOSE #1
+150   RESUME
+160 END IF
+170 PRINT "Unexpected error:"; ERR$
+180 END
 ```
 
-### C. Graceful Degradation
+### Skip and log errors
 
 ```basic
 10 ON ERROR GOTO 100
-20 A$ = SHELL$("advanced_command")
-30 GOTO 200
-100 A$ = "default value"    ' Fallback
-110 RESUME 200
-200 PRINT "Result: "; A$
+20 FOR I = 1 TO 10
+30   OPEN "FILE" + STR$(I) + ".DAT" FOR INPUT AS #1
+40   INPUT #1, D$
+50   CLOSE #1
+60   PRINT D$
+70 NEXT I
+80 END
+100 PRINT "Skipped file"; I; "- Error"; ERR$
+110 RESUME NEXT
 ```
 
-### D. Error Logging
+### TRY/CATCH for scoped handling
 
 ```basic
-10 ON ERROR GOTO 1000
-20 ' ... program code ...
-999 END
-1000 PRINT >> "error.log", DATE$; " "; TIME$; " Error "; ERR; " at "; ERL
-1010 RESUME NEXT
+10 FOR I = 1 TO 100
+20   TRY
+30     X = 1000 / (I - 50)
+40     PRINT I, X
+50   CATCH
+60     PRINT I, "Division by zero skipped"
+70   END TRY
+80 NEXT I
 ```
-
----
-
-## 8. Notes
-
-- `ON ERROR GOTO` is global — only one handler at a time
-- `RESUME` clears the error state
-- Nested errors (error inside error handler) halt the program
-- In direct mode, errors always print immediately
-- `ERR` and `ERL` are reset by `RESUME` or a successful `RUN`
-- `ON ERROR GOTO 0` disables trapping and re-enables default error reporting (print message and stop)

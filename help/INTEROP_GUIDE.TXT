@@ -1,0 +1,152 @@
+======================================================================
+  BASIC++ V6.5.2 INTEROPERABILITY GUIDE
+======================================================================
+
+
+======================================================================
+  1. HOST LANGUAGE INTEROP
+======================================================================
+
+BASIC++ provides a C17 API for embedding the interpreter in host applications. The API is defined in engine/include/bpp_api.h and provides functions for initializing the VM, executing programs, and exchanging data between C and BASIC++.
+
+
+======================================================================
+  2. EMBEDDING THE INTERPRETER
+======================================================================
+
+#include "bpp_api.h"
+
+int main(int argc, char* argv[]) {
+    VMContext* vm = bpp_create();
+    bpp_init(vm, argc, argv);
+
+    // Execute a BASIC++ statement
+    bpp_exec(vm, "PRINT 2 + 2");
+
+    // Load and run a program
+    bpp_load(vm, "program.bas");
+    bpp_run(vm);
+
+    bpp_shutdown(vm);
+    bpp_destroy(vm);
+    return 0;
+}
+
+Link with the BASIC++ libraries (libkernel, libengine, libcore, etc.) depending on which features the host application needs.
+
+
+======================================================================
+  3. HOST CALLBACKS
+======================================================================
+
+The host callback interface (engine/include/vm/host.h) allows the host to intercept VM operations:
+
+void my_output(void* user_data, const char* text) {
+    // Capture PRINT output
+    my_log(text);
+}
+
+bpp_set_output_callback(vm, my_output, user_data);
+
+Available callbacks: output (PRINT), input (INPUT), error (runtime errors), line (before each line executes), event (event trap notifications).
+
+
+======================================================================
+  4. USR FUNCTIONS
+======================================================================
+
+The USR mechanism allows BASIC++ programs to call C functions registered by the host:
+
+// Register a C function
+double my_sqrt(double x) {
+    return sqrt(x);
+}
+bpp_register_usr(vm, 0, my_sqrt);
+
+' In BASIC++:
+10 PRINT USR(0, 144)      ' Calls my_sqrt(144), prints 12
+
+USR functions receive a double argument and return a double. Up to 10 USR slots (0-9) are available.
+
+
+======================================================================
+  5. VARIABLE ACCESS
+======================================================================
+
+The host can read and write BASIC++ variables:
+
+// Set a variable
+bpp_set_number(vm, "Score", 100.0);
+bpp_set_string(vm, "Name$", "Player 1");
+
+// Read a variable
+double score = bpp_get_number(vm, "Score");
+const char* name = bpp_get_string(vm, "Name$");
+
+
+======================================================================
+  6. CALLING BASIC++ FROM C
+======================================================================
+
+The host can call BASIC++ subroutines:
+
+bpp_exec(vm, "GOSUB 5000");
+
+Or evaluate expressions:
+
+double result = bpp_eval_number(vm, "SQR(X^2 + Y^2)");
+
+
+======================================================================
+  7. DATA EXCHANGE FORMATS
+======================================================================
+
+For structured data exchange between BASIC++ and external systems:
+
+**CSV**: Use WRITE # to produce standard CSV output. Use INPUT # to read CSV.
+
+**JSON**: Use string operations to construct JSON. MICROPLEX$ helps with template construction.
+
+**Binary**: Use PACK$ and UNPACK for binary data exchange with C structures.
+
+
+======================================================================
+  8. PIPE INTEGRATION
+======================================================================
+
+The bs batch runner integrates with OS pipelines through stdin/stdout:
+
+```bash
+======================================================================
+  C PROGRAM OUTPUT -> BASIC++ PROCESSING -> FILE
+======================================================================
+./my_c_program | bs process.bas > output.txt
+
+======================================================================
+  BASIC++ GENERATES DATA FOR C PROGRAM
+======================================================================
+bs generate.bas | ./my_c_program
+
+
+======================================================================
+  9. SHARED LIBRARY USAGE
+======================================================================
+
+BASIC++ can be compiled as a shared library (DLL/SO) for use by other applications:
+
+add_library(bpp_lib SHARED ${ENGINE_SOURCES})
+
+The shared library exposes the bpp_api.h interface. Applications link against the library and use the embedding API.
+
+
+======================================================================
+  10. LANGUAGE BRIDGE PATTERNS
+======================================================================
+
+For integrating BASIC++ with higher-level languages:
+
+**Python**: Use ctypes to call the BASIC++ shared library. Or use the bs runner through subprocess.
+
+**Node.js**: Use child_process to spawn bs with piped I/O.
+
+**Java**: Use JNI to call the BASIC++ shared library, or use ProcessBuilder for subprocess communication.

@@ -1,0 +1,56 @@
+PHASE 2C: LIBENGINE (EVAL, PARSER, AST) FREESTANDING ARCHITECTURE
+
+OVERVIEW
+Phase 2C completes the migration of the entire evaluation subsystem, AST node
+hierarchy, expression parser, builtins, dispatch handlers, and runtime function
+micro-libraries in libengine to freestanding C17 standards (zero hosted standard
+C library headers, complete independence from libc).
+
+ARCHITECTURAL BOUNDARIES
+
+1. Freestanding Runtime & HAL Primitives
+All modules in libengine consume standard freestanding types and operations:
+- Memory allocations: hal_get()->mem.alloc and hal_get()->mem.free
+- String and memory manipulations: runtime_memcpy, runtime_memset, runtime_memmove,
+  runtime_memcmp, runtime_strlen, runtime_strcmp, runtime_strncmp, runtime_strchr,
+  runtime_strncasecmp, etc.
+- Number formatting & parsing: runtime_snprintf, runtime_parse_double, runtime_format_double
+- Mathematical operations: bit-exact IEEE 754 freestanding implementations in
+  libcore_runtime_math (runtime_fabs, runtime_floor, runtime_ceil, runtime_round,
+  runtime_trunc, runtime_fmod, runtime_sqrt, runtime_cbrt, runtime_exp, runtime_log,
+  runtime_sin, runtime_cos, runtime_tan, runtime_frexp, runtime_ldexp, runtime_modf, etc.)
+
+2. Evaluator & AST Pipeline
+- AST Generation: ast_create.c, ast_parser.c, ast_parse_expr.c, ast_parse_stmt.c,
+  ast_parse_block.c use ast_alloc_node and ast_free_node backed by the VM/HAL memory allocator.
+- AST Evaluator: ast_eval_expr.c and ast_eval_stmt.c evaluate abstract syntax trees
+  non-recursively with safe bounds and strict string ownership lifecycle (str_release).
+- Expression Evaluation: eval.c, eval_op.c, eval_ident.c, eval_array.c, eval_new.c,
+  and rpn.c manage operand and operator stacks on the heap with depth guards (limit 64).
+
+3. Function Micro-Libraries
+All function categories in engine/src/eval/functions/ operate as decoupled micro-libraries:
+- bits/ (13 micro-libraries): Bitwise operations, bit multiplexing, binary manipulation.
+- datetime/ (pds_datetime.c): Calendar time and serial date computation using platform_localtime.
+- filesystem/ (6 micro-libraries): File channel status, descriptors, EOF, LOF, LOC, and directory traversal.
+- math/ (52 micro-libraries): Trigonometry, logarithms, exponentials, hyperbolic functions, matrix
+  determinants/cross products, financial functions (PMT, FV, PV, NPER, RATE).
+- string/ (38 micro-libraries): String manipulation, substring slicing, ASCII conversion, hex/octal
+  formatting, MBF binary conversion, Radix-50, and sound playback token parsing.
+- system/ (24 micro-libraries): OS system introspection, screen cursor locations, free memory
+  reporting, timer ticks, and environment variable lookups routed via libplatform.
+- ui/ (3 micro-libraries): TUI dialog widgets and coordinate query functions.
+
+VERIFICATION & TEST RESULTS
+1. Unit & Freestanding Tests:
+   - runtime_freestanding_test.exe: 100% Passed.
+   - kernel_freestanding_test.exe: 100% Passed.
+   - boot_freestanding_test.exe: 100% Passed.
+2. Master Dialect Suites:
+   - vintage_ecosystems_master.bas: 14/14 Packages Passed.
+   - qb_vbdos_master.bas: 10/10 Packages Passed.
+   - vintage_deep_fuzz_stress.bas: 8/8 Tests Passed.
+   - timeshare_master_comprehensive.bas: 16/16 Passed.
+   - oop_master.bas: 8/8 Passed.
+   - family_ms_baseline_all.bas: 8/8 Passed.
+   - gwbasic_qbasic_compat.bas: 7/7 Passed.

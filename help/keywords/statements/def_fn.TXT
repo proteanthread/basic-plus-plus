@@ -1,0 +1,29 @@
+DEF_FN User Defined Function Statement
+======================================
+
+Defines a single-line user function that can be evaluated anywhere in expressions via FNname().
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    DEF FNname[(arg1 [, arg2...])] = expression
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Invalid argument count or recursive definition.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Single-line expression macro evaluated in current variable scope.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DEF FNHypot(A, B) = SQR(A * A + B * B)
+    20 PRINT "Hypotenuse: "; FNHypot(3, 4) : REM Outputs 5

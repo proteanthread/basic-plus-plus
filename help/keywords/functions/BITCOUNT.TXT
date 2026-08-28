@@ -1,0 +1,20 @@
+BITCOUNT Population Count Function
+
+1. BASIC Usage and Function Definition
+
+The BITCOUNT function counts the number of set bits (population count / Hamming weight) in a 64-bit integer.
+
+Syntax Signatures:
+``basic
+count = BITCOUNT(value)
+`
+
+Operational Rules:
+- Returns the number of bits set to 1 across all 64 bits of value.
+
+2. Code Examples
+
+`basic
+10 PRINT "BITCOUNT(255) = "; BITCOUNT(255) : REM Outputs 8
+20 PRINT "BITCOUNT(34359738368) = "; BITCOUNT(34359738368) : REM Outputs 1
+``

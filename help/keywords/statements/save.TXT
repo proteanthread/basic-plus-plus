@@ -1,0 +1,28 @@
+SAVE Save Program File Statement
+================================
+
+Saves the BASIC program in memory to a file on disk in ASCII text (A), tokenized binary (B), or protected (P) format.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    SAVE filename$ [, {A | B | P}]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 61 (ERR_DISK_FULL): Insufficient storage space on disk.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Defaults to standard portable UTF-8 ASCII format.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    SAVE "GAME.BAS", A : REM Saves as plaintext ASCII file

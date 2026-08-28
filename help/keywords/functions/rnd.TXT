@@ -1,0 +1,17 @@
+RND Random Number Generation Function
+======================================================================
+
+The RND function generates a pseudo-random floating-point number in
+range [0.0, 1.0).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    random_val# = RND [(numeric_expression)]
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT INT(RND * 100) + 1   : REM 1..100 random number

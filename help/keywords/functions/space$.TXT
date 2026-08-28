@@ -1,0 +1,16 @@
+SPACE$ Space String Generator Function
+======================================================================
+
+The SPACE$ function creates a string with N space characters.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    spaces$ = SPACE$(count%)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "A" + SPACE$(5) + "B"   : REM 5 spaces between A and B

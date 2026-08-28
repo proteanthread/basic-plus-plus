@@ -1,49 +1,15 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
+// FILENAME: plat_time.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (select.c, string.h)
+// NEEDS: libengine (select.h, string.c, time.h, time.c, vm.h)
+// NEEDS: libkernel (types.h)
+// NEEDS: libplatform (platform.h)
+// Provides cross-platform OS abstraction primitives for plat_time.
+//
+// ---- Includes ----
 
-/**
- * @file plat_time.c
- * @brief Platform component implementation and public API surface for plat_time.c.
- *
- * WHAT IT DOES:
- * Implements the core responsibilities, data structures, and function evaluation logic for plat_time.c within the platform subsystem.
- *
- * WHY IT EXISTS:
- * Ensures decoupled modularity, strict C17 portability, and clear micro-library architectural boundary enforcement.
- *
- * WHY IT WORKS THIS WAY:
- * Designed with zero-initialization defaults, bounded memory operations, and explicit error code propagation to the VM state.
- *
- * WHAT CAN BE CHANGED:
- * Subsystem configuration defaults, local execution helper routines, and documentation annotations.
- *
- * WHAT CANNOT BE CHANGED:
- * Public API symbol declarations, micro-library metadata structures, and thread-safe error reporting contracts.
- *
- * WHAT TO EXPECT:
- * High-performance deterministic execution with zero side-effects outside designated state structures.
- *
- * WHAT TO DO IF SOMETHING BREAKS:
- * Verify context initialization, trace BppError return codes, and inspect log outputs for bounds assertions.
- *
- * ASSUMPTIONS:
- * Valid subsystem contexts and required memory pools are allocated prior to executing API handlers.
- *
- * PORTABILITY CONCERNS:
- * Strict C17 compliance, 64-bit pointer safety, and pure ASCII string operations across desktop, IoT, and embedded targets.
- *
- * FUTURE EXPANSIONS:
- * Additional dialect compatibility mappings, telemetry instrumentation, and microcontroller payload stubs.
- */
-
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
 #include "platform/platform.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -112,7 +78,7 @@ void platform_sleep_ms(uint32_t ms) {
 #if defined(_WIN32)
     Sleep(ms);
 #elif defined(__WATCOMC__) || defined(MSDOS)
-    /* DOS delay loop using clock ticks */
+    // DOS delay loop using clock ticks
     delay(ms);
 #else
     usleep(ms * 1000);
@@ -179,4 +145,23 @@ double platform_get_uptime(void) {
     }
     return current - g_boot_time;
 }
+
+double platform_get_highres_time(void) {
+#if defined(_WIN32)
+    LARGE_INTEGER freq, counter;
+    if (QueryPerformanceFrequency(&freq) && QueryPerformanceCounter(&counter)) {
+        return (double)counter.QuadPart / (double)freq.QuadPart;
+    }
+    return platform_get_epoch_time();
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
+        return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+    }
+    return platform_get_epoch_time();
+#else
+    return platform_get_epoch_time();
+#endif
+}
+
 

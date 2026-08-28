@@ -1,0 +1,16 @@
+LOG2 Binary Logarithm (Base-2) Function
+======================================================================
+
+The LOG2 function calculates the base-2 binary logarithm.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result# = LOG2(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT LOG2(8)   : REM Outputs 3

@@ -1,0 +1,18 @@
+TIMEZONE$ Timezone String Function
+======================================================================
+
+The TIMEZONE$ function (and alias TZ$) returns the current system
+timezone abbreviation (e.g. "UTC", "EST", "MDT").
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    zone$ = TIMEZONE$
+    zone$ = TZ$
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Timezone: "; TIMEZONE$

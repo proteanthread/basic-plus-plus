@@ -1,65 +1,107 @@
-/**
- * @file run.c
- * @brief RUN [line_num | filename_expr [, R]] program execution statement handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements RUN statement handler for starting program execution from beginning, target line number, or loading and executing an external file.
- *
- * 2. WHY IT EXISTS:
- * Starts execution loop after clearing variables or loading new program source per GW-BASIC / QBASIC REPL standards.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Clears variable tables via vm_clear_variables(), sets program counter to line 0 or target line number, and initiates non-recursive VM main evaluation loop.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_run'. Includes "statements/program/run.h",
- * "vm/vm.h", "lexer/lexer.h", "eval/eval.h", "device/vdev.h", "security/security.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Fully included in libbasicpp (baspp) and libbasicpp_lite (bpp, bs) per Rule #1 (Core Included).
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support RUN with parameters passing command-line args to program scope.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Variable clearing invariant: Standard RUN MUST clear non-COMMON variable tables before execution begins.
- *
- * 8. WHAT TO EXPECT:
- * Resets variable state, jumps to start line, and initiates execution loop.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check line lookup resolution in vm_exec.c.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext and program memory buffer.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Zero host C recursion during VM execution.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/statements/program/clear.c
- * - engine/src/vm/vm_exec.c
- * Prerequisite Header Files:
- * - engine/include/statements/program/run.h
- * - engine/include/vm/vm.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: run.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (memory.h, memory.c)
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, run.h, string.c, vm.h)
+// NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
+// Provides runtime implementation for the RUN statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "statements/program/run.h"
+#include "types/errors.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
+#include "memory/memory.h"
+#include "runtime/variables.h"
+#include "runtime/strings.h"
 #include "device/vdev.h"
 #include "security/security.h"
 #include "runtime/micro_lib_metadata.h"
 #include <string.h>
 
+extern BppError vm_load_program_file(VMContext *vm, const char *filename);
+
 BppError stmt_run_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
-    return err;
+    if (!vm || !lex) {
+        err.code = ERR_ILLEGAL_FUNCTION_CALL;
+        return err;
+    }
+
+    BppToken tok = lex_peek(lex);
+    if (tok.type == TOK_NUMBER) {
+        tok = lex_next(lex);
+        var_clear_all(vm_get_var(vm));
+        vm_reset_for_run(vm);
+        vm_set_start_line(vm, tok.as.number);
+        vm_run_program(vm);
+        if (vm_has_error(vm)) {
+            return vm_get_error(vm);
+        }
+        return err;
+    } else if (tok.type == TOK_STRING || tok.type == TOK_IDENT || tok.type == TOK_LPAREN) {
+        BValue fn_val = eval_expression(vm, lex, &err);
+        if (err.code != 0) {
+            return err;
+        }
+        if (fn_val.type != VAL_STRING || !fn_val.as.string) {
+            if (fn_val.type == VAL_STRING && fn_val.as.string) {
+                str_release(vm_get_str(vm), fn_val.as.string);
+            }
+            err.code = ERR_TYPE_MISMATCH;
+            return err;
+        }
+        const char *filename = str_data(fn_val.as.string);
+        char path_buf[512];
+        strncpy(path_buf, filename, sizeof(path_buf) - 1);
+        path_buf[sizeof(path_buf) - 1] = '\0';
+        str_release(vm_get_str(vm), fn_val.as.string);
+
+        bool keep_open = false;
+
+        tok = lex_peek(lex);
+        if (tok.type == TOK_COMMA) {
+            lex_next(lex);
+            tok = lex_peek(lex);
+            if (tok.type == TOK_IDENT && tok.length == 1 && (tok.start[0] == 'R' || tok.start[0] == 'r')) {
+                lex_next(lex);
+                keep_open = true;
+            }
+        }
+
+        if (!keep_open) {
+            var_clear_all(vm_get_var(vm));
+        } else {
+            var_clear_for_chain(vm_get_var(vm));
+        }
+
+        mem_program_clear(vm_get_mem(vm));
+        BppError load_err = vm_load_program_file(vm, path_buf);
+        if (load_err.code != 0) {
+            return load_err;
+        }
+        vm_reset_for_run(vm);
+        vm_run_program(vm);
+        if (vm_has_error(vm)) {
+            return vm_get_error(vm);
+        }
+        return err;
+    } else {
+        var_clear_all(vm_get_var(vm));
+        vm_reset_for_run(vm);
+        vm_set_start_line(vm, 0.0);
+        vm_run_program(vm);
+        if (vm_has_error(vm)) {
+            return vm_get_error(vm);
+        }
+        return err;
+    }
 }
 
 void stmt_run_register(void) {

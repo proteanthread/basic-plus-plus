@@ -1,0 +1,27 @@
+# `HYPOT` Euclidean Norm (Universal Dual-Format)
+
+## 1. BASIC Usage and Function/Operator Definition
+
+The `HYPOT` keyword computes the Euclidean distance / norm $\sqrt{\sum x_i^2}$ without intermediate overflow or underflow. It is supported in both **infix** notation (`a HYPOT b`) and **prefix/variadic** functional notation (`HYPOT(a, b [, c...])`).
+
+### Syntax Signatures:
+```basic
+hypotenuse = sideA HYPOT sideB
+hypotenuse = HYPOT(sideA, sideB [, sideC, ...])
+```
+
+### Operational Rules:
+- Infix `a HYPOT b`: returns $\sqrt{a^2 + b^2}$.
+- Prefix `HYPOT(a, b, ...)`: returns $\sqrt{a^2 + b^2 + c^2 + \dots}$.
+- In RPN stack evaluation blocks: `{ 3 4 HYPOT }`.
+
+---
+
+## 2. Code Examples
+
+```basic
+10 REM Infix notation
+20 PRINT "3 HYPOT 4 = "; 3 HYPOT 4 : REM Outputs 5
+30 REM Functional prefix notation (variadic 3D)
+40 PRINT "HYPOT(1, 2, 2) = "; HYPOT(1, 2, 2) : REM Outputs 3
+```

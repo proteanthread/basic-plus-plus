@@ -1,0 +1,29 @@
+assert Case-Insensitive Assertion Statement
+===========================================
+
+Asserts that a logical condition is true, halting program execution with an error if it evaluates to false.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    ASSERT condition [, "failure_message"]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 250 (ERR_ASSERTION_FAILED): Assertion failed.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Case-insensitive alias for CHECK statement.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 ASSERT X >= 0, "X cannot be negative"
+    20 PRINT "Assertion passed."

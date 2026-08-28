@@ -1,0 +1,17 @@
+LEN String Length and Variable Size Function
+======================================================================
+
+The LEN function returns the character length of a string or byte size
+of a record.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    length% = LEN(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT LEN("HELLO")   : REM Outputs 5

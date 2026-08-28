@@ -1,0 +1,27 @@
+C17 API REFERENCE: PLATFORM ABSTRACTION LAYER (platform/platform.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Platform Abstraction Layer encapsulates all host operating system #ifdef
+logic, Win32 vs POSIX differences, timing, audio, console, threading, and
+filesystem interfaces. Upper engine layers have ZERO OS-specific code.
+
+2. TARGET PLATFORMS
+- PLAT_WINDOWS: Win32/Win64 console, threads, file locks, DLL loader.
+- PLAT_POSIX:   Linux, macOS, BSD termios, pthreads, dlopen.
+- PLAT_DOS:     FreeDOS / MS-DOS raw BIOS and interrupts.
+
+3. CORE API FUNCTIONS
+- platform_init() / platform_shutdown()
+- platform_get_id() -> BppPlatformId
+- platform_name() -> const char *
+- platform_sleep_ms(ms)
+- platform_sound_beep()
+- platform_sound_tone(freq_hz, duration_ms)
+- platform_sound_stop()
+- platform_getcwd(buf, size) -> char *
+- platform_system_exec(cmd) -> int
+
+4. ARCHITECTURAL INVARIANTS
+- No operating system headers (<windows.h>, <unistd.h>) outside libplatform.
+- Automatic terminal mode restoration on exit or crash.

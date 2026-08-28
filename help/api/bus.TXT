@@ -1,0 +1,24 @@
+C17 API REFERENCE: VIRTUAL HARDWARE BUS (device/bus.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Virtual Hardware Bus Subsystem virtualizes the 16-bit I/O port address
+space (0x0000..0xFFFF), peripheral simulation (PIT, PIC, Speaker, CRTC),
+and memory-mapped I/O intercept traps for INP, OUT, PEEK, and POKE.
+
+2. KEY TYPES & STRUCTS
+- MockBiosModel: IBMPC, PCXT, PCAT, PCJR, TANDY, APPLE2, C64, VIC20, ATARI.
+
+3. CORE API FUNCTIONS
+- vdev_bus_out(port, value)
+- vdev_bus_in(port) -> int
+- vdev_bus_peek(addr, intercepted) -> uint8_t
+- vdev_bus_poke(addr, value, intercepted)
+- vdev_bus_register_port(start, end, read_fn, write_fn) -> bool
+- vdev_bus_reset()
+- vdev_bus_set_model(model)
+- vdev_bus_get_model() -> MockBiosModel
+
+4. ARCHITECTURAL INVARIANTS
+- Pure software virtualization with zero host CPU privileged in/out instructions.
+- Port operations require CAP_IO security capability in sandboxed modes.

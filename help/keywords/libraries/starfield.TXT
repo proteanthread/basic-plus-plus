@@ -1,0 +1,13 @@
+starfield 3D Perspective Warp Starfield Simulation
+======================================================================
+
+The starfield library implements 3D perspective projection, star speed
+acceleration, and warp motion streaks.
+
+
+MATHEMATICS
+----------------------------------------------------------------------
+
+  - Screen X = CenterX + (X / Z) * FOV
+  - Screen Y = CenterY + (Y / Z) * FOV
+  - Depth brightness scaling.

@@ -1,0 +1,31 @@
+GOTO Unconditional Control Transfer Statement
+=============================================
+
+Unconditionally transfers execution control to the designated program line number or symbolic label.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    GOTO {line_number% | @label}
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 8 (ERR_UNDEFINED_LINE_NUMBER): Target line number does not exist.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Fast line pointer redirection in VM execution loop.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Step 1"
+    20 GOTO 40
+    30 PRINT "Skipped"
+    40 PRINT "Step 2"

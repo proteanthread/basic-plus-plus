@@ -1,0 +1,22 @@
+C17 API REFERENCE: EXPRESSION EVALUATOR (eval/eval.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Expression Evaluator provides non-recursive expression parsing,
+operator precedence resolution, built-in/user function dispatch, and
+tagged union BValue evaluation.
+
+2. KEY TYPES & STRUCTS
+- BValue: Tagged union representing runtime values (VAL_NUMBER, VAL_STRING,
+  VAL_ERROR, VAL_NULL).
+
+3. CORE API FUNCTIONS
+- eval_expression(vm, lex, err) -> BValue
+  Evaluates expression from token stream.
+- invoke_user_function(vm, name, args, argc, err) -> BValue
+  Invokes FUNCTION or DEF FN.
+
+4. STRING LIFECYCLE CONTRACT
+- Any BValue returned by eval_expression() with type VAL_STRING holds an
+  incremented refcount. The caller is the OWNER and MUST call
+  str_release(vm_get_str(vm), val.as.string) on all success and error paths.

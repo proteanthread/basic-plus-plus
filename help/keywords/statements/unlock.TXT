@@ -1,0 +1,32 @@
+UNLOCK File Record Range Unlocking Statement
+============================================
+
+Releases record locks previously acquired via LOCK on an open file channel.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    UNLOCK [#]filenum% [, [start_record&] TO end_record&]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 70 (ERR_PERMISSION_DENIED): Range was not locked by this process.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Multi-process record locking synchronization.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 OPEN "R", #1, "DATA.DAT", 128
+    20 LOCK #1, 5 TO 10
+    30 REM Perform atomic modifications
+    40 UNLOCK #1, 5 TO 10
+    50 CLOSE #1

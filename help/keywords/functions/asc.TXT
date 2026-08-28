@@ -1,0 +1,25 @@
+ASC ASCII / Character Byte Value Function
+======================================================================
+
+The ASC function returns the ASCII byte code (0 to 255) of the first
+character in a string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    code% = ASC(string_expression$)
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  5           ERR_ILLEGAL_FUNCTION  Empty string provided
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT ASC("B")   : REM Outputs 66

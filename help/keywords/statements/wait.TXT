@@ -1,0 +1,28 @@
+WAIT Hardware Port Bitmask Wait Statement
+=========================================
+
+Suspends program execution until reading the specified hardware port satisfies: (INP(port) XOR xor_mask) AND and_mask != 0.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    WAIT port_address%, and_mask% [, xor_mask%]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 70 (ERR_PERMISSION_DENIED): Port I/O blocked in sandbox mode.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Enables hardware synchronization without CPU spin loops.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 WAIT &H3DA, 8 : REM Wait for vertical retrace on CGA/VGA

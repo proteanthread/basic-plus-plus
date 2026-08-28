@@ -1,0 +1,18 @@
+DAY Day of the Month Function
+======================================================================
+
+The DAY function returns the current calendar day of the month as an
+integer from 1 to 31.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    day_num% = DAY
+    day_num% = DAY()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Day of Month: "; DAY

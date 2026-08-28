@@ -1,68 +1,24 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file vfs.c
- * @brief Runtime component implementation and public API surface for vfs.c.
- *
- * WHAT IT DOES:
- * Implements the core responsibilities, data structures, and function evaluation logic for vfs.c within the runtime subsystem.
- *
- * WHY IT EXISTS:
- * Ensures decoupled modularity, strict C17 portability, and clear micro-library architectural boundary enforcement.
- *
- * WHY IT WORKS THIS WAY:
- * Designed with zero-initialization defaults, bounded memory operations, and explicit error code propagation to the VM state.
- *
- * WHAT CAN BE CHANGED:
- * Subsystem configuration defaults, local execution helper routines, and documentation annotations.
- *
- * WHAT CANNOT BE CHANGED:
- * Public API symbol declarations, micro-library metadata structures, and thread-safe error reporting contracts.
- *
- * WHAT TO EXPECT:
- * High-performance deterministic execution with zero side-effects outside designated state structures.
- *
- * WHAT TO DO IF SOMETHING BREAKS:
- * Verify context initialization, trace BppError return codes, and inspect log outputs for bounds assertions.
- *
- * ASSUMPTIONS:
- * Valid subsystem contexts and required memory pools are allocated prior to executing API handlers.
- *
- * PORTABILITY CONCERNS:
- * Strict C17 compliance, 64-bit pointer safety, and pure ASCII string operations across desktop, IoT, and embedded targets.
- *
- * FUTURE EXPANSIONS:
- * Additional dialect compatibility mappings, telemetry instrumentation, and microcontroller payload stubs.
- */
-
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file vfs.c
- * @brief Virtual Filesystem (VFS) Mount & Path virtualization implementation.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements path translation and mounting logic for directories,
- *   zip archives, and floppy disk images.
- * - Why it exists: Emulates local and external device drives in a sandboxed,
- *   portable environment.
- * - Why it works this way: It scans mounted prefixes sequentially and replaces
- *   them dynamically.
- */
+// FILENAME: vfs.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe (desktop.c)
+// NEEDED BY: libcore (error.c, spec.c)
+// NEEDED BY: libengine (context.c, control.c, data.c, events_internal.h)
+// NEEDED BY: libengine (exec_internal.h, vm_internal.h)
+// NEEDS: libcore (hal.h, memops.h, memops.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (strops.h, strops.c, vfs.h)
+// NEEDS: libkernel (vdev.h, vdev.c)
+// NEEDS: libplatform (platform.h)
+// Provides core logic and interface definitions for vfs within BASIC++.
+//
+// ---- Includes ----
 
 #include "runtime/vfs.h"
 #include "device/vdev.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "hal/hal.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/format/snprintf.h"
 #include "platform/platform.h"
 
 static void safe_strncpy(char *dest, const char *src, size_t max_len) {
@@ -71,11 +27,11 @@ static void safe_strncpy(char *dest, const char *src, size_t max_len) {
         dest[0] = '\0';
         return;
     }
-    size_t len = strlen(src);
+    size_t len = runtime_strlen(src);
     if (len >= max_len) {
         len = max_len - 1;
     }
-    memcpy(dest, src, len);
+    runtime_memcpy(dest, src, len);
     dest[len] = '\0';
 }
 
@@ -90,10 +46,12 @@ struct VfsContext {
 };
 
 VfsContext *vfs_init(MemoryContext *mem) {
-    if (!mem) return NULL;
-    VfsContext *ctx = (VfsContext *)calloc(1, sizeof(VfsContext));
+    HalContext *hal = hal_get();
+    VfsContext *ctx = (VfsContext *)(hal && hal->mem.alloc ? hal->mem.alloc(sizeof(VfsContext)) : NULL);
     if (!ctx) return NULL;
+    runtime_memset(ctx, 0, sizeof(VfsContext));
     ctx->mem = mem;
+
     for (int i = 0; i < VFS_MAX_MOUNTS; ++i) {
         ctx->mounts[i].active = false;
         ctx->mounts[i].prefix[0] = '\0';
@@ -118,35 +76,37 @@ VfsContext *vfs_init(MemoryContext *mem) {
 
 void vfs_shutdown(VfsContext *ctx) {
     if (ctx) {
-        free(ctx);
+        HalContext *hal = hal_get();
+        if (hal && hal->mem.free) hal->mem.free(ctx);
     }
 }
+
 
 bool vfs_mount(VfsContext *ctx, const char *prefix, const char *target, BppMountType type) {
     if (!ctx || !prefix || !target) return false;
 
-    /* Normalize prefix (should end with colon) */
+    // Normalize prefix (should end with colon)
     char norm_prefix[VFS_MAX_PREFIX];
-    size_t plen = strlen(prefix);
+    size_t plen = runtime_strlen(prefix);
     if (plen == 0 || plen >= VFS_MAX_PREFIX) return false;
-    strcpy(norm_prefix, prefix);
+    runtime_strcpy(norm_prefix, prefix);
     if (norm_prefix[plen - 1] != ':') {
         if (plen + 1 >= VFS_MAX_PREFIX) return false;
         norm_prefix[plen] = ':';
         norm_prefix[plen + 1] = '\0';
     }
 
-    /* Check if already mounted */
+    // Check if already mounted
     for (int i = 0; i < VFS_MAX_MOUNTS; ++i) {
-        if (ctx->mounts[i].active && platform_strcasecmp(ctx->mounts[i].prefix, norm_prefix) == 0) {
-            /* Overwrite existing mount target */
+        if (ctx->mounts[i].active && runtime_strcasecmp(ctx->mounts[i].prefix, norm_prefix) == 0) {
+            // Overwrite existing mount target
             safe_strncpy(ctx->mounts[i].target, target, VFS_MAX_PATH);
             ctx->mounts[i].type = type;
             return true;
         }
     }
 
-    /* Find free slot */
+    // Find free slot
     for (int i = 0; i < VFS_MAX_MOUNTS; ++i) {
         if (!ctx->mounts[i].active) {
             safe_strncpy(ctx->mounts[i].prefix, norm_prefix, VFS_MAX_PREFIX);
@@ -164,9 +124,9 @@ bool vfs_umount(VfsContext *ctx, const char *prefix) {
     if (!ctx || !prefix) return false;
 
     char norm_prefix[VFS_MAX_PREFIX];
-    size_t plen = strlen(prefix);
+    size_t plen = runtime_strlen(prefix);
     if (plen == 0 || plen >= VFS_MAX_PREFIX) return false;
-    strcpy(norm_prefix, prefix);
+    runtime_strcpy(norm_prefix, prefix);
     if (norm_prefix[plen - 1] != ':') {
         if (plen + 1 >= VFS_MAX_PREFIX) return false;
         norm_prefix[plen] = ':';
@@ -174,7 +134,7 @@ bool vfs_umount(VfsContext *ctx, const char *prefix) {
     }
 
     for (int i = 0; i < VFS_MAX_MOUNTS; ++i) {
-        if (ctx->mounts[i].active && platform_strcasecmp(ctx->mounts[i].prefix, norm_prefix) == 0) {
+        if (ctx->mounts[i].active && runtime_strcasecmp(ctx->mounts[i].prefix, norm_prefix) == 0) {
             ctx->mounts[i].active = false;
             return true;
         }
@@ -190,25 +150,25 @@ bool vfs_resolve(VfsContext *ctx, const char *virtual_path, char *resolved_path,
         return true;
     }
 
-    /* Find matching mount prefix */
+    // Find matching mount prefix
     for (int i = 0; i < VFS_MAX_MOUNTS; ++i) {
         if (ctx->mounts[i].active) {
-            size_t plen = strlen(ctx->mounts[i].prefix);
-            if (platform_strncasecmp(virtual_path, ctx->mounts[i].prefix, plen) == 0) {
-                /* Translate path */
+            size_t plen = runtime_strlen(ctx->mounts[i].prefix);
+            if (runtime_strncasecmp(virtual_path, ctx->mounts[i].prefix, plen) == 0) {
+                // Translate path
                 const char *subpath = virtual_path + plen;
-                /* Strip leading slash/backslash from subpath to prevent absolute path issues */
+                // Strip leading slash/backslash from subpath to prevent absolute path issues
                 while (*subpath == '/' || *subpath == '\\') {
                     subpath++;
                 }
 
-                snprintf(resolved_path, max_len, "%s/%s", ctx->mounts[i].target, subpath);
+                runtime_snprintf(resolved_path, max_len, "%s/%s", ctx->mounts[i].target, subpath);
                 return true;
             }
         }
     }
 
-    /* Fallback to passthrough */
+    // Fallback to passthrough
     safe_strncpy(resolved_path, virtual_path, max_len);
     return true;
 }
@@ -239,7 +199,7 @@ void vfs_set_search_path(VfsContext *ctx, const char *path) {
 
 const char *vfs_get_category_path(VfsContext *ctx, const char *category) {
     if (!ctx || !category) return "";
-    if (platform_strcasecmp(category, "WORKING") == 0) {
+    if (runtime_strcasecmp(category, "WORKING") == 0) {
         char cwd[VFS_MAX_PATH];
         extern char *platform_getcwd(char *buf, size_t size);
         if (platform_getcwd(cwd, sizeof(cwd))) {
@@ -247,10 +207,10 @@ const char *vfs_get_category_path(VfsContext *ctx, const char *category) {
         }
         return ctx->working_path;
     }
-    if (platform_strcasecmp(category, "DATA") == 0) {
+    if (runtime_strcasecmp(category, "DATA") == 0) {
         return ctx->data_path;
     }
-    if (platform_strcasecmp(category, "EXEC") == 0 || platform_strcasecmp(category, "PROGRAM") == 0) {
+    if (runtime_strcasecmp(category, "EXEC") == 0 || runtime_strcasecmp(category, "PROGRAM") == 0) {
         return ctx->exec_path;
     }
     return "";
@@ -258,12 +218,13 @@ const char *vfs_get_category_path(VfsContext *ctx, const char *category) {
 
 void vfs_set_category_path(VfsContext *ctx, const char *category, const char *path) {
     if (!ctx || !category || !path) return;
-    if (platform_strcasecmp(category, "WORKING") == 0) {
+    if (runtime_strcasecmp(category, "WORKING") == 0) {
         safe_strncpy(ctx->working_path, path, VFS_MAX_PATH);
-    } else if (platform_strcasecmp(category, "DATA") == 0) {
+    } else if (runtime_strcasecmp(category, "DATA") == 0) {
         safe_strncpy(ctx->data_path, path, VFS_MAX_PATH);
-    } else if (platform_strcasecmp(category, "EXEC") == 0 || platform_strcasecmp(category, "PROGRAM") == 0) {
+    } else if (runtime_strcasecmp(category, "EXEC") == 0 || runtime_strcasecmp(category, "PROGRAM") == 0) {
         safe_strncpy(ctx->exec_path, path, VFS_MAX_PATH);
         safe_strncpy(ctx->program_path, path, VFS_MAX_PATH);
     }
 }
+

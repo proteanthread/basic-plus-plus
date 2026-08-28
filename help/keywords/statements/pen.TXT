@@ -1,0 +1,28 @@
+PEN Light Pen Status Query Function
+===================================
+
+Returns coordinates, trigger status, and character positions from the light pen input device.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    status% = PEN(function_code%)
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Function code outside range (0..9).
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Emulated through mouse click and position events.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 IF PEN(0) THEN PRINT "Pen down at: "; PEN(1); ", "; PEN(2)

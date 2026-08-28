@@ -1,0 +1,26 @@
+DATE / DATE$ System Date Function & Variable
+======================================================================
+
+The DATE$ variable/function returns the current system calendar date
+formatted as "MM-DD-YYYY". Numeric DATE returns YYYYMMDD.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    current_date$ = DATE$
+    numeric_date& = DATE
+    DATE$ = "MM-DD-YYYY"
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - DATE$ returns a 10-character string "MM-DD-YYYY".
+  - DATE returns an integer (e.g. 20260815).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Date: "; DATE$

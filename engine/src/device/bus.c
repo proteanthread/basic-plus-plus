@@ -1,72 +1,21 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file bus.c
- * @brief Virtual hardware bus multiplexer and device registration router for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements `vdev_bus_init()`, `vdev_bus_register()`, `vdev_bus_in()`, `vdev_bus_out()`, `vdev_bus_peek()`, `vdev_bus_poke()`.
- *
- * 2. WHY IT EXISTS:
- * Provides virtual hardware I/O bus routing (0x0000..0xFFFF ports) connecting hardware virtual devices (COM, LPT, Sound, Video, Network) to BASIC statements (`INP`, `OUT`, `PEEK`, `POKE`).
- *
- * 3. WHY IT WORKS THIS WAY:
- * Maintains a array of registered virtual devices (`VDevBusDevice`), matching port ranges and segment offsets to dispatch device-specific read/write callbacks.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "device/bus.h", "device/vdev.h", <stdlib.h>, <string.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Register new virtual bus devices (`vdev_bus_register`) for custom extensions.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Port address bounds (16-bit 0x0000..0xFFFF) and 8-bit bus data width.
- *
- * 8. WHAT TO EXPECT:
- * `vdev_bus_in()` returns byte value (0..255) from target device or 0xFF if unmapped port.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check virtual device port overlap conflicts in `vdev_bus_register()`.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized bus context.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Virtualized bus avoids host platform assembly dependencies.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/device/vdev.c
- * Prerequisite Header Files:
- * - engine/include/device/bus.h
- * - engine/include/device/vdev.h
- */
-
-/**
- * @file vdev_bus.c
- * @brief Virtual Hardware Port & MMIO Bus implementation.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements routing logic for INP/OUT port calls and maps CGA text RAM
- *   and BIOS Data Area PEEK/POKE writes directly to virtual console frames.
- * - Why it exists: Provides dynamic virtual hardware interfaces for the Mock BIOS.
- * - Why it works this way: It intercepts address ranges (0x400 for BDA, 0xB8000 for CGA)
- *   and redirects them to virtual buffers.
- */
+// FILENAME: bus.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libcore (error.c)
+// NEEDED BY: libengine (ast_eval_expr.c, ast_eval_stmt.c, ast_internal.h)
+// NEEDED BY: libengine (bios.c, context.c, control.c, data.c)
+// NEEDED BY: libengine (events_internal.h, exec_internal.h, inp.c, out.c)
+// NEEDED BY: libengine (peek.c, poke.c, vm_internal.h)
+// NEEDS: libcore (hal.h, memops.h, memops.c)
+// NEEDS: libkernel (bus.h, vcon.h, vcon.c)
+// Implements virtual device and graphics rendering logic for bus.
+//
+// ---- Includes ----
 
 #include "device/bus.h"
 #include "device/vcon.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include "runtime/string/memops.h"
+#include "hal/hal.h"
 
 #define MAX_PORT_HANDLERS 16
 
@@ -83,10 +32,10 @@ typedef struct {
 } PortHandlerEntry;
 
 static PortHandlerEntry handlers[MAX_PORT_HANDLERS];
-static uint8_t bda_ram[256]; /* Mock BIOS Data Area RAM */
-static uint8_t cga_ram[4000]; /* Mock CGA 80x25 Text screen (2000 chars + 2000 attribs) */
-static uint8_t c64_regs[4];  /* C64 registers at 780-783: A, X, Y, Status */
-static uint8_t sid_regs[32];  /* C64 SID registers at 54272-54296 */
+static uint8_t bda_ram[256]; // Mock BIOS Data Area RAM
+static uint8_t cga_ram[4000]; // Mock CGA 80x25 Text screen (2000 chars + 2000 attribs)
+static uint8_t c64_regs[4];  // C64 registers at 780-783: A, X, Y, Status
+static uint8_t sid_regs[32];  // C64 SID registers at 54272-54296
 
 static MockBiosModel active_model = BIOS_MODEL_NONE;
 static uint8_t *g_bios_ram = NULL;
@@ -109,31 +58,32 @@ void vdev_bus_reset(void) {
     active_model = BIOS_MODEL_NONE;
     g_bios_ram = NULL;
     g_bios_ram_size = 0;
-    memset(handlers, 0, sizeof(handlers));
-    memset(bda_ram, 0, sizeof(bda_ram));
-    memset(cga_ram, 0, sizeof(cga_ram));
-    memset(c64_regs, 0, sizeof(c64_regs));
-    memset(sid_regs, 0, sizeof(sid_regs));
+    runtime_memset(handlers, 0, sizeof(handlers));
+    runtime_memset(bda_ram, 0, sizeof(bda_ram));
+    runtime_memset(cga_ram, 0, sizeof(cga_ram));
+    runtime_memset(c64_regs, 0, sizeof(c64_regs));
+    runtime_memset(sid_regs, 0, sizeof(sid_regs));
 
-    /* Pre-fill BDA with default IBM PC base settings */
-    bda_ram[0x00] = 0xF8; bda_ram[0x01] = 0x03; /* COM1: 0x03F8 */
-    bda_ram[0x02] = 0xF8; bda_ram[0x03] = 0x02; /* COM2: 0x02F8 */
-    bda_ram[0x08] = 0x78; bda_ram[0x09] = 0x03; /* LPT1: 0x0378 */
-    bda_ram[0x0A] = 0x78; bda_ram[0x0B] = 0x02; /* LPT2: 0x0278 */
 
-    /* Equipment Word: 0x022D (1 floppy, 80x25 color, 2 serial, 1 printer) */
+    // Pre-fill BDA with default IBM PC base settings
+    bda_ram[0x00] = 0xF8; bda_ram[0x01] = 0x03; // COM1: 0x03F8
+    bda_ram[0x02] = 0xF8; bda_ram[0x03] = 0x02; // COM2: 0x02F8
+    bda_ram[0x08] = 0x78; bda_ram[0x09] = 0x03; // LPT1: 0x0378
+    bda_ram[0x0A] = 0x78; bda_ram[0x0B] = 0x02; // LPT2: 0x0278
+
+    // Equipment Word: 0x022D (1 floppy, 80x25 color, 2 serial, 1 printer)
     bda_ram[0x10] = 0x2D;
     bda_ram[0x11] = 0x02;
 
-    /* Conventional memory size: 640KB at 0x413 */
+    // Conventional memory size: 640KB at 0x413
     bda_ram[0x13] = 0x80;
     bda_ram[0x14] = 0x02;
 
-    /* Video state */
-    bda_ram[0x49] = 0x03; /* Video mode 3 */
-    bda_ram[0x4A] = 80;   /* 80 columns */
+    // Video state
+    bda_ram[0x49] = 0x03; // Video mode 3
+    bda_ram[0x4A] = 80;   // 80 columns
     bda_ram[0x4B] = 0x00;
-    bda_ram[0x63] = 0xD4; bda_ram[0x64] = 0x03; /* CRT base: 0x03D4 */
+    bda_ram[0x63] = 0xD4; bda_ram[0x64] = 0x03; // CRT base: 0x03D4
 }
 
 bool vdev_bus_register_port(int start, int end, int (*read_fn)(int), void (*write_fn)(int, int)) {
@@ -151,7 +101,7 @@ bool vdev_bus_register_port(int start, int end, int (*read_fn)(int), void (*writ
 }
 
 void vdev_bus_out(int port, int value) {
-    /* Tandy SN76496 Sound Port $00C0 (192) */
+    // Tandy SN76496 Sound Port $00C0 (192)
     if (active_model == BIOS_MODEL_TANDY && port == 0xC0) {
         if (value > 0) {
 #ifndef NO_SDL2
@@ -189,19 +139,20 @@ uint8_t vdev_bus_peek(unsigned long addr, bool *intercepted) {
         val = g_bios_ram[addr];
     }
 
-    /* 1. ATARI POKEY Random Number Generator ($D20A / 53770) */
+    // 1. ATARI POKEY Random Number Generator ($D20A / 53770)
     if (active_model == BIOS_MODEL_ATARI && addr == 53770) {
         if (intercepted) *intercepted = true;
-        return (uint8_t)(rand() & 0xFF);
+        HalContext *hal = hal_get();
+        return (uint8_t)(hal && hal->time.monotonic_ms ? (hal->time.monotonic_ms() & 0xFF) : 0x5A);
     }
 
-    /* 2. APPLE II Keyboard Latch ($C000 / 49152) */
+    // 2. APPLE II Keyboard Latch ($C000 / 49152)
     if (active_model == BIOS_MODEL_APPLE2 && addr == 49152) {
         if (intercepted) *intercepted = true;
         return 0;
     }
 
-    /* 3. APPLE II Speaker click ($C030 / 49184) */
+    // 3. APPLE II Speaker click ($C030 / 49184)
     if (active_model == BIOS_MODEL_APPLE2 && addr == 49184) {
         if (intercepted) *intercepted = true;
 #ifndef NO_SDL2
@@ -210,25 +161,29 @@ uint8_t vdev_bus_peek(unsigned long addr, bool *intercepted) {
         return 0;
     }
 
-    /* 4. Spectrum Frame Counter Clock: 23672 - 23674 (50 Hz) */
+    // 4. Spectrum Frame Counter Clock: 23672 - 23674 (50 Hz)
     if (addr >= 23672 && addr <= 23674) {
         if (intercepted) *intercepted = true;
-        double sec = (double)clock() / (double)CLOCKS_PER_SEC;
+        HalContext *hal = hal_get();
+        double sec = (double)(hal && hal->time.monotonic_ms ? hal->time.monotonic_ms() : 0) / 1000.0;
         uint32_t ticks = (uint32_t)(sec * 50.0);
         unsigned long offset = addr - 23672;
         return (uint8_t)((ticks >> (offset * 8)) & 0xFF);
     }
 
-    /* 5. C64 Clock: 160 - 162 (60 Hz) */
+    // 5. C64 Clock: 160 - 162 (60 Hz)
     if (addr >= 160 && addr <= 162) {
         if (intercepted) *intercepted = true;
-        double sec = (double)clock() / (double)CLOCKS_PER_SEC;
+        HalContext *hal = hal_get();
+        double sec = (double)(hal && hal->time.monotonic_ms ? hal->time.monotonic_ms() : 0) / 1000.0;
         uint32_t ticks = (uint32_t)(sec * 60.0);
-        unsigned long offset = 162 - addr; /* 162 is LSB, 160 is MSB */
+        unsigned long offset = 162 - addr; // 162 is LSB, 160 is MSB
         return (uint8_t)((ticks >> (offset * 8)) & 0xFF);
     }
 
-    /* Standard fallback intercepts when no bios_ram is linked */
+
+
+    // Standard fallback intercepts when no bios_ram is linked
     if (!g_bios_ram) {
         if (addr >= 0x400 && addr <= 0x4FF) {
             if (intercepted) *intercepted = true;
@@ -273,7 +228,7 @@ void vdev_bus_poke(unsigned long addr, uint8_t value, bool *intercepted) {
         }
     }
 
-    /* 1. C64/VIC20 SID Sound Synthesizer ($D400 - $D41C / 54272 - 54296) */
+    // 1. C64/VIC20 SID Sound Synthesizer ($D400 - $D41C / 54272 - 54296)
     if ((active_model == BIOS_MODEL_C64 || active_model == BIOS_MODEL_VIC20) && (addr >= 54272 && addr <= 54296)) {
         if (intercepted) *intercepted = true;
         unsigned long offset = addr - 54272;
@@ -292,7 +247,7 @@ void vdev_bus_poke(unsigned long addr, uint8_t value, bool *intercepted) {
         }
     }
 
-    /* 2. VIC-20 Audio Generators ($900A - $900D / 36874 - 36877) */
+    // 2. VIC-20 Audio Generators ($900A - $900D / 36874 - 36877)
     if (active_model == BIOS_MODEL_VIC20 && (addr >= 36874 && addr <= 36877)) {
         if (intercepted) *intercepted = true;
         if (value > 0) {
@@ -305,7 +260,7 @@ void vdev_bus_poke(unsigned long addr, uint8_t value, bool *intercepted) {
         }
     }
 
-    /* 3. ATARI POKEY Audio Channels ($D200 - $D207 / 53760 - 53767) */
+    // 3. ATARI POKEY Audio Channels ($D200 - $D207 / 53760 - 53767)
     if (active_model == BIOS_MODEL_ATARI && (addr >= 53760 && addr <= 53767)) {
         if (intercepted) *intercepted = true;
         int is_freq = ((addr - 53760) % 2 == 0);
@@ -319,7 +274,7 @@ void vdev_bus_poke(unsigned long addr, uint8_t value, bool *intercepted) {
         }
     }
 
-    /* 4. APPLE II Speaker toggle ($C030 / 49184) */
+    // 4. APPLE II Speaker toggle ($C030 / 49184)
     if (active_model == BIOS_MODEL_APPLE2 && addr == 49184) {
         if (intercepted) *intercepted = true;
 #ifndef NO_SDL2

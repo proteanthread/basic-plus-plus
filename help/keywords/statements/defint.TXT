@@ -1,0 +1,34 @@
+DEFINT Define Integer Default Type
+======================================================================
+
+The DEFINT statement declares that all variable identifiers beginning
+with the specified letter(s) or ranges default to integer variables.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    DEFINT letter_range [, letter_range2, ...]
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Declares variables starting with specified letters as integer type.
+  - Classic convention: DEFINT I-N.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  2           ERR_SYNTAX_ERROR      Invalid letter range syntax
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DEFINT I-N
+    20 COUNT = 100
+    30 PRINT "Integer count: "; COUNT

@@ -1,0 +1,25 @@
+TRACE Execution Tracing Statement
+=================================
+
+Toggles line-by-line program execution tracing on the console.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    TRACE ON | OFF
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Displays executed line numbers during runtime.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 TRACE ON
+    20 X = 10
+    30 Y = 20
+    40 TRACE OFF

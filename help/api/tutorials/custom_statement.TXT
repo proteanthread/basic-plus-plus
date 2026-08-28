@@ -1,0 +1,20 @@
+TUTORIAL: IMPLEMENTING CUSTOM STATEMENTS (tutorials/custom_statement.h)
+======================================================================
+
+1. OVERVIEW
+Demonstrates implementing and registering a custom statement keyword using
+the Statement Dispatch API (stmt/stmt.h) and Lexer (lexer/lexer.h).
+
+2. HANDLER SIGNATURE
+  typedef BppError (*BppStmtHandler)(VMContext *vm, LexerContext *lex);
+
+3. CRITICAL IMPLEMENTATION RULES
+- Handlers MUST advance lexer via lex_next() before returning err.code = 0.
+- Validate types before accessing BValue union members.
+- Temporary strings evaluated in handlers must be freed via str_release().
+
+4. REGISTRATION
+  stmt_register(reg, KW_BENCHMARK, stmt_benchmark_handler, "BENCHMARK", STMT_FLAG_BOTH);
+
+5. USAGE IN BASIC
+  10 BENCHMARK 5000

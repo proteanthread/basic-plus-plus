@@ -1,0 +1,26 @@
+EXISTS File Existence Query Function
+====================================
+
+Returns -1 (TRUE) if the specified file or directory path exists on disk, or 0 (FALSE) otherwise.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    is_file% = EXISTS(filename$)
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Safe existence check that does not throw filesystem error exceptions.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 IF EXISTS("CONFIG.DAT") THEN
+    20   PRINT "Config file present."
+    30 ELSE
+    40   PRINT "Config missing!"
+    50 END IF

@@ -1,52 +1,14 @@
-/**
- * @file arrayext.c
- * @brief Extension module implementation for advanced array manipulation functions in BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements extended array functions (ARRAY.SORT, ARRAY.REVERSE, ARRAY.SEARCH, ARRAY.SLICE, ARRAY.CONCAT) for manipulating single and multi-dimensional array structures.
- *
- * 2. WHY IT EXISTS:
- * Provides high-performance extended array operations directly in C to avoid slow BASIC loop iterations.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Queries VM array descriptors, respects OPTION BASE lower bounds via arr_get_option_base(), and manipulates array elements directly in contiguous memory blocks.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'module'. Includes "module/module.h", "vm/vm.h", "eval/eval.h", <stdlib.h>, <string.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Core feature included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Add additional array transformation routines (ARRAY.FILTER, ARRAY.MAP).
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Must respect OPTION BASE array indexing and 64-bit array element pointer alignment.
- *
- * 8. WHAT TO EXPECT:
- * Modifies array elements or creates new array descriptors, returning ERR_NONE or ERR_SUBSCRIPT_OUT_OF_RANGE.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify option base indexing calculations and element size bounds.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext pointer and non-NULL target array descriptor.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Standard qsort / bsearch C standard library usage.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/runtime/variables.c
- * Prerequisite Header Files:
- * - engine/include/module/module.h
- * - engine/include/vm/vm.h
- */
-
-/**
- * @file mod_arrayext.c
- * @brief Implementation of MAP, FILTER, REDUCE, and Aggregate array functions.
- */
+// FILENAME: arrayext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (arrays.h, arrays.c, funcreg.h, funcreg.c, string.h)
+// NEEDS: libcore (variables.h, variables.c)
+// NEEDS: libengine (eval.h, eval.c, string.c)
+// NEEDS: libext (arrayext.h)
+// Provides core logic and interface definitions for arrayext within BASIC++.
+//
+// ---- Includes ----
 
 #include "module/arrayext.h"
 #include "eval/eval.h"
@@ -57,7 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Statement handler: ARRAY MAP A() TO B() USING FN_DOUBLE or GOSUB or expr */
+// Statement handler: ARRAY MAP A() TO B() USING FN_DOUBLE or GOSUB or expr
 BppError arrayext_execute_map(VMContext *vm, const char *src_arr, const char *dst_arr, const char *fn_name, const char *label_name, const char *expr_str) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -68,7 +30,7 @@ BppError arrayext_execute_map(VMContext *vm, const char *src_arr, const char *ds
         return err;
     }
 
-    /* We iterate through flat elements */
+    // We iterate through flat elements
     int total_size = 0;
     BValue *src_flat = arr_get_flat_elements(arr, src_arr, &total_size);
     if (!src_flat) {
@@ -76,7 +38,7 @@ BppError arrayext_execute_map(VMContext *vm, const char *src_arr, const char *ds
         return err;
     }
 
-    /* Make sure destination array exists, or DIM it to the same bounds */
+    // Make sure destination array exists, or DIM it to the same bounds
     if (!arr_exists(arr, dst_arr)) {
         int bounds[4] = {0};
         int dims = arr_get_dimensions(arr, src_arr, bounds, 4);
@@ -93,7 +55,7 @@ BppError arrayext_execute_map(VMContext *vm, const char *src_arr, const char *ds
 
     for (int i = 0; i < total_size; i++) {
         BValue in_val = src_flat[i];
-        BValue out_val = in_val; /* default fallback */
+        BValue out_val = in_val; // default fallback
 
         if (fn_name[0] != '\0') {
             BValue args[1];
@@ -103,7 +65,7 @@ BppError arrayext_execute_map(VMContext *vm, const char *src_arr, const char *ds
             if (in_val.type == VAL_STRING) str_release(vm_get_str(vm), in_val.as.string);
             if (err.code != 0) return err;
         } else if (expr_str[0] != '\0') {
-            /* Create local variable X? Easiest is to push a temporary variable context, but simpler: set 'X' or 'ELEM' in scope */
+            // Create local variable X? Easiest is to push a temporary variable context, but simpler: set 'X' or 'ELEM' in scope
             BValue *v = var_declare(vm_get_var(vm), "X");
             if (v) *v = in_val;
             
@@ -112,8 +74,8 @@ BppError arrayext_execute_map(VMContext *vm, const char *src_arr, const char *ds
             lex_shutdown(expr_lex);
             if (err.code != 0) return err;
         } else if (label_name[0] != '\0') {
-            /* GOSUB is tricky in a C loop. To fully support GOSUB, we'd need to pause VM and re-enter.
-             * But for now, we'll raise an error if GOSUB is used because it requires async state machine mapping. */
+            // GOSUB is tricky in a C loop. To fully support GOSUB, we'd need to pause VM and re-enter.
+// But for now, we'll raise an error if GOSUB is used because it requires async state machine mapping.
             err.code = 100; err.message = "ARRAY MAP GOSUB not synchronously supported yet";
             return err;
         }

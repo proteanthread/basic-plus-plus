@@ -1,0 +1,17 @@
+MAT_TRN Matrix Transpose Statement
+======================================================================
+
+The MAT TRN statement computes the matrix transpose (swaps rows and
+columns).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    MAT B = TRN(A)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 MAT B = TRN(A)

@@ -1,0 +1,27 @@
+C17 API REFERENCE: ASSOCIATIVE MAP SUBSYSTEM (runtime/map.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Associative Map Subsystem provides reference-counted key-value
+dictionaries, polymorphic BValue elements, and built-in serialization for
+JSON, XML, YAML, and INI formats.
+
+2. KEY TYPES & STRUCTS
+- BppMapEntry: Single key (char *) and value (BValue) pair.
+- BppMap: Struct containing ref_count, entries array, count, capacity.
+
+3. CORE API FUNCTIONS
+- map_create() -> BppMap *
+- map_add_ref(map)
+- map_release(str_ctx, map)
+- map_set(str_ctx, map, key, val) -> bool
+- map_get(map, key, out_val) -> bool
+- map_remove(str_ctx, map, key) -> bool
+- map_count(map) -> int
+- map_has(map, key) -> bool
+- map_parse_json(str_ctx, json) -> BppMap *
+- map_stringify_json(map) -> char *
+- map_parse_xml / yaml / ini
+
+4. ARCHITECTURAL INVARIANTS
+- Map release safely frees all keys and releases all VAL_STRING elements.

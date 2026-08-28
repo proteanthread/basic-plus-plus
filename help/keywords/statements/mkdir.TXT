@@ -1,0 +1,29 @@
+MKDIR Make Directory Statement
+==============================
+
+Creates a new directory on disk or in the virtual filesystem.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    MKDIR path_expression$
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 75 (ERR_PATH_FILE_ACCESS_ERROR): Directory already exists or parent missing.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Requires CAP_FS filesystem write permissions.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 MKDIR "BACKUPS"
+    20 MKDIR "LOGS/2026"

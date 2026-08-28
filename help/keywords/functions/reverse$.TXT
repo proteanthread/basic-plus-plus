@@ -1,0 +1,16 @@
+REVERSE$ String Character Reversal Function
+======================================================================
+
+The REVERSE$ function reverses the order of characters in a string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    reversed$ = REVERSE$(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT REVERSE$("ABCDE")   : REM Outputs "EDCBA"

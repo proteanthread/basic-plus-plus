@@ -1,0 +1,22 @@
+lexer Ephemeral Lexical Analyzer (libkernel)
+======================================================================
+
+The lexer scans source code on-demand into ephemeral tokens without
+modifying or permanently storing token arrays.
+
+
+INVARIANTS
+----------------------------------------------------------------------
+
+  - Ephemeral token generation: scanned and discarded on the fly.
+  - Tagged union token structures (BppToken).
+  - Length-bounded identifier comparisons.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    LexerContext *lex_create(const char *source);
+    void lex_destroy(LexerContext *lex);
+    BppToken lex_next(LexerContext *lex);
+    BppToken lex_peek(LexerContext *lex);

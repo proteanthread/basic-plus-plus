@@ -1,0 +1,17 @@
+CONJ Complex Conjugate Function
+======================================================================
+
+The CONJ function computes the complex conjugate (x - iy) of a complex
+number z = x + iy.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res = CONJ(complex_val)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT IMAG(CONJ(COMPLEX(1, 2)))   : REM Outputs -2

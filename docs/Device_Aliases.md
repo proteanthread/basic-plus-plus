@@ -1,48 +1,109 @@
-# Virtual Machine & Device Alias Subsystem
+# BASIC++ v6.5.2 Device Aliases
 
-BASIC++ implements a dynamic Device Alias subsystem integrated tightly with the Virtual Machine / Mock BIOS hardware profiles. This allows for 100% accurate legacy device mapping.
+## 1. OVERVIEW
 
-## Overview
-Classic systems often had proprietary names for hardware ports. For example, the Atari 8-bit computers used `E:` for the screen editor and `P:` for the printer. The Commodore 64 used device numbers like `8` for disk drives and `4` for printers.
+Device aliases provide shorthand names for common virtual device paths and file device targets. They allow BASIC++ programs written for one system's device naming conventions to run on another without modification.
 
-The Device Alias system intercepts `OPEN` operations for these legacy device strings and seamlessly redirects them to modern BASIC++ Virtual Devices (VDevs) such as `CON:`, `LPT:`, or `VDRV:`.
+## 2. STANDARD DEVICE NAMES
 
-## Mock BIOS Machine Profiles
-When a virtual machine is booted (e.g. `VM BOOT "game.bas" SYSTEM ATARI`), the host interpreter queries the `MockBiosModel` and loads a preset array of device aliases.
+BASIC++ recognizes the following standard device names. These can be used as filenames with the OPEN statement:
 
-**Supported Profiles:**
-- **Atari 8-bit (`BIOS_MODEL_ATARI`)**: Maps `E:`, `S:`, `K:`, `P:`, `C:`, `D1:`, etc.
-- **Commodore 64 (`BIOS_MODEL_C64`)**: Maps `0` (KBD), `3` (SCR), `4`/`5` (LPT), `8`/`9` (VDRV), etc.
-- **Apple II (`BIOS_MODEL_APPLE2`)**: Standard disk/printer mappings.
-- **TRS-80 (`BIOS_MODEL_TRS80`)**: Maps `*PR`, `*CL`, `*CS`.
-- **IBM PC / MS-DOS (`BIOS_MODEL_PC`)**: Standard GW-BASIC mappings (`SCRN:`, `KYBD:`, `LPT1:`).
-
-## Virtual Drives (`VDRV:`)
-To support legacy disk drive prefixes like `D1:` (Atari) or `8` (Commodore), the alias system resolves prefixes natively. 
-If an alias ends with a colon (`:`), the engine performs a **prefix match** instead of an exact match.
+| Device | Description |
+|--------|-------------|
+| CON: | Console (stdin/stdout). Reading gets keyboard input, writing goes to the screen. |
+| NUL: | Null device. Writing is discarded. Reading returns immediate EOF. |
+| SCRN: | Screen output only. Same as CON: for writing but cannot be read. |
+| KYBD: | Keyboard input only. Same as CON: for reading but cannot be written. |
+| LPT1: | First parallel printer port. |
+| LPT2: | Second parallel printer port. |
+| LPT3: | Third parallel printer port. |
+| COM1: | First serial port. |
+| COM2: | Second serial port. |
 
 ```basic
-OPEN "D1:TEST.BAS" FOR INPUT AS #1
+10 OPEN "LPT1:" FOR OUTPUT AS #1
+20 PRINT #1, "This goes to the printer"
+30 CLOSE #1
 ```
-In the background, `D1:` is aliased to `VDRV:` (Virtual Drive). The remaining filename (`TEST.BAS`) is passed directly to the Virtual Drive I/O handler, allowing mapped folders or `.d64`/`.atr` image mounts to emulate hardware disk interfaces accurately.
 
-## Runtime Alias Modification (DEVMAP)
-You can dynamically modify these aliases at runtime without changing the VM's hardware profile using the `DEVMAP ALIAS` command.
+## 3. DRIVE LETTER ALIASES
 
-### Syntax
+On systems without physical drive letters (Linux, macOS), the VFS mount system provides drive letter aliases:
+
 ```basic
-DEVMAP ALIAS "SRC:" "TGT:"
-DEVMAP ALIAS RESET
-DEVMAP ALIAS LIST
+10 MOUNT "A:" TO "/home/user/basic/floppy_a"
+20 MOUNT "B:" TO "/home/user/basic/floppy_b"
+30 MOUNT "C:" TO "/home/user/basic"
+40 OPEN "A:MYFILE.BAS" FOR INPUT AS #1
 ```
 
-### Examples
-Map the Atari screen editor (`E:`) to the modern console:
+This allows DOS-era programs that reference drive letters to run on modern Unix systems by mapping drives to directories.
+
+UMOUNT "A:" removes the mount. Without any mounts, drive letter references produce Error 76 (Path not found) on systems that do not have native drive letters.
+
+## 4. THE DEVMAP COMMAND
+
+DEVMAP displays the current device alias mapping:
+
 ```basic
-DEVMAP ALIAS "E:" "CON:"
+> DEVMAP
+Device Aliases:
+  CON:   -> Virtual Console (VCon)
+  NUL:   -> Null Device
+  SCRN:  -> Screen Output (VCon Write)
+  KYBD:  -> Keyboard Input (VCon Read)
+  LPT1:  -> Printer (plat_sys)
+  COM1:  -> Serial Port 1 (plat_net)
+  A:     -> /home/user/basic/floppy_a
+  N:     -> FujiNet Network Device
 ```
 
-Clear all active aliases:
+## 5. NETWORK DEVICE ALIASES
+
+The FujiNet compatibility layer registers the N: device for network I/O:
+
 ```basic
-DEVMAP ALIAS RESET
+10 OPEN "N:tcp://example.com:80/" FOR INPUT AS #1
 ```
+
+The N: prefix is intercepted by the VFS and routed to the VNet subsystem. The rest of the path is parsed as a URL.
+
+## 6. CUSTOM DEVICE ALIASES
+
+Modules can register custom device aliases through the device bus API. A custom alias maps a device name prefix to a module-provided handler:
+
+```basic
+10 MODULE LOAD "mydevice"
+20 ' After loading, the module may register "X:" as a custom device
+30 OPEN "X:DATA" FOR INPUT AS #1
+```
+
+## 7. REDIRECT STATEMENT
+
+The REDIRECT statement temporarily redirects a standard device to a file:
+
+```basic
+10 REDIRECT SCRN: TO "output.txt"
+20 PRINT "This goes to the file"
+30 PRINT "And this too"
+40 REDIRECT SCRN: TO CON:
+50 PRINT "This goes back to the screen"
+```
+
+REDIRECT is useful for capturing program output to a file without modifying every PRINT statement. It works by temporarily reassigning the VCon output stream.
+
+## 8. LPRINT AND PRINTER DEVICES
+
+LPRINT sends output to the printer (LPT1:) using the same formatting as PRINT:
+
+```basic
+10 LPRINT "Report Title"
+20 LPRINT "============"
+30 LPRINT TAB(10); "Column 1"; TAB(30); "Column 2"
+```
+
+LPRINT does not require opening a file channel. It uses the default printer device. LPRINT USING supports formatted printer output.
+
+LPOS(n) returns the current print head position on printer n (0 for LPT1:, 1 for LPT2:).
+
+On modern systems without physical parallel ports, LPT1: maps to the default system printer through the platform abstraction layer.

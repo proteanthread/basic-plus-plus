@@ -1,58 +1,18 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file print_using.c
- * @brief Runtime component implementation and public API surface for print_using.c.
- *
- * WHAT IT DOES:
- * Implements the core responsibilities, data structures, and function evaluation logic for print_using.c within the runtime subsystem.
- *
- * WHY IT EXISTS:
- * Ensures decoupled modularity, strict C17 portability, and clear micro-library architectural boundary enforcement.
- *
- * WHY IT WORKS THIS WAY:
- * Designed with zero-initialization defaults, bounded memory operations, and explicit error code propagation to the VM state.
- *
- * WHAT CAN BE CHANGED:
- * Subsystem configuration defaults, local execution helper routines, and documentation annotations.
- *
- * WHAT CANNOT BE CHANGED:
- * Public API symbol declarations, micro-library metadata structures, and thread-safe error reporting contracts.
- *
- * WHAT TO EXPECT:
- * High-performance deterministic execution with zero side-effects outside designated state structures.
- *
- * WHAT TO DO IF SOMETHING BREAKS:
- * Verify context initialization, trace BppError return codes, and inspect log outputs for bounds assertions.
- *
- * ASSUMPTIONS:
- * Valid subsystem contexts and required memory pools are allocated prior to executing API handlers.
- *
- * PORTABILITY CONCERNS:
- * Strict C17 compliance, 64-bit pointer safety, and pure ASCII string operations across desktop, IoT, and embedded targets.
- *
- * FUTURE EXPANSIONS:
- * Additional dialect compatibility mappings, telemetry instrumentation, and microcontroller payload stubs.
- */
-
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file print_using.c
- * @brief PRINT USING formatted output engine.
- */
+// FILENAME: print_using.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, file.h, file.c, string.h, using.h)
+// NEEDS: libengine (eval.h, eval.c, stmt.h, string.c)
+// NEEDS: libkernel (vdev.h, vdev.c, vprinter.h, vprinter.c)
+// Provides core logic and interface definitions for print_using within BASIC++.
+//
+// ---- Includes ----
 
 #include "stmt/stmt.h"
 #include "eval/eval.h"
 #include "device/vdev.h"
+#include "device/vprinter.h"
 #include "runtime/file.h"
 #include "runtime/using.h"
 #include <stdio.h>
@@ -64,38 +24,79 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
     BppError err;
     memset(&err, 0, sizeof(err));
 
-    /* 1. Format string expression */
+    // 1. Format string expression or IMAGE line number
     BValue fmt_val = eval_expression(vm, lex, &err);
     if (err.code != 0) {
         vm_set_error(vm, err.code, err.message);
         return;
     }
-    if (fmt_val.type != VAL_STRING) {
-        vm_set_error(vm, 13, "Type mismatch: PRINT USING expects format string");
+    
+    char image_buf[512] = "";
+    const char *fmt_str = NULL;
+    if (fmt_val.type == VAL_STRING) {
+        fmt_str = str_data(fmt_val.as.string);
+    } else if (fmt_val.type == VAL_NUMBER || fmt_val.type == VAL_INTEGER) {
+        BppLineNumber target_line = fmt_val.as.number;
+        const char *line_text = mem_program_get(vm_get_mem(vm), target_line);
+        if (!line_text) {
+            vm_set_error(vm, 8, "Undefined line number in PRINT USING");
+            return;
+        }
+        const char *p = line_text;
+        while (isspace((unsigned char)*p)) p++;
+        if (strncasecmp(p, "IMAGE", 5) == 0) {
+            p += 5;
+            while (isspace((unsigned char)*p) || *p == ':') p++;
+            strncpy(image_buf, p, sizeof(image_buf) - 1);
+            image_buf[sizeof(image_buf) - 1] = '\0';
+            fmt_str = image_buf;
+        } else if (strncasecmp(p, "FORM", 4) == 0) {
+            p += 4;
+            while (isspace((unsigned char)*p) || *p == ':') p++;
+            strncpy(image_buf, p, sizeof(image_buf) - 1);
+            image_buf[sizeof(image_buf) - 1] = '\0';
+            fmt_str = image_buf;
+        } else {
+            strncpy(image_buf, p, sizeof(image_buf) - 1);
+            image_buf[sizeof(image_buf) - 1] = '\0';
+            fmt_str = image_buf;
+        }
+    } else {
+        vm_set_error(vm, 13, "Type mismatch: PRINT USING expects format string or line number");
         return;
     }
-    const char *fmt_str = str_data(fmt_val.as.string);
 
-    /* 2. Semicolon separator */
+    // 2. Semicolon or comma separator
     BppToken tok = lex_next(lex);
-    if (tok.type != TOK_SEMICOLON) {
-        vm_set_error(vm, 2, "Expected ';' in PRINT USING statement");
-        str_release(vm_get_str(vm), fmt_val.as.string);
+    if (tok.type != TOK_SEMICOLON && tok.type != TOK_COMMA) {
+        vm_set_error(vm, 2, "Expected ';' or ',' in PRINT USING statement");
+        if (fmt_val.type == VAL_STRING && fmt_val.as.string) str_release(vm_get_str(vm), fmt_val.as.string);
         return;
     }
 
-    /* Parse USING format mask */
+    // Parse USING format mask
     UsingMask mask;
     using_parse_mask(fmt_str, &mask);
+
+    if (mask.token_count == 0) {
+        if (fmt_val.type == VAL_STRING && fmt_val.as.string) str_release(vm_get_str(vm), fmt_val.as.string);
+        return;
+    }
 
     int mask_idx = 0;
     bool last_was_sep = false;
     BValue val_none;
-    val_none.type = VAL_NONE;
+    memset(&val_none, 0, sizeof(val_none));
+    val_none.type = VAL_NUMBER;
     val_none.as.number = 0.0;
 
     while (true) {
-        /* Print leading literals */
+        tok = lex_peek(lex);
+        if (tok.type == TOK_EOL || tok.type == TOK_EOF || (tok.type == TOK_KEYWORD && tok.as.keyword == KW_ELSE)) {
+            break;
+        }
+
+        // 3. Output literal tokens up to next format specifier
         while (mask_idx < mask.token_count) {
             UsingTokenType t_type = mask.tokens[mask_idx].type;
             if (t_type == USING_TOK_LITERAL || t_type == USING_TOK_ATTR || 
@@ -106,8 +107,10 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
                 using_format_output(vm, &mask, &mask_idx, val_none, out_buf, sizeof(out_buf));
                 if (stream) {
                     fprintf(stream, "%s", out_buf);
-                } else if (channel == -1) {
+                } else if (channel == PRINT_CHANNEL_CONSOLE) {
                     vdev_puts(vm_get_vdev(vm), out_buf);
+                } else if (channel == PRINT_CHANNEL_PRINTER) {
+                    vprinter_write_str(out_buf);
                 } else {
                     file_puts(vm_get_file(vm), channel, out_buf);
                 }
@@ -116,20 +119,7 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
             }
         }
 
-        tok = lex_peek(lex);
-        if (tok.type == TOK_EOL || tok.type == TOK_EOF || (tok.type == TOK_KEYWORD && tok.as.keyword == KW_ELSE)) {
-            break;
-        }
-
-        /* Evaluate next expression to format */
-        BValue val = eval_expression(vm, lex, &err);
-        if (err.code != 0) {
-            vm_set_error(vm, err.code, err.message);
-            str_release(vm_get_str(vm), fmt_val.as.string);
-            return;
-        }
-
-        /* Recycle mask index if we reached the end of format tokens */
+        // Wrap mask if exhausted
         if (mask_idx >= mask.token_count) {
             mask_idx = 0;
             while (mask_idx < mask.token_count) {
@@ -142,8 +132,10 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
                     using_format_output(vm, &mask, &mask_idx, val_none, out_buf, sizeof(out_buf));
                     if (stream) {
                         fprintf(stream, "%s", out_buf);
-                    } else if (channel == -1) {
+                    } else if (channel == PRINT_CHANNEL_CONSOLE) {
                         vdev_puts(vm_get_vdev(vm), out_buf);
+                    } else if (channel == PRINT_CHANNEL_PRINTER) {
+                        vprinter_write_str(out_buf);
                     } else {
                         file_puts(vm_get_file(vm), channel, out_buf);
                     }
@@ -153,15 +145,24 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
             }
         }
 
-        /* Format variable value using the specifier token */
+        // Format variable value using the specifier token
         char out_buf[256];
         out_buf[0] = '\0';
+        BValue val = eval_expression(vm, lex, &err);
+        if (err.code != 0) {
+            vm_set_error(vm, err.code, err.message);
+            str_release(vm_get_str(vm), fmt_val.as.string);
+            return;
+        }
+
         using_format_output(vm, &mask, &mask_idx, val, out_buf, sizeof(out_buf));
 
         if (stream) {
             fprintf(stream, "%s", out_buf);
-        } else if (channel == -1) {
+        } else if (channel == PRINT_CHANNEL_CONSOLE) {
             vdev_puts(vm_get_vdev(vm), out_buf);
+        } else if (channel == PRINT_CHANNEL_PRINTER) {
+            vprinter_write_str(out_buf);
         } else {
             file_puts(vm_get_file(vm), channel, out_buf);
         }
@@ -179,7 +180,7 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
         }
     }
 
-    /* Print trailing literals */
+    // Print trailing literals
     while (mask_idx < mask.token_count) {
         UsingTokenType t_type = mask.tokens[mask_idx].type;
         if (t_type == USING_TOK_LITERAL || t_type == USING_TOK_ATTR || 
@@ -190,8 +191,10 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
             using_format_output(vm, &mask, &mask_idx, val_none, out_buf, sizeof(out_buf));
             if (stream) {
                 fprintf(stream, "%s", out_buf);
-            } else if (channel == -1) {
+            } else if (channel == PRINT_CHANNEL_CONSOLE) {
                 vdev_puts(vm_get_vdev(vm), out_buf);
+            } else if (channel == PRINT_CHANNEL_PRINTER) {
+                vprinter_write_str(out_buf);
             } else {
                 file_puts(vm_get_file(vm), channel, out_buf);
             }
@@ -203,18 +206,22 @@ void print_using_internal_ex(VMContext *vm, LexerContext *lex, int channel, FILE
     if (!last_was_sep) {
         if (stream) {
             fprintf(stream, "\n");
-        } else if (channel == -1) {
+        } else if (channel == PRINT_CHANNEL_CONSOLE) {
             vdev_putc(vm_get_vdev(vm), '\n');
+        } else if (channel == PRINT_CHANNEL_PRINTER) {
+            vprinter_write_str("\n");
         } else {
             file_putc(vm_get_file(vm), channel, '\n');
         }
     }
     if (stream) {
         fflush(stream);
-    } else if (channel != -1) {
+    } else if (channel >= 0) {
         file_flush(vm_get_file(vm), channel);
     }
-    str_release(vm_get_str(vm), fmt_val.as.string);
+    if (fmt_val.type == VAL_STRING && fmt_val.as.string) {
+        str_release(vm_get_str(vm), fmt_val.as.string);
+    }
 }
 
 void print_using_internal(VMContext *vm, LexerContext *lex, int channel) {

@@ -1,0 +1,30 @@
+PAINT Graphics Flood Fill Statement
+===================================
+
+Fills an enclosed graphics region with a solid color, stopping at the specified boundary border color.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    PAINT (x%, y%) [, [fill_color%] [, [border_color%]]]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Seed coordinates outside screen bounds.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Scanline flood fill algorithm with boundary detection.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SCREEN 12
+    20 CIRCLE (320, 240), 50, 14 : REM Yellow boundary
+    30 PAINT (320, 240), 12, 14   : REM Fill inside with red

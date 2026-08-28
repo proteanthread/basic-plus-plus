@@ -1,0 +1,20 @@
+security Capability Sandbox & Permission Model (libkernel)
+======================================================================
+
+The security library enforces sandboxed capability bitmasks across file
+access, networking, raw memory manipulation, and process execution.
+
+
+LEVELS & CAPABILITIES
+----------------------------------------------------------------------
+
+  - Levels: UNRESTRICTED, STANDARD, SANDBOXED, STRICT, PARANOID.
+  - Capabilities: CAP_FS, CAP_NET, CAP_MEM, CAP_SYS, CAP_IO.
+  - Unauthorized operations trigger Error 70 (Permission Denied).
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    int security_check(SecurityOperation op, int param);
+    void security_set_level(SecurityLevel level);

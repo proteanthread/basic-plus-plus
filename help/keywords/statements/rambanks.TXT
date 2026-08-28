@@ -1,0 +1,23 @@
+RAMBANKS Available Memory Banks Function
+======================================================================
+
+The RAMBANKS function returns the total number of 64KB virtual memory
+banks available in the VM memory subsystem.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    count% = RAMBANKS()
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Returns integer count of available 64KB banks.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Banks: "; RAMBANKS()

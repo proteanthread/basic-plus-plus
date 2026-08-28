@@ -1,0 +1,73 @@
+BASIC++ C17 PUBLIC API ARCHITECTURE INDEX
+======================================================================
+
+1. EXECUTIVE SUMMARY & ARCHITECTURE OVERVIEW
+The BASIC++ v6.5.2 Public C17 API provides a modular, freestanding C17
+interface for embedding the BASIC++ interpreter, extending the language
+with custom statements and functions, constructing virtual devices, and
+integrating with native host environments.
+
+Core Principles:
+- Freestanding ISO C17 compliance with zero host OS dependencies in core.
+- Decoupled executable targets (baspp 640MB, bpp 384MB, bs 64MB).
+- 11-Modular library spectrum from libboot to libext.
+- Strict memory safety via tagged union BValue and refcounted StringContext.
+
+2. API DOMAINS & HEADER MAPPINGS
+
+1. Core Interpreter & VM:
+   - core/boot.h      Boot sequence and memory pool initialization
+   - core/state.h     Global interpreter lifecycle and signal coordination
+   - core/spec.h      Language dialect profiles and specification definitions
+   - core/version.h   Semantic versioning constants (6.5.2) and targets
+   - types/types.h    BValue, BppError, BppToken, and config constants
+   - vm/vm.h          Virtual machine execution loop and context accessors
+
+2. Lexical Analysis & Evaluation:
+   - lexer/lexer.h    Ephemeral token scanning and keyword lookup
+   - eval/eval.h      Non-recursive expression evaluation and AST traversal
+   - stmt/stmt.h      Statement dispatch registration and execution handlers
+
+3. Runtime Type & Data Management:
+   - runtime/variables.h Variable context and scalar binding
+   - runtime/strings.h   Reference-counted string pool (BppString)
+   - runtime/arrays.h    Multi-dimensional array descriptors and bounds
+   - runtime/struct.h    User-defined TYPE records and struct packing
+   - runtime/file.h      File channels, record buffers, and range locking
+   - runtime/funcreg.h   Native C function registration and metadata
+   - runtime/metadata.h  MicroLib metadata blocks and syntax cards
+   - runtime/task.h      Asynchronous worker task spawning and joins
+   - runtime/vfs.h       Virtual Filesystem mount point routing
+   - runtime/gemini.h    Gemini protocol streaming client
+
+4. Memory & Virtualization Subsystems:
+   - memory/memory.h        Main memory pools and program line storage
+   - memory/map.h           String-to-pointer hash maps
+   - memory/segmented_mem.h 8086 real-mode 1MB segmented memory (PEEK/POKE)
+   - bios/bios.h            Freestanding PC BIOS virtualization (INT 10h)
+
+5. Virtual Devices & Hardware Bus:
+   - device/vdev.h    Master Virtual Device abstraction and bus multiplexer
+   - device/vcon.h    Virtual Console (VConContext) and ANSI parser
+   - device/vnet.h    Virtual Network sockets (N: device)
+   - device/bgi.h     BASIC++ Graphics Interface rasterizer and palettes
+   - device/fujinet.h FujiNet peripheral bus emulation (N:, D:, P:)
+   - device/usb.h     Virtual USB controller and HID endpoints
+   - device/bus.h     I/O port address space virtualization (INP/OUT)
+
+6. Platform Abstraction Layer:
+   - platform/platform.h  OS encapsulation for console, fs, thread, time, dl
+
+7. Security, Modules & Development Tools:
+   - security/security.h  Capability-based sandbox (CAP_FS, CAP_NET, CAP_SYS)
+   - module/module.h      Dynamic C extension loader (MODULE LOAD/UNLOAD)
+   - module/mod_arrayext.h Matrix mathematics extension module
+   - editor/editor.h      Multi-window TUI code editor
+   - debug/logger.h       Opt-in multi-channel logging framework
+
+3. DEVELOPER TUTORIALS
+- Tutorial 1: Creating Custom Functions     (tutorials/custom_function.TXT)
+- Tutorial 2: Creating Custom Statements    (tutorials/custom_statement.TXT)
+- Tutorial 3: Building Dynamic Modules      (tutorials/custom_module.TXT)
+- Tutorial 4: Implementing Virtual Devices  (tutorials/custom_vdev.TXT)
+- Tutorial 5: Embedding BASIC++ in Hosts    (tutorials/embedding.TXT)

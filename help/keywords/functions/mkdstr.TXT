@@ -1,0 +1,18 @@
+BASIC++ FUNCTION REFERENCE: MKD$ / MKDSTR
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  result$ = MKD$(double_expr#)
+
+Converts a 64-bit double-precision floating-point number into an 8-byte binary
+string. Deserialized using CVD.
+
+2. PARAMETERS & RETURN VALUES
+- double_expr#: Numeric expression converted to double.
+- Returns: 8-byte binary string.
+
+3. ERROR CODES
+- Error 13 (ERR_TYPE_MISMATCH): Argument cannot be evaluated as numeric.
+
+4. EXAMPLES
+  10 LSET D$ = MKD$(3.14159265358979)

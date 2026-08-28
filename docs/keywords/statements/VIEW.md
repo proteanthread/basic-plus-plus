@@ -1,0 +1,26 @@
+# `VIEW` Graphics Viewport and Clipping Statement
+
+## 1. BASIC Usage and Keyword Definition
+
+Defines a rectangular physical clipping viewport region on the graphics display.
+
+### Syntax Signatures:
+```basic
+VIEW [[SCREEN] (x1%, y1%)-(x2%, y2%) [, [fill_color%] [, border_color%]]]
+```
+
+### Error Handling & Boundary Conditions:
+- **Error 5 (ERR_ILLEGAL_FUNCTION_CALL)**: Viewport coordinates outside screen bounds.
+
+### Operational Notes:
+- Restricts all subsequent drawing operations to the viewport rectangle.
+
+---
+
+## 2. Code Examples
+
+```basic
+10 SCREEN 12
+20 VIEW (100, 100)-(500, 350), 1, 15 : REM Blue viewport with white border
+30 CIRCLE (200, 125), 80, 14           : REM Clipped within viewport
+```

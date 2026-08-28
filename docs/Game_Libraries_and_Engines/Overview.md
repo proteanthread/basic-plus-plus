@@ -1,48 +1,102 @@
 # Game Libraries and Engines Overview
 
-BASIC++ includes several powerful game libraries and engines to help you build character-based games quickly. These libraries offer reusable subroutines for rendering grids, procedural map generation, entity management, and arcade physics.
+BASIC++ provides a modular architecture for developing 2D text, character-mapped, and graphical games rapidly. By combining structured BASIC procedures with specialized reusable game libraries, developers can create grid-based strategy games, roguelikes, procedural dungeon crawlers, arcade fixed shooters, and platformers.
 
-## Available Libraries
+## Architectural Model
 
-- **BOARDGAME.LIB**: Grid-based game mechanics (chess, checkers, solitaire, pegsol, etc.). Handles 2D arrays, cursors, and rendering.
-- **RPG_PROCGEN.LIB**: Procedural generation for Roguelikes and RPGs (Zelda, Adventure). Handles map layouts, monster spawning, and room transitions.
-- **ARCADE_SHOOTER.LIB**: Mechanics for fixed shooters (Space Invaders). Handles sprite swarms, bullets, and collision.
-- **PLATFORMER.LIB**: Physics and collision for platformers (Mario, Donkey Kong). Handles gravity, jumping, and level loading.
-- **SWARM.LIB**: Advanced multi-entity AI and swarming behaviors.
-- **MAZE.LIB**: Maze generation and pathfinding (Pac-Man).
+Game development in BASIC++ leverages the core engine's decoupled virtual devices (`VDev`, `VCon`), keyboard input event pumps, audio synthesizer (`BEEP`, `SOUND`, `PLAY`), and BGI graphics modes (`SET SCREEN`, `SET GRAPHICS`, `SCREEN`). 
 
-## Loading Libraries
+High-level game mechanics are packaged into structured companion libraries (`.LIB` files) or modular units loaded into the interpreter:
 
-Use the LOAD LIBRARY command to import subroutines at runtime:
-  LOAD LIBRARY "BOARDGAME"
-  LOAD LIBRARY "RPG_PROCGEN"
+```
++----------------------------------------------------------------+
+|                        Game Application                        |
++-------------------------------+--------------------------------+
+|   BOARDGAME.LIB / MAZE.LIB   |  ARCADE_SHOOTER.LIB / SWARM.LIB |
++-------------------------------+--------------------------------+
+|                Procedural Generation (RPG_PROCGEN.LIB)         |
++----------------------------------------------------------------+
+|           BASIC++ Virtual Machine & Runtime Subsystems         |
+|     (VDev Console, VMem, String Pool, Dynamic Array Engine)    |
++----------------------------------------------------------------+
+```
 
-You can verify successfully loaded libraries by typing LIBRARY LIST in immediate mode.
+## Standard Companion Libraries
 
-## Mixing and Matching
+| Library | Target Genre / Domain | Primary Capabilities |
+|---------|-----------------------|----------------------|
+| `BOARDGAME.LIB` | Chess, Checkers, Puzzles, Solitaire | Grid initialization, 2D array coordinates, cursor navigation, cell rendering |
+| `RPG_PROCGEN.LIB` | Roguelikes, RPGs, Dungeon Crawlers | Procedural room layout generation, cellular automaton caves, monster spawners, door states |
+| `ARCADE_SHOOTER.LIB` | Space Invaders, Galaxian, Shmups | Enemy swarm tracking, projectile movement, bounding-box collision detection |
+| `PLATFORMER.LIB` | Side-scrollers, Action Platformers | Gravity acceleration, floor/solid tile checking, jump impulses |
+| `SWARM.LIB` | Real-time AI, Flocking Behaviors | Coordinated sinusoidal movement, dive-bomb targeting algorithms |
+| `MAZE.LIB` | Mazes, Pac-Man style games | Recursive backtracker and cellular maze generation, impassable wall queries |
 
-BASIC++ encourages "mixing and matching" libraries to create unique genres!
-For example, you can build a grid-based RPG shooter by loading both BOARDGAME and SWARM! 
-  LOAD LIBRARY "BOARDGAME"
-  LOAD LIBRARY "SWARM"
+## Loading and Managing Libraries
 
-Because the subroutines are prefixed uniquely (e.g., BG_ for Boardgame, RPG_ for RPG, SW_ for Swarm), they will not collide.
+In structured BASIC++ programs, library subroutines and data structures are included using standard file inclusion, module loading (`MODULE`), or program chaining:
 
-## State Management & Returns
+```basic
+10 REM Load Game Subsystems
+20 LOAD LIBRARY "BOARDGAME"
+30 LOAD LIBRARY "SWARM"
+40 GOSUB 1000 : REM Initialize subsystems
+```
 
-Because BYREF is generally not supported for passing complex values safely back to the caller in BASIC++, all game libraries use Global Return Arrays for passing values out of a subroutine.
+To list loaded modules in an interactive session:
+```basic
+LIBRARY LIST
+```
 
-For example, BOARDGAME.LIB utilizes:
-  DIM BG_RET_STR1
-  DIM BG_RET_COL(1)
+## State Management and Global Return Channels
 
-When you call a subroutine that needs to return multiple parameters, it will populate BG_RET_STR1 and BG_RET_COL(1). You must read these values immediately after the CALL returns.
+Because historical Microsoft BASIC dialects and standard SUB subroutines pass arguments by value or simple references without arbitrary compound tuple returns, BASIC++ game libraries employ **Global Return Channels** for subroutines that generate multi-dimensional query results.
 
-## Saving and Loading Progress
+For example, `BOARDGAME.LIB` and `RPG_PROCGEN.LIB` define dedicated return registers:
+- `BG_RET_STR1` — String result (e.g. selected piece ID, cell ASCII symbol).
+- `BG_RET_COL(1)` — Color attribute register associated with the cell.
+- `RPG_RET_STATUS` — Success or collision status code.
 
-To implement game saves, use native file I/O OPEN ... FOR OUTPUT to write your engine state to a .SAV file, and OPEN ... FOR INPUT to restore it. 
-  OPEN "mygame.sav" FOR OUTPUT AS #1
-  PRINT #1, PLAYER_X
-  PRINT #1, PLAYER_Y
-  PRINT #1, SCORE
-  CLOSE #1
+### Usage Pattern:
+```basic
+100 REM Query board coordinate at X=3, Y=4
+110 CALL BG_GET_CELL(3, 4)
+120 Tile$ = BG_RET_STR1
+130 Attr% = BG_RET_COL(0)
+140 PRINT "Tile at (3,4) is "; Tile$; " with color "; Attr%
+```
+
+## Saving and Restoring Game State
+
+BASIC++ applications implement persistent game state, save slots, and configuration checkpoints using standard sequential and random-access file I/O or persistent VM state statements:
+
+```basic
+100 REM Save Game Checkpoint
+110 OPEN "SLOT1.SAV" FOR OUTPUT AS #1
+120 PRINT #1, PlayerX
+130 PRINT #1, PlayerY
+140 PRINT #1, Score%
+150 PRINT #1, Level%
+160 CLOSE #1
+170 PRINT "Game successfully saved to SLOT1.SAV"
+```
+
+For advanced snapshot serialization, `_STATESAVE "checkpoint.sav"` can serialize the entire active VM state.
+
+## Cross-References
+
+- **`Arcade_Engines.md`** — Detailed API and algorithms for arcade shooters, platformers, swarms, and mazes.
+- **`Boardgame.md`** — Grid setup, cursor handling, and visual cell rendering.
+- **`RPG_ProcGen.md`** — Dungeon layout generation, entity spawners, and collision.
+- **`Screen_And_Console.md`** — Console cursor control, color palettes, and text attributes.
+
+---
+
+## Proposed Expansion or Changes
+
+In legacy BASIC++ v5.0.5, companion `.LIB` game engines were loaded into memory via an experimental `LOAD LIBRARY "name"` syntax and inspected with `LIBRARY LIST`.
+
+### v6.5.2 Native Integration Plan:
+1. **Module System Unification (`engine/src/modules/`)**: Unify game engine `.LIB` files with the native v6.5.2 `MODULE` / `UNLOAD` and companion library system (`mem_companion_get_all_lines()` in `engine/include/memory/memory.h`).
+2. **Bytecode Game Runtime**: Provide pre-compiled bytecode headers for `BOARDGAME`, `RPG_PROCGEN`, and `ARCADE_SHOOTER` in `libstandard` / `libadvanced` to avoid parsing overhead during 60 FPS game loops.
+3. **Hardware Acceleration**: Connect collision routines (`AS_CHECK_COLLISIONS`) to native C17 SIMD/bounding-box routines in `engine/src/device/bgi/`.

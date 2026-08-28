@@ -1,0 +1,17 @@
+MINUTES Current Minute Function
+======================================================================
+
+The MINUTES function returns the current minute of the hour (0 to 59).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    min% = MINUTES
+    min% = MINUTES()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Minute: "; MINUTES

@@ -1,0 +1,25 @@
+COMP String Comparison Function
+======================================================================
+
+The COMP function performs a three-way lexical comparison between two
+strings.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res% = COMP(str1$, str2$)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Returns -1 if str1 < str2.
+  - Returns  0 if str1 = str2.
+  - Returns +1 if str1 > str2.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT COMP("A", "B")   : REM Outputs -1

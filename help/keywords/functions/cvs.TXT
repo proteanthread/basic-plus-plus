@@ -1,0 +1,19 @@
+BASIC++ FUNCTION REFERENCE: CVS
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  result! = CVS(string_4_bytes)
+
+Unpacks a 4-byte binary string into a 32-bit single-precision floating-point
+number. Inverse of MKS$.
+
+2. PARAMETERS & RETURN VALUES
+- string_4_bytes: String expression of exactly 4 bytes.
+- Returns: Single-precision float.
+
+3. ERROR CODES
+- Error 5 (ERR_ILLEGAL_FUNCTION_CALL): String length is not 4 bytes.
+- Error 13 (ERR_TYPE_MISMATCH): Non-string argument.
+
+4. EXAMPLES
+  10 VAL! = CVS(RAW$)

@@ -1,34 +1,115 @@
-# Arcade Game Engines
+Arcade Game Engines
+======================================================================
 
-BASIC++ includes several modular libraries for building action, arcade, and real-time game genres. These can be combined with each other to construct more complex game physics and AI.
+BASIC++ includes a suite of specialized companion game libraries
+designed for action, arcade, real-time physics, and entity simulation.
+These modular libraries can be combined to build vertical shooters,
+side-scrolling platformers, flocking swarm AI, and maze navigation
+games.
 
-## ARCADE_SHOOTER.LIB
 
-Provides basic mechanisms for vertical or horizontal shooters (e.g., Space Invaders, Defender, Missile Command).
+1. FIXED AND VERTICAL SHOOTER ENGINE (ARCADE_SHOOTER.LIB)
+======================================================================
 
-- **AS_INIT_SWARM(COUNT)**: Initializes a swarm of generic enemies.
-- **AS_UPDATE_BULLETS()**: Moves all active projectiles on the screen.
-- **AS_CHECK_COLLISIONS()**: Evaluates bounding box intersections between player bullets and enemy ships, triggering explosions.
+The ARCADE_SHOOTER.LIB module provides high-speed entity pooling,
+projectile lifecycle tracking, and Axis-Aligned Bounding Box (AABB)
+collision detection tailored for classic space shooters (Space
+Invaders, Galaxian, Defender).
 
-## PLATFORMER.LIB
+Procedures & API:
+  - AS_INIT_SWARM(Count%): Initializes an array of Count% enemy ships
+    across horizontal rows with velocity and boundary limits.
+  - AS_UPDATE_BULLETS(): Advances all active player and enemy bullet
+    positions by velocity vectors; recycles off-screen bullets.
+  - AS_CHECK_COLLISIONS(): Performs 2D AABB bounding-box intersection
+    tests between active bullets and enemy entities.
 
-Provides 2D physics simulations for side-scrolling or single-screen platformers (e.g., Mario, Donkey Kong).
+Code Example:
+    10 REM Space Shooter Loop
+    20 CALL AS_INIT_SWARM(20)
+    30 WHILE GameRunning%
+    40     K$ = INKEY$
+    50     IF K$ = " " THEN CALL AS_FIRE_BULLET(PlayerX, PlayerY)
+    60     IF K$ = "A" AND PlayerX > 1 THEN PlayerX = PlayerX - 1
+    70     IF K$ = "D" AND PlayerX < 78 THEN PlayerX = PlayerX + 1
+    80     CALL AS_UPDATE_BULLETS()
+    90     CALL AS_CHECK_COLLISIONS()
+    100    CALL AS_RENDER_SCENE(PlayerX, PlayerY)
+    110    _TIMER_DELAY 0.016
+    120 WEND
 
-- **PF_APPLY_GRAVITY()**: Applies downward velocity to all active entities not colliding with a floor tile.
-- **PF_CHECK_FLOOR(X, Y)**: Returns TRUE if the coordinate contains a solid block.
-- **PF_JUMP()**: Imparts upward velocity to the player character if they are currently grounded.
 
-## SWARM.LIB
+2. PLATFORMER & PHYSICS ENGINE (PLATFORMER.LIB)
+======================================================================
 
-Provides advanced flocking and swarming behaviors, typically used alongside ARCADE_SHOOTER.LIB.
+The PLATFORMER.LIB module provides 2D kinematic physics simulation,
+including downward gravitational acceleration, jump impulse velocity,
+and tilemap collision checking for platformers (Mario, Donkey Kong).
 
-- **SW_UPDATE_POSITIONS()**: Moves a group of entities in a synchronized sinusoidal or directional pattern.
-- **SW_DIVE_BOMB(INDEX)**: Commands a specific entity to break formation and chase the player coordinates.
+Procedures & API:
+  - PF_APPLY_GRAVITY(): Applies gravitational acceleration to all
+    active entities not grounded on a solid surface.
+  - PF_CHECK_FLOOR(X%, Y%): Evaluates whether (X%, Y%) contains a
+    solid platform tile. Returns TRUE (-1) or FALSE (0).
+  - PF_JUMP(Force#): Imparts an upward vertical velocity impulse if
+    the player entity is currently grounded.
 
-## MAZE.LIB
+Code Example:
+    100 REM Update Player Kinematics
+    110 IF PF_CHECK_FLOOR(PX%, PY% + 1) THEN
+    120     IsGrounded% = 1
+    130     VelY = 0
+    140 ELSE
+    150     IsGrounded% = 0
+    160     CALL PF_APPLY_GRAVITY()
+    170 END IF
+    180 IF INKEY$ = "W" AND IsGrounded% THEN CALL PF_JUMP(4.5)
 
-Provides maze generation and layout tools (e.g., Pac-Man).
 
-- **MZ_GENERATE(WIDTH, HEIGHT)**: Creates a cellular automaton or recursive backtracking maze layout.
-- **MZ_DRAW()**: Renders the generated maze with appropriate ASCII wall tiles.
-- **MZ_CHECK_WALL(X, Y)**: Verifies if a given map coordinate is passable.
+3. SWARM & MULTI-ENTITY AI (SWARM.LIB)
+======================================================================
+
+The SWARM.LIB module implements synchronized formation movement,
+flocking algorithms, and individual entity combat AI.
+
+Procedures & API:
+  - SW_UPDATE_POSITIONS(): Updates global offsets for the active swarm
+    using sinusoidal horizontal oscillation and downward shifts.
+  - SW_DIVE_BOMB(EnemyIndex%): Detaches EnemyIndex% from formation to
+    perform a direct homing attack on the player.
+
+
+4. PROCEDURAL MAZE GENERATOR (MAZE.LIB)
+======================================================================
+
+The MAZE.LIB module implements randomized maze carving algorithms
+(recursive backtracking and cellular automata) for maze games.
+
+Procedures & API:
+  - MZ_GENERATE(Width%, Height%): Generates a fully connected 2D maze
+    with guaranteed path traversability and boundary walls.
+  - MZ_DRAW(StartX%, StartY%): Renders the generated maze onto VCon.
+  - MZ_CHECK_WALL(X%, Y%): Returns TRUE (-1) if (X%, Y%) is a wall.
+
+
+CROSS-REFERENCES
+======================================================================
+
+  - Game_Libraries_and_Engines/Overview.md: Game architecture overview.
+  - Game_Libraries_and_Engines/Boardgame.md: Boardgame grid engine.
+  - Game_Libraries_and_Engines/RPG_ProcGen.md: Procedural dungeon engine.
+  - Screen_And_Console.md: Screen buffer control and double-buffering.
+
+
+PROPOSED EXPANSION OR CHANGES
+======================================================================
+
+v6.5.2 Native Integration Plan:
+  1. C17 Vectorized Collision: Implement collision_aabb_test() in
+     engine/src/device/bgi/ to execute bounding-box collision natively
+     in C17 rather than interpreted BASIC loops.
+  2. Dedicated Sprite Engine: Integrate ARCADE_SHOOTER with v6.5.2
+     virtual sprites (PUTIMAGE, GETIMAGE, FREEIMAGE) for hardware-
+     accelerated SDL2/OpenGL rendering.
+  3. Pre-compiled Bytecode Module: Bundle ARCADE_SHOOTER.BPC into the
+     standard library distribution.

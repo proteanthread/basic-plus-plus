@@ -1,225 +1,110 @@
-# Advanced String Functions (Milestone 19)
+# BASIC++ v6.5.2 Advanced String Handling
 
+## 1. THE STRING SUBSYSTEM
 
----
+Strings in BASIC++ are managed by the StringContext subsystem (engine/include/runtime/strings.h). Unlike many BASIC implementations that use a simple bump allocator, BASIC++ uses reference-counted string handles (BppStringRef) on an isolated heap. Each string object tracks its reference count, and the garbage collector (str_gc) reclaims unreferenced strings when the heap approaches capacity.
 
-## Table of Contents
+The string heap size depends on the build profile: 256 MB on modern builds, 192 MB on lite builds, 16 KB on FreeDOS 16-bit, and 4 KB on embedded targets. These values are set by BASIC_DEFAULT_STR_MEM in engine/include/types/config.h.
 
-- Overview
-- REPLACE$(source$, old$, new$)
-- REVERSE$(s$)
-- MCASE$(s$)
-- ICASE$(s$)
-- HASH$(s$ [, bits])
-- ONKEY$
-- LIKE Operator
-  - Pattern Metacharacters
-  - Examples
-  - Notes
-- Dialect Availability
-- See Also
+## 2. STRING CREATION AND LIFECYCLE
 
----
+When the evaluator produces a string result — whether from a string literal, a function return, or a concatenation — it calls str_create(ctx, data, length) to allocate a new BppStringRef. The reference count starts at 1. The caller owns this reference and is responsible for releasing it.
 
-**BASIC++ v4.2.3**
+When a string is assigned to a variable, str_add_ref() increments the reference count. The variable system tracks its reference. When the variable is reassigned or cleared, str_release() decrements the count. When the count reaches zero, the string memory is freed.
 
----
+This lifecycle applies to all string operations. Statement handlers that evaluate string expressions must release the returned string on both success and error paths. Failing to release on an error path is the most common source of string heap leaks.
 
-## Overview
+## 3. CONCATENATION
 
-Milestone 19 adds 7 advanced string functions and operators to the BASIC++
-language, extending the core string library with modern text processing
-capabilities.
+The + operator concatenates two strings: `A$ = "HELLO" + " " + "WORLD"`. Internally, str_concat(ctx, a, b) allocates a new string whose length is the sum of the two operands, copies both payloads, and returns a new BppStringRef. The two input strings are not modified and their reference counts are not affected by the concatenation itself.
 
-| Function | Category | Since |
-|----------|----------|-------|
-| `REPLACE$(s$, old$, new$)` | Transformation | M19 |
-| `REVERSE$(s$)` | Transformation | M19 |
-| `MCASE$(s$)` | Case | M19 |
-| `ICASE$(s$)` | Case | M19 |
-| `HASH$(s$ [, bits])` | Hashing | M19 |
-| `ONKEY$` | Input | M19 |
-| `LIKE` | Pattern Matching | M19 |
+Chained concatenation in a single expression (A$ + B$ + C$ + D$) produces intermediate strings for each + operation. The evaluator releases each intermediate after the next concatenation consumes it. Programs that concatenate many strings in a tight loop should be aware that each iteration produces a new string allocation.
 
----
+For high-performance string building, use MID$ assignment to write characters into a pre-allocated string, or use MICROPLEX$ for template-based string construction.
 
-## REPLACE$(source$, old$, new$)
+## 4. SUBSTRING OPERATIONS
 
-Replace all non-overlapping occurrences of `old$` in `source$` with `new$`.
+LEFT$(s$, n) — Returns the leftmost n characters. If n exceeds the string length, returns the entire string. If n is zero, returns an empty string. If n is negative, Error 5 (Illegal function call).
 
-```basic
-PRINT REPLACE$("HELLO WORLD", "O", "0")
-' Output: HELL0 W0RLD
+RIGHT$(s$, n) — Returns the rightmost n characters. Same boundary behavior as LEFT$.
 
-PRINT REPLACE$("AAA", "A", "XY")
-' Output: XYXYXY
+MID$(s$, start [, length]) — Returns length characters starting at position start (1-based). If length is omitted, returns from start to the end. If start is beyond the string length, returns an empty string.
 
-' Delete all occurrences
-PRINT REPLACE$("A-B-C", "-", "")
-' Output: ABC
-```
+MID$ assignment — MID$(s$, start, length) = replacement$ — Replaces characters within an existing string variable without creating a new string. The replacement does not change the length of the target string. If the replacement is shorter than length, only replacement length characters are overwritten. If longer, excess characters are truncated.
 
-**Notes:**
-- Empty search string returns source unchanged
-- Replacement is non-recursive (no re-scanning of replaced text)
-- Buffer bounded to `MAX_LINE_LENGTH` (255 chars)
+## 5. SEARCHING
 
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2537–2595
+INSTR([start,] haystack$, needle$) — Returns the 1-based position of needle$ within haystack$. Returns 0 if not found. The optional start argument specifies the position to begin searching (default 1). The search is case-sensitive.
 
----
+## 6. CASE CONVERSION
 
-## REVERSE$(s$)
+UCASE$(s$) — Converts all lowercase letters (a-z) to uppercase (A-Z). Non-alphabetic characters are unchanged.
 
-Reverse the order of characters in a string.
+LCASE$(s$) — Converts all uppercase letters (A-Z) to lowercase (a-z).
 
-```basic
-PRINT REVERSE$("HELLO")
-' Output: OLLEH
+TCASE$(s$) — Converts to title case: the first letter of each word is uppercase, remaining letters are lowercase. Word boundaries are detected at spaces, tabs, and punctuation.
 
-' Palindrome check
-W$ = "RACECAR"
-IF W$ = REVERSE$(W$) THEN PRINT "Palindrome!"
-```
+## 7. TRIMMING
 
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2600–2635
+LTRIM$(s$) — Removes leading spaces (ASCII 32) from the string.
 
----
+RTRIM$(s$) — Removes trailing spaces.
 
-## MCASE$(s$)
+TRIM$(s$) — Removes both leading and trailing spaces. Equivalent to LTRIM$(RTRIM$(s$)).
 
-Apply random upper/lower case to each character. Uses the runtime RNG
-(`rnd_seed`), so results are deterministic when seeded with `RANDOMIZE`.
+## 8. FORMAT CONVERSION
+
+HEX$(n) — Returns the hexadecimal representation of n as an uppercase string. Negative numbers produce the two's complement representation.
+
+OCT$(n) — Returns the octal representation of n.
+
+BIN$(n) — Returns the binary representation of n.
+
+STR$(n) — Converts a number to its string representation. Positive numbers are preceded by a space. Negative numbers are preceded by a minus sign.
+
+VAL(s$) — Parses a string as a number. Ignores leading spaces. Stops at the first non-numeric character. Returns 0 if the string does not begin with a numeric character.
+
+CHR$(n) — Returns the single character with ASCII code n (0-255). CHR$(7) produces a bell, CHR$(10) a line feed, CHR$(13) a carriage return.
+
+ASC(s$) — Returns the ASCII code of the first character of s$. If s$ is empty, Error 5 (Illegal function call).
+
+## 9. STRING GENERATION
+
+SPACE$(n) — Returns a string of n space characters.
+
+STRING$(n, char) — Returns a string of n copies of char. If char is a number, it is treated as an ASCII code: STRING$(10, 42) produces 10 asterisks. If char is a string, the first character is used: STRING$(10, "*") also produces 10 asterisks.
+
+## 10. BINARY PACK AND UNPACK
+
+PACK$(format$, value, ...) — Packs numeric values into a binary string according to a format specification. Format characters specify the byte layout: "b" for byte (1 byte), "w" for word (2 bytes, little-endian), "d" for double word (4 bytes), "q" for quad word (8 bytes), "f" for float (4 bytes IEEE 754), "D" for double (8 bytes IEEE 754).
+
+UNPACK format$, data$, var, ... — Unpacks a binary string into variables according to the same format specification. Each format character extracts the corresponding number of bytes and assigns the value to the next variable.
+
+## 11. MICROPLEX$ STRING INTERPOLATION
+
+MICROPLEX$(template$, values...) — Performs string interpolation using a template with numbered placeholders. Placeholders are `{0}`, `{1}`, `{2}`, etc., referring to the subsequent arguments by position. This function is implemented in engine/src/eval/microplex.c.
 
 ```basic
-RANDOMIZE 42
-PRINT MCASE$("hello world")
-' Output: hElLo wOrLd  (varies by seed)
+10 NAME$ = "World"
+20 RESULT$ = MICROPLEX$("Hello, {0}! You are {1} years old.", NAME$, 25)
+30 PRINT RESULT$
 ```
 
-**Algorithm:** PCG-derived bit per character. Bit=1 → UPPER, Bit=0 → lower.
+Output: `Hello, World! You are 25 years old.`
 
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2637–2675
+## 12. GW-BASIC FIELD STRING CONVERSION
 
----
+For random-access file operations, BASIC++ provides binary-to-numeric conversion functions:
 
-## ICASE$(s$)
+CVI(s$) — Converts a 2-byte string to a 16-bit integer.
+CVS(s$) — Converts a 4-byte string to a single-precision float.
+CVD(s$) — Converts an 8-byte string to a double-precision float.
+MKI$(n) — Converts an integer to a 2-byte string.
+MKS$(n) — Converts a single to a 4-byte string.
+MKD$(n) — Converts a double to an 8-byte string.
 
-Invert the case of every character. Upper becomes lower, lower becomes upper.
-Non-alphabetic characters are unchanged.
+These functions operate on the raw binary representation, not human-readable strings. They are used with FIELD, LSET, RSET, GET, and PUT for random file record access.
 
-```basic
-PRINT ICASE$("Hello World")
-' Output: hELLO wORLD
+## 13. STRING MEMORY MONITORING
 
-PRINT ICASE$("ABC-123-xyz")
-' Output: abc-123-XYZ
-```
-
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2677–2711
-
----
-
-## HASH$(s$ [, bits])
-
-Compute a hash of the input string and return it as a hexadecimal string.
-
-```basic
-PRINT HASH$("hello")           ' 32-bit default
-PRINT HASH$("hello", 8)        ' 8-bit:   2 hex chars
-PRINT HASH$("hello", 16)       ' 16-bit:  4 hex chars
-PRINT HASH$("hello", 64)       ' 64-bit:  16 hex chars
-PRINT HASH$("hello", 128)      ' 128-bit: 32 hex chars
-PRINT HASH$("hello", 256)      ' 256-bit: 64 hex chars
-```
-
-**Algorithm:** FNV-1a.
-- Widths ≤ 64 bits: XOR-fold from full 64-bit hash.
-- Widths > 64 bits: Multiple seeded rounds, concatenated.
-- Invalid width values silently default to 32.
-
-**Valid widths:** 8, 16, 32, 64, 128, 256
-
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2713–2812
-
----
-
-## ONKEY$
-
-Event-aware non-blocking keyboard read. Unlike `INKEY$`, `ONKEY$` first
-checks the event system for a key captured by `ON KEY GOSUB` traps
-(Milestone 18), then falls back to direct keyboard polling.
-
-```basic
-K$ = ONKEY$
-IF K$ <> "" THEN PRINT "Key: "; K$
-```
-
-**Priority order:**
-1. Check `rt->last_key_pressed` (set by event_poll in Milestone 18)
-2. If found, return it and clear the field (consumed)
-3. If empty, fall back to `vdev_inkey()` direct poll
-
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 2397–2430
-
----
-
-## LIKE Operator
-
-Glob-style pattern matching operator. Returns `-1` (true) or `0` (false).
-
-```basic
-IF "hello.bas" LIKE "*.bas" THEN PRINT "Match!"
-IF "file1.txt" LIKE "file?.txt" THEN PRINT "Match!"
-```
-
-### Pattern Metacharacters
-
-| Symbol | Meaning |
-|--------|---------|
-| `*` | Match zero or more characters |
-| `?` | Match exactly one character |
-| `#` | Match exactly one digit (0-9) |
-| `[abc]` | Match any character in the set |
-| `[!abc]` | Match any character NOT in the set |
-
-### Examples
-
-```basic
-PRINT "ABC" LIKE "A*"        ' -1 (true)
-PRINT "ABC" LIKE "A?C"       ' -1 (true)
-PRINT "A5C" LIKE "A#C"       ' -1 (true)
-PRINT "AXC" LIKE "A[XYZ]C"   ' -1 (true)
-PRINT "ABC" LIKE "A[!XYZ]C"  ' -1 (true)
-PRINT "DOG" LIKE "C*"        '  0 (false)
-```
-
-### Notes
-
-- Case-insensitive matching
-- Uses stack-based backtracking for `*` (no recursion)
-- Both operands must be strings (ERR_HOW if not)
-- Dialect restriction: `DFLAG_GWQB | DFLAG_E116`
-- Works with logical operators: `IF A$ LIKE "*.BAS" AND LEN(A$) > 4 THEN ...`
-
-**Source:** [parser_expr.c](../source/parser/parser_expr.c), lines 3086–3162
-
----
-
-## Dialect Availability
-
-| Function | Dialects |
-|----------|----------|
-| REPLACE$ | All (`DFLAG_ALL`) |
-| REVERSE$ | All |
-| MCASE$ | All |
-| ICASE$ | All |
-| HASH$ | All |
-| ONKEY$ | All |
-| LIKE | GW-BASIC, QBasic, ECMA-116 |
-
----
-
-## See Also
-
-- [String_Handling.txt](../help/String_Handling.txt) — Complete string tutorial
-- [Quick_Reference.txt](../help/Quick_Reference.txt) — Function quick reference
+FRE(0) returns the number of free bytes in the string heap. FRE(-1) returns the largest contiguous free block. Programs that create many temporary strings should monitor FRE(0) to detect heap pressure. When the heap is near capacity, the garbage collector runs automatically, but programs may experience a brief pause during collection.

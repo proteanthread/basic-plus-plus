@@ -1,0 +1,25 @@
+C17 API REFERENCE: VIRTUAL NETWORK SOCKETS (runtime/vnet.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Virtual Network Sockets Subsystem manages non-blocking TCP/UDP sockets,
+server listening, client connections, HTTP queries, and N: device streams.
+
+2. KEY TYPES & STRUCTS
+- VNetContext: Opaque network subsystem manager handle.
+
+3. CORE API FUNCTIONS
+- vnet_init(mem) -> VNetContext *
+- vnet_shutdown(ctx)
+- vnet_open(ctx, channel, protocol, host, port) -> BppError
+- vnet_open_host(ctx, channel, port) -> BppError
+- vnet_accept(ctx, listen_ch, client_ch, ip_buf, ip_buf_len) -> BppError
+- vnet_send(ctx, channel, data, len) -> BppError
+- vnet_recv(ctx, channel, buf, max_len, out_len) -> BppError
+- vnet_close(ctx, channel)
+- vnet_status / vnet_connected / vnet_address / vnet_http_status
+- vnet_create_vdev(ctx, name, protocol, host, port) -> VDev
+
+4. ARCHITECTURAL INVARIANTS
+- Supports up to 16 concurrent socket channels (VNET_MAX_CHANNELS).
+- Requires CAP_NET security capability in sandboxed environments.

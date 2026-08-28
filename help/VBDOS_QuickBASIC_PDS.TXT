@@ -1,0 +1,263 @@
+QuickBASIC 1.x–7.x (PDS) & Visual Basic for DOS 1.0 Complete Reference Guide
+
+1. Overview & Architecture
+BASIC++ provides 100% native runtime parity for Microsoft QuickBASIC (versions 1.0, 2.0, 3.0, 4.0, 4.5), BASIC Professional Development System 7.0/7.1 (PDS), and Microsoft Visual Basic 1.0 for DOS.
+
+This architecture includes:
+- Microsoft Binary Format (MBF) Floating-Point Math: Full bit-exact IEEE 754 $\leftrightarrow$ MBF conversions (MKSMBF$, MKDMBF$, CVSMBF, CVDMBF).
+- DOS & BIOS Interrupt Subsystem: Real-mode interrupt and register calling convention (INTERRUPT, INTERRUPTX, CALL INTERRUPT, CALL INTERRUPTX).
+- BASIC PDS 7.x Financial Function Suite: Exact banking, loan, and cashflow modeling (PMT, FV, PV, NPER, IPMT, PPMT, RATE, NPV, IRR).
+- BASIC PDS 7.x ISAM Database Subsystem: High-performance multi-index B-tree/ISAM database operations (CREATEINDEX, SETINDEX, DELETEINDEX, INSERT, UPDATE, DELETE #ch, SEEKEQ, SEEKGE, SEEKGT, RETRIEVE).
+- BASIC PDS 7.x Date & Time Suite: Microsoft Serial Date math compatible with PDS, Excel, and VB (DATESERIAL, TIMESERIAL, DATEVALUE, TIMEVALUE, DAY, MONTH, YEAR, WEEKDAY, HOUR, MINUTE, SECOND, UNIXTIME, EPOCHDATE).
+- Visual Basic for DOS 1.0 Controls & Dialogs: Extended TUI controls with dual TUI / stream rendering fallback (CHECKBOX, OPTIONBUTTON, LABEL, FRAME, COMBOBOX, BUTTON, MENU, TEXTBOX, LISTBOX, MSGBOX, INPUTBOX$, FILEOPENBOX$, FILESAVEBOX$, DOEVENTS).
+- Visual Basic for DOS 1.0 Specialized Controls: Hardware and file system abstractions (HSCROLLBAR, VSCROLLBAR, DRIVELISTBOX, DIRLISTBOX, FILELISTBOX, TIMERCONTROL).
+- QuickBASIC / PDS 7.x Mixed-Language Declarations: Interoperability prototypes (DECLARE SUB, DECLARE FUNCTION with CDECL, PASCAL, ALIAS, BYVAL, SEG).
+- BASIC PDS 7.x System & Memory Functions: Host memory and file enumeration (CURDIR$, DIR$, SETMEM, SSEG, FRE).
+
+1.1 Version-by-Version Parity Matrix
+
+| Vintage Version | Release Year | Key Features Introduced | BASIC++ v6.x Status | Verification Suite |
+| :--- | :--- | :--- | :--- | :--- |
+| QuickBASIC 1.0 / 1.02 | 1985 | Alphanumeric line labels (Label:), multi-statement colon syntax (:), ENVIRON, ENVIRON$, COMMAND$, ERDEV, ERDEV$ | 100% Operational (optional line numbers in multi-statement modules deferred to bppc) | tests/qbvintagesuite.bas |
+| QuickBASIC 2.0 / 2.01 | 1986 | Structured block IF...THEN...ELSEIF...ELSE...END IF, SELECT CASE...END SELECT, $DYNAMIC, $STATIC | 100% Operational | tests/qbvintagesuite.bas |
+| QuickBASIC 3.0 | 1987 | DO...LOOP (WHILE/UNTIL), EXIT DO, EXIT FOR, ON ERROR RESUME NEXT, RESUME 0, RESUME NEXT, '$INCLUDE, MBF math (MKSMBF$, CVSMBF, MKDMBF$, CVDMBF) | 100% Operational | tests/mbf.bas, tests/qbvintagesuite.bas |
+| QuickBASIC 4.0 / 4.5 | 1987–1988 | SUB...END SUB, FUNCTION...END FUNCTION, mixed-language DECLARE (CDECL, PASCAL, ALIAS, BYVAL, SEG), TYPE...END TYPE, REDIM, REDIM PRESERVE, DIM SHARED, CONST, LBOUND/UBOUND, LTRIM$/RTRIM$/UCASE$/LCASE$, CALL INTERRUPT, SLEEP | 100% Operational | tests/qbvbdosmaster.bas, tests/qb_interrupt.bas |
+| BASIC PDS 7.0 / 7.1 | 1989–1990 | Financial Suite (PMT, FV, PV, NPER, IPMT, PPMT, RATE, NPV, IRR), ISAM Database (CREATEINDEX, INSERT, SEEKEQ, UPDATE), Date/Time Serials (DATESERIAL, TIMESERIAL, DATEVALUE, TIMEVALUE), DIR$, CURDIR$, SETMEM, SSEG, FRE | 100% Operational | tests/pdsfinancial.bas, tests/pdsisam.bas, tests/pds_datetime.bas |
+| Visual Basic 1.0 for DOS | 1992 | Extended TUI Controls (LABEL, CHECKBOX, OPTIONBUTTON, FRAME, BUTTON), Specialized Controls (HSCROLLBAR, VSCROLLBAR, DRIVELISTBOX, DIRLISTBOX, FILELISTBOX, TIMERCONTROL), Dialogs (MSGBOX, INPUTBOX$, FILEOPENBOX$, FILESAVEBOX$), DOEVENTS, OOP forms | 100% Operational | tests/vbdosmaster.bas, tests/vbdosextended.bas, tests/vbdos_specialized.bas |
+
+2. Microsoft Binary Format (MBF) Float Operations
+
+Legacy QuickBASIC data files and random-access records frequently store single and double precision floating-point numbers in Microsoft Binary Format (MBF) rather than standard IEEE 754.
+
+``basic
+10 REM Single precision MBF conversion
+20 sng_val! = 123.456!
+30 sngbytes$ = MKSMBF$(sngval!)
+40 restoredsng! = CVSMBF(sngbytes$)
+50 PRINT "Restored Single: "; restored_sng!
+
+60 REM Double precision MBF conversion (56-bit mantissa)
+70 dbl_val# = 1234567.89012345
+80 dblbytes$ = MKDMBF$(dblval#)
+90 restoreddbl# = CVDMBF(dblbytes$)
+100 PRINT "Restored Double: "; restored_dbl#
+`
+
+3. DOS & BIOS Interrupt Subsystem
+
+QuickBASIC CALL INTERRUPT and CALL INTERRUPTX allow calling DOS services (INT 21h) and BIOS services (INT 10h, INT 16h, INT 1Ah) with register structures.
+
+Syntax:
+`basic
+INTERRUPT int_num%, inregs, outregs
+INTERRUPTX int_num%, inregsX, outregsX
+CALL INTERRUPT(int_num%, inregs, outregs)
+CALL INTERRUPTX(int_num%, inregsX, outregsX)
+`
+
+Example:
+`basic
+10 REM Get MS-DOS Version (INT 21h, AH=30h)
+20 inregs.ax = &H3000
+30 INTERRUPT &H21, inregs, outregs
+40 dos_major% = outregs.ax AND &HFF
+50 PRINT "MS-DOS Major Version: "; dos_major%
+
+60 REM Get Current System Date (INT 21h, AH=2Ah)
+70 inregs.ax = &H2A00
+80 CALL INTERRUPT(&H21, inregs, outregs)
+90 PRINT "Current Year: "; outregs.cx
+`
+
+4. BASIC PDS 7.x Financial Suite
+
+PDS 7.x provides built-in financial formulas for annuity, loan amortization, and investment analysis:
+
+| Function | Description | Syntax |
+|---|---|---|
+| PMT(rate, nper, pv [, fv [, type]]) | Loan payment per period | pmt# = PMT(0.005, 360, 100000) |
+| FV(rate, nper, pmt [, pv [, type]]) | Future value of an investment | fv# = FV(0.005, 120, -100, 0) |
+| PV(rate, nper, pmt [, fv [, type]]) | Present value of an annuity | pv# = PV(0.005, 120, -100) |
+| NPER(rate, pmt, pv [, fv [, type]]) | Number of payment periods | periods# = NPER(0.005, -500, 50000) |
+| IPMT(rate, per, nper, pv [, fv [, type]]) | Interest portion of payment | interest# = IPMT(0.005, 1, 360, 100000) |
+| PPMT(rate, per, nper, pv [, fv [, type]]) | Principal portion of payment | principal# = PPMT(0.005, 1, 360, 100000) |
+| RATE(nper, pmt, pv [, fv [, type [, guess]]]) | Periodic interest rate | r# = RATE(360, -599.55, 100000) |
+| NPV(rate, cfarray) | Net present value of cash flows | npvval# = NPV(0.10, cashflows()) |
+| IRR(cfarray [, guess]) | Internal rate of return | irrval# = IRR(cashflows()) |
+
+5. BASIC PDS 7.x ISAM Database Operations
+
+BASIC PDS 7.x introduced indexed sequential access method (ISAM) database tables over random-access channels:
+
+`basic
+10 OPEN "inventory.dat" FOR RANDOM AS #1 LEN = 64
+20 CREATEINDEX #1, "PROD_SKU", 10, 0
+30 SETINDEX #1, "PROD_SKU"
+
+40 REM Insert records into table
+50 INSERT #1, "SKU1000001 Mechanical Keyboard      $129.99"
+60 INSERT #1, "SKU1000002 4K UltraHD Monitor       $349.00"
+
+70 REM Search by key
+80 SEEKEQ #1, "SKU1000001"
+90 rec$ = ""
+100 RETRIEVE #1, rec$
+110 PRINT "Retrieved Record: "; rec$
+
+120 REM Update record
+130 UPDATE #1, "SKU1000001 Mechanical Keyboard (RGB)  $139.99"
+
+140 REM Delete active record
+150 DELETE #1
+
+160 DELETEINDEX #1, "PROD_SKU"
+170 CLOSE #1
+`
+
+6. BASIC PDS 7.x Date & Time Suite
+
+Full support for Microsoft Serial Dates (floating-point days where integer part = date since Dec 30, 1899 and fractional part = time of day):
+
+`basic
+10 REM Construct Serial Date and Time
+20 my_date# = DATESERIAL(2026, 8, 18)
+30 my_time# = TIMESERIAL(14, 30, 0)
+40 fulldatetime# = mydate# + my_time#
+
+50 REM Decompose into components
+60 PRINT "Year:    "; YEAR(full_datetime#)
+70 PRINT "Month:   "; MONTH(full_datetime#)
+80 PRINT "Day:     "; DAY(full_datetime#)
+90 PRINT "Weekday: "; WEEKDAY(full_datetime#)
+100 PRINT "Hour:    "; HOUR(full_datetime#)
+110 PRINT "Minute:  "; MINUTE(full_datetime#)
+120 PRINT "Second:  "; SECOND(full_datetime#)
+
+130 REM String Parsing
+140 dt# = DATEVALUE("2026-08-18")
+150 tm# = TIMEVALUE("14:30:00")
+
+160 REM Unix Timestamp Helpers
+170 epoch& = UNIXTIME()
+180 serial_dt# = EPOCHDATE(epoch&)
+`
+
+7. Visual Basic for DOS 1.0 Extended TUI Controls & Forms
+
+Visual Basic for DOS 1.0 statements provide declarative text-mode user interfaces that render via box-drawing in interactive consoles or stream format in pipes:
+
+`basic
+10 REM Create a Group Frame
+20 FRAME "Display Configuration", 5, 3, 50, 14
+
+30 REM Place Labels and Input Textboxes
+40 LABEL "Resolution:", 8, 5
+50 TEXTBOX "1920x1080", 22, 5, 15
+
+60 REM Checkbox & Radio Option Buttons
+70 enable_vsync% = 1
+80 CHECKBOX "Enable V-Sync", 8, 8, enable_vsync%
+
+90 fullscreen_mode% = 1
+100 OPTIONBUTTON "Full Screen", 8, 10, fullscreen_mode%
+
+110 REM Dropdown ComboBox
+120 modes$(1) = "VGA 640x480": modes$(2) = "SVGA 800x600": modes$(3) = "XGA 1024x768"
+130 sel_mode% = 1
+140 COMBOBOX modes$, 8, 12, 30, 5, sel_mode%
+
+150 REM Action Button
+160 BUTTON "Apply Changes", 20, 15, 15, 3
+
+170 REM Standard Dialogs
+180 MSGBOX "Configuration applied successfully.", 0, "Settings"
+190 save_path$ = FILESAVEBOX$("*.cfg", "Save Settings")
+
+200 REM Event Pump
+210 DOEVENTS
+`
+
+8. Visual Basic for DOS 1.0 Specialized Controls
+
+BASIC++ includes support for the complete suite of VB/DOS specialized controls:
+
+HSCROLLBAR & VSCROLLBAR
+Horizontal and vertical scrollbars supporting range [min, max], current thumb value, screen position, and length.
+`basic
+10 REM Horizontal Scrollbar (min=0, max=100, val=25, x=10, y=5, width=30)
+20 HSCROLLBAR 0, 100, 25, 10, 5, 30
+
+30 REM Vertical Scrollbar (min=0, max=100, val=50, x=45, y=5, height=12)
+40 VSCROLLBAR 0, 100, 50, 45, 5, 12
+`
+
+DRIVELISTBOX
+Dropdown / list control enumerating available filesystem disk drives.
+`basic
+10 DRIVELISTBOX 10, 18, 20
+`
+
+DIRLISTBOX
+Directory list box displaying the directory hierarchy for a given folder path.
+`basic
+10 DIRLISTBOX "C:\BASIC\PROJECTS", 10, 20, 30, 8
+`
+
+FILELISTBOX
+File list box displaying pattern-matched files (e.g. .BAS, .*) within a directory.
+`basic
+10 FILELISTBOX "*.BAS", 45, 20, 30, 8
+`
+
+TIMERCONTROL
+Timer interval controller supporting millisecond intervals and enabled state.
+`basic
+10 TIMERCONTROL 500, 1
+`
+
+9. QuickBASIC & PDS 7.x Mixed-Language Declarations
+
+Prototyping external procedures and subroutines with C and Pascal calling conventions:
+
+`basic
+10 DECLARE SUB FastCopy CDECL ALIAS "fastcopy" (BYVAL src AS LONG, BYVAL dest AS LONG, BYVAL bytes AS INTEGER)
+20 DECLARE FUNCTION StrHash PASCAL ALIAS "STRHASH" (SEG text AS STRING, BYVAL length AS INTEGER) AS LONG
+30 DECLARE SUB ShowGreeting (name$)
+40 CALL ShowGreeting("BASIC++ PDS")
+`
+
+10. BASIC PDS 7.x System & Memory Functions
+
+Host filesystem queries and memory metrics:
+
+| Function | Description | Example |
+|---|---|---|
+| CURDIR$ | Returns current active working directory | p$ = CURDIR$ |
+| DIR$(pattern$) | Iterates filesystem entries matching pattern | f$ = DIR$("*.bas") |
+| SETMEM(delta&) | Resizes or queries memory pool size | avail& = SETMEM(0) |
+| SSEG(str$) | Returns segmented memory string descriptor | s& = SSEG(sample$) |
+| FRE(opt) | Returns free string/heap memory space | mem& = FRE(-1) |
+
+11. Visual Basic for DOS 1.0 Predefined Globals & Constants
+
+VB for DOS 1.0 provides global context objects and constants:
+- Screen object: Screen.ActiveForm, Screen.ActiveControl, Screen.ControlCount
+- App object: App.Title, App.Path, App.EXEName
+- MsgBox Constants: vbOKOnly (0), vbOKCancel (1), vbAbortRetryIgnore (2), vbYesNoCancel (3), vbYesNo (4), vbRetryCancel (5)
+- MsgBox Return Values: vbOK (1), vbCancel (2), vbAbort (3), vbRetry (4), vbIgnore (5), vbYes (6), vbNo (7)
+- File Attributes: vbNormal (0), vbReadOnly (1), vbHidden (2), vbSystem (4), vbDirectory (16), vbArchive (32)
+
+12. Batch Execution & Verification
+
+To execute test suites and scripts non-interactively without holding the console open on REPL stdin:
+
+`bash
+Standard Desktop Edition in batch mode
+baspp.exe --batch tests/qbvbdosmaster.bas
+
+Headless Batch Runner Target
+bs.exe tests/qbvbdosmaster.bas
+
+Lite REPL Target in batch mode
+bpp.exe --batch tests/qbvbdosmaster.bas
+``

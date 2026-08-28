@@ -1,0 +1,18 @@
+CLOCK$ Formatted Timestamp String Function
+======================================================================
+
+The CLOCK$ function returns the current system timestamp formatted as
+"YYYY-MM-DD HH:MM:SS".
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    stamp$ = CLOCK$
+    stamp$ = CLOCK$()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Timestamp: "; CLOCK$

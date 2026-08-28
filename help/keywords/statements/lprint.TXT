@@ -1,0 +1,35 @@
+LPRINT Line Printer Output Statement
+====================================
+
+Prints text and formatted data directly to the default line printer device (LPT1).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    LPRINT [USING format$;] [expression [,;] ...]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 25 (ERR_DEVICE_FAULT): Printer not ready.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Formatted identically to standard PRINT and PRINT USING statements.
+  Routes output through the built-in virtual text-to-PDF pseudo-printer driver.
+  Outputs standard PDF 1.4 documents formatted with built-in Courier font,
+  saving automatically to <program_name>.pdf (or OUTPUT.PDF if no file loaded).
+  Form Feed (CHR$(12) or \f) advances to the next PDF page.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 LPRINT "--- INVOICE REPORT ---"
+    20 LPRINT USING "Item Total: $###.##"; 125.50
+    30 LPRINT CHR$(12) : REM Form feed to next page
+    40 LPRINT "Page 2 Content"

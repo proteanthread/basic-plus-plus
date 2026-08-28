@@ -1,0 +1,17 @@
+MAT_RND Matrix Random Fill Statement
+======================================================================
+
+The MAT RND statement populates a matrix with random floating-point values
+in range [0, 1).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    MAT A = RND
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DIM R(3, 3) : MAT R = RND

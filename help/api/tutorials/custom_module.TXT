@@ -1,0 +1,28 @@
+TUTORIAL: BUILDING DYNAMIC EXTENSION MODULES (tutorials/custom_module.h)
+======================================================================
+
+1. OVERVIEW
+Demonstrates building native shared libraries (.dll / .so) that can be loaded
+at runtime via MODULE LOAD or IMPORT in BASIC++ v6.5.2.
+
+2. MASTER EXPORT STRUCT
+A module exports a BppModuleInfo descriptor named 'bpp_module_export':
+  const BppModuleInfo bpp_module_export = {
+      .name           = "MYMOD",
+      .version        = "1.0.0",
+      .description    = "Custom Extension Module",
+      .mod_class      = MOD_EXTENSION,
+      .capabilities   = CAP_MATH | CAP_STRING,
+      .required_level = SEC_STANDARD,
+      .init           = mymod_init,
+      .cleanup        = mymod_cleanup
+  };
+
+3. COMPILATION
+- Linux:   gcc -std=c17 -O2 -fPIC -shared -Iengine/include mymod.c -o libmymod.so
+- Windows: cl /std:c17 /O2 /LD /Iengine\include mymod.c /Fe:mymod.dll
+
+4. USAGE IN BASIC
+  10 MODULE LOAD "mymod"
+  20 PRINT MYFUNC(42)
+  30 UNLOAD "mymod"

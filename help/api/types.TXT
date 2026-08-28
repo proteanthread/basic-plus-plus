@@ -1,0 +1,27 @@
+C17 API REFERENCE: CORE DATA TYPES & VALUES (types/types.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+Defines fundamental tagged union BValue types, fractional line numbers,
+and virtual machine bytecode opcodes.
+
+2. VALUE TYPES (ValueType)
+- VAL_NONE:         Uninitialized state.
+- VAL_NUMBER:       Double-precision floating point.
+- VAL_STRING:       Reference-counted BppString handle.
+- VAL_MAP:          Reference-counted associative dictionary.
+- VAL_ARRAY_REF:    Symbolic array link.
+- VAL_FIELD_STRING: Bound random-access file buffer string.
+
+3. KEY TYPES & STRUCTS
+- BValue: Primary tagged-union value struct with type and union (.as).
+- BppLineNumber: Double-precision line number supporting fractional lines.
+
+4. HELPER CONSTRUCTORS
+- bval_number(n) -> BValue
+- bval_string(s) -> BValue
+- bval_is_truthy(val) -> bool
+
+5. SAFETY RULES
+- Always validate val.type before accessing union members.
+- Zero-initialize all BValue structures.

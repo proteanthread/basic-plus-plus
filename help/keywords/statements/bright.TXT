@@ -1,0 +1,29 @@
+BRIGHT Retro Color Intensity Attribute Statement
+================================================
+
+Toggles high-intensity color palette rendering in retro display modes.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    BRIGHT intensity_flag%
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Flag must be 0 or 1.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  ZX Spectrum display attribute emulation.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 BRIGHT 1 : REM Enable bright attributes
+    20 PRINT "High intensity text"

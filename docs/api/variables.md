@@ -1,44 +1,94 @@
-# Variables Subsystem API Reference
+# C17 API Reference: Variable Context & Symbol Table (`runtime/variables.h`)
 
-Header File: [`include/variables.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/variables.h)
+## 1. Subsystem Overview & Responsibilities
 
-## Overview
-Manages variables, lexical scoping, globals, and lookups.
+The Variable Context Subsystem (`runtime/variables.h`, implemented in `engine/src/runtime/variables.c`) manages scalar variable bindings, implicit/explicit declarations (`OPTION EXPLICIT`), variable scopes (`SHARED`, `STATIC`, local prefix frames), and preserved `COMMON` variables across program chaining for the BASIC++ v6.5.2 engine.
 
-## Exposed API Entities
-### Structs & Types
-- `VariableContext VariableContext`
+Key architectural responsibilities include:
+- **Symbol Table Management**: Maps normalized variable identifiers (e.g. `A%`, `SUM#`, `TITLE$`) to tagged union `BValue` storage.
+- **Scope Frames & Prefix Scoping**: Manages local variable frames within `SUB` and `FUNCTION` procedures (`var_set_scope()`, `var_clear_scope()`) while supporting `SHARED` global access.
+- **COMMON Variable Preservation**: Marks variables declared via `COMMON` to survive `CHAIN` and `RUN "file", R` context resets (`var_clear_for_chain()`).
+- **OPTION EXPLICIT Enforcement**: Rejects undeclared variable assignments with Error 100 when strict explicit variable checking is active.
 
-### Functions
-| Function | Return Type | Arguments |
-|----------|-------------|-----------|
-| `var_shutdown` | `void` | `VariableContext *ctx` |
-| `var_assign` | `bool` | `VariableContext *ctx, const char *name, BValue val` |
-| `var_clear_all` | `void` | `VariableContext *ctx` |
-| `var_clear_scope` | `void` | `VariableContext *ctx, const char *prefix` |
-| `var_set_scope` | `void` | `VariableContext *ctx, const char *scope` |
-| `var_set_shared` | `void` | `VariableContext *ctx, const char *name` |
-| `var_set_explicit` | `void` | `VariableContext *ctx, bool enable` |
-| `var_is_explicit` | `bool` | `VariableContext *ctx` |
-| `var_set_namespace` | `void` | `VariableContext *ctx, const char *ns` |
-| `var_set_case_sensitive` | `void` | `VariableContext *ctx, bool enable` |
-| `var_set_def_type` | `void` | `VariableContext *ctx, const char *scope, char start_letter, char end_letter, ValueType type` |
-| `var_get_def_type` | `ValueType` | `VariableContext *ctx, const char *scope, char letter` |
-| `var_print_all` | `void` | `VariableContext *ctx, void *vdev_ptr` |
-| `var_serialize` | `bool` | `VariableContext *ctx, void *fp` |
-| `var_deserialize` | `bool` | `VariableContext *ctx, void *fp` |
+## 2. Header Inclusion & Prerequisites
 
-## C Integration Example
-The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "variables.h"
-
-void set_var(VMContext *vm) {
-    BValue val = bval_float(42.0);
-    var_assign(vm, "MYVAR", val);
-}
+#include "runtime/variables.h"
+#include "memory/memory.h"
+#include "runtime/strings.h"
 ```
 
-## Guidelines & Architecture Constraints
-- **C17 Portability**: Compile under strict C17 standards.
-- **Memory Integrity**: All contexts and pointers passed must be zero-initialized.
+## 3. Data Structures & Types
+
+```c
+/* Opaque Variable Context Handle */
+typedef struct VariableContext VariableContext;
+```
+
+## 4. Function Prototypes & Operational Contracts
+
+### Context Lifecycle
+```c
+VariableContext *var_init(MemoryContext *mem, StringContext *str);
+void             var_shutdown(VariableContext *ctx);
+```
+
+### Variable Lookup & Declaration
+```c
+/**
+ * @brief Looks up a variable by name.
+ * @param name Normalized uppercase variable name (e.g. "COUNT%", "NAME$").
+ * @param create_if_missing If true, declares the variable if not present.
+ * @return Pointer to target BValue, or NULL if not found and create_if_missing is false.
+ */
+BValue *var_lookup(VariableContext *ctx, const char *name, bool create_if_missing);
+
+/**
+ * @brief Explicitly declares a variable (bypasses OPTION EXPLICIT check).
+ */
+BValue *var_declare(VariableContext *ctx, const char *name);
+
+/**
+ * @brief Assigns a new value to a variable, performing type validation.
+ */
+bool var_assign(VariableContext *ctx, const char *name, BValue val);
+```
+
+### Scope & Lifetime Management
+```c
+/**
+ * @brief Clears all variables (CLEAR / NEW statements).
+ */
+void var_clear_all(VariableContext *ctx);
+
+/**
+ * @brief Clears all non-COMMON variables during program chaining.
+ */
+void var_clear_for_chain(VariableContext *ctx);
+
+void var_mark_common(VariableContext *ctx, const char *name);
+bool var_is_common(VariableContext *ctx, const char *name);
+
+void var_set_scope(VariableContext *ctx, const char *scope);
+void var_clear_scope(VariableContext *ctx, const char *prefix);
+void var_set_shared(VariableContext *ctx, const char *name);
+```
+
+## 5. Architectural Invariants
+
+- **String Retention**: When overwriting a string variable (`VAL_STRING`), the previous string reference MUST be released via `str_release(str_ctx, old_str)` before storing the new reference.
+- **COMMON Retention**: `var_clear_for_chain()` preserves all variables flagged via `var_mark_common()`.
+
+## 6. Code Example: Declaring and Assigning Variables in C
+
+```c
+#include "runtime/variables.h"
+
+void set_player_score(VariableContext *vc, int score) {
+    BValue *score_var = var_lookup(vc, "SCORE%", true);
+    if (score_var) {
+        score_var->type = VAL_NUMBER;
+        score_var->as.number = (double)score;
+    }
+}
+```

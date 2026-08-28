@@ -1,0 +1,28 @@
+UNLOAD Dynamic Module Unload Statement
+======================================
+
+Unloads an active dynamic extension library or plugin from memory.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    UNLOAD module_name$
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 68 (ERR_DEVICE_UNAVAILABLE): Module not loaded.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Releases all allocated memory and function registrations.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 UNLOAD "sqlite3_ext"

@@ -1,0 +1,16 @@
+VAL String Numeric Value Parser Function
+======================================================================
+
+The VAL function parses a string into a numeric floating-point value.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    numeric_val# = VAL(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT VAL("3.14159")   : REM Outputs 3.14159

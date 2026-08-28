@@ -1,148 +1,139 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file mem_system.c
- * @brief Engine Memory Context, Arena Allocator, and Program Line Buffer implementation for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements `mem_create()`, `mem_destroy()`, `mem_scratch_alloc()`, `mem_scratch_reset()`, `mem_store_line()`, `mem_get_line()`, `mem_delete_line()`, managing statement scratch arenas and line tables.
- *
- * 2. WHY IT EXISTS:
- * Encapsulates all heap memory management within bounded memory pools (e.g. 640 MB for `baspp`, 384 MB for `bpp`, 64 MB for `bs`), guaranteeing safe zero-initialization and clean resets.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Uses a bump allocator for statement scratch memory (reset per line) and a sorted line array for program storage using binary search for O(log N) line lookups.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "memory/memory.h", "types/config.h", <stdlib.h>, <string.h>, <stdio.h>, <stdint.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Adjust default pool capacities or add specialized subsystem pools.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Mandatory 8-byte alignment for doubles and 64-bit pointers; zero-initialization on allocation (`calloc` / `memset`).
- *
- * 8. WHAT TO EXPECT:
- * `mem_scratch_alloc()` returns 8-byte aligned memory from the statement scratch pool; `mem_scratch_reset()` invalidates all scratch pointers in O(1).
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Trace binary search bounds in `mem_get_line()` or inspect pool exhaustion in `mem_scratch_alloc()`.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid `MemoryContext` pointer initialized via `mem_create()`.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Uses `uintptr_t` for alignment arithmetic.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/types/config.c
- * Prerequisite Header Files:
- * - engine/include/memory/memory.h
- * - engine/include/types/config.h
- */
+// FILENAME: mem_system.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (alloc.h, alloc.c, hal.h, memops.h, memops.c)
+// NEEDS: libcore (memory.h, memory.c, snprintf.h, snprintf.c)
+// NEEDS: libcore (strops.h, strops.c)
+// NEEDS: libkernel (config.h)
+// Provides core logic and interface definitions for mem_system within BASIC++.
+//
+// ---- Includes ----
 
 #include "memory/memory.h"
 #include "types/config.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdint.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/format/snprintf.h"
+#include "hal/hal.h"
 
-/* Private definition of the MemoryContext */
+extern void eval_ast_free_tree(void *node);
+
+// Private definition of the MemoryContext
 struct MemoryContext {
-    /* Scratch Bump Arena */
+    // Scratch Bump Arena
     char   *scratch_base;
     size_t  scratch_size;
     size_t  scratch_used;
 
-    /* String Heap Tracking */
+    // String Heap Tracking
     size_t  str_limit;
     size_t  str_used;
 
-    /* Variable Pool */
+    // Variable Pool
     char   *var_base;
     size_t  var_size;
     size_t  var_used;
 
-    /* Program Line Store */
+    // Program Line Store
     BppProgramLine *lines;
     size_t          lines_count;
     size_t          lines_capacity;
-    size_t          lines_mem_used; /* Tracks text buffer memory usage */
+    size_t          lines_mem_used; // Tracks text buffer memory usage
     size_t          lines_mem_limit;
 
-    /* Library Program Line Store */
+    // Library Program Line Store
     BppProgramLine *lib_lines;
     size_t          lib_lines_count;
     size_t          lib_lines_capacity;
 
-    /* Program Version Tag */
+    // Program Version Tag
     char            program_version[32];
+
+    // Namespace tracking flag for fast bypass
+    bool            has_namespaces;
 };
 
-/* Align size to 8-byte boundary for performance and safety */
+// Align size to 8-byte boundary for performance and safety
 static inline size_t align8(size_t size) {
     return (size + 7) & ~7;
 }
 
 MemoryContext *mem_init(size_t prog_mem_sz, size_t var_mem_sz, size_t str_mem_sz, size_t scratch_mem_sz) {
-    MemoryContext *ctx = (MemoryContext *)calloc(1, sizeof(MemoryContext));
+    HalContext *hal = hal_get();
+    MemoryContext *ctx = NULL;
+    if (hal && hal->mem.alloc) {
+        ctx = (MemoryContext *)hal->mem.alloc(sizeof(MemoryContext));
+    }
     if (!ctx) return NULL;
+    runtime_memset(ctx, 0, sizeof(MemoryContext));
 
-    /* Allocate scratch arena */
+    // Allocate scratch arena
     ctx->scratch_size = scratch_mem_sz;
-    ctx->scratch_base = (char *)calloc(1, ctx->scratch_size);
+    if (hal && hal->mem.alloc) {
+        ctx->scratch_base = (char *)hal->mem.alloc(ctx->scratch_size);
+    }
     if (!ctx->scratch_base) {
-        free(ctx);
+        if (hal && hal->mem.free) hal->mem.free(ctx);
         return NULL;
     }
+    runtime_memset(ctx->scratch_base, 0, ctx->scratch_size);
     ctx->scratch_used = 0;
 
-    /* Set up string limit */
+    // Set up string limit
     ctx->str_limit = str_mem_sz;
     ctx->str_used = 0;
 
-    /* Allocate variable space */
+    // Allocate variable space
     ctx->var_size = var_mem_sz;
-    ctx->var_base = (char *)calloc(1, ctx->var_size);
+    if (hal && hal->mem.alloc) {
+        ctx->var_base = (char *)hal->mem.alloc(ctx->var_size);
+    }
     if (!ctx->var_base) {
-        free(ctx->scratch_base);
-        free(ctx);
+        if (hal && hal->mem.free) {
+            hal->mem.free(ctx->scratch_base);
+            hal->mem.free(ctx);
+        }
         return NULL;
     }
+    runtime_memset(ctx->var_base, 0, ctx->var_size);
     ctx->var_used = 0;
 
-    /* Initialize program store */
+    // Initialize program store
     ctx->lines_mem_limit = prog_mem_sz;
     ctx->lines_capacity = 128;
-    ctx->lines = (BppProgramLine *)calloc(ctx->lines_capacity, sizeof(BppProgramLine));
+    if (hal && hal->mem.alloc) {
+        ctx->lines = (BppProgramLine *)hal->mem.alloc(ctx->lines_capacity * sizeof(BppProgramLine));
+    }
     if (!ctx->lines) {
-        free(ctx->var_base);
-        free(ctx->scratch_base);
-        free(ctx);
+        if (hal && hal->mem.free) {
+            hal->mem.free(ctx->var_base);
+            hal->mem.free(ctx->scratch_base);
+            hal->mem.free(ctx);
+        }
         return NULL;
     }
+    runtime_memset(ctx->lines, 0, ctx->lines_capacity * sizeof(BppProgramLine));
     ctx->lines_count = 0;
     ctx->lines_mem_used = 0;
 
-    /* Initialize library program store */
+    // Initialize library program store
     ctx->lib_lines_capacity = 128;
-    ctx->lib_lines = (BppProgramLine *)calloc(ctx->lib_lines_capacity, sizeof(BppProgramLine));
+    if (hal && hal->mem.alloc) {
+        ctx->lib_lines = (BppProgramLine *)hal->mem.alloc(ctx->lib_lines_capacity * sizeof(BppProgramLine));
+    }
     if (!ctx->lib_lines) {
-        free(ctx->lines);
-        free(ctx->var_base);
-        free(ctx->scratch_base);
-        free(ctx);
+        if (hal && hal->mem.free) {
+            hal->mem.free(ctx->lines);
+            hal->mem.free(ctx->var_base);
+            hal->mem.free(ctx->scratch_base);
+            hal->mem.free(ctx);
+        }
         return NULL;
     }
+    runtime_memset(ctx->lib_lines, 0, ctx->lib_lines_capacity * sizeof(BppProgramLine));
     ctx->lib_lines_count = 0;
 
     return ctx;
@@ -150,26 +141,36 @@ MemoryContext *mem_init(size_t prog_mem_sz, size_t var_mem_sz, size_t str_mem_sz
 
 void mem_shutdown(MemoryContext *ctx) {
     if (!ctx) return;
+    HalContext *hal = hal_get();
 
-    /* Free all program lines */
+    // Free all program lines
     mem_program_clear(ctx);
-    free(ctx->lines);
+    if (ctx->lines && hal && hal->mem.free) {
+        hal->mem.free(ctx->lines);
+        ctx->lines = NULL;
+    }
 
-    /* Free all library lines */
+    // Free all library lines
     mem_lib_program_clear(ctx);
-    free(ctx->lib_lines);
+    if (ctx->lib_lines && hal && hal->mem.free) {
+        hal->mem.free(ctx->lib_lines);
+        ctx->lib_lines = NULL;
+    }
 
-    /* Free arenas */
-    free(ctx->var_base);
-    free(ctx->scratch_base);
-    free(ctx);
+    // Free arenas
+    if (hal && hal->mem.free) {
+        if (ctx->var_base) hal->mem.free(ctx->var_base);
+        if (ctx->scratch_base) hal->mem.free(ctx->scratch_base);
+        hal->mem.free(ctx);
+    }
 }
+
 
 void *mem_scratch_alloc(MemoryContext *ctx, size_t size) {
     if (!ctx) return NULL;
     size = align8(size);
     if (size > ctx->scratch_size || ctx->scratch_used > ctx->scratch_size - size) {
-        /* Scratch OOM */
+        // Scratch OOM
         return NULL;
     }
     void *ptr = ctx->scratch_base + ctx->scratch_used;
@@ -183,7 +184,7 @@ void mem_scratch_reset(MemoryContext *ctx) {
     }
 }
 
-/* Binary search helper to find the index of a line or where it should be inserted */
+// Binary search helper to find the index of a line or where it should be inserted
 static bool find_line_index(MemoryContext *ctx, BppLineNumber line, size_t *out_idx) {
     if (ctx->lines_count == 0) {
         *out_idx = 0;
@@ -211,52 +212,87 @@ static bool find_line_index(MemoryContext *ctx, BppLineNumber line, size_t *out_
 
 bool mem_program_insert(MemoryContext *ctx, BppLineNumber line, const char *text) {
     if (!ctx || !text) return false;
+    HalContext *hal = hal_get();
 
-    size_t len = strlen(text);
+    size_t len = runtime_strlen(text);
     size_t idx = 0;
     bool exists = find_line_index(ctx, line, &idx);
 
     if (exists) {
-        /* Replace existing line */
-        size_t old_len = strlen(ctx->lines[idx].text);
+        // Replace existing line
+        size_t old_len = runtime_strlen(ctx->lines[idx].text);
         if (ctx->lines_mem_used - old_len + len > ctx->lines_mem_limit) {
-            return false; /* OOM program limit exceeded */
+            return false; // OOM program limit exceeded
         }
-        char *new_text = (char *)realloc(ctx->lines[idx].text, len + 1);
+        char *new_text = NULL;
+        if (hal && hal->mem.realloc) {
+            new_text = (char *)hal->mem.realloc(ctx->lines[idx].text, len + 1);
+        } else if (hal && hal->mem.alloc) {
+            new_text = (char *)hal->mem.alloc(len + 1);
+            if (new_text && ctx->lines[idx].text) {
+                runtime_memcpy(new_text, ctx->lines[idx].text, old_len + 1);
+                if (hal->mem.free) hal->mem.free(ctx->lines[idx].text);
+            }
+        }
         if (!new_text) return false;
-        strcpy(new_text, text);
+        runtime_strcpy(new_text, text);
         ctx->lines[idx].text = new_text;
         ctx->lines_mem_used = ctx->lines_mem_used - old_len + len;
+        if (ctx->lines[idx].ast_cache) {
+            eval_ast_free_tree(ctx->lines[idx].ast_cache);
+            ctx->lines[idx].ast_cache = NULL;
+            ctx->lines[idx].ast_valid = false;
+        }
         return true;
     }
 
-    /* Insert new line */
+    // Insert new line
     if (ctx->lines_mem_used + len + sizeof(BppProgramLine) > ctx->lines_mem_limit) {
-        return false; /* OOM limit exceeded */
+        return false; // OOM limit exceeded
     }
 
     if (ctx->lines_count >= ctx->lines_capacity) {
+        size_t old_cap = ctx->lines_capacity;
         size_t new_cap = ctx->lines_capacity * 2;
-        BppProgramLine *new_lines = (BppProgramLine *)realloc(ctx->lines, new_cap * sizeof(BppProgramLine));
+        BppProgramLine *new_lines = NULL;
+        if (hal && hal->mem.realloc) {
+            new_lines = (BppProgramLine *)hal->mem.realloc(ctx->lines, new_cap * sizeof(BppProgramLine));
+        } else if (hal && hal->mem.alloc) {
+            new_lines = (BppProgramLine *)hal->mem.alloc(new_cap * sizeof(BppProgramLine));
+            if (new_lines && ctx->lines) {
+                runtime_memcpy(new_lines, ctx->lines, old_cap * sizeof(BppProgramLine));
+                if (hal->mem.free) hal->mem.free(ctx->lines);
+            }
+        }
         if (!new_lines) return false;
         ctx->lines = new_lines;
         ctx->lines_capacity = new_cap;
     }
 
-    /* Allocate line text buffer */
-    char *text_copy = (char *)calloc(1, len + 1);
+    // Allocate line text buffer
+    char *text_copy = NULL;
+    if (hal && hal->mem.alloc) {
+        text_copy = (char *)hal->mem.alloc(len + 1);
+    }
     if (!text_copy) return false;
-    strcpy(text_copy, text);
+    runtime_strcpy(text_copy, text);
 
-    /* Shift lines to make room for insertion */
+    // Shift lines to make room for insertion
     for (size_t i = ctx->lines_count; i > idx; --i) {
         ctx->lines[i] = ctx->lines[i - 1];
     }
 
     ctx->lines[idx].line_number = line;
     ctx->lines[idx].text = text_copy;
+    ctx->lines[idx].ast_cache = NULL;
+    ctx->lines[idx].ast_valid = false;
+    ctx->lines[idx].ast_skip_lines = 0;
     ctx->lines_count++;
     ctx->lines_mem_used += (len + sizeof(BppProgramLine));
+
+    if (runtime_strstr(text, "NAMESPACE") != NULL || runtime_strstr(text, "namespace") != NULL || runtime_strstr(text, "Namespace") != NULL) {
+        ctx->has_namespaces = true;
+    }
 
     return true;
 }
@@ -265,15 +301,23 @@ bool mem_program_delete(MemoryContext *ctx, BppLineNumber line) {
     if (!ctx) return false;
     size_t idx = 0;
     if (!find_line_index(ctx, line, &idx)) {
-        return false; /* Not found */
+        return false; // Not found
     }
 
-    /* Free memory for this line */
-    size_t len = strlen(ctx->lines[idx].text);
-    free(ctx->lines[idx].text);
+    // Free memory for this line
+    HalContext *hal = hal_get();
+    size_t len = runtime_strlen(ctx->lines[idx].text);
+    if (hal && hal->mem.free) {
+        hal->mem.free(ctx->lines[idx].text);
+    }
+    if (ctx->lines[idx].ast_cache) {
+        eval_ast_free_tree(ctx->lines[idx].ast_cache);
+        ctx->lines[idx].ast_cache = NULL;
+        ctx->lines[idx].ast_valid = false;
+    }
     ctx->lines_mem_used -= (len + sizeof(BppProgramLine));
 
-    /* Shift remaining lines */
+    // Shift remaining lines
     for (size_t i = idx; i < ctx->lines_count - 1; ++i) {
         ctx->lines[i] = ctx->lines[i + 1];
     }
@@ -297,14 +341,38 @@ BppProgramLine *mem_program_get_all(MemoryContext *ctx, size_t *count) {
     return ctx->lines;
 }
 
+bool mem_program_find_line_index(MemoryContext *ctx, BppLineNumber line, size_t *out_idx) {
+    if (!ctx || !out_idx) return false;
+    return find_line_index(ctx, line, out_idx);
+}
+
+bool mem_program_has_namespaces(MemoryContext *ctx) {
+    return ctx ? ctx->has_namespaces : false;
+}
+
+void mem_program_set_has_namespaces(MemoryContext *ctx, bool has_ns) {
+    if (ctx) {
+        ctx->has_namespaces = has_ns;
+    }
+}
+
 void mem_program_clear(MemoryContext *ctx) {
     if (!ctx) return;
+    HalContext *hal = hal_get();
     for (size_t i = 0; i < ctx->lines_count; ++i) {
-        free(ctx->lines[i].text);
+        if (ctx->lines[i].text && hal && hal->mem.free) {
+            hal->mem.free(ctx->lines[i].text);
+        }
+        if (ctx->lines[i].ast_cache) {
+            eval_ast_free_tree(ctx->lines[i].ast_cache);
+            ctx->lines[i].ast_cache = NULL;
+            ctx->lines[i].ast_valid = false;
+        }
     }
     ctx->lines_count = 0;
     ctx->lines_mem_used = 0;
     ctx->program_version[0] = '\0';
+    ctx->has_namespaces = false;
 }
 
 void mem_program_set_version(MemoryContext *ctx, const char *ver_str) {
@@ -313,7 +381,7 @@ void mem_program_set_version(MemoryContext *ctx, const char *ver_str) {
         ctx->program_version[0] = '\0';
         return;
     }
-    strncpy(ctx->program_version, ver_str, sizeof(ctx->program_version) - 1);
+    runtime_strncpy(ctx->program_version, ver_str, sizeof(ctx->program_version) - 1);
     ctx->program_version[sizeof(ctx->program_version) - 1] = '\0';
 }
 
@@ -327,9 +395,13 @@ void *mem_string_alloc(MemoryContext *ctx, size_t size) {
     if (size > SIZE_MAX - sizeof(size_t)) return NULL;
     size_t total_size = size + sizeof(size_t);
     if (total_size > ctx->str_limit || ctx->str_used > ctx->str_limit - total_size) {
-        return NULL; /* String heap limit */
+        return NULL; // String heap limit
     }
-    size_t *ptr = (size_t *)calloc(1, total_size);
+    HalContext *hal = hal_get();
+    size_t *ptr = NULL;
+    if (hal && hal->mem.alloc) {
+        ptr = (size_t *)hal->mem.alloc(total_size);
+    }
     if (!ptr) return NULL;
     *ptr = total_size;
     ctx->str_used += total_size;
@@ -338,23 +410,18 @@ void *mem_string_alloc(MemoryContext *ctx, size_t size) {
 
 void mem_string_free(MemoryContext *ctx, void *ptr) {
     if (!ctx || !ptr) return;
-    /* In a full implementation, we need to know the block size.
-     * For now, string allocations store block sizes prefixing data,
-     * or string system tracks it. We'll deduct it properly.
-     * Let's assume size is managed by caller or pass it in.
-     * For tracking, we can just malloc and trace.
-     * Let's let the caller track exact sizes, or we wrap it with a prefix.
-     * Prefixing size is extremely safe:
-     */
     size_t *prefix = (size_t *)((char *)ptr - sizeof(size_t));
     size_t size = *prefix;
     ctx->str_used -= size;
-    free(prefix);
+    HalContext *hal = hal_get();
+    if (hal && hal->mem.free) {
+        hal->mem.free(prefix);
+    }
 }
 
 size_t mem_get_free_ram(MemoryContext *ctx) {
     if (!ctx) return 0;
-    /* Dynamic memory left across variables, strings, scratch, and programs */
+    // Dynamic memory left across variables, strings, scratch, and programs
     size_t limit = ctx->lines_mem_limit + ctx->var_size + ctx->str_limit + ctx->scratch_size;
     size_t used = ctx->lines_mem_used + ctx->var_used + ctx->str_used + ctx->scratch_used;
     return (limit > used) ? (limit - used) : 0;
@@ -375,30 +442,47 @@ void mem_format_size(size_t bytes, char *buf, size_t buf_size) {
         idx++;
     }
     if (idx == 0) {
-        snprintf(buf, buf_size, "%lu Bytes", (unsigned long)bytes);
+        runtime_snprintf(buf, buf_size, "%lu Bytes", (unsigned long)bytes);
     } else {
-        snprintf(buf, buf_size, "%.2f %s", size, units[idx]);
+        runtime_snprintf(buf, buf_size, "%.2f %s", size, units[idx]);
     }
 }
 
 bool mem_lib_program_insert(MemoryContext *ctx, BppLineNumber line, const char *text) {
     if (!ctx || !text) return false;
-    size_t len = strlen(text);
+    HalContext *hal = hal_get();
+    size_t len = runtime_strlen(text);
 
     if (ctx->lib_lines_count >= ctx->lib_lines_capacity) {
-        size_t new_cap = ctx->lib_lines_capacity * 2;
-        BppProgramLine *new_lines = (BppProgramLine *)realloc(ctx->lib_lines, new_cap * sizeof(BppProgramLine));
+        size_t old_cap = ctx->lib_lines_capacity;
+        size_t new_cap = (ctx->lib_lines_capacity == 0) ? 16 : (ctx->lib_lines_capacity * 2);
+        BppProgramLine *new_lines = NULL;
+        if (hal && hal->mem.realloc) {
+            new_lines = (BppProgramLine *)hal->mem.realloc(ctx->lib_lines, new_cap * sizeof(BppProgramLine));
+        } else if (hal && hal->mem.alloc) {
+            new_lines = (BppProgramLine *)hal->mem.alloc(new_cap * sizeof(BppProgramLine));
+            if (new_lines && ctx->lib_lines) {
+                runtime_memcpy(new_lines, ctx->lib_lines, old_cap * sizeof(BppProgramLine));
+                if (hal->mem.free) hal->mem.free(ctx->lib_lines);
+            }
+        }
         if (!new_lines) return false;
         ctx->lib_lines = new_lines;
         ctx->lib_lines_capacity = new_cap;
     }
 
-    char *text_copy = (char *)calloc(1, len + 1);
+    char *text_copy = NULL;
+    if (hal && hal->mem.alloc) {
+        text_copy = (char *)hal->mem.alloc(len + 1);
+    }
     if (!text_copy) return false;
-    strcpy(text_copy, text);
+    runtime_strcpy(text_copy, text);
 
     ctx->lib_lines[ctx->lib_lines_count].line_number = line;
     ctx->lib_lines[ctx->lib_lines_count].text = text_copy;
+    ctx->lib_lines[ctx->lib_lines_count].ast_cache = NULL;
+    ctx->lib_lines[ctx->lib_lines_count].ast_valid = false;
+    ctx->lib_lines[ctx->lib_lines_count].ast_skip_lines = 0;
     ctx->lib_lines_count++;
     return true;
 }
@@ -411,9 +495,13 @@ BppProgramLine *mem_lib_program_get_all(MemoryContext *ctx, size_t *count) {
 
 void mem_lib_program_clear(MemoryContext *ctx) {
     if (!ctx) return;
+    HalContext *hal = hal_get();
     for (size_t i = 0; i < ctx->lib_lines_count; ++i) {
-        free(ctx->lib_lines[i].text);
+        if (ctx->lib_lines[i].text && hal && hal->mem.free) {
+            hal->mem.free(ctx->lib_lines[i].text);
+        }
     }
     ctx->lib_lines_count = 0;
 }
+
 

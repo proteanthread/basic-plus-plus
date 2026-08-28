@@ -1,0 +1,21 @@
+vfx Visual Effects & Particle System Library (libadvanced)
+======================================================================
+
+The vfx library provides particle systems, screen fades, and camera
+shake effects for BGI graphics.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Particle emitters (explosions, sparks, smoke).
+  - Palette fades and transition effects.
+  - Screen shake camera perturbation.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    void vfx_spawn_particles(int x, int y, int count, uint32_t col, float spd);
+    void vfx_screen_fade(float factor);
+    void vfx_screen_shake(int intensity, int duration_frames);

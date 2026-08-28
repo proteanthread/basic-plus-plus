@@ -1,33 +1,15 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-/**
- * @file struct_ctx.h
- * @brief User-Defined Types (UDT) and Class structure definitions for BASIC++.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Defines structures representing custom records (TYPE ... END TYPE)
- *   and class structures (CLASS ... END CLASS) and declares registry management APIs.
- * - Why it exists: Supports object-oriented and structured record programming models in Phase 26.
- * - Why it works this way: Uses a static registry mapping names to member fields. Variable
- *   instances are instantiated as dynamic key-value maps (BppMap) to support fields and nesting.
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Maximum fields count (64), maximum types count (64).
- * - What cannot be changed: Opaque map-based runtime instantiation layout.
- * - What to expect: Type lookup returns structured descriptors detailing name, type, and nesting.
- * - What to do if something breaks: Trace registry bounds and check name normalization.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Type names are unique and case-insensitive.
- * - Portability concerns: Standard C17 compliant.
- *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add virtual method tables (VMT) to support polymorphism.
- * - How to write external extensions: External modules query structure schemas via registry lookups.
- */
+// FILENAME: struct.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libcore (error.c, struct.c)
+// NEEDED BY: libengine (class.c, context.c, control.c, data.c, dim.c)
+// NEEDED BY: libengine (eval_expr_internal.h, events_internal.h)
+// NEEDED BY: libengine (exec_internal.h, isam.c, ops.c, rpn.c, sub_internal.h)
+// NEEDED BY: libengine (type.c, vm_internal.h)
+// NEEDS: libkernel (config.h, types.h)
+// Provides core logic and interface definitions for struct within BASIC++.
+//
+// ---- Includes ----
 
 #ifndef CORE_STRUCT_H
 #define CORE_STRUCT_H
@@ -42,14 +24,17 @@
 typedef struct {
     char      name[64];
     ValueType type;
-    char      nested_type[64]; /* If type is nested UDT */
+    char      nested_type[64]; // If type is nested UDT
+    bool      is_private;
 } BppUserTypeField;
 
 typedef struct {
     char             name[64];
+    char             parent_name[64]; // Extends parent class/type
     BppUserTypeField fields[MAX_TYPE_FIELDS];
     int              field_count;
-    bool             is_class;        /* True if CLASS instead of TYPE */
+    bool             is_class;        // True if CLASS instead of TYPE
+    bool             is_record;       // True if RECORD instead of TYPE
 } BppUserTypeDef;
 
 typedef struct BppTypeRegistry {
@@ -78,4 +63,4 @@ static inline BppMap *struct_instantiate(VMContext *vm, const BppTypeRegistry *r
 static inline bool struct_copy_instance(VMContext *vm, BppMap *dst, BppMap *src, char *err_buf, size_t err_len) { (void)vm; (void)dst; (void)src; (void)err_buf; (void)err_len; return false; }
 #endif
 
-#endif /* CORE_STRUCT_H */
+#endif // CORE_STRUCT_H

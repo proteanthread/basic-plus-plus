@@ -1,0 +1,13 @@
+custom_function Custom Function Extension Template
+======================================================================
+
+Guide and template for implementing and registering custom C functions
+in the BASIC++ function registry.
+
+
+TEMPLATE PATTERN
+----------------------------------------------------------------------
+
+    1. Implement BuiltinFuncHandler callback (func_my_eval).
+    2. Define FunctionEntry metadata (name, min_args, safety).
+    3. Call funcreg_register(&entry).

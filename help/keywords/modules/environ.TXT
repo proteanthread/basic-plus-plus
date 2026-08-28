@@ -1,0 +1,33 @@
+ENVIRON Environment Variable Setter Statement
+======================================================================
+
+The ENVIRON statement sets or removes environment variables for the
+current process.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    ENVIRON "name=value"
+    ENVIRON "name="
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Must contain an '=' separator.
+  - Setting empty value (name=) deletes the environment variable.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  2           ERR_SYNTAX_ERROR      Missing '=' in argument
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 ENVIRON "DEBUG=1"

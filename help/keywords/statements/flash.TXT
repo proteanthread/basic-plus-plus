@@ -1,0 +1,30 @@
+FLASH Retro Text Blinking Attribute Statement
+=============================================
+
+Toggles text character blinking mode in retro and ANSI display systems.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    FLASH flash_flag%
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Flag must be 0 or 1.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  ZX Spectrum attribute emulation.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 FLASH 1
+    20 PRINT "WARNING: SYSTEM OVERLOAD"
+    30 FLASH 0

@@ -1,0 +1,28 @@
+# `REMAINDER` Floating-Point Remainder (Universal Dual-Format)
+
+## 1. BASIC Usage and Function/Operator Definition
+
+The `REMAINDER` keyword computes the floating-point remainder $a - b \times \lfloor a / b \rfloor$ according to ANSI Full BASIC (ECMA-116) and IEEE 754 standards. It is supported in both **infix** and **prefix** notation.
+
+### Syntax Signatures:
+```basic
+rem = expr1 REMAINDER expr2
+rem = REMAINDER(expr1, expr2)
+```
+
+### Operational Rules:
+- Computes exact double-precision floating-point remainder: `a - b * floor(a / b)`.
+- Unlike `MOD` (which truncates operands to 64-bit integers), `REMAINDER` maintains full floating-point fractional precision.
+- In RPN stack evaluation blocks: `{ 10.5 3 REMAINDER }`.
+- Division by zero returns `Error 11: Division by zero`.
+
+---
+
+## 2. Code Examples
+
+```basic
+10 REM Infix
+20 PRINT "10.5 REMAINDER 3 = "; 10.5 REMAINDER 3 : REM Outputs 1.5
+30 REM Prefix
+40 PRINT "REMAINDER(7.25, 2) = "; REMAINDER(7.25, 2) : REM Outputs 1.25
+```

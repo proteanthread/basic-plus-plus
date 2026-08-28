@@ -1,0 +1,25 @@
+break Execution Breakpoint Statement
+====================================
+
+Configures or triggers an immediate breakpoint in the program execution engine.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    BREAK [ON | OFF]
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Integrates with interactive debugger and DAP server.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 BREAK ON
+    20 FOR I = 1 TO 10
+    30   IF I = 5 THEN BREAK
+    40 NEXT I

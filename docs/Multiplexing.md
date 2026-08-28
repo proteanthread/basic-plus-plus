@@ -1,91 +1,100 @@
-# Unified Multiplexing & Headless Architecture in BASIC++
+# BASIC++ v6.5.2 Multiplexing
 
-## Overview
+## 1. I/O MULTIPLEXING
 
-BASIC++ supports a unified, ultra-granular C17 micro-library architecture designed for maximum portability across headless servers, daemons, CI/CD script runners, resource-restricted IoT microcontrollers, and desktop visual environments.
+BASIC++ provides multiplexing statements for routing data between multiple channels, variables, and expressions. The MUX (multiplexer) and DEMUX (demultiplexer) statements are implemented in engine/src/runtime/mux.c.
 
-The **Multiplexing Subsystem** (`mod_mux`) enables high-performance data structure interleaving, binary record serialization, and virtual device channel stream multiplexing.
+## 2. MUX (MULTIPLEXER)
 
----
-
-## 1. Headless & Micro-Library Architecture
-
-The BASIC++ build system is fully modular. The engine uses foundational `libcore` for core execution and accumulative `libstandard` for extended features alongside fine-grained static micro-libraries.
-
-### Key Features
-- **Headless Execution Profile (`SET_HEADLESS_LIBS`)**: Compiles binaries (`bpp`, `bs`, or custom server dialects) linking `libcore` with zero SDL2, zero GUI, zero BGI raster graphics, and zero TUI editor dependencies.
-- **Custom Dialect Composition**: Developers can pick and choose exact micro-libraries (e.g., linking `rt_arrays` and `mod_mux` while omitting `vdev_gfx` and `stmt_beep`) to build lightweight custom dialects for microcontrollers or embedded systems.
-- **Self-Registering Feature Introspection**: Statements, built-in functions, `HELP` text, and `CATALOG` topics self-register upon initialization. Unlinked micro-libraries leave zero byte footprint and omit their keywords from `HELP`/`CATALOG`.
-
----
-
-## 2. Multiplexing Syntax Reference
-
-BASIC++ provides three unified syntax levels for data and channel multiplexing.
-
-### 2.1 Statement Level (`MUX` and `DEMUX`)
-Interleaves or de-interleaves 1D/2D numeric arrays, string vectors, or matrices.
+MUX selects one of several input sources based on a selector value and assigns the result to a target variable:
 
 ```basic
-DIM A(5), B(5), C(10)
-MAT READ A
-MAT READ B
-MUX C, A, B               ' Interleaves A and B into C (A0, B0, A1, B1...)
-MAT PRINT C
-
-DEMUX A, B FROM C         ' De-interleaves C back into A and B
+10 Selector = 2
+20 MUX Selector, Result, Source1, Source2, Source3
+30 PRINT Result    ' Prints the value of Source2
 ```
 
-### 2.2 Matrix Level (`MAT MUX` and `MAT DEMUX`)
-Dartmouth BASIC `MAT` family extensions for matrix row, column, or stride interleaving.
+MUX evaluates the selector (1-based), picks the corresponding source value from the list, and assigns it to the result variable. If the selector is out of range, the result is set to zero (numeric) or empty string (string).
+
+MUX works with both numeric and string values:
 
 ```basic
-DIM M1(3, 3), M2(3, 3), M3(3, 6)
-MAT READ M1
-MAT READ M2
-MAT MUX M3 = M1, M2       ' Interleaves matrix columns
-MAT PRINT M3
+10 Mode = 3
+20 MUX Mode, Label$, "Low", "Medium", "High", "Critical"
+30 PRINT Label$    ' Prints "High"
 ```
 
-### 2.3 Binary Record Serialization (`PACK$` and `UNPACK`)
-Serializes heterogeneous variables, arrays, or strings into packed binary buffers.
+## 3. DEMUX (DEMULTIPLEXER)
+
+DEMUX routes a single input value to one of several target variables based on a selector:
 
 ```basic
-n = 42.5
-s$ = "BASIC++"
-b$ = PACK$(n, s$)         ' Serializes number and string into binary buffer b$
-UNPACK b$, out_n, out_s$  ' Deserializes buffer back into variables
+10 Selector = 1
+20 Value = 42
+30 DEMUX Selector, Value, Target1, Target2, Target3
+40 PRINT Target1   ' Prints 42 (others unchanged)
 ```
 
-### 2.4 Virtual Device Channel Multiplexing (`STREAM.MUX`)
-Interleaves multiple virtual device handles (`#ch`) into a single tagged stream channel handle for IPC, TCP sockets, or memory pipes.
+DEMUX evaluates the selector, picks the corresponding target variable, and assigns the input value to it. Other target variables are not modified.
+
+## 4. BITMUX (BIT MULTIPLEXER)
+
+BITMUX selects individual bits from multiple source values and combines them into a single result:
 
 ```basic
-OPEN "CON:" FOR INPUT AS #1
-OPEN "RAW:" FOR INPUT AS #2
-OPEN "PIPE:" FOR OUTPUT AS #3
-STREAM.MUX #3, #1, #2      ' Multiplexes #1 and #2 into #3
+10 A = &HFF        ' 11111111
+20 B = &H00        ' 00000000
+30 Mask = &HAA     ' 10101010  (selects bits from A where 1, B where 0)
+40 BITMUX Mask, Result, A, B
+50 PRINT HEX$(Result)    ' Prints "AA"
 ```
 
-### 2.5 Microplexing Subsystem (`MICROPLEX$` and `BITMUX`)
-Micro-granular character-level string interleaving and bit-width array interleaving.
+BITMUX uses a bitmask to select which source provides each bit of the result. Where the mask bit is 1, the corresponding bit comes from the first source. Where the mask bit is 0, it comes from the second source.
 
-#### Character-Level String Microplexing (`MICROPLEX$`)
-`MICROPLEX$(str1$, str2$)` performs character-by-character interleaving of two string parameters into a single output string.
+## 5. STREAM MULTIPLEXING
+
+STREAM.MUX combines output from multiple file channels into a single output stream:
 
 ```basic
-s1$ = "ABCDE"
-s2$ = "12345"
-res$ = MICROPLEX$(s1$, s2$)  ' Returns "A1B2C3D4E5"
+10 OPEN "LOG1.TXT" FOR INPUT AS #1
+20 OPEN "LOG2.TXT" FOR INPUT AS #2
+30 OPEN "COMBINED.TXT" FOR OUTPUT AS #3
+40 STREAM.MUX #3, #1, #2     ' Interleave lines from #1 and #2 into #3
+50 CLOSE #1, #2, #3
 ```
 
-#### Bit-Level Numeric Array Interleaving (`BITMUX`)
-`BITMUX dst, src1, src2 [, BITS n]` performs bitwise interleaving of elements from two numeric arrays into a destination array using an optional bit width (1..32 bits, default 8).
+STREAM.MUX reads lines alternately from the input channels and writes them to the output channel. When one input reaches EOF, remaining lines come from the other input.
+
+## 6. DEVICE MULTIPLEXING
+
+The device multiplexer (engine/src/device/mux.c) manages multiple virtual console instances within the TUI editor multiplexer. Each virtual terminal has its own cursor position, color state, and scroll region. The multiplexer routes keyboard input to the active terminal and renders each terminal's output to the appropriate screen region.
+
+CHVT n switches the active virtual terminal. MUX in the device context refers to the virtual terminal multiplexer, which is distinct from the data MUX statement.
+
+## 7. USE CASES
+
+### Configuration Selection
 
 ```basic
-DIM B1(2), B2(2), B3(2)
-B1(1) = 15                 ' 0x0F
-B2(1) = 240                ' 0xF0
-BITMUX B3, B1, B2 BITS 8   ' Interleaves 8-bit slices into B3(1) (0xF0FF = 61455)
+10 INPUT "Environment (1=dev, 2=staging, 3=prod): "; Env
+20 MUX Env, Server$, "localhost", "staging.example.com", "prod.example.com"
+30 MUX Env, Port, 8080, 8443, 443
+40 PRINT "Connecting to "; Server$; ":"; Port
 ```
 
+### Dispatch Tables
+
+```basic
+10 INPUT "Operation (1=add, 2=sub, 3=mul, 4=div): "; Op
+20 INPUT "A, B: "; A, B
+30 MUX Op, Result, A+B, A-B, A*B, A/B
+40 PRINT "Result:"; Result
+```
+
+### Bit Field Extraction
+
+```basic
+10 Status = &HB7                  ' 10110111
+20 BITMUX &H0F, LowNibble, Status, 0
+30 PRINT "Low nibble:"; HEX$(LowNibble)    ' "7"
+```

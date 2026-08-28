@@ -1,0 +1,49 @@
+# Phase 2F: libcore & libflex Freestanding Conversion
+
+## 1. Overview
+Phase 2F completes the freestanding C17 architectural conversion for the Core REPL, Introspection, Dynamic Metaprogramming, and Flex Subsystems (`libcore` and `libflex`). All direct standard C library file handles (`FILE*`), hosted libc headers (`<stdio.h>`, `<stdlib.h>`, `<string.h>`, `<ctype.h>`), memory allocations (`malloc`, `calloc`, `free`), memory manipulation routines (`memset`, `memcpy`), and string/formatting operations (`strlen`, `strcpy`, `strcmp`, `strncmp`, `strncpy`, `strchr`, `strrchr`, `strcasecmp`, `strncasecmp`, `strstr`, `strncat`, `snprintf`, `vsnprintf`) have been migrated to the pure C17 freestanding Runtime Library (`runtime_*`) and Hardware Abstraction Layer `IoHandle` / `hal->io.*` operations.
+
+---
+
+## 2. Converted Source Inventory & Structure
+
+### 2.1 Core REPL & Introspection Subsystem (`libcore`)
+- [`engine/src/docgen/docgen.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/docgen/docgen.c): Documentation generator (JSON schema, Markdown manual, and self-contained HTML portal) converted to `hal->io.file_open`, `hal->io.file_write`, `hal->io.file_close`, and `runtime_vsnprintf`.
+- [`engine/src/statements/dialect/category.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/dialect/category.c): `CATEGORY` statement converted to `runtime_strcasecmp`, `runtime_strncpy`, `runtime_strcpy`, `runtime_strstr`, `runtime_memcpy`, and `runtime_memset`.
+- [`engine/src/statements/dialect/help.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/dialect/help.c): `HELP` and `CATALOG` statement handlers converted to `hal->io.file_open`/`read`/`close` for external documentation loading and `runtime_*` string routines.
+- [`engine/src/statements/dialect/introspection.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/dialect/introspection.c): `HOSTNAME` and `USERNAME` statements converted to `runtime_memset` and `runtime_strlen`.
+- [`engine/src/statements/dialect/selftest.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/dialect/selftest.c): `SELFTEST` diagnostics statement converted to `runtime_memset`, `runtime_strcmp`, and `runtime_strncmp`.
+- [`engine/src/eval/functions/system/category.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/eval/functions/system/category.c): `CATEGORY$` built-in function verified with pure `runtime_*` functions.
+
+### 2.2 Dynamic Metaprogramming & Flex Subsystem (`libflex` & Runtime)
+- [`engine/src/statements/dialect/alias.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/dialect/alias.c): `ALIAS`, `ALIAS OPER`, `ALIAS LIST`, `ALIAS SAVE`, `ALIAS LOAD` converted to `hal->io.*` and `runtime_*`.
+- [`engine/src/statements/dialect/keyword.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/dialect/keyword.c): `KEYWORD SET/GET/LIST/CLEAR` converted to `runtime_*`.
+- [`engine/src/statements/dialect/override.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/dialect/override.c): `OVERRIDE WITH GOSUB/SUB` converted to `runtime_*`.
+- [`engine/src/statements/dialect/remove.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/dialect/remove.c): `REMOVE` and `REMOVE$` in-place scalar and array pattern cleansing converted to `hal->mem.alloc`/`free` and `runtime_*`.
+- [`engine/src/statements/dialect/scope.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/dialect/scope.c): `SCOPE DISABLE/ENABLE/HOOK/PRIVATE/MODULE/BEGIN/END/PROTECT` converted to `runtime_*`.
+- [`engine/src/scope/scope.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/scope/scope.c): Core scope state machine and hook registry converted to `runtime_*`.
+- [`engine/src/runtime/keyword_props.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/runtime/keyword_props.c): Keyword properties registry converted to `runtime_*`.
+- [`engine/src/runtime/override.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/runtime/override.c): Statement override table converted to `runtime_*`.
+
+---
+
+## 3. Verification & Test Suite
+- **Dedicated Unit Test Suite**: [`tests/core_flex_freestanding_test.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/tests/core_flex_freestanding_test.c) covering:
+  1. Documentation Generator Subsystem (JSON export, Markdown manual, HTML portal).
+  2. ALIAS & KEYWORD Properties Subsystems (registration, lookup, removal, operator aliasing, property tables).
+  3. SCOPE & OVERRIDE Subsystems (keyword disabling/enabling, execution hooks, private/protected symbols, block depths, namespaces, statement overriding).
+  4. CATEGORY, CATEGORY$, and Introspection (statement, function, hostname, username).
+  5. Built-In SELFTEST Diagnostics (5 internal subsystems verified).
+- **All Freestanding Suites Passed (7/7)**:
+  - `runtime_freestanding_test.exe`: 9/9 suites PASSED (100%)
+  - `boot_freestanding_test.exe`: 3/3 suites PASSED (100%)
+  - `kernel_freestanding_test.exe`: 6/6 suites PASSED (100%)
+  - `hardware_freestanding_test.exe`: 4/4 suites PASSED (100%)
+  - `server_freestanding_test.exe`: 4/4 suites PASSED (100%)
+  - `script_freestanding_test.exe`: 4/4 suites PASSED (100%)
+  - `core_flex_freestanding_test.exe`: 5/5 suites PASSED (100%)
+- **Master Regression Suites (Zero Regressions)**:
+  - `tests/qb_vbdos_master.bas`: 10 / 10 Packages PASSED (100%)
+  - `tests/vintage_ecosystems_master.bas`: 14 / 14 Packages PASSED (100%)
+  - `tests/vintage_deep_fuzz_stress.bas`: 8 / 8 Tests PASSED (100%)
+  - Immediate execution `bs -c "PRINT 1+1"`: Verified (`2`).

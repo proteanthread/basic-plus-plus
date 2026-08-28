@@ -1,0 +1,21 @@
+arrays Multi-Dimensional Array Subsystem (libengine)
+======================================================================
+
+The arrays library manages dynamic array storage, multi-dimensional
+indexing (up to 8 dims), and OPTION BASE support.
+
+
+INVARIANTS
+----------------------------------------------------------------------
+
+  - Respects runtime OPTION BASE 0 and 1.
+  - Automatically deallocates strings in string arrays during ERASE.
+  - Subscript bounds validation (Error 9 on out-of-bounds).
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    ArrayContext *arr_create(void);
+    BppArray *arr_declare(ArrayContext *ctx, const char *name, int dims, int *bounds, BValType type);
+    void arr_erase(ArrayContext *ctx, const char *name);

@@ -1,0 +1,322 @@
+# Open-Source Developers License (OSDL)
+
+**Version 1.0 — A (very) Communal Open Source Software License**
+
+\---
+
+## Adaptability Notice
+
+This license is designed to be adopted by any open source community project.
+To adapt it for your project, replace the following placeholders throughout:
+
+|Placeholder|Replace With|
+|-|-|
+|`\[PROJECT NAME]`|The name of your software project|
+|`\[YEAR]`|The year of first publication|
+|`\[COPYRIGHT HOLDER]`|Your name, team name, or community organization|
+
+The **BASIC++ Community** edition of this license uses:
+
+* **Project:** BASIC++
+* **Copyright:** Copyleft 2026, BASIC++ Community, All Wrongs Reserved.
+
+> Do not alter the core terms of this license. If your needs differ substantially,
+> write your own license rather than misrepresenting this one.
+
+\---
+
+## Copyright Notice
+
+**Copyleft 20206, BASIC++ Community. All Wrongs Reserved.**
+
+BASIC++ is community software. It was written by people, for people,
+and it belongs to people — not to products, not to profit, not to any
+corporation or proprietary platform.
+
+\---
+
+## Preamble
+
+This license exists because code written for a community should stay with that
+community. The Open-Source Developers License (OSDL) is built on a single
+principle: **what is given freely must remain free.**
+
+You are free to use, study, modify, and share this software. You are free to
+build things with it, learn from it, teach with it, and give it away. What you
+may not do is sell it, lock it away, or strip others of the freedoms this
+license protects.
+
+The OSDL is a **communal copyleft license**. Any project that uses any portion
+of this software must itself be free and open under these same terms. No part
+of this software — original, modified, or incorporated into another work — may
+ever become proprietary.
+
+This is not anti-business. Charging for your time, your skill, and your support
+is honest work. Charging for the code itself — code that a community wrote and
+that belongs to the community — is not.
+
+**The code is not for sale. It never was.**
+
+\---
+
+## Definitions
+
+**"Software"** refers to the source code, compiled binaries, documentation, and
+all associated files distributed under this license.
+
+**"Derivative Work"** means any work that incorporates, is based upon, extends,
+or contains any portion of the Software, including but not limited to
+modifications, translations, ports, forks, or compilations.
+
+**"Distribute"** means to make the Software or a Derivative Work available to any
+third party by any means, including but not limited to download, physical media,
+network access, hosted service, or embedded delivery.
+
+**"Commercial Sale"** means the exchange of the Software, a Derivative Work, or
+any product or service whose primary function or market value is derived from the
+Software, for monetary compensation or its equivalent. This definition does not
+include Support Licenses.
+
+**"Support License"** means a fee charged for labor and services related to the
+Software — including installation, configuration, training, maintenance,
+consulting, or technical support — where the Software itself is and remains
+freely available to the recipient under this license at no charge.
+
+**"Ethical Use"** means use that does not intentionally harm, surveil, oppress,
+deceive, coerce, or exploit individuals or communities against their will or
+without their informed consent.
+
+**"You"** means any individual or legal entity exercising any right granted under
+this license.
+
+\---
+
+## Grant of Rights
+
+Permission is hereby granted, free of charge, to any person or organization
+obtaining a copy of this Software and associated documentation files, to do
+the following, subject to all conditions and restrictions set forth in this
+license:
+
+* (a) Use the Software for any lawful or ethically justified purpose;
+* (b) Study and examine the source code without restriction;
+* (c) Modify the Software for personal, educational, or community use;
+* (d) Distribute original or modified copies of the Software;
+* (e) Incorporate the Software into other projects, under the terms herein;
+* (f) Sublicense solely under the terms of this license.
+
+\---
+
+## Conditions
+
+All exercise of the rights granted above is subject to the following conditions.
+Failure to comply with any condition terminates your rights under this license.
+
+### 1\. Attribution
+
+All copies or substantial portions of the Software — whether original or
+modified — must include each of the following:
+
+* **(a)** This license, complete and unaltered in full;
+* **(b)** The original copyright notice of the author(s), exactly as written;
+* **(c)** A clear, human-readable notice of any modifications made, including
+a description of what was changed and the date of the change.
+
+The copyright notice for BASIC++ is:
+
+> "Copyleft 2026, BASIC++ Community. All Wrongs Reserved."
+
+This notice must appear in all copies, substantial portions, and Derivative
+Works, including in documentation and in any user-facing "about" or credits
+section where reasonably applicable.
+
+### 2\. Open Source Requirement
+
+Any Derivative Work, or any project incorporating any portion of this Software,
+must be released as open source under this license. The complete, buildable
+source code of any such work must be made freely and publicly available to all
+recipients, at no charge.
+
+You may not incorporate this Software into any project that is proprietary,
+closed-source, source-available-only, or restricted in access in any way. If a
+project you contribute the Software to later becomes closed-source, you are
+obligated to withdraw the Software from that project or secure its re-release
+under this license.
+
+### 3\. License Continuity in Mixed-License Projects
+
+If this Software is used alongside code governed by other licenses, the terms
+of this license apply to and govern all portions of the combined work that are
+derived from or contain this Software.
+
+In the event of an irreconcilable conflict between this license and another
+license present in the same project, you must do one of the following:
+
+* **(a)** Release the entire project under this license; or
+* **(b)** Remove all portions of this Software and its Derivative Works
+from the project entirely.
+
+You may not claim this license overrides the independent authorship rights of
+third-party contributors operating under separate licenses. This clause governs
+only the portions of a work that originate from or depend upon this Software.
+
+\---
+
+## Restrictions
+
+The following uses are expressly prohibited. These prohibitions are conditions
+of the license grant and are not negotiable except by written permission from
+the original copyright holder(s).
+
+### 1\. Commercial Sale Prohibition
+
+You may not sell the Software, any Derivative Work, or any product or service
+whose primary function, selling point, or commercial value is derived from the
+Software.
+
+Prohibited examples include, but are not limited to:
+
+* **(a)** Distributing the Software or Derivative Works for a fee or
+subscription of any kind;
+* **(b)** Bundling the Software as a paid, premium, or value-added component
+of a commercial product;
+* **(c)** Offering hosted, networked, or cloud-based access to the Software
+in exchange for payment;
+* **(d)** Licensing the Software or Derivative Works under proprietary terms
+for commercial deployment.
+
+#### Exception — Support Licenses Are Permitted
+
+You may charge for support, training, consulting, custom development,
+installation, or other professional services rendered in connection with the
+Software, provided that:
+
+* **(i)** The Software itself remains freely and openly available to the
+recipient under this license, at no charge; and
+* **(ii)** No portion of the fee is attributable to access to the Software
+itself, only to the labor and expertise provided.
+
+### 2\. Proprietary Conversion Prohibition
+
+You may not relicense, re-copyright, patent, trademark, or otherwise claim
+exclusive legal ownership over any portion of this Software or any Derivative
+Work. You may not apply any legal instrument — including additional license
+terms, contractual agreements, or digital rights management — that restricts
+any recipient's ability to exercise the rights granted by this license.
+
+### 3\. Ethical Use Requirement
+
+This Software shall not be used, directly or indirectly, to intentionally:
+
+* **(a)** Harm, surveil, oppress, coerce, threaten, or exploit any individual
+or community without their free and informed consent;
+* **(b)** Facilitate unlawful discrimination based on race, ethnicity, gender,
+religion, national origin, disability, sexual orientation, age, or similar
+characteristics;
+* **(c)** Develop, operate, or enable systems of mass unauthorized surveillance,
+tracking, or behavioral manipulation of individuals without consent;
+* **(d)** Create software, systems, or tools designed or reasonably expected to
+cause widespread physical, digital, financial, or environmental harm to
+persons or communities.
+
+#### Note on Lawful and Unlawful Activity
+
+The authors of this Software acknowledge that law and justice are not always
+the same thing, and that history has repeatedly shown that unjust laws exist
+and are resisted by people of conscience. Use of this Software in activities
+that are technically unlawful under a particular jurisdiction but are conducted
+in genuine good faith for humanitarian purposes, the defense of civil liberties,
+the protection of human rights, the exposure of institutional wrongdoing, or
+the common good of a community is **not prohibited** by this license, provided
+such use does not otherwise violate the terms set forth herein.
+
+The burden of demonstrating good faith and humanitarian purpose rests with the
+user. The authors of this Software assume no liability whatsoever for any such
+use. This exception does not grant immunity from the laws of any jurisdiction;
+it only clarifies that this license will not be used as an additional instrument
+of prosecution against those who use this Software for genuinely humane ends.
+
+\---
+
+## Disclaimer of Warranty and Liability
+
+> \*\*THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+> IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+> FOR A PARTICULAR PURPOSE, ACCURACY, TITLE, OR NON-INFRINGEMENT.\*\*
+>
+> \*\*THE AUTHORS AND COPYRIGHT HOLDERS MAKE NO REPRESENTATIONS OR GUARANTEES THAT
+> THE SOFTWARE WILL MEET YOUR REQUIREMENTS, OPERATE WITHOUT INTERRUPTION, OR BE
+> FREE FROM ERRORS, DEFECTS, OR SECURITY VULNERABILITIES.\*\*
+>
+> \*\*IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+> DIRECT OR INDIRECT DAMAGES, CONSEQUENTIAL DAMAGES, SPECIAL DAMAGES, PUNITIVE
+> DAMAGES, OR ANY OTHER LIABILITY — WHETHER IN AN ACTION OF CONTRACT, TORT,
+> NEGLIGENCE, OR OTHERWISE — ARISING FROM, OUT OF, OR IN CONNECTION WITH THE
+> SOFTWARE, ITS USE, ITS MISUSE, OR ITS FAILURE TO PERFORM.\*\*
+>
+> \*\*YOU, THE USER, ASSUME FULL AND SOLE RESPONSIBILITY FOR YOUR USE OF THIS
+> SOFTWARE AND FOR ANY AND ALL CONSEQUENCES OF THAT USE. IF THIS SOFTWARE CAUSES
+> DATA LOSS, SYSTEM FAILURE, HARDWARE DAMAGE, OR ANY OTHER HARM OF ANY KIND,
+> THAT IS YOUR PROBLEM AND YOUR RESPONSIBILITY, NOT THE AUTHORS'. YOU WERE
+> WARNED. THE CODE IS FREE. SO IS THE RISK.\*\*
+
+\---
+
+## Termination
+
+Your rights under this license terminate automatically and without notice upon
+any violation of its terms.
+
+Upon termination of your rights, you must immediately cease all use,
+modification, and distribution of the Software and any Derivative Works in
+your possession or control.
+
+Termination of your rights does not affect the rights of other parties who have
+received copies of the Software in compliance with this license prior to your
+violation. Those parties retain their rights in full.
+
+The copyright holder(s) may, at their sole discretion, restore your rights in
+writing upon remediation of the violation.
+
+\---
+
+## Miscellaneous Provisions
+
+**Severability:**
+If any provision of this license is found to be unenforceable or invalid by a
+court of competent jurisdiction, that provision shall be modified to the minimum
+extent necessary to make it enforceable. All remaining provisions shall continue
+in full force and effect.
+
+**Waiver:**
+Failure of the copyright holder(s) to enforce any provision of this license at
+any time does not constitute a waiver of the right to enforce that provision at
+any future time or against any other party.
+
+**Versioning:**
+This license may be revised by its authors. Each revision shall carry a distinct
+version number. You may use the Software under the version of this license under
+which it was released, or at your option, under any later version published by
+the original license authors.
+
+**No Endorsement:**
+The names, handles, and identifiers of the authors and contributors to this
+Software may not be used to endorse, promote, or market any product or service
+derived from this Software without prior explicit written permission from those
+individuals.
+
+**Governing Spirit:**
+In any dispute about the interpretation of this license, preference shall be
+given to the reading that best preserves the communal, non-commercial, and open
+nature of the Software as described in the Preamble. The letter of this license
+shall not be weaponized against its spirit.
+
+\---
+
+*End of Open-Source Developers License (OSDL), Version 1.0*
+
+\---
+
+*For questions about this license, contact the BASIC++ project community.
+For BASIC++: the BASIC++ community forums or project repository.*
+

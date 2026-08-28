@@ -1,0 +1,29 @@
+BORDER Screen Border Color Attribute Statement
+==============================================
+
+Sets the color of the outer screen border on supported graphics modes.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    BORDER color_index%
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Color index out of range for active screen mode.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Full support in Commodore, ZX Spectrum, and Amstrad display modes.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 BORDER 1 : REM Set blue border
+    20 COLOR 14, 0 : CLS

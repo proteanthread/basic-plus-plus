@@ -1,0 +1,35 @@
+RSET Right-Justify String Statement
+======================================================================
+
+The RSET statement right-justifies a string expression within a target
+string variable or FIELD buffer, padding on the left with spaces.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    RSET string_variable$ = string_expression$
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Aligns string to the right.
+  - Pads short strings with spaces on the left.
+  - Truncates long strings from the right.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  13          ERR_TYPE_MISMATCH     Non-string target or source
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 B$ = SPACE$(8)
+    20 RSET B$ = "100"
+    30 PRINT "["; B$; "]"   : REM Outputs [     100]

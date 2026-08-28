@@ -1,0 +1,23 @@
+INKEY Single Character Scan Code Input Function
+===============================================
+
+Returns the numeric ASCII or scan code of the most recently pressed key, or 0 if no key is pending.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    code% = INKEY
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Non-blocking keyboard buffer polling.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 K% = INKEY
+    20 IF K% = 27 THEN PRINT "Escape pressed!"

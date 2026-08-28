@@ -1,0 +1,17 @@
+STR$ String Representation of Number Function
+======================================================================
+
+The STR$ function converts a number to a string (with leading space for
+positive numbers).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res$ = STR$(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT STR$(100)   : REM Outputs " 100"

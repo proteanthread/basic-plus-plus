@@ -1,39 +1,22 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-/**
- * @file security.h
- * @brief Security sandbox and restriction registry API.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Declares security levels (OPEN to PARANOID) and sensitive operation codes.
- * - Why it exists: Enforces mandatory capability access controls to protect environments from malicious scripts.
- * - Why it works this way: It defines a standard matrix interface. Calls to security_check query
- *   active levels and any explicit keyword/operation overrides.
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Security operation enum entries and diagnostic descriptions.
- * - What cannot be changed: The core level definitions and check parameters.
- * - What to expect: Denied operations print error context and return -1.
- * - What to do if something breaks: Verify level mappings and active restrict list counts.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Relies on platform memory checks for PEEK/POKE.
- * - Portability concerns: Fully standard C17.
- */
+// FILENAME: security.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libkernel
+// NEEDS: platform, memory
+// Provides core logic and interface definitions for security within BASIC++.
+//
+// ---- Includes ----
 
 #ifndef SECURITY_H
 #define SECURITY_H
 
 typedef enum {
-    SEC_OPEN = 0,        /* All operations permitted */
-    SEC_SAFE = 1,        /* Secure but functional */
-    SEC_STANDARD = 2,    /* Controlled sandbox */
-    SEC_EDUCATIONAL = 3, /* Classroom mode */
-    SEC_RESTRICTED = 4,  /* Very limited */
-    SEC_PARANOID = 5,    /* Pure computation only */
+    SEC_OPEN = 0,        // All operations permitted
+    SEC_SAFE = 1,        // Secure but functional
+    SEC_STANDARD = 2,    // Controlled sandbox
+    SEC_EDUCATIONAL = 3, // Classroom mode
+    SEC_RESTRICTED = 4,  // Very limited
+    SEC_PARANOID = 5,    // Pure computation only
     SEC_COUNT = 6
 } BppSecLevel;
 
@@ -80,4 +63,4 @@ int         security_is_keyword_restricted(int kw_id);
 void        security_restrict_list(void);
 int         security_restrict_count(void);
 
-#endif /* SECURITY_H */
+#endif // SECURITY_H

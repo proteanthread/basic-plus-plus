@@ -1,24 +1,11 @@
-/**
- * @file aalib.h
- * @brief Standalone, clean-room, system-agnostic mini-aalib public interface.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Declares the structs, parameter constants, and functions for
- *   the ASCII Art Library (aalib) emulation layer.
- * - Why it exists: Provides a zero-dependency, vended subset of aalib that compiles
- *   everywhere to convert graphical framebuffers to readable ASCII art.
- * - Why it works this way: It models the original aalib API (aa_autoinit, aa_render,
- *   aa_flush) but maps terminal characters to averaged 2x2 grayscale pixel block
- *   averages internally.
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Additional configuration parameters in structs, if needed.
- * - What cannot be changed: Function signatures (must match legacy aalib API).
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Terminal support for basic cursor home escape sequence (\033[H).
- * - Portability concerns: Pure ISO C17. No external curses/slang dependencies.
- */
+// FILENAME: aalib.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libkernel (aalib.c)
+// NEEDS: platform, memory
+// Implements virtual device and graphics rendering logic for aalib.
+//
+// ---- Includes ----
 
 #ifndef AALIB_H
 #define AALIB_H
@@ -60,4 +47,4 @@ uint8_t *aa_image(aa_context *ctx);
 int aa_render(aa_context *ctx, const struct aa_renderparams *params, int x1, int y1, int x2, int y2);
 void aa_flush(aa_context *ctx);
 
-#endif /* AALIB_H */
+#endif // AALIB_H

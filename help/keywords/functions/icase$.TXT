@@ -1,0 +1,16 @@
+ICASE$ Inverted Case String Transformation Function
+======================================================================
+
+The ICASE$ function inverts the case of all characters in a string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res$ = ICASE$(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT ICASE$("aBcD")   : REM Outputs "AbCd"

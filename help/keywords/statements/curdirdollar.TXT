@@ -1,0 +1,28 @@
+CURDIRDOLLAR Current Directory Path Function
+============================================
+
+Returns the canonical absolute path of the current working directory.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    path$ = CURDIR$([drive$])
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 68 (ERR_DEVICE_UNAVAILABLE): Specified drive does not exist.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Returns string with reference counting semantics.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Working Directory: "; CURDIR$

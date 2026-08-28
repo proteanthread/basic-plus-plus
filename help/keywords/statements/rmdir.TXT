@@ -1,0 +1,29 @@
+RMDIR Remove Directory Statement
+================================
+
+Removes an existing empty directory from disk or the virtual filesystem.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    RMDIR path_expression$
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 76 (ERR_PATH_NOT_FOUND): Directory does not exist.
+  - Error 75 (ERR_PATH_FILE_ACCESS_ERROR): Directory not empty or access denied.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Directory must be empty before removal.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 RMDIR "TEMP_DIR"

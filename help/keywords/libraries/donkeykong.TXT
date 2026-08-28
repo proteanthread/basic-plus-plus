@@ -1,0 +1,13 @@
+donkeykong Multi-Tier Girder Platform & Ladder Template
+======================================================================
+
+The donkeykong template implements sloped girder platforms, ladder
+climbing, and rolling barrel hazard physics.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Sloped girder platform collision bounds.
+  - Ladder alignment and climbing state machines.
+  - Rolling obstacle physics and jump scoring.

@@ -1,0 +1,18 @@
+HOSTNAME$ Host System Computer Name Function
+======================================================================
+
+The HOSTNAME$ function returns the host network name of the local
+computer.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    host$ = HOSTNAME$
+    host$ = HOSTNAME$()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Host: "; HOSTNAME$

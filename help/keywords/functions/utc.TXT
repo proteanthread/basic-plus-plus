@@ -1,0 +1,18 @@
+UTC Unix Timestamp Function
+======================================================================
+
+The UTC function returns the current UTC Unix epoch timestamp in
+seconds.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    timestamp& = UTC
+    timestamp& = UTC()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "UTC: "; UTC

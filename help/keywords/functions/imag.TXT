@@ -1,0 +1,16 @@
+IMAG Imaginary Component Extractor Function
+======================================================================
+
+The IMAG function returns the imaginary part of a complex number.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    imag# = IMAG(complex_val)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT IMAG(COMPLEX(10, 20))   : REM Outputs 20

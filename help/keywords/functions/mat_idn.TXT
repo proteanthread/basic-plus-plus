@@ -1,0 +1,16 @@
+MAT_IDN Matrix Identity Initialization Statement
+======================================================================
+
+The MAT IDN statement initializes a square matrix to an identity matrix.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    MAT A = IDN
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DIM I(3, 3) : MAT I = IDN

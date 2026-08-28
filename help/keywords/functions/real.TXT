@@ -1,0 +1,16 @@
+REAL Real Component Extractor Function
+======================================================================
+
+The REAL function returns the real component of a complex number.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    real# = REAL(complex_val)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT REAL(COMPLEX(42, 7))   : REM Outputs 42

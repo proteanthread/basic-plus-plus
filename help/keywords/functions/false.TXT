@@ -1,0 +1,17 @@
+FALSE Boolean False Constant
+======================================================================
+
+The FALSE keyword is a built-in constant evaluating to 0.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    flag% = FALSE
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 FLAG = FALSE
+    20 IF NOT FLAG THEN PRINT "False condition verified."

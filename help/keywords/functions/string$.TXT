@@ -1,0 +1,17 @@
+STRING$ Repeated Character String Generator Function
+======================================================================
+
+The STRING$ function creates a string containing N repeated characters.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res$ = STRING$(count%, ascii_code%)
+    res$ = STRING$(count%, char_str$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT STRING$(10, "*")   : REM Outputs "**********"

@@ -1,0 +1,11 @@
+extcmds Extended Commands & Custom Statement Subsystem (libext)
+======================================================================
+
+The extcmds library enables third-party registration of custom statement
+handlers and runtime commands.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    void extcmds_register(const char *name, ExtCmdHandler handler, SecurityCapability cap);

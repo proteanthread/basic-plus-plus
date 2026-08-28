@@ -1,0 +1,22 @@
+DISPLAY Virtual Console Output Statement
+========================================
+
+Outputs formatted text directly to the virtual terminal console device.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    DISPLAY expression [, expression...]
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Bypasses standard line buffering for high-throughput console display.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DISPLAY "Virtual Console Output: ", 42, 3.14159

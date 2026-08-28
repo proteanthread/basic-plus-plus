@@ -1,0 +1,65 @@
+# Freestanding C17 Runtime & Hardware Abstraction Layer (HAL)
+
+## 1. Overview & ISO C17 Architecture
+
+BASIC++ features a freestanding C17 runtime subsystem (`libcore_runtime`) and Freestanding Hardware Abstraction Layer (`libhal`). This design allows BASIC++ to operate in bare-metal, embedded, IoT, UEFI, and microcontroller environments without relying on host operating system standard libraries (`<stdlib.h>`, `<string.h>`, `<stdio.h>`, `<math.h>`, `<time.h>`, `<ctype.h>`).
+
+Freestanding execution requires only standard ISO C17 freestanding headers:
+- `<stdint.h>`
+- `<stdbool.h>`
+- `<stddef.h>`
+- `<stdarg.h>`
+- `<float.h>`
+- `<limits.h>`
+
+All core runtime functions and platform interactions are routed through atomic micro-libraries and pluggable HAL virtual tables.
+
+---
+
+## 2. Micro-Library Functional Categories
+
+The freestanding runtime is partitioned into decoupled micro-libraries located under `engine/include/runtime/` and `engine/src/runtime/`:
+
+| Subsystem | Micro-Library | Header | Key Functions & Responsibilities |
+| :--- | :--- | :--- | :--- |
+| **`ctype`** | `libcore_runtime_ctype` | `runtime/ctype/ctype.h` | 256-byte static classification lookup table and uppercase/lowercase mapping. Constant-time $O(1)$ operations with zero branch mispredictions: `runtime_isdigit`, `runtime_isalpha`, `runtime_isalnum`, `runtime_isspace`, `runtime_toupper`, `runtime_tolower`, etc. |
+| **`string`** | `libcore_runtime_string` | `runtime/string/memops.h`<br>`runtime/string/strops.h` | Freestanding memory and string manipulation. Word-aligned optimized memory copies (`runtime_memcpy`, `runtime_memset`, `runtime_memmove`, `runtime_memcmp`, `runtime_memchr`, `runtime_memrev`) and bounded string routines (`runtime_strlen`, `runtime_strcmp`, `runtime_strcasecmp`, `runtime_strcpy`, `runtime_strlcpy`, `runtime_strstr`, `runtime_strtok_r`, etc.). |
+| **`memory`** | `libcore_runtime_memory` | `runtime/memory/alloc.h`<br>`runtime/memory/arena.h` | Boundary-tagged coalescing heap pool allocator (`RuntimeMemPool`, `runtime_mem_init`, `runtime_malloc`, `runtime_free`, `runtime_realloc`) with thread-safe lock hooks and statistics. Scoped linear arena allocator (`RuntimeArena`, `runtime_arena_init`, `runtime_arena_alloc`, `runtime_arena_checkpoint`, `runtime_arena_rollback`) for temporary AST and token allocation. |
+| **`conv`** | `libcore_runtime_conv` | `runtime/conv/num_parse.h`<br>`runtime/conv/float_parse.h` | Base-adaptive integer parsing (`runtime_strtoll`, `runtime_strtoull`, `runtime_atoi`, `runtime_lltoa_format`) and IEEE 754 floating-point conversion (`runtime_strtod`, `runtime_atof`, `runtime_dtoa_format`) with bit-exact 15-16 digit decimal precision matching. |
+| **`math`** | `libcore_runtime_math` | `runtime/math/basic.h`<br>`runtime/math/trig.h`<br>`runtime/math/algebra.h` | Standalone mathematical computation library without `<math.h>` dependencies. Basic functions (`runtime_abs`, `runtime_fabs`, `runtime_floor`, `runtime_ceil`, `runtime_round`, `runtime_fmod`, `runtime_sgn`, `runtime_clamp`, `runtime_lerp`), polynomial trigonometry (`runtime_sin`, `runtime_cos`, `runtime_tan`, `runtime_atan`, `runtime_atan2`, `runtime_asin`, `runtime_acos`, `runtime_hypot`), and algebraic operations (Newton-Raphson `runtime_sqrt`, Halley's `runtime_cbrt`, Padé `runtime_exp`, argument-reduced `runtime_log`, `runtime_pow`). |
+| **`format`** | `libcore_runtime_format` | `runtime/format/snprintf.h`<br>`runtime/format/sscanf.h` | Freestanding string formatting and scanning (`runtime_snprintf`, `runtime_vsnprintf`, `runtime_sscanf`, `runtime_vsscanf`) supporting `%d`, `%i`, `%u`, `%x`, `%X`, `%o`, `%b`, `%f`, `%s`, `%c`, `%p`, precision flags, padding, and width specifiers without host stdio. |
+| **`sort`** | `libcore_runtime_sort` | `runtime/sort/qsort.h` | Non-recursive iterative introsort (`runtime_qsort`) using explicit bounded stack (max depth 64, zero heap allocations, zero recursion stack overflow risk) and binary search (`runtime_bsearch`). |
+| **`time`** | `libcore_runtime_time` | `runtime/time/calendar.h` | Pure epoch arithmetic and leap-year calendar routines (`runtime_time_epoch_to_calendar`, `runtime_time_calendar_to_epoch`, `runtime_time_format`) calculating year, month, day, hour, minute, second, day of week, and day of year without host OS time structures. |
+
+---
+
+## 3. Hardware Abstraction Layer (HAL) Architecture
+
+The HAL (`libhal`) defines clean, pluggable interfaces between the BASIC++ virtual machine and the underlying execution environment (`engine/include/hal/`):
+
+- `mem_hal.h`: `HalMem` vtable (`alloc`, `free`, `realloc`, `stats`)
+- `io_hal.h`: `HalIo` vtable (`print`, `putchar`, `getchar`, `file_open`, `file_close`, `file_read`, `file_write`, `file_seek`, `file_tell`, `file_flush`, `file_eof`, `file_size`, `file_remove`, `file_rename`, `file_exists`)
+- `time_hal.h`: `HalTime` vtable (`now_epoch`, `monotonic_ms`, `highres_ticks`, `ticks_freq`, `sleep_ms`)
+- `audio_hal.h`: `HalAudio` vtable (`init`, `shutdown`, `beep`, `tone`, `stop`, `set_volume`)
+- `video_hal.h`: `HalVideo` vtable (`init`, `shutdown`, `present_frame`, `set_palette`, `poll_events`, `is_open`)
+- `input_hal.h`: `HalInput` vtable (`poll_key`, `poll_mouse`, `is_key_down`)
+
+### Implementations
+
+1. **Hosted HAL (`hal_hosted.c`)**: Direct mapping from HAL vtables to BASIC++ OS platform abstractions (`libplatform`), Win32, POSIX, and FreeDOS environments. Initialized automatically during system boot (`boot_execute` calling `hal_init_hosted()`).
+2. **Freestanding / Bare-Metal HAL (`hal_freestanding.c`)**: Freestanding implementation routing memory to `RuntimeMemPool`, formatting to `runtime_snprintf`, and providing configurable hooks for UART, hardware timers, and memory-mapped framebuffers.
+
+---
+
+## 4. Verification & Testing
+
+The freestanding runtime is continuously verified against unit test suites (`tests/runtime_freestanding_test.c`) checking:
+1. $O(1)$ `ctype` classification and conversion.
+2. Word-aligned `memops` and bounded `strops`.
+3. Multi-block allocation, coalescing, alignment, and arena rollback.
+4. Base-adaptive integer parsing and 15-16 digit double-precision float parsing.
+5. Trigonometric, algebraic, and basic math accuracy against analytical values.
+6. `runtime_snprintf` and `runtime_sscanf` formatting/parsing fidelity.
+7. Iterative non-recursive introsort order stability and `runtime_bsearch` lookup.
+8. Calendar epoch-to-date and date-to-epoch transformations.
+9. HAL hosted and freestanding registration and execution.

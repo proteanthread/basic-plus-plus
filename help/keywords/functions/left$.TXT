@@ -1,0 +1,16 @@
+LEFT$ Left Substring Extraction Function
+======================================================================
+
+The LEFT$ function extracts the leftmost N characters of a string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    sub$ = LEFT$(string_expression$, count%)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT LEFT$("MICROSOFT", 5)   : REM Outputs "MICRO"

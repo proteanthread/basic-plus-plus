@@ -1,0 +1,22 @@
+VERIFY Program Verification Statement
+=====================================
+
+Verifies the bytecode and structure integrity of a loaded program against disk.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    VERIFY [filename$]
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Program integrity check.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 VERIFY "MAIN.BAS"

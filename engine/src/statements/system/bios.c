@@ -1,51 +1,15 @@
-/**
- * @file bios.c
- * @brief BIOS int_num low-level PC interrupt emulation statement handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements BIOS int_num statement handler for invoking x86/PC BIOS interrupts (INT 10h Video, INT 13h Disk, INT 16h Keyboard, INT 21h DOS).
- *
- * 2. WHY IT EXISTS:
- * Enables low-level BIOS interrupt emulation by mapping x86 register variables (AX%, BX%, CX%, DX%, FLAGS%) to VM virtual bus registers.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Reads registers from current variable context (var_lookup), populates BiosRegs structure, dispatches to bios_exec_interrupt(), and writes updated register values back to BASIC variables.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_bios'. Includes "statements/system/bios.h",
- * "bios/bios.h", "eval/eval.h", "security/security.h", "runtime/variables.h", "vm/vm.h", "device/vdev.h", "device/bus.h", "platform/platform.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs'). Security sandbox validation restricts low-level I/O in restricted profiles.
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Extend register mapping to include 32-bit extended registers (EAX%, EBX%, ESI%, EDI%) for 386+ execution modes.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Security invariant: MUST invoke sec_check_permission(SEC_SYS_HARDWARE) before dispatching hardware interrupts.
- *
- * 8. WHAT TO EXPECT:
- * Executes BIOS interrupt handler and updates BASIC register variables; returns ERR_NONE or ERR_PERMISSION_DENIED under sandbox violation.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify variable lookup/assignment logic for register names (AX%, BX%, CX%, DX%).
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext, VariableContext, and active BiosRegs emulator.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Uses uint32_t register bitmasks and safe uint32_t casts.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/bios/bios.c
- * - engine/src/security/security.c
- * - engine/src/runtime/variables.c
- * Prerequisite Header Files:
- * - engine/include/statements/system/bios.h
- * - engine/include/bios/bios.h
- * - engine/include/vm/vm.h
- */
+// FILENAME: bios.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, libhardware, libkernel
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (variables.h, variables.c)
+// NEEDS: libengine (bios.h, eval.h, eval.c, stmt.h, string.c, vm.h)
+// NEEDS: libkernel (bus.h, bus.c, security.h, security.c, vdev.h, vdev.c)
+// NEEDS: libplatform (platform.h)
+// Provides runtime implementation for the BIOS statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "stmt/stmt.h"
 #include "bios/bios.h"
@@ -79,7 +43,7 @@ BppError stmt_bios_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
 
-    /* Sandbox Check: requires SECOP_SYSTEM permission */
+    // Sandbox Check: requires SECOP_SYSTEM permission
     if (security_check(SECOP_SYSTEM, 0) != 0) {
         err.code = 70;
         err.message = "Permission denied: BIOS interrupt execution restricted";
@@ -117,7 +81,7 @@ BppError stmt_bios_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-    /* 1. Fetch register values from BASIC variables */
+    // 1. Fetch register values from BASIC variables
     BiosRegs regs;
     memset(&regs, 0, sizeof(regs));
     regs.ax = (uint16_t)get_reg_var(var_ctx, "AX%");
@@ -126,10 +90,10 @@ BppError stmt_bios_handler(VMContext *vm, LexerContext *lex) {
     regs.dx = (uint16_t)get_reg_var(var_ctx, "DX%");
     regs.flags = (uint16_t)get_reg_var(var_ctx, "FLAGS%");
 
-    /* 2. Execute BIOS interrupt */
+    // 2. Execute BIOS interrupt
     bios_interrupt(bios, (uint8_t)int_num, &regs);
 
-    /* 3. Retrieve updated register values and write back to variables */
+    // 3. Retrieve updated register values and write back to variables
     set_reg_var(var_ctx, "AX%", regs.ax);
     set_reg_var(var_ctx, "BX%", regs.bx);
     set_reg_var(var_ctx, "CX%", regs.cx);

@@ -1,0 +1,19 @@
+logger Opt-In Logging Subsystem (libplatform)
+======================================================================
+
+The logger library handles structured diagnostic and trace logging.
+
+
+INVARIANTS
+----------------------------------------------------------------------
+
+  - Opt-in only: logger_init(NULL, NULL) by default.
+  - Zero disk logging unless --log or --debug is passed on CLI.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    void logger_init(const char *path, const char *level);
+    void logger_shutdown(void);
+    void logger_log(LogLevel level, const char *fmt, ...);

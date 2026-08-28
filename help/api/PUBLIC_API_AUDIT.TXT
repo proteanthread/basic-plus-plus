@@ -1,0 +1,58 @@
+BASIC++ PUBLIC C17 API AUDIT & COMPLIANCE MATRIX
+======================================================================
+
+1. EXECUTIVE SUMMARY & AUDIT SCOPE
+Formal audit of all public C17 APIs, structs, function prototypes, and header
+boundaries in the BASIC++ v6.5.2 engine codebase.
+
+Compliance Standards:
+- Freestanding ISO C17 cleanliness with zero OS headers in core.
+- Memory safety and tagged union BValue representation.
+- Two-parameter string release: str_release(vm_get_str(vm), str).
+- Non-recursive AST evaluation and interpreter-managed heap stacks.
+- Platform decoupling via libplatform encapsulation.
+- Descriptive module prefixes (avoiding BPP/bpp prefixes for new code).
+
+2. SUBSYSTEM AUDIT STATUS MATRIX
+
+Subsystem / Header       Domain Layer   Status     Notes
+-----------------------  -------------  ---------  ---------------------------
+core/boot.h              libboot        COMPLIANT  Multi-target bootloader
+core/state.h             libkernel      COMPLIANT  Global VM state & signals
+core/version.h           libkernel      COMPLIANT  Semantic version 6.5.2
+types/types.h            libkernel      COMPLIANT  Tagged union data types
+memory/memory.h          libkernel      COMPLIANT  Dynamic pool allocation
+memory/map.h             libkernel      COMPLIANT  Hash table indexing
+lexer/lexer.h            libkernel      COMPLIANT  Ephemeral token stream
+eval/eval.h              libengine      COMPLIANT  Non-recursive evaluator
+stmt/stmt.h              libengine      COMPLIANT  Statement dispatch bus
+vm/vm.h                  libengine      COMPLIANT  VM execution engine
+runtime/variables.h      libengine      COMPLIANT  Scoped variable tables
+runtime/strings.h        libengine      COMPLIANT  Ref-counted string pool
+runtime/arrays.h         libengine      COMPLIANT  Multi-dim array storage
+runtime/struct.h         libengine      COMPLIANT  User-defined TYPE structs
+runtime/file.h           libscript      COMPLIANT  Filesystem & record I/O
+runtime/vfs.h            libserver      COMPLIANT  Virtual filesystem mounts
+runtime/funcreg.h        libcore        COMPLIANT  Native function registry
+runtime/metadata.h       libcore        COMPLIANT  Metadata block catalog
+runtime/task.h           libserver      COMPLIANT  Multithreaded tasks
+runtime/gemini.h         libserver      COMPLIANT  Gemini protocol client
+device/vdev.h            libkernel      COMPLIANT  Virtual device bus
+device/vcon.h            libkernel      COMPLIANT  Virtual console display
+device/vnet.h            libserver      COMPLIANT  Network socket device
+device/bgi.h             libhardware    COMPLIANT  Retro graphics rasterizer
+device/fujinet.h         libhardware    COMPLIANT  FujiNet peripheral bus
+device/usb.h             libhardware    COMPLIANT  Virtual USB bus
+device/bus.h             libhardware    COMPLIANT  I/O port address space
+bios/bios.h              libkernel      COMPLIANT  PC BIOS virtualization
+memory/segmented_mem.h   libhardware    COMPLIANT  Real-mode 1MB memory
+security/security.h      libkernel      COMPLIANT  Capability sandbox
+module/module.h          libflex        COMPLIANT  Dynamic module loader
+module/mod_arrayext.h    libflex        COMPLIANT  Matrix math extension
+platform/platform.h      libplatform    COMPLIANT  OS encapsulation layer
+debug/logger.h           libplatform    COMPLIANT  Opt-in logger
+editor/editor.h          libstandard    COMPLIANT  Multi-window TUI editor
+
+3. STRING LIFECYCLE INVARIANT
+Every C API returning BValue strings requires the two-parameter release:
+  str_release(vm_get_str(vm), val.as.string);

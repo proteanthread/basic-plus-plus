@@ -1,0 +1,28 @@
+DO Structured Loop Initiation Statement
+=======================================
+
+Initiates a structured loop block with optional entry or exit test conditions.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    DO [{WHILE | UNTIL} condition]
+      [statements]
+    LOOP [{WHILE | UNTIL} condition]
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Non-recursive VM loop state tracked on heap control stack.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 I = 1
+    20 DO WHILE I <= 5
+    30   PRINT "Count: "; I
+    40   I = I + 1
+    50 LOOP

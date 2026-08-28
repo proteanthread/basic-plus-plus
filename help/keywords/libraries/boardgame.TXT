@@ -1,0 +1,13 @@
+boardgame Turn-Based Board Game & Grid Engine
+======================================================================
+
+The boardgame library provides 2D grid representations, turn rotation,
+and move validation for Chess, Checkers, and Reversi.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - N x M grid representation and piece movement validation.
+  - Alternating player turn state machine.
+  - Minimax AI decision helper templates.

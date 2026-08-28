@@ -1,0 +1,17 @@
+CDBL Convert to Double-Precision Float Function
+======================================================================
+
+The CDBL function converts a numeric value to a 64-bit double-precision
+floating-point number.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    dbl# = CDBL(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT CDBL(100)   : REM Outputs 100.0

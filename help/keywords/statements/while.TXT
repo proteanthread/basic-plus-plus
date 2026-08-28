@@ -1,0 +1,27 @@
+WHILE Structured While Loop Initiation Statement
+================================================
+
+Repeatedly executes a block of statements as long as the entry condition evaluates to true (non-zero).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    WHILE condition
+      [statements]
+    WEND
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Non-recursive VM loop frame evaluation.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 WHILE NOT EOF(1)
+    20   LINE INPUT #1, L$
+    30   PRINT L$
+    40 WEND

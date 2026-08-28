@@ -1,0 +1,13 @@
+game Unified 2D Game Runtime Core Library
+======================================================================
+
+The game library manages fixed-timestep loops, delta timing, scene
+transitions, and frame rate capping for games.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Fixed timestep physics updates (60 Hz).
+  - Scene management state machine (TITLE, PLAY, PAUSE, GAMEOVER).
+  - Frame rate capping and delta time computation.

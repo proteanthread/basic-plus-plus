@@ -1,0 +1,25 @@
+C17 API REFERENCE: METADATA & MICROLIB REGISTRY (runtime/metadata.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Metadata & MicroLib Registry Subsystem manages keyword syntax cards,
+cross-file global labels (::label:), inline docstring introspection, and
+declarative metadata blocks.
+
+2. KEY TYPES & STRUCTS
+- MicroLibMetadata: Keyword descriptor (name, category, syntax, help_text).
+- BppGlobalLabel: Mapping of label_name to filename and line_number.
+- BppDocstring: Mapping of target identifier to documentation text.
+
+3. CORE API FUNCTIONS
+- microlib_register(meta)
+- microlib_lookup(name) -> const MicroLibMetadata *
+- microlib_count() -> size_t
+- metadata_register_label(name, file, line) -> bool
+- metadata_find_label(name, out_file, out_line) -> bool
+- metadata_register_docstring(target, docstring) -> bool
+- metadata_find_docstring(target) -> const char *
+
+4. INTROSPECTION INVARIANT
+- Every keyword/statement must register its MicroLibMetadata to guarantee
+  interactive HELP and CATALOG documentation parity.

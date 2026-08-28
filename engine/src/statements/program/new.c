@@ -1,55 +1,23 @@
-/**
- * @file new.c
- * @brief NEW program workspace reset statement handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements NEW statement handler for wiping stored program source lines and clearing all runtime variables from VM memory.
- *
- * 2. WHY IT EXISTS:
- * Prepares VM memory for entering a fresh BASIC++ program from scratch in interactive REPL mode per Apple II, GW-BASIC, and QBASIC standards.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Purges program source buffers, clears variable symbol tables, releases refcounted strings/arrays, and resets program instruction counter to 0.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_new'. Includes "statements/program/new.h",
- * "vm/vm.h", "lexer/lexer.h", "eval/eval.h", "device/vdev.h", "security/security.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Fully included in libbasicpp (baspp) and libbasicpp_lite (bpp, bs) per Rule #1 (Core Included).
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support workspace auto-saving prompts before executing NEW in IDE / TUI editor modes.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Total memory reset invariant: NEW MUST purge BOTH program source buffers AND variable memory tables.
- *
- * 8. WHAT TO EXPECT:
- * Empties program buffer and returns ERR_NONE.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check source buffer memory deallocation and variable refcount releases.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Zero-initialization default memory wipe.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/statements/program/clear.c
- * - engine/src/vm/vm_context.c
- * Prerequisite Header Files:
- * - engine/include/statements/program/new.h
- * - engine/include/vm/vm.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: new.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (memory.h, memory.c)
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (variables.h, variables.c)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, new.h, string.c, vm.h)
+// NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
+// Provides runtime implementation for the NEW statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "statements/program/new.h"
+#include "types/errors.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
+#include "memory/memory.h"
+#include "runtime/variables.h"
 #include "device/vdev.h"
 #include "security/security.h"
 #include "runtime/micro_lib_metadata.h"
@@ -58,7 +26,17 @@
 BppError stmt_new_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
+    (void)lex;
+    if (!vm) {
+        err.code = ERR_ILLEGAL_FUNCTION_CALL;
+        return err;
+    }
+    mem_program_clear(vm_get_mem(vm));
+    var_clear_all(vm_get_var(vm));
+    vm_reset_for_run(vm);
+    vm_clear_error(vm);
+    vm_set_running(vm, true);
+    vm_set_current_line(vm, 0.0);
     return err;
 }
 

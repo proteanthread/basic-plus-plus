@@ -1,0 +1,29 @@
+C17 API REFERENCE: SECURITY SANDBOX (security/security.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Security Sandbox Subsystem provides capability-based access control,
+6 security levels, path containment, port access guards, and keyword
+restriction for BASIC++ v6.5.2.
+
+2. SECURITY LEVELS
+- SEC_OPEN (0):        All operations permitted.
+- SEC_SAFE (1):        Guarded memory and port access.
+- SEC_STANDARD (2):    Controlled sandbox (project directory isolation).
+- SEC_EDUCATIONAL (3): Classroom mode (no shell or external network).
+- SEC_RESTRICTED (4):  Read-only filesystem, no dynamic modules.
+- SEC_PARANOID (5):    Pure computation only (zero I/O).
+
+3. CORE API FUNCTIONS
+- security_init(level)
+- security_get_level() / security_set_level(level)
+- security_check(op, line_num) -> int (0=allowed, 70=denied)
+- security_module_allowed(capabilities) -> int
+- security_check_mem(address, size) -> int
+- security_check_port(port, line_num) -> int
+- security_check_path(path, line_num) -> int
+- security_restrict_keyword(kw_id) -> int
+
+4. ARCHITECTURAL INVARIANTS
+- Fail-closed: unauthorized operations return Error 70 (Permission Denied).
+- Restrictive levels cannot be downgraded at runtime from BASIC scripts.

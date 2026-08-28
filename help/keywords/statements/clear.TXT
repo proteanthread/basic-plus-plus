@@ -1,0 +1,30 @@
+CLEAR Memory and Variable Reset Statement
+=========================================
+
+Clears all variables, arrays, and string pools, resetting memory allocations and call stack depth.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    CLEAR [, [mem_limit&] [, stack_size&]]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Invalid memory limit or stack size.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Preserves loaded program lines while resetting runtime execution state.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 LET A = 42 : DIM B(10)
+    20 CLEAR
+    30 PRINT "A is now: "; A : REM Prints 0

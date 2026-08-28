@@ -1,0 +1,17 @@
+PDIF Positive Difference Function
+======================================================================
+
+The PDIF function calculates the positive difference max(0, x - y).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res = PDIF(x, y)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT PDIF(8, 3)   : REM Outputs 5
+    20 PRINT PDIF(3, 8)   : REM Outputs 0

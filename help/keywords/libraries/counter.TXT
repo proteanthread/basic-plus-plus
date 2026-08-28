@@ -1,0 +1,13 @@
+counter Atomic Metrics & Performance Counters (libserver)
+======================================================================
+
+The counter library provides atomic performance tracking and execution
+cycle metrics.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    uint64_t counter_get(CounterType type);
+    void counter_inc(CounterType type);
+    void counter_reset(CounterType type);

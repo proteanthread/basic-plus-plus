@@ -1,314 +1,229 @@
-# SUPER BASIC (Tymshare SDS-940) Dialect Reference
+# BASIC++ v6.5.2 Super BASIC Compatibility & Extended Capabilities
 
-**Version 4.2.3**
+## 1. History & Architectural Overview
 
----
+SDS 940 (1968) and DEC PDP-10 (1970–1972) Super BASIC (pioneered by Tymshare Inc.) introduced groundbreaking language features: native complex numbers, bidirectional string/ASCII array conversions (`CHANGE`), fine-grained console and file layout control (`MARGIN`, `ZONE`), direct text and modify file modes (`TEXT`, `APPEND`, `MODIFY`), template-based formatted output (`IMAGE`, `FORM`), line input preservation (`LINPUT`), and full matrix file I/O (`MAT READ`, `MAT PRINT #`, `MAT INPUT #`).
 
-## Table of Contents
-
-- History
-- Activation
-- Extended Math Functions
-  - Inverse Trigonometric
-  - Hyperbolic
-  - Logarithms
-  - Comparison & Utility
-  - Constant
-- UNLESS Statement (JOSS-Style Negated IF)
-- BY Keyword (FOR Loop Step Alternative)
-- SCRATCH and UNSAVE Commands
-  - SCRATCH
-  - UNSAVE
-- Complex Numbers
-- configuration
-- Complete Function Reference
-- See Also
+In BASIC++ v6.5.2, all of these features are implemented as first-class native engine capabilities with 100% backward compatibility for GW-BASIC, BASICA, and QBASIC.
 
 ---
 
-**Dialect Code:** `SUPB`
+## 2. Native Complex Number System (Phase 1)
 
----
-
-## History
-
-SUPER BASIC was developed by Mark Alexander and Dan Streng at Tymshare, Inc. for the Scientific Data Systems (SDS) 940 mainframe computer, circa 1968.
-
-Tymshare was a pioneering time-sharing company that allowed multiple users to access a central mainframe via teletype terminals connected over telephone lines. At its peak, Tymshare served thousands of simultaneous users across the United States.
-
-SUPER BASIC was one of the most advanced BASIC dialects of its era. While microcomputer BASICs were still years away, SUPER BASIC already offered features that wouldn't appear on personal computers until the 1980s:
-
-- Complex number arithmetic (real + imaginary)
-- Double precision via `#` suffix
-- Extended mathematical functions (inverse trig, hyperbolics)
-- Comparison and utility functions (`COMP`, `PDIF`)
-- `PI` as a built-in constant
-- JOSS-inspired postfix modifiers (`UNLESS`)
-- `FOR...BY...TO` ordering (step before limit)
-- Enhanced matrix operations
-
-The SDS 940 was a 24-bit computer with hardware paging and memory protection — advanced for 1968. It ran the Berkeley Timesharing System (BTS), which supported up to 64 simultaneous users.
-
----
-
-## Activation
-
+### Imaginary Literals & Construction
+Numbers with trailing `I` or `i` are lexed directly as imaginary constants:
 ```basic
-DIALECT "SUPB"
+10 LET Z1 = 3 + 4I
+20 LET Z2 = CMPLX(5, -12)
+30 PRINT "Z1 = "; CMPLX$(Z1); " | Z2 = "; CMPLX$(Z2)
 ```
 
-This changes:
-- Statement separator to `:` (colon)
-- `LET` is mandatory (like ECMA-55)
-- Maximum line number extends to 99999
-- Ready prompt: `READY`
-- `CLS` is not available (mainframes used teletype output)
-
----
-
-## Extended Math Functions
-
-### Inverse Trigonometric
-
-| Function | Description | Domain | Range |
-|----------|-------------|--------|-------|
-| `ASIN(x)` | Arcsine (radians) | −1 ≤ x ≤ 1 | −π/2 to π/2 |
-| `ACOS(x)` | Arccosine (radians) | −1 ≤ x ≤ 1 | 0 to π |
-
+### Complex Arithmetic & Relational Operators
+All standard arithmetic operations are fully supported on complex numbers:
 ```basic
-PRINT ASIN(1)       ' 1.5708 (PI/2)
-PRINT ASIN(0.5)     ' 0.5236 (PI/6)
-PRINT ACOS(0)       ' 1.5708 (PI/2)
-PRINT ACOS(-1)      ' 3.14159 (PI)
+10 LET Z_ADD = (3 + 4I) + (1 - 2I)      ' Result: 4 + 2I
+20 LET Z_SUB = (3 + 4I) - (1 + 2I)      ' Result: 2 + 2I
+30 LET Z_MUL = (3 + 4I) * (1 - 2I)      ' Result: 11 - 2I
+40 LET Z_DIV = (11 - 2I) / (1 - 2I)     ' Result: 3 + 4I
+50 LET Z_NEG = -(3 + 4I)                ' Result: -3 - 4I
+60 LET Z_POW = (0 + 1I) ^ 2             ' Result: -1 + 0I
+70 IF Z1 == 3 + 4I THEN PRINT "Equal"
 ```
 
-### Hyperbolic
-
-| Function | Description | Formula |
-|----------|-------------|---------|
-| `SINH(x)` | Hyperbolic sine | (e^x − e^(−x)) / 2 |
-| `COSH(x)` | Hyperbolic cosine | (e^x + e^(−x)) / 2 |
-| `TANH(x)` | Hyperbolic tangent | SINH(x) / COSH(x) |
-
-```basic
-PRINT SINH(0)       ' 0
-PRINT SINH(1)       ' 1.1752
-PRINT COSH(0)       ' 1
-PRINT COSH(1)       ' 1.5431
-PRINT TANH(0)       ' 0
-PRINT TANH(1)       ' 0.7616
-```
-
-Identity: `COSH(x)^2 - SINH(x)^2 = 1`
-
-### Logarithms
-
-| Function | Description | Formula |
-|----------|-------------|---------|
-| `LOG10(x)` | Common logarithm (base 10) | LOG(x) / LOG(10) |
-| `LOG2(x)` | Binary logarithm (base 2) | LOG(x) / LOG(2) |
-
-```basic
-PRINT LOG10(100)    ' 2
-PRINT LOG10(1000)   ' 3
-PRINT LOG2(8)       ' 3
-PRINT LOG2(256)     ' 8
-PRINT LOG2(1024)    ' 10
-```
-
-### Comparison & Utility
-
+### Complex Built-in Functions
 | Function | Description |
 |----------|-------------|
-| `COMP(a, b)` | Three-way comparison: −1 if a < b, 0 if a = b, +1 if a > b |
-| `PDIF(a, b)` | Positive difference: MAX(a − b, 0) |
+| `CMPLX(r, i)` | Constructs a complex number from real and imaginary parts |
+| `REAL(z)` | Extracts the real component |
+| `IMAG(z)` | Extracts the imaginary component |
+| `CONJ(z)` | Returns the complex conjugate ($a - bi$) |
+| `ARG(z)` | Returns the phase angle in radians ($\text{atan2}(b, a)$) |
+| `CMPLX$(z)` | Converts complex number to formatted string (`3+4I`) |
+| `CSQR(z)` | Complex principal square root |
+| `CLOG(z)` | Complex natural logarithm ($\ln |z| + i \arg(z)$) |
+| `CEXP(z)` | Complex exponential ($e^z$) |
+| `CSIN(z)` | Complex sine |
+| `CCOS(z)` | Complex cosine |
+| `CTAN(z)` | Complex tangent |
+| `CASN(z)` | Complex inverse sine |
+| `CACS(z)` | Complex inverse cosine |
+| `CATN(z)` | Complex inverse tangent |
 
+### Type Declarations & Binary Serialization
 ```basic
-PRINT COMP(3, 5)    ' -1
-PRINT COMP(5, 5)    ' 0
-PRINT COMP(7, 3)    ' 1
-
-PRINT PDIF(10, 3)   ' 7
-PRINT PDIF(3, 10)   ' 0
-```
-
-### Constant
-
-`PI` — Mathematical constant π = 3.14159265358979...
-
-```basic
-PRINT PI            ' 3.14159265358979
-LET RAD45 = PI / 4
-PRINT SIN(PI / 2)   ' 1
-```
-
-> In standard BASIC, you must compute PI as `LET PI = 4 * ATN(1)`. SUPER BASIC provides it as a built-in constant.
-
----
-
-## UNLESS Statement (JOSS-Style Negated IF)
-
-SUPER BASIC borrowed the `UNLESS` keyword from JOSS (1963), the Johnniac Open Shop System developed at RAND Corporation.
-
-`UNLESS` is the negated form of `IF`. It executes its `THEN` clause only when the condition is **false**. Equivalent to `IF NOT (condition) THEN statement`.
-
-```basic
-10 LET X = 5
-20 UNLESS X = 0 THEN PRINT "X is nonzero"
-30 UNLESS X > 10 THEN PRINT "X is not greater than 10"
-40 UNLESS X < 0 THEN PRINT "X is not negative"
-```
-
-Output:
-```
-X is nonzero
-X is not greater than 10
-X is not negative
-```
-
-**Block form** (with `END IF`):
-
-```basic
-10 UNLESS X = 0
-20   PRINT "X is nonzero"
-30   PRINT "Its value is"; X
-40 END IF
-```
-
-`UNLESS` is particularly useful for guard clauses:
-
-```basic
-100 UNLESS LEN(A$) > 0 THEN GOTO 200
-110 REM ... process non-empty string ...
-200 REM ... continue ...
+10 DEFCPX Z                          ' Variables starting with Z default to Complex
+20 COMPLEX W1, W2, W_ARR(10)         ' Explicit complex variable & array declaration
+30 LET S$ = MKC$(3 + 4I)             ' 16-byte IEEE Little-Endian serialization
+40 LET Z = CVC(S$)                   ' Deserialization
+50 LET L$ = MKL$(100000&)            ' 4-byte IEEE 32-bit integer serialization
+60 LET N& = CVL(L$)
 ```
 
 ---
 
-## BY Keyword (FOR Loop Step Alternative)
+## 3. String & ASCII Conversion (`CHANGE`)
 
-In SUPER BASIC, the step size in a `FOR` loop was specified using `BY` instead of `STEP`:
-
-```basic
-FOR I = 1 TO 10 BY 2
-```
-
-Equivalent to:
+The `CHANGE` statement converts bidirectionally between strings and 1D numeric ASCII arrays. `A(0)` contains the string length:
 
 ```basic
-FOR I = 1 TO 10 STEP 2
-```
-
-Both `BY` and `STEP` are accepted in BASIC++. The original Tymshare SUPER BASIC also supported reversed ordering (`BY` before `TO`):
-
-```basic
-FOR I = 1 BY 2 TO 10
-```
-
-**Examples:**
-
-```basic
-10 REM Count by twos
-20 FOR I = 1 TO 10 BY 2
-30   PRINT I;
-40 NEXT I
-50 PRINT
-' Output: 1 3 5 7 9
-
-10 REM Countdown
-20 FOR I = 10 TO 1 BY -1
-30   PRINT I;
-40 NEXT I
-50 PRINT
-' Output: 10 9 8 7 6 5 4 3 2 1
+10 LET S$ = "HELLO"
+20 CHANGE S$ TO A                    ' A(0)=5, A(1)=72, A(2)=69, A(3)=76, A(4)=76, A(5)=79
+30 LET A(1) = 74                     ' Replace 'H' with 'J'
+40 CHANGE A TO RES$                  ' RES$ = "JELLO"
+50 LET A(0) = 3                      ' Truncate length
+60 CHANGE A TO SHORT$                ' SHORT$ = "JEL"
 ```
 
 ---
 
-## SCRATCH and UNSAVE Commands
+## 4. Console & File Output Formatting (`MARGIN`, `ZONE`, `IMAGE`, `FORM`)
 
-### SCRATCH
-
+### Line Margins and Comma Print Zones
 ```basic
-SCRATCH "temp.dat"
+10 ZONE 10                           ' Set comma tab width to 10 columns (default: 14)
+20 MARGIN 132                        ' Set line wrap margin to 132 columns (default: 80)
+30 PRINT "Col1", "Col2", "Col3"
+40 ZONE #1, 20                       ' Set zone width specifically for file channel #1
+50 MARGIN #1, 120
 ```
 
-Deletes a file from disk. This is the SUPER BASIC equivalent of `KILL` in Microsoft BASICs. If the file does not exist, a "File not found" message is displayed (no error is raised).
-
-### UNSAVE
-
+### Formatted Templates (`IMAGE` & `FORM`)
 ```basic
-UNSAVE
+100 IMAGE : Total: $$$$,$$$.##   Status: \      \
+110 PRINT USING 100, 1250.75, "APPROVED"
+120 FORM C10, N5.2, C5
 ```
 
-Deletes the currently-loaded program's save file from disk. In the original Tymshare system, this removed the program from the user's file space on the mainframe.
-
 ---
 
-## Complex Numbers
+## 5. Timesharing File I/O & Matrix I/O
 
-SUPER BASIC was one of the first BASIC dialects to natively support complex number arithmetic. In BASIC++, complex numbers use the `COMPLEX()` function:
+### Dedicated File Open Statements
+- `TEXT [#]ch, "file"`: Opens a sequential file in text output mode (equivalent to `OPEN file FOR OUTPUT`).
+- `APPEND [#]ch, "file"`: Opens a sequential file in append mode (equivalent to `OPEN file FOR APPEND`).
+- `MODIFY [#]ch, "file"`: Opens a file for read/write random access modify mode.
+- `LINPUT [#ch,] ["prompt";] var$`: Reads an entire line of text preserving commas, quotes, and whitespace.
 
+### Matrix File I/O & `MAT READ`
 ```basic
-10 LET Z = COMPLEX(3, 4)    ' 3 + 4i
-20 PRINT REAL(Z)              ' 3
-30 PRINT IMAG(Z)              ' 4
+10 OPTION BASE 1
+20 DATA 10, 20, 30, 40, 50, 60
+30 DIM M(2, 3)
+40 MAT READ M                        ' Populate 2x3 matrix from DATA items
+50 TEXT #1, "matrix.dat"
+60 MAT PRINT #1, M                   ' Write formatted matrix to file
+70 CLOSE #1
+80 OPEN "matrix.dat" FOR INPUT AS #1
+90 DIM M2(2, 3)
+100 MAT INPUT #1, M2                 ' Read matrix from file
+110 CLOSE #1
+120 MAT PRINT M2                     ' Display matrix on console
 ```
 
-Complex numbers support standard arithmetic (`+`, `-`, `*`, `/`) and can be used with `ABS()` to compute the modulus (magnitude).
+---
+
+## 6. Advanced Math, Trigonometric, Hyperbolic & Matrix Operations
+
+### Hyperbolic Functions
+- `SINH(x)` / `HSN(x)`: Hyperbolic sine ($\sinh(x) = \frac{e^x - e^{-x}}{2}$)
+- `COSH(x)` / `HCS(x)`: Hyperbolic cosine ($\cosh(x) = \frac{e^x + e^{-x}}{2}$)
+- `TANH(x)` / `HTN(x)`: Hyperbolic tangent ($\tanh(x) = \frac{\sinh(x)}{\cosh(x)}$)
+
+### Reciprocal Trigonometric & Inverse Aliases
+- `COT(x)`: Trigonometric cotangent ($1 / \tan(x)$)
+- `SEC(x)`: Trigonometric secant ($1 / \cos(x)$)
+- `CSC(x)`: Trigonometric cosecant ($1 / \sin(x)$)
+- `ASN(x)` / `ASIN(x)`: Inverse arcsine (in radians, $-1.0 \le x \le 1.0$)
+- `ACS(x)` / `ACOS(x)`: Inverse arccosine (in radians, $-1.0 \le x \le 1.0$)
+
+### Angular Conversions, Logarithms & Utilities
+- `RAD(deg)`: Converts degrees to radians ($\text{deg} \times \frac{\pi}{180}$)
+- `DEG(rad)`: Converts radians to degrees ($\text{rad} \times \frac{180}{\pi}$)
+- `LOG10(x)` / `LGT(x)`: Base-10 common logarithm
+- `LOG2(x)`: Base-2 binary logarithm
+- `EXN(x)` / `EXP(x)`: Natural exponential function ($e^x$)
+- `COMP(a, b)`: Numeric comparison returning `-1` ($a < b$), `0` ($a = b$), or `1` ($a > b$)
+- `PDIF(a, b)`: Positive difference ($a - b$ if $a > b$, else `0`)
+- `DET` / `DET()` / `DET(A)`: Matrix determinant (read last calculated determinant or evaluate square matrix `A`)
+
+### Matrix Algebraic Operations
+```basic
+10 OPTION BASE 1
+20 DIM A(2, 2), B(2, 2), V(2), M(2, 2)
+30 ' Matrix scalar arithmetic:
+40 MAT B = A + 5                    ' Scalar addition
+50 MAT B = A - 2                    ' Scalar subtraction
+60 MAT B = 3 * A                    ' Scalar multiplication (or MAT B = A * 3)
+70 MAT B = A / 10                   ' Scalar division
+80 ' Mixed Vector-Matrix multiplication:
+90 MAT RES1 = V * M                 ' 1D row vector (1xN) * 2D matrix (NxP) -> 1D vector (1xP)
+100 MAT RES2 = M * V                ' 2D matrix (MxN) * 1D column vector (Nx1) -> 1D vector (Mx1)
+110 ' String Matrix Operations:
+120 DIM S$(2, 2), S_COPY$(2, 2)
+130 MAT S$ = NUL$                   ' Clear string matrix to empty strings
+140 MAT S_COPY$ = S$                ' Copy string matrix with reference counting
+```
 
 ---
 
-## configuration
+## 7. Universal Timesharing & DEC PDP-10 / Tymshare Integration (Phase 6)
 
-| Property | Value |
-|----------|-------|
-| Dialect ID | `DIALECT_SBASIC` |
-| Short code | `"SUPB"` |
-| Dialect flag | `DFLAG_SBAS` (bit 15) |
-| Separator | `:` (colon) |
-| LET required | Yes |
-| THEN required | Yes |
-| Max line number | 99999 |
-| Ready prompt | `"READY"` |
-| Print zone width | 15 |
-| CLS available | No (teletype output) |
-| Floating point | Yes |
-| Strings | Yes |
-| Arrays | Yes |
-| FOR/NEXT | Yes |
-| WHILE/WEND | No |
-| DO/LOOP | No |
-| DATA/READ | Yes |
-| DEF FN | Yes |
-| Extended variables | Yes |
-| ON ERROR | No |
-| TRON/TROFF | Yes |
-| MERGE/CHAIN | No |
+### Syntax & Directives
+- `EXTEND` / `NO EXTEND`: Enables or disables extended multi-character identifiers and spaces within variable names.
+- `SCALE factor`: Sets fixed-point decimal scaling and arithmetic rounding (DEC PDP-10 / BASIC-PLUS).
+- `\` (Backslash): Multi-statement line separator across all timesharing dialects:
+  ```basic
+  10 LET A = 10 \ LET B = 20 \ PRINT A + B
+  ```
+- `&` (Ampersand): Infix string concatenation operator with automatic numeric coercion:
+  ```basic
+  10 LET S$ = "SCORE: " & 100 & " POINTS"
+  ```
+- Substring Slice Assignment: Mutate string segments in-place:
+  ```basic
+  10 LET A$ = "HELLO WORLD"
+  20 LET A$[1, 5] = "HOWDY"           ' A$ = "HOWDY WORLD"
+  30 LET A$(7 TO 11) = "THERE"        ' A$ = "HOWDY THERE"
+  ```
+- Print Spacing Modifiers: `LIN(n)` (print $n$ blank lines) and `SPA(n)` (print $n$ spaces).
 
----
+### Terminal Control & Timed Execution
+- `ECHO` / `NO ECHO`: Enable or disable console character echoing for password / masked input.
+- `ENTER timeout_secs, var`: Timed input that aborts after specified seconds if no input is received.
+- `SLEEP [seconds]`: Non-blocking / timer-based suspension.
+- `PAUSE [message$]`: Interactive pause awaiting user keypress.
+- `WAIT`: Disambiguated tri-mode waiting:
+  - `WAIT port, and_mask [, xor_mask]`: Port polling.
+  - `WAIT #channel, seconds`: Channel I/O timeout limit.
+  - `WAIT seconds`: Time delay.
 
-## Complete Function Reference
+### Storage, Channel Control & Program Overlay
+- `FILES`: General directory listing with pattern matching (`FILES "*.BAS"`).
+- `DIR`: Directory listing strictly filtered to `.BAS` / `.bas` files.
+- `PWD`: Print current working directory path.
+- `PATH ["dir"]`: Display or set executable / library search paths.
+- `UNSAVE "file"` / `SCRATCH "file"`: Delete files from storage or clear channel buffers.
+- `APPEND "file.bas"`: Overlay program file from disk into memory, replacing duplicated lines.
+- `ASSIGN "file" TO #ch`: Bind file path or device alias to channel number.
+- `ADVANCE #ch, n`: Advance channel file pointer forward by $n$ bytes.
+- `RECORD #ch, rec_num`: Direct access seek to record number on random file channel.
+- `OPEN "file" AS FILE [#]ch [RECORDSIZE n]`: Timesharing `AS FILE` channel declaration.
+- `IF END #ch THEN line`: Channel end-of-file condition branch.
+- `RESTORE [#ch]`: Rewind DATA pointer or reset file channel read pointer to beginning.
 
-| Function | Args | Description |
-|----------|------|-------------|
-| `ASIN(x)` | 1 | Arcsine (radians) |
-| `ACOS(x)` | 1 | Arccosine (radians) |
-| `SINH(x)` | 1 | Hyperbolic sine |
-| `COSH(x)` | 1 | Hyperbolic cosine |
-| `TANH(x)` | 1 | Hyperbolic tangent |
-| `LOG10(x)` | 1 | Common logarithm (base 10) |
-| `LOG2(x)` | 1 | Binary logarithm (base 2) |
-| `COMP(a, b)` | 2 | Compare (−1, 0, +1) |
-| `PDIF(a, b)` | 2 | Positive difference MAX(a−b, 0) |
-| `PI` | 0 | Constant 3.14159265... |
-
-Plus all standard BASIC functions: `ABS`, `ATN`, `COS`, `EXP`, `FIX`, `INT`, `LOG`, `RND`, `SGN`, `SIN`, `SQR`, `TAN`, and string functions.
-
----
-
-## See Also
-
-- [Quick_Reference](Quick_Reference.md) — Complete keyword listing
-
-*@COPYLEFT ALL WRONGS RESERVED*
+### Data Conversion & System Functions
+| Function | Description |
+|----------|-------------|
+| `CVT$%(n%)` | Converts 16-bit integer to 2-byte PDP-10 ASCII string |
+| `CVT%$(s$)` | Converts 2-byte ASCII string to 16-bit integer |
+| `CVT$F(f!)` | Converts single-precision float to 4-byte IEEE string |
+| `CVTF$(s$)` | Converts 4-byte IEEE string to single-precision float |
+| `SWAP%(n%)` | Swaps high and low bytes of 16-bit integer |
+| `RAD$(n&)` | Converts 32-bit integer to 6-character Radix-50 ASCII string |
+| `NUM$(n)` | Formats number to string without leading positive space |
+| `NUM1$(n)` | Formats number to compact unformatted string |
+| `VAL%(s$)` | Parses integer value from numeric string (DEC PDP-10) |
+| `XLATE$(src$, table$)` | Translates characters in `src$` through lookup `table$` |
+| `MAG(x, y)` / `MAG(z)` | Computes vector Euclidean length ($\sqrt{x^2 + y^2}$) or complex modulus ($|z|$) |
+| `SYS(code)` | Dispatches operating system / monitor services (0=exit, 1=pid, 2=uptime, 3=ram) |
+| `TIME(code)` | Dispatches system timing metrics (0=seconds since midnight, 1=cpu ticks, 2=elapsed mins, 3=timer) |

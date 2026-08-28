@@ -1,0 +1,13 @@
+arcade_shooter 2D Top-Down / Scrolling Arcade Shooter Template
+======================================================================
+
+The arcade_shooter library provides bullet pools, collision detection,
+and enemy wave spawning for 2D shooters.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - High-speed projectile pool recycling.
+  - AABB box collision detection.
+  - Parallax starfield background rendering.

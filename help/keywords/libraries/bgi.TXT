@@ -1,0 +1,22 @@
+bgi BASIC++ Graphics Interface Subsystem (libbgi / libadvanced)
+======================================================================
+
+The bgi library implements raster graphics, 42 retro hardware modes,
+split-screen text windows, and font rendering.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Custom resolution engine (SET SCREEN, SET GRAPHICS, SET MODE).
+  - Delay-loaded SDL2 graphics backend.
+  - Split-screen text window rendering.
+  - Full primitive suite (LINE, CIRCLE, PAINT, PSET, DRAW).
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    void bgi_set_mode(int mode_id);
+    void bgi_draw_line(int x1, int y1, int x2, int y2, uint32_t color);
+    void bgi_draw_circle(int cx, int cy, int radius, uint32_t color);

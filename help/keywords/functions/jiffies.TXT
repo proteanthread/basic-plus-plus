@@ -1,0 +1,19 @@
+JIFFIES Clock Ticks (60Hz) Function
+======================================================================
+
+The JIFFIES function returns the number of 1/60th second time intervals
+elapsed since system startup (Commodore / Apple II compatible).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    jiffies& = JIFFIES
+    jiffies& = JIFFIES()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 J = JIFFIES
+    20 PRINT "Jiffies: "; J

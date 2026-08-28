@@ -1,0 +1,22 @@
+UNLESS Inverse Conditional Statement Modifier
+=============================================
+
+Executes a preceding statement only if the trailing condition expression evaluates to false (0).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    statement UNLESS condition
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Syntactic sugar for IF NOT (condition).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "System operational" UNLESS ErrorFlag% = 1

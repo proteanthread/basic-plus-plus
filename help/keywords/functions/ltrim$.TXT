@@ -1,0 +1,16 @@
+LTRIM$ Left-Trim Whitespace Function
+======================================================================
+
+The LTRIM$ function removes leading whitespace and tabs from a string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    trimmed$ = LTRIM$(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT LTRIM$("   Hello")   : REM Outputs "Hello"

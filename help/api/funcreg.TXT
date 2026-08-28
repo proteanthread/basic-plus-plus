@@ -1,0 +1,25 @@
+C17 API REFERENCE: FUNCTION REGISTRY (runtime/funcreg.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Function Registry Subsystem manages registration, metadata indexing,
+safety classification, and runtime dispatch for native C functions.
+
+2. KEY TYPES & STRUCTS
+- FuncCategory: FCAT_CORE, MATH, STRING, IO, UTIL, USER.
+- FuncReturnType: FRET_INT, FRET_FLOAT, FRET_STRING, FRET_ANY.
+- FuncSafety: FSAFE_PURE, FSAFE_STATE, FSAFE_IO, FSAFE_SYSTEM.
+- FunctionEntry: Struct storing name, keyword, category, min/max args,
+  safety, handler callback, help_text, module_name.
+
+3. CORE API FUNCTIONS
+- funcreg_init()
+- funcreg_shutdown()
+- funcreg_register(entry) -> int
+- funcreg_find(name) -> const FunctionEntry *
+- funcreg_count() -> int
+- funcreg_get(index) -> const FunctionEntry *
+
+4. ARCHITECTURAL INVARIANTS
+- Evaluator automatically enforces min_args/max_args before invoking handler.
+- Up to 128 concurrent functions (MAX_FUNCTIONS).

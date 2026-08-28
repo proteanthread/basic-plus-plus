@@ -1,0 +1,25 @@
+platform Platform Abstraction Layer (libplatform)
+======================================================================
+
+The libplatform library encapsulates all OS-specific dependencies
+(Win32, POSIX, Linux, macOS, BSD, freestanding). Upper layers have zero
+OS #ifdefs.
+
+
+MODULES
+----------------------------------------------------------------------
+
+  - plat_console : Terminal modes and ANSI sequences
+  - plat_fs      : Paths, stat, directories
+  - plat_sys     : Timers, process execution, user/host queries
+  - plat_thread  : Threads and synchronization
+  - plat_dl      : Dynamic library loader (SDL2)
+  - plat_net     : Socket network abstractions
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    const char *platform_name(void);
+    uint64_t platform_get_ticks_ms(void);
+    int platform_execute_command(const char *cmd);

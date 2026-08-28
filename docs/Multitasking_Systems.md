@@ -1,118 +1,126 @@
-# Cooperative and Native Multi-threaded Multitasking in BASIC++
+# BASIC++ v6.5.2 Multitasking Systems
 
-BASIC++ implements a hybrid multitasking environment that supports cooperative statement yielding alongside native operating system thread execution (utilizing Win32 Threads on Windows and POSIX Threads on Linux). This allows multiple independent BASIC program processes to execute concurrently within a single interpreter session.
+## 1. COOPERATIVE MULTITASKING
 
----
+BASIC++ implements cooperative multitasking within the single-threaded VM. Tasks run interleaved at statement boundaries — each task executes one statement, then yields to the next task in the queue. This is not preemptive multitasking; a task that enters a long computation without yielding blocks all other tasks.
 
-## Architectural Mechanics
+The task system is implemented in engine/src/runtime/task.c and is part of the libserver library.
 
-### 1. The Scheduling Model
-Multitasking in BASIC++ is built upon a **hybrid scheduler** that coordinates task execution:
+## 2. CREATING AND MANAGING TASKS
 
-```
-        +-------------------------------------------------+
-        |             Cooperative Task Scheduler          |
-        +-------------------------------------------------+
-             /                    |                    \
-            /                     |                     \
-    +--------------+      +--------------+      +--------------+
-    |    Task 1    |      |    Task 2    |      |    Task 3    |
-    | (Foreground) |      | (Background) |      | (Background) |
-    +--------------+      +--------------+      +--------------+
-           |                      |                     |
-     Statement Yield        Thread Spawn          Thread Spawn
-           |                      |                     |
-           v                      v                     v
-     [ exec.c Loop ]      [ Native Thread ]     [ Native Thread ]
-```
-
-*   **Cooperative Slicing**: When running sequentially on single-threaded platforms or when native threads are disabled, the interpreter yields execution control at the *statement level* (after parsing each colon `:` or line boundary). The scheduler cycles through active tasks, letting each execute a statement slice.
-*   **Native Threading**: On modern multi-core hosts, spawning a background task launches an independent OS worker thread (`task_thread_worker`). The worker executes the sub-program concurrently, bypassing main-thread bottlenecks and achieving parallel speedups.
-*   **Fallback Schedulers**: If OS limits prevent worker thread creation, the task system falls back transparently to cooperative statement-ticking on the primary interpreter thread.
-
-### 2. Task Memory Mapping
-Every spawned background task is assigned its own unique virtual memory home bank (a **RAMBANK**).
-*   **Bank Isolation**: A task cannot access another task's variable pool or program space.
-*   **Task Switching**: Changing the active task (`TASK pid`) switches the active RAMBANK mapping to load the correct task workspace.
-*   **Shared Memory**: Tasks can communicate securely by declaring shared memory segments via `BANK bank_id SHARED`. Mutexes protect shared banks to prevent memory corruption.
-
----
-
-## Task Management Commands
-
-### 1. TASK "filename" [, priority]
-Spawns a new background process executing a BASIC script.
-*   **Usage**: `TASK "worker.bas"`
-*   **Behavior**: Reads and compiles the file into a new `BasicTask` structure, assigns it a free RAMBANK, and launches it (as a native thread or cooperative sub-task). Returns the Process ID (PID).
-*   **Example**:
-    ```basic
-    10 PID = TASK "background_calc.bas"
-    20 PRINT "Spawned background calculator with PID: "; PID
-    ```
-
-### 2. TASK LIST
-Displays a listing of all active tasks in memory with status diagnostics.
-*   **Usage**: `TASK LIST` (Direct or Program mode)
-*   **Details Displayed**:
-    *   **PID**: Process ID.
-    *   **File**: Script filename.
-    *   **Bank**: Assigned home RAMBANK ID.
-    *   **Threaded**: `YES` (if running on a native OS thread) or `NO` (cooperative).
-    *   **Status**: One of `TASK_RUNNING_FG`, `TASK_WAITING`, `TASK_RUNNING_BG`, `TASK_ERROR`, `TASK_DONE`, or `TASK_DONE_ERR`.
-*   *Note*: The status text uses terminal ANSI SGR escape sequences for color coding (Green for FG, Yellow for WAITING, White for BG, Red for ERROR, Blue for DONE, Purple for DONE_ERR).
-
-### 3. TASK pid
-Switches the interpreter context to a specific task, or resumes a suspended task.
-*   **Usage**: `TASK 2`
-*   **Behavior**: Suspends the current foreground task and promotes the designated background task to the foreground.
-
-### 4. TASK KILL pid
-Terminates an active task and frees its assigned resources.
-*   **Usage**: `TASK KILL 3`
-*   **Behavior**: Signals the worker thread to exit, removes the task entry from the scheduler queue, and releases its associated RAMBANK.
-
-### 5. TASK WAIT pid
-Suspends the calling task until the target background process terminates.
-*   **Usage**: `TASK WAIT 2`
-*   **Behavior**: Blocks task execution, yielding to the cooperative scheduler or native threads until the specified PID is completed or errored out.
-
-### 6. TASK(pid) [Function]
-Queries the state of the task with the given Process ID (PID).
-*   **Syntax**: `state = TASK(pid)`
-*   **Return Values**:
-    *   `0`: Foreground running (`TASK_RUNNING_FG`).
-    *   `1`: Waiting on input (`TASK_WAITING`).
-    *   `2`: Background running (`TASK_RUNNING_BG`).
-    *   `3`: Done with error (`TASK_ERROR`).
-    *   `4`: Clean exit (`TASK_DONE`).
-    *   `5`: Exit with non-clean code (`TASK_DONE_ERR`).
-    *   `-1`: Process does not exist / inactive.
-
----
-
-## Programming Example: Concurrent Workload
-
-The following script spawns a background worker to calculate numbers and uses `TASK WAIT` to block until it finishes:
+TASK START line creates a background task that begins execution at the specified BASIC line number. The task receives a unique task ID starting from 1:
 
 ```basic
-10 REM Main Task
-20 PRINT "Spawning background worker..."
-30 WORKER = TASK "worker.bas"
-40 FOR I = 1 TO 5
-50   PRINT "Main task iteration "; I
-60   DELAY 500
+10 TASK START 1000       ' Create task 1
+20 TASK START 2000       ' Create task 2
+30 ' Main program continues here
+40 FOR I = 1 TO 100
+50   PRINT "Main:"; I
+60   SLEEP 0.1
 70 NEXT I
-80 PRINT "Waiting for worker to finish..."
-90 TASK WAIT WORKER
-100 PRINT "Worker completed. Status code: "; TASK(WORKER)
+80 TASK STOP 1           ' Stop task 1
+90 TASK STOP 2           ' Stop task 2
+100 END
+1000 ' Task 1: Clock display
+1010 WHILE 1
+1020   LOCATE 1, 60 : PRINT TIME$
+1030   WAIT 1
+1040 WEND
+2000 ' Task 2: Memory monitor
+2010 WHILE 1
+2020   LOCATE 2, 60 : PRINT "Free:"; FRE(0)
+2030   WAIT 5
+2040 WEND
 ```
 
----
+TASK STOP id halts a running task. TASK STOP with no argument stops all background tasks.
 
-## Task System Limits
+TASK LIST displays all active tasks with their IDs, starting lines, and status (RUNNING, WAITING, STOPPED).
 
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `MAX_TASKS` | 32 | Maximum concurrent tasks (defined in `task.h`) |
+TASK STATUS id returns the state of a specific task as a numeric code.
 
-Exceeding this limit when calling `TASK "filename"` raises an error.
+## 3. YIELDING AND WAITING
+
+WAIT n inside a background task voluntarily yields execution for n seconds. During the wait, the main program and other tasks continue running. WAIT 0 yields immediately without delay (useful for cooperative CPU sharing).
+
+SLEEP n in the main program pauses all execution (main and tasks) for n seconds. Use WAIT in tasks and SLEEP only in the main program when you want everything to pause.
+
+## 4. SHARED STATE
+
+All tasks share the same variable space, array space, and string heap. There is no task-local storage. This means tasks can communicate through shared variables, but they must coordinate access to avoid race conditions.
+
+BASIC++ provides transaction support for atomic operations across shared state:
+
+```basic
+10 ' Main program increments counter
+20 TXN
+30   Counter = Counter + 1
+40 COMMIT
+```
+
+TXN/COMMIT ensures that the counter increment is atomic — no task switch occurs between reading and writing the variable.
+
+## 5. TASK INTERACTION PATTERNS
+
+### Producer-Consumer
+
+```basic
+10 DIM Queue$(100)
+20 QueueHead = 0 : QueueTail = 0
+30 TASK START 1000       ' Producer
+40 TASK START 2000       ' Consumer
+50 SLEEP 10
+60 TASK STOP 0
+70 END
+1000 ' Producer: Generate data
+1010 WHILE 1
+1020   TXN
+1030     Queue$(QueueTail) = "Item " + STR$(QueueTail)
+1040     QueueTail = (QueueTail + 1) MOD 100
+1050   COMMIT
+1060   WAIT 0.5
+1070 WEND
+2000 ' Consumer: Process data
+2010 WHILE 1
+2020   IF QueueHead <> QueueTail THEN
+2030     TXN
+2040       PRINT "Processing: "; Queue$(QueueHead)
+2050       QueueHead = (QueueHead + 1) MOD 100
+2060     COMMIT
+2070   END IF
+2080   WAIT 0.1
+2090 WEND
+```
+
+### Heartbeat Monitor
+
+```basic
+10 LastHeartbeat = TIMER
+20 TASK START 5000       ' Heartbeat sender
+30 ' Main program monitors heartbeat
+40 WHILE 1
+50   IF TIMER - LastHeartbeat > 10 THEN
+60     PRINT "WARNING: Heartbeat missed!"
+70   END IF
+80   SLEEP 1
+90 WEND
+5000 ' Heartbeat task
+5010 WHILE 1
+5020   TXN
+5030     LastHeartbeat = TIMER
+5040   COMMIT
+5050   WAIT 5
+5060 WEND
+```
+
+## 6. TASK LIMITS
+
+The maximum number of concurrent tasks is 16 on modern builds, 4 on FreeDOS, and 2 on embedded. Each task maintains its own execution position and loop stack state but shares all other VM resources.
+
+## 7. TASKS AND EVENT TRAPPING
+
+Event traps (ON TIMER, ON KEY, etc.) fire in the main program context only. Background tasks do not receive event trap notifications. If a background task needs to respond to events, the main program's event handler should set a shared variable that the task polls.
+
+## 8. TASK SECURITY
+
+The security system applies equally to all tasks. If the security level restricts file access, no task can access files regardless of which task initiated the operation. The RESTRICT command affects all tasks globally.

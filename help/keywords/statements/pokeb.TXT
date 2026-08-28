@@ -1,0 +1,33 @@
+POKEB Write Banked Memory Byte Statement
+======================================================================
+
+The POKEB statement writes an 8-bit byte value (0 to 255) into an
+explicit 64KB memory bank and offset.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    POKEB bank_number%, offset_address, byte_value%
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Writes directly to target bank without modifying BANK register.
+  - Byte value must be in range 0..255.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  5           ERR_ILLEGAL_FUNCTION  Byte out of range
+  70          ERR_PERMISSION_DENIED Memory write restricted
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 POKEB 2, &H2000, 128

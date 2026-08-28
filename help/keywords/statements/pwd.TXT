@@ -1,0 +1,22 @@
+PWD Print Working Directory Statement
+=====================================
+
+Prints the current active working directory to the console.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    PWD
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Quick directory query statement.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PWD : REM Prints current directory

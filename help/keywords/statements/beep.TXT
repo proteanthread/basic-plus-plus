@@ -1,0 +1,41 @@
+BEEP Speaker Bell Tone Statement
+================================
+
+Emits standard 800 Hz alert tones through the system speaker for a specified number of repetitions with an optional delay in seconds between beeps.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    BEEP
+    BEEP count
+    BEEP count, delay
+
+
+PARAMETERS
+----------------------------------------------------------------------
+
+    count (Optional Numeric Expression): Number of times to beep (default 1).
+          If 0, performs a silent no-op. Must be >= 0.
+
+    delay (Optional Numeric Expression): Delay in seconds between beeps (default 1.0).
+          Fractional seconds supported (e.g. 0.25, 0.5). Must be >= 0.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Routes through the platform audio subsystem (platform_sound_beep)
+  and virtual audio devices.
+  In multi-beep sequences, the delay occurs strictly between beeps.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Single Beep:"
+    20 BEEP
+    30 PRINT "Beep 3 times (1.0s delay):"
+    40 BEEP 3
+    50 PRINT "Beep 4 times with fast 0.25s delay:"
+    60 BEEP 4, 0.25

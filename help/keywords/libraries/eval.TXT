@@ -1,0 +1,19 @@
+eval Unified Expression Evaluator (libengine)
+======================================================================
+
+The eval subsystem evaluates mathematical, logical, string, and
+relational expressions across all language dialects.
+
+
+RULES & OWNERSHIP
+----------------------------------------------------------------------
+
+  - Unified expression evaluation for all dialects.
+  - String Lifecycle: Returned VAL_STRING has incremented refcount;
+    calling handlers must release via str_release(str_ctx, val.as.string).
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *err);

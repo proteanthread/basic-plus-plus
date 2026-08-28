@@ -1,0 +1,40 @@
+SHARED Procedure Variable Scope Statement
+======================================================================
+
+The SHARED statement grants a SUB or FUNCTION direct access to
+module-level (global) variables without passing them as arguments.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    SHARED var1 [, var2, var3, ...]
+    DIM SHARED var1(...)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Used inside procedure bodies to access module globals.
+  - DIM SHARED in module scope shares arrays with all procedures.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  2           ERR_SYNTAX_ERROR      SHARED outside valid scope
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 G = 100
+    20 CALL ModifyG()
+    30 PRINT G
+
+    100 SUB ModifyG()
+    110   SHARED G
+    120   G = G + 50
+    130 END SUB

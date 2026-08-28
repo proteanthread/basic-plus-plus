@@ -1,0 +1,22 @@
+SQR Square Root Function
+======================================================================
+
+The SQR function computes the square root of a non-negative number.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    root# = SQR(numeric_expression)
+
+
+DOMAIN
+----------------------------------------------------------------------
+
+  - x >= 0 (Error 5 if negative; use CSQR for complex numbers).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT SQR(81)   : REM Outputs 9

@@ -1,0 +1,32 @@
+CSNG Convert to Single-Precision Float
+======================================================================
+
+The CSNG function converts a numeric expression to a 32-bit
+single-precision floating-point value.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result! = CSNG(expression)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Truncates precision to 32-bit single float (~6-7 decimal digits).
+  - Converts integer, double, or numeric string.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  13          ERR_TYPE_MISMATCH     Invalid non-numeric string
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT CSNG(1.234567890123)

@@ -1,0 +1,18 @@
+MONTH$ Current Month Name String Function
+======================================================================
+
+The MONTH$ function returns the current calendar month name as a string
+(e.g. "January", "August").
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    name$ = MONTH$
+    name$ = MONTH$()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Month: "; MONTH$

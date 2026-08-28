@@ -1,0 +1,24 @@
+END Program Termination Statement
+=================================
+
+Cleanly terminates program execution, closes all open files, and returns to the system prompt.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    END
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Resets VM execution state without clearing stored program lines.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Starting process..."
+    20 END
+    30 PRINT "This line never executes"

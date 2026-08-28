@@ -1,0 +1,34 @@
+CINT Convert to Integer Function
+======================================================================
+
+The CINT function converts a numeric expression to an integer by
+rounding to the nearest whole integer.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result% = CINT(numeric_expression)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Rounds to nearest integer (e.g. CINT(4.6) = 5).
+  - Out of range values in 16-bit legacy mode raise Error 6 (ERR_OVERFLOW).
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  6           ERR_OVERFLOW          Value exceeds integer range
+  13          ERR_TYPE_MISMATCH     String argument provided
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT CINT(12.7)   : REM Outputs 13
+    20 PRINT CINT(-3.2)   : REM Outputs -3

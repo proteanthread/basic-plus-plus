@@ -1,0 +1,16 @@
+LO Low Byte / Word Extractor Function
+======================================================================
+
+The LO function extracts the low-order byte (bits 0..7) of an integer.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    low_byte% = LO(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT LO(&HABCD)   : REM Outputs 205 (&HCD)

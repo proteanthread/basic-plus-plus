@@ -1,79 +1,151 @@
 PRETRIEVE$
+======================================================================
 
-1. Syntax & Parameters
-PRETRIEVE$(key$)
-- key$: A string expression representing the unique identifier for the stored string value.
+SYNTAX
+----------------------------------------------------------------------
 
-2. Description & Usage
-PRETRIEVE$ retrieves a persistent string value from the local Key-Value database that was previously saved using the PSTORE command. It allows scripts to seamlessly reload text configurations, user names, or serialized data arrays. If the key does not exist, it returns an empty string ("").
+    result$ = PRETRIEVE$(key$)
 
-Detailed Behavioral Edge Cases and Constraints:
-- Type Coercion and Overflows: When parameters implicitly convert from strings to numerics or vice-versa, extreme boundary values will trigger runtime deterministic trapping. Specifically, very large numbers might truncate silently in older variants, but BASIC++ enforces strict bounds checking, raising an overflow error if values exceed target bit widths.
-- Side Effects on Subsystems: Evaluation inherently mutates the active statement's execution context. Nested expressions evaluating this keyword require intermediate stack allocations in the transient memory arena, triggering aggressive garbage-collection passes if the memory ceiling is reached.
-- Null or Empty Scenarios: Passing null references, empty strings, or uninitialized variables defaults safely depending on type constraints (e.g., yielding 0 for numeric expectations or "" for string expectations), bypassing undefined behavior.
-3. Code Examples
-`basic
-10 PSTORE "PLAYER_NAME", "Zack"
-20 N$ = PRETRIEVE$("PLAYER_NAME")
-30 PRINT "Welcome back, "; N$
-`
 
-Complex Integration Example:
-`basic
-100 REM Complex application combining operations
-110 DIM ARY(10)
-120 FOR I = 1 TO 10
-130   ARY(I) = PRETRIEVE$("TEST")
-140 NEXT I
-150 PRINT "Processed Array:", ARY(5)
-`
-4. Internal C-Source Mapping
-- Lexer: source/parser/lexer.c (KW_PRETRIEVES)
-- AST Node: source/parser/ast.c (FUNC_PRETRIEVES)
-- Runtime Evaluation: source/persist/builtinspersist.c -> builtinpretrieve_str()
-- Database Engine: Handled via dbgetstring() in source/persist/kv_store.c
+PARAMETERS
+----------------------------------------------------------------------
 
-5. Implementation Details
-The string retrieval function dynamically allocates a new string in the BASIC++ String Pool using strpool_alloc(). The data is read from the Key-Value store, copied into the String Pool, and safely returned to the interpreter as a String Value type.
-Memory Constraints: The string must not exceed the system's maximum string limit. If the backend data is excessively large, truncation may occur.
+  key$ - A string expression specifying the unique key identifier
+         in the persistent key-value storage database.
 
-In-Depth Architectural Narrative:
-- Struct Mutations: During AST evaluation, evalexpr() visits the corresponding ASTNode struct. It retrieves operands recursively, mapping results into the Value union structure. For numeric returns, val.type is assigned VALDOUBLE or VALINT. For strings, strpool_alloc() dynamically provisions heap space, and val.string points to this buffer.
-- Error States & Fault Tolerance: Failure points include ERRTYPEMISMATCH (when argument types mismatch signature expectations), ERROUTOFBOUNDS (for negative bounds or arrays), and ERROUTOFMEMORY (if the string pool is exhausted during allocation).
-- Modification Constraints: 
-  - What CAN be changed: Optimization routines inside the evaluation function can be modified to reduce latency, provided regression tests pass.
-  - What CANNOT be changed: The external function signature and the strict adherence to the token identifier in the Lexer must remain unmodified to preserve GW-BASIC and ECMA-116 standard parity.
-6. Cross-References / See Also
-PSTORE, PRETRIEVE, ENVIRON$
 
-7. Historical Context
-Like its numeric counterpart, PRETRIEVE$ is a BASIC++ specific modern extension enforcing the strict String Keyword Suffix Constraint by using the $ suffix for string-returning functions.
+RETURN VALUE
+----------------------------------------------------------------------
 
-8. Manual Testing Guide
-1. Launch baspp (Linux) or basicpp-console.exe (Windows).
-2. Type: PSTORE "TESTSTR", "HELLOWORLD" and press ENTER.
-3. Type: PRINT PRETRIEVE$("TEST_STR") and press ENTER.
-4. Verify output is HELLO_WORLD.
-5. Restart the interpreter.
-6. Type: PRINT PRETRIEVE$("TEST_STR") and press ENTER.
-7. Verify output remains HELLO_WORLD.
+  - Returns a string (VAL_STRING) corresponding to the value
+    previously associated with key$.
+  - If the specified key does not exist in the database or has
+    expired/been deleted, PRETRIEVE$ returns an empty string ("").
 
----
 
-9. Memory Management & Garbage Collection Profile
-Under the hood, this keyword operates within the strict bounds of the BASIC++ deterministic memory manager (core/memory.c). When executed, any intermediate strings generated by this operation are routed to the Transient Memory Arena within the String Pool (core/stringpool.c). If the arena exceeds its high-water mark, an aggressive mark-and-sweep garbage collection pass is immediately triggered before the instruction completes. On embedded architectures (compiled with -DBPPLITEBUILD), this transient arena is statically clamped (default 4KB), meaning iterative loops invoking this keyword must be designed carefully to avoid ERROUTOF_MEMORY traps. Developers porting to bare-metal systems must verify that the memory.c heap allocator correctly points to a continuous SRAM block without fragmentation.
+DESCRIPTION
+----------------------------------------------------------------------
 
-10. Portability & Hardware Porting Concerns
-Because BASIC++ is strictly C17 ISO/IEC 9899:2018 compliant, this keyword relies on zero proprietary OS APIs. When compiling for headless microcontrollers (such as the Arduino Mega or ESP32) using the -DNOSDL2 macro, this instruction routes all its graphical or I/O side effects through the Platform Abstraction Layer (PAL). Hardware implementers must ensure that platformsleep() and platformgetticks() are properly mapped in core/platform.c if this keyword involves timing, yielding, or hardware-level interrupts. In cases where the underlying hardware lacks a floating-point unit (FPU), the lexer automatically maps numeric outputs to 32-bit fixed integer types if -DBPPNOFLOAT is enforced.
+PRETRIEVE$ (Persistent Retrieve String) is a BASIC++ built-in string
+function designed to read persisted string data from the local
+application key-value store. It pairs directly with the PSTORE
+statement, enabling BASIC++ programs, utilities, and games to retain
+configurations, high scores, user preferences, session tokens, or
+serialized data between runs without manually managing low-level
+file I/O operations or record offsets.
 
-11. Abstract Syntax Tree (AST) Life Cycle
-During the parsing phase, the Recursive Descent Parser encounters the token associated with this keyword. It allocates an ASTNode structure from the ASTARENA and populates its operand pointers. At runtime, the astinterpreter.c engine performs a post-order traversal to evaluate all child expression nodes before triggering the final execution hook. This two-pass system guarantees that syntax errors (like mismatched parentheses or missing commas) are caught globally before any destructive side-effects occur. Once parsed, the ASTNode resides in memory until NEW or RUN is executed, at which point the entire arena is zeroed out to prevent memory leaks.
+In standard BASIC naming conventions, the trailing $ denotes that
+PRETRIEVE$ returns a string value. Its companion function
+PRETRIEVE(key$) retrieves numeric (floating-point or integer) values.
 
-12. C17 Standard Safety & Security Boundaries
-Security and isolation are paramount. This keyword utilizes strict bounds-checking to prevent buffer overflows. Internally, any array indexing or string manipulation defaults to sizet for addressing, preventing negative index wraps. Stack-smashing protections are enforced virtually by the MAXCALL_STACK limit defined in config.h. Any attempt by this keyword to access unallocated heap memory will trigger the interpreter's internal fault handler, raising a trappable BASIC error rather than causing a segmentation fault at the OS level.
+Key Characteristics:
+  1. Automatic Serialization: Reads stored key-value pairs from an
+     isolated, host-managed storage file without requiring OPEN,
+     FIELD, GET, PUT, or CLOSE.
+  2. Safe Defaults: Non-existent keys safely yield an empty string
+     ("") rather than generating a fatal runtime exception.
+  3. Session Persistence: Values persisted via PSTORE remain in
+     storage even after the BASIC++ process terminates, making
+     PRETRIEVE$ ideal for application state recovery.
 
-13. Deterministic Execution & Regression Prevention
-To prevent regressions across builds (Windows, Linux, or MCU), the execution of this keyword is entirely deterministic. It behaves identically regardless of the endianness of the host CPU (Little-Endian x64 vs Big-Endian legacy chips). The testing suite in selftests_all.c ensures that the byte-for-byte output of this operation remains identical. If a developer modifies the underlying C source code for this keyword, they MUST run the SELFTEST suite to verify that parsing precedence, token mapping, and garbage collection behavior have not drifted.
 
-14. Performance Profiling & Optimization Rules
-For developers writing performance-critical algorithms in BASIC++, be aware that calling this keyword inside a FOR...NEXT or WHILE...WEND loop incurs a minimal virtual dispatch overhead. Because the interpreter uses a switch-case dispatch engine in exec.c, the branch predictor on modern CPUs will optimize repeated calls. However, on 8-bit or 16-bit chips, minimizing the use of string-mutating variants of this keyword will drastically improve frame rates and execution speed.
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+Example 1: Loading User Profile / Preferences
+
+    10 REM Check if user name is stored in persistent key-value database
+    20 UserName$ = PRETRIEVE$("USER_NAME")
+    30 IF UserName$ = "" THEN
+    40     PRINT "First time setup: What is your name?"
+    50     INPUT "> ", UserName$
+    60     PSTORE "USER_NAME", UserName$
+    70     PRINT "Saved profile for "; UserName$
+    80 ELSE
+    90     PRINT "Welcome back, "; UserName$; "!"
+    100 END IF
+
+Example 2: Loading Game State and Settings
+
+    100 REM Load configuration values
+    110 Theme$ = PRETRIEVE$("CONFIG_THEME")
+    120 IF Theme$ = "" THEN Theme$ = "DARK"
+    130 AudioMode$ = PRETRIEVE$("AUDIO_DRIVER")
+    140 IF AudioMode$ = "" THEN AudioMode$ = "SDL2"
+    150 PRINT "Active Theme: "; Theme$
+    160 PRINT "Audio Driver: "; AudioMode$
+
+Example 3: Serialized Array Restoration
+
+    10 DIM HighScores$(5)
+    20 FOR I = 1 TO 5
+    30     KeyName$ = "HIGHSCORE_SLOT_" + STR$(I)
+    40     Entry$ = PRETRIEVE$(KeyName$)
+    50     IF Entry$ = "" THEN Entry$ = "EMPTY - 0000"
+    60     HighScores$(I) = Entry$
+    70     PRINT "Rank "; I; ": "; HighScores$(I)
+    80 NEXT I
+
+
+BEHAVIORAL EDGE CASES AND CONSTRAINTS
+----------------------------------------------------------------------
+
+  - Empty Key: Passing an empty string ("") as key$ is a valid
+    expression evaluation but will return "" unless an empty key was
+    explicitly saved.
+  - Type Safety: Passing a numeric expression instead of a string
+    for key$ triggers Error 13 (ERR_TYPE_MISMATCH).
+  - Memory Lifecycle: String values returned by PRETRIEVE$ enter the
+    reference-counted string pool (BppStringPool) via str_create().
+    The caller assumes ownership of the string and manages its
+    reference count.
+  - Key Casing: Key lookups match byte-for-byte exact string keys.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  13          ERR_TYPE_MISMATCH     key$ is a numeric type, not string
+  14          ERR_OUT_OF_STR_SPACE  String pool exhausted
+  70          ERR_PERMISSION_DENIED Sandbox restricts disk storage
+
+
+CROSS-REFERENCES
+----------------------------------------------------------------------
+
+  - PSTORE: Stores a persistent key-value pair to disk storage.
+  - PRETRIEVE: Numeric variant; retrieves a number for a string key.
+  - ENVIRON$: Reads environment variables from host OS.
+  - _STATESAVE / _STATELOAD: Serializes or restores full VM execution state.
+  - COMMON: Shares in-memory variables across CHAIN program boundaries.
+
+
+PROPOSED EXPANSION OR CHANGES
+----------------------------------------------------------------------
+
+In legacy BASIC++ v5.0.5, persistent key-value storage was implemented
+through dedicated modules:
+  - Lexer token: KW_PRETRIEVES (source/parser/lexer.c)
+  - AST function node: FUNC_PRETRIEVES (source/parser/ast.c)
+  - Runtime builtin: builtin_pretrieve_str()
+    (source/persist/builtins_persist.c)
+  - Key-Value Engine: db_get_string() (source/persist/kv_store.c)
+
+Required v6.5.2 Implementation Blueprint:
+  1. Lexer Registration: Add KW_PRETRIEVE_STR (PRETRIEVE$) and
+     KW_PRETRIEVE (PRETRIEVE) to engine/include/lexer/lexer.h and
+     token table in engine/src/lexer/lexer.c.
+  2. Evaluator Dispatch: Wire PRETRIEVE$ into built-in function
+     dispatch in engine/src/eval/eval_builtins.c or
+     engine/src/eval/dispatch.c.
+  3. Storage Subsystem (libserver / libkernel): Implement a lightweight
+     embedded key-value store module (engine/src/runtime/kv_store.c)
+     backed by a per-application database file.
+  4. Function Signature:
+     BValue func_pretrieve_str_exec(VMContext *vm, const char *key,
+                                    BppError *err);
+  5. Help & Introspection: Register PRETRIEVE$ in
+     engine/src/statements/dialect/help_data.h under the "Persistence"
+     category with syntax "result$ = PRETRIEVE$(key$)".

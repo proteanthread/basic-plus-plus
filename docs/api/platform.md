@@ -1,80 +1,116 @@
-# OS Platform Abstraction API Reference
+# C17 API Reference: Platform Abstraction Layer (`platform/platform.h`)
 
-Header File: [`include/platform.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/platform.h)
+## 1. Subsystem Overview & Responsibilities
 
-## Overview
-Bridges platform differences for clocks, console sizes, clipboard, and file descriptors.
+The Platform Abstraction Layer (`platform/platform.h`, implemented in `engine/src/platform/`) encapsulates all host operating system `#ifdef` branching, Win32 vs POSIX system interfaces, hardware timing, audio generation, terminal console raw modes, thread management, dynamic linking, and filesystem operations in BASIC++ v6.5.2.
 
-## Exposed API Entities
-### Structs & Types
-- `BppDirSearch BppDirSearch`
+Key architectural responsibilities include:
+- **Zero OS-Specific Code in Upper Layers**: Upper engine layers (`libkernel`, `libengine`, `libhardware`, `libserver`, `libscript`, `libcore`) contain ZERO operating system headers (`<windows.h>`, `<unistd.h>`, `<sys/stat.h>`, `<dlfcn.h>`); all host interactions route strictly through `libplatform`.
+- **Target Platform Classification (`BppPlatformId`)**:
+  - `PLAT_WINDOWS`: Win32 / Win64 console, threads, file locks, DLL loader.
+  - `PLAT_POSIX`: Linux, macOS, BSD, Solaris, Android terminal termios, pthreads, dlopen.
+  - `PLAT_DOS`: 16-bit / 32-bit FreeDOS / MS-DOS raw BIOS and DOS interrupts.
+- **Unified Subsystem Modules**:
+  - `plat_console.c`: Raw mode switching, terminal size queries, key events.
+  - `plat_fs.c`: Filesystem navigation, directory listings, file stat, renaming, deletion.
+  - `plat_thread.c`: OS worker threads, mutexes, condition variables.
+  - `plat_time.c`: High-resolution microsecond timer clocks and sleep delays.
+  - `plat_dl.c`: Dynamic shared library loading (`dlopen` / `LoadLibraryA`).
+  - `plat_net.c`: Berkeley sockets and WinSock TCP/UDP abstractions.
+  - `plat_clipboard.c`: System clipboard text reading and writing.
 
-### Functions
-| Function | Return Type | Arguments |
-|----------|-------------|-----------|
-| `platform_init` | `void` | `void` |
-| `platform_shutdown` | `void` | `void` |
-| `platform_get_id` | `BppPlatformId` | `void` |
-| `platform_sleep_ms` | `void` | `uint32_t ms` |
-| `platform_kbhit` | `bool` | `void` |
-| `platform_getch` | `int` | `void` |
-| `platform_console_height` | `int` | `void` |
-| `platform_console_width` | `int` | `void` |
-| `platform_chdir` | `int` | `const char *path` |
-| `platform_setup_signals` | `void` | `void *vm_ptr` |
-| `platform_execute_shell` | `void` | `void` |
-| `platform_execute_command` | `void` | `const char *cmd` |
-| `platform_mkdir` | `int` | `const char *path` |
-| `platform_rmdir` | `int` | `const char *path` |
-| `platform_remove` | `int` | `const char *path` |
-| `platform_rename` | `int` | `const char *oldpath, const char *newpath` |
-| `platform_filesize` | `long` | `const char *path` |
-| `platform_filemod` | `int` | `const char *path, char *out_buf, size_t buf_size` |
-| `platform_list_files` | `int` | `void *vdev_ptr, const char *pattern` |
-| `platform_setenv` | `int` | `const char *name, const char *value` |
-| `platform_get_attributes` | `int` | `const char *path` |
-| `platform_set_attributes` | `int` | `const char *path, int attr` |
-| `platform_lock_file` | `int` | `FILE *fp` |
-| `platform_unlock_file` | `int` | `FILE *fp` |
-| `platform_find_next_file` | `int` | `BppDirSearch *search, char *out_name, size_t out_size` |
-| `platform_find_close` | `void` | `BppDirSearch *search` |
-| `platform_get_timer` | `double` | `void` |
-| `platform_mutex_init` | `void` | `BppMutex *mutex` |
-| `platform_mutex_lock` | `void` | `BppMutex *mutex` |
-| `platform_mutex_unlock` | `void` | `BppMutex *mutex` |
-| `platform_mutex_destroy` | `void` | `BppMutex *mutex` |
-| `platform_thread_join` | `int` | `BppThread *thread` |
-| `platform_free_library` | `void` | `void *library_handle` |
-| `platform_net_init` | `int` | `void` |
-| `platform_net_cleanup` | `void` | `void` |
-| `platform_socket_connect` | `BppSocket` | `const char *host, int port, int socktype, BppError *err` |
-| `platform_socket_listen` | `BppSocket` | `int port, BppError *err` |
-| `platform_socket_accept` | `BppSocket` | `BppSocket listen_sock, char *client_ip_buf, int ip_buf_len, BppError *err` |
-| `platform_socket_send` | `int` | `BppSocket sock, const void *buf, int len` |
-| `platform_socket_recv` | `int` | `BppSocket sock, void *buf, int len, int *err_code` |
-| `platform_socket_close` | `void` | `BppSocket sock` |
-| `platform_socket_set_nonblocking` | `int` | `BppSocket sock, int nonblock` |
-| `platform_socket_poll_readable` | `int` | `BppSocket sock, int timeout_ms` |
-| `platform_get_executable_path` | `int` | `char *buf, size_t size` |
-| `platform_regex_match` | `int` | `const char *text, const char *pattern` |
-| `platform_tui_init` | `void` | `void` |
-| `platform_tui_shutdown` | `void` | `void` |
-| `platform_screen_get_char` | `int` | `int row, int col` |
-| `platform_screen_get_attr` | `int` | `int row, int col` |
-| `platform_cleanup_workspace` | `void` | `bool full_cleanup` |
-| `platform_clipboard_set` | `void` | `const char *text` |
+## 2. Header Inclusion & Prerequisites
 
-## C Integration Example
-The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "platform.h"
-
-void get_metrics() {
-    int w = platform_console_width();
-    (void)w;
-}
+#include "platform/platform.h"
+#include <stdint.h>
+#include <stdbool.h>
 ```
 
-## Guidelines & Architecture Constraints
-- **C17 Portability**: Compile under strict C17 standards.
-- **Memory Integrity**: All contexts and pointers passed must be zero-initialized.
+## 3. Data Structures & Types
+
+```c
+typedef enum {
+    PLAT_UNKNOWN = 0,
+    PLAT_WINDOWS,   /* Microsoft Windows Win32/Win64 */
+    PLAT_POSIX,     /* Linux, macOS, FreeBSD, NetBSD */
+    PLAT_DOS        /* FreeDOS / MS-DOS / OpenWatcom */
+} BppPlatformId;
+```
+
+## 4. Function Prototypes & Operational Contracts
+
+### Lifecycle & Identification
+```c
+/**
+ * @brief Initializes host platform drivers, console modes, and socket stacks.
+ */
+void platform_init(void);
+
+/**
+ * @brief Restores original host terminal cooked mode and cleans up platform resources.
+ */
+void platform_shutdown(void);
+
+/**
+ * @brief Returns the enum identifier of the active host platform.
+ */
+BppPlatformId platform_get_id(void);
+
+/**
+ * @brief Returns the human-readable name of the active operating system.
+ */
+const char *platform_name(void);
+```
+
+### High-Resolution Timing & Sound
+```c
+/**
+ * @brief Suspends execution of the calling thread for specified milliseconds.
+ */
+void platform_sleep_ms(uint32_t ms);
+
+/**
+ * @brief Emits a standard 800 Hz speaker beep tone for 250 ms (BEEP statement).
+ */
+void platform_sound_beep(void);
+
+/**
+ * @brief Emits a tone of specified frequency in Hz for duration in ms (SOUND statement).
+ */
+void platform_sound_tone(uint32_t frequency_hz, uint32_t duration_ms);
+
+/**
+ * @brief Immediately stops any active audio tone output.
+ */
+void platform_sound_stop(void);
+```
+
+### Platform Filesystem & Subprocesses
+```c
+char *platform_getcwd(char *buf, size_t size);
+bool  plat_fs_chdir(const char *path);
+bool  plat_fs_mkdir(const char *path);
+bool  plat_fs_rmdir(const char *path);
+bool  plat_fs_exists(const char *path);
+bool  plat_fs_rename(const char *old_path, const char *new_path);
+bool  plat_fs_delete(const char *path);
+int   platform_system_exec(const char *command);
+```
+
+## 5. Architectural Invariants
+
+- **Freestanding Cleanliness**: Header `platform.h` exports only pure ISO C17 signatures without leaking OS header types (`HANDLE`, `HWND`, `pid_t`, `pthread_t`).
+- **Signal & Terminal Safety**: Guarantees terminal state restoration upon unhandled signals (SIGINT, SIGTERM).
+
+## 6. Code Example: Cross-Platform Sound and Sleep in C
+
+```c
+#include "platform/platform.h"
+
+void play_startup_chime(void) {
+    platform_sound_tone(440, 100); /* A4 */
+    platform_sleep_ms(20);
+    platform_sound_tone(880, 150); /* A5 */
+}
+```

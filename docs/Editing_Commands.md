@@ -1,228 +1,86 @@
-# BASIC++ Editing Commands
+# BASIC++ v6.5.2 Editing Commands
 
-**Version 4.2.3**
+## 1. THE LINE EDITOR
 
+EDIT n opens line n in the built-in line editor. The editor displays the line text and places the cursor at the beginning. You can modify the line using standard editing keys:
 
----
+- **Left/Right arrows** — Move the cursor within the line.
+- **Home/End** — Jump to the beginning or end of the line.
+- **Insert** — Toggle between insert and overwrite mode.
+- **Delete** — Delete the character under the cursor.
+- **Backspace** — Delete the character before the cursor.
+- **Enter** — Accept the changes and store the modified line.
+- **Escape** — Cancel editing and restore the original line.
 
-## Table of Contents
+EDIT without a line number edits the last line that produced an error, which is useful for correcting syntax errors immediately after they occur.
 
-- Line Editing (AUTO / DELETE / EDIT / RENUM)
-  - AUTO — Automatic Line Numbering
-  - DELETE — Remove Program Lines
-  - EDIT — Edit a Line
-  - RENUM — Renumber Program Lines
-- ALIAS — Keyword Remapping
-  - Setting Aliases
-  - Listing and Managing
-  - Saving and Loading
-  - Language Packs
-- ALIAS$ — Alias Lookup Function
-- KEYWORD — Keyword Properties
-- OVERRIDE — Runtime Keyword Replacement
-- SCOPE — Keyword Access Control
-  - Enabling and Disabling
-  - Execution Hooks
-  - Presets
-  - Listing
+## 2. AUTO LINE NUMBERING
 
----
-
-This guide covers all editing, customization, and keyword management commands in BASIC++.
-
----
-
-## Line Editing (AUTO / DELETE / EDIT / RENUM)
-
-### AUTO — Automatic Line Numbering
-
-`AUTO` begins automatic line numbering for rapid entry:
-
-```
-AUTO             ' Start at 10, step 10
-AUTO 100         ' Start at 100, step 10
-AUTO 100, 5      ' Start at 100, step 5
-```
-
-Each time you press Enter, the next line number appears automatically. Press **Ctrl+C** or enter a blank line to exit AUTO mode.
-
-If a line number already exists, AUTO shows it with a `*` prefix to warn you that entering text will overwrite it.
-
-### DELETE — Remove Program Lines
-
-`DELETE` removes one or more lines from the program:
-
-```
-DELETE 100       ' Delete line 100
-DELETE 100-200   ' Delete lines 100 through 200
-```
-
-You can also delete a line by typing its number with no content:
-
-```
-100              ' (empty line — deletes line 100)
-```
-
-### EDIT — Edit a Line
-
-`EDIT` opens a line for in-place editing:
-
-```
-EDIT 100
-```
-
-The current content of line 100 is displayed and you can modify it. Press Enter to accept changes.
-
-### RENUM — Renumber Program Lines
-
-`RENUM` renumbers all lines in the program:
-
-```
-RENUM            ' Renumber starting at 10, step 10
-RENUM 100        ' Start at 100, step 10
-RENUM 100, 5     ' Start at 100, step 5
-```
-
-`RENUM` automatically updates all `GOTO`, `GOSUB`, `ON...GOTO`, `ON...GOSUB`, `RESTORE`, and `RESUME` references to match the new line numbers.
-
----
-
-## ALIAS — Keyword Remapping
-
-`ALIAS` lets you remap any BASIC++ keyword to a custom name. This is the foundation for localized/translated BASIC.
-
-### Setting Aliases
+AUTO starts automatic line numbering. Each time you press Enter after typing a statement, the next line number is generated automatically:
 
 ```basic
-ALIAS "IMPRE" = PRINT      ' Map "IMPRE" to PRINT
-ALIAS "SI" = IF            ' Map "SI" to IF
-ALIAS "ALLER" = GOTO       ' Map "ALLER" to GOTO
+> AUTO
+10 PRINT "LINE ONE"
+20 PRINT "LINE TWO"
+30 END
+.
+>
 ```
 
-After aliasing, both the alias and the original work:
+AUTO start,step specifies the starting number and increment: `AUTO 100,5` generates 100, 105, 110, etc. Type a period (.) as the first character on a line or press Ctrl+C to exit AUTO mode.
 
-```basic
-IMPRE "Bonjour"            ' Prints: Bonjour
-PRINT "Hello"              ' Still works
-```
+If AUTO generates a line number that already exists, the existing line is displayed with an asterisk (*) prefix. You can press Enter to keep the existing line or type a new statement to replace it.
 
-### Listing and Managing
+## 3. LINE MANAGEMENT
 
-| Command | Description |
-|---------|-------------|
-| `ALIAS LIST` | Show all active aliases |
-| `ALIAS CLEAR "IMPRE"` | Remove one alias |
-| `ALIAS CLEAR ALL` | Remove all aliases |
-| `ALIAS COUNT` | Show number of active aliases |
+LIST displays program lines. LIST alone shows the entire program. LIST n shows line n only. LIST n1-n2 shows a range. LIST -n shows all lines up to n. LIST n- shows all lines from n onward.
 
-### Saving and Loading
+LLIST sends the listing to the printer (LPT1:).
 
-```basic
-ALIAS SAVE "french.als"    ' Save alias set to file
-ALIAS LOAD "french.als"    ' Load alias set from file
-```
+DELETE removes lines. DELETE n removes line n. DELETE n1-n2 removes a range. DELETE -n removes all lines up to n. DELETE n- removes all lines from n onward.
 
-### Language Packs
+RENUM renumbers the program. RENUM alone renumbers from 10 by 10. RENUM new,old,step renumbers starting from line old, assigning new numbers starting at new with the given step. All GOTO, GOSUB, ON...GOTO, ON...GOSUB, RESTORE, RESUME, and RUN references are updated automatically.
 
-`ALIAS LANG` loads a built-in language translation:
+## 4. THE TUI EDITOR MULTIPLEXER
 
-```basic
-ALIAS LANG "SPANISH"       ' Load Spanish keyword aliases
-ALIAS LANG "FRENCH"        ' Load French keyword aliases
-```
+The baspp standard edition includes a full-screen TUI (Text User Interface) editor multiplexer that provides a multi-window editing environment. The multiplexer supports multiple simultaneous editor instances, each in its own virtual terminal.
 
-Use `ALIAS LANG` without an argument to list available packs.
+The editor is implemented in engine/src/editor/ and is part of the libstandard library. It requires ncurses on Linux and the Windows Console API on Windows.
 
----
+### Editor Modes
 
-## ALIAS$ — Alias Lookup Function
+The TUI editor supports three editing personalities:
 
-`ALIAS$` is a read-only function that looks up mappings:
+**EDIT mode** — The default BASIC++ editor with line-number-aware editing, syntax highlighting, and block operations.
 
-```basic
-PRINT ALIAS$("IMPRE")     ' prints "PRINT"
-PRINT ALIAS$("PRINT")     ' prints "IMPRE" (reverse lookup)
-```
+**EDLIN mode** — An MS-DOS EDLIN-compatible editor for line-by-line editing with insert, delete, list, search, and replace commands.
 
-If no alias exists, `ALIAS$` returns an empty string.
+**VI mode** — A vi-compatible modal editor with normal, insert, and command modes. Supports basic vi motion commands (h, j, k, l, w, b, e, 0, $), editing commands (i, a, o, O, dd, yy, p, P), and ex commands (:w, :q, :wq, :s).
 
----
+**WS mode** — A WordStar-compatible editor using Ctrl-key commands for cursor movement and block operations.
 
-## KEYWORD — Keyword Properties
+Switch between editor modes with the MODE command inside the editor, or set the default mode in the configuration.
 
-`KEYWORD` modifies or queries built-in keyword behavior:
+### Multiplexer Operations
 
-```basic
-KEYWORD PRINT UPPERCASE ON     ' Forces PRINT to uppercase all output
-KEYWORD PRINT UPPERCASE OFF    ' Disables forced uppercase
-KEYWORD PRINT DESCRIBE         ' Shows description and properties
-```
+The editor multiplexer allows multiple files to be open simultaneously in separate windows:
 
-The `KEYWORD` command provides programmatic access to the keyword property system (see `keyword_props.c`).
+- **MUX NEW** — Open a new editor window.
+- **MUX CLOSE** — Close the current editor window.
+- **MUX NEXT / MUX PREV** — Switch between editor windows.
+- **MUX LIST** — Show all open editor windows.
+- **CHVT n** — Switch to virtual terminal n.
 
----
+## 5. REFORMAT
 
-## OVERRIDE — Runtime Keyword Replacement
+REFORMAT standardizes the formatting of the current program without changing line numbers or program logic. It normalizes keyword capitalization (PRINT, not print), statement spacing, and indentation of block structures (IF/END IF, FOR/NEXT, SUB/END SUB).
 
-`OVERRIDE` replaces how a keyword is interpreted at runtime without modifying source code:
+## 6. CLIPBOARD OPERATIONS
 
-```basic
-OVERRIDE PRINT "PRINT TAB(7);"
-```
+The TUI editor supports clipboard operations through the platform clipboard interface (engine/lib/platform/plat_clipboard.c):
 
-Every `PRINT` statement is now prefixed with `TAB(7)`.
+- **Copy** — Copy selected text to the system clipboard.
+- **Cut** — Cut selected text to the system clipboard.
+- **Paste** — Insert clipboard text at the cursor position.
 
-| Command | Description |
-|---------|-------------|
-| `OVERRIDE LIST` | Lists all active overrides |
-| `OVERRIDE RESET` | Removes all active overrides |
-| `OVERRIDE PRINT RESET` | Removes only the PRINT override |
-
-Overrides apply to **all** uses of the keyword in the program. They are designed for batch processing, formatting, and output transformation without touching source code.
-
----
-
-## SCOPE — Keyword Access Control
-
-`SCOPE` controls which keywords are available and adds execution hooks.
-
-### Enabling and Disabling
-
-```basic
-SCOPE DISABLE GOTO         ' Prevent use of GOTO
-SCOPE ENABLE GOTO          ' Re-enable GOTO
-
-SCOPE DISABLE POKE         ' Prevent memory writes
-SCOPE DISABLE SHELL        ' Prevent OS access
-```
-
-Disabled keywords produce an error if used:
-
-```
-?Keyword disabled: GOTO
-```
-
-### Execution Hooks
-
-```basic
-SCOPE BEFORE PRINT GOSUB 9000    ' Call before every PRINT
-SCOPE AFTER INPUT GOSUB 9100     ' Call after every INPUT
-SCOPE OVERRIDE PRINT GOSUB 9200  ' Replace PRINT entirely
-```
-
-### Presets
-
-| Preset | Description |
-|--------|-------------|
-| `SCOPE "STANDARD"` | Default keyword set |
-| `SCOPE "MINIMAL"` | Bare minimum keywords |
-| `SCOPE "CREATIVE"` | Disabled: GOTO, GOSUB (forces structured programming) |
-| `SCOPE "SAFE"` | Disabled: SHELL, POKE, KILL |
-
-### Listing
-
-| Command | Description |
-|---------|-------------|
-| `SCOPE LIST` | Show all scope rules |
-| `SCOPE LIST DISABLED` | Show disabled keywords only |
-| `SCOPE LIST HOOKS` | Show active hooks only |
+These operations use the host operating system's clipboard, allowing text to be copied between the BASIC++ editor and other applications.

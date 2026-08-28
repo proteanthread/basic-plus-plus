@@ -1,0 +1,17 @@
+VMEM Virtual Segmented Memory Statement & Function
+======================================================================
+
+The VMEM statement/function manages virtual memory segments and banks.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    VMEM bank_number%, segment_address&
+    bytes& = VMEM(selector%)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 VMEM 1, &H2000

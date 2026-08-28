@@ -1,0 +1,14 @@
+file Sequential & Random File I/O Engine (libscript)
+======================================================================
+
+The file library implements channel-based file I/O (INPUT #, PRINT #,
+GET #, PUT #, FIELD).
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    int file_open(int channel, const char *path, FileMode mode, int rlen);
+    int file_close(int channel);
+    int file_get(int channel, long rec);
+    int file_put(int channel, long rec);

@@ -1,0 +1,17 @@
+PATH$ File Path Resolution Function
+======================================================================
+
+The PATH$ function resolves a relative path into a normalized absolute
+path string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    full_path$ = PATH$(relative_path$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT PATH$("data/table.dat")

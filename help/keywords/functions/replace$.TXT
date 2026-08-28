@@ -1,0 +1,17 @@
+REPLACE$ Substring Replacement Function
+======================================================================
+
+The REPLACE$ function replaces occurrences of a search string with a
+replacement string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res$ = REPLACE$(source$, search$, replacement$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT REPLACE$("AAA", "A", "B")   : REM Outputs "BBB"

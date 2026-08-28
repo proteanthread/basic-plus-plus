@@ -1,57 +1,12 @@
-/**
- * @file control.c
- * @brief VM control flow engine, loop stack manager, and branching controller for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements VM control flow management, line jumps (vm_jump), GOSUB call stack operations (vm_gosub_push/pop),
- * FOR loop stack tracking (vm_for_push/pop/update/peek), WHILE loop stack management (vm_while_push/pop/peek),
- * DO loop stack handling (vm_do_push/pop), SELECT CASE stack tracking (vm_select_push/pop), and block IF stack frame management.
- *
- * 2. WHY IT EXISTS:
- * Serves as the central control flow manager for BASIC++, handling all subroutine returns, loop iterations,
- * and line jumps without relying on host C recursion or C stack allocation.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Manages heap-allocated stack structures (gosub_stack, for_stack, while_stack, do_stack, select_stack) attached to VMContext.
- * Maps transient source line execution buffer pointers back to authoritative program line buffers via vm_map_copy_to_original().
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'vm_control'. Directly includes "vm/vm.h", "vm_internal.h",
- * "stmt/stmt.h", "device/vdev.h", "types/config.h", "eval/eval.h", and "platform/platform.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Fully included in both libbasicpp (baspp) and libbasicpp_lite (bpp, bs).
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * To introduce a new control construct (e.g. TRY/CATCH blocks or REPEAT/UNTIL loops), define a stack structure,
- * attach it to VMContext, and implement push/pop/peek wrappers in control.c.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Stack popping discipline: vacating stack slots MUST set frame pointers to NULL immediately.
- * Pointer mapping invariant: vm_map_copy_to_original() MUST map transient line copies to persistent line buffers.
- *
- * 8. WHAT TO EXPECT:
- * Returns true on successful stack push/pop/peek operations, false on stack underflow or allocation failure.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Inspect stack depth indicators in VMContext. Trace for_stack_push and gosub_stack_push for memory limits.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext created by vm_init().
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Pointer difference offset calculation via ptrdiff_t for 64-bit safety.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/vm/context.c
- * - engine/src/vm/stack.c
- * - engine/src/memory/memory.c
- * Prerequisite Header Files:
- * - engine/include/vm/vm.h
- * - engine/src/vm/vm_internal.h
- * - engine/include/types/types.h
- */
+// FILENAME: control.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel, libplatform, libserver
+// Implements bytecode virtual machine execution and state for control.
+//
+// ---- Includes ----
+
 #include "vm/vm.h"
 #include "vm_internal.h"
 #include "stmt/stmt.h"
@@ -74,12 +29,11 @@
 #include "runtime/variables.h"
 #include "platform/platform.h"
 #include "core/struct.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <ctype.h>
-
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "hal/hal.h"
 
 void vm_set_chaining(VMContext *vm, bool chaining) {
     if (vm) vm->is_chaining = chaining;
@@ -97,11 +51,36 @@ void vm_jump(VMContext *vm, BppLineNumber line, const char *pos) {
     }
 }
 
+void vm_get_jump_target(VMContext *vm, BppLineNumber *out_line, const char **out_pos) {
+    if (vm) {
+        if (out_line) *out_line = vm->next_line;
+        if (out_pos) *out_pos = vm->next_pos;
+    }
+}
+
+void vm_clear_jump(VMContext *vm) {
+    if (vm) {
+        vm->jump_active = false;
+        vm->next_line = 0;
+        vm->next_pos = NULL;
+    }
+}
+
+const char *vm_get_current_pos(VMContext *vm) {
+    return vm ? vm->current_pos : NULL;
+}
+
+void vm_set_current_pos(VMContext *vm, const char *pos) {
+    if (vm) {
+        vm->current_pos = pos;
+    }
+}
+
 static const char *vm_map_copy_to_original(VMContext *vm, const char *pos) {
     if (!vm || !pos || !vm->active_line_original || !vm->active_line_copy) {
         return pos;
     }
-    size_t len = strlen(vm->active_line_copy);
+    size_t len = runtime_strlen(vm->active_line_copy);
     if (pos >= vm->active_line_copy && pos <= vm->active_line_copy + len) {
         ptrdiff_t offset = pos - vm->active_line_copy;
         return vm->active_line_original + offset;
@@ -121,6 +100,19 @@ bool vm_gosub_pop(VMContext *vm, BppLineNumber *out_line, const char **out_pos) 
 bool vm_for_push(VMContext *vm, const char *var_name, double target, double step, BppLineNumber line, const char *pos) {
     if (vm) pos = vm_map_copy_to_original(vm, pos);
     return vm ? for_stack_push(vm->for_stack, var_name, target, step, line, pos) : false;
+}
+
+bool vm_for_push_multi(VMContext *vm, const char **var_names, int var_count, double target, double step, BppLineNumber line, const char *pos) {
+    if (!vm) return false;
+    pos = vm_map_copy_to_original(vm, pos);
+    bool ok = for_stack_push_multi(vm->for_stack, var_names, var_count, target, step, line, pos);
+    if (ok && var_names && var_names[0]) {
+        BValue *ptr = var_lookup(vm->var, var_names[0], true);
+        if (ptr) {
+            for_stack_set_cached_ptr(vm->for_stack, ptr);
+        }
+    }
+    return ok;
 }
 
 bool vm_for_update(VMContext *vm, const char *var_name, double target, double step, const char *next_range_pos) {
@@ -181,9 +173,9 @@ bool vm_select_pop(VMContext *vm, BppSelectFrame *out_frame) {
     bool ok = select_stack_pop(vm->select_stack, &frame);
     if (ok) {
         if (out_frame) {
-            *out_frame = frame; /* Ownership transfers to caller */
+            *out_frame = frame; // Ownership transfers to caller
         } else {
-            /* No caller to receive it, release the ref */
+            // No caller to receive it, release the ref
             if (frame.val.type == VAL_STRING && frame.val.as.string) {
                 str_release(vm->str, frame.val.as.string);
             }
@@ -201,7 +193,7 @@ bool vm_sub_push(VMContext *vm, const char *name, BppLineNumber line, const char
     pos = vm_map_copy_to_original(vm, pos);
     bool ok = sub_stack_push(vm->sub_stack, name, line, pos, is_func);
     if (ok) {
-        strncpy(vm->active_proc, name, sizeof(vm->active_proc) - 1);
+        runtime_strncpy(vm->active_proc, name, sizeof(vm->active_proc) - 1);
         vm->active_proc[sizeof(vm->active_proc) - 1] = '\0';
     }
     return ok;
@@ -213,12 +205,12 @@ bool vm_sub_pop(VMContext *vm, BppSubFrame *out_frame) {
     bool ok = sub_stack_pop(vm->sub_stack, &frame);
     if (ok) {
         if (out_frame) *out_frame = frame;
-        /* Clear local variables for popped sub scope */
+        // Clear local variables for popped sub scope
         var_clear_scope(vm->var, frame.name);
 
         BppSubFrame prev;
         if (sub_stack_peek(vm->sub_stack, &prev)) {
-            strncpy(vm->active_proc, prev.name, sizeof(vm->active_proc) - 1);
+            runtime_strncpy(vm->active_proc, prev.name, sizeof(vm->active_proc) - 1);
             vm->active_proc[sizeof(vm->active_proc) - 1] = '\0';
         } else {
             vm->active_proc[0] = '\0';
@@ -226,6 +218,7 @@ bool vm_sub_pop(VMContext *vm, BppSubFrame *out_frame) {
     }
     return ok;
 }
+
 
 bool vm_sub_peek(VMContext *vm, BppSubFrame *out_frame) {
     return vm ? sub_stack_peek(vm->sub_stack, out_frame) : false;
@@ -241,29 +234,30 @@ void vm_halt(VMContext *vm) {
     }
 }
 
-/**
- * vm_request_exit - Signal the REPL to terminate the interpreter.
- *
- * Called by the SYSTEM and EXIT statement handlers.
- * The REPL checks vm_exit_requested() after each vm_execute_line().
- */
+// vm_request_exit - Signal the REPL to terminate the interpreter.
+//
+// Called by the SYSTEM and EXIT statement handlers.
+// The REPL checks vm_exit_requested() after each vm_execute_line().
 void vm_request_exit(VMContext *vm) {
     if (vm) {
         vm->exit_requested = true;
     }
 }
 
-/**
- * vm_exit_requested - Check if the interpreter should exit.
- */
+// vm_exit_requested - Check if the interpreter should exit.
 bool vm_exit_requested(VMContext *vm) {
     return vm ? vm->exit_requested : false;
 }
 
 void vm_trigger_break(VMContext *vm) {
     if (vm) {
-        vm->break_triggered = true;
-        vm->running = false;
+        if (vm->break_trap_line > 0.0) {
+            // Trap active: transfer control to the trap line
+            vm_jump(vm, vm->break_trap_line, NULL);
+        } else {
+            vm->break_triggered = true;
+            vm->running = false;
+        }
     }
 }
 
@@ -275,6 +269,26 @@ void vm_reset_break(VMContext *vm) {
     if (vm) {
         vm->break_triggered = false;
     }
+}
+
+void vm_set_break_enabled(VMContext *vm, bool enabled) {
+    if (vm) {
+        vm->break_enabled = enabled;
+    }
+}
+
+bool vm_get_break_enabled(VMContext *vm) {
+    return vm ? vm->break_enabled : false;
+}
+
+void vm_set_break_trap(VMContext *vm, BppLineNumber line) {
+    if (vm) {
+        vm->break_trap_line = line;
+    }
+}
+
+BppLineNumber vm_get_break_trap(VMContext *vm) {
+    return vm ? vm->break_trap_line : 0.0;
 }
 
 bool vm_is_jump_active(VMContext *vm) {
@@ -301,7 +315,7 @@ void vm_clear_header_jump(VMContext *vm, BppLineNumber def_line) {
 
 void vm_with_stack_push(VMContext *vm, const char *path) {
     if (vm && vm->with_stack_depth < 8) {
-        strncpy(vm->with_stack[vm->with_stack_depth++], path, 255);
+        runtime_strncpy(vm->with_stack[vm->with_stack_depth++], path, 255);
         vm->with_stack[vm->with_stack_depth - 1][255] = '\0';
     }
 }
@@ -323,4 +337,18 @@ const char *vm_with_stack_peek(VMContext *vm) {
         return vm->with_stack[vm->with_stack_depth - 1];
     }
     return NULL;
+}
+
+void vm_set_auto_line(VMContext *vm, BppLineNumber start, BppLineNumber step) {
+    if (!vm) return;
+    vm->auto_line_start = start;
+    vm->auto_line_step = step;
+    vm->auto_line_active = true;
+}
+
+void vm_get_auto_line(VMContext *vm, BppLineNumber *start, BppLineNumber *step, bool *active) {
+    if (!vm) return;
+    if (start) *start = vm->auto_line_start;
+    if (step) *step = vm->auto_line_step;
+    if (active) *active = vm->auto_line_active;
 }

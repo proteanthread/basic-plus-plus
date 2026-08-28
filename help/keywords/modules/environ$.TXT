@@ -1,0 +1,25 @@
+ENVIRON$ Environment Variable Query Function
+======================================================================
+
+The ENVIRON$ function returns the value of an environment variable by
+name or by index.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    val$ = ENVIRON$(name_string$)
+    entry$ = ENVIRON$(index_number%)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Query by name: returns variable value string (or "" if unset).
+  - Query by index: returns "NAME=value" string at index position.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "PATH: "; ENVIRON$("PATH")

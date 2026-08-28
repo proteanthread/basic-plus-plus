@@ -1,0 +1,30 @@
+TUTORIAL: EMBEDDING BASIC++ IN HOST APPLICATIONS (tutorials/embedding.h)
+======================================================================
+
+1. OVERVIEW
+Demonstrates embedding the BASIC++ v6.5.2 virtual machine into C17 host
+applications (game engines, tools, servers, embedded systems).
+
+2. LIFECYCLE SEQUENCE
+1. Boot the VM:
+   VMContext *vm = boot_system(67108864L); /* 64 MB */
+
+2. Register Host Functions:
+   funcreg_register(&host_fn_entry);
+
+3. Inject Variables:
+   BValue *var = var_lookup(vm_get_var(vm), "PARAM#", true);
+   var->type = VAL_NUMBER;
+   var->as.number = 100.0;
+
+4. Execute Script:
+   BppError err = vm_execute_line(vm, script_code);
+
+5. Extract Results:
+   BValue *res = var_lookup(vm_get_var(vm), "RESULT#", false);
+
+6. Shutdown:
+   boot_shutdown_vm(vm);
+
+3. COMPILATION
+- Link against baspp_engine library (-lbaspp_engine / baspp_engine.lib).

@@ -1,0 +1,26 @@
+EDIT$ String Editing & Transformation Function
+======================================================================
+
+The EDIT$ function applies bitmask-driven string transformations (trim,
+case folding, whitespace collapsing).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res$ = EDIT$(source_string$, control_mask%)
+
+
+BITMASK FLAGS
+----------------------------------------------------------------------
+
+  2: Trim all spaces.
+  8: Trim leading spaces.
+  32: Convert to uppercase.
+  128: Trim trailing spaces.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT EDIT$("  test  ", 8 + 128)   : REM Outputs "test"

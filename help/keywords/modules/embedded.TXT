@@ -1,0 +1,20 @@
+embedded Freestanding Microcontroller Profile
+======================================================================
+
+The embedded profile compiles BASIC++ v6.5.2 as a freestanding C17
+engine with zero libc runtime dependencies for microcontrollers.
+
+
+SPECIFICATIONS
+----------------------------------------------------------------------
+
+  - Footprint: Scales to < 8 KB RAM.
+  - Headers: Uses only <stdint.h>, <stdbool.h>, <stddef.h>.
+  - Direct hardware register access and GPIO virtualization.
+  - Zero OS dependencies.
+
+
+BUILD GATES
+----------------------------------------------------------------------
+
+  -DFREESTANDING=1 -DBASIC_NO_LIBC=1

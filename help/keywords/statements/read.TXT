@@ -1,0 +1,31 @@
+READ Read Data from DATA Statements Statement
+=============================================
+
+Reads consecutive constant values from program DATA statements into variables.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    READ variable [, variable...]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 4 (ERR_OUT_OF_DATA): Attempted to READ past last DATA item.
+  - Error 13 (ERR_TYPE_MISMATCH): String data read into numeric variable.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Advances internal data pointer automatically.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 READ X, Y, Label$
+    20 PRINT Label$; " at ("; X; ","; Y; ")"
+    30 DATA 100, 200, "Target"

@@ -1,0 +1,30 @@
+GRAPHICS Retro Hardware Graphics Mode Initialization Statement
+==============================================================
+
+Initializes a retro hardware screen resolution profile (Atari 8-bit, Apple II, Commodore).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    GRAPHICS mode_index% [, [clear_flag%] [, [flags%]]]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Mode index outside supported profiles (0..15).
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Includes split-screen text window rendering support.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 GRAPHICS 8 : REM Atari Mode 8 (320x192 1-color)
+    20 COLOR 1
+    30 PLOT 100, 100

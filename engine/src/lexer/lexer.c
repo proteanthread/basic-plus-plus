@@ -1,455 +1,351 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
+// FILENAME: lexer.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libext, libkernel
+// NEEDS: libcore (alloc.h, alloc.c, ctype.h, ctype.c, hal.h)
+// NEEDS: libcore (memops.h, memops.c, memory.h, memory.c, strops.h, strops.c)
+// NEEDS: libengine (lexer.h, lexer_internal.h)
+// NEEDS: libkernel (config.h)
+// Implements component functionality for lexer.c.
+//
+// ---- Includes ----
 
-/**
- * @file lexer.c
- * @brief Ephemeral Lexer and Tokenizer implementation for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements `lexer_init()`, `lexer_next()`, `lexer_peek()`, `lexer_rollback()`, scanning source code lines into ephemeral tokens (`Token`).
- *
- * 2. WHY IT EXISTS:
- * Performs zero-copy, ephemeral lexical analysis converting text source into tokens without heap allocation or permanent AST AST tokenization.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Scans tokens using pointer arithmetic into source text, matching keywords via case-insensitive lookup table (`KeywordMap`), parsing numbers with `strtod`, and string literals.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "lexer/lexer.h", "types/config.h", <string.h>, <ctype.h>, <stdlib.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Register new keywords in `keywords` table and update `BppKeywordId` enum in `lexer/lexer.h`.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Ephemeral token invariant (tokens point directly into current source line buffer and are valid only during line evaluation).
- *
- * 8. WHAT TO EXPECT:
- * `lexer_next()` returns `Token` with `type`, `start` pointer, `length`, and numerical value (`as.number`) if `TOK_NUMBER`.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify keyword table order and string length checks in `lookup_keyword()`.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid non-NULL source string passed to `lexer_init()`.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. ASCII character classification (`isspace`, `isalpha`, `isdigit`).
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/types/config.c
- * Prerequisite Header Files:
- * - engine/include/lexer/lexer.h
- * - engine/include/types/config.h
- */
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "lexer/lexer.h"
-
+#include "lexer/lexer_internal.h"
+#include "memory/memory.h"
 #include "types/config.h"
-#include <string.h>
-#include <ctype.h>
-#include <stdlib.h>
+#include "runtime/ctype/ctype.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/memory/alloc.h"
+#include "hal/hal.h"
 
-typedef struct {
-    const char  *name;
-    BppKeywordId id;
-} KeywordMap;
+//
+// ---- Lifecycle & State Management ----
+//
 
-/* Static keyword lookup table */
-static const KeywordMap k_keywords[] = {
-    {"PRINT",  KW_PRINT},
-    {"LET",    KW_LET},
-    {"INPUT",  KW_INPUT},
-    {"IF",     KW_IF},
-    {"THEN",   KW_THEN},
-    {"ELSE",   KW_ELSE},
-    {"GOTO",   KW_GOTO},
-    {"GOSUB",  KW_GOSUB},
-    {"RETURN", KW_RETURN},
-    {"END",    KW_END},
-    {"REM",    KW_REM},
-    {"LIST",   KW_LIST},
-    {"RUN",    KW_RUN},
-    {"NEW",    KW_NEW},
-    {"FOR",    KW_FOR},
-    {"NEXT",   KW_NEXT},
-    {"TO",     KW_TO},
-    {"STEP",   KW_STEP},
-    {"BY",     KW_BY},
-    {"WHILE",  KW_WHILE},
-    {"WEND",   KW_WEND},
-    {"DO",     KW_DO},
-    {"LOOP",   KW_LOOP},
-    {"UNTIL",  KW_UNTIL},
-    {"DIM",    KW_DIM},
-    {"ERASE",  KW_ERASE},
-    {"OPTION", KW_OPTION},
-    {"DATA",   KW_DATA},
-    {"READ",   KW_READ},
-    {"RESTORE",KW_RESTORE},
-    {"DEF",    KW_DEF},
-    {"DEFINT", KW_DEFINT},
-    {"DEFSNG", KW_DEFSNG},
-    {"DEFDBL", KW_DEFDBL},
-    {"DEFSTR", KW_DEFSTR},
-    {"USR",    KW_USR},
-    {"ON",     KW_ON},
-    {"ERROR",  KW_ERROR},
-    {"RESUME", KW_RESUME},
-    {"LOAD",   KW_LOAD},
-    {"SAVE",   KW_SAVE},
-    {"MERGE",  KW_MERGE},
-    {"COMMON", KW_COMMON},
-    {"CHAIN",  KW_CHAIN},
-    {"SELFTEST",KW_SELFTEST},
-    {"OPEN",   KW_OPEN},
-    {"CLOSE",  KW_CLOSE},
-    {"AS",     KW_AS},
-    {"FILES",  KW_FILES},
-    {"KILL",   KW_KILL},
-    {"SCRATCH",KW_SCRATCH},
-    {"CHDIR",  KW_CHDIR},
-    {"MKDIR",  KW_MKDIR},
-    {"RMDIR",  KW_RMDIR},
-    {"DIR",    KW_DIR},
-    {"SETATTR",KW_SETATTR},
-    {"LOCK",   KW_LOCK},
-    {"UNLOCK", KW_UNLOCK},
-    {"ENVIRON",KW_ENVIRON},
-    {"NAME",   KW_NAME},
-    {"GET",    KW_GET},
-    {"PUT",    KW_PUT},
-    {"BGET",   KW_BGET},
-    {"BPUT",   KW_BPUT},
-    {"SEEK",   KW_SEEK},
-
-    {"FIELD",  KW_FIELD},
-    {"SELECT", KW_SELECT},
-    {"CASE",   KW_CASE},
-    {"DECLARE",KW_DECLARE},
-    {"SUB",    KW_SUB},
-    {"FUNCTION",KW_FUNCTION},
-    {"CALL",   KW_CALL},
-    {"AUTO",   KW_AUTO},
-    {"BCOLOR", KW_BCOLOR},
-    {"FCOLOR", KW_FCOLOR},
-    {"CLEAR",  KW_CLEAR},
-    {"CURSOR", KW_CURSOR},
-    {"LOCATE", KW_LOCATE},
-    {"SHARED", KW_SHARED},
-    {"SCREEN", KW_SCREEN},
-    {"COLOR",  KW_COLOR},
-    {"LINE",   KW_LINE},
-    {"CIRCLE", KW_CIRCLE},
-    {"PSET",   KW_PSET},
-    {"PRESET", KW_PRESET},
-    {"CLS",    KW_CLS},
-    {"HOME",   KW_HOME},
-    {"LSET",   KW_LSET},
-    {"DEFSEG", KW_DEFSEG},
-    {"RSET",   KW_RSET},
-    {"SWAP",   KW_SWAP},
-    {"LOCAL",  KW_LOCAL},
-    {"STATIC", KW_STATIC},
-    {"REDIM",  KW_REDIM},
-    {"PRESERVE",KW_PRESERVE},
-    {"PAINT",  KW_PAINT},
-    {"BEEP",   KW_BEEP},
-    {"SOUND",  KW_SOUND},
-    {"PLAY",   KW_PLAY},
-    {"BLOAD",  KW_BLOAD},
-    {"BSAVE",  KW_BSAVE},
-    {"BRUN",   KW_BRUN},
-    {"USING",  KW_USING},
-#if SUPPORT_EDITOR
-    {"EDIT",   KW_EDIT},
-#endif
-    {"LEVEL",    KW_LEVEL},
-    {"RESTRICT", KW_RESTRICT},
-    {"RESET",    KW_RESET},
-    {"INFO",     KW_INFO},
-    {"UNLOAD",   KW_UNLOAD},
-    {"WAIT",     KW_WAIT},
-#if SUPPORT_MAT
-    {"MAT",      KW_MAT},
-#endif
-    {"MUX",      KW_MUX},
-    {"DEMUX",    KW_DEMUX},
-    {"UNPACK",   KW_UNPACK},
-    {"BITMUX",   KW_BITMUX},
-    {"ARRAY",    KW_ARRAY},
-    {"ENUM",     KW_ENUM},
-    {"WITH",     KW_WITH},
-    {"NOISE",         KW_NOISE},
-    {"_SNDPLAY",      KW_SNDPLAY},
-    {"_SNDLOOP",      KW_SNDLOOP},
-    {"_SNDSTOP",      KW_SNDSTOP},
-    {"_SNDPAUSE",     KW_SNDPAUSE},
-    {"_SNDVOL",       KW_SNDVOL},
-    {"_MOUSEINPUT",   KW_MOUSEINPUT},
-    {"_MOUSEHIDE",    KW_MOUSEHIDE},
-    {"_MOUSESHOW",    KW_MOUSESHOW},
-    {"MOUSE",         KW_MOUSE},
-    {"_MOUSE",        KW_MOUSE},
-    {"HMOUSE",        KW_HMOUSE},
-    {"_HMOUSE",       KW_HMOUSE},
-    {"VMOUSE",        KW_VMOUSE},
-    {"_VMOUSE",       KW_VMOUSE},
-    {"TRIG",          KW_TRIG},
-    {"_TRIG",         KW_TRIG},
-    {"DISPLAY",       KW_DISPLAY},
-    {"LPRINT",        KW_LPRINT},
-    {"RANDOMIZE",     KW_RANDOMIZE},
-    {"_RANDOMIZE",    KW_RANDOMIZE},
-    {"PWD",           KW_PWD},
-    {"HOSTNAME",      KW_HOSTNAME},
-    {"_HOSTNAME",     KW_HOSTNAME},
-    {"USERNAME",      KW_USERNAME},
-    {"_USERNAME",     KW_USERNAME},
-    {"PATH",          KW_PATH},
-    {"_PATH",         KW_PATH},
-    {"_TITLE",        KW_TITLE},
-    {"_SCREENMOVE",   KW_SCREENMOVE},
-    {"_FULLSCREEN",   KW_FULLSCREEN},
-    {"_RESIZE",       KW_RESIZE},
-    {"_ICON",         KW_ICON},
-    {"NWRITE",        KW_NWRITE},
-    {"_FREEIMAGE",    KW_FREEIMAGE},
-    {"_PUTIMAGE",     KW_PUTIMAGE},
-    {"_STATESAVE",    KW_STATESAVE},
-    {"_STATELOAD",    KW_STATELOAD},
-    {"MAP",      KW_MAP},
-    {"FILTER",   KW_FILTER},
-    {"REDUCE",   KW_REDUCE},
-    {"RENUM",    KW_RENUM},
-    {"REFORMAT", KW_REFORMAT},
-    {"DELETE",   KW_DELETE},
-    {"HELP",     KW_HELP},
-    {"CATALOG",  KW_CATALOG},
-    {"DEVICES",  KW_DEVICES},
-    {"UNSAVE",   KW_UNSAVE},
-    {"POKE",     KW_POKE},
-    {"UNLESS",   KW_UNLESS},
-    {"DEMAND",   KW_DEMAND},
-    {"TRY",      KW_TRY},
-    {"CATCH",    KW_CATCH},
-    {"THROW",    KW_THROW},
-    {"ALIAS",    KW_ALIAS},
-    {"SCOPE",    KW_SCOPE},
-    {"KEYWORD",  KW_KEYWORD},
-    {"OVERRIDE", KW_OVERRIDE},
-    {"METADATA", KW_METADATA},
-    {"DEFINE",   KW_DEFINE},
-#if SUPPORT_OOP
-    {"TYPE",     KW_TYPE},
-    {"CLASS",    KW_CLASS},
-#endif
-    {"BORDER",   KW_BORDER},
-    {"INK",      KW_INK},
-    {"PAPER",    KW_PAPER},
-    {"PAUSE",    KW_PAUSE},
-    {"SYS",      KW_SYS},
-    {"GR",       KW_GR},
-    {"HGR",      KW_HGR},
-    {"HGR2",     KW_HGR2},
-    {"HCOLOR",   KW_HCOLOR},
-    {"PLOT",     KW_PLOT},
-    {"HLIN",     KW_HLIN},
-    {"VLIN",     KW_VLIN},
-    {"HPLOT",    KW_HPLOT},
-    {"ONERR",    KW_ONERR},
-    {"GRAPHICS", KW_GRAPHICS},
-    {"DRAWTO",   KW_DRAWTO},
-    {"SYSTEM",   KW_SYSTEM},
-    {"SHELL",    KW_SHELL},
-    {"BYE",      KW_BYE},
-    {"STOP",     KW_STOP},
-    {"EXIT",     KW_EXIT},
-    {"PROCEDURE", KW_PROCEDURE},
-    {"ENDFUNC",  KW_ENDFUNC},
-    {"ENDPROC",  KW_ENDPROC},
-    {"TIMER",    KW_TIMER},
-    {"ALARM",    KW_ALARM},
-    {"ALARM$",   KW_ALARM_STR},
-    {"KEY",      KW_KEY},
-    {"OFF",        KW_OFF},
-    {"SET",        KW_SET},
-    {"SNOOZE",     KW_SNOOZE},
-    {"UNSET",      KW_UNSET},
-    {"INITGRAPH",  KW_INITGRAPH},
-    {"CLOSEGRAPH", KW_CLOSEGRAPH},
-    {"PUTPIXEL",   KW_PUTPIXEL},
-    {"GETPIXEL",   KW_GETPIXEL},
-    {"BAR",        KW_BAR},
-    {"ELLIPSE",    KW_ELLIPSE},
-    {"RECTANGLE",  KW_RECTANGLE},
-    {"OUTTEXTXY",  KW_OUTTEXTXY},
-    {"PALETTE",    KW_PALETTE},
-    {"ASSERT",     KW_ASSERT},
-    {"TRON",       KW_TRON},
-    {"TROFF",      KW_TROFF},
-    {"BREAK",      KW_BREAK},
-    {"VARS",       KW_VARS},
-    {"CHECK",      KW_CHECK},
-    {"VERIFY",     KW_VERIFY},
-    {"TEST",       KW_TEST},
-    {"ENDTEST",    KW_ENDTEST},
-    {"TRACE",      KW_TRACE},
-    {"DEBUG",      KW_DEBUG},
-    {"CONT",       KW_CONT},
-    {"BACKTRACE",  KW_BACKTRACE},
-    {"DUMP",       KW_DUMP},
-    {"VER",        KW_VER},
-    {"VER$",       KW_VER_STR},
-    {"VARPTR",     KW_VARPTR},
-    {"VARPTR$",    KW_VARPTR_STR},
-    {"VERSION",    KW_VERSION},
-    {"REMOVE",     KW_REMOVE},
-    {"REMOVE$",    KW_REMOVE_STR},
-    {"AND",      KW_AND},
-    {"OR",       KW_OR},
-    {"NOT",      KW_NOT},
-    {"XOR",      KW_XOR},
-    {NULL,     KW_NONE}
-};
-
-struct LexerContext {
-    MemoryContext *mem;
-    const char    *source;
-    const char    *pos;
-
-};
-
-
-
+// initializes a new lexer scanner state for a given null-terminated source buffer
 LexerContext *lex_init(MemoryContext *mem, const char *source) {
     if (!source) return NULL;
-    LexerContext *ctx = (LexerContext *)calloc(1, sizeof(LexerContext));
+    HalContext *hal = hal_get();
+    LexerContext *ctx = NULL;
+    if (hal && hal->mem.alloc) {
+        ctx = (LexerContext *)hal->mem.alloc(sizeof(LexerContext));
+    }
     if (!ctx) return NULL;
+    runtime_memset(ctx, 0, sizeof(LexerContext));
     ctx->mem = mem;
     ctx->source = source;
     ctx->pos = source;
-
     return ctx;
 }
 
+// releases memory held by the lexer context
 void lex_shutdown(LexerContext *ctx) {
-    free(ctx);
+    if (!ctx) return;
+    HalContext *hal = hal_get();
+    if (hal && hal->mem.free) {
+        hal->mem.free(ctx);
+    }
 }
 
+// returns current character read position within the source buffer
 const char *lex_get_pos(LexerContext *ctx) {
     return ctx ? ctx->pos : NULL;
 }
 
+// updates scanner position pointer for rewinding or fast-forwarding
 void lex_set_pos(LexerContext *ctx, const char *pos) {
     if (ctx && pos) {
         ctx->pos = pos;
     }
 }
 
-#define MAX_CUSTOM_KEYWORDS 128
-typedef struct {
-    char name[64];
-    BppKeywordId id;
-} CustomKeywordMap;
+//
+/// ---- Identifier & Keyword Lookahead Scanner ----
 
-static CustomKeywordMap g_custom_keywords[MAX_CUSTOM_KEYWORDS];
-static int g_custom_keyword_count = 0;
+// scans an identifier or keyword starting with an alphabetic character or underscore
+static BppToken scan_ident_or_keyword(LexerContext *ctx) {
+    BppToken tok;
+    runtime_memset(&tok, 0, sizeof(tok));
+    const char *start = ctx->pos;
+    tok.start = start;
 
-/**
- * @brief Reset all custom keyword registrations.
- *
- * What it does: Clears the global custom keyword table so that
- * dynamically registered keywords (ID >= 1000) from LOAD FEATURE
- * or spec_register_inline() are forgotten.
- *
- * Why it exists: When RUN "file" loads a new program, stale custom
- * keywords from prior programs can collide with ALIAS expansions,
- * causing the lexer to tokenize an alias name as TOK_KEYWORD instead
- * of TOK_IDENT. This results in incorrect dispatch paths and crashes.
- *
- * When to call: In the RUN handler before loading a new program file.
- */
-void keyword_clear_custom(void) {
-    g_custom_keyword_count = 0;
-}
-BppKeywordId keyword_register_custom(const char *name) {
-    if (!name || g_custom_keyword_count >= MAX_CUSTOM_KEYWORDS) {
-        return KW_NONE;
+    bool is_start = true;
+    const char *p = start - 1;
+    while (p >= ctx->source && runtime_isspace((unsigned char)*p)) {
+        p--;
     }
-    /* Check if already registered */
-    for (int i = 0; i < g_custom_keyword_count; ++i) {
-        if (strcasecmp(g_custom_keywords[i].name, name) == 0) {
-            return g_custom_keywords[i].id;
+    if (p >= ctx->source) {
+        if (*p == ':') {
+            is_start = true;
+        } else if (p >= ctx->source + 3 && runtime_strncasecmp(p - 3, "THEN", 4) == 0) {
+            is_start = true;
+        } else if (p >= ctx->source + 3 && runtime_strncasecmp(p - 3, "ELSE", 4) == 0) {
+            is_start = true;
+        } else {
+            const char *ln = p;
+            while (ln >= ctx->source && runtime_isdigit((unsigned char)*ln)) ln--;
+            while (ln >= ctx->source && runtime_isspace((unsigned char)*ln)) ln--;
+            is_start = (ln < ctx->source);
         }
     }
-    /* Register new custom keyword */
-    size_t len = strlen(name);
-    if (len > 63) len = 63;
-    memset(&g_custom_keywords[g_custom_keyword_count], 0, sizeof(CustomKeywordMap));
-    memcpy(g_custom_keywords[g_custom_keyword_count].name, name, len);
-    g_custom_keywords[g_custom_keyword_count].name[len] = '\0';
-    
-    /* Dynamic keyword IDs start at 1000 */
-    BppKeywordId new_id = (BppKeywordId)(1000 + g_custom_keyword_count);
-    g_custom_keywords[g_custom_keyword_count].id = new_id;
-    g_custom_keyword_count++;
-    return new_id;
-}
 
-const char *lex_keyword_name(BppKeywordId kw) {
-    for (int i = 0; k_keywords[i].name != NULL; ++i) {
-        if (k_keywords[i].id == kw) {
-            return k_keywords[i].name;
+    if (is_start && runtime_strncasecmp(start, "REM", 3) == 0 &&
+        runtime_strncasecmp(start, "REMOVE", 6) != 0 && runtime_strncasecmp(start, "REMOVE$", 7) != 0) {
+        if (!scan_is_followed_by_assignment(start + 3)) {
+            while (*ctx->pos && *ctx->pos != '\n') {
+                ctx->pos++;
+            }
+            tok.type = TOK_EOL;
+            tok.length = ctx->pos - tok.start;
+            tok.as.keyword = KW_REM;
+            return tok;
         }
     }
-    for (int i = 0; i < g_custom_keyword_count; ++i) {
-        if (g_custom_keywords[i].id == kw) {
-            return g_custom_keywords[i].name;
-        }
-    }
-    return "UNKNOWN";
-}
 
-BppKeywordId lex_find_keyword_by_name(const char *name) {
-    if (!name) return KW_NONE;
-    for (int i = 0; k_keywords[i].name != NULL; ++i) {
-        if (strcasecmp(k_keywords[i].name, name) == 0) {
-            return k_keywords[i].id;
-        }
+    if (is_start && runtime_strncasecmp(start, "LET", 3) == 0 && scan_is_kw_bound(start[3])) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_LET;
+        tok.length = 3;
+        ctx->pos = start + 3;
+        return tok;
     }
-    for (int i = 0; i < g_custom_keyword_count; ++i) {
-        if (strcasecmp(g_custom_keywords[i].name, name) == 0) {
-            return g_custom_keywords[i].id;
-        }
-    }
-    return KW_NONE;
-}
 
-/* Helper: skip whitespace */
-static void skip_whitespace(LexerContext *ctx) {
-    while (*ctx->pos && *ctx->pos != '\n' && isspace((unsigned char)*ctx->pos)) {
+    if (is_start && runtime_strncasecmp(start, "PRINT", 5) == 0 && (scan_is_kw_bound(start[5]) || (!scan_is_followed_by_assignment(start + 5) && runtime_isalnum((unsigned char)start[5])))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_PRINT;
+        tok.length = 5;
+        ctx->pos = start + 5;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "INPUT", 5) == 0 && (scan_is_kw_bound(start[5]) || (!scan_is_followed_by_assignment(start + 5) && runtime_isalnum((unsigned char)start[5])))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_INPUT;
+        tok.length = 5;
+        ctx->pos = start + 5;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "DIM", 3) == 0 && (scan_is_kw_bound(start[3]) || (!scan_is_followed_by_assignment(start + 3) && runtime_isalnum((unsigned char)start[3])))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_DIM;
+        tok.length = 3;
+        ctx->pos = start + 3;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "READ", 4) == 0 && (scan_is_kw_bound(start[4]) || runtime_isalpha((unsigned char)start[4]))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_READ;
+        tok.length = 4;
+        ctx->pos = start + 4;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "DATA", 4) == 0 && (scan_is_kw_bound(start[4]) || runtime_isdigit((unsigned char)start[4]) || start[4] == '-' || start[4] == '.' || start[4] == '"')) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_DATA;
+        tok.length = 4;
+        ctx->pos = start + 4;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "RESTORE", 7) == 0 && (scan_is_kw_bound(start[7]) || runtime_isdigit((unsigned char)start[7]))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_RESTORE;
+        tok.length = 7;
+        ctx->pos = start + 7;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "RETURN", 6) == 0 && scan_is_kw_bound(start[6])) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_RETURN;
+        tok.length = 6;
+        ctx->pos = start + 6;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "FOR", 3) == 0 && runtime_strncasecmp(start, "FORM", 4) != 0 && runtime_strncasecmp(start, "FORMAT", 6) != 0 && (scan_is_kw_bound(start[3]) || runtime_isalpha((unsigned char)start[3]))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_FOR;
+        tok.length = 3;
+        ctx->pos = start + 3;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "NEXT", 4) == 0 && (scan_is_kw_bound(start[4]) || runtime_isalpha((unsigned char)start[4]))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_NEXT;
+        tok.length = 4;
+        ctx->pos = start + 4;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "IF", 2) == 0 && (scan_is_kw_bound(start[2]) || runtime_isalnum((unsigned char)start[2]))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_IF;
+        tok.length = 2;
+        ctx->pos = start + 2;
+        return tok;
+    }
+
+    if (is_start && runtime_strncasecmp(start, "ON", 2) == 0 && (scan_is_kw_bound(start[2]) || (!scan_is_followed_by_assignment(start + 2) && runtime_isalnum((unsigned char)start[2])))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_ON;
+        tok.length = 2;
+        ctx->pos = start + 2;
+        return tok;
+    }
+
+    if (runtime_strncasecmp(start, "GOTO", 4) == 0 && (scan_is_kw_bound(start[4]) || runtime_isdigit((unsigned char)start[4]))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_GOTO;
+        tok.length = 4;
+        ctx->pos = start + 4;
+        return tok;
+    }
+
+    if (runtime_strncasecmp(start, "GOSUB", 5) == 0 && (scan_is_kw_bound(start[5]) || runtime_isdigit((unsigned char)start[5]))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_GOSUB;
+        tok.length = 5;
+        ctx->pos = start + 5;
+        return tok;
+    }
+
+    if (runtime_strncasecmp(start, "THEN", 4) == 0 && (scan_is_kw_bound(start[4]) || runtime_isalnum((unsigned char)start[4]))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_THEN;
+        tok.length = 4;
+        ctx->pos = start + 4;
+        return tok;
+    }
+
+    if (runtime_strncasecmp(start, "ELSE", 4) == 0 && (scan_is_kw_bound(start[4]) || runtime_isalnum((unsigned char)start[4]))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_ELSE;
+        tok.length = 4;
+        ctx->pos = start + 4;
+        return tok;
+    }
+
+    if (runtime_strncasecmp(start, "TO", 2) == 0 && (start[2] == '\0' || (!runtime_isalpha((unsigned char)start[2]) && start[2] != '_'))) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_TO;
+        tok.length = 2;
+        ctx->pos = start + 2;
+        return tok;
+    }
+
+    if (runtime_strncasecmp(start, "STEP", 4) == 0 && (scan_is_kw_bound(start[4]) || runtime_isdigit((unsigned char)start[4]) || start[4] == '-')) {
+        tok.type = TOK_KEYWORD;
+        tok.as.keyword = KW_STEP;
+        tok.length = 4;
+        ctx->pos = start + 4;
+        return tok;
+    }
+
+    ctx->pos++;
+    while (runtime_isalnum((unsigned char)*ctx->pos) || *ctx->pos == '_' || *ctx->pos == '.') {
+        if (*ctx->pos == '.') {
+            size_t prefix_len = (size_t)(ctx->pos - start);
+            if (prefix_len < 64) {
+                char prefix[64];
+                runtime_memcpy(prefix, start, prefix_len);
+                prefix[prefix_len] = '\0';
+                if (lex_find_keyword_by_name(prefix) != KW_NONE) {
+                    break;
+                }
+            }
+        }
+        bool is_short_var = (ctx->pos == start + 1 || (ctx->pos == start + 2 && runtime_isdigit((unsigned char)start[1])));
+        if (is_short_var) {
+            if ((runtime_strncasecmp(ctx->pos, "GOTO", 4) == 0 && (scan_is_kw_bound(ctx->pos[4]) || runtime_isdigit((unsigned char)ctx->pos[4]))) ||
+                (runtime_strncasecmp(ctx->pos, "GOSUB", 5) == 0 && (scan_is_kw_bound(ctx->pos[5]) || runtime_isdigit((unsigned char)ctx->pos[5]))) ||
+                (runtime_strncasecmp(ctx->pos, "THEN", 4) == 0 && (scan_is_kw_bound(ctx->pos[4]) || runtime_isalnum((unsigned char)ctx->pos[4]))) ||
+                (runtime_strncasecmp(ctx->pos, "ELSE", 4) == 0 && (scan_is_kw_bound(ctx->pos[4]) || runtime_isalnum((unsigned char)ctx->pos[4])))) {
+                break;
+            }
+        }
         ctx->pos++;
     }
-}
 
-static bool match_directive(const char *start, int len, const char *target) {
-    if (len != (int)strlen(target)) return false;
-    for (int i = 0; i < len; i++) {
-        if (toupper((unsigned char)start[i]) != target[i]) return false;
+    if (*ctx->pos == '$' || *ctx->pos == '%' || *ctx->pos == '&' || *ctx->pos == '!' || *ctx->pos == '#') {
+        ctx->pos++;
+        if (*ctx->pos == '%' || *ctx->pos == '$' || *ctx->pos == 'F' || *ctx->pos == 'f') {
+            size_t base_len = (size_t)(ctx->pos - start - 1);
+            if ((base_len == 3 && runtime_strncasecmp(start, "CVT", 3) == 0) ||
+                (base_len == 4 && runtime_strncasecmp(start, "SWAP", 4) == 0) ||
+                (base_len == 5 && runtime_strncasecmp(start, "_SWAP", 5) == 0)) {
+                ctx->pos++;
+            }
+        }
     }
-    return true;
+    tok.length = ctx->pos - start;
+    tok.as.string = start;
+
+    char temp_name[64];
+    if (tok.length < sizeof(temp_name)) {
+        runtime_memcpy(temp_name, start, tok.length);
+        temp_name[tok.length] = '\0';
+        BppKeywordId kw_id = lex_find_keyword_by_name(temp_name);
+        if (kw_id != KW_NONE) {
+            if (kw_id == KW_AND) tok.type = TOK_AND;
+            else if (kw_id == KW_OR) tok.type = TOK_OR;
+            else if (kw_id == KW_NOT) tok.type = TOK_NOT;
+            else if (kw_id == KW_XOR) tok.type = TOK_XOR;
+            else if (kw_id == KW_EQ) tok.type = TOK_EQ;
+            else if (kw_id == KW_NE) tok.type = TOK_NE;
+            else if (kw_id == KW_LT) tok.type = TOK_LT;
+            else if (kw_id == KW_GT) tok.type = TOK_GT;
+            else if (kw_id == KW_LE) tok.type = TOK_LE;
+            else if (kw_id == KW_GE) tok.type = TOK_GE;
+            else if (kw_id == KW_IMP) tok.type = TOK_IMP;
+            else if (kw_id == KW_EQV) tok.type = TOK_EQV;
+            else if (kw_id == KW_MOD) tok.type = TOK_MOD;
+            else if (kw_id == KW_SHL) tok.type = TOK_SHL;
+            else if (kw_id == KW_SHR) tok.type = TOK_SHR;
+            else if (kw_id == KW_READBIT) tok.type = TOK_READBIT;
+            else if (kw_id == KW_SETBIT) tok.type = TOK_SETBIT;
+            else if (kw_id == KW_RESETBIT) tok.type = TOK_RESETBIT;
+            else if (kw_id == KW_TOGGLEBIT) tok.type = TOK_TOGGLEBIT;
+            else if (kw_id == KW_MIN) tok.type = TOK_MIN;
+            else if (kw_id == KW_MAX) tok.type = TOK_MAX;
+            else if (kw_id == KW_HYPOT) tok.type = TOK_HYPOT;
+            else if (kw_id == KW_REMAINDER) tok.type = TOK_REMAINDER;
+            else if (kw_id == KW_ATAN2) tok.type = TOK_ATAN2;
+            else {
+                tok.type = TOK_KEYWORD;
+                tok.as.keyword = kw_id;
+            }
+            if (tok.as.keyword == KW_REM) {
+                while (*ctx->pos && *ctx->pos != '\n') ctx->pos++;
+                tok.type = TOK_EOL;
+                tok.length = ctx->pos - tok.start;
+            }
+            return tok;
+        }
+    }
+
+    tok.type = TOK_IDENT;
+    return tok;
 }
 
+//
+// ---- Main Tokenizer Scanner Loop ----
+//
+
+// extracts and consumes the next token from the input stream
 BppToken lex_next(LexerContext *ctx) {
     BppToken tok;
-    memset(&tok, 0, sizeof(tok));
+    runtime_memset(&tok, 0, sizeof(tok));
     tok.type = TOK_UNKNOWN;
 
     if (!ctx) {
@@ -457,100 +353,11 @@ BppToken lex_next(LexerContext *ctx) {
         return tok;
     }
 
-    skip_whitespace(ctx);
-
+    scan_skip_whitespace(ctx);
     tok.start = ctx->pos;
 
-    /* Scan double-colon constructs (::DIRECTIVE, ::label:, ::[namespace]) */
-    if (*ctx->pos == ':' && *(ctx->pos + 1) == ':') {
-        ctx->pos += 2;
-        
-        /* 1. ::[namespace] */
-        if (*ctx->pos == '[') {
-            ctx->pos++;
-            tok.start = ctx->pos;
-            while (*ctx->pos && *ctx->pos != ']' && *ctx->pos != '\n') {
-                ctx->pos++;
-            }
-            tok.type = TOK_NAMESPACE_DECL;
-            tok.length = ctx->pos - tok.start;
-            tok.as.string = tok.start;
-            if (*ctx->pos == ']') {
-                ctx->pos++;
-            }
-            return tok;
-        }
-
-        /* Scan identifier after :: */
-        const char *ident_start = ctx->pos;
-        while (isalnum((unsigned char)*ctx->pos) || *ctx->pos == '_') {
-            ctx->pos++;
-        }
-        int len = (int)(ctx->pos - ident_start);
-
-        if (len > 0) {
-            /* Check if it's a known directive */
-            bool is_directive = false;
-            if (match_directive(ident_start, len, "OPTION")) is_directive = true;
-            else if (match_directive(ident_start, len, "INCLUDE")) is_directive = true;
-            else if (match_directive(ident_start, len, "IMPORT")) is_directive = true;
-            else if (match_directive(ident_start, len, "KEYWORD")) is_directive = true;
-            else if (match_directive(ident_start, len, "SCOPE")) is_directive = true;
-            else if (match_directive(ident_start, len, "ALIAS")) is_directive = true;
-
-            if (is_directive) {
-                tok.type = TOK_DIRECTIVE;
-                tok.start = ident_start;
-                tok.length = len;
-                tok.as.string = ident_start;
-                return tok;
-            } else {
-                tok.type = TOK_GLOBAL_LABEL;
-                tok.start = ident_start;
-                tok.length = len;
-                tok.as.string = ident_start;
-                if (*ctx->pos == ':') {
-                    ctx->pos++; /* consume definition suffix */
-                }
-                return tok;
-            }
-        } else {
-            tok.type = TOK_DOUBLE_COLON;
-            tok.length = 2;
-            tok.as.string = tok.start;
-            return tok;
-        }
-    }
-
-    /* Scan docstring constructs (// docstring) */
-    if (*ctx->pos == '/' && *(ctx->pos + 1) == '/') {
-        ctx->pos += 2;
-        while (*ctx->pos == ' ' || *ctx->pos == '\t') {
-            ctx->pos++;
-        }
-        tok.start = ctx->pos;
-        if (*ctx->pos == '"') {
-            ctx->pos++;
-            tok.start = ctx->pos;
-            while (*ctx->pos && *ctx->pos != '"' && *ctx->pos != '\n') {
-                ctx->pos++;
-            }
-            tok.type = TOK_DOCSTRING;
-            tok.length = ctx->pos - tok.start;
-            tok.as.string = tok.start;
-            if (*ctx->pos == '"') {
-                ctx->pos++;
-            }
-        } else {
-            while (*ctx->pos && *ctx->pos != '\n') {
-                ctx->pos++;
-            }
-            tok.type = TOK_DOCSTRING;
-            tok.length = ctx->pos - tok.start;
-            tok.as.string = tok.start;
-        }
-        return tok;
-    }
+    if (scan_try_directive_or_label(ctx, &tok)) return tok;
+    if (scan_try_docstring(ctx, &tok)) return tok;
 
     if (*ctx->pos == '\0') {
         tok.type = TOK_EOF;
@@ -558,23 +365,14 @@ BppToken lex_next(LexerContext *ctx) {
         return tok;
     }
 
-    if (*ctx->pos == '\n') {
+    if (*ctx->pos == '\n' || *ctx->pos == ':') {
         tok.type = TOK_EOL;
         tok.length = 1;
         ctx->pos++;
         return tok;
     }
 
-    if (*ctx->pos == ':') {
-        tok.type = TOK_EOL;
-        tok.length = 1;
-        ctx->pos++;
-        return tok;
-    }
-
-    /* Skip single-quote comment */
     if (*ctx->pos == '\'' || (*ctx->pos == '!' && *(ctx->pos + 1) != '=')) {
-        /* Consume till EOL or EOF */
         while (*ctx->pos && *ctx->pos != '\n') {
             ctx->pos++;
         }
@@ -583,376 +381,46 @@ BppToken lex_next(LexerContext *ctx) {
         return tok;
     }
 
-    /* Scan RPN literal in curly braces */
-    if (*ctx->pos == '{') {
-        const char *orig = ctx->pos;
-        ctx->pos++; /* Skip '{' */
-        tok.start = ctx->pos;
-        while (*ctx->pos && *ctx->pos != '}' && *ctx->pos != '\n') {
-            ctx->pos++;
-        }
-        if (*ctx->pos == '}') {
-            tok.type = TOK_RPN_LITERAL;
-            tok.length = ctx->pos - tok.start;
-            tok.as.string = tok.start;
-            ctx->pos++; /* Skip '}' */
-            return tok;
-        } else {
-            /* Unmatched '{' on this line: reset to parse as standard characters */
-            ctx->pos = orig;
-        }
+    if (scan_try_rpn_literal(ctx, &tok)) return tok;
+    if (scan_try_string_literal(ctx, &tok)) return tok;
+    if (scan_try_radix_number(ctx, &tok)) return tok;
+    if (scan_try_decimal_number(ctx, &tok)) return tok;
+
+    if (runtime_isalpha((unsigned char)*ctx->pos) || *ctx->pos == '_') {
+        return scan_ident_or_keyword(ctx);
     }
 
-    /* Scan string literal */
-    if (*ctx->pos == '"') {
-        ctx->pos++; /* Skip opening quote */
-        tok.start = ctx->pos;
-        while (*ctx->pos && *ctx->pos != '"' && *ctx->pos != '\n') {
-            ctx->pos++;
-        }
-        tok.type = TOK_STRING;
-        tok.length = ctx->pos - tok.start;
-        tok.as.string = tok.start;
-        if (*ctx->pos == '"') {
-            ctx->pos++; /* Skip closing quote */
-        }
-        return tok;
-    }
-
-    /* Scan &H hex, &O/& octal, &B binary literals */
-    if (*ctx->pos == '&') {
-        const char *orig = ctx->pos;
-        ctx->pos++; /* Consume '&' */
-        long val = 0;
-        bool found = false;
-
-        if (*ctx->pos == 'H' || *ctx->pos == 'h') {
-            ctx->pos++; /* Consume 'H' */
-            while (*ctx->pos) {
-                char hc = *ctx->pos;
-                if (hc >= '0' && hc <= '9') {
-                    val = val * 16 + (hc - '0');
-                    found = true;
-                } else if (hc >= 'A' && hc <= 'F') {
-                    val = val * 16 + (hc - 'A' + 10);
-                    found = true;
-                } else if (hc >= 'a' && hc <= 'f') {
-                    val = val * 16 + (hc - 'a' + 10);
-                    found = true;
-                } else {
-                    break;
-                }
-                ctx->pos++;
-            }
-        } else if (*ctx->pos == 'O' || *ctx->pos == 'o') {
-            ctx->pos++; /* Consume 'O' */
-            while (*ctx->pos >= '0' && *ctx->pos <= '7') {
-                val = val * 8 + (*ctx->pos - '0');
-                found = true;
-                ctx->pos++;
-            }
-        } else if (*ctx->pos == 'B' || *ctx->pos == 'b') {
-            ctx->pos++; /* Consume 'B' */
-            while (*ctx->pos == '0' || *ctx->pos == '1') {
-                val = val * 2 + (*ctx->pos - '0');
-                found = true;
-                ctx->pos++;
-            }
-        } else if (*ctx->pos >= '0' && *ctx->pos <= '7') {
-            /* Bare octal */
-            while (*ctx->pos >= '0' && *ctx->pos <= '7') {
-                val = val * 8 + (*ctx->pos - '0');
-                found = true;
-                ctx->pos++;
-            }
-        }
-
-        if (found) {
-            tok.type = TOK_NUMBER;
-            tok.length = ctx->pos - orig;
-            tok.as.number = (double)val;
-            return tok;
-        } else {
-            ctx->pos = orig;
-        }
-    }
-
-    /* Scan C-style Hex/Octal/Binary literals starting with 0 */
-    if (*ctx->pos == '0' && *(ctx->pos + 1) != '\0') {
-        char next = *(ctx->pos + 1);
-        if (next == 'x' || next == 'X' || next == 'o' || next == 'O' || next == 'b' || next == 'B') {
-            const char *orig = ctx->pos;
-            ctx->pos += 2; /* Skip '0x'/'0o'/'0b' */
-            long val = 0;
-            bool found = false;
-
-            if (next == 'x' || next == 'X') {
-                while (*ctx->pos) {
-                    char hc = *ctx->pos;
-                    if (hc >= '0' && hc <= '9') {
-                        val = val * 16 + (hc - '0');
-                        found = true;
-                    } else if (hc >= 'A' && hc <= 'F') {
-                        val = val * 16 + (hc - 'A' + 10);
-                        found = true;
-                    } else if (hc >= 'a' && hc <= 'f') {
-                        val = val * 16 + (hc - 'a' + 10);
-                        found = true;
-                    } else {
-                        break;
-                    }
-                    ctx->pos++;
-                }
-            } else if (next == 'o' || next == 'O') {
-                while (*ctx->pos >= '0' && *ctx->pos <= '7') {
-                    val = val * 8 + (*ctx->pos - '0');
-                    found = true;
-                    ctx->pos++;
-                }
-            } else {
-                while (*ctx->pos == '0' || *ctx->pos == '1') {
-                    val = val * 2 + (*ctx->pos - '0');
-                    found = true;
-                    ctx->pos++;
-                }
-            }
-
-            if (found) {
-                tok.type = TOK_NUMBER;
-                tok.length = ctx->pos - orig;
-                tok.as.number = (double)val;
-                return tok;
-            } else {
-                ctx->pos = orig;
-            }
-        }
-    }
-
-    /* Scan number */
-    if (isdigit((unsigned char)*ctx->pos) || (*ctx->pos == '.' && isdigit((unsigned char)*(ctx->pos + 1)))) {
-        char *endptr;
-        double val = strtod(ctx->pos, &endptr);
-        if (endptr != ctx->pos) {
-            tok.type = TOK_NUMBER;
-            tok.length = endptr - ctx->pos;
-            tok.as.number = val;
-            ctx->pos = endptr;
-            return tok;
-        }
-    }
-
-    /* Scan identifier or keyword */
-    if (isalpha((unsigned char)*ctx->pos) || *ctx->pos == '_') {
-        const char *start = ctx->pos;
-        ctx->pos++;
-        while (isalnum((unsigned char)*ctx->pos) || *ctx->pos == '_' || *ctx->pos == '.') {
-            ctx->pos++;
-        }
-        /* Match suffix */
-        if (*ctx->pos == '$' || *ctx->pos == '%' || *ctx->pos == '&' || *ctx->pos == '!' || *ctx->pos == '#') {
-            ctx->pos++;
-        }
-        tok.length = ctx->pos - start;
-        tok.as.string = start;
-
-        /* Compare case-insensitively or case-sensitively with keyword tables */
-        bool is_kw = false;
-        bool case_sens = false;
-
-        if (!is_kw && tok.length >= 3 && strncasecmp(start, "REM", 3) == 0) {
-            char c4 = (tok.length > 3) ? start[3] : '\0';
-            if (c4 != '$' && c4 != '%' && c4 != '&' && c4 != '!' && c4 != '#' &&
-                !isalnum((unsigned char)c4) && c4 != '_' && c4 != '.') {
-                bool is_start = true;
-                const char *p = start - 1;
-                while (p >= ctx->source) {
-                    if (*p == ':') break;
-                    if (!isspace((unsigned char)*p)) {
-                        const char *w_end = p;
-                        while (p >= ctx->source && !isspace((unsigned char)*p) && *p != ':') {
-                            p--;
-                        }
-                        const char *w_start = p + 1;
-                        ptrdiff_t w_len = w_end - w_start + 1;
-                        if ((w_len == 4 && strncasecmp(w_start, "THEN", 4) == 0) ||
-                            (w_len == 4 && strncasecmp(w_start, "ELSE", 4) == 0)) {
-                            break;
-                        }
-                        is_start = false;
-                        break;
-                    }
-                    p--;
-                }
-
-                bool followed_by_eq = false;
-                const char *q = ctx->pos;
-                while (*q) {
-                    if (*q == '=') {
-                        if (*(q + 1) != '=') followed_by_eq = true;
-                        break;
-                    }
-                    if (!isspace((unsigned char)*q)) break;
-                    q++;
-                }
-
-                if (is_start && !followed_by_eq) {
-                    tok.type = TOK_KEYWORD;
-                    tok.as.keyword = KW_REM;
-                    is_kw = true;
-                }
-            }
-        }
-
-
-
-        /* Check core k_keywords */
-        if (!is_kw) {
-            for (int i = 0; k_keywords[i].name != NULL; ++i) {
-                size_t kw_len = strlen(k_keywords[i].name);
-                if (tok.length == kw_len) {
-                    bool match = true;
-                    for (size_t j = 0; j < kw_len; ++j) {
-                        if (case_sens) {
-                            if (start[j] != k_keywords[i].name[j]) { match = false; break; }
-                        } else {
-                            if (toupper((unsigned char)start[j]) != k_keywords[i].name[j]) { match = false; break; }
-                        }
-                    }
-                    if (match) {
-                        BppKeywordId kw_id = k_keywords[i].id;
-                        if (kw_id == KW_AND) tok.type = TOK_AND;
-                        else if (kw_id == KW_OR) tok.type = TOK_OR;
-                        else if (kw_id == KW_NOT) tok.type = TOK_NOT;
-                        else if (kw_id == KW_XOR) tok.type = TOK_XOR;
-                        else {
-                            tok.type = TOK_KEYWORD;
-                            tok.as.keyword = kw_id;
-                        }
-                        is_kw = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        /* Check dynamic registered custom keywords */
-        if (!is_kw) {
-            for (int i = 0; i < g_custom_keyword_count; ++i) {
-                size_t kw_len = strlen(g_custom_keywords[i].name);
-                if (tok.length == kw_len) {
-                    bool match = true;
-                    for (size_t j = 0; j < kw_len; ++j) {
-                        char a = start[j];
-                        char b = g_custom_keywords[i].name[j];
-                        if (case_sens) {
-                            if (a != b) { match = false; break; }
-                        } else {
-                            if (toupper((unsigned char)a) != toupper((unsigned char)b)) { match = false; break; }
-                        }
-                    }
-                    if (match) {
-                        /* Contextual check: custom keywords are only TOK_KEYWORD if starting a statement and not followed by '=' */
-                        bool is_start_of_statement = true;
-                        const char *p = start - 1;
-                        while (p >= ctx->source) {
-                            if (*p == ':') {
-                                break;
-                            }
-                            if (!isspace((unsigned char)*p)) {
-                                const char *w_end = p;
-                                while (p >= ctx->source && !isspace((unsigned char)*p) && *p != ':') {
-                                    p--;
-                                }
-                                const char *w_start = p + 1;
-                                ptrdiff_t w_len = w_end - w_start + 1;
-                                if ((w_len == 4 && strncasecmp(w_start, "THEN", 4) == 0) ||
-                                    (w_len == 4 && strncasecmp(w_start, "ELSE", 4) == 0)) {
-                                    break;
-                                }
-                                is_start_of_statement = false;
-                                break;
-                            }
-                            p--;
-                        }
-
-                        bool followed_by_eq = false;
-                        const char *q = ctx->pos;
-                        while (*q) {
-                            if (*q == '=') {
-                                if (*(q + 1) != '=') {
-                                    followed_by_eq = true;
-                                }
-                                break;
-                            }
-                            if (!isspace((unsigned char)*q)) {
-                                break;
-                            }
-                            q++;
-                        }
-
-                        if (is_start_of_statement && !followed_by_eq) {
-                            tok.type = TOK_KEYWORD;
-                            tok.as.keyword = g_custom_keywords[i].id;
-                            is_kw = true;
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!is_kw) {
-            tok.type = TOK_IDENT;
-        }
-
-        /* Special REM comment bypass: if it's REM, skip rest of the line */
-        if (is_kw && tok.as.keyword == KW_REM) {
-            while (*ctx->pos && *ctx->pos != '\n') {
-                ctx->pos++;
-            }
-            tok.type = TOK_EOL;
-            tok.length = ctx->pos - tok.start;
-        }
-
-        return tok;
-    }
-
-    /* Multi-character operators */
     if (*ctx->pos == '<') {
         if (*(ctx->pos + 1) == '=') {
-            tok.type = TOK_LE;
-            tok.length = 2;
-            ctx->pos += 2;
-            return tok;
+            tok.type = TOK_LE; tok.length = 2; ctx->pos += 2; return tok;
         }
         if (*(ctx->pos + 1) == '>') {
-            tok.type = TOK_NE;
-            tok.length = 2;
-            ctx->pos += 2;
-            return tok;
+            tok.type = TOK_NE; tok.length = 2; ctx->pos += 2; return tok;
         }
-        tok.type = TOK_LT;
-        tok.length = 1;
-        ctx->pos++;
-        return tok;
+        tok.type = TOK_LT; tok.length = 1; ctx->pos++; return tok;
     }
 
     if (*ctx->pos == '>') {
         if (*(ctx->pos + 1) == '=') {
-            tok.type = TOK_GE;
-            tok.length = 2;
-            ctx->pos += 2;
-            return tok;
+            tok.type = TOK_GE; tok.length = 2; ctx->pos += 2; return tok;
         }
-        tok.type = TOK_GT;
-        tok.length = 1;
-        ctx->pos++;
-        return tok;
+        if (*(ctx->pos + 1) == '<') {
+            tok.type = TOK_NE; tok.length = 2; ctx->pos += 2; return tok;
+        }
+        tok.type = TOK_GT; tok.length = 1; ctx->pos++; return tok;
     }
 
-    /* Single character operators and punctuation */
-    char c = *ctx->pos;
+    if (*ctx->pos == '=') {
+        if (*(ctx->pos + 1) == '>') {
+            tok.type = TOK_GE; tok.length = 2; ctx->pos += 2; return tok;
+        }
+        if (*(ctx->pos + 1) == '<') {
+            tok.type = TOK_LE; tok.length = 2; ctx->pos += 2; return tok;
+        }
+        tok.type = TOK_EQ; tok.length = 1; ctx->pos++; return tok;
+    }
 
+    char c = *ctx->pos;
     ctx->pos++;
     tok.length = 1;
 
@@ -961,13 +429,8 @@ BppToken lex_next(LexerContext *ctx) {
         case '-': tok.type = TOK_MINUS; break;
         case '^': tok.type = TOK_POW; break;
         case '*':
-            if (*ctx->pos == '*') {
-                ctx->pos++;
-                tok.length = 2;
-                tok.type = TOK_POW;
-            } else {
-                tok.type = TOK_MUL;
-            }
+            if (*ctx->pos == '*') { ctx->pos++; tok.length = 2; tok.type = TOK_POW; }
+            else { tok.type = TOK_MUL; }
             break;
         case '/': tok.type = TOK_DIV; break;
         case '=': tok.type = TOK_EQ; break;
@@ -979,18 +442,20 @@ BppToken lex_next(LexerContext *ctx) {
         case '#': tok.type = TOK_HASH; break;
         case '[': tok.type = TOK_LBRACKET; break;
         case ']': tok.type = TOK_RBRACKET; break;
-        default:
-            tok.type = TOK_UNKNOWN;
-            break;
+        case '&': tok.type = TOK_AMPERSAND; break;
+        case '\\': tok.type = TOK_BACKSLASH; break;
+        case '@': tok.type = TOK_AT; break;
+        default:  tok.type = TOK_UNKNOWN; break;
     }
 
     return tok;
 }
 
+// looks ahead at the next token without advancing the stream position
 BppToken lex_peek(LexerContext *ctx) {
     if (!ctx) {
         BppToken tok;
-        memset(&tok, 0, sizeof(tok));
+        runtime_memset(&tok, 0, sizeof(tok));
         tok.type = TOK_EOF;
         return tok;
     }

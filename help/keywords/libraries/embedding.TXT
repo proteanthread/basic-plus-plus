@@ -1,0 +1,13 @@
+embedding C/C++ Host Application Embedding API
+======================================================================
+
+The embedding interface allows host C/C++ applications to embed the
+BASIC++ virtual machine as a lightweight scripting engine.
+
+
+C17 WORKFLOW
+----------------------------------------------------------------------
+
+    1. VMContext *vm = vm_create(pool_size);
+    2. vm_execute_line(vm, "PRINT 42");
+    3. vm_destroy(vm);

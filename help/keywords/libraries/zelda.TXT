@@ -1,0 +1,13 @@
+zelda Top-Down Action RPG Room Engine Library
+======================================================================
+
+The zelda library implements flip-screen room scrolling, tile barriers,
+sword hitbox combat, and dungeon keys.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Screen boundary room-flip scrolling transitions.
+  - Directional sword/arrow combat collision hitboxes.
+  - Dungeon room state tracking and locked doors.

@@ -1,0 +1,32 @@
+ERROR Runtime Error Simulation Statement
+========================================
+
+Simulates a runtime error with the specified numeric code, triggering active ON ERROR traps.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    ERROR error_code%
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Error code < 1 or > 255.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Enables custom error code dispatching and unit test validation.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 ON ERROR GOTO 100
+    20 ERROR 55 : REM File already open
+    30 END
+    100 PRINT "Simulated error: "; ERR
+    110 RESUME NEXT

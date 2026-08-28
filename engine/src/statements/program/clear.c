@@ -1,50 +1,15 @@
-/**
- * @file clear.c
- * @brief CLEAR [, [stack_size] [, exec_stack_size]] memory reset statement handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements CLEAR statement handler for resetting all runtime variables, arrays, DEF types, open file handles, and ON event handlers.
- *
- * 2. WHY IT EXISTS:
- * Restores initial VM memory state without purging loaded program source code per GW-BASIC / QBASIC standards.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Calls vm_clear_variables(), releases heap-allocated strings, resets array tables, closes non-system open files, and resets stack frames.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_clear'. Includes "statements/program/clear.h",
- * "vm/vm.h", "lexer/lexer.h", "eval/eval.h", "device/vdev.h", "security/security.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Fully included in libbasicpp (baspp) and libbasicpp_lite (bpp, bs) per Rule #1 (Core Included).
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support stack size parameters (CLEAR , , 32768) for setting host VM stack bounds.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Variable release obligation: Overwritten variable pointer fields MUST release old string / array references before zeroing slots per Rule #1.
- *
- * 8. WHAT TO EXPECT:
- * Clears runtime heap state and returns ERR_NONE.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check refcount leak detection during variable table purge.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Zero-initialization default memory reset.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/vm/vm_context.c
- * - engine/src/vm/vm_var.c
- * Prerequisite Header Files:
- * - engine/include/statements/program/clear.h
- * - engine/include/vm/vm.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: clear.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (arrays.h, arrays.c)
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (variables.h, variables.c)
+// NEEDS: libengine (clear.h, eval.h, eval.c, lexer.h, lexer.c, string.c, vm.h)
+// NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+// Provides runtime implementation for the CLEAR statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "statements/program/clear.h"
 #include "vm/vm.h"

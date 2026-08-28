@@ -1,0 +1,25 @@
+MEM Memory Usage Function
+======================================================================
+
+The MEM function returns memory usage statistics in bytes.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    used_bytes& = MEM()
+    used_bytes& = MEM(selector%)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - MEM(0): Allocated variable and array memory.
+  - MEM(1): Program code and line storage memory.
+  - MEM(2): Total memory pool size.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Data Memory: "; MEM(0)

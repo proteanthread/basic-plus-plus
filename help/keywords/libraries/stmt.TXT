@@ -1,0 +1,20 @@
+stmt Statement Handler Architecture & Dispatch Registry
+======================================================================
+
+The stmt subsystem coordinates statement dispatching, keyword-to-file
+mapping, and argument parsing.
+
+
+INVARIANTS
+----------------------------------------------------------------------
+
+  - Dedicated source file per statement handler.
+  - Token Advancement: Handlers must consume tokens before returning success.
+  - Parameter Bounds: Error 5 (ERR_ILLEGAL_FUNCTION_CALL) on out-of-bounds.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    typedef BppError (*StatementHandler)(VMContext *vm, LexerContext *lex);
+    void stmt_register(BppKeywordId kw, StatementHandler handler);

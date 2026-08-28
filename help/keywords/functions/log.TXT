@@ -1,0 +1,22 @@
+LOG Natural Logarithm (Base-e) Function
+======================================================================
+
+The LOG function computes the natural logarithm ln(x).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result# = LOG(numeric_expression)
+
+
+DOMAIN
+----------------------------------------------------------------------
+
+  - x > 0 (Error 5 if <= 0).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT LOG(1)   : REM Outputs 0

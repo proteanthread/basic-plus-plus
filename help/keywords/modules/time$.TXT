@@ -1,0 +1,18 @@
+TIME$ System Time String Function & Variable
+======================================================================
+
+The TIME$ variable/function returns or sets the system time as
+"HH:MM:SS".
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    cur_time$ = TIME$
+    TIME$ = "HH:MM:SS"
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Time: "; TIME$

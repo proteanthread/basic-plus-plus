@@ -1,0 +1,23 @@
+LPOS Line Printer Column Position Function
+======================================================================
+
+The LPOS function returns the current column position of the printer.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    col% = LPOS(printer_number%)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Returns 1-based column position of printer buffer.
+  - printer_number: 0 or 1 for LPT1:, 2 for LPT2:, 3 for LPT3:.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT LPOS(1)

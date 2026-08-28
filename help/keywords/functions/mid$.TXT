@@ -1,0 +1,18 @@
+MID$ Mid-String Extraction & Replacement Function
+======================================================================
+
+The MID$ function extracts or replaces a substring starting at a 1-based
+character position.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    sub$ = MID$(source_string$, start_pos% [, length%])
+    MID$(target$, start% [, len%]) = replacement$
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT MID$("ABCDEF", 3, 2)   : REM Outputs "CD"

@@ -1,0 +1,28 @@
+C17 API REFERENCE: MULTITASKING & WORKER SUBSYSTEM (runtime/task.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Multitasking Subsystem manages cooperative and preemptive background
+worker tasks (TASK), thread orchestration, and process isolation.
+
+2. TASK STATES
+- TASK_RUNNING_FG, TASK_WAITING, TASK_RUNNING_BG, TASK_ERROR, TASK_DONE.
+
+3. KEY TYPES & STRUCTS
+- BppBasicTask: pid (1..32), filename, vm pointer, mem pointer, state, thread.
+
+4. CORE API FUNCTIONS
+- task_mgr_init(main_vm)
+- task_mgr_shutdown()
+- task_spawn(vdev, filename) -> int (PID)
+- task_spawn_at_label(vdev, filename, label) -> int
+- task_list(vdev)
+- task_switch(vdev, pid)
+- task_kill(vdev, pid)
+- task_join(pid)
+- task_get_status(pid) -> int
+- task_mutex_lock() / task_mutex_unlock()
+
+5. ARCHITECTURAL INVARIANTS
+- Isolated VM and memory context per spawned task.
+- Up to 32 concurrent background tasks (MAX_TASKS).

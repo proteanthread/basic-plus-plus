@@ -1,0 +1,13 @@
+pegsol Peg Solitaire Puzzle Game & Solver Library
+======================================================================
+
+The pegsol library provides English (33-hole) and French (37-hole) Peg
+Solitaire boards, jump validation, and move solving.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Cross-shaped board grid representations.
+  - Jump move validation and peg removal.
+  - Backtracking move solver.

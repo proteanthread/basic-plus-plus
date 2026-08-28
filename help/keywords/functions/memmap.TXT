@@ -1,0 +1,25 @@
+MEMMAP Memory Mapping Statement
+======================================================================
+
+The MEMMAP statement configures memory map windows or displays virtual
+memory allocations.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    MEMMAP
+    MEMMAP bank%, target_segment&, size_bytes&
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Without arguments: Displays active memory mapping structure.
+  - With arguments: Maps virtual device buffers to target bank.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 MEMMAP

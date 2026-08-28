@@ -1,0 +1,17 @@
+CLOCK Numeric Timestamp Function
+======================================================================
+
+The CLOCK function returns the current Unix epoch timestamp in seconds.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    ts# = CLOCK
+    ts# = CLOCK()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Epoch timestamp: "; CLOCK

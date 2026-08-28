@@ -1,0 +1,12 @@
+bus Virtual Hardware Device Bus (libkernel)
+======================================================================
+
+The bus library connects the VM CPU loop to virtual hardware devices,
+I/O ports (INP / OUT), and interrupt vectors.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    uint8_t bus_read_port(uint16_t port);
+    void bus_write_port(uint16_t port, uint8_t val);

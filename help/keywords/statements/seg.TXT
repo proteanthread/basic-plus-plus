@@ -1,0 +1,36 @@
+DEF SEG / SEG Memory Segment Statement
+======================================================================
+
+The DEF SEG statement defines the active base segment address used by
+PEEK, POKE, BLOAD, BSAVE, and memory operations.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    DEF SEG = segment_address
+    DEF SEG                     : Resets to default segment
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Effective address = (Segment * 16) + Offset.
+  - Calling DEF SEG without arguments resets to default BASIC DS.
+  - Standard segments: &H0040 (BDA), &HB800 (CGA text), &HA000 (VGA).
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  5           ERR_ILLEGAL_FUNCTION  Invalid segment address
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DEF SEG = &H0040
+    20 PRINT "BIOS Data: "; PEEK(&H0010)
+    30 DEF SEG

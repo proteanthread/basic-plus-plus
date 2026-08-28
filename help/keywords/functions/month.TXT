@@ -1,0 +1,18 @@
+MONTH Month Number Function
+======================================================================
+
+The MONTH function returns the current calendar month as an integer
+from 1 (January) to 12 (December).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    mon% = MONTH
+    mon% = MONTH()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Month: "; MONTH

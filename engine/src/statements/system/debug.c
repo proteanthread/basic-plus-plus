@@ -1,55 +1,11 @@
-/**
- * @file debug.c
- * @brief ASSERT, TRON, TROFF, BREAK, and VARS debugging statement handlers for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements debugging statements:
- * - ASSERT condition [, msg$]: Evaluates condition; triggers runtime error (ERR_ASSERTION_FAILED) if false.
- * - TRON / TROFF: Enables or disables line execution tracing.
- * - BREAK: Triggers a manual breakpoint pause in interactive REPL mode.
- * - VARS: Dumps active variables in current variable context.
- *
- * 2. WHY IT EXISTS:
- * Provides runtime program diagnostics and debugging capabilities per GW-BASIC / QBASIC standards.
- *
- * 3. WHY IT WORKS THIS WAY:
- * ASSERT evaluates expression; TRON/TROFF toggles trace_enabled flag in VMContext; VARS iterates over variable context entries using var_dump().
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_debug'. Includes "statements/system/debug.h",
- * "eval/eval.h", "runtime/variables.h", "vm/vm.h", "device/vdev.h", "security/security.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support conditional expression watchpoints (WATCH expr) and stack trace dumps (STACK).
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Variable iteration discipline: MUST use var_dump() / var_lookup() public API without accessing private hash buckets directly.
- *
- * 8. WHAT TO EXPECT:
- * Toggles trace state or outputs variable listing; returns ERR_NONE or ERR_ASSERTION_FAILED.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check console output routing in vdev_printf().
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext and VariableContext.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. 7-bit ASCII text output.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/eval/eval.c
- * - engine/src/runtime/variables.c
- * - engine/src/device/vdev.c
- * Prerequisite Header Files:
- * - engine/include/statements/system/debug.h
- * - engine/include/vm/vm.h
- * - engine/include/runtime/variables.h
- */
+// FILENAME: debug.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel
+// Provides runtime implementation for the DEBUG statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "stmt/stmt.h"
 #include "eval/eval.h"
@@ -62,31 +18,33 @@
 #include "types/version.h"
 #include <string.h>
 #include <stdlib.h>
+#include "runtime/format/snprintf.h"
+
 
 extern void vm_trigger_breakpoint(VMContext *vm, const char *reason);
 
-/* ASSERT statement handler */
+// ASSERT statement handler
 BppError stmt_assert_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
 
-    /* Evaluate assertion condition */
+    // Evaluate assertion condition
     BValue cond_val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
 
     if (cond_val.type == VAL_STRING) {
-        err.code = 13; /* Type mismatch */
+        err.code = 13; // Type mismatch
         err.message = "Assertion condition must be numeric";
         return err;
     }
 
     bool assertion_passed = (cond_val.as.number != 0.0);
 
-    /* Parse optional custom error message */
+    // Parse optional custom error message
     const char *custom_msg = NULL;
     BppToken comma = lex_peek(lex);
     if (comma.type == TOK_COMMA) {
-        lex_next(lex); /* Consume ',' */
+        lex_next(lex); // Consume ','
         BValue msg_val = eval_expression(vm, lex, &err);
         if (err.code != 0) return err;
 
@@ -112,17 +70,18 @@ BppError stmt_assert_handler(VMContext *vm, LexerContext *lex) {
     if (!assertion_passed) {
         char reason[256];
         if (custom_msg) {
-            snprintf(reason, sizeof(reason), "Assertion failed: %s", custom_msg);
+            runtime_snprintf(reason, sizeof(reason), "Assertion failed: %s", custom_msg);
         } else {
-            snprintf(reason, sizeof(reason), "Assertion failed");
+            runtime_snprintf(reason, sizeof(reason), "Assertion failed");
         }
+
 
         log_error("%s", reason);
 
         if (logger_is_debug()) {
             vm_trigger_breakpoint(vm, reason);
         } else {
-            err.code = 99; /* Custom assertion failure code */
+            err.code = 99; // Custom assertion failure code
             if (custom_msg) {
                 char *sc = (char *)mem_scratch_alloc(vm_get_mem(vm), strlen(reason) + 1);
                 if (sc) {
@@ -140,7 +99,7 @@ BppError stmt_assert_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-/* TRON statement handler */
+// TRON statement handler
 BppError stmt_tron_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -150,7 +109,7 @@ BppError stmt_tron_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-/* TROFF statement handler */
+// TROFF statement handler
 BppError stmt_troff_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -160,17 +119,41 @@ BppError stmt_troff_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-/* BREAK statement handler */
+// BREAK statement handler
 BppError stmt_break_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)lex;
+
+    BppToken tok = lex_peek(lex);
+    if (tok.type == TOK_KEYWORD) {
+        if (tok.as.keyword == KW_ON) {
+            lex_next(lex); // Consume ON
+            vm_set_break_enabled(vm, true);
+            log_info("Break trapping turned ON (BREAK ON)");
+            return err;
+        } else if (tok.as.keyword == KW_OFF) {
+            lex_next(lex); // Consume OFF
+            vm_set_break_enabled(vm, false);
+            log_info("Break trapping turned OFF (BREAK OFF)");
+            return err;
+        }
+    } else if (tok.type == TOK_IDENT) {
+        if (tok.length == 2 && strncasecmp(tok.start, "ON", 2) == 0) {
+            lex_next(lex);
+            vm_set_break_enabled(vm, true);
+            return err;
+        } else if (tok.length == 3 && strncasecmp(tok.start, "OFF", 3) == 0) {
+            lex_next(lex);
+            vm_set_break_enabled(vm, false);
+            return err;
+        }
+    }
 
     log_info("Manual breakpoint hit (BREAK)");
     if (logger_is_debug()) {
         vm_trigger_breakpoint(vm, "Manual breakpoint (BREAK statement)");
     } else {
-        /* In non-debug mode, BREAK is treated as a log info trace (no-op) */
+        // In non-debug mode, BREAK is treated as a log info trace (no-op)
         VDevContext *vdev = vm_get_vdev(vm);
         if (vdev) {
             vdev_printf(vdev, "[BREAKPOINT at line %lld]\n", (long long)vm_get_current_line(vm));
@@ -179,7 +162,7 @@ BppError stmt_break_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-/* VARS statement handler */
+// VARS statement handler
 BppError stmt_vars_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -190,7 +173,7 @@ BppError stmt_vars_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-/* BACKTRACE statement handler */
+// BACKTRACE statement handler
 BppError stmt_backtrace_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -202,7 +185,7 @@ BppError stmt_backtrace_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-/* INFO statement handler */
+// INFO statement handler
 BppError stmt_info_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -225,7 +208,7 @@ BppError stmt_info_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-/* DUMP statement handler */
+// DUMP statement handler
 BppError stmt_dump_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -236,8 +219,9 @@ BppError stmt_dump_handler(VMContext *vm, LexerContext *lex) {
 
     char category[32] = "ALL";
     if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
-        snprintf(category, sizeof(category), "%.*s", (int)tok.length, tok.start);
+        runtime_snprintf(category, sizeof(category), "%.*s", (int)tok.length, tok.start);
     }
+
 
     vdev_printf(vdev, "=== DEBUG STATE DUMP (%s) ===\n", category);
     vdev_printf(vdev, "  Current Line:    %lld\n", (long long)vm_get_current_line(vm));
@@ -247,7 +231,7 @@ BppError stmt_dump_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-/* TRACE statement handler */
+// TRACE statement handler
 BppError stmt_trace_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -263,7 +247,7 @@ BppError stmt_trace_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-/* DEBUG statement handler */
+// DEBUG statement handler
 BppError stmt_debug_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -272,8 +256,9 @@ BppError stmt_debug_handler(VMContext *vm, LexerContext *lex) {
     char subcmd[32] = "ON";
 
     if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
-        snprintf(subcmd, sizeof(subcmd), "%.*s", (int)tok.length, tok.start);
+        runtime_snprintf(subcmd, sizeof(subcmd), "%.*s", (int)tok.length, tok.start);
     }
+
 
     if (strcasecmp(subcmd, "OFF") == 0) {
         vm_set_debug_active(vm, false);

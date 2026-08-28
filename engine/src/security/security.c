@@ -1,86 +1,56 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file security.c
- * @brief Security Sandbox, Capability Policy Matrix, and Permission Enforcement implementation for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements `sec_init()`, `sec_set_level()`, `sec_get_level()`, `sec_check_op()`, `sec_check_path()`, `sec_check_port()`, `sec_restrict()`, enforcing file, network, shell, and memory access rules.
- *
- * 2. WHY IT EXISTS:
- * Protects host operating systems from untrusted script execution (e.g. CGI pipelines, web apps, multiplayer networks) via 6 security levels (`SEC_OPEN` to `SEC_PARANOID`).
- *
- * 3. WHY IT WORKS THIS WAY:
- * Evaluates operational permissions against a static 6x19 capability matrix and restriction bitmasks. Implements a one-way security level ratchet (levels can only be raised, never lowered within a session).
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "security/security.h", "platform/platform.h", <stdio.h>, <string.h>, <ctype.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Register new operation types (`SECOP_` enums) or modify port/path whitelist rules in `security.c`.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * One-way ratchet security invariant: script execution can NEVER decrease `current_level` once elevated.
- *
- * 8. WHAT TO EXPECT:
- * `sec_check_op()` returns 0 if operation is allowed, or non-zero error code if blocked by active security policy.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check active security level via `sec_get_level()` and trace restriction rules in `sec_restrict()`.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Initialized security module at boot (`sec_init()`).
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Path sanitization handles both POSIX (`/`) and Windows (`\`) slashes.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/platform/platform.c
- * Prerequisite Header Files:
- * - engine/include/security/security.h
- * - engine/include/platform/platform.h
- */
-
-/* #ifndef BASIC_LITE_BUILD */
+// FILENAME: security.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libkernel
+// NEEDS: libcore (ctype.h, ctype.c, hal.h, memops.h, memops.c)
+// NEEDS: libcore (snprintf.h, snprintf.c, strops.h, strops.c)
+// NEEDS: libkernel (security.h)
+// NEEDS: libplatform (platform.h)
+// Provides core logic and interface definitions for security within BASIC++.
+//
+// ---- Includes ----
 
 #include "security/security.h"
 #include "platform/platform.h"
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/format/snprintf.h"
+#include "hal/hal.h"
+
+static void sec_print_msg(const char *msg) {
+    if (!msg) return;
+    HalContext *hal = hal_get();
+    if (hal && hal->io.console_puts) {
+        hal->io.console_puts(msg);
+    }
+}
+
 
 static BppSecLevel current_level = SEC_OPEN;
 
-/* Override restrictions per operation */
+// Override restrictions per operation
 static int restrict_ops[SECOP_COUNT];
 static int restrict_ops_count = 0;
 
-/* Blacklisted keyword IDs */
+// Blacklisted keyword IDs
 #define MAX_RESTRICT_KEYWORDS 64
 static int restrict_kw_ids[MAX_RESTRICT_KEYWORDS];
 static int restrict_kw_count = 0;
 
-/* Permission Matrix: allowed[level][operation] */
+// Permission Matrix: allowed[level][operation]
 static const int allowed[SEC_COUNT][SECOP_COUNT] = {
-    /* SEC_OPEN (0) */
+    // SEC_OPEN (0)
     { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-    /* SEC_SAFE (1) */
+    // SEC_SAFE (1)
     { 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-    /* SEC_STANDARD (2) */
+    // SEC_STANDARD (2)
     { 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1 },
-    /* SEC_EDUCATIONAL (3) */
+    // SEC_EDUCATIONAL (3)
     { 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 },
-    /* SEC_RESTRICTED (4) */
+    // SEC_RESTRICTED (4)
     { 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 },
-    /* SEC_PARANOID (5) */
+    // SEC_PARANOID (5)
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 }
 };
 
@@ -121,7 +91,7 @@ void security_init(BppSecLevel level) {
     } else {
         current_level = SEC_OPEN;
     }
-    memset(restrict_ops, 0, sizeof(restrict_ops));
+    runtime_memset(restrict_ops, 0, sizeof(restrict_ops));
     restrict_ops_count = 0;
     restrict_kw_count = 0;
 }
@@ -150,7 +120,7 @@ int security_find_level_by_name(const char *name) {
         const char *b = level_names[i];
         int match = 1;
         while (*a && *b) {
-            if (toupper((unsigned char)*a) != toupper((unsigned char)*b)) {
+            if (runtime_toupper((unsigned char)*a) != runtime_toupper((unsigned char)*b)) {
                 match = 0;
                 break;
             }
@@ -167,10 +137,14 @@ int security_find_level_by_name(const char *name) {
 int security_check(BppSecOperation op, int line_num) {
     if (op < 0 || op >= SECOP_COUNT) return -1;
 
+    char buf[256];
     if (restrict_ops[op]) {
-        printf("?Error: %s restricted via SECURITY RESTRICT", op_names[op]);
-        if (line_num > 0) printf(" in line %d", line_num);
-        printf("\n");
+        if (line_num > 0) {
+            runtime_snprintf(buf, sizeof(buf), "?Error: %s restricted via SECURITY RESTRICT in line %d\n", op_names[op], line_num);
+        } else {
+            runtime_snprintf(buf, sizeof(buf), "?Error: %s restricted via SECURITY RESTRICT\n", op_names[op]);
+        }
+        sec_print_msg(buf);
         return -1;
     }
 
@@ -180,9 +154,12 @@ int security_check(BppSecOperation op, int line_num) {
         return 0;
     }
 
-    printf("?Error: %s not permitted at level %s", op_names[op], level_names[current_level]);
-    if (line_num > 0) printf(" in line %d", line_num);
-    printf("\n");
+    if (line_num > 0) {
+        runtime_snprintf(buf, sizeof(buf), "?Error: %s not permitted at level %s in line %d\n", op_names[op], level_names[current_level], line_num);
+    } else {
+        runtime_snprintf(buf, sizeof(buf), "?Error: %s not permitted at level %s\n", op_names[op], level_names[current_level]);
+    }
+    sec_print_msg(buf);
     return -1;
 }
 
@@ -202,25 +179,31 @@ int security_check_mem(unsigned long address, int size) {
     (void)size;
     if (current_level == SEC_OPEN) return 0;
 
-    /* emulated low memory check (< 64K) on modern architectures */
+    // emulated low memory check (< 64K) on modern architectures
     if ((current_level == SEC_SAFE || current_level == SEC_STANDARD) && address < 0x10000) {
         return 0;
     }
 
-    printf("?Error: memory access at 0x%lX not permitted at level %s\n", address, level_names[current_level]);
+    char buf[256];
+    runtime_snprintf(buf, sizeof(buf), "?Error: memory access at 0x%lX not permitted at level %s\n", address, level_names[current_level]);
+    sec_print_msg(buf);
     return -1;
 }
 
 int security_check_port(int port, int line_num) {
     if (current_level == SEC_OPEN) return 0;
 
+    char buf[256];
     switch (current_level) {
         case SEC_EDUCATIONAL:
         case SEC_RESTRICTED:
         case SEC_PARANOID:
-            printf("?Error: network access not permitted at level %s", level_names[current_level]);
-            if (line_num > 0) printf(" in line %d", line_num);
-            printf("\n");
+            if (line_num > 0) {
+                runtime_snprintf(buf, sizeof(buf), "?Error: network access not permitted at level %s in line %d\n", level_names[current_level], line_num);
+            } else {
+                runtime_snprintf(buf, sizeof(buf), "?Error: network access not permitted at level %s\n", level_names[current_level]);
+            }
+            sec_print_msg(buf);
             return -1;
         default:
             break;
@@ -239,41 +222,57 @@ int security_check_port(int port, int line_num) {
             break;
     }
 
-    printf("?Error: port %d not permitted at level %s", port, level_names[current_level]);
-    if (line_num > 0) printf(" in line %d", line_num);
-    printf("\n");
+    if (line_num > 0) {
+        runtime_snprintf(buf, sizeof(buf), "?Error: port %d not permitted at level %s in line %d\n", port, level_names[current_level], line_num);
+    } else {
+        runtime_snprintf(buf, sizeof(buf), "?Error: port %d not permitted at level %s\n", port, level_names[current_level]);
+    }
+    sec_print_msg(buf);
     return -1;
 }
 
 int security_check_path(const char *path, int line_num) {
+    char buf[256];
     if (!path || path[0] == '\0') {
-        printf("?Error: empty path not permitted");
-        if (line_num > 0) printf(" in line %d", line_num);
-        printf("\n");
+        if (line_num > 0) {
+            runtime_snprintf(buf, sizeof(buf), "?Error: empty path not permitted in line %d\n", line_num);
+        } else {
+            runtime_snprintf(buf, sizeof(buf), "?Error: empty path not permitted\n");
+        }
+        sec_print_msg(buf);
         return -1;
     }
 
     if (path[0] == '/' || path[0] == '\\') {
-        printf("?Error: absolute path '%s' not permitted", path);
-        if (line_num > 0) printf(" in line %d", line_num);
-        printf("\n");
+        if (line_num > 0) {
+            runtime_snprintf(buf, sizeof(buf), "?Error: absolute path '%s' not permitted in line %d\n", path, line_num);
+        } else {
+            runtime_snprintf(buf, sizeof(buf), "?Error: absolute path '%s' not permitted\n", path);
+        }
+        sec_print_msg(buf);
         return -1;
     }
 
-    size_t path_len = strlen(path);
+    size_t path_len = runtime_strlen(path);
     if (path_len >= 2 && path[1] == ':') {
-        printf("?Error: absolute path '%s' not permitted", path);
-        if (line_num > 0) printf(" in line %d", line_num);
-        printf("\n");
+        if (line_num > 0) {
+            runtime_snprintf(buf, sizeof(buf), "?Error: absolute path '%s' not permitted in line %d\n", path, line_num);
+        } else {
+            runtime_snprintf(buf, sizeof(buf), "?Error: absolute path '%s' not permitted\n", path);
+        }
+        sec_print_msg(buf);
         return -1;
     }
 
     const char *p = path;
     while (*p) {
         if (p[0] == '.' && p[1] == '.') {
-            printf("?Error: path traversal (..) not permitted in '%s'", path);
-            if (line_num > 0) printf(" in line %d", line_num);
-            printf("\n");
+            if (line_num > 0) {
+                runtime_snprintf(buf, sizeof(buf), "?Error: path traversal (..) not permitted in '%s' in line %d\n", path, line_num);
+            } else {
+                runtime_snprintf(buf, sizeof(buf), "?Error: path traversal (..) not permitted in '%s'\n", path);
+            }
+            sec_print_msg(buf);
             return -1;
         }
         p++;
@@ -289,47 +288,63 @@ int security_check_path(const char *path, int line_num) {
     if (dot) {
         const char *exts[] = { ".dll", ".so", ".lib", ".bpl", ".bpp", ".bas", ".spec", ".yaml" };
         for (int i = 0; i < 8; ++i) {
-            if (strcmp(dot, exts[i]) == 0) return 0;
+            if (runtime_strcmp(dot, exts[i]) == 0) return 0;
         }
     }
 
-    printf("?Error: file extension not allowed for '%s'", path);
-    if (line_num > 0) printf(" in line %d", line_num);
-    printf("\n");
+    if (line_num > 0) {
+        runtime_snprintf(buf, sizeof(buf), "?Error: file extension not allowed for '%s' in line %d\n", path, line_num);
+    } else {
+        runtime_snprintf(buf, sizeof(buf), "?Error: file extension not allowed for '%s'\n", path);
+    }
+    sec_print_msg(buf);
     return -1;
 }
 
 int security_check_file_path(const char *path, int line_num) {
     if (current_level == SEC_OPEN) return 0;
 
+    char buf[256];
     if (!path || path[0] == '\0') {
-        printf("?Error: empty path not permitted");
-        if (line_num > 0) printf(" in line %d", line_num);
-        printf("\n");
+        if (line_num > 0) {
+            runtime_snprintf(buf, sizeof(buf), "?Error: empty path not permitted in line %d\n", line_num);
+        } else {
+            runtime_snprintf(buf, sizeof(buf), "?Error: empty path not permitted\n");
+        }
+        sec_print_msg(buf);
         return -1;
     }
 
     if (path[0] == '/' || path[0] == '\\') {
-        printf("?Error: absolute path '%s' not permitted", path);
-        if (line_num > 0) printf(" in line %d", line_num);
-        printf("\n");
+        if (line_num > 0) {
+            runtime_snprintf(buf, sizeof(buf), "?Error: absolute path '%s' not permitted in line %d\n", path, line_num);
+        } else {
+            runtime_snprintf(buf, sizeof(buf), "?Error: absolute path '%s' not permitted\n", path);
+        }
+        sec_print_msg(buf);
         return -1;
     }
 
-    size_t path_len = strlen(path);
+    size_t path_len = runtime_strlen(path);
     if (path_len >= 2 && path[1] == ':') {
-        printf("?Error: absolute path '%s' not permitted", path);
-        if (line_num > 0) printf(" in line %d", line_num);
-        printf("\n");
+        if (line_num > 0) {
+            runtime_snprintf(buf, sizeof(buf), "?Error: absolute path '%s' not permitted in line %d\n", path, line_num);
+        } else {
+            runtime_snprintf(buf, sizeof(buf), "?Error: absolute path '%s' not permitted\n", path);
+        }
+        sec_print_msg(buf);
         return -1;
     }
 
     const char *p = path;
     while (*p) {
         if (p[0] == '.' && p[1] == '.') {
-            printf("?Error: path traversal (..) not permitted in '%s'", path);
-            if (line_num > 0) printf(" in line %d", line_num);
-            printf("\n");
+            if (line_num > 0) {
+                runtime_snprintf(buf, sizeof(buf), "?Error: path traversal (..) not permitted in '%s' in line %d\n", path, line_num);
+            } else {
+                runtime_snprintf(buf, sizeof(buf), "?Error: path traversal (..) not permitted in '%s'\n", path);
+            }
+            sec_print_msg(buf);
             return -1;
         }
         p++;
@@ -337,7 +352,6 @@ int security_check_file_path(const char *path, int line_num) {
 
     return 0;
 }
-
 
 int security_restrict_op(BppSecOperation op) {
     if (op < 0 || op >= SECOP_COUNT) return -1;
@@ -371,26 +385,25 @@ int security_is_keyword_restricted(int kw_id) {
 
 void security_restrict_list(void) {
     int found = 0;
-    printf("SECURITY RESTRICT overrides:\n");
+    char buf[256];
+    sec_print_msg("SECURITY RESTRICT overrides:\n");
     for (int i = 0; i < SECOP_COUNT; ++i) {
         if (restrict_ops[i]) {
-            printf("  %-8s %s\n", "OP", op_names[i]);
+            runtime_snprintf(buf, sizeof(buf), "  %-8s %s\n", "OP", op_names[i]);
+            sec_print_msg(buf);
             found++;
         }
     }
     for (int i = 0; i < restrict_kw_count; ++i) {
-        printf("  %-8s keyword ID %d\n", "KEYWORD", restrict_kw_ids[i]);
+        runtime_snprintf(buf, sizeof(buf), "  %-8s keyword ID %d\n", "KEYWORD", restrict_kw_ids[i]);
+        sec_print_msg(buf);
         found++;
     }
     if (!found) {
-        printf("  (no restrictions)\n");
+        sec_print_msg("  (no restrictions)\n");
     }
 }
 
 int security_restrict_count(void) {
     return restrict_ops_count + restrict_kw_count;
 }
-
-/* #endif */
-
-typedef int bpp_security_dummy_t;

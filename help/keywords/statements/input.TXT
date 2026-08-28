@@ -1,0 +1,31 @@
+INPUT Interactive Console & File Input Statement
+================================================
+
+Reads interactive user input from the console, or comma-delimited data fields from an open file.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    INPUT [;] ["prompt" {; | ,}] variable [, variable...]
+    INPUT #filenum%, variable [, variable...]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 52 (ERR_BAD_FILE_NUMBER): File channel is not open for input.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Supports trailing semicolons to suppress carriage returns.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 INPUT "Enter your name: ", Name$
+    20 INPUT "Enter age: "; Age%
+    30 PRINT "Hello, "; Name$; " Age: "; Age%

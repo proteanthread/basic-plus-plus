@@ -1,0 +1,18 @@
+BASIC++ FUNCTION REFERENCE: MKS$ / MKSSTR
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  result$ = MKS$(single_expr!)
+
+Converts a 32-bit single-precision floating-point number into a 4-byte binary
+string. Deserialized using CVS.
+
+2. PARAMETERS & RETURN VALUES
+- single_expr!: Single-precision float.
+- Returns: 4-byte binary string.
+
+3. ERROR CODES
+- Error 13 (ERR_TYPE_MISMATCH): Non-numeric argument.
+
+4. EXAMPLES
+  10 LSET S$ = MKS$(25.5)

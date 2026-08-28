@@ -1,0 +1,88 @@
+# Phase 4: Compiler, Transpiler, and Tool Targets
+
+## 1. Overview & Architecture
+
+Phase 4 delivers the complete decoupled compiler, transpiler, detokenizer, and freestanding toolchain infrastructure within BASIC++ v6.5.2, in accordance with the **Decoupled Executables Architecture** defined in `AGENTS.md`.
+
+```
++---------------------------------------------------------------------------------------------------+
+|                                  BASIC++ Compilation Suite Targets                                |
++-----------------------------------+-----------------------------------+---------------------------+
+|               bppc                |               trans               |           detok           |
+|     (Compiler Orchestrator)       |    (Source-to-Source Transpiler)  |    (GW-BASIC Detokenizer) |
++-----------------+-----------------+-----------------+-----------------+-------------+-------------+
+                  |                                   |                               |
+                  v                                   v                               v
++-----------------+-----------------+-----------------+-----------------+-------------+-------------+
+|    bppc_bytecode / compile_to_bpp |      transpile_basic_to_c_opts    |     detokenize_gw_basic     |
+|   (BPE Bytecode Binary Emitter)   |     (ISO C17 Code Generator)      |    (Binary Header & Tokens) |
++-----------------+-----------------+-----------------+-----------------+-------------+-------------+
+                  |                                   |
+                  +-----------------+-----------------+
+                                    |
+                                    v
+            +-----------------------+-----------------------+
+            |                    libcompiler_ir             |
+            |       (Freestanding Memory, IR Opcodes,       |
+            |          Validation & Constant Folding)       |
+            +-----------------------------------------------+
+```
+
+---
+
+## 2. Decoupled Tool Executables & Interfaces
+
+### 2.1. `bppc` / `bppc.exe` (BASIC++ Compiler Orchestrator)
+- **Primary Responsibility**: Compiles BASIC++ source scripts into bytecode binaries (`.bpp`/`.bbc`), native executables via host C17 compilers (`cl`/`gcc`), or standalone executables.
+- **CLI Options**:
+  - `bppc <input.bas> <output.bpp>`: Bytecode compilation.
+  - `bppc --bytecode <input.bas> -o <output.bpp>`: Explicit bytecode output.
+  - `bppc --c17 <input.bas> -o <output.c>`: Direct C17 source transpilation.
+  - `bppc --native <input.bas> -o <output.exe>`: Transpiles and invokes the host C compiler to produce a native executable.
+  - `bppc --standalone [--windows|--linux] <input.bas> <output.exe>`: Packages standalone binary.
+  - `--optimize, -O`: Enables IR and AST static optimizations.
+  - `--debug, -g`: Emits diagnostic logging and comments.
+
+### 2.2. `trans` / `trans.exe` (Source-to-Source Transpiler)
+- **Primary Responsibility**: Translates BASIC++ source programs into clean, readable, standalone ISO C17 source code.
+- **CLI Options**:
+  - `trans <input.bas> -o <output.c>`: Translates BASIC to C17.
+  - `trans --c17 <input.bas...>`: Explicit ISO C17 output mode.
+  - `trans --inline-runtime`: Inlines self-contained runtime helper routines into the generated C file.
+  - `trans --optimize`: Performs constant folding and loop strength reduction.
+  - `trans --debug`: Generates source line number labels (`line_10:`) and code comments.
+  - Multi-file compilation: Accepts multiple input `.bas` modules and aggregates them into a unified C translation.
+
+### 2.3. `detok` / `detok.exe` (GW-BASIC Detokenizer)
+- **Primary Responsibility**: Converts binary tokenized `.BAS` files (GW-BASIC/BASICA formats with `0xFF` signatures) into clean, human-readable ASCII BASIC++ source code.
+- **CLI Options**: `detok <input.bas> [output.txt]` (or stdout redirection).
+
+---
+
+## 3. Intermediate Representation (`libcompiler_ir`)
+
+- **Freestanding C17 Memory Allocation**: Operates strictly using `runtime_calloc`, `runtime_free`, and `runtime_malloc` with zero direct libc heap dependencies.
+- **IR Opcodes**: 36 intermediate opcodes covering constants (`IR_LOAD_CONST_NUM`, `IR_LOAD_CONST_STR`), variable loads/stores (`IR_LOAD_VAR_NUM`, `IR_STORE_VAR_NUM`), arithmetic (`IR_ADD`, `IR_SUB`, `IR_MUL`, `IR_DIV`, `IR_MOD`, `IR_POW`), logic (`IR_AND`, `IR_OR`, `IR_NOT`, `IR_XOR`), comparisons (`IR_CMP_EQ`..`IR_CMP_GE`), branching (`IR_JMP`, `IR_JMP_IF_TRUE`, `IR_JMP_IF_FALSE`, `IR_GOTO`, `IR_GOSUB`, `IR_RETURN`), I/O (`IR_PRINT`, `IR_INPUT`), arrays (`IR_DIM`, `IR_ARRAY_LOAD`, `IR_ARRAY_STORE`), and execution termination (`IR_HALT`).
+- **Peephole Optimization**: `compiler_ir_optimize()` performs static constant folding on arithmetic sequences.
+- **Validation**: `compiler_ir_validate()` performs strict structural opcode and operand boundary checks.
+
+---
+
+## 4. Verification & Validation Summary
+
+| Test Suite / Target | Location | Type | Result |
+| :--- | :--- | :--- | :---: |
+| **Compiler Freestanding Test** | `compiler_freestanding_test.exe` | C17 Freestanding Suite | **100% PASSED** (5/5) |
+| **Boot Freestanding Test** | `boot_freestanding_test.exe` | C17 Freestanding Suite | **100% PASSED** (3/3) |
+| **Runtime & HAL Freestanding Test**| `runtime_freestanding_test.exe` | C17 Freestanding Suite | **100% PASSED** (9/9) |
+| **Kernel Freestanding Test** | `kernel_freestanding_test.exe` | C17 Freestanding Suite | **100% PASSED** (6/6) |
+| **Hardware BGI Freestanding Test** | `hardware_freestanding_test.exe` | C17 Freestanding Suite | **100% PASSED** (5/5) |
+| **Server Freestanding Test** | `server_freestanding_test.exe` | C17 Freestanding Suite | **100% PASSED** (4/4) |
+| **Script Freestanding Test** | `script_freestanding_test.exe` | C17 Freestanding Suite | **100% PASSED** (4/4) |
+| **Core & Flex Freestanding Test** | `core_flex_freestanding_test.exe`| C17 Freestanding Suite | **100% PASSED** (5/5) |
+| **Standard TUI Freestanding Test** | `standard_tui_freestanding_test.exe`| C17 Freestanding Suite | **100% PASSED** (32/32) |
+| **QuickBASIC & VB/DOS Master** | `qb_vbdos_master.bas` | End-to-End Master Script | **100% PASSED** (10/10) |
+| **Vintage Ecosystems Master** | `vintage_ecosystems_master.bas` | End-to-End Master Script | **100% PASSED** (14/14) |
+| **Vintage Deep Edge-Cases** | `vintage_deep_fuzz_stress.bas` | End-to-End Master Script | **100% PASSED** (8/8) |
+| **Built-in Diagnostics** | `SELFTEST` | Built-in Statement | **100% PASSED** (5/5) |
+| **Static Engine Rule Audit** | `audit_engine_rules.py` | 1131 C17 Source Files | **0 Violations (100% Clean)** |

@@ -1,0 +1,17 @@
+AVG Arithmetic Mean / Average Function
+======================================================================
+
+The AVG function calculates the arithmetic mean of its arguments.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    mean = AVG(val1, val2 [, val3, ...])
+    mean = AVG(array())
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT AVG(4, 8, 12)   : REM Outputs 8

@@ -1,60 +1,6 @@
-/*
- * PROJECT:  Palo Alto Tiny BASIC Interpreter (C89 Port)
- * FILENAME: tinybasic.c
- * VERSION:  1.2.0
- *
- * Prototype: based on Li Chen Wang's Palo Alto Tiny BASIC (1976)
- *
- * DESCRIPTION:
- *   A strictly compliant ANSI C89 port of Palo Alto Tiny BASIC.
- *   Provides segregated memory arenas for stack, code, and variables.
- *   Features a REPL interface, LOAD/SAVE plain-text .BAS programs,
- *   and 16-bit signed integer math with left-to-right evaluation.
- *
- * DIALECT NOTES (Palo Alto Tiny BASIC):
- *   - 26 variables: A through Z (16-bit signed integers)
- *   - @() array mapped into surplus variable memory
- *   - Statements: PRINT, LET, INPUT, GOTO, GOSUB, RETURN,
- *     IF/THEN, REM, END, STOP, CLEAR, BEEP
- *   - Commands: RUN, LIST, NEW, SAVE, LOAD, HELP, BYE
- *   - Functions: ABS(X), RND(X), SIZE
- *   - Expression operators: + - * / (left-to-right, no precedence)
- *   - Relational operators: = < > <= >= <> #
- *   - LET keyword is mandatory (bare A=5 is SYNTAX ERROR)
- *   - Line numbers: 1 through 32767
- *   - Input is auto-uppercased (string literals preserved)
- *   - Strings in PRINT only (no string variables)
- *   - Programs are plain text files with .BAS extension
- *
- * HOW TO COMPILE:
- *   MSVC:  cl /TC /W4 /O2 /D_CRT_SECURE_NO_WARNINGS tinybasic.c
- *   GCC:   gcc -ansi -Wall -Wextra -O2 -o tinybasic tinybasic.c
- *
- * MEMORY LAYOUT:
- *   program[]     500 lines x 256 bytes = ~128KB
- *   variables      52 bytes   (26 x short)
- *   array_mem   65000 bytes   @() numeric array (32500 x short)
- *   gosub_stack   256 bytes   GOSUB return stack (64 levels)
- */
-
-/* =========================================================================
- * STANDARD LIBRARY INCLUDES
- *
- * WHAT CAN BE CHANGED:
- *   Nothing here.  All six headers are required.
- *
- * WHAT CANNOT BE CHANGED:
- *   Do not add C99 or POSIX headers (stdint.h, stdbool.h, unistd.h).
- *   The file must remain strict C89 for maximum portability.
- *
- * WHAT TO EXPECT:
- *   <time.h> is used solely for srand(time(NULL)) at startup.
- *   <ctype.h> functions must always receive (unsigned char) casts.
- *
- * IF SOMETHING BREAKS:
- *   If you get "implicit declaration" warnings, verify all six
- *   includes are present and the compiler is in C89 mode.
- * ========================================================================= */
+// FILENAME: tinybasic.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// DESCRIPTION: Provides core logic and implementation for tinybasic.c within BASIC++.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,7 +30,11 @@
  *   available memory.  Reduce MAX_LINES or MAX_VARS.
  * ========================================================================= */
 
-#define MAX_LINES      500
+#ifndef BASIC_RAM_SIZE
+#define BASIC_RAM_SIZE 65536L
+#endif
+
+#define MAX_LINES      2000
 #define LINE_LEN       255
 #define MAX_VARS     32500
 #define STACK_SIZE      64
@@ -247,9 +197,20 @@ static void skip_spaces(char **p) {
     while (**p == ' ' || **p == '\t') (*p)++;
 }
 
+static int my_strncasecmp(const char *s1, const char *s2, size_t n) {
+    size_t i;
+    for (i = 0; i < n; i++) {
+        int c1 = toupper((unsigned char)s1[i]);
+        int c2 = toupper((unsigned char)s2[i]);
+        if (c1 != c2) return c1 - c2;
+        if (c1 == '\0') return 0;
+    }
+    return 0;
+}
+
 static int match_keyword(char **p, const char *kw) {
     size_t len = strlen(kw);
-    if (strncmp(*p, kw, len) == 0 && !isalpha((unsigned char)(*p)[len])) {
+    if (my_strncasecmp(*p, kw, len) == 0 && !isalpha((unsigned char)(*p)[len])) {
         *p += len;
         return 1;
     }
@@ -430,7 +391,7 @@ static short parse_factor(char **p) {
     /* SIZE keyword - returns free memory */
     if (strncmp(*p, "SIZE", 4) == 0 && !isalpha((unsigned char)(*p)[4])) {
         long used = (long)num_lines * (long)(LINE_LEN + 1);
-        long total = (long)MAX_LINES * (long)(LINE_LEN + 1);
+        long total = (long)BASIC_RAM_SIZE;
         (*p) += 4;
         return (short)(total - used > 32767 ? 32767 : total - used);
     }
@@ -743,14 +704,13 @@ static void execute_line(char *line) {
     } else if (match_keyword(&p, "REM")) {
         /* Comment: do nothing */
 
-    /* --- RUN (no filename allowed) --- */
+    /* --- RUN --- */
     } else if (match_keyword(&p, "RUN")) {
         skip_spaces(&p);
         if (*p != '\0') {
-            printf("SYNTAX ERROR\n");
-        } else {
-            run_program();
+            load_program(p);
         }
+        run_program();
 
     /* --- LIST --- */
     } else if (match_keyword(&p, "LIST")) {
@@ -780,8 +740,9 @@ static void execute_line(char *line) {
     } else if (match_keyword(&p, "HELP")) {
         cmd_help();
 
-    /* --- BYE --- */
-    } else if (match_keyword(&p, "BYE")) {
+    /* --- BYE / GOODBYE --- */
+    } else if (match_keyword(&p, "BYE") || match_keyword(&p, "GOODBYE") ||
+               match_keyword(&p, "SYSTEM") || match_keyword(&p, "QUIT")) {
         exit(0);
 
     /* --- STOP / END --- */
@@ -792,6 +753,38 @@ static void execute_line(char *line) {
     } else if (match_keyword(&p, "BEEP")) {
         trigger_beep();
 
+    /* --- Bare Array Assignment @(I) = expr --- */
+    } else if (*p == '@') {
+        short idx;
+        p++;
+        skip_spaces(&p);
+        if (*p == '(') p++;
+        idx = parse_expression(&p);
+        skip_spaces(&p);
+        if (*p == ')') p++;
+        skip_spaces(&p);
+        if (*p == '=') p++;
+        if (idx < 0 || idx >= MAX_VARS) {
+            printf("ARRAY BOUNDS ERROR\n");
+            running = 0;
+            return;
+        }
+        array_mem[idx] = parse_expression(&p);
+        return;
+
+    /* --- Bare Variable Assignment A = expr --- */
+    } else if (isalpha((unsigned char)*p)) {
+        int var_idx = toupper((unsigned char)*p) - 'A';
+        p++;
+        skip_spaces(&p);
+        if (*p == '=') {
+            p++;
+            variables[var_idx] = parse_expression(&p);
+            return;
+        }
+        printf("SYNTAX ERROR\n");
+        running = 0;
+
     } else {
         printf("SYNTAX ERROR\n");
     }
@@ -799,29 +792,10 @@ static void execute_line(char *line) {
 
 /* =========================================================================
  * PROGRAM EXECUTION
- *
- * WHAT CAN BE CHANGED:
- *   - The clear_variables() call at RUN start could be made optional
- *     (some BASIC dialects preserve variables across RUN).
- *
- * WHAT CANNOT BE CHANGED:
- *   - GOTO/GOSUB set program_counter; the runner must check for
- *     this and NOT auto-advance when the counter has changed.
- *
- * WHAT TO EXPECT:
- *   - Execution begins at the first stored line.
- *   - Setting running=0 stops execution after the current line.
- *
- * IF SOMETHING BREAKS:
- *   - If the program runs infinitely, check that END/STOP set
- *     running=0.
- *   - If GOTO skips lines, check that find_line() returns the
- *     correct index.
  * ========================================================================= */
 
 static void run_program(void) {
     char line_buf[LINE_LEN + 1];
-    int prev_pc;
 
     if (num_lines == 0) return;
 
@@ -829,12 +803,29 @@ static void run_program(void) {
     program_counter = 0;
     running = 1;
 
-    while (running && program_counter < num_lines) {
-        prev_pc = program_counter;
+    while (running && program_counter >= 0 && program_counter < num_lines) {
+        int prev_pc = program_counter;
         strncpy(line_buf, program[program_counter].text, LINE_LEN);
         line_buf[LINE_LEN] = '\0';
-        execute_line(line_buf);
-        if (running && program_counter == prev_pc) program_counter++;
+        {
+            char *p = line_buf;
+            while (*p && running) {
+                char *stmt_start = p;
+                while (*p && *p != ':') p++;
+                if (*p == ':') {
+                    *p = '\0';
+                    execute_line(stmt_start);
+                    if (program_counter != prev_pc || !running) break;
+                    p++;
+                } else {
+                    execute_line(stmt_start);
+                    break;
+                }
+            }
+        }
+        if (running && program_counter == prev_pc) {
+            program_counter++;
+        }
     }
     running = 0;
 }
@@ -848,67 +839,20 @@ static void list_program(void) {
 
 /* =========================================================================
  * HELP COMMAND
- *
- * Lightweight built-in help that lists all implemented keywords.
- *
- * WHAT CAN BE CHANGED:
- *   - Update the listing whenever a keyword is added or removed.
- *
- * WHAT CANNOT BE CHANGED:
- *   - Must always reflect the actual implemented feature set.
- *
- * WHAT TO EXPECT:
- *   - Prints a compact reference card to stdout.
- *
- * IF SOMETHING BREAKS:
- *   - This is pure output; it cannot cause logic errors.
  * ========================================================================= */
 
 static void cmd_help(void) {
-    printf("\n");
-    printf("Palo Alto Tiny BASIC (C89 Port) v1.2\n");
-    printf("=====================================\n");
-    printf("Statements:  PRINT  LET  INPUT  GOTO  GOSUB  RETURN\n");
-    printf("             IF/THEN  REM  END  STOP  CLEAR  BEEP\n");
-    printf("Commands:    RUN  LIST  NEW  SAVE  LOAD  HELP  BYE\n");
-    printf("Functions:   ABS()  RND()  SIZE\n");
-    printf("Operators:   +  -  *  /  =  <  >  <=  >=  <>  #\n");
-    printf("\n");
+    printf("=== PALO ALTO TINY BASIC HELP ===\n");
+    printf("COMMANDS:   RUN [file], LIST, LOAD [file], SAVE [file], NEW, CLEAR, BYE/GOODBYE, HELP\n");
+    printf("STATEMENTS: PRINT/PR/?, INPUT/IN, LET, GOTO, GOSUB, RETURN, IF..THEN, REM, STOP, END, POKE\n");
+    printf("FUNCTIONS:  PEEK(x), RND(x), ABS(x), SIZE\n");
+    printf("VARIABLES:  A-Z (16-bit integers), @(expr) (shared array memory)\n");
 }
 
 /* =========================================================================
  * FILE I/O
- *
- * Programs are saved as plain text files.  Each line is written as:
- *   <line_number> <text>\n
- *
- * WHAT CAN BE CHANGED:
- *   - The default extension (.BAS) can be changed to another.
- *   - The maximum filename length follows LINE_LEN.
- *
- * WHAT CANNOT BE CHANGED:
- *   - Filenames can be given with or without quotes.
- *   - The .BAS extension is auto-appended if not already present.
- *   - LOAD clears the existing program before loading.
- *
- * WHAT TO EXPECT:
- *   - SAVE test   -> writes test.BAS
- *   - SAVE "test" -> writes test.BAS
- *   - SAVE test.BAS -> writes test.BAS (no double extension)
- *   - LOAD test   -> reads test.BAS
- *
- * IF SOMETHING BREAKS:
- *   - If SAVE creates a 0-byte file, check that num_lines > 0.
- *   - If LOAD fails, verify the filename is correct and the file
- *     exists in the current working directory.
- *   - If filenames have trailing quotes, check resolve_filename().
  * ========================================================================= */
 
-/*
- * resolve_filename
- * Strips optional quotes, trims whitespace, and auto-appends .BAS
- * if the filename does not already end in .BAS or .bas.
- */
 static void resolve_filename(const char *raw, char *out, int out_size) {
     const char *src;
     int len;
@@ -916,18 +860,15 @@ static void resolve_filename(const char *raw, char *out, int out_size) {
     src = raw;
     while (*src == ' ' || *src == '\t') src++;
 
-    /* Strip leading quote */
     if (*src == '"') src++;
 
     strncpy(out, src, out_size - 5);
     out[out_size - 5] = '\0';
     trim_newline(out);
 
-    /* Strip trailing quote */
     len = (int)strlen(out);
     if (len > 0 && out[len - 1] == '"') { out[len - 1] = '\0'; len--; }
 
-    /* Strip trailing whitespace */
     while (len > 0 && (out[len - 1] == ' ' || out[len - 1] == '\t')) {
         out[len - 1] = '\0';
         len--;
@@ -935,18 +876,16 @@ static void resolve_filename(const char *raw, char *out, int out_size) {
 
     if (len == 0) return;
 
-    /* Check if already ends in .BAS or .bas (case-insensitive) */
     if (len >= 4) {
         char e0 = out[len - 4];
         char e1 = (char)toupper((unsigned char)out[len - 3]);
         char e2 = (char)toupper((unsigned char)out[len - 2]);
         char e3 = (char)toupper((unsigned char)out[len - 1]);
         if (e0 == '.' && e1 == 'B' && e2 == 'A' && e3 == 'S') {
-            return;  /* Already has .BAS extension */
+            return;
         }
     }
 
-    /* Auto-append .BAS */
     if (len + 4 < out_size) {
         strcat(out, ".BAS");
     }
@@ -1006,36 +945,41 @@ static void load_program(const char *filename) {
 
 /* =========================================================================
  * MAIN / REPL
- *
- * The read-eval-print loop.
- *
- * WHAT CAN BE CHANGED:
- *   - The prompt string "> " can be changed to any format.
- *   - The banner text and version number.
- *
- * WHAT CANNOT BE CHANGED:
- *   - srand() must be called before any RND() usage.
- *   - Lines with a leading digit must be stored, not executed.
- *   - Lines without a leading digit must be executed immediately.
- *   - EOF on stdin must exit cleanly.
- *
- * WHAT TO EXPECT:
- *   - The interpreter prints the banner at startup.
- *   - Empty lines are silently ignored.
- *   - The loop runs until BYE is typed or EOF is received.
- *
- * IF SOMETHING BREAKS:
- *   - If the prompt does not appear, check fflush(stdout).
- *   - If input is garbled, check the newline stripping code.
  * ========================================================================= */
 
-int main(void) {
+int main(int argc, char **argv) {
     char input_buffer[LINE_LEN + 1];
+    int batch_mode = 0;
+    int file_arg_idx = 0;
+    int i;
 
     srand((unsigned int)time(NULL));
     clear_all();
-    printf("Palo Alto Tiny BASIC (C89 Port) v1.2\n");
-    printf("Ready.\n");
+
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--batch") == 0 || strcmp(argv[i], "-q") == 0) {
+            batch_mode = 1;
+        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: tinybasic [options] [filename.bas]\n");
+            printf("Options:\n");
+            printf("  -b, --batch   Run in batch mode and exit after program completes\n");
+            printf("  -h, --help    Show this help message\n");
+            return 0;
+        } else if (argv[i][0] != '-' && file_arg_idx == 0) {
+            file_arg_idx = i;
+        }
+    }
+
+    printf("PALO ALTO TINY BASIC v1.4\n\n");
+    printf("OK\n");
+
+    if (file_arg_idx > 0) {
+        load_program(argv[file_arg_idx]);
+        run_program();
+        if (batch_mode) {
+            return 0;
+        }
+    }
 
     while (1) {
         printf("> ");
@@ -1043,7 +987,6 @@ int main(void) {
         if (fgets(input_buffer, sizeof(input_buffer), stdin) == NULL) break;
 
         trim_newline(input_buffer);
-        uppercase_line(input_buffer);
         if (input_buffer[0] == '\0') continue;
 
         if (isdigit((unsigned char)input_buffer[0])) {

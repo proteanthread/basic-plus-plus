@@ -1,0 +1,18 @@
+BASIC++ STATEMENT REFERENCE: ERASE
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  ERASE arrayname [, arrayname2, ...]
+
+Reclaims memory allocated for dynamic arrays or resets the elements of static
+arrays back to initial zero / empty string values.
+
+2. PARAMETERS
+- arrayname: The name of one or more declared array variables.
+
+3. ERROR CODES
+- Error 9 (ERR_SUBSCRIPT_OUT_OF_RANGE): Specified array does not exist.
+
+4. EXAMPLES
+  10 ERASE Scores, PlayerNames$
+  20 DIM Scores(500)

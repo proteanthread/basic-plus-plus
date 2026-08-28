@@ -1,280 +1,210 @@
-OPTION Statement Reference
+======================================================================
+  BASIC++ V6.5.2 OPTIONS REFERENCE
+======================================================================
 
-Version 4.2.3
 
+======================================================================
+  1. STANDARD EDITION (baspp / baspp.exe)
+======================================================================
 
----
+The standard edition is the flagship desktop build that includes the full language, SDL2 graphics, TUI editor multiplexer, BGI rasterizer, segmented virtual memory, and all optional subsystems. Default memory pool is 640 MB.
 
-Table of Contents
 
-- OPTION BASE
-- OPTION STRICT
-- OPTION ANGLE
-- OPTION TAB
-- OPTION ZONE
-- OPTION ALIASES
-- OPTION KEYWORD
-- OPTION ARITHMETIC
-- Summary Table
-- See Also
+----------------------------------------------------------------------
+  Invocation
+----------------------------------------------------------------------
 
----
+baspp ? Start the interactive REPL with no program loaded.
 
-The OPTION statement configures interpreter behavior at runtime. All OPTION sub-commands take effect immediately and persist until changed, overridden by a dialect switch, or the interpreter exits.
+baspp filename.bas ? Load the specified file and start the REPL with the program in memory. The program is not automatically executed.
 
----
+baspp -c "statement" ? Execute a single statement in non-interactive mode and exit. Used for command-line automation and pipeline integration. The exit code is 0 on success, non-zero on error.
 
-1. OPTION BASE
+baspp -c "SELFTEST" ? Run the built-in self-test suite and report results.
 
 
-OPTION BASE 0
-OPTION BASE 1
+----------------------------------------------------------------------
+  Dialect Selection
+----------------------------------------------------------------------
 
+baspp -d CODE ? Set the active BASIC dialect. Available codes:
 
-Sets the default lower bound for array subscripts created with DIM.
+| Code | Dialect |
+|------|---------|
+| GWBS | GW-BASIC (default) |
+| QBAS | QBASIC |
+| E116 | ECMA-116 Full BASIC |
+| E055 | ECMA-55 Minimal BASIC |
+| SBAS | Tymshare Super BASIC |
+| PATB | Palo Alto Tiny BASIC |
+| SINC | Sinclair ZX Spectrum BASIC |
+| SQLB | SuperBASIC (Sinclair QL) |
+| APPL | Applesoft BASIC |
 
-| Setting | Behavior |
-|---------|----------|
-| OPTION BASE 0 (default) | DIM A(10) creates elements A(0) through A(10) — 11 elements |
-| OPTION BASE 1 | DIM A(10) creates elements A(1) through A(10) — 10 elements |
 
-OPTION BASE must be set before any DIM statement. Changing it after arrays are dimensioned does not resize existing arrays.
+----------------------------------------------------------------------
+  Logging
+----------------------------------------------------------------------
 
-This corresponds to ECMA-55 and ECMA-116 standard BASIC behavior.
+baspp --log ? Enable file logging. The default log file is baspp.log in the current directory.
 
+baspp --log=path ? Enable file logging to a specific path.
 
-OPTION BASE 1
-DIM Scores(5)
-FOR I = 1 TO 5
-  Scores(I) = I * 10
-NEXT I
+baspp --debug ? Enable debug-level logging (includes statement execution trace).
 
+baspp --trace ? Enable trace-level logging (includes lexer tokens, AST nodes, and VM state).
 
----
+Without any log flag, no log files are generated on disk. This is a firm invariant: BASIC++ never creates .LOG or .OUT files unless explicitly requested.
 
-2. OPTION STRICT
 
+----------------------------------------------------------------------
+  Security
+----------------------------------------------------------------------
 
-OPTION STRICT          ' Enable strict mode
-OPTION STRICT ON       ' Enable strict mode (same)
-OPTION STRICT OFF      ' Disable strict mode (union mode)
+baspp --security=N ? Set the initial security level (0-5). Default is 0 (OPEN).
 
+baspp --restrict=OP ? Restrict a specific operation at startup. Can be specified multiple times.
 
-Controls whether keyword filtering is enforced based on the active dialect.
 
-Union Mode (default, OPTION STRICT OFF):
-All keywords from all 16 dialects are available. A program can freely mix GW-BASIC's WHILE/WEND with Commodore's CLR, ECMA-116's WHEN EXCEPTION, and SUPER BASIC's UNLESS.
+======================================================================
+  2. LITE EDITION (bpp / bpp.exe)
+======================================================================
 
-Strict Mode (OPTION STRICT or OPTION STRICT ON):
-Only keywords that belong to the active dialect's bitmask are accepted. Any keyword not native to the current dialect raises a WHAT? error.
+The lite edition is a headless interactive REPL optimized for terminal environments, IoT devices, and server-side scripting. It excludes SDL2 graphics, the BGI canvas, SDL audio, the TUI editor multiplexer, and segmented virtual memory (vmem). Default memory pool is 384 MB.
 
 
-DIALECT "C64B"
-OPTION STRICT
-WHILE I < 10     ' ERROR! WHILE not in Commodore BASIC
-CLR              ' OK — CLR is in Commodore BASIC
+----------------------------------------------------------------------
+  Invocation
+----------------------------------------------------------------------
 
-OPTION STRICT OFF
-WHILE I < 10     ' OK — union mode, all keywords accepted
+bpp ? Start the lite interactive REPL.
 
+bpp filename.bas ? Load a file and start the REPL.
 
-Use OPTION STRICT to verify that a program is compatible with a specific machine's BASIC.
+bpp -c "statement" ? Execute a single statement and exit.
 
----
+bpp -d CODE ? Set the active dialect.
 
-3. OPTION ANGLE
 
+----------------------------------------------------------------------
+  Prompt Style
+----------------------------------------------------------------------
 
-OPTION ANGLE DEGREES
-OPTION ANGLE RADIANS
+The lite edition uses the Apple II / Commodore prompt style with the ] prompt character and Ready. status message. The banner reads:
 
+BASIC++ Lite Edition v6.5.2
+384 MB RAM Available.
 
-Controls whether trigonometric functions (SIN, COS, TAN, ATN, ASIN, ACOS) expect and return values in degrees or radians.
+Ready.
+]
 
-| Setting | Example |
-|---------|---------|
-| Radians (default) | SIN(3.14159) ≈ 0, ATN(1) = 0.7854 |
-| Degrees | SIN(90) = 1.0, ATN(1) = 45.0 |
 
-This setting is part of the ECMA-116 Full BASIC standard.
+======================================================================
+  3. BATCH SCRIPT RUNNER (bs / bs.exe)
+======================================================================
 
+The batch script runner is a headless non-interactive executor optimized for PowerShell, Bash, CGI pipelines, and automated jobs. Default memory pool is 64 MB. It produces zero banner, zero prompt, and zero REPL iterations.
 
-OPTION ANGLE DEGREES
-PRINT SIN(90)          ' 1
-PRINT COS(0)           ' 1
-PRINT ATN(1)           ' 45
 
-OPTION ANGLE RADIANS
-PRINT SIN(3.14159/2)   ' 1
-PRINT ATN(1)           ' 0.7854
+----------------------------------------------------------------------
+  Invocation
+----------------------------------------------------------------------
 
+bs filename.bas ? Execute the script file and exit. Output goes to stdout, errors to stderr.
 
----
+bs -d CODE filename.bas ? Execute with a specific dialect.
 
-4. OPTION TAB
 
+----------------------------------------------------------------------
+  Exit Codes
+----------------------------------------------------------------------
 
-OPTION TAB REAL
-OPTION TAB SPACES
-OPTION TAB             ' Show current mode
+0 ? Script completed successfully.
+1 ? Runtime error occurred.
+2 ? File not found or could not be opened.
+3 ? Syntax error during parsing.
 
 
-Controls how the TAB() function in PRINT statements moves to a column position.
+----------------------------------------------------------------------
+  Pipeline Integration
+----------------------------------------------------------------------
 
-| Setting | Behavior |
-|---------|----------|
-| Spaces (default) | TAB emits space characters (ASCII 32) to reach the target column. Compatible with all terminals and file output. |
-| Real | TAB emits actual horizontal tab characters (HT, ASCII 9). Smaller output but depends on terminal tab stop settings (usually every 8 columns). |
+The batch runner is designed for use in shell pipelines. It accepts input from stdin when the program uses INPUT statements without a file channel. Output from PRINT goes to stdout. Error messages go to stderr. This separation allows clean pipeline composition:
 
+```bash
+echo "42" | bs compute.bas > result.txt
 
-OPTION TAB SPACES
-PRINT TAB(20); "HERE"     ' 20 spaces then "HERE"
 
-OPTION TAB REAL
-PRINT TAB(20); "HERE"     ' HT characters then "HERE"
+======================================================================
+  4. COMPILER AND TRANSPILER (bppc / bppc.exe)
+======================================================================
 
+The compiler transpiles BASIC++ source to clean C17 or appends bytecode directly to a C17 VM stub for standalone executable creation.
 
----
 
-5. OPTION ZONE
+----------------------------------------------------------------------
+  Invocation
+----------------------------------------------------------------------
 
+bppc input.bas -o output.c ? Transpile to C17 source.
 
-OPTION ZONE n          ' Set zone width to n columns
-OPTION ZONE 0          ' Reset to dialect default
+bppc input.bas -o output.exe ? Compile to standalone executable (appends bytecode to VM stub).
 
+bppc input.bas --target c17 ? Explicitly select C17 output.
 
-Overrides the PRINT comma zone width. When PRINT uses commas to separate output items, each item is placed at the next multiple of the zone width.
 
-Default zone widths by dialect:
+======================================================================
+  5. DETOKENIZER (detok / detok.exe)
+======================================================================
 
-| Dialect | Zone Width |
-|---------|-----------|
-| PATB (Palo Alto Tiny BASIC) | 8 columns |
-| Atari / C64B | 10 columns |
-| GW-BASIC | 14 columns (Microsoft standard) |
-| Apple / CoCo | 16 columns |
+The detokenizer decodes legacy GW-BASIC binary-format files to readable ASCII text.
 
 
-OPTION ZONE 20
-PRINT 1, 2, 3
-' Output: 1                   2                   3
+----------------------------------------------------------------------
+  Invocation
+----------------------------------------------------------------------
 
-OPTION ZONE 0
-' Reset to dialect default (e.g., 14 for GW-BASIC)
+detok input.bas -o output.txt ? Decode a tokenized GW-BASIC file.
 
+detok input.bas ? Print decoded text to stdout.
 
----
 
-6. OPTION ALIASES
+======================================================================
+  6. MEMORY PROFILES
+======================================================================
 
+| Profile | Program | Variables | Strings | Scratch | Stack |
+|---------|---------|-----------|---------|---------|-------|
+| Modern (baspp) | 128 MB | 128 MB | 256 MB | 128 MB | 1023 |
+| Lite (bpp) | 64 MB | 64 MB | 192 MB | 64 MB | 1023 |
+| FreeDOS 16-bit | 32 KB | 16 KB | 16 KB | 8 KB | 63 |
+| Embedded | 8 KB | 4 KB | 4 KB | 2 KB | 31 |
 
-OPTION ALIASES
+The total announced memory (640 MB for standard, 384 MB for lite, 64 MB for batch runner) is the sum of all pools. Individual pool sizes are configurable at build time through the BASIC_DEFAULT_PROG_MEM, BASIC_DEFAULT_VAR_MEM, BASIC_DEFAULT_STR_MEM, and BASIC_DEFAULT_SCRATCH_MEM defines in engine/include/types/config.h.
 
 
-Displays the current alias system capacity — how many keyword aliases are defined vs. the maximum allowed.
+======================================================================
+  7. FEATURE SUPPORT GATES
+======================================================================
 
+Build-time feature gates control which subsystems are compiled into each edition. The gates are defined in engine/include/types/config.h:
 
-Alias capacity: 5 / 128
-
-
-This is a diagnostic command. To manage aliases themselves, use the ALIAS command. See Using_Aliases for complete alias documentation.
-
----
-
-7. OPTION KEYWORD
-
-
-OPTION KEYWORD UPPER     ' All keywords stored/displayed uppercase
-OPTION KEYWORD LOWER     ' All keywords stored/displayed lowercase
-OPTION KEYWORD TITLE     ' Keywords in Title Case
-OPTION KEYWORD MIXED     ' Keywords stored as-entered (default)
-OPTION KEYWORD           ' Show current mode
-
-
-Controls how keywords are stored and displayed in LIST output and error messages.
-
-| Setting | Behavior | Example |
-|---------|----------|---------|
-| Mixed (default) | Keywords stored exactly as typed | "print" stays "print" |
-| Upper | Converted to uppercase | "print" → "PRINT" |
-| Lower | Converted to lowercase | "PRINT" → "print" |
-| Title | Converted to title case | "PRINT" → "Print" |
-
-
-OPTION KEYWORD UPPER
-10 print "hello"
-LIST
-' Output: 10 PRINT "hello"
-
-
-> Note: OPTION KEYWORD affects LIST output and keyword storage, not parsing. Keywords are always recognized case-insensitively.
-
----
-
-8. OPTION ARITHMETIC
-
-
-OPTION ARITHMETIC NATIVE
-OPTION ARITHMETIC DECIMAL
-
-
-Controls the arithmetic mode as defined by ECMA-116.
-
-| Setting | Description |
-|---------|-------------|
-| Native (default) | Uses hardware IEEE 754 floating-point arithmetic. Fast and compatible with all dialects. |
-| Decimal | Base-10 decimal arithmetic for exact representation of values like 0.1. Defined in ECMA-116 but not currently implemented — raises a SORRY error. |
-
----
-
-9. Configuration File
-
-BASIC++ reads user-configurable defaults from a platform-specific INI-style configuration file at boot time.
-
-Config File Names
-
-| Platform | Filename |
-|----------|----------|
-| Linux | baspp.cfg |
-| Windows | basicpp.cfg |
-| FreeDOS | baspp.cfg |
-
-Config File Search Order
-
-1. Current working directory
-2. Home directory (~/ on Linux, %USERPROFILE% on Windows)
-
-Configuration Priority Chain
-
-Settings are applied in this order (highest priority last):
-
-1. Compiled defaults (built into the interpreter binary)
-2. Config file (baspp.cfg / basicpp.cfg / baspp.cfg)
-3. Command-line switches (-d, -s, -S, -f)
-4. Runtime commands (DIALECT, SECURITY, OPTION STRICT)
-
-Each level overrides the one before it. Runtime commands always have the final say.
-
----
-
-Summary Table
-
-| Command | Default | Standard |
-|---------|---------|----------|
-| OPTION BASE 0\|1 | 0 | ECMA-55 |
-| OPTION STRICT [ON\|OFF] | OFF (union) | BPP |
-| OPTION ANGLE DEGREES\|RADIANS | RADIANS | ECMA-116 |
-| OPTION TAB REAL\|SPACES | SPACES | BPP |
-| OPTION ZONE n | Dialect default | BPP |
-| OPTION ALIASES | (diagnostic) | BPP |
-| OPTION KEYWORD UPPER\|LOWER\|TITLE\|MIXED | MIXED | BPP |
-| OPTION ARITHMETIC NATIVE\|DECIMAL | NATIVE | ECMA-116 |
-
----
-
-See Also
-
-- Quick_Reference — Complete keyword listing
-- Using_Aliases — ALIAS command reference
-
-@COPYLEFT ALL WRONGS RESERVED
+| Feature | Standard | Lite | Notes |
+|---------|----------|------|-------|
+| SUPPORT_FILES | Yes | Yes | File I/O subsystem |
+| SUPPORT_TRY | Yes | Yes | TRY/CATCH exception handling |
+| SUPPORT_STRUCT | Yes | Yes | TYPE/CLASS structures |
+| SUPPORT_MODULE | Yes | Yes | Module loading system |
+| SUPPORT_TASK | Yes | Yes | Background task system |
+| SUPPORT_HELP | Yes | Yes | Interactive help system |
+| SUPPORT_GRAPHICS | Yes | No | SDL2 graphics and BGI |
+| SUPPORT_MAT | Yes | Yes | Matrix operations |
+| SUPPORT_NET | Yes | Yes | Network operations |
+| SUPPORT_GEMINI | Yes | Yes | Gemini protocol support |
+| SUPPORT_BIOS | Yes | No | BIOS virtualization |
+| SUPPORT_JSON | Yes | No | JSON parsing |
+| SUPPORT_XML | Yes | No | XML parsing |
+| SUPPORT_INI | Yes | No | INI file parsing |
+| SUPPORT_YAML | Yes | Yes | YAML support |
+| SUPPORT_OOP | Yes | Yes | Object-oriented features |
+| SUPPORT_EDITOR | Yes | No | TUI editor multiplexer |

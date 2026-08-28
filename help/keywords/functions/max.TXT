@@ -1,0 +1,17 @@
+MAX Maximum Value Function
+======================================================================
+
+The MAX function returns the largest value among its arguments or array.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    largest = MAX(val1, val2 [, val3, ...])
+    largest = MAX(array())
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT MAX(5, 10, 3)   : REM Outputs 10

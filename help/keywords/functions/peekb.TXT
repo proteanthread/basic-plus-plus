@@ -1,0 +1,33 @@
+PEEKB Read Banked Memory Byte Function
+======================================================================
+
+The PEEKB function reads an 8-bit byte value (0 to 255) from an explicit
+64KB memory bank and offset.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    byte_val% = PEEKB(bank_number%, offset_address)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Reads directly from specified bank without modifying BANK register.
+  - Returns integer in range 0..255.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  5           ERR_ILLEGAL_FUNCTION  Bank or offset out of range
+  70          ERR_PERMISSION_DENIED Memory access restricted
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT PEEKB(2, &H2000)

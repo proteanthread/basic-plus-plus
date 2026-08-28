@@ -1,206 +1,100 @@
-# Device Discovery in BASIC++
+# BASIC++ v6.5.2 Device Discovery
 
+## 1. OVERVIEW
 
----
+Device discovery allows BASIC++ programs to query the available virtual devices at runtime. This is useful for programs that adapt their behavior based on which subsystems are present — for example, falling back to text mode when graphics are unavailable, or skipping network operations when VNet is disabled.
 
-## Table of Contents
+## 2. THE DEVICES COMMAND
 
-- Functions
-  - DEVICECOUNT
-  - DEVICE$(n)
-  - DEVICECLASS$(n)
-  - DEVICEFIND(name$)
-  - DEVICEINFO$(n, key$)
-- Complete Example
-  - Device Inventory
-  - Find Sensor by Class
-- Platform Improvements (Milestone 26)
-  - Linux Sleep
-  - Linux INKEY$
-  - Buffer Safety
-- See Also
-
----
-
-> **Milestone 26** — Virtual Device Bus
-
-BASIC++ provides five functions for programmatic device enumeration. These
-bridge the C-level VDev discovery API to BASIC programs, enabling
-device-adaptive code, hot-plug detection, and runtime device inspection.
-
-## Functions
-
-### DEVICECOUNT
-
-Returns the number of registered virtual devices. No parentheses.
+DEVICES lists all registered virtual devices with their slot number, type, name, and status:
 
 ```basic
-PRINT "Devices:"; DEVICECOUNT
+> DEVICES
+Slot  Type      Name          Status
+----  --------  -----------   ------
+  0   VCon      Console       Active
+  1   File      FileSystem    Active
+  2   VNet      Network       Idle
+  3   VFS       VirtFS        Active
+  4   BGI       Graphics      Disabled
+  5   BIOS      PCBios        Active
+  6   FujiNet   FujiNet       Idle
 ```
 
-Always returns at least 3 (CON:, ERR:, FILE: are built-in).
+Status values: Active (initialized and ready), Idle (registered but not currently in use), Disabled (compiled out or security-blocked).
 
----
+## 3. PROGRAMMATIC DEVICE QUERIES
 
-### DEVICE$(n)
+DEVICES$ returns the device list as a string that can be parsed programmatically.
 
-Returns the name of the device at slot `n`. Slots are 0-based.
+DEVSTATUS$(slot) returns the status of the device in the specified slot as a string: "ACTIVE", "IDLE", "DISABLED", or "EMPTY".
 
-```basic
-PRINT DEVICE$(0)   ' → "CON:"
-PRINT DEVICE$(1)   ' → "ERR:"
-PRINT DEVICE$(2)   ' → "FILE:"
-```
+DEVNAME$(slot) returns the name of the device in the specified slot.
 
-Returns empty string if slot is unoccupied or out of range.
+DEVTYPE$(slot) returns the type of the device in the specified slot.
 
----
-
-### DEVICECLASS$(n)
-
-Returns the class name of the device at slot `n`.
+These functions allow programs to check for device availability before attempting to use them:
 
 ```basic
-PRINT DEVICECLASS$(0)   ' → "Console"
-PRINT DEVICECLASS$(6)   ' → "Network"
-```
-
-#### Device Classes
-
-| Class | Description | Examples |
-|-------|-------------|----------|
-| Console | Human I/O | Screen, keyboard |
-| File | Storage | Disk files |
-| Serial | Communication | RS-232, USB serial |
-| Printer | Output | LPT, CUPS |
-| Audio | Sound | Speaker, MIDI |
-| Network | Networking | TCP, UDP, HTTP |
-| GPIO | Embedded I/O | RPi pins |
-| I2C | Embedded bus | Sensors, displays |
-| SPI | Embedded bus | Flash, SD card |
-| Sensor | Data capture | Temp, GPS |
-| Display | Visual output | LCD, OLED |
-| Storage | Block I/O | SD, USB drive |
-| HID | Input device | Joystick, gamepad |
-| Camera | Video capture | Webcam |
-| Bridge | MCU gateway | Arduino, ESP32 |
-| Bluetooth | Wireless | BT Classic, BLE |
-| Clipboard | System | Copy/paste |
-| Pipe | IPC | Process pipes |
-| Timer | Timing | HW/SW timers |
-| Custom | User-defined | Anything else |
-| Unknown | Unclassified | Legacy VDevs |
-
----
-
-### DEVICEFIND(name$)
-
-Searches for a device by name. Case-insensitive. Returns slot number, or
-`-1` if not found.
-
-```basic
-S = DEVICEFIND("NET:")
-IF S >= 0 THEN
-  PRINT "NET: found at slot"; S
-ELSE
-  PRINT "NET: not available"
-END IF
-```
-
-#### Hot-Plug Detection Pattern
-
-```basic
-10 WHILE DEVICEFIND("USB:") < 0
-20   PRINT "Waiting for USB device..."
-30   SLEEP 1000
-40 WEND
-50 PRINT "USB device detected!"
-```
-
----
-
-### DEVICEINFO$(n, key$)
-
-Queries device metadata by key name.
-
-```basic
-PRINT DEVICEINFO$(0, "description")  ' → "Standard console"
-PRINT DEVICEINFO$(0, "version")      ' → "2.0"
-```
-
-#### Supported Keys
-
-| Key | Returns |
-|-----|---------|
-| `"class"` | Device class name |
-| `"caps"` | Capability flags (hex) |
-| `"version"` | Version string |
-| `"description"` | Human-readable description |
-| `"status"` | Device status |
-
-Returns empty string if slot is unoccupied or key is unrecognized.
-
----
-
-## Complete Example
-
-### Device Inventory
-
-```basic
-10 REM === Device Inventory ===
-20 N = DEVICECOUNT
-30 PRINT N; " device(s) registered"
-40 PRINT
-50 PRINT "Slot  Name        Class       Description"
-60 PRINT "----  ----        -----       -----------"
-70 FOR I = 0 TO N - 1
-80   N$ = DEVICE$(I)
-90   IF N$ <> "" THEN
-100    C$ = DEVICECLASS$(I)
-110    D$ = DEVICEINFO$(I, "description")
-120    PRINT I; "  "; N$; "  "; C$; "  "; D$
-130  END IF
-140 NEXT I
-```
-
-### Find Sensor by Class
-
-```basic
-10 FOR I = 0 TO DEVICECOUNT - 1
-20   IF DEVICECLASS$(I) = "Sensor" THEN
-30     PRINT "Sensor: "; DEVICE$(I);
-40     PRINT " - "; DEVICEINFO$(I, "description")
+10 GraphicsAvailable = 0
+20 FOR I = 0 TO 15
+30   IF DEVTYPE$(I) = "BGI" AND DEVSTATUS$(I) <> "DISABLED" THEN
+40     GraphicsAvailable = 1
 50   END IF
 60 NEXT I
+70 IF GraphicsAvailable THEN
+80   SCREEN 12
+90 ELSE
+100  PRINT "Running in text mode"
+110 END IF
 ```
 
----
+## 4. FEATURE DETECTION
 
-## Platform Improvements (Milestone 26)
+Beyond device discovery, BASIC++ provides feature detection through the INFO command and related introspection functions:
 
-### Linux Sleep
+VER$ returns the version string. DIALECT$ returns the active dialect name. MEMMAP$ returns the memory profile name.
 
-`SLEEP` now works correctly on Linux using `usleep()`. Previously it was a
-no-op.
+The SUPPORT_* feature gates determine which subsystems are compiled into the current build. Programs can detect available features by attempting operations inside TRY/CATCH blocks:
 
-### Linux INKEY$
+```basic
+10 TRY
+20   SCREEN 0        ' Test if graphics are available
+30   HasGraphics = 1
+40 CATCH
+50   HasGraphics = 0
+60 END TRY
+```
 
-`INKEY$` now works on Linux using `termios` non-blocking stdin reads.
-Previously it always returned empty string.
+Error 73 (Advanced feature disabled) indicates that a feature gate has excluded the requested subsystem from the current build.
 
-### Buffer Safety
+## 5. MOUNT AND UMOUNT
 
-`vdev_printf` now uses `vsnprintf` instead of `vsprintf` to prevent
-potential buffer overflows on long format strings.
+MOUNT path TO target creates a virtual device mount point. UMOUNT path removes it. Mount points are tracked by the VFS and displayed by DEVMAP:
 
----
+```basic
+> DEVMAP
+Mount Points:
+  A: -> /home/user/basic/drive_a
+  B: -> /home/user/basic/drive_b
+Device Names:
+  CON: -> VCon
+  NUL: -> Null
+  LPT1: -> Printer
+  N: -> FujiNet
+```
 
-## See Also
+## 6. DEVICE EVENTS
 
-- `VDEV` — List all devices (command output)
-- `DEVMAP` — Device slot mapping with aliases
-- `VCON` — Console device info
-- `VMACH` — Virtual machine state
-- `VMEM` — Virtual memory info
-- `VNET` — Network status
-- `VTERM` — Terminal info
+When a device status changes (connected, disconnected, error), a device event can be trapped:
+
+```basic
+10 ON DEVICE GOSUB 5000
+20 DEVICE ON
+```
+
+Inside the handler, DEVSLOT returns the slot number of the device that triggered the event, and DEVEVENT$ returns the event type ("CONNECT", "DISCONNECT", "ERROR", "READY").
+
+## 7. HOT-PLUGGING
+
+Module-registered devices support hot-plugging. When a module is loaded (MODULE LOAD), its devices are registered and appear in DEVICES output. When a module is unloaded (MODULE UNLOAD), its devices are removed. Programs that monitor device events receive notifications for these changes.

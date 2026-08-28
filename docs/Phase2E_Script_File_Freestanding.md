@@ -1,0 +1,38 @@
+# Phase 2E: libscript (FILE* -> IoHandle abstraction) Freestanding Conversion
+
+## 1. Overview
+Phase 2E completes the freestanding C17 architectural conversion for the Batch Script Runner and File I/O subsystem (`libscript`). All direct standard C library stream handles (`FILE*`), hosted libc headers (`<stdio.h>`, `<stdlib.h>`, `<string.h>`, `<ctype.h>`), memory allocations (`calloc`, `malloc`, `free`), memory manipulation functions (`memset`, `memcpy`), string operations (`strlen`, `strcpy`, `strcmp`, `strncmp`, `strncpy`, `strchr`, `strcasecmp`, `strncasecmp`), and formatting routines (`snprintf`, `vsnprintf`) have been migrated to the pure C17 freestanding Runtime Library (`runtime_*`) and Hardware Abstraction Layer `IoHandle` / `hal->io.*` operations.
+
+---
+
+## 2. Converted Source Inventory & Structure
+
+### 2.1 File I/O Subsystem (`libscript`)
+- [`engine/include/runtime/file.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/include/runtime/file.h): Replaced `<stdio.h>` with freestanding `"hal/io_hal.h"` and updated `file_get_handle` signature from `FILE *` to `IoHandle`.
+- [`engine/include/runtime/file_internal.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/include/runtime/file_internal.h): Removed `<stdio.h>`, `<stdlib.h>`, `<string.h>`, `<ctype.h>`; switched struct channel storage to `IoHandle handle`.
+- [`engine/src/runtime/file.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/runtime/file.c): Wrapper unit referencing internal freestanding definitions.
+- [`engine/src/runtime/file/file_channel.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/runtime/file/file_channel.c): Channel lifecycle (`file_init`, `file_shutdown`, `file_open`, `file_close`, `file_is_open`, `file_get_handle`) migrated to `hal->io.file_open`, `hal->io.file_close`, `hal->io.file_remove`, and `hal->mem.alloc`/`free`.
+- [`engine/src/runtime/file/file_io.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/runtime/file/file_io.c): Character and stream reading/writing (`file_getc`, `file_ungetc`, `file_gets`, `file_puts`, `file_write_raw`, `file_printf`, `file_flush`, `file_read`, `file_write`) migrated to `hal->io.file_read`, `hal->io.file_write`, `hal->io.file_flush`, and `runtime_vsnprintf`.
+- [`engine/src/runtime/file/file_record.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/runtime/file/file_record.c): File positioning and size querying (`file_lof`, `file_loc`, `file_eof`, `file_seek`, `file_get_status`, `file_get_typ`) migrated to `hal->io.file_seek`, `hal->io.file_tell`, and `hal->io.file_eof`.
+- [`engine/src/runtime/file/file_txn.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/runtime/file/file_txn.c): Range locking (`file_lock_range`, `file_unlock_range`, `file_check_overlap`) and atomic transaction rollback/commit (`file_txn_begin`, `file_txn_log_write`, `file_txn_rollback`, `file_txn_commit`) migrated to `hal->io.file_*` and HAL memory management.
+
+### 2.2 Caller Synchronization
+- [`engine/src/statements/filesystem/files.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/filesystem/files.c): Rewound `#channel` via `file_seek(fc, ch, 1)` and `file_flush(fc, ch)` without exposing raw file descriptors.
+- [`engine/src/statements/filesystem/input_file.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/filesystem/input_file.c): Updated EOF sentinel checks to freestanding `-1`.
+- [`engine/src/statements/matrices/mat_input.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/matrices/mat_input.c): Updated file stream scanning EOF sentinels to `-1`.
+- [`engine/src/statements/matrices/mat_read.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/statements/matrices/mat_read.c): Updated stream tokenizer EOF sentinels to `-1`.
+
+---
+
+## 3. Verification & Test Suite
+- **Unit Test Suite**: [`tests/script_freestanding_test.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/tests/script_freestanding_test.c) covering:
+  1. Sequential Text I/O & Channel Lifecycle (`file_init`, `file_open`, `file_puts`, `file_gets`, `file_getc`, `file_ungetc`, `file_eof`, `file_close`, `file_shutdown`).
+  2. Binary and Random Access I/O (`file_open`, `file_write`, `file_seek`, `file_loc`, `file_lof`, `file_read`).
+  3. Range Locking & Conflict Detection (`file_lock_range`, `file_check_overlap`, `file_unlock_range`).
+  4. Transaction Journaling & Rollback (`file_txn_begin`, `file_txn_log_write`, `file_txn_rollback`, `file_txn_commit`).
+- **Freestanding Test Execution**: All 6 freestanding suites (`runtime_freestanding_test`, `boot_freestanding_test`, `kernel_freestanding_test`, `hardware_freestanding_test`, `server_freestanding_test`, `script_freestanding_test`) pass with 100% verification.
+- **Master Regression Suites**:
+  - `tests/qb_vbdos_master.bas`: 10 / 10 Packages PASSED (100%).
+  - `tests/vintage_ecosystems_master.bas`: 14 / 14 Packages PASSED (100%).
+  - `tests/vintage_deep_fuzz_stress.bas`: 8 / 8 Tests PASSED (100%).
+  - Immediate execution `bs -c "PRINT 42"`: Verified.

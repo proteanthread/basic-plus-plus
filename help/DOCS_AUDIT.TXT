@@ -1,0 +1,133 @@
+======================================================================
+  BASIC++ V6.5.2 DOCUMENTATION AUDIT
+======================================================================
+
+
+======================================================================
+  1. PURPOSE
+======================================================================
+
+This document tracks the completeness and accuracy of the BASIC++ documentation suite. Each documentation file should contain topic-specific technical content that is unique to its subject, not shared boilerplate.
+
+
+======================================================================
+  2. DOCUMENTATION STRUCTURE
+======================================================================
+
+The documentation is organized in two parallel directories:
+
+- **docs/** ? Markdown files (.md) with full formatting, code blocks, and tables.
+- **help/** ? Plaintext files (.TXT) mirroring the content of docs/ with markdown syntax stripped.
+
+Every .md file in docs/ must have a corresponding .TXT file in help/ with identical technical content.
+
+
+======================================================================
+  3. TOP-LEVEL DOCUMENT INVENTORY
+======================================================================
+
+The following top-level guide and reference documents exist in docs/:
+
+
+----------------------------------------------------------------------
+  Core User Guides
+----------------------------------------------------------------------
+| Document | Status | Description |
+|----------|--------|-------------|
+| Users_Guide.md | CURRENT | End-user guide for BASIC++ |
+| Programmers_Guide.md | CURRENT | Programming reference |
+| QUICK_REFERENCE.md | CURRENT | Concise syntax/keyword card |
+| How_To_Use_Help.md | CURRENT | HELP/CATALOG/INFO usage |
+| Options_Reference.md | CURRENT | CLI options and build targets |
+
+
+----------------------------------------------------------------------
+  Developer Documentation
+----------------------------------------------------------------------
+| Document | Status | Description |
+|----------|--------|-------------|
+| DEVELOPER_GUIDE.md | CURRENT | Contributor coding guide |
+| Building_BASIC++.md | CURRENT | Build instructions |
+| Building_A_Minimal_BASIC++.md | CURRENT | Minimal/embedded builds |
+| Debugging_And_Testing.md | CURRENT | Debug tools and test framework |
+
+
+----------------------------------------------------------------------
+  Architecture Reference
+----------------------------------------------------------------------
+| Document | Status | Description |
+|----------|--------|-------------|
+| Internals_And_Architecture.md | CURRENT | Engine architecture |
+| Module_System_Architecture.md | CURRENT | Module lifecycle |
+| Library_System.md | CURRENT | 12-library chain |
+| Standard_Library.md | CURRENT | Function/statement reference |
+| SOURCE_MAP.md | CURRENT | File-to-feature mapping |
+| SOURCE_TREE.md | CURRENT | Directory structure |
+| ENGINE_IMPLEMENTED_FEATURES.md | CURRENT | Feature status matrix |
+| IMPLEMENTATION_STATUS.md | CURRENT | Version and milestone tracking |
+| Error_Handling.md | CURRENT | Error codes and handlers |
+
+
+======================================================================
+  4. AUDIT CRITERIA
+======================================================================
+
+Each document is evaluated against these criteria:
+
+1. **Unique Content** ? The document contains prose specific to its topic, not duplicated from other documents.
+2. **Technical Accuracy** ? Facts, code examples, error codes, and source file references match the v6.5.2 engine.
+3. **Completeness** ? The document covers its topic thoroughly, not just superficially.
+4. **Help Mirror Parity** ? The .TXT file matches the .md file in content (formatting differences are expected).
+5. **Version Currency** ? References use v6.5.2 details (engine/ paths, BppError codes, BppKeywordId values), not legacy v5 details.
+
+
+======================================================================
+  5. KNOWN ISSUES
+======================================================================
+
+- Documents that have not yet been rewritten still contain homogenized boilerplate from the previous automated process. These documents all share identical 12-section template text with only the title changed.
+- The keyword subdirectory files (docs/keywords/statements/ and docs/keywords/functions/) have not yet been audited or rewritten.
+- Topic subdirectory files in docs/ have not yet been audited or rewritten.
+
+
+======================================================================
+  6. REWRITE PROGRESS
+======================================================================
+
+PHASE 1 - Top-Level Guide/Reference Documents (78 files x 2 = 156 outputs)
+
+  Batch   Scope                                    Status
+  ------  ---------------------------------------  ----------
+  1       15 top-level guides                      Complete
+  2       15 language feature docs                  Complete
+  3       15 I/O and virtual device docs            Complete
+  4       15 dialect and compiler docs              Complete
+  5       18 security, porting, extension docs      Complete
+
+PHASE 2 - Subdirectory Documents & Keyword Consolidation (Complete)
+
+  All language keywords, statements, functions, libraries, and modules
+  have been consolidated strictly under keywords/. Duplicate files across
+  legacy topic folders have been removed, and resulting empty directories pruned.
+
+  Section / Directory          Scope                               Files  Status
+  ---------------------------  ----------------------------------  -----  -----------
+  keywords/statements/         Statements & Language Commands        171  Complete
+  keywords/functions/          Functions & System Variables          123  Complete
+  keywords/libraries/          Subsystems, Engines & Audio            72  Complete
+  keywords/modules/            Dialect Modules & Runtime Env          30  Complete
+  api/ & api/tutorials/        C17 Engine Developer APIs & Tuts       45  Complete
+  io/                          Advanced Subsystem I/O                 29  Complete
+  Introspection/               System Introspection & Hardware State   8  Complete
+  Game_Libraries_and_Engines/  Game Engine Architecture Overviews      2  Complete
+  Config_Environment/          Video Mode Configuration Reference      1  Complete
+  Persistence/                 Key-Value Storage Reference             1  Complete
+  ---------------------------  ----------------------------------  -----  -----------
+  Total Subdirectory Docs      Consolidated Deduplicated Layout      482  Complete
+
+DOCUMENTATION TOTALS (100% Mirror Parity)
+  - Top-Level Guides: 78 Markdown (docs/) + 78 Plaintext (help/) = 156 files
+  - Subdirectory Reference Docs: 482 Markdown (docs/) + 482 Plaintext (help/) = 964 files
+  - Grand Total: 560 Markdown (docs/) + 560 Plaintext (help/) = 1,120 files (0 duplicates)
+
+

@@ -1,0 +1,25 @@
+INKEYDOLLAR Non-Blocking Keyboard Character Input Function
+==========================================================
+
+Returns a single-character string from the keyboard buffer, or an empty string if no key was pressed.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    k$ = INKEY$
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  2-byte string returned for extended function/arrow keys (CHR$(0) + code).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DO
+    20   K$ = INKEY$
+    30 LOOP WHILE K$ = ""
+    40 PRINT "Key pressed: "; K$

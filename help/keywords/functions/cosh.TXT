@@ -1,0 +1,16 @@
+COSH Hyperbolic Cosine Function
+======================================================================
+
+The COSH function computes the hyperbolic cosine of a numeric value.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result# = COSH(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT COSH(0)   : REM Outputs 1

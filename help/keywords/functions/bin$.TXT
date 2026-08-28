@@ -1,0 +1,16 @@
+BIN$ Binary String Conversion Function
+======================================================================
+
+The BIN$ function converts an integer into its binary string representation.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    bin_str$ = BIN$(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT BIN$(10)   : REM Outputs "1010"

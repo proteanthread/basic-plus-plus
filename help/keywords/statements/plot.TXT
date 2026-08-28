@@ -1,0 +1,30 @@
+PLOT Graphics Coordinate Pixel Plotting Statement
+=================================================
+
+Plots a single pixel coordinate on the screen (Retro Atari / Commodore style).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    PLOT x%, y% [, color%]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Coordinates outside screen bounds.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Sets graphics pen position for subsequent DRAWTO commands.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 GRAPHICS 8
+    20 PLOT 100, 50
+    30 DRAWTO 150, 80

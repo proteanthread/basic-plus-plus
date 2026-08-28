@@ -1,0 +1,13 @@
+swarm Boids Flocking & Particle Swarm Simulation
+======================================================================
+
+The swarm library implements the Boids flocking algorithm (Separation,
+Alignment, Cohesion) and particle swarm physics.
+
+
+RULES
+----------------------------------------------------------------------
+
+  1. Separation: Avoid colliding with nearby flockmates.
+  2. Alignment : Steer in the same direction as neighbors.
+  3. Cohesion  : Stay close to the center of the local flock.

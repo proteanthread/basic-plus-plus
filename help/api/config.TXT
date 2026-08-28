@@ -1,0 +1,24 @@
+C17 API REFERENCE: ENGINE CONFIGURATION & LIMITS (types/config.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+Defines compile-time build parameters, bitness auto-detection, memory pool
+partitions, resource limits, and target profile definitions for v6.5.2.
+
+2. TARGET MEMORY PROFILES
+- Standard Desktop (baspp): 640 MB (128MB prog, 128MB var, 320MB str, 64MB scratch)
+- Lite Edition (bpp):       384 MB (64MB prog, 64MB var, 192MB str, 64MB scratch)
+- Batch Runner (bs):        64 MB unified pool
+
+3. CORE SYSTEM LIMITS
+- BASIC_MAX_OPEN_FILES:     256
+- BASIC_MAX_STACK_DEPTH:    1023
+- BASIC_MAX_NAMED_VARS:     8192
+- BASIC_MAX_DIM_ARRAYS:     1024
+- BASIC_MAX_STRING_LEN:     65535
+- BASIC_MAX_LINE_LEN:       1024
+
+4. PROMPT & BANNER INVARIANTS
+- baspp: Prompt is "> ", status is "Ok\n".
+- bpp:   Prompt is "] ", status is "Ready.\n".
+- bs:    Zero banner, zero prompt, non-interactive only.

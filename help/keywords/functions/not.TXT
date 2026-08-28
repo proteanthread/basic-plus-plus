@@ -1,0 +1,16 @@
+NOT Bitwise and Logical Negation Operator
+======================================================================
+
+The NOT operator performs bitwise bit inversion or logical negation.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result = NOT numeric_expression
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT NOT 0   : REM Outputs -1 (true)

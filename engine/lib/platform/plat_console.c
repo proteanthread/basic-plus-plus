@@ -1,65 +1,15 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
+// FILENAME: plat_console.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (select.c, string.h)
+// NEEDS: libengine (select.h, string.c, time.h, time.c, vm.h)
+// NEEDS: libkernel (types.h)
+// NEEDS: libplatform (platform.h)
+// Provides cross-platform OS abstraction primitives for plat_console.
+//
+// ---- Includes ----
 
-/**
- * @file plat_console.c
- * @brief Cross-platform OS console terminal I/O abstraction implementation.
- *
- * 1. WHAT IT DOES:
- *    Implements OS-native console terminal raw/cooked mode toggling (`plat_console_set_raw_mode()`), cursor positioning,
- *    terminal size queries (`plat_console_get_size()`), non-blocking keystroke reads (`plat_console_read_key()`), and ANSI color attribute translation.
- *
- * 2. WHY IT EXISTS:
- *    Abstracts OS-specific console API differences between Win32 console handles (`GetStdHandle`, `GetConsoleScreenBufferInfo`, `ReadConsoleInput`)
- *    and POSIX termios / ANSI terminal control sequences (`tcgetattr`, `tcsetattr`, `ioctl(TIOCGWINSZ)`).
- *
- * 3. WHY IT WORKS THIS WAY:
- *    Provides unified `plat_console_*` C functions wrapped around conditionally compiled `#ifdef _WIN32` and POSIX branches.
- *    Virtual Console (`VConContext`) calls these functions exclusively to manipulate physical terminal outputs.
- *
- * 4. DEPENDENCIES & COMPILATION:
- *    - Required Headers: `platform/plat_console.h`, `<termios.h>` (UNIX), `<windows.h>` (Windows)
- *    - CMake Target: `plat_console` micro-library linked into `libbasicpp` and `libbasicpp_lite`.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- *    - Included in `baspp` (Standard Desktop) and `bpp` (Lite REPL).
- *    - Included in `bs` (Script Runner) for headless standard output streams.
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- *    - To extend function key mapping (`F1`..`F12`, Home, End): extend ANSI escape sequence parser `plat_console_parse_ansi()`.
- *    - To change terminal color palette mapping: update `plat_console_attr_to_ansi()`.
- *
- * 7. WHAT CANNOT BE CHANGED:
- *    - `plat_console_restore()` MUST restore original terminal attributes on program exit.
- *    - Non-blocking key poll logic must return 0 immediately if no key is pending.
- *
- * 8. WHAT TO EXPECT:
- *    - `plat_console_read_key()` returns non-zero key code if available, 0 if queue is empty.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- *    - Check console handle validity (`GetStdHandle(STD_INPUT_HANDLE)` or `STDIN_FILENO`).
- *    - Verify `termios` flags clearing (`ICANON`, `ECHO`) on UNIX targets.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- *     - Terminal file descriptors (0, 1, 2) are valid standard streams.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- *     - Strict C17 compliance (`-std=c17`).
- *     - POSIX feature test macros (`_POSIX_C_SOURCE=200809L`) enabled for UNIX targets in CMake.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- *     - Prerequisite C Source Files: OS runtime system headers (`<termios.h>` / `<unistd.h>` on UNIX, `<windows.h>` on Windows).
- *     - Prerequisite Header Surfaces: `engine/include/platform/plat_console.h`, `engine/include/types/errors.h`.
- */
-
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
 #include "platform/platform.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -107,7 +57,7 @@
     #include <direct.h>
 #endif
 
-/* Shared input queue for kbhit/getch/mouse unified handling */
+// Shared input queue for kbhit/getch/mouse unified handling
 static int g_kb_queue[256];
 static int g_kb_head = 0;
 static int g_kb_tail = 0;
@@ -307,13 +257,33 @@ static void platform_poll_console_events(void) {
 }
 #endif
 
+bool platform_stdin_is_console(void) {
+#if defined(_WIN32)
+    HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+    if (hIn == INVALID_HANDLE_VALUE || hIn == NULL) return false;
+    DWORD mode = 0;
+    if (!GetConsoleMode(hIn, &mode)) return false;
+    return (GetFileType(hIn) & ~FILE_TYPE_REMOTE) == FILE_TYPE_CHAR;
+#elif defined(__WATCOMC__) || defined(MSDOS)
+    return isatty(0) != 0;
+#else
+    return isatty(STDIN_FILENO) != 0;
+#endif
+}
+
 bool platform_kbhit(void) {
 #if defined(_WIN32)
+    if (!platform_stdin_is_console()) {
+        return false;
+    }
     platform_poll_console_events();
     return g_kb_head != g_kb_tail;
 #elif defined(__WATCOMC__) || defined(MSDOS)
     return kbhit() != 0;
 #else
+    if (!platform_stdin_is_console()) {
+        return false;
+    }
     platform_poll_console_events();
     return g_kb_head != g_kb_tail;
 #endif
@@ -321,6 +291,9 @@ bool platform_kbhit(void) {
 
 int platform_getch(void) {
 #if defined(_WIN32)
+    if (!platform_stdin_is_console()) {
+        return getchar();
+    }
     while (g_kb_head == g_kb_tail) {
         platform_poll_console_events();
         Sleep(10);
@@ -331,6 +304,9 @@ int platform_getch(void) {
 #elif defined(__WATCOMC__) || defined(MSDOS)
     return getch();
 #else
+    if (!platform_stdin_is_console()) {
+        return getchar();
+    }
     while (g_kb_head == g_kb_tail) {
         platform_poll_console_events();
         usleep(10000);
@@ -347,9 +323,9 @@ int platform_console_height(void) {
     if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
         return csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
     }
-    return 25; /* Standard fallback */
+    return 25; // Standard fallback
 #elif defined(__WATCOMC__) || defined(MSDOS)
-    /* Standard 80x25 screen size on DOS */
+    // Standard 80x25 screen size on DOS
     return 25;
 #else
     struct winsize w;
@@ -400,7 +376,7 @@ void platform_tui_init(void) {
 
 void platform_tui_shutdown(void) {
 #if defined(_WIN32)
-    /* No specific shutdown required for Windows ANSI mode */
+    // No specific shutdown required for Windows ANSI mode
 #elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
   #ifndef STANDALONE_EDITOR
     endwin();

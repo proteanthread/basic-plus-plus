@@ -1,57 +1,19 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file segmented_mem.c
- * @brief Virtual Segmented Memory Emulator (`DEF SEG`, `PEEK`, `POKE`, `VARPTR`) for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements `vmem_init()`, `vmem_destroy()`, `vmem_set_def_seg()`, `vmem_peek()`, `vmem_poke()`, `vmem_varptr()`.
- *
- * 2. WHY IT EXISTS:
- * Emulates GW-BASIC / QBASIC 16-bit segmented memory (`DEF SEG = &HA000`) safely on modern 64-bit operating systems without raw memory dereferences or segmentation faults.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Maps 16-bit segments and 16-bit offsets to opaque handles and virtualized buffer regions registered in `HandleEntry` tables.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake library target 'libbasicpp' (excluded from 'libbasicpp_lite'). Includes "memory/segmented_mem.h", "runtime/strings.h", <stdlib.h>, <string.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in Desktop Standard Edition ('baspp'). Excluded from Lite ('bpp') and Script Runner ('bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Add memory-mapped virtual hardware regions for sound/graphics framebuffer emulation.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Opaque handle tracking invariant — raw host virtual addresses must never be returned to BASIC scripts.
- *
- * 8. WHAT TO EXPECT:
- * `vmem_varptr()` returns a pseudo-32-bit handle representing the variable address; `vmem_peek()` returns byte value (0..255).
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Trace handle allocation and array bounds in `HandleEntry` lookups.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid `VMemContext` pointer initialized via `vmem_init()`.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. 64-bit pointer safe (`uintptr_t`).
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/runtime/strings.c
- * Prerequisite Header Files:
- * - engine/include/memory/segmented_mem.h
- * - engine/include/runtime/strings.h
- */
+// FILENAME: segmented_mem.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libcore (error.c)
+// NEEDED BY: libengine (context.c, control.c, data.c, defseg.c)
+// NEEDED BY: libengine (dispatch_internal.h, events_internal.h)
+// NEEDED BY: libengine (exec_internal.h, peek.c, poke.c, vm_internal.h)
+// NEEDS: libcore (hal.h, memops.h, memops.c, segmented_mem.h)
+// NEEDS: libcore (strings.h, strings.c)
+// Provides core logic and interface definitions for segmented_mem within BASIC++.
+//
+// ---- Includes ----
 
 #include "memory/segmented_mem.h"
-#include <stdlib.h>
-#include <string.h>
+#include "hal/hal.h"
+#include "runtime/string/memops.h"
 #include "runtime/strings.h"
 
 #define MAX_HANDLES 65536
@@ -73,20 +35,24 @@ struct VMemContext {
 };
 
 VMemContext *vmem_init(VariableContext *var) {
-    VMemContext *ctx = (VMemContext *)calloc(1, sizeof(VMemContext));
+    HalContext *hal = hal_get();
+    VMemContext *ctx = (VMemContext *)(hal && hal->mem.alloc ? hal->mem.alloc(sizeof(VMemContext)) : NULL);
     if (!ctx) return NULL;
+    runtime_memset(ctx, 0, sizeof(VMemContext));
     ctx->var = var;
     ctx->def_seg = 0x0000;
     
     ctx->handle_capacity = 1024;
-    ctx->handles = (HandleEntry *)calloc(ctx->handle_capacity, sizeof(HandleEntry));
+    size_t handles_bytes = ctx->handle_capacity * sizeof(HandleEntry);
+    ctx->handles = (HandleEntry *)(hal && hal->mem.alloc ? hal->mem.alloc(handles_bytes) : NULL);
     if (!ctx->handles) {
-        free(ctx);
+        if (hal && hal->mem.free) hal->mem.free(ctx);
         return NULL;
     }
+    runtime_memset(ctx->handles, 0, handles_bytes);
     ctx->handle_count = 0;
     
-    /* We start handles at 0x10000000 to avoid conflicts with 0x0 segments */
+    // We start handles at 0x10000000 to avoid conflicts with 0x0 segments
     ctx->next_handle = 0x10000000;
     
     return ctx;
@@ -94,8 +60,9 @@ VMemContext *vmem_init(VariableContext *var) {
 
 void vmem_shutdown(VMemContext *ctx) {
     if (ctx) {
-        if (ctx->handles) free(ctx->handles);
-        free(ctx);
+        HalContext *hal = hal_get();
+        if (ctx->handles && hal && hal->mem.free) hal->mem.free(ctx->handles);
+        if (hal && hal->mem.free) hal->mem.free(ctx);
     }
 }
 
@@ -110,7 +77,7 @@ uint16_t vmem_get_def_seg(VMemContext *ctx) {
 uint32_t vmem_register_handle(VMemContext *ctx, BValue *val, bool is_string_data) {
     if (!ctx || !val) return 0;
     
-    /* Check if already registered */
+    // Check if already registered
     for (size_t i = 0; i < ctx->handle_count; i++) {
         if (ctx->handles[i].val == val && ctx->handles[i].is_string_data == is_string_data) {
             return ctx->handles[i].handle;
@@ -118,10 +85,14 @@ uint32_t vmem_register_handle(VMemContext *ctx, BValue *val, bool is_string_data
     }
     
     if (ctx->handle_count >= ctx->handle_capacity) {
+        HalContext *hal = hal_get();
         size_t new_cap = ctx->handle_capacity * 2;
-        HandleEntry *new_handles = (HandleEntry *)realloc(ctx->handles, new_cap * sizeof(HandleEntry));
-        if (!new_handles) return 0; /* OOM */
-        memset(new_handles + ctx->handle_capacity, 0, (new_cap - ctx->handle_capacity) * sizeof(HandleEntry));
+        size_t new_bytes = new_cap * sizeof(HandleEntry);
+        HandleEntry *new_handles = (HandleEntry *)(hal && hal->mem.alloc ? hal->mem.alloc(new_bytes) : NULL);
+        if (!new_handles) return 0; // OOM
+        runtime_memset(new_handles, 0, new_bytes);
+        runtime_memcpy(new_handles, ctx->handles, ctx->handle_count * sizeof(HandleEntry));
+        if (hal && hal->mem.free) hal->mem.free(ctx->handles);
         ctx->handles = new_handles;
         ctx->handle_capacity = new_cap;
     }
@@ -134,6 +105,7 @@ uint32_t vmem_register_handle(VMemContext *ctx, BValue *val, bool is_string_data
     
     return handle;
 }
+
 
 BValue *vmem_resolve_handle(VMemContext *ctx, uint32_t handle, bool *is_string_data) {
     if (!ctx) return NULL;
@@ -154,7 +126,7 @@ int vmem_peek(VMemContext *ctx, uint16_t address, uint8_t *out_val) {
     BValue *val = vmem_resolve_handle(ctx, handle, &is_string_data);
     
     if (!val) {
-        /* Not a registered handle. Could be mock BIOS or invalid memory */
+        // Not a registered handle. Could be mock BIOS or invalid memory
         return 0;
     }
     
@@ -165,7 +137,7 @@ int vmem_peek(VMemContext *ctx, uint16_t address, uint8_t *out_val) {
             *out_val = 0;
         }
     } else if (val->type == VAL_NUMBER) {
-        /* Read first byte of a numeric value */
+        // Read first byte of a numeric value
         double d = val->as.number;
         uint8_t *p = (uint8_t *)&d;
         *out_val = p[0];
@@ -184,7 +156,7 @@ int vmem_poke(VMemContext *ctx, uint16_t address, uint8_t val_to_write) {
     BValue *val = vmem_resolve_handle(ctx, handle, &is_string_data);
     
     if (!val) {
-        /* Unmapped memory block. Could be mock BIOS (not handled here) or invalid. */
+        // Unmapped memory block. Could be mock BIOS (not handled here) or invalid.
         return 0;
     }
     

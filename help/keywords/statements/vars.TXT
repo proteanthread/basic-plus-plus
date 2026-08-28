@@ -1,0 +1,23 @@
+VARS Variable Table Inspection Statement
+========================================
+
+Displays a formatted table of all active variables, types, and values in the current variable context.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    VARS
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Diagnostic statement for interactive debugging.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 LET A = 42 : S$ = "Test"
+    20 VARS : REM Displays variable inspection table

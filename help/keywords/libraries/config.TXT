@@ -1,0 +1,14 @@
+config Engine Configuration Headers (libkernel)
+======================================================================
+
+The config header declares target memory sizes, channel counts, and
+feature gates.
+
+
+STANDARD LIMITS
+----------------------------------------------------------------------
+
+  - Standard RAM Pool: 640 MB (671088640 bytes)
+  - Lite RAM Pool    : 384 MB (402653184 bytes)
+  - Batch RAM Pool   : 64 MB (67108864 bytes)
+  - Max Array Dims   : 8 dimensions

@@ -1,63 +1,15 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
+// FILENAME: plat_fs.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (select.c, string.h)
+// NEEDS: libengine (select.h, string.c, time.h, time.c, vm.h)
+// NEEDS: libkernel (types.h)
+// NEEDS: libplatform (platform.h)
+// Provides cross-platform OS abstraction primitives for plat_fs.
+//
+// ---- Includes ----
 
-/**
- * @file plat_fs.c
- * @brief Cross-platform file system, path normalization, and directory enumeration implementation.
- *
- * 1. WHAT IT DOES:
- *    Implements OS-agnostic file system operations: `plat_fs_exists()`, `plat_fs_mkdir()`, `plat_fs_rmdir()`, `plat_fs_delete()`,
- *    `plat_fs_rename()`, `plat_fs_normalize_path()` (converting `\` to `/`), and `plat_fs_list_directory()` for `FILES` / `DIR$` statements.
- *
- * 2. WHY IT EXISTS:
- *    Encapsulates platform-dependent directory and file handling routines across Win32 APIs (`FindFirstFile`/`FindNextFile`, `CreateDirectoryA`)
- *    and POSIX APIs (`opendir`/`readdir`, `mkdir`, `unlink`).
- *
- * 3. WHY IT WORKS THIS WAY:
- *    Guarantees consistent forward-slash `/` path handling across all OS platforms, preventing path separator mismatch bugs in BASIC scripts.
- *
- * 4. DEPENDENCIES & COMPILATION:
- *    - Required Headers: `platform/plat_fs.h`, `<sys/stat.h>`, `<dirent.h>` (UNIX), `<windows.h>` (Windows)
- *    - CMake Target: `plat_fs` micro-library linked into `libbasicpp` and `libbasicpp_lite`.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- *    - Included in all target executables (`baspp`, `bpp`, `bs`).
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- *    - To add wildcard pattern matching (`*.BAS`): update `plat_fs_match_glob()`.
- *    - To add file permission queries: extend `plat_fs_stat()`.
- *
- * 7. WHAT CANNOT BE CHANGED:
- *    - Path normalization MUST ensure null-terminated strings and double-slash stripping.
- *    - Cross-platform error code translation to `BppError` (`ERR_FILE_NOT_FOUND`, `ERR_PATH_NOT_FOUND`, `ERR_ACCESS_DENIED`).
- *
- * 8. WHAT TO EXPECT:
- *    - Returns true/false or `BppError` status.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- *    - Verify path length buffer sizes (at least 256 bytes for DOS paths, 1024 for POSIX paths).
- *    - Inspect Win32 `GetLastError()` or POSIX `errno` mapping.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- *     - Input path strings must be non-NULL.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- *     - Strict C17 compliance (`-std=c17`).
- *     - Requires `_POSIX_C_SOURCE=200809L` for `stat` and `readdir` on UNIX.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- *     - Prerequisite C Source Files: OS runtime system headers (`<dirent.h>` / `<sys/stat.h>` on UNIX, `<windows.h>` on Windows).
- *     - Prerequisite Header Surfaces: `engine/include/platform/plat_fs.h`, `engine/include/types/errors.h`.
- */
-
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
 #include "platform/platform.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -218,7 +170,7 @@ int platform_find_next_file(BppDirSearch *search, char *out_name, size_t out_siz
     if (!search || !out_name) return 0;
 #if defined(_WIN32)
     if (search->is_first) {
-        search->is_first = 0; /* Already yielded in find_first */
+        search->is_first = 0; // Already yielded in find_first
     } else {
         if (!FindNextFileA(search->hFind, &search->fd)) return 0;
     }
@@ -332,11 +284,11 @@ int platform_list_files(void *vdev_ptr, const char *pattern) {
     BppDirSearch *search = platform_find_first_file(pattern ? pattern : ".", name, sizeof(name));
     if (search) {
         do {
-            /* We need to write to the console vdev */
-            /* But wait, we can't easily include vdev stuff here cleanly. 
-               We should just print to standard out or we need to pass a callback! */
-            /* The actual requirement was to just implement platform_list_files. 
-               Let's do a simple printf for now, or just use puts */
+            // We need to write to the console vdev
+            // But wait, we can't easily include vdev stuff here cleanly.
+// We should just print to standard out or we need to pass a callback!
+            // The actual requirement was to just implement platform_list_files.
+// Let's do a simple printf for now, or just use puts
             printf("%s\n", name);
         } while (platform_find_next_file(search, name, sizeof(name)));
         platform_find_close(search);
@@ -362,14 +314,14 @@ void platform_cleanup_workspace(bool full_cleanup) {
     WIN32_FIND_DATAA find_data;
     HANDLE hFind;
 
-    /* To track the latest .LOG and .OUT file */
+    // To track the latest .LOG and .OUT file
     char latest_log_path[MAX_PATH] = {0};
     char latest_out_path[MAX_PATH] = {0};
     FILETIME latest_log_time = {0, 0};
     FILETIME latest_out_time = {0, 0};
 
     if (!full_cleanup) {
-        /* First pass: find the latest .LOG and .OUT files */
+        // First pass: find the latest .LOG and .OUT files
         hFind = FindFirstFileA("*.LOG", &find_data);
         if (hFind != INVALID_HANDLE_VALUE) {
             do {
@@ -397,7 +349,7 @@ void platform_cleanup_workspace(bool full_cleanup) {
         }
     }
 
-    /* Second pass: delete files */
+    // Second pass: delete files
     const char *patterns[] = {"*.LOG", "*.OUT", "*.obj", "*.o", "*.lib", "*.a"};
     for (int i = 0; i < 6; ++i) {
         hFind = FindFirstFileA(patterns[i], &find_data);
@@ -434,7 +386,7 @@ void platform_cleanup_workspace(bool full_cleanup) {
     time_t latest_out_time = 0;
 
     if (!full_cleanup) {
-        /* First pass: find the latest .LOG and .OUT files */
+        // First pass: find the latest .LOG and .OUT files
         while ((entry = readdir(dir)) != NULL) {
             if (entry->d_type == DT_REG || entry->d_type == DT_UNKNOWN) {
                 const char *ext = strrchr(entry->d_name, '.');
@@ -459,7 +411,7 @@ void platform_cleanup_workspace(bool full_cleanup) {
         rewinddir(dir);
     }
 
-    /* Second pass: delete files */
+    // Second pass: delete files
     while ((entry = readdir(dir)) != NULL) {
         if (entry->d_type == DT_REG || entry->d_type == DT_UNKNOWN) {
             const char *ext = strrchr(entry->d_name, '.');

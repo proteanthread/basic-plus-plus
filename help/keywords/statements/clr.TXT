@@ -1,0 +1,27 @@
+CLR / CLEAR Clear Program Variables Statement
+======================================================================
+
+The CLR statement (and alias CLEAR) clears all variables, arrays, and
+string allocations without erasing stored program lines.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    CLR
+    CLEAR [, [stack_size] [, basic_data_size]]
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Clears all variables and resets arrays (var_clear_all).
+  - Releases all temporary and allocated string handles.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 A = 100
+    20 CLR
+    30 PRINT A   : REM Outputs 0

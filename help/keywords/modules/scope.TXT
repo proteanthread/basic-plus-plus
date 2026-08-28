@@ -1,0 +1,31 @@
+SCOPE Lexical Scoping & Execution Hook Statement
+======================================================================
+
+The SCOPE statement creates isolated lexical variable environments and
+statement execution hooks.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    SCOPE BEGIN [name$]
+      ...
+    SCOPE END
+    SCOPE PUSH | SCOPE POP
+    SCOPE HOOK statement BEFORE | AFTER GOSUB line_number
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Localizes variables defined inside BEGIN/END blocks.
+  - Automatically cleans up local string and array allocations on exit.
+  - Installs runtime execution hooks around statements.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SCOPE BEGIN
+    20   X = 10
+    30 SCOPE END

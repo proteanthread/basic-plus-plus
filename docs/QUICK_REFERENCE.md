@@ -1,473 +1,155 @@
-# BASIC++ Quick Reference
+# BASIC++ v6.5.2 Quick Reference
 
-## Arithmetic / Math
-- **ABS** - Absolute value
-- **ACOS** - Arccosine (SBASIC, returns radians)
-- **ASIN** - Arcsine (SBASIC, returns radians)
-- **ATN** - Arctangent (returns radians)
-- **AVG** - Advanced mathematical function
-- **CABS** - Advanced mathematical function
-- **CARG** - Advanced mathematical function
-- **CDBL** - Convert to double precision
-- **CEXP** - Advanced mathematical function
-- **CINT** - Round to nearest integer
-- **CLOG** - Advanced mathematical function
-- **COMP** - Compare two values (SBASIC, returns -1/0/+1)
-- **COMPLEX** - Advanced mathematical function
-- **CONJ** - Advanced mathematical function
-- **COS** - Cosine (radians)
-- **COSH** - Hyperbolic cosine (SBASIC)
-- **CPOW** - Advanced mathematical function
-- **CSNG** - Convert to single precision
-- **CSQR** - Advanced mathematical function
-- **DET** - Determinant of a matrix
-- **EXP** - Exponential (e^x)
-- **FIX** - Truncate toward zero
-- **HI** - High 8 bits (byte) of integer
-- **IMAG** - Advanced mathematical function
-- **INT** - Truncate to integer (math) or trigger software interrupt
-- **LGT** - Common logarithm base 10 (HP BASIC)
-- **LN** - Natural logarithm (base e)
-- **LO** - Low 8 bits (byte) of integer
-- **LOG** - Natural logarithm (base e)
-- **LOG10** - Common logarithm base 10 (SBASIC)
-- **LOG2** - Binary logarithm base 2 (SBASIC)
-- **MAX** - Advanced mathematical function
-- **MED** - Advanced mathematical function
-- **MIN** - Advanced mathematical function
-- **NUM** - Convert string to number
-- **PDIF** - Positive difference (SBASIC, MAX(a-b,0))
-- **PI** - Constant PI (SBASIC, 3.14159...)
-- **RANDOMIZE** - Seed the random number generator
-- **REAL** - Advanced mathematical function
-- **REMAINDER** - Modulo remainder of division
-- **RND** - Random number (0 to 1)
-- **ROUND** - Advanced mathematical function
-- **SGN** - Sign of a number (-1, 0, or 1)
-- **SIN** - Sine (radians)
-- **SINH** - Hyperbolic sine (SBASIC)
-- **SQR** - Square root
-- **TAN** - Tangent (radians)
-- **TANH** - Hyperbolic tangent (SBASIC)
-- **TIM** - Time components mode (HP BASIC, 0=min,1=hr,2=yday,3=yr)
+## 1. PROGRAM ENTRY
 
-## Control Flow
-- **BY** - Counting step in loop (SBASIC FOR loop alias)
-- **CALL** - Call a SUB procedure
-- **CASE** - Case clause within SELECT CASE
-- **CAUSE** - Raise an exception (ECMA-116)
-- **CONTINUE** - Resume execution of loop
-- **DECLARE** - Forward-declare a SUB or FUNCTION
-- **DEF** - Define a user function (one-line)
-- **DEFINE** - Begin user-defined block function
-- **DO** - Begin a DO loop
-- **ELSE** - Alternate branch in block IF or single-line IF
-- **ELSEIF** - Additional condition in block IF
-- **END** - Terminate program execution
-- **ENDDEFINE** - End user-defined function block
-- **ENDFOR** - End counting loop (Structured BASIC)
-- **ENDIF** - End a block IF structure
-- **ENDREPEAT** - End repeat loop block
-- **ERROR** - Raise a user error
-- **EXIT** - Exit a FOR or DO loop early
-- **FN** - Call user-defined function
-- **FOR** - Begin a counting loop
-- **FUNCTION** - Define a named function
-- **GOSUB** - Call a subroutine at a line number
-- **GOTO** - Jump to a line number
-- **IF** - Conditional decision structure
-- **IN** - Check containment in list or array
-- **IS** - Case selector comparison operator
-- **LOOP** - End of a DO loop (with condition)
-- **NEXT** - End of a FOR loop
-- **ON** - Computed GOTO/GOSUB or error/event handler
-- **ON BREAK** - Set Ctrl+C / signal interrupt handler
-- **ON COM** - Set serial port interrupt handler
-- **ON KEY** - Set key press interrupt handler
-- **ON PEN** - Set light pen interrupt handler
-- **ON PLAY** - Set music buffer interrupt handler
-- **ON STRIG** - Set joystick trigger interrupt handler
-- **ON TIMER** - Set timer interrupt handler
-- **PROCEDURE** - Begin procedure block definition
-- **REPEAT** - Begin repeat loop block
-- **RESUME** - Return from an error handler
-- **RETRY** - Retry failed transaction statement
-- **RETURN** - Return from a GOSUB subroutine
-- **SELECT** - Begin a SELECT CASE block
-- **STEP** - Count loop step increments
-- **STOP** - Pause program (use CONT to resume)
-- **SUB** - Define a named subroutine
-- **TASK** - Multi-tasking thread spawn
-- **THEN** - Conditional branch target indicator
-- **TO** - Counting upper limit indicator
-- **TRAP** - Set error/event trap handler (hybrid)
-- **UNTIL** - Exit condition for repeat loop
-- **USE** - Protected exception block handler
-- **USR** - Invoke machine language function
-- **WEND** - End of a WHILE loop
-- **WHEN** - Begin protected exception block
-- **WHILE** - Begin a conditional loop
+Line numbers range from 1 to 65529. Maximum line length is 255 characters. Multiple statements per line are separated by colons. REM or apostrophe begins a comment.
 
-## Debug & Testing
-- **ASSERT** - Assert a condition is true
-- **BACKTRACE** - Print the call stack
-- **BREAK** - Set a breakpoint or pause
-- **CHECK** - Check internal state
-- **CONT** - Continue after STOP or BREAK
-- **DEBUG** - Enter debug mode
-- **DUMP** - Dump variables or memory
-- **ENDTEST** - End a test block
-- **SELFTEST** - Run built-in interpreter tests
-- **TEST** - Begin a test block
-- **TRACE** - Enable detailed tracing
-- **TROFF** - Disable execution tracing
-- **TRON** - Enable execution tracing
-- **VARS** - List all defined variables
-- **VERIFY** - Verify program integrity
+## 2. IMMEDIATE COMMANDS
 
-## Devices & Network
-- **BIOREAD** - Block I/O read
-- **BIOS** - Access mock BIOS interrupt
-- **COM** - Enable/disable COM port events
-- **DEVMAP** - Map a device to an alias
-- **FILEMOD** - Modify file attributes
-- **IMAGE** - Manage disk images
-- **INP** - Read from a hardware port
-- **IOCTL** - Send control string to device
-- **MOUNT** - Mount a VFS path
-- **NINFO** - Network info query
-- **OUT** - Write to a hardware port
-- **SIOREAD** - Stream I/O read
-- **SIOREADLN** - Stream I/O read line
-- **UMOUNT** - Unmount a VFS path
-- **VCON** - Virtual console info
-- **VDEV** - Virtual device introspection
-- **VMACH** - Virtual machine info
-- **VMEM** - Virtual memory introspection
-- **VNET** - Virtual network introspection
-- **VPATH** - Virtual filesystem path setup
-- **VTERM** - Virtual terminal info
-- **WAIT** - Wait for hardware port state
+RUN executes the stored program. LIST displays program lines. LIST 100-200 displays a range. NEW clears the program and all variables. CONT continues after STOP or breakpoint. SYSTEM or BYE exits the interpreter. AUTO 100,10 begins automatic line numbering at 100 with step 10. RENUM renumbers lines. DELETE 100-200 removes a range. EDIT n edits line n interactively.
 
-## File I/O
-- **ACCESS** - Query file channel permissions
-- **ASK** - Query file info (ECMA-116)
-- **BIOCHECKSUM** - Low-level block I/O operation
-- **BIOCOMPARE** - Low-level block I/O operation
-- **BIOCOPY** - Low-level block I/O operation
-- **BIOFILL** - Low-level block I/O operation
-- **BIOSIZE** - Low-level block I/O operation
-- **BIOSTATUS** - Low-level block I/O operation
-- **BIOWRITE** - Low-level block I/O operation
-- **CHDIR** - File and directory management
-- **CLOSE** - Close a file channel
-- **CURDIR** - Query current directory path
-- **CVD** - Unpack 8-byte string to double
-- **CVI** - Unpack 2-byte string to integer
-- **CVS** - Unpack 4-byte string to single
-- **CWD** - File and directory management
-- **DIR** - File and directory management
-- **FIELD** - Define record buffer fields
-- **FILELEN** - File and directory management
-- **FILES** - File and directory management
-- **FILESIZE** - File and directory management
-- **GET** - Read a record from random file
-- **LOC** - Current file position
-- **LOCK** - Lock file records
-- **LOF** - Get length of open file
-- **MKD$** - Pack double to 8-byte string
-- **MKDIR** - File and directory management
-- **MKI$** - Pack integer to 2-byte string
-- **MKS$** - Pack single to 4-byte string
-- **MOUNTS** - Display all active VFS mounts
-- **NAME** - File and directory management
-- **POINTER** - Query/set file position pointer
-- **PUT** - Write a record to random file
-- **RENAME** - File and directory management
-- **RESET** - Close all open files
-- **REWRITE** - Re-open channel for writing
-- **RMDIR** - File and directory management
-- **SEEK** - Set or get file position
-- **SET** - Set file pointer (ECMA-116)
-- **SIOAVAIL** - Low-level block I/O operation
-- **SIOFLUSH** - Low-level block I/O operation
-- **SIOSEEK** - Low-level block I/O operation
-- **SIOSTATUS** - Low-level block I/O operation
-- **SIOWRITE** - Low-level block I/O operation
-- **UNLOCK** - Unlock file records
-- **VPATH$** - File and directory management
+## 3. FILE COMMANDS
 
-## Graphics
-- **BORDER** - Set screen border color
-- **BRIGHT** - Set text screen brightness attribute
-- **CIRCLE** - Draw a circle
-- **CURSOR** - Graphics or sound macro
-- **DISPLAY** - Configure or query terminal displays
-- **DRAW** - Graphics or sound macro
-- **DRAWTO** - Graphics or sound macro
-- **FLASH** - Toggle text flashing screen attribute
-- **GRAPHICS** - Set Atari 8-bit graphics/text mode (abbreviated GR.)
-- **INK** - Set graphics pen/ink color
-- **INVERSE** - Toggle text screen reverse video
-- **OVER** - Toggle text overstrike rendering mode
-- **PAINT** - Flood fill an area
-- **PALETTE** - Remap a palette color
-- **PAPER** - Set text screen background paper color
-- **PCOPY** - Copy screen memory page
-- **PEN** - Read or configure light pen slot
-- **PLAY** - Graphics or sound macro
-- **PLOT** - Plot point or draw line
-- **PMAP** - Map physical to logical coordinates
-- **POINT** - Read color at pixel (x,y)
-- **PRESET** - Reset a pixel at (x,y)
-- **PSET** - Set a pixel at (x,y)
-- **SCREEN** - Set screen mode
-- **VIEW** - Set graphics viewport
-- **WINDOW** - Set logical coordinate system
+SAVE "file" writes the program to disk. LOAD "file" loads a program. MERGE "file" overlays lines without clearing. CHAIN "file" loads and runs, preserving COMMON variables. RUN "file" loads and runs, clearing variables. BSAVE "file" saves bytecode. BLOAD "file" loads bytecode. BRUN compiles and executes bytecode.
 
-## Input / Output
-- **AT** - Position cursor (used with PRINT)
-- **CLS** - Clear the screen
-- **COLOR** - Set text foreground/background
-- **CONSOLE** - Set or query active console device
-- **EOF** - Standard I/O or string formatting
-- **GEMINI** - Network protocol handler
-- **GOPHER** - Network protocol handler
-- **HOME** - Move cursor to top-left
-- **INKEY** - Non-blocking key read value
-- **INPUT** - Get console input into a variable
-- **INPUT$** - Read N chars from keyboard/file
-- **INSTR** - Standard I/O or string formatting
-- **LINE** - Read entire line (LINE INPUT)
-- **LOCATE** - Move cursor to row,column
-- **LPRINT** - Standard I/O or string formatting
-- **LSET** - Standard I/O or string formatting
-- **NBYTESWAITING** - Network socket operation
-- **NCONNECTED** - Network socket operation
-- **NEOF** - Network socket operation
-- **NERROR** - Network socket operation
-- **NHTTPSTATUS** - Network socket operation
-- **NJSONQUERY** - Network socket operation
-- **NSTATUS** - Network socket operation
-- **OPEN** - Standard I/O or string formatting
-- **PRINT** - Display output to console
-- **RSET** - Standard I/O or string formatting
-- **SPC** - Standard I/O or string formatting
-- **TAB** - Standard I/O or string formatting
-- **WIDTH** - Set screen width
-- **WRITE** - Write comma-delimited data
+## 4. DATA TYPES
 
-## Introspection
-- **ALARM** - Built-in command or function: ALARM
-- **ALIAS** - Advanced language feature
-- **ALIAS$** - Advanced language feature
-- **CATALOG** - List all commands & functions
-- **COMPILE** - Advanced language feature
-- **COPY** - Built-in command or function: COPY
-- **DEFUSR** - Built-in command or function: DEFUSR
-- **DEMAND** - Built-in command or function: DEMAND
-- **ENDSELECT** - Built-in command or function: ENDSELECT
-- **ERR$** - Built-in command or function: ERR$
-- **EXISTS** - Built-in command or function: EXISTS
-- **HASH** - Built-in command or function: HASH
-- **HELP** - Show this help (or HELP keyword)
-- **INFO** - Display system information
-- **IOCTL$** - Built-in command or function: IOCTL$
-- **KEY** - Built-in command or function: KEY
-- **LIKE** - Built-in command or function: LIKE
-- **LPOS** - Printer head column position
-- **MEMMAP$** - Current memory map name (read-only)
-- **MODULE** - Advanced language feature
-- **MOVE** - Built-in command or function: MOVE
-- **OVERRIDE** - Advanced language feature
-- **PUBLIC** - Advanced language feature
-- **REFORMAT** - Built-in command or function: REFORMAT
-- **SCOPE** - Advanced language feature
-- **SCRATCH** - Built-in command or function: SCRATCH
-- **TXNSTATUS** - Built-in command or function: TXNSTATUS
-- **UNLESS** - Built-in command or function: UNLESS
-- **USING** - Built-in command or function: USING
-- **VARPTR$** - Built-in command or function: VARPTR$
+Numbers are double-precision floating point by default. Type suffixes: % (integer), ! (single), # (double), $ (string). Maximum string length is 255 characters. DEFINT, DEFSNG, DEFDBL, DEFSTR set default types by letter range.
 
-## Operators
-- **AND** - Logical/bitwise AND operator
-- **EQV** - Logical equivalence operator
-- **IMP** - Logical implication operator
-- **MOD** - Modulo (remainder) operator
-- **NOT** - Logical/bitwise NOT operator
-- **OR** - Logical/bitwise OR operator
-- **XOR** - Bitwise exclusive OR
+## 5. OPERATORS
 
-## Program Mgmt & Editing
-- **AUTO** - Automatic line numbering
-- **BLOAD** - Load binary memory image
-- **BRUN** - Load and execute binary program
-- **BSAVE** - Save binary memory image
-- **CHAIN** - Load and execute program, passing vars
-- **CLOAD** - Load program from cassette
-- **CRUN** - Load and run from cassette
-- **CSAVE** - Save program to cassette
-- **DELETE** - Delete program lines
-- **EDIT** - Edit a program line
-- **LIST** - List stored program lines
-- **LLIST** - Print stored program lines to LPT
-- **LOAD** - Load program from disk
-- **MERGE** - Merge program lines from disk
-- **NEW** - Clear program and variables
-- **RENUM** - Renumber program lines
-- **RUN** - Execute the stored program
-- **SAVE** - Save program to disk
-- **UNLOAD** - Unload module or program
-- **UNSAVE** - Delete saved program (alias for KILL)
+Arithmetic: + - * / \ (integer div) ^ (power) MOD. Comparison: = <> < > <= >=. Logical/Bitwise: AND OR NOT XOR EQV IMP. Shifts: SHL SHR. String: + (concatenation).
 
-## Sound
-- **BEEP** - Emit an audible beep
-- **SOUND** - Play a tone at frequency
+## 6. CONTROL FLOW
 
-## String Functions
-- **ASC** - ASCII value of first character
-- **BIN** - Number base conversion
-- **BIN$** - Convert to binary string (8-bit groups)
-- **CHR** - Convert ASCII code to string character
-- **CHR$** - Character from ASCII code
-- **HEX** - Number base conversion
-- **HEX$** - Convert to hexadecimal string
-- **ICASE** - String manipulation function
-- **LCASE** - String manipulation function
-- **LEFT** - String manipulation function
-- **LEFT$** - Get left portion of string
-- **LEN** - Length of a string
-- **LTRIM** - String manipulation function
-- **MCASE** - String manipulation function
-- **MICROPLEX$** - Interleave two strings character-by-character
-- **MID** - String manipulation function
-- **MID$** - Substring function
-- **OCT** - Number base conversion
-- **OCT$** - Convert to octal string
-- **REPLACE** - String manipulation function
-- **REVERSE** - String manipulation function
-- **RIGHT** - String manipulation function
-- **RIGHT$** - Get right portion of string
-- **RTRIM** - String manipulation function
-- **SPACE** - String manipulation function
-- **SPACE$** - Generate N space characters
-- **STR** - String manipulation function
-- **STR$** - Convert number to string
-- **STRING** - String manipulation function
-- **TCASE** - String manipulation function
-- **TRIM** - String manipulation function
-- **UCASE** - String manipulation function
-- **VAL** - Convert string to number
+```basic
+IF cond THEN stmt [ELSE stmt]
+IF cond THEN / ELSEIF / ELSE / END IF
+FOR var = start TO end [STEP n] / NEXT var
+WHILE cond / WEND
+DO [WHILE|UNTIL cond] / LOOP [WHILE|UNTIL cond]
+SELECT CASE expr / CASE val / CASE ELSE / END SELECT
+GOTO line
+GOSUB line / RETURN
+ON n GOTO line, line, ...
+ON n GOSUB line, line, ...
+EXIT FOR / EXIT DO
+```
 
-## System & Environ
-- **ATOMIC** - Begin a transactional block
-- **BYE** - Exit the interpreter
-- **CLOCK** - Access system NTP clock
-- **COMMIT** - Commit active transaction changes
-- **CURDIR$** - Current directory (alias for CWD$)
-- **DATE** - Get or set the system date
-- **DELAY** - Pause execution for milliseconds
-- **ENVIRON** - System environment query/control
-- **ERDEV** - Error device code of last device error
-- **ERRORLEVEL** - Last shell exit code
-- **EXEC** - Execute a system command (Alias)
-- **EXIST** - System operation or file query
-- **EXTERR** - Extended error information
-- **HOSTNAME** - System environment query/control
-- **JIFFIES** - System time or date query
-- **KEY(N)** - Enable/disable key event trapping
-- **KEYWORD** - Modify keyword attributes at runtime
-- **KILL** - Reserved for future use
-- **MOTOR** - System operation or file query
-- **ONKEY** - Trigger key interrupt handler
-- **PAUSE** - Pause program for N frames/seconds
-- **PLAY(N)** - Enable/disable music buffer interrupt
-- **PWD** - Print current working directory path
-- **ROLLBACK** - Rollback current transaction state
-- **SECURITY** - System operation or file query
-- **SHELL** - Drop to system shell or exec command
-- **SLEEP** - Pause execution for N seconds
-- **STICK** - Read joystick coordinate value
-- **STRIG** - Read joystick trigger status
-- **SYS** - Execute a system command
-- **SYSTEM** - System environment query/control
-- **TEST** - System operation or file query
-- **TI** - System time or date query
-- **TI$** - System time or date query
-- **TICKS** - System time or date query
-- **TIME** - Get or set the system time
-- **TODAY$** - System time or date query
-- **TXN** - Query current transaction status
-- **USERNAME** - System environment query/control
+Postfix modifiers: PRINT "ok" IF A = 1. PRINT "no" UNLESS B > 0.
 
-## System Variables
-- **CLOCK$** - Current timestamp as YYYY-MM-DD HH:MM:SS
-- **CWD$** - Current working directory name string
-- **DATE$** - Current date as MM-DD-YYYY
-- **DAY** - Current day of month (1-31)
-- **DAY$** - Current day of the week
-- **ERL** - Line number of last runtime error
-- **ERR** - Numeric code of last runtime error
-- **FALSE** - Boolean value -1
-- **HOSTNAME$** - System hostname string
-- **HOURS** - Current hour (0-23)
-- **INKEY$** - Non-blocking single-char keyboard read
-- **MEM** - Free variable space in bytes
-- **MINUTES** - Current minute (0-59)
-- **MONTH** - Current numeric month (1-12)
-- **MONTH$** - Current month name
-- **ONKEY$** - Event-aware keyboard read
-- **PWD$** - Current working directory path string
-- **SECONDS** - Current second (0-59)
-- **SIZE** - Program memory size in bytes
-- **TIME$** - Current time as HH:MM:SS
-- **TIMER** - Seconds elapsed since midnight
-- **TRUE** - Boolean value 1
-- **USERNAME$** - Current system username string
-- **VER** - Current BASIC++ version number
-- **YEAR** - Current 4-digit year
+## 7. PROCEDURES
 
-## Variables & Memory
-- **AS** - Specify variable type or file channel alias
-- **BANK** - RAMBANK segmented virtual memory control
-- **CLEAR** - Clear stack and variables
-- **CLR** - Clear all variables (Atari/C64)
-- **COMMON** - Share vars with CHAINed program
-- **CONST** - Define a named constant
-- **CSRLIN** - Current cursor row
-- **DATA** - Store numeric or string data
-- **DEFDBL** - Declare double variable range
-- **DEFINT** - Declare integer variable range
-- **DEFSNG** - Declare single variable range
-- **DEFSTR** - Declare string variable range
-- **DIM** - Declare an array with dimensions
-- **ERASE** - Erase an array from memory
-- **FRE** - Free memory available
-- **LBOUND** - Array lower bound index
-- **LET** - Assign value to variable (optional in most dialects)
-- **LOCAL** - Declare local variables in sub/fn
-- **MAT** - Matrix operations
-- **MEMMAP** - Select memory map preset
-- **MKD** - Pack double to 8-byte string
-- **MKI** - Pack integer to 2-byte string
-- **MKS** - Pack single to 4-byte string
-- **OPTION** - Set interpreter options
-- **PEEK** - Read byte from virtual memory
-- **PEEKB** - Read byte from a RAMBANK segment
-- **POKE** - Write byte to virtual memory
-- **POKEB** - Write byte to a RAMBANK segment
-- **POS** - Current cursor column
-- **PRETRIEVE** - Retrieve persistent variable
-- **PSTORE** - Store variable persistently
-- **READ** - Read the next DATA value
-- **REDIM** - Resize a dynamic array
-- **REM** - Comment (ignored by interpreter)
-- **RESTORE** - Reset DATA pointer to beginning
-- **SEG** - Get memory segment index of variable
-- **SHARED** - Share variables with main program
-- **STATIC** - Preserve local variables across calls
-- **SWAP** - Exchange two variables
-- **TYPE** - Define a user-defined type
-- **UBOUND** - Array upper bound index
-- **VARPTR** - Pointer index of a variable
+```basic
+SUB Name(params) / END SUB
+FUNCTION Name(params) / END FUNCTION
+CALL Name(args)
+DEF FN Name(params) = expression
+DECLARE SUB Name(params)
+```
 
+LOCAL, STATIC, SHARED control variable scope.
+
+## 8. ARRAYS
+
+```basic
+DIM A(100)
+DIM Grid(10, 20)
+OPTION BASE 0 | 1
+REDIM A(200)
+REDIM PRESERVE A(200)
+ERASE A
+LBOUND(A, 1) / UBOUND(A, 1)
+```
+
+## 9. STRING FUNCTIONS
+
+LEN(s$), LEFT$(s$,n), RIGHT$(s$,n), MID$(s$,start,len), INSTR([start,]s$,find$), CHR$(n), ASC(s$), STR$(n), VAL(s$), HEX$(n), OCT$(n), BIN$(n), SPACE$(n), STRING$(n,char), UCASE$(s$), LCASE$(s$), TCASE$(s$), LTRIM$(s$), RTRIM$(s$), TRIM$(s$), REPLACE$(s$,find$,rep$), REVERSE$(s$).
+
+## 10. MATH FUNCTIONS
+
+ABS(n), SGN(n), INT(n), FIX(n), CINT(n), SQR(n), SIN(n), COS(n), TAN(n), ATN(n), ASIN(n), ACOS(n), SINH(n), COSH(n), TANH(n), LOG(n), LOG2(n), LOG10(n), EXP(n), PI, RND, ROUND(n,places), MIN(a,b), MAX(a,b), AVG(list), MED(list), CLAMP(n,lo,hi), FLOOR(n), CEIL(n).
+
+## 11. I/O STATEMENTS
+
+PRINT expr [; | ,] expr. INPUT ["prompt";] var. LINE INPUT var$. WRITE expr, expr. LOCATE row, col. COLOR fg [,bg]. CLS. WIDTH cols. BEEP. SOUND freq, duration. PLAY "music string".
+
+## 12. FILE I/O
+
+```basic
+OPEN "file" FOR INPUT|OUTPUT|APPEND|RANDOM AS #n [LEN = reclen]
+INPUT #n, var
+PRINT #n, expr
+LINE INPUT #n, var$
+WRITE #n, expr
+GET #n [, rec]
+PUT #n [, rec]
+CLOSE #n
+EOF(n) / LOC(n) / LOF(n) / SEEK #n, pos
+FIELD #n, width AS var$ [, width AS var$]
+```
+
+## 13. GRAPHICS
+
+```basic
+SCREEN mode
+PSET (x,y) [,color]
+PRESET (x,y)
+LINE (x1,y1)-(x2,y2) [,color[,B|BF]]
+CIRCLE (x,y),radius [,color]
+PAINT (x,y) [,color[,border]]
+DRAW "command string"
+PALETTE attr, color
+POINT(x,y)
+VIEW (x1,y1)-(x2,y2)
+WINDOW (x1,y1)-(x2,y2)
+```
+
+## 14. ERROR HANDLING
+
+```basic
+ON ERROR GOTO line
+ON ERROR GOTO 0
+RESUME / RESUME NEXT / RESUME line
+ERR / ERL / ERR$
+ERROR n
+TRY / CATCH / END TRY / THROW n
+```
+
+## 15. EVENT TRAPPING
+
+```basic
+ON KEY(n) GOSUB line / KEY(n) ON|OFF|STOP
+ON TIMER(n) GOSUB line / TIMER ON|OFF|STOP
+ON COM(n) GOSUB line / COM(n) ON|OFF|STOP
+ON PEN GOSUB line / PEN ON|OFF|STOP
+ON STRIG(n) GOSUB line / STRIG(n) ON|OFF|STOP
+ON PLAY(n) GOSUB line / PLAY ON|OFF|STOP
+```
+
+## 16. METAPROGRAMMING
+
+```basic
+ALIAS "newname" FOR "keyword"
+ALIAS OPERATOR "newop" FOR "op"
+OVERRIDE "keyword" WITH GOSUB line
+SCOPE HOOK BEFORE|AFTER "keyword" GOSUB line
+SCOPE RESTRICT "keyword"
+SCOPE ENABLE "keyword"
+```
+
+## 17. DEBUGGING
+
+TRON / TROFF. DEBUG ON / OFF. BREAK line. CONT. VARS. DUMP. BACKTRACE. ASSERT condition. TEST "name" / ENDTEST. SELFTEST. VERIFY condition.
+
+## 18. SECURITY
+
+SECURITY LEVEL 0-5. RESTRICT operation. Levels: 0=OPEN, 1=SAFE, 2=STANDARD, 3=EDUCATIONAL, 4=RESTRICTED, 5=PARANOID.
+
+## 19. SYSTEM
+
+SYSTEM exits to OS. SHELL "cmd" executes OS command. ENVIRON$("VAR") reads environment. INFO shows system info. VER shows version. HELP keyword shows documentation. CATALOG lists keywords.
+
+## 20. ERROR CODES
+
+1=NEXT without FOR, 2=Syntax error, 3=RETURN without GOSUB, 4=Out of DATA, 5=Illegal function call, 6=Overflow, 7=Out of memory, 8=Undefined line, 9=Subscript out of range, 10=Duplicate definition, 11=Division by zero, 12=Illegal direct, 13=Type mismatch, 14=Out of string space, 17=Cannot continue, 52=Bad file number, 53=File not found, 54=Bad file mode, 55=File already open, 62=Input past end, 70=Permission denied.

@@ -1,0 +1,28 @@
+RENAME Rename File Command Alias
+================================
+
+Alias for the standard NAME statement, renaming an existing file on disk.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    RENAME old_filename$ TO new_filename$
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 53 (ERR_FILE_NOT_FOUND): File does not exist.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Convenience alias for NAME...AS.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 RENAME "OLD.BAS" TO "NEW.BAS"

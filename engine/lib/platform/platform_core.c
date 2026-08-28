@@ -1,22 +1,13 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ — a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * What it does: Implements core platform lifecycle, OS detection, and high-resolution timer services.
- * Why it exists: Provides Ring 0 base OS primitives independent of VM or standard output abstractions.
- * Why it works this way: Uses platform macro checks to dispatch to native OS system calls cleanly.
- * What can be changed: OS name strings, epoch timer logic, platform fatal handlers.
- * What cannot be changed: Unified BppPlatformId return values and lifecycle contracts.
- * What to expect: Reliable init/shutdown and accurate sleep/tick management.
- * What to do if something breaks: Check OS platform macro definitions (_WIN32, __linux__, etc.).
- * Assumptions: OS system clock is accessible.
- * Portability concerns: Strict C17 compliant, pure 7-bit ASCII.
- * Future expansions: Add target hardware board detection hooks for embedded systems.
- * External extension hooks: Exposed via platform.h.
- */
+// FILENAME: platform_core.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (string.h)
+// NEEDS: libengine (string.c, time.h, time.c)
+// NEEDS: libplatform (platform.h)
+// Provides cross-platform OS abstraction primitives for platform_core.
+//
+// ---- Includes ----
 
 #include "platform/platform.h"
 #include <stdio.h>
@@ -52,7 +43,7 @@ void platform_init(void) {
 }
 
 void platform_shutdown(void) {
-    /* Cleanup core platform hooks if any */
+    // Cleanup core platform hooks if any
 }
 
 BppPlatformId platform_get_id(void) {

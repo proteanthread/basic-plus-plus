@@ -1,0 +1,14 @@
+segmented_mem Segmented Memory Virtualization Subsystem (libhardware)
+======================================================================
+
+The segmented_mem library implements address translation, bank mapping,
+and memory bounds validation.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    SegmentedMemContext *segmem_create(size_t total_banks);
+    void segmem_destroy(SegmentedMemContext *ctx);
+    uint8_t segmem_peek(SegmentedMemContext *ctx, int bank, uint16_t offset);
+    void segmem_poke(SegmentedMemContext *ctx, int bank, uint16_t offset, uint8_t val);

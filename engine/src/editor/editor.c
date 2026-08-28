@@ -1,31 +1,18 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file editor.c
- * @brief Built-in interactive console text editor.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements a simple interactive line-editor command (EDIT).
- * - Why it exists: Allows users to add, edit, list, and delete program lines without
- *   leaving the interpreter or relying on host system editors.
- * - Why it works this way: It prints current lines, prompts for a line number, displays
- *   existing text if present, and updates program storage. Operates using standard console I/O
- *   for complete cross-platform portability.
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Custom command strings, prompt descriptions, listing format.
- * - What cannot be changed: Program storage insert/update mechanics.
- * - What to expect: Exiting the editor returns back to the interactive REPL immediately.
- * - What to do if something breaks: Verify stdin reads and check line number bounds checks.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Keyboard input and text output streams are redirected through the registered VDevs.
- * - Portability concerns: None. C17 standard compliant.
- */
+// FILENAME: editor.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe (desktop.c)
+// NEEDED BY: libengine (tui_multiplexer.c)
+// NEEDED BY: libstandard (edit_internal.h, editor_manager.c, edlin_internal.h)
+// NEEDED BY: libstandard (vi_internal.h, ws_internal.h)
+// NEEDS: libcore (ctype.h, ctype.c, float_parse.h, float_parse.c)
+// NEEDS: libcore (memops.h, memops.c, num_parse.h, num_parse.c)
+// NEEDS: libcore (strops.h, strops.c)
+// NEEDS: libengine (eval.h, eval.c, stmt.h, vm.h)
+// NEEDS: libkernel (vdev.h, vdev.c)
+// Implements visual text editor subsystem components for editor.
+//
+// ---- Includes ----
 
 #ifndef BASIC_LITE_BUILD
 
@@ -33,30 +20,29 @@
 #include "eval/eval.h"
 #include "vm/vm.h"
 #include "device/vdev.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/conv/num_parse.h"
+#include "runtime/conv/float_parse.h"
 
-/**
- * @brief Helper to trim whitespace from a string.
- */
+// @brief Helper to trim whitespace from a string.
 static char *trim_whitespace(char *str) {
+    if (!str) return "";
     char *end;
-    while (isspace((unsigned char)*str)) str++;
+    while (runtime_isspace((unsigned char)*str)) str++;
     if (*str == 0) return str;
-    end = str + strlen(str) - 1;
-    while (end > str && isspace((unsigned char)*end)) end--;
+    end = str + runtime_strlen(str) - 1;
+    while (end > str && runtime_isspace((unsigned char)*end)) end--;
     end[1] = '\0';
     return str;
 }
 
-/**
- * @brief Interactive EDIT command handler.
- */
+// @brief Interactive EDIT command handler.
 BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
+    (void)lex;
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     VDevContext *vdev = vm_get_vdev(vm);
     MemoryContext *mem = vm_get_mem(vm);
@@ -64,7 +50,7 @@ BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
     vdev_printf(vdev, "\n--- BASIC++ Built-in Line Editor ---\n");
     vdev_printf(vdev, "Commands: L = List, DELETE <num> = Delete line, 0 or EXIT = Exit REPL\n\n");
 
-    /* Main edit loop */
+    // Main edit loop
     char input_buf[1024];
     while (true) {
         vdev_printf(vdev, "Edit: ");
@@ -75,25 +61,25 @@ BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
         }
 
         if (!con->ops.gets(con, input_buf, sizeof(input_buf))) {
-            break; /* EOF */
+            break; // EOF
         }
 
         char *trimmed = trim_whitespace(input_buf);
         if (trimmed[0] == '\0') continue;
 
-        /* Check for Exit */
+        // Check for Exit
         char upper[128];
-        size_t len = strlen(trimmed);
+        size_t len = runtime_strlen(trimmed);
         if (len >= sizeof(upper)) len = sizeof(upper) - 1;
-        for (size_t i = 0; i < len; ++i) upper[i] = (char)toupper((unsigned char)trimmed[i]);
+        for (size_t i = 0; i < len; ++i) upper[i] = (char)runtime_toupper((unsigned char)trimmed[i]);
         upper[len] = '\0';
 
-        if (strcmp(upper, "0") == 0 || strcmp(upper, "EXIT") == 0 || strcmp(upper, "QUIT") == 0) {
+        if (runtime_strcmp(upper, "0") == 0 || runtime_strcmp(upper, "EXIT") == 0 || runtime_strcmp(upper, "QUIT") == 0) {
             break;
         }
 
-        /* Check for List */
-        if (strcmp(upper, "L") == 0 || strcmp(upper, "LIST") == 0) {
+        // Check for List
+        if (runtime_strcmp(upper, "L") == 0 || runtime_strcmp(upper, "LIST") == 0) {
             size_t count = 0;
             BppProgramLine *lines = mem_program_get_all(mem, &count);
             vdev_printf(vdev, "\n--- Current Program ---\n");
@@ -104,9 +90,9 @@ BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
             continue;
         }
 
-        /* Check for Delete */
-        if (strncmp(upper, "DELETE ", 7) == 0) {
-            double ln = atof(trimmed + 7);
+        // Check for Delete
+        if (runtime_strncmp(upper, "DELETE ", 7) == 0) {
+            double ln = runtime_strtod(trimmed + 7, NULL);
             if (ln > 0.0) {
                 mem_program_delete(mem, ln);
                 vdev_printf(vdev, "Line %lld deleted.\n", (long long)ln);
@@ -116,15 +102,15 @@ BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
             continue;
         }
 
-        /* If numeric, edit line */
-        if (isdigit((unsigned char)trimmed[0])) {
-            double ln = atof(trimmed);
+        // If numeric, edit line
+        if (runtime_isdigit((unsigned char)trimmed[0])) {
+            double ln = runtime_strtod(trimmed, NULL);
             if (ln <= 0.0) {
                 vdev_printf(vdev, "Line numbers must be positive.\n");
                 continue;
             }
 
-            /* Find existing line text if any */
+            // Find existing line text if any
             size_t count = 0;
             BppProgramLine *lines = mem_program_get_all(mem, &count);
             const char *existing = "";
@@ -159,7 +145,4 @@ BppError stmt_edit_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-#endif /* BASIC_LITE_BUILD */
-
-typedef int bpp_editor_translation_unit_dummy;
-
+#endif // BASIC_LITE_BUILD

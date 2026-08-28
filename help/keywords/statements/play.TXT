@@ -1,0 +1,28 @@
+PLAY Music Macro Language Audio Playback Statement
+==================================================
+
+Plays musical melodies and sound effects using Music Macro Language (MML) strings.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    PLAY mml_command_string$
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Invalid MML command syntax.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Full support for T, O, L, C-B, #, -, ., P, MN, ML, MS, MB, MF, V commands.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PLAY "T120 O4 L4 C D E F G2 G2 A A A A G1"

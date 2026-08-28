@@ -1,0 +1,31 @@
+C17 API REFERENCE: MEMORY MANAGEMENT (memory/memory.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Memory Management Subsystem provides partitioned memory pools, an
+ephemeral scratch arena, and ordered program line storage.
+
+2. STANDARD MEMORY POOLS
+- baspp: 640 MB total (128MB prog, 128MB var, 320MB str, 64MB scratch)
+- bpp:   384 MB total (64MB prog, 64MB var, 192MB str, 64MB scratch)
+- bs:    64 MB total
+
+3. KEY TYPES & STRUCTS
+- MemoryContext: Opaque memory manager handle.
+- BppProgramLine: Line number (16-bit) and source text pointer (char *).
+
+4. CORE API FUNCTIONS
+- mem_init(prog_sz, var_sz, str_sz, scratch_sz) -> MemoryContext *
+- mem_shutdown(ctx)
+- mem_scratch_alloc(ctx, size) -> void *
+- mem_scratch_reset(ctx)
+- mem_program_insert(ctx, line, text) -> bool
+- mem_program_delete(ctx, line) -> bool
+- mem_program_clear(ctx)
+- mem_program_get(ctx, line) -> const char *
+- mem_program_get_all(ctx, out_count) -> BppProgramLine *
+- mem_program_next_line(ctx, current, out_next) -> bool
+
+5. ARCHITECTURAL INVARIANTS
+- Program lines stored in ascending order.
+- Ephemeral scratch arena resets after each statement execution.

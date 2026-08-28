@@ -1,0 +1,31 @@
+PAPER Background Paper Color Setting Statement
+==============================================
+
+Sets the active background paper color for text output in Sinclair and Locomotive BASIC dialects.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    PAPER color_index%
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Color index outside range.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  ZX Spectrum display attribute emulation.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PAPER 1 : REM Set blue background
+    20 INK 7   : REM Set white text
+    30 CLS
+    40 PRINT "White on Blue"

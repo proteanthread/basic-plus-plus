@@ -1,32 +1,12 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-/**
- * @file funcreg.h
- * @brief Dynamic Function Registry system API.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Declares modular registry tables, categories, return types, and safety levels for functions.
- * - Why it exists: Decouples built-in functions and C modules from hardcoded lists in expression/eval.c.
- * - Why it works this way: It provides funcreg_register to register C function handlers, which are
- *   dynamically matched, capability checked, and dispatched at expression parse/evaluation time.
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Limits on MAX_FUNCTIONS, new categories/types.
- * - What cannot be changed: Case-insensitive lookups, signature/safety checks, and call interfaces.
- * - What to expect: Initializing resets the registry.
- * - What to do if something breaks: Trace entry indexing and verify return type conversions.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Standard C17.
- * - Portability concerns: None.
- *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add additional type codes or safety categories.
- * - How to write external extensions: Custom library modules register callbacks using funcreg_register.
- */
+// FILENAME: funcreg.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libext
+// NEEDS: libengine (lexer.h, lexer.c)
+// NEEDS: libkernel (types.h)
+// Provides core logic and interface definitions for funcreg within BASIC++.
+//
+// ---- Includes ----
 
 #ifndef RUNTIME_FUNCREG_H
 #define RUNTIME_FUNCREG_H
@@ -62,20 +42,20 @@ typedef enum {
 typedef BValue (*FuncHandler)(BValue *args, int argc, void *rt);
 
 typedef struct {
-    const char     *name;        /* Function name, e.g. "ABS", "CUBE" */
-    BppKeywordId    keyword;     /* KW_NONE or other BppKeywordId */
-    FuncCategory    category;    /* FCAT_MATH, FCAT_USER, etc. */
-    FuncReturnType  ret_type;    /* FRET_INT, FRET_STRING, etc. */
-    int             min_args;    /* minimum arguments */
-    int             max_args;    /* maximum arguments */
-    FuncSafety      safety;      /* FSAFE_PURE ... FSAFE_SYSTEM */
-    int             overridable; /* 1=can be overridden */
-    FuncHandler     handler;     /* C function pointer */
-    const char     *help_text;   /* help docstring */
-    const char     *module_name; /* module that registered this function */
+    const char     *name;        // Function name, e.g. "ABS", "CUBE"
+    BppKeywordId    keyword;     // KW_NONE or other BppKeywordId
+    FuncCategory    category;    // FCAT_MATH, FCAT_USER, etc.
+    FuncReturnType  ret_type;    // FRET_INT, FRET_STRING, etc.
+    int             min_args;    // minimum arguments
+    int             max_args;    // maximum arguments
+    FuncSafety      safety;      // FSAFE_PURE ... FSAFE_SYSTEM
+    int             overridable; // 1=can be overridden
+    FuncHandler     handler;     // C function pointer
+    const char     *help_text;   // help docstring
+    const char     *module_name; // module that registered this function
 } FunctionEntry;
 
-/* Value Helpers for C Modules */
+// Value Helpers for C Modules
 static inline BValue bval_float(double val) {
     BValue res;
     res.type = VAL_NUMBER;
@@ -96,4 +76,4 @@ int                  funcreg_override(BppKeywordId kw, FuncHandler handler);
 int                  funcreg_count(void);
 const FunctionEntry *funcreg_get(int index);
 
-#endif /* RUNTIME_FUNCREG_H */
+#endif // RUNTIME_FUNCREG_H

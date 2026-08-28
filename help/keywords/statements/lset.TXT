@@ -1,0 +1,35 @@
+LSET Left-Justify String Statement
+======================================================================
+
+The LSET statement left-justifies a string expression within a target
+string variable or FIELD buffer, padding on the right with spaces.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    LSET string_variable$ = string_expression$
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Aligns string to the left.
+  - Pads short strings with spaces on the right.
+  - Truncates long strings from the right.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  13          ERR_TYPE_MISMATCH     Non-string target or source
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 B$ = SPACE$(8)
+    20 LSET B$ = "OK"
+    30 PRINT "["; B$; "]"   : REM Outputs [OK      ]

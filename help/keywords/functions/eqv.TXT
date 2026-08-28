@@ -1,0 +1,16 @@
+EQV Bitwise and Logical Equivalence Operator
+======================================================================
+
+The EQV operator performs logical or bitwise equivalence (NOT XOR).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result = expr1 EQV expr2
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT (1 EQV 1)   : REM Outputs -1 (true)

@@ -1,145 +1,73 @@
-# BASIC++ API Documentation Index
+# BASIC++ C17 Public API Architecture Index
 
-> **For**: Third-party developers embedding BASIC++ in their own projects
-> **Format**: Per-subsystem Markdown docs + inline header comments + tutorials
+## 1. Executive Summary & Architecture Overview
 
----
+The BASIC++ v6.5.2 Public C17 API provides a modular, freestanding C17 interface for embedding the BASIC++ interpreter, extending the language with custom statements and functions, constructing virtual devices, and integrating with native host environments.
 
-## Getting Started
+The API adheres to strict architectural boundaries:
+- **Freestanding C17 Compliance**: Core engine headers compile under ISO C17 (`-std=c17`) with zero host OS dependencies.
+- **Decoupled Executable Targets**: Embeddable across Standard Desktop Console (`baspp`), Headless Lite REPL (`bpp`), Headless Batch Script Runner (`bs`), Transpiler (`bppc`), and Bare-Metal RTOS environments.
+- **11-Modular Library Chain**: Organized into distinct layers (`libboot` $\rightarrow$ `libplatform` $\rightarrow$ `libkernel` $\rightarrow$ `libengine` $\rightarrow$ `libhardware` $\rightarrow$ `libserver` $\rightarrow$ `libscript` $\rightarrow$ `libcore` $\rightarrow$ `libflex` $\rightarrow$ `libstandard` $\rightarrow$ `libadvanced` $\rightarrow$ `libext`).
+- **Strict Memory Safety**: Tagged union `BValue` representations, reference-counted string pools (`StringContext`), interpreter-managed heap stacks, and non-recursive AST evaluation.
 
-To embed BASIC++ in your C project:
+## 2. API Domain Index
 
-```c
-#include "boot.h"
-#include "vm.h"
-#include "config.h"
+The BASIC++ C17 API is partitioned into 7 functional domains:
 
-int main(void) {
-    BppConfig cfg = config_defaults();
-    BppContext *ctx = basic_init(&cfg);
-    exec_string(ctx, "PRINT \"Hello from BASIC++!\"");
-    basic_shutdown(ctx);
-    return 0;
-}
-```
+### 1. Core Interpreter & VM (`engine/include/core/`, `vm/`, `types/`)
+- [`core/boot.h`](boot.md): Boot phase initialization, memory pool allocation, and teardown.
+- [`core/state.h`](state.md): Global interpreter lifecycle and signal coordination.
+- [`core/spec.h`](spec.md): Language dialect profiles and specification definitions.
+- [`core/version.h`](version.md): Semantic versioning constants (`6.5.2`) and build targets.
+- [`types/types.h`](types.md): Tagged union values (`BValue`), error types (`BppError`), token definitions (`BppToken`), and configuration constants.
+- [`vm/vm.h`](vm.md): Virtual machine execution loop, program counter, heap stacks, and context accessors.
 
-Link against `libadvanced` (Desktop Edition), `libcore` (Lite REPL), or `libscript` (Script Runner).
+### 2. Lexical Analysis & Evaluation (`engine/include/lexer/`, `eval/`, `stmt/`)
+- [`lexer/lexer.h`](lexer.md): Ephemeral token scanning, keyword lookup, and lookahead.
+- [`eval/eval.h`](eval.md): Non-recursive expression evaluation, operator precedence, and AST traversal.
+- [`stmt/stmt.h`](stmt.md): Statement dispatch registration, execution handlers, and control flow branching.
 
----
+### 3. Runtime Type & Data Management (`engine/include/runtime/`)
+- [`runtime/variables.h`](variables.md): Variable context, scope frames, scalar binding, and lookups.
+- [`runtime/strings.h`](strings.md): Reference-counted string pool (`BppString`), string concatenation, slicing, and mutation.
+- [`runtime/arrays.h`](arrays.md): Multi-dimensional array descriptors, dynamic bounds, and matrix mathematics.
+- [`runtime/struct.h`](struct.md): User-defined `TYPE` records and binary struct packing.
+- [`runtime/file.h`](file.md): File channel tables, random-access record buffers, and byte-range locking.
+- [`runtime/funcreg.h`](funcreg.md): Native C function registration and metadata blocks.
+- [`runtime/metadata.h`](metadata.md): MicroLib metadata blocks, syntax cards, and documentation tables.
+- [`runtime/task.h`](task.md): Asynchronous worker task spawning, thread joins, and process tables.
+- [`runtime/vfs.h`](vfs.md): Virtual Filesystem mount point routing and path resolution.
+- [`runtime/gemini.h`](gemini.md): Gemini protocol streaming and virtual TLS socket clients.
 
-## API Documentation by Subsystem Layer
+### 4. Memory & Virtualization Subsystems (`engine/include/memory/`, `bios/`)
+- [`memory/memory.h`](memory.md): Main memory pools (640MB/384MB/64MB), block allocators, and program line storage.
+- [`memory/map.h`](map.md): High-performance string-to-pointer hash maps.
+- [`memory/segmented_mem.h`](segmented_mem.md): 8086 real-mode 1MB segmented memory model (`PEEK`, `POKE`, `DEF SEG`).
+- [`bios/bios.h`](bios.md): Freestanding PC BIOS virtualization, interrupt vectors (`INT 10h`, `INT 16h`), and CRTC registers.
 
-### Subsystem Layer 1 — Embedding & Lifecycle
-*Start here. These are the entry points for integrating BASIC++ into your application.*
+### 5. Virtual Devices & Hardware Bus (`engine/include/device/`)
+- [`device/vdev.h`](vdev.md): Master Virtual Device abstraction (`VDev`), device bus multiplexer, and stream callbacks.
+- [`device/vcon.h`](vcon.md): Virtual Console (`VConContext`), ANSI escape parser, screen matrix, and cursor tracking.
+- [`device/vnet.h`](vnet.md): Virtual Network sockets (`N:` device), TCP streams, and packet buffers.
+- [`device/bgi.h`](bgi.md): BASIC++ Graphics Interface rasterizer, Bresenham primitives, palettes, and mode profiles.
+- [`device/fujinet.h`](fujinet.md): FujiNet peripheral bus emulation (`N:`, `D:`, `P:`).
+- [`device/usb.h`](usb.md): Virtual USB controller, device enumeration, and HID endpoints.
+- [`device/bus.h`](bus.md): I/O port address space virtualization (`INP`, `OUT`).
 
-| API Doc | Header | Description |
-|---------|--------|-------------|
-| [boot.md](boot.md) | `boot.h` | Initialization, shutdown, entry points |
-| [vm.md](vm.md) | `vm.h` | VM lifecycle, execution, line dispatch |
-| [config.md](config.md) | `config.h` | Configuration, options, dialect selection |
-| [version.md](version.md) | `basic_version.h` | Version constants and queries |
+### 6. Platform Abstraction Layer (`engine/include/platform/`)
+- [`platform/platform.h`](platform.md): OS encapsulation layer coordinating console, filesystem, threads, timing, dynamic linking, and regex.
 
-### Subsystem Layer 2 — Language Core
-*Understand how BASIC++ parses and evaluates programs.*
+### 7. Security, Modules & Development Tools (`engine/include/security/`, `module/`, `editor/`, `debug/`)
+- [`security/security.h`](security.md): Capability-based sandbox (`CAP_FS`, `CAP_NET`, `CAP_SYS`, `CAP_IO`).
+- [`module/module.h`](module.md): Dynamic C extension loader (`MODULE LOAD`, `UNLOAD`).
+- [`module/mod_arrayext.h`](mod_arrayext.md): High-performance matrix mathematics extension module.
+- [`editor/editor.h`](editor.md): Multi-window text user interface (TUI) code editor.
+- [`debug/logger.h`](logger.md): Opt-in multi-channel logging framework.
 
-| API Doc | Header | Description |
-|---------|--------|-------------|
-| [lexer.md](lexer.md) | `lexer.h` | Tokenizer, keyword table, token types |
-| [eval.md](eval.md) | `eval.h` | Expression evaluation, operator dispatch |
-| [stmt.md](stmt.md) | `stmt.h` | Statement dispatch, registration |
-| [types.md](types.md) | `types.h` | Type system, value representation |
-| [variables.md](variables.md) | `variables.h` | Variable storage, scoping |
-| [arrays.md](arrays.md) | `arrays.h` | Array management, DIM, REDIM |
-| [strings.md](strings.md) | `strings.h` | String pool, string operations |
+## 3. Developer Tutorials & Integration Guides
 
-### Subsystem Layer 3 — Runtime Extensions
-*Extend the interpreter with files, functions, data structures, and tasks.*
-
-| API Doc | Header | Description |
-|---------|--------|-------------|
-| [file.md](file.md) | `file.h` | File I/O, channels, modes |
-| [funcreg.md](funcreg.md) | `funcreg.h` | Function registry, DEF FN |
-| [map.md](map.md) | `runtime/map.h` | Map/dictionary data structure |
-| [struct.md](struct.md) | `struct_ctx.h` | User-defined types (TYPE...END TYPE) |
-| [task.md](task.md) | `task.h` | Cooperative multitasking |
-| [spec.md](spec.md) | `spec.h` | Language specification queries |
-| [metadata.md](metadata.md) | `metadata.h` | Directives, pragmas, annotations |
-
-### Subsystem Layer 4 — Virtual Devices & I/O
-*The virtual device layer abstracts all hardware interaction.*
-
-| API Doc | Header | Description |
-|---------|--------|-------------|
-| [vdev.md](vdev.md) | `vdev.h` | Virtual device framework |
-| [vcon.md](vcon.md) | `vcon.h` | Virtual console |
-| [vfs.md](vfs.md) | `vfs.h` | Virtual filesystem |
-| [vnet.md](vnet.md) | `vnet.h` | Virtual networking |
-| [bus.md](bus.md) | `bus.h` | Virtual bus |
-| [usb.md](usb.md) | `usb.h` | USB device abstraction |
-| [fujinet.md](fujinet.md) | `fujinet.h` | FujiNet retro networking |
-| [gemini.md](gemini.md) | `gemini.h` | Gemini protocol |
-
-### Subsystem Layer 5 — Graphics
-*The BASIC++ Graphics Interface (BGI) and hardware emulation.*
-
-| API Doc | Header | Description |
-|---------|--------|-------------|
-| [bgi.md](bgi.md) | `bgi.h` | BGI Graphics Interface |
-| [bios.md](bios.md) | `bios.h` | Authentic IBM PC/XT/AT/PCjr BIOS Micro-Library |
-
-### Subsystem Layer 6 — Security & Modules
-*Sandbox, capability system, and external module loading.*
-
-| API Doc | Header | Description |
-|---------|--------|-------------|
-| [security.md](security.md) | `security.h` | Security sandbox, capability system |
-| [module.md](module.md) | `module.h` | Module loading, validation pipeline |
-| [mod_arrayext.md](mod_arrayext.md) | `mod_arrayext.h` | Array extension module |
-
-### Subsystem Layer 7 — Platform & Memory
-*OS abstraction and memory management internals.*
-
-| API Doc | Header | Description |
-|---------|--------|-------------|
-| [platform.md](platform.md) | `platform.h` | OS abstraction layer |
-| [memory.md](memory.md) | `memory.h` | Memory management |
-| [segmented_mem.md](segmented_mem.md) | `segmented_mem.h` | Segmented memory (RAMBANK) |
-
-### Subsystem Layer 8 — Dialect & Configuration
-*configuration, logging, and editor integration.*
-
-| API Doc | Header | Description |
-|---------|--------|-------------|
-| [dialect.md](dialect.md) | `dialect.h` | Dialect system |
-| [logger.md](logger.md) | `logger.h` | Logging infrastructure |
-| [editor.md](editor.md) | `editor.h` | Editor integration |
-| [custom_dialect.md](custom_dialect.md) | `custom_dialect_static.h` | Static dialect definitions |
-
----
-
-## Tutorials
-
-| Tutorial | Description |
-|----------|-------------|
-| [How to Embed BASIC++](tutorials/embedding.md) | Step-by-step guide to adding BASIC++ to a C project |
-| [How to Add a Virtual Device](tutorials/custom_vdev.md) | Creating a custom virtual device |
-| [How to Write a Module](tutorials/custom_module.md) | Building an external module (.dll/.so) |
-| [How to Define a Dialect](tutorials/custom_dialect.md) | Creating a custom language dialect |
-| [How to Add a Statement](tutorials/custom_statement.md) | Adding new BASIC keywords |
-| [How to Add a Built-in Function](tutorials/custom_function.md) | Registering custom functions |
-
----
-
-## Build Flags
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `BASIC_SDL2` | ON (baspp) | Enable SDL2 backend for graphics, sound, and input |
-| `BASIC_HEADLESS` | ON (blite, bscript) | No graphics or sound |
-| `BASIC_FRAMEBUFFER_ONLY` | OFF | Software framebuffer only, no SDL2 window |
-
----
-
-## Document Status
-
-> ⚠️ **Note**: Individual API docs are being created as part of Phase 11. This index will be updated as each doc is completed.
+- [Tutorial 1: Creating Custom Functions](tutorials/custom_function.md)
+- [Tutorial 2: Creating Custom Statements](tutorials/custom_statement.md)
+- [Tutorial 3: Building Dynamic Modules](tutorials/custom_module.md)
+- [Tutorial 4: Implementing Virtual Devices](tutorials/custom_vdev.md)
+- [Tutorial 5: Embedding BASIC++ in Host Applications](tutorials/embedding.md)

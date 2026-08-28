@@ -1,54 +1,14 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file using_engine.c
- * @brief Runtime component implementation and public API surface for using_engine.c.
- *
- * WHAT IT DOES:
- * Implements the core responsibilities, data structures, and function evaluation logic for using_engine.c within the runtime subsystem.
- *
- * WHY IT EXISTS:
- * Ensures decoupled modularity, strict C17 portability, and clear micro-library architectural boundary enforcement.
- *
- * WHY IT WORKS THIS WAY:
- * Designed with zero-initialization defaults, bounded memory operations, and explicit error code propagation to the VM state.
- *
- * WHAT CAN BE CHANGED:
- * Subsystem configuration defaults, local execution helper routines, and documentation annotations.
- *
- * WHAT CANNOT BE CHANGED:
- * Public API symbol declarations, micro-library metadata structures, and thread-safe error reporting contracts.
- *
- * WHAT TO EXPECT:
- * High-performance deterministic execution with zero side-effects outside designated state structures.
- *
- * WHAT TO DO IF SOMETHING BREAKS:
- * Verify context initialization, trace BppError return codes, and inspect log outputs for bounds assertions.
- *
- * ASSUMPTIONS:
- * Valid subsystem contexts and required memory pools are allocated prior to executing API handlers.
- *
- * PORTABILITY CONCERNS:
- * Strict C17 compliance, 64-bit pointer safety, and pure ASCII string operations across desktop, IoT, and embedded targets.
- *
- * FUTURE EXPANSIONS:
- * Additional dialect compatibility mappings, telemetry instrumentation, and microcontroller payload stubs.
- */
-
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file using_engine.c
- * @brief Unified bidirectional USING formatting & validation engine.
- */
+// FILENAME: using_engine.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, math.h, num_format.h, num_format.c)
+// NEEDS: libcore (string.h, using.h)
+// NEEDS: libengine (math.c, string.c)
+// NEEDS: libkernel (vdev.h, vdev.c)
+// Provides core logic and interface definitions for using_engine within BASIC++.
+//
+// ---- Includes ----
 
 #include "runtime/using.h"
 #include "device/vdev.h"
@@ -66,24 +26,24 @@ void using_parse_mask(const char *fmt_str, UsingMask *mask) {
         UsingToken *tok = &mask->tokens[mask->token_count];
         memset(tok, 0, sizeof(*tok));
 
-        /* 1. Check for single quoted literal block like 'Hex: ' */
+        // 1. Check for single quoted literal block like 'Hex: '
         if (*p == '\'') {
             tok->type = USING_TOK_LITERAL;
             size_t len = 0;
-            p++; /* Consume opening quote */
+            p++; // Consume opening quote
             while (*p && *p != '\'') {
                 if (len < sizeof(tok->text) - 1) {
                     tok->text[len++] = *p;
                 }
                 p++;
             }
-            if (*p == '\'') p++; /* Consume closing quote */
+            if (*p == '\'') p++; // Consume closing quote
             tok->text[len] = '\0';
             mask->token_count++;
             continue;
         }
 
-        /* 2. Check for attribute block like \A{code} */
+        // 2. Check for attribute block like \A{code}
         if (p[0] == '\\' && p[1] == 'A' && p[2] == '{') {
             tok->type = USING_TOK_ATTR;
             const char *start = p + 3;
@@ -96,7 +56,7 @@ void using_parse_mask(const char *fmt_str, UsingMask *mask) {
             }
         }
 
-        /* 3. Check for inline conditional block like [==10] or [> >100] */
+        // 3. Check for inline conditional block like [==10] or [> >100]
         if (*p == '[') {
             const char *start = p + 1;
             const char *end = strchr(start, ']');
@@ -115,8 +75,8 @@ void using_parse_mask(const char *fmt_str, UsingMask *mask) {
                     if (strncmp(clean_buf, "==", 2) == 0) { strcpy(op, "=="); val_ptr = clean_buf + 2; }
                     else if (strncmp(clean_buf, ">=", 2) == 0) { strcpy(op, ">="); val_ptr = clean_buf + 2; }
                     else if (strncmp(clean_buf, "<=", 2) == 0) { strcpy(op, "<="); val_ptr = clean_buf + 2; }
-                    else if (strncmp(clean_buf, "<>", 2) == 0) { strcpy(op, "<>"); val_ptr = clean_buf + 2; } /* Between */
-                    else if (strncmp(clean_buf, "><", 2) == 0) { strcpy(op, "><"); val_ptr = clean_buf + 2; } /* Excluding */
+                    else if (strncmp(clean_buf, "<>", 2) == 0) { strcpy(op, "<>"); val_ptr = clean_buf + 2; } // Between
+                    else if (strncmp(clean_buf, "><", 2) == 0) { strcpy(op, "><"); val_ptr = clean_buf + 2; } // Excluding
                     else if (clean_buf[0] == '>') { strcpy(op, ">"); val_ptr = clean_buf + 1; }
                     else if (clean_buf[0] == '<') { strcpy(op, "<"); val_ptr = clean_buf + 1; }
 
@@ -134,11 +94,11 @@ void using_parse_mask(const char *fmt_str, UsingMask *mask) {
                     }
                 }
                 p = end + 1;
-                /* Do NOT continue. Let the specifier directly following the condition be parsed under this same token */
+                // Do NOT continue. Let the specifier directly following the condition be parsed under this same token
             }
         }
 
-        /* 4. String Field specifiers: !, &, \, '' */
+        // 4. String Field specifiers: !, &, \, ''
         if (*p == '!') {
             tok->type = USING_TOK_STRING_FIELD;
             strcpy(tok->text, "!");
@@ -171,7 +131,7 @@ void using_parse_mask(const char *fmt_str, UsingMask *mask) {
             continue;
         }
 
-        /* 5. Form Feed / Line Feed / Bell / Column */
+        // 5. Form Feed / Line Feed / Bell / Column
         if (*p == 'F' || *p == 'L') {
             char type_char = *p;
             const char *start = p + 1;
@@ -200,7 +160,7 @@ void using_parse_mask(const char *fmt_str, UsingMask *mask) {
             continue;
         }
 
-        /* 6. Numeric formats: #, +, -, $, *, ., , */
+        // 6. Numeric formats: #, +, -, $, *, ., ,
         if (*p == '#' || *p == '+' || *p == '-' || *p == '$' || *p == '*' || *p == '.' || *p == ',' ||
             *p == 'Z' || *p == '0' || *p == 'E' || *p == '^' || *p == 'S' || *p == 'D' || *p == 'I' ||
             *p == 'O' || *p == 'H' || *p == 'B' || *p == 'T') {
@@ -220,7 +180,7 @@ void using_parse_mask(const char *fmt_str, UsingMask *mask) {
             continue;
         }
 
-        /* 7. Literal */
+        // 7. Literal
         tok->type = USING_TOK_LITERAL;
         tok->text[0] = *p;
         tok->text[1] = '\0';
@@ -279,7 +239,7 @@ void using_format_output(VMContext *vm, const UsingMask *mask, int *mask_idx, BV
 
     const UsingToken *tok = &mask->tokens[*mask_idx];
 
-    /* Handle Literal Tokens */
+    // Handle Literal Tokens
     if (tok->type == USING_TOK_LITERAL) {
         strncpy(out_buf, tok->text, out_max - 1);
         out_buf[out_max - 1] = '\0';
@@ -287,7 +247,7 @@ void using_format_output(VMContext *vm, const UsingMask *mask, int *mask_idx, BV
         return;
     }
 
-    /* Format string attributes */
+    // Format string attributes
     if (tok->type == USING_TOK_ATTR) {
         char attr_buf[32] = "";
         if (tok->code >= 1 && tok->code <= 16) {
@@ -304,7 +264,7 @@ void using_format_output(VMContext *vm, const UsingMask *mask, int *mask_idx, BV
         return;
     }
 
-    /* Handle Form Feeds / Line Feeds / Bells */
+    // Handle Form Feeds / Line Feeds / Bells
     if (tok->type == USING_TOK_FORM_FEED) {
         char ff[32] = "\x0c";
         strncpy(out_buf, ff, out_max - 1);
@@ -325,7 +285,7 @@ void using_format_output(VMContext *vm, const UsingMask *mask, int *mask_idx, BV
         return;
     }
 
-    /* Evaluate conditional check */
+    // Evaluate conditional check
     if (val.type == VAL_NUMBER && tok->has_condition) {
         if (!using_eval_condition(val.as.number, tok)) {
             size_t w = strlen(tok->text);

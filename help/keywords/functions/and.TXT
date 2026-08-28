@@ -1,0 +1,16 @@
+AND Logical and Bitwise Conjunction Operator
+======================================================================
+
+The AND operator performs bitwise or logical conjunction.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result = expr1 AND expr2
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT (5 AND 3)   : REM Outputs 1

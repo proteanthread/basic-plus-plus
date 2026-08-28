@@ -1,0 +1,36 @@
+COMMON Shared Overlay Variable Statement
+======================================================================
+
+The COMMON statement designates variables that persist across program
+overlays when executing CHAIN or RUN "file", R.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    COMMON var1 [, var2, var3, ...]
+    COMMON SHARED var1 [, var2, ...]
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Preserved in memory across CHAIN calls without file I/O.
+  - Lists in chained programs must match in order and type.
+  - COMMON SHARED gives SUBs and FUNCTIONs global visibility.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  2           ERR_SYNTAX_ERROR      Invalid variable list in COMMON
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 COMMON USER$, LEVEL%
+    20 USER$ = "Admin" : LEVEL% = 1
+    30 CHAIN "PROG2.BAS"

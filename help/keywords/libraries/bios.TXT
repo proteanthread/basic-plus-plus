@@ -1,0 +1,20 @@
+bios Virtual Machine BIOS Subsystem (libbios / libkernel)
+======================================================================
+
+The bios library provides freestanding PC/XT/AT interrupt emulation
+(INT 10h video, INT 16h keyboard, INT 1Ah timer).
+
+
+INVARIANTS
+----------------------------------------------------------------------
+
+  - Freestanding C17 implementation.
+  - BDA video registers and 6845 CRTC hardware emulation.
+  - Tri-mode CPU execution engine (C17 HLE / 8086 VM / Host).
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    void bios_init(void);
+    void bios_interrupt(uint8_t int_no, BiosRegisters *regs);

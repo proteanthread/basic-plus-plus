@@ -1,0 +1,13 @@
+rpg_procgen Procedural Dungeon Generation & Roguelike Engine
+======================================================================
+
+The rpg_procgen library provides BSP dungeon generation, cellular
+automata caves, and field-of-view (FOV) shadowcasting.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - BSP tree dungeon room and hallway generator.
+  - Cellular automata cave generator.
+  - Shadowcasting field-of-view and lighting.

@@ -1,0 +1,17 @@
+CARG Complex Argument / Phase Angle Function
+======================================================================
+
+The CARG function computes the phase angle (argument) of a complex
+number in radians.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    phase# = CARG(complex_val)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT CARG(COMPLEX(1, 0))   : REM Outputs 0

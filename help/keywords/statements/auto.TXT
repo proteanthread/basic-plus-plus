@@ -1,0 +1,28 @@
+AUTO Automatic Line Numbering Command
+=====================================
+
+Automatically generates line numbers during interactive program editing in console mode.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    AUTO [start_line% [, increment%]]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Invalid line number or increment <= 0.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Interactive command available in baspp and bpp REPLs.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    AUTO 100, 10  : REM Generates lines 100, 110, 120...

@@ -1,0 +1,68 @@
+# Phase 2G: libstandard (TUI Editors) Freestanding Conversion
+
+## 1. Overview
+Phase 2G completes the freestanding C17 architectural conversion for the Standard TUI Workstation, Visual Text Editor Subsystems, DAP Debug Server, and Static Analyzer (`libstandard` static library, editor micro-libraries `editor_buffer`, `editor_render`, `editor_selection`, `editor_term`, and full-screen TUI editors `edit/`, `edlin/`, `vi/`, `ws/`). All direct standard C library file handles (`FILE*`, `fopen`, `fclose`, `fread`, `fwrite`), hosted libc headers (`<stdio.h>`, `<stdlib.h>`, `<string.h>`, `<ctype.h>`), heap allocations (`malloc`, `calloc`, `realloc`, `free`), memory manipulation routines (`memset`, `memcpy`, `memmove`), and string/formatting operations (`strlen`, `strcpy`, `strcmp`, `strncmp`, `strncpy`, `strchr`, `strrchr`, `strcasecmp`, `strncasecmp`, `strstr`, `strncat`, `snprintf`, `vsnprintf`, `atoi`, `strtod`, `atoll`) have been migrated to the pure C17 freestanding Runtime Library (`runtime_*`) and Hardware Abstraction Layer `IoHandle` / `hal->io.*` and `hal->mem.*` operations.
+
+---
+
+## 2. Converted Source Inventory & Structure
+
+### 2.1 Editor Core Micro-Libraries (`engine/lib/editor/`)
+- [`engine/lib/editor/editor_buffer.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/lib/editor/editor_buffer.c): Text buffer line allocation, capacity expansion, and ASCII sanitization converted to `hal->mem.alloc`, `hal->mem.realloc`, `hal->mem.free`, `runtime_memcpy`, and `runtime_memmove`.
+- [`engine/lib/editor/editor_render.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/lib/editor/editor_render.c): Tab stop translations, coordinate mapping, and truncated filename formatting converted to `runtime_strlen`, `runtime_strncpy`, `runtime_memcpy`, and `runtime_strcat`.
+- [`engine/lib/editor/editor_selection.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/lib/editor/editor_selection.c): Selection bounds tracking, rectangular text extraction, and multi-line in-place deletion converted to `hal->mem.alloc`, `hal->mem.free`, `runtime_memset`, `runtime_memcpy`, and `runtime_memmove`.
+- [`engine/lib/editor/editor_term.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/lib/editor/editor_term.c): Terminal dimensions and escape sequences verified with freestanding runtime headers.
+
+### 2.2 TUI Editors Subsystem (`engine/src/editor/`)
+- [`engine/src/editor/editor.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/editor/editor.c): Built-in `EDIT` statement dispatch and parameter parsing converted to `runtime_isdigit`, `runtime_strtod`, `runtime_strcmp`, and `runtime_isspace`.
+- [`engine/src/editor/editor_manager.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/editor/editor_manager.c): Multi-editor registry and plugin dispatch converted to `runtime_strcmp`.
+- [`engine/include/editor/edit_internal.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/include/editor/edit_internal.h), [`edlin_internal.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/include/editor/edlin_internal.h), [`vi_internal.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/include/editor/vi_internal.h), [`ws_internal.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/include/editor/ws_internal.h): Replaced hosted headers with freestanding C17 and HAL headers (`hal/hal.h`, `runtime/string/strops.h`, `runtime/string/memops.h`, `runtime/format/snprintf.h`, `runtime/ctype/ctype.h`, `runtime/conv/num_parse.h`) and added freestanding `hal_file_read_line` inline helper.
+- **MS-DOS Edit Clone (`engine/src/editor/edit/`)**:
+  - `edit_buf.c`: File loading and saving converted to `hal_file_read_line`, `hal->io.file_write`, `hal->mem.alloc`, and `hal->mem.free`.
+  - `edit_cmd.c`: Interactive editor command dispatch converted to freestanding memory operations.
+  - `edit_menu.c`: Pull-down menu actions converted to `runtime_snprintf` and `runtime_strncpy`.
+  - `edit_render.c`: Syntax highlighting and status bar formatting converted to `runtime_snprintf`.
+  - `edit_term.c`: Terminal stream flushing converted to `IO_STDOUT_HANDLE` and `hal->io.file_write`.
+- **EDLIN Line Editor (`engine/src/editor/edlin/`)**:
+  - `edlin_buf.c`: Line buffer management and file loading/saving converted to `hal_file_read_line` and `hal->io.file_write`.
+  - `edlin_cmd.c`: Line editing command parser and terminal output converted to `runtime_atoi` and `IO_STDOUT_HANDLE`.
+  - `edlin_exec.c`: Direct program file export converted to `runtime_atoll` and `hal->io.file_write`.
+- **Vi Clone (`engine/src/editor/vi/`)**:
+  - `vi_buf.c`: Ex-mode file loading/saving converted to `hal_file_read_line` and `hal->io.file_write`.
+  - `vi_cmd.c`: Modal command dispatch converted to `runtime_isdigit` and `runtime_strchr`.
+  - `vi_render.c`: Screen rendering converted to `runtime_snprintf`.
+  - `vi_term.c`: Raw terminal output converted to `IO_STDOUT_HANDLE` and `hal->io.file_write`.
+- **WordStar Clone (`engine/src/editor/ws/`)**:
+  - `ws_buf.c`: WordStar file loading/saving converted to `hal_file_read_line` and `hal->io.file_write`.
+  - `ws_cmd.c`: WordStar control-key sequences converted to `runtime_strchr` and `runtime_toupper`.
+  - `ws_render.c`: Classic ruler line and menu display converted to `runtime_snprintf`.
+  - `ws_term.c`: Screen flushing converted to `IO_STDOUT_HANDLE` and `hal->io.file_write`.
+
+### 2.3 Debug & Static Analysis Subsystem (`engine/src/debug/`)
+- [`engine/src/debug/dap_server.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/debug/dap_server.c): Debug Adapter Protocol JSON-RPC responses converted to `runtime_snprintf` and `runtime_strlen`.
+- [`engine/src/debug/analyzer.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/engine/src/debug/analyzer.c): Static code analyzer and metrics reporter converted to `runtime_snprintf`, `runtime_strncpy`, `runtime_strstr`, `runtime_toupper`, and `runtime_isdigit`.
+
+---
+
+## 3. Verification & Test Suite
+- **Dedicated Unit Test Suite**: [`tests/standard_tui_freestanding_test.c`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/tests/standard_tui_freestanding_test.c) covering:
+  1. Editor Core Buffer & ASCII Sanitization (line capacity expansion, null termination, memory cleanups).
+  2. Tab Stop Coordinates & Row Rendering (tab expansion, coordinate transformation, truncated path formatting).
+  3. Selection Tracking, Extraction & Deletion (forward/reverse selections, in-place deletion, active state).
+  4. EDLIN Buffer Operations & HAL File I/O (file creation, line insertion, saving via HAL, reloading from disk).
+  5. Static Analysis Report & Metrics (code lines, keyword counts, cyclomatic complexity calculation).
+- **All Freestanding Suites Passed (8/8 - 100%)**:
+  - `runtime_freestanding_test.exe`: 9/9 suites PASSED (100%)
+  - `boot_freestanding_test.exe`: 3/3 suites PASSED (100%)
+  - `kernel_freestanding_test.exe`: 6/6 suites PASSED (100%)
+  - `hardware_freestanding_test.exe`: 4/4 suites PASSED (100%)
+  - `server_freestanding_test.exe`: 4/4 suites PASSED (100%)
+  - `script_freestanding_test.exe`: 4/4 suites PASSED (100%)
+  - `core_flex_freestanding_test.exe`: 5/5 suites PASSED (100%)
+  - `standard_tui_freestanding_test.exe`: 5/5 suites PASSED (32/32 tests - 100%)
+- **Master Regression Suites (Zero Regressions)**:
+  - `tests/qb_vbdos_master.bas`: 10 / 10 Packages PASSED (100%)
+  - `tests/vintage_ecosystems_master.bas`: 14 / 14 Packages PASSED (100%)
+  - `tests/vintage_deep_fuzz_stress.bas`: 8 / 8 Tests PASSED (100%)
+  - Immediate execution `bs -c "SELFTEST"`: Verified (ALL SYSTEM TESTS PASSED).
+  - Immediate execution `bs -c "PRINT 1+1"`: Verified (`2`).

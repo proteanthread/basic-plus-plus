@@ -1,0 +1,35 @@
+SWAP Variable Exchange Statement
+======================================================================
+
+The SWAP statement exchanges the values of two variables or array
+elements of identical data types without requiring a temporary variable.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    SWAP variable1, variable2
+    SWAP array(i), array(j)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Both operands must be of identical types (both numeric or both string).
+  - Handles string reference counting safely.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  13          ERR_TYPE_MISMATCH     Mismatched operand types
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 X = 10 : Y = 20
+    20 SWAP X, Y
+    30 PRINT "X="; X; " Y="; Y

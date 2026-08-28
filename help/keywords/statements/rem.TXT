@@ -1,0 +1,26 @@
+REM Remark / Comment Statement
+======================================================================
+
+The REM statement (and shorthand ') inserts comments and documentation
+into BASIC++ source code. The interpreter ignores the rest of the line.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    REM comment_text
+    ' comment_text
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - All text until end of line is ignored.
+  - Colons inside REM comments do not separate statements.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 REM Initialize counters
+    20 COUNT = 0 ' Start at zero

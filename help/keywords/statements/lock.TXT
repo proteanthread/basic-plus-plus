@@ -1,0 +1,32 @@
+LOCK File Range Locking Statement
+=================================
+
+Locks a record range or byte region in an open file channel to prevent concurrent process modification.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    LOCK [#]filenum% [, [start_record&] TO end_record&]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 70 (ERR_PERMISSION_DENIED): Record already locked by another process.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Multi-process safe record locking.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 OPEN "R", #1, "DATA.DAT", 128
+    20 LOCK #1, 10 TO 20 : REM Lock records 10..20
+    30 REM Perform atomic updates
+    40 UNLOCK #1, 10 TO 20
+    50 CLOSE #1

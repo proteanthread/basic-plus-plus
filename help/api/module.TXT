@@ -1,0 +1,30 @@
+C17 API REFERENCE: DYNAMIC MODULE SUBSYSTEM (module/module.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Dynamic Module Subsystem provides safe dynamic loading, capability
+verification, sandbox allocation, and symbol binding for C17 extensions.
+
+2. MODULE CLASSES
+- MOD_LIBRARY:   Shared procedural or math library.
+- MOD_DIALECT:   Language dialect syntax provider.
+- MOD_DEVICE:    Virtual hardware or peripheral device driver.
+- MOD_EXTENSION: General-purpose system integration plugin.
+
+3. KEY TYPES & STRUCTS
+- BppModuleInfo: name, version, description, mod_class, capabilities,
+  required_level, init callback, cleanup callback.
+
+4. CORE API FUNCTIONS
+- module_system_init()
+- module_register(info) -> int
+- module_activate(name, rt) -> int
+- module_deactivate(name) -> int
+- module_is_active(name) -> int
+- module_find(name) -> const BppModuleInfo *
+- module_count() -> int
+- module_get(index) -> const BppModuleInfo *
+
+5. SECURITY INVARIANTS
+- Modules undergo capability checking against active SecurityContext before
+  activation. Unauthorized capabilities trigger Error 70 (Permission Denied).

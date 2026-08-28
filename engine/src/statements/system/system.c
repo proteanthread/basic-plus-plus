@@ -1,59 +1,18 @@
-/**
- * @file system.c
- * @brief SYSTEM, BYE, and SHELL system control statement handlers for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements OS process control and engine termination statement handlers:
- * - SYSTEM: Exits program execution and returns to operating system command prompt.
- * - BYE: Immediate alias for SYSTEM to exit interpreter session.
- * - SHELL [command_string$]: Suspends BASIC++ execution and invokes host system shell or executes command string.
- *
- * 2. WHY IT EXISTS:
- * Provides host operating system shell access and interpreter session termination per GW-BASIC / QBASIC standards.
- *
- * 3. WHY IT WORKS THIS WAY:
- * SYSTEM/BYE set vm_halt() and vm_request_exit() on VMContext; SHELL validates security permissions via sec_check_permission(SEC_SYS_EXEC), evaluates command string, and invokes platform_execute_command().
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_system'. Includes "statements/system/system.h",
- * "eval/eval.h", "device/vdev.h", "runtime/metadata.h", "security/security.h", "module/module.h", "platform/platform.h", "memory/memory.h", "types/version.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs'). SHELL command execution requires active security permissions in sandbox environments.
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support capture of SHELL command exit codes into system variables (STATUS%).
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Security invariant: SHELL MUST invoke sec_check_permission(SEC_SYS_EXEC) before executing host commands.
- *
- * 8. WHAT TO EXPECT:
- * Exits session or executes OS shell command; returns ERR_NONE or ERR_PERMISSION_DENIED under sandbox restrictions.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify platform_execute_command() implementation in platform/platform.c.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Uses platform abstraction layer for OS command execution.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/platform/platform.c
- * - engine/src/security/security.c
- * - engine/src/vm/vm_context.c
- * Prerequisite Header Files:
- * - engine/include/statements/system/system.h
- * - engine/include/platform/platform.h
- * - engine/include/vm/vm.h
- */
+// FILENAME: system.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel, libplatform
+// Provides runtime implementation for the SYSTEM statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "statements/system/system.h"
 #include "eval/eval.h"
 #include "device/vdev.h"
 #include "runtime/metadata.h"
+#include "runtime/task.h"
+#include "runtime/file.h"
 #include "security/security.h"
 #include "module/module.h"
 #include "platform/platform.h"
@@ -63,14 +22,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 extern void platform_execute_shell(void);
-extern void platform_execute_command(const char *cmd);
-
 BppError stmt_bye_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)lex;
+    BppToken tok = lex_peek(lex);
+    if (tok.type != TOK_EOF && tok.type != TOK_EOL && tok.type != TOK_BACKSLASH) {
+        err.code = 2;
+        err.message = "Unexpected argument after BYE";
+        return err;
+    }
+    task_mgr_shutdown();
+    FileContext *fc = vm_get_file(vm);
+    if (fc) {
+        file_close_all(fc);
+    }
     vm_halt(vm);
     vm_request_exit(vm);
     return err;
@@ -80,10 +52,101 @@ BppError stmt_system_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
 
+    BppToken tok = lex_peek(lex);
+    if (tok.type == TOK_EOF || tok.type == TOK_EOL || tok.type == TOK_BACKSLASH) {
+        vm_halt(vm);
+        vm_request_exit(vm);
+        return err;
+    }
+
+    if (tok.type == TOK_NUMBER) {
+        BValue exit_val = eval_expression(vm, lex, &err);
+        if (err.code != 0) return err;
+        (void)exit_val;
+        vm_halt(vm);
+        vm_request_exit(vm);
+        return err;
+    }
+
     VDevContext *vdev = vm_get_vdev(vm);
     if (!vdev) return err;
 
-    BppToken tok = lex_peek(lex);
+    if (tok.type == TOK_LPAREN) {
+        lex_next(lex); // Consume '('
+        BValue code_val = eval_expression(vm, lex, &err);
+        if (err.code != 0) return err;
+        if (code_val.type != VAL_NUMBER && code_val.type != VAL_INTEGER) {
+            if (code_val.type == VAL_STRING && code_val.as.string) {
+                str_release(vm_get_str(vm), code_val.as.string);
+            }
+            err.code = 13; err.message = "Type mismatch (expected numeric code for SYSTEM)";
+            return err;
+        }
+
+        BppToken rtok = lex_next(lex);
+        if (rtok.type != TOK_RPAREN) {
+            err.code = 2; err.message = "Expected ')' after SYSTEM code";
+            return err;
+        }
+
+        int code = (int)code_val.as.number;
+        switch (code) {
+            case 0:
+#if defined(_WIN32)
+                vdev_printf(vdev, "Process ID: %lu\n", (unsigned long)GetCurrentProcessId());
+#else
+                vdev_printf(vdev, "Process ID: %ld\n", (long)getpid());
+#endif
+                break;
+            case 1:
+                vdev_printf(vdev, "Platform: %s (%s)\n", platform_name(), BASIC_PROFILE_NAME);
+#if defined(_MSC_VER)
+                vdev_printf(vdev, "Compiler: MSVC %d\n", _MSC_VER);
+#elif defined(__GNUC__) && !defined(__clang__)
+                vdev_printf(vdev, "Compiler: GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+#elif defined(__clang__)
+                vdev_printf(vdev, "Compiler: Clang %d.%d.%d\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
+#else
+                vdev_puts(vdev, "Compiler: Unknown C17 Compiler\n");
+#endif
+                vdev_printf(vdev, "Word size: %d-bit (ptr=%d int=%d long=%d)\n",
+                            (int)(sizeof(void*) * 8),
+                            (int)sizeof(void*),
+                            (int)sizeof(int),
+                            (int)sizeof(long));
+                vdev_printf(vdev, "%s v%s \"%s\"\n", BASIC_NAME, BASIC_VERSION_STRING, BASIC_VERSION_CODENAME);
+                vdev_printf(vdev, "Security: %s\n", security_level_name(security_get_level()));
+                vdev_printf(vdev, "Modules: %d registered\n", module_count());
+                break;
+            case 2: {
+                size_t free_ram = mem_get_free_ram(vm_get_mem(vm));
+                size_t total_ram = free_ram + mem_get_used_ram(vm_get_mem(vm));
+                char free_buf[64], total_buf[64];
+                mem_format_size(free_ram, free_buf, sizeof(free_buf));
+                mem_format_size(total_ram, total_buf, sizeof(total_buf));
+                vdev_printf(vdev, "Memory: Free RAM %s / %s Total RAM\n", free_buf, total_buf);
+                break;
+            }
+            case 3:
+                vdev_printf(vdev, "Security Level: %s (%d)\n",
+                            security_level_name(security_get_level()),
+                            (int)security_get_level());
+                break;
+            case 4:
+                vdev_printf(vdev, "Modules: %d registered\n", module_count());
+                break;
+            case 5:
+                vdev_printf(vdev, "%s v%s \"%s\" (Built %s %s)\n",
+                            BASIC_NAME, BASIC_VERSION_STRING, BASIC_VERSION_CODENAME,
+                            __DATE__, __TIME__);
+                break;
+            default:
+                vdev_printf(vdev, "SYSTEM(%d): Valid codes are 0=PID, 1=Platform, 2=Memory, 3=Security, 4=Modules, 5=Version\n", code);
+                break;
+        }
+        return err;
+    }
+
     if (tok.type == TOK_STRING || tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
         lex_next(lex);
         char query[256];
@@ -125,65 +188,11 @@ BppError stmt_system_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-    vdev_printf(vdev, "Platform: %s (%s)\n", platform_name(), BASIC_PROFILE_NAME);
-#if defined(_MSC_VER)
-    vdev_printf(vdev, "Compiler: MSVC %d\n", _MSC_VER);
-#elif defined(__GNUC__) && !defined(__clang__)
-    vdev_printf(vdev, "Compiler: GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-#elif defined(__clang__)
-    vdev_printf(vdev, "Compiler: Clang %d.%d.%d\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
-#else
-    vdev_puts(vdev, "Compiler: Unknown C17 Compiler\n");
-#endif
-    vdev_printf(vdev, "Word size: %d-bit (ptr=%d int=%d long=%d)\n",
-                (int)(sizeof(void*) * 8),
-                (int)sizeof(void*),
-                (int)sizeof(int),
-                (int)sizeof(long));
-    vdev_printf(vdev, "%s v%s \"%s\"\n", BASIC_NAME, BASIC_VERSION_STRING, BASIC_VERSION_CODENAME);
-    vdev_printf(vdev, "Security: %s\n", security_level_name(security_get_level()));
-    vdev_printf(vdev, "Modules: %d registered\n", module_count());
-
+    err.code = 2;
+    err.message = "Syntax error in SYSTEM (expected no args, (code), or query string)";
     return err;
 }
 
-BppError stmt_shell_handler(VMContext *vm, LexerContext *lex) {
-    BppError err;
-    memset(&err, 0, sizeof(err));
-    BValue cmd_val;
-    memset(&cmd_val, 0, sizeof(cmd_val));
-
-    BppToken tok = lex_peek(lex);
-    if (tok.type == TOK_EOF || tok.type == TOK_EOL) {
-        platform_execute_shell();
-        return err;
-    }
-
-    cmd_val = eval_expression(vm, lex, &err);
-    if (err.code != 0) return err;
-
-    if (cmd_val.type != VAL_STRING) {
-        err.code = 13; err.message = "Type mismatch (expected string for SHELL)";
-        return err;
-    }
-
-    platform_execute_command(str_data(cmd_val.as.string));
-    return err;
-}
-
-BppError stmt_pause_handler(VMContext *vm, LexerContext *lex) {
-    BppError err;
-    memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
-    return err;
-}
-
-BppError stmt_sys_handler(VMContext *vm, LexerContext *lex) {
-    BppError err;
-    memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
-    return err;
-}
 
 BppError stmt_devices_handler(VMContext *vm, LexerContext *lex) {
     BppError err;

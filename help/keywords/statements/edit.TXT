@@ -1,0 +1,29 @@
+EDIT Program Line Editor Command
+================================
+
+Loads the specified program line into the console input buffer for interactive in-place editing.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    EDIT line_number%
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 8 (ERR_UNDEFINED_LINE_NUMBER): Line does not exist.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Supported in interactive REPL environments.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Misspelled line"
+    EDIT 10

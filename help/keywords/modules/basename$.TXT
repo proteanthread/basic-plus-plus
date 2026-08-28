@@ -1,0 +1,33 @@
+BASENAME$ Filename Extraction Function
+======================================================================
+
+The BASENAME$ function extracts the filename component from a path,
+optionally removing a file extension.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    name$ = BASENAME$(full_path$)
+    name$ = BASENAME$(full_path$, suffix_to_remove$)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Strips leading directory paths.
+  - Strips optional suffix string if present.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  13          ERR_TYPE_MISMATCH     Non-string argument provided
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT BASENAME$("docs/guide.md", ".md")   : REM Outputs "guide"

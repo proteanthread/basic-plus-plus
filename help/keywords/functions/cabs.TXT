@@ -1,0 +1,17 @@
+CABS Complex Absolute Value / Magnitude Function
+======================================================================
+
+The CABS function calculates the magnitude (hypotenuse) of a complex
+number z = x + iy.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    magnitude# = CABS(complex_val)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT CABS(COMPLEX(3, 4))   : REM Outputs 5

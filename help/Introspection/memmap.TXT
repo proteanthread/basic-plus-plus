@@ -1,49 +1,79 @@
-MEMMAP$
+MEMMAP$ Function Reference
+======================================================================
 
-1. Syntax & Parameters
-X$ = MEMMAP$()
+The MEMMAP$ built-in string function returns the identifier name of
+the currently active virtual BIOS hardware memory map architecture.
 
-Parameters:
-None.
 
-2. Description & Usage
-The MEMMAP$ built-in function returns a string identifier of the currently active BIOS memory map model. The returned string matches the model set by the BIOS statement or the OPTION BIOS directive. The default model is "PCAT" (IBM PC/AT).
+SYNTAX
+----------------------------------------------------------------------
 
-Returned values:
-* "NONE" - Bare 64K memory space without any BIOS emulator defaults.
-* "MSDOS" - MS-DOS emulation.
-* "IBMPC" - IBM PC BIOS emulation.
-* "PCJR" - IBM PCjr BIOS emulation.
-* "PCXT" - IBM PC/XT BIOS emulation.
-* "PCAT" - IBM PC/AT BIOS emulation (Default).
-* "ATARI" - Atari 400/800/XL/XE emulation.
-* "C64" - Commodore 64 emulation.
-* "VIC20" - Commodore VIC-20 emulation.
-* "APPLE2" - Apple II/IIe emulation.
-* "TRS80" - TRS-80 Model I/III emulation.
-* "TANDY" - Tandy 1000 emulation.
+    model$ = MEMMAP$
 
-3. Code Examples
-`basic
-10 PRINT "Active Model: " + MEMMAP$()
-20 BIOS "C64"
-30 PRINT "New Active Model: " + MEMMAP$()
-`
 
-4. Internal C-Source Mapping
-* source/expression/eval.c - Function registration and evaluation logic.
-* source/device/vdev_bus.c - Active model state storage and MMIO interception.
-* source/bios/mock_bios.c - Switchable legacy BIOS structures.
+RETURN VALUE
+----------------------------------------------------------------------
 
-5. Implementation Details
-Execution path: MEMMAP$ is recognized as a built-in token in the expression evaluator (eval.c). It queries the virtual device bus (vdev_bus.c) for the currently active BIOS model, retrieves the corresponding string representation via mock_bios_model_to_string(), and returns a string value copy.
+  - Returns a string (VAL_STRING) representing the active profile:
+    "IBM_PC"   - Standard 1981 IBM PC 5150 (CGA / MDA)
+    "IBM_XT"   - IBM PC/XT 5160 (Fixed disk BDA, 640KB RAM)
+    "IBM_AT"   - IBM PC/AT 5170 (286 real mode, EGA/VGA)
+    "IBM_PCJR" - IBM PCjr (16-color graphics, 3-voice audio)
+    "(None)"   - If virtual BIOS is disabled (SUPPORT_BIOS=0).
 
-6. Cross-References / See Also
-* BIOS - Switch active BIOS/memory map model or trigger interrupt.
-* PEEK - Read byte from virtual memory.
-* POKE - Write byte to virtual memory.
-* HELP - Interactive user assistance.
-* CATALOG - Categorized list of keywords and functions.
 
-7. Historical Context
-In vintage home computer architectures, the memory layout (RAM/ROM locations) was hardwired. The MEMMAP$ function in BASIC++ allows cross-platform scripts to dynamically query the environment configuration to run model-specific PEEK/POKE routines safely.
+DESCRIPTION
+----------------------------------------------------------------------
+
+In BASIC++ v6.5.2, the virtual BIOS layer (libbios) virtualizes
+authentic IBM PC x86 memory layouts (IVT 0x0000, BDA 0x0400, Video RAM
+0xA000 / 0xB800, ROM BIOS 0xF000).
+
+MEMMAP$ allows programs to inspect the active architecture dynamically
+before making model-specific memory accesses or BIOS calls:
+
+    10 ModelName$ = MEMMAP$
+    20 PRINT "Active Architecture: "; ModelName$
+    30 IF ModelName$ = "IBM_PCJR" THEN PRINT "PCjr Audio Available!"
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    100 SELECT CASE MEMMAP$
+    110     CASE "IBM_PCJR" : CALL INIT_PCJR_AUDIO
+    120     CASE "IBM_AT"   : CALL INIT_VGA_256_COLOR
+    130     CASE ELSE       : CALL INIT_STANDARD_CGA
+    140 END SELECT
+
+
+ENGINE IMPLEMENTATION (eval_builtins.c & bios.c)
+----------------------------------------------------------------------
+
+In engine/src/eval/eval_builtins.c:
+  Queries bios_get_model(vm_get_bios(vm)) and maps the enum to
+  string constants ("IBM_PC", "IBM_XT", "IBM_AT", "IBM_PCJR").
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  13          ERR_TYPE_MISMATCH     Arguments passed to MEMMAP$
+
+
+CROSS-REFERENCES
+----------------------------------------------------------------------
+
+  - BIOS: Executes BIOS interrupts or switches hardware profiles.
+  - Devices_Hardware/virtual_mach/VMEM.md: Segmented memory access.
+  - IBM_BIOS_Porting.md: Freestanding BIOS subsystem architecture.
+
+
+PROPOSED EXPANSION OR CHANGES
+----------------------------------------------------------------------
+
+  1. Custom Architecture Registry: Allow custom models (TANDY_1000)
+     to register custom memory map descriptors.
+  2. MEMMAP(segment%): Retrieve the base address of a segment.

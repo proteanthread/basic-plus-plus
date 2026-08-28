@@ -1,53 +1,13 @@
-/**
- * @file mux.c
- * @brief MUX, DEMUX, UNPACK, and BITMUX multiplexing statement handlers for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements hardware-inspired multiplexing statement handlers:
- * - MUX (sel, in0, in1, ...): Selects input signal channel based on selector index into target variable.
- * - DEMUX (sel, in_val, out0, out1, ...): Routes input value to specified output variable based on selector index.
- * - UNPACK bit_field, var1, var2, ...: Unpacks multi-bit bitfield into individual flag variables.
- * - BITMUX (sel_bitfield, in_val, out_val): Performs multi-channel bitwise multiplexing.
- *
- * 2. WHY IT EXISTS:
- * Provides hardware logic emulation and low-level bit/signal routing capabilities per BASIC++ specifications.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Evaluates selector index or bitfield, performs bounds checks against input/output argument arrays, and assigns target variable.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_mux'. Includes "statements/system/mux.h",
- * "types/errors.h", "eval/eval.h", "vm/vm.h", "lexer/lexer.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support multi-bit bus multiplexing (BUSMUX) and tri-state buffer simulation (TRIMUX).
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Selector index bounds checking: Selector MUST be validated against supplied argument counts to prevent out-of-bounds evaluation.
- *
- * 8. WHAT TO EXPECT:
- * Selects or routes values and returns ERR_NONE or ERR_ILLEGAL_FUNCTION_CALL.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify expression argument list parsing in LexerContext.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext and LexerContext.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. 64-bit bitwise mask safety (uint64_t / uint32_t shift operations).
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/eval/eval.c
- * Prerequisite Header Files:
- * - engine/include/statements/system/mux.h
- * - engine/include/vm/vm.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: mux.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (pack.c, unpack.c)
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libengine (eval.h, eval.c, mux.h, string.c)
+// NEEDS: libkernel (errors.h)
+// Provides runtime implementation for the MUX statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "statements/system/mux.h"
 #include "types/errors.h"
@@ -100,3 +60,13 @@ void stmt_mux_register(void) {
     microlib_register(&meta);
 }
 
+void stmt_var_mux_register(void) {
+    MicroLibMetadata meta = {
+        .name = "MUX VAR",
+        .category = "Multiplexing & Channels",
+        .syntax = "MUX channel, state",
+        .help_text = "Controls channel multiplexing state for virtual devices and streams.",
+        .error_codes = "Error 5: Illegal Function Call"
+    };
+    microlib_register(&meta);
+}

@@ -1,0 +1,16 @@
+CSQR Complex Square Root Function
+======================================================================
+
+The CSQR function calculates the complex square root sqrt(z).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res = CSQR(complex_val)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT IMAG(CSQR(COMPLEX(-4, 0)))   : REM Outputs 2

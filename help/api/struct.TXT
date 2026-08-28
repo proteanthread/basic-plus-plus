@@ -1,0 +1,22 @@
+C17 API REFERENCE: USER-DEFINED TYPE & STRUCT (core/struct.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The User-Defined TYPE Subsystem provides definition, field layout,
+instantiation, and copying for structured records (TYPE ... END TYPE).
+
+2. KEY TYPES & STRUCTS
+- BppUserTypeField: Field name, type, and optional nested type name.
+- BppUserTypeDef: Type name, fields array (up to 64), field_count.
+- BppTypeRegistry: Array of up to 64 registered types (MAX_USER_TYPES).
+
+3. CORE API FUNCTIONS
+- struct_registry_init(reg)
+- struct_register_type(reg, def, err_buf, err_len) -> bool
+- struct_find_type(reg, name) -> const BppUserTypeDef *
+- struct_instantiate(vm, reg, type_name, err_buf, err_len) -> BppMap *
+- struct_copy_instance(vm, dst, src, err_buf, err_len) -> bool
+
+4. ARCHITECTURAL INVARIANTS
+- Field names must be unique within each TYPE block.
+- Circular self-nesting is strictly prohibited.

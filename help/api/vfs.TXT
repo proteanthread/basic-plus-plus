@@ -1,0 +1,29 @@
+C17 API REFERENCE: VIRTUAL FILE SYSTEM (runtime/vfs.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Virtual File System Subsystem manages device prefix routing (DATA:, ROM:,
+SD:, RAM:), mount point management (MOUNT/UMOUNT), and VPATH search paths.
+
+2. MOUNT TYPES (BppMountType)
+- MOUNT_DIR: Host operating system directory.
+- MOUNT_RAM: In-memory RAM disk.
+- MOUNT_ROM: Read-only system archive image.
+- MOUNT_DEV: Virtual device bus redirection.
+
+3. KEY TYPES & STRUCTS
+- BppMountPoint: prefix[16], target[256], type, active.
+- VfsContext: Opaque VFS manager handle.
+
+4. CORE API FUNCTIONS
+- vfs_init(mem) -> VfsContext *
+- vfs_shutdown(ctx)
+- vfs_mount(ctx, prefix, target, type) -> bool
+- vfs_umount(ctx, prefix) -> bool
+- vfs_resolve(ctx, virtual_path, resolved_path, max_len) -> bool
+- vfs_list_mounts(ctx, vdev)
+- vfs_set_search_path(ctx, path) / vfs_get_search_path(ctx) -> const char *
+
+5. ARCHITECTURAL INVARIANTS
+- Up to 16 concurrent mount points (VFS_MAX_MOUNTS).
+- Automatic prefix normalization with trailing colons.

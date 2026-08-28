@@ -1,0 +1,11 @@
+custom_vdev Custom Virtual Device Template
+======================================================================
+
+Guide and interface for implementing custom virtual hardware and stream
+device drivers attached to the VDev bus.
+
+
+C17 DRIVER HOOKS
+----------------------------------------------------------------------
+
+  - open, read, write, ioctl, close.

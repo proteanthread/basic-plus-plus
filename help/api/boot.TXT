@@ -1,0 +1,25 @@
+C17 API REFERENCE: CORE BOOT SUBSYSTEM (core/boot.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Core Boot Subsystem coordinates the 9-phase initialization sequence,
+memory pool allocations, virtual machine instantiation, and teardown.
+
+2. MEMORY FOOTPRINT INVARIANTS
+- baspp (Standard Desktop): 640 MB (671088640L bytes)
+- bpp   (Lite REPL):        384 MB (402653184L bytes)
+- bs    (Batch Runner):     64 MB  (67108864L bytes)
+
+3. KEY TYPES & STRUCTS
+- BootContext: Aggregated context with mem, str, var, vdev, vm pointers.
+- BootConfig: Memory partition sizes, REPL flag, SDL graphics options.
+
+4. CORE API FUNCTIONS
+- boot_execute(config) -> BootContext *
+- boot_shutdown(ctx)
+- boot_system(heap_size) -> VMContext *
+- boot_shutdown_vm(vm)
+
+5. ARCHITECTURAL INVARIANTS
+- Deterministic 9-phase initialization with exact reverse teardown.
+- Opt-in file logging: zero .LOG files created unless --log is passed.
