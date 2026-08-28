@@ -1,0 +1,23 @@
+memory Dynamic Memory Management Subsystem (libkernel)
+======================================================================
+
+The memory library manages memory pool allocation, heap scaling, and
+program buffer lifecycle.
+
+
+STANDARD FOOTPRINTS
+----------------------------------------------------------------------
+
+  - baspp : 640 MB (671088640 bytes)
+  - bpp   : 384 MB (402653184 bytes)
+  - bs    : 64 MB (67108864 bytes)
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    MemContext *mem_create(size_t capacity);
+    void mem_destroy(MemContext *mem);
+    void *mem_alloc(MemContext *mem, size_t size);
+    void mem_free(MemContext *mem, void *ptr);
+    size_t mem_get_free_ram(MemContext *mem);

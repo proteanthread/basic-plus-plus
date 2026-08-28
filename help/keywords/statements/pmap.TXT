@@ -1,0 +1,31 @@
+PMAP Coordinate Viewport Mapping Function
+=========================================
+
+Translates coordinates between physical screen pixel coordinates and logical WINDOW Cartesian coordinates.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    physical_coord = PMAP(window_coord, mode%)
+    window_coord = PMAP(physical_coord, mode%)
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Mode outside range (0..3).
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Modes: 0 (Window X -> Phys X), 1 (Window Y -> Phys Y), 2 (Phys X -> Window X), 3 (Phys Y -> Window Y).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SCREEN 12
+    20 WINDOW (-10, -10)-(10, 10)
+    30 PRINT "Physical X for Window X=0: "; PMAP(0, 0)

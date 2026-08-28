@@ -1,0 +1,17 @@
+YEAR Current Calendar Year Function
+======================================================================
+
+The YEAR function returns the 4-digit calendar year (e.g. 2026).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    yr% = YEAR
+    yr% = YEAR()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Year: "; YEAR

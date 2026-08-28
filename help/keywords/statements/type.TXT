@@ -1,0 +1,25 @@
+BASIC++ STATEMENT REFERENCE: TYPE
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  TYPE TypeName
+    field1 AS PrimitiveType
+    field2 AS PrimitiveType
+  END TYPE
+
+Defines a custom user record type consisting of named typed fields.
+
+2. PARAMETERS
+- TypeName: Name of the new record structure.
+- field: Field identifier followed by AS Type.
+
+3. ERROR CODES
+- Error 10 (ERR_DUPLICATE_DEFINITION): Structure name or field name already defined.
+
+4. EXAMPLES
+  10 TYPE UserRecord
+  20   UID AS INTEGER
+  30   Name AS STRING * 32
+  40 END TYPE
+  50 DIM U AS UserRecord
+  60 U.UID = 101

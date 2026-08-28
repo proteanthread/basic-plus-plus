@@ -1,0 +1,32 @@
+RETURN Return from GOSUB Subroutine Statement
+=============================================
+
+Pops the return address from the call stack and transfers execution back to the statement following GOSUB.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    RETURN [{line_number% | @label}]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 3 (ERR_RETURN_WITHOUT_GOSUB): No GOSUB active on call stack.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Optional target line performs non-local subroutine exit.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 GOSUB 100
+    20 PRINT "Returned to line 20"
+    30 END
+    100 PRINT "Inside sub"
+    110 RETURN

@@ -1,0 +1,13 @@
+pacman Tile Maze & Ghost AI State Machine Arcade Template
+======================================================================
+
+The pacman template implements grid maze pathfinding, wraparound tunnels,
+and 4-state ghost AI personalities (Blinky, Pinky, Inky, Clyde).
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Tile corner turning queues and wrap tunnels.
+  - Ghost AI states (Chase, Scatter, Frightened, Eaten).
+  - Energizer timer and ghost eating score multipliers.

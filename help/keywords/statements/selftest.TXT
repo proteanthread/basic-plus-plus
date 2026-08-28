@@ -1,0 +1,22 @@
+SELFTEST Built-in Diagnostics Execution Command
+===============================================
+
+Executes the full built-in engine diagnostics self-test suite (Lexer, Memory, Strings, Variables, Arrays).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    SELFTEST
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Outputs PASS for all functional core modules.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    SELFTEST : REM Runs built-in test suite

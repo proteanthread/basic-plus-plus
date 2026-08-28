@@ -1,3 +1,7 @@
+// FILENAME: cbm.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// DESCRIPTION: Provides core logic and implementation for cbm.c within BASIC++.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -129,7 +133,7 @@ char* tokenize(const char *in) {
         }
         matched = 0;
         for (k = 0; keywords[k]; k++) {
-            len = strlen(keywords[k]);
+            len = (int)strlen(keywords[k]);
             if (my_strncasecmp(in + i, keywords[k], len) == 0) {
                 out[j++] = (char)(128 + k);
                 i += len;
@@ -179,9 +183,41 @@ void read_var(char **p, char *out) {
     *p = q;
 }
 
+#ifndef BASIC_RAM_SIZE
+#define BASIC_RAM_SIZE    65536L
+#endif
+
+#define MAX_DATA_ITEMS 1024
+static Value data_items[MAX_DATA_ITEMS];
+static int data_item_count = 0;
+static int data_read_idx = 0;
+
 Value get_var(const char *name) {
     Var *v;
     Value res;
+    
+    if (strcmp(name, "TI") == 0) {
+        res.type = 0;
+        res.num = (double)(clock() * 60 / CLOCKS_PER_SEC);
+        res.str = NULL;
+        return res;
+    }
+    if (strcmp(name, "TI$") == 0) {
+        time_t t = time(NULL);
+        struct tm *tm_info = localtime(&t);
+        char buf[8];
+        sprintf(buf, "%02d%02d%02d", tm_info ? tm_info->tm_hour : 0, tm_info ? tm_info->tm_min : 0, tm_info ? tm_info->tm_sec : 0);
+        res.type = 1;
+        res.num = 0.0;
+        res.str = my_strdup(buf);
+        return res;
+    }
+    if (strcmp(name, "ST") == 0) {
+        res.type = 0;
+        res.num = 0.0;
+        res.str = NULL;
+        return res;
+    }
     
     v = vars;
     while (v) {
@@ -253,6 +289,58 @@ void add_line(int num, const char *text) {
     nl->next = curr;
 }
 
+void delete_line(int num) {
+    Line *curr = prog;
+    Line *prev = NULL;
+    while (curr) {
+        if (curr->num == num) {
+            if (prev) prev->next = curr->next;
+            else prog = curr->next;
+            if (curr->text) free(curr->text);
+            free(curr);
+            return;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+}
+
+void clear_program(void) {
+    Line *curr = prog;
+    while (curr) {
+        Line *next = curr->next;
+        if (curr->text) free(curr->text);
+        free(curr);
+        curr = next;
+    }
+    prog = NULL;
+}
+
+void clear_vars(void) {
+    Var *v = vars;
+    ForLoop *f = fors;
+    Gosub *g = gosubs;
+    while (v) {
+        Var *vn = v->next;
+        if (v->val.type == 1 && v->val.str) free(v->val.str);
+        free(v);
+        v = vn;
+    }
+    vars = NULL;
+    while (f) {
+        ForLoop *fn = f->next;
+        free(f);
+        f = fn;
+    }
+    fors = NULL;
+    while (g) {
+        Gosub *gn = g->next;
+        free(g);
+        g = gn;
+    }
+    gosubs = NULL;
+}
+
 /* -- Recursive Descent Parsers -- */
 Value eval_expr(char **p);
 Value eval_pow(char **p);
@@ -283,7 +371,7 @@ Value eval_factor(char **p) {
         q++;
         start = q;
         while (*q && *q != '"') q++;
-        len = q - start;
+        len = (int)(q - start);
         res.type = 1;
         res.str = (char*)malloc(len + 1);
         strncpy(res.str, start, len);
@@ -308,7 +396,8 @@ Value eval_factor(char **p) {
         if (tok == TOK_CHR || tok == TOK_STR || tok == TOK_LEN || tok == TOK_INT || 
             tok == TOK_RND || tok == TOK_VAL || tok == TOK_ASC || tok == TOK_ABS || 
             tok == TOK_SQR || tok == TOK_SIN || tok == TOK_COS || tok == TOK_TAN || 
-            tok == TOK_ATN || tok == TOK_EXP || tok == TOK_LOG || tok == TOK_SGN) {
+            tok == TOK_ATN || tok == TOK_EXP || tok == TOK_LOG || tok == TOK_SGN ||
+            tok == TOK_FRE || tok == TOK_POS || tok == TOK_PEEK || tok == TOK_USR) {
             
             while (*q == ' ') q++;
             if (*q == '(') q++;
@@ -327,7 +416,7 @@ Value eval_factor(char **p) {
                 res.str = my_strdup(buf);
             } else if (tok == TOK_LEN) {
                 res.type = 0;
-                res.num = (arg1.type == 1 && arg1.str) ? strlen(arg1.str) : 0;
+                res.num = (arg1.type == 1 && arg1.str) ? (double)strlen(arg1.str) : 0.0;
             } else if (tok == TOK_INT) {
                 res.type = 0;
                 res.num = floor(arg1.num); /* CBM Native behavior maps to floor() */
@@ -378,6 +467,18 @@ Value eval_factor(char **p) {
             } else if (tok == TOK_SGN) {
                 res.type = 0;
                 res.num = (arg1.num > 0.0) ? 1.0 : ((arg1.num < 0.0) ? -1.0 : 0.0);
+            } else if (tok == TOK_FRE) {
+                res.type = 0;
+                res.num = (double)BASIC_RAM_SIZE;
+            } else if (tok == TOK_POS) {
+                res.type = 0;
+                res.num = 0.0;
+            } else if (tok == TOK_PEEK) {
+                res.type = 0;
+                res.num = 0.0;
+            } else if (tok == TOK_USR) {
+                res.type = 0;
+                res.num = arg1.num;
             }
             
             if (arg1.type == 1 && arg1.str) free(arg1.str);
@@ -404,7 +505,7 @@ Value eval_factor(char **p) {
             res.type = 1;
             res.str = my_strdup("");
             if (arg1.type == 1 && arg1.str) {
-                len = strlen(arg1.str);
+                len = (int)strlen(arg1.str);
                 n = (int)arg2.num;
                 if (n < 0) n = 0;
                 free(res.str);
@@ -654,6 +755,83 @@ Value eval_expr(char **p) {
     return a;
 }
 
+/* -- CBM Data Pool Subsystem -- */
+static void build_cbm_data_pool(void) {
+    Line *l = prog;
+    int i;
+    for (i = 0; i < data_item_count; i++) {
+        if (data_items[i].type == 1 && data_items[i].str) free(data_items[i].str);
+    }
+    data_item_count = 0;
+    data_read_idx = 0;
+
+    while (l) {
+        char *p = l->text;
+        while (*p) {
+            if ((unsigned char)*p == TOK_DATA) {
+                p++;
+                while (*p && *p != ':') {
+                    while (*p == ' ') p++;
+                    if (*p == '"') {
+                        char *start;
+                        int len;
+                        p++;
+                        start = p;
+                        while (*p && *p != '"') p++;
+                        len = (int)(p - start);
+                        if (data_item_count < MAX_DATA_ITEMS) {
+                            data_items[data_item_count].type = 1;
+                            data_items[data_item_count].num = 0.0;
+                            data_items[data_item_count].str = (char*)malloc(len + 1);
+                            strncpy(data_items[data_item_count].str, start, len);
+                            data_items[data_item_count].str[len] = '\0';
+                            data_item_count++;
+                        }
+                        if (*p == '"') p++;
+                    } else if (*p && *p != ',' && *p != ':') {
+                        char *start = p;
+                        int len;
+                        while (*p && *p != ',' && *p != ':') p++;
+                        len = (int)(p - start);
+                        if (data_item_count < MAX_DATA_ITEMS) {
+                            char buf[128];
+                            if (len >= sizeof(buf)) len = (int)sizeof(buf) - 1;
+                            strncpy(buf, start, len);
+                            buf[len] = '\0';
+                            data_items[data_item_count].type = 0;
+                            data_items[data_item_count].num = atof(buf);
+                            data_items[data_item_count].str = NULL;
+                            data_item_count++;
+                        }
+                    }
+                    while (*p == ' ') p++;
+                    if (*p == ',') p++;
+                    else if (*p == ':') break;
+                }
+            } else {
+                while (*p && *p != ':') p++;
+                if (*p == ':') p++;
+            }
+        }
+        l = l->next;
+    }
+}
+
+static Value get_next_data(void) {
+    Value res;
+    if (data_read_idx < data_item_count) {
+        res = data_items[data_read_idx++];
+        if (res.type == 1 && res.str) res.str = my_strdup(res.str);
+        return res;
+    }
+    printf("\n?OUT OF DATA ERROR IN %d\n", curr_line ? curr_line->num : 0);
+    end_prog = 1;
+    res.type = 0;
+    res.num = 0.0;
+    res.str = NULL;
+    return res;
+}
+
 /* -- Execution Instruction Engine -- */
 void execute_statement(void) {
     int tok;
@@ -667,8 +845,102 @@ void execute_statement(void) {
         while (*curr_ptr) curr_ptr++;
         return;
     }
-    if (tok == TOK_DIM) {
+    if (tok == TOK_DIM || tok == TOK_DEF || tok == TOK_OPEN || tok == TOK_CLOSE || 
+        tok == TOK_CMD || tok == TOK_SYS || tok == TOK_POKE || tok == TOK_WAIT) {
         while (*curr_ptr && *curr_ptr != ':') curr_ptr++;
+        return;
+    }
+    if (tok == TOK_CLR) {
+        clear_vars();
+        curr_ptr++;
+        return;
+    }
+    if (tok == TOK_RESTORE) {
+        data_read_idx = 0;
+        curr_ptr++;
+        return;
+    }
+    if (tok == TOK_READ) {
+        curr_ptr++;
+        while (*curr_ptr && *curr_ptr != ':') {
+            char vname[4];
+            Value val;
+            while (*curr_ptr == ' ') curr_ptr++;
+            if (!isalpha((unsigned char)*curr_ptr)) break;
+            read_var(&curr_ptr, vname);
+            val = get_next_data();
+            if (end_prog) return;
+            set_var(vname, val);
+            if (val.type == 1 && val.str) free(val.str);
+            while (*curr_ptr == ' ') curr_ptr++;
+            if (*curr_ptr == ',') curr_ptr++;
+            else break;
+        }
+        return;
+    }
+    if (tok == TOK_GET) {
+        char vname[4];
+        Value val;
+        curr_ptr++;
+        read_var(&curr_ptr, vname);
+        val.type = strchr(vname, '$') ? 1 : 0;
+        if (val.type == 1) {
+            char ch[2];
+            int c = getchar();
+            if (c == EOF || c == '\n' || c == '\r') ch[0] = '\0';
+            else ch[0] = (char)c;
+            ch[1] = '\0';
+            val.str = my_strdup(ch);
+            val.num = 0.0;
+        } else {
+            val.str = NULL;
+            val.num = 0.0;
+        }
+        set_var(vname, val);
+        if (val.type == 1 && val.str) free(val.str);
+        return;
+    }
+    if (tok == TOK_ON) {
+        Value sel;
+        int count = 0, is_gosub = 0;
+        curr_ptr++;
+        sel = eval_expr(&curr_ptr);
+        while (*curr_ptr == ' ') curr_ptr++;
+        if ((unsigned char)*curr_ptr == TOK_GOSUB) { is_gosub = 1; curr_ptr++; }
+        else if ((unsigned char)*curr_ptr == TOK_GOTO || (unsigned char)*curr_ptr == TOK_GO) {
+            curr_ptr++;
+            while (*curr_ptr == ' ') curr_ptr++;
+            if ((unsigned char)*curr_ptr == TOK_TO) curr_ptr++;
+        }
+        while (*curr_ptr && *curr_ptr != ':') {
+            Value target_val;
+            Line *target;
+            while (*curr_ptr == ' ') curr_ptr++;
+            target_val = eval_expr(&curr_ptr);
+            count++;
+            if (count == (int)sel.num) {
+                target = prog;
+                while (target) {
+                    if (target->num == (int)target_val.num) break;
+                    target = target->next;
+                }
+                if (target) {
+                    if (is_gosub) {
+                        Gosub *g = (Gosub*)malloc(sizeof(Gosub));
+                        g->line = curr_line;
+                        g->ptr = curr_ptr;
+                        g->next = gosubs;
+                        gosubs = g;
+                    }
+                    curr_line = target;
+                    curr_ptr = target->text;
+                    return;
+                }
+            }
+            while (*curr_ptr == ' ') curr_ptr++;
+            if (*curr_ptr == ',') curr_ptr++;
+            else break;
+        }
         return;
     }
     
@@ -996,20 +1268,103 @@ void execute_statement(void) {
     end_prog = 1;
 }
 
-/* -- Standard Interpreter Init -- */
-void load_program(const char *filename) {
+static void resolve_filename(const char *raw, char *out, int sz) {
+    char buf[256];
+    char *p = buf;
+    char *end;
+    size_t len;
+    
+    if (!raw || !*raw) {
+        out[0] = '\0';
+        return;
+    }
+    
+    strncpy(buf, raw, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+    
+    while (*p == ' ' || *p == '\t' || *p == '"' || *p == '\'') p++;
+    
+    end = p + strlen(p);
+    while (end > p && (*(end - 1) == ' ' || *(end - 1) == '\t' || *(end - 1) == '\r' || *(end - 1) == '\n' || *(end - 1) == '"' || *(end - 1) == '\'')) {
+        *(--end) = '\0';
+    }
+    
+    len = strlen(p);
+    if (len >= 4 && (p[len - 4] == '.' || strchr(p, '.') != NULL)) {
+        strncpy(out, p, sz - 1);
+    } else {
+        sprintf(out, "%.250s.bas", p);
+    }
+    out[sz - 1] = '\0';
+}
+
+static void detokenize_print(FILE *f, const char *tok_text) {
+    const unsigned char *p = (const unsigned char*)tok_text;
+    while (*p) {
+        if (*p >= 128 && *p < 128 + 74 && keywords[*p - 128]) {
+            fprintf(f, "%s", keywords[*p - 128]);
+        } else {
+            fputc(*p, f);
+        }
+        p++;
+    }
+}
+
+static void list_program(void) {
+    Line *l = prog;
+    while (l) {
+        printf("%d ", l->num);
+        detokenize_print(stdout, l->text);
+        printf("\n");
+        l = l->next;
+    }
+}
+
+static void save_program(const char *filename) {
+    char fname[256];
+    FILE *f;
+    Line *l;
+    resolve_filename(filename, fname, sizeof(fname));
+    if (!fname[0]) {
+        printf("?DEVICE NOT PRESENT\n");
+        return;
+    }
+    f = fopen(fname, "w");
+    if (!f) {
+        printf("?FILE ERROR\n");
+        return;
+    }
+    l = prog;
+    while (l) {
+        fprintf(f, "%d ", l->num);
+        detokenize_print(f, l->text);
+        fprintf(f, "\n");
+        l = l->next;
+    }
+    fclose(f);
+    printf("SAVING %s\nREADY.\n", fname);
+}
+
+static void load_program(const char *filename) {
+    char fname[256];
     FILE *f;
     char buf[1024];
     char *p;
     char *nl_ptr;
     int num;
     
-    f = fopen(filename, "r");
+    resolve_filename(filename, fname, sizeof(fname));
+    if (!fname[0]) {
+        printf("?DEVICE NOT PRESENT\n");
+        return;
+    }
+    f = fopen(fname, "r");
     if (!f) {
-        printf("?FILE NOT FOUND\n");
-        exit(1);
+        printf("?FILE NOT FOUND: %s\n", fname);
+        return;
     }
     
+    clear_program();
     while (fgets(buf, sizeof(buf), f)) {
         p = buf;
         while (*p == ' ' || *p == '\t') p++;
@@ -1027,17 +1382,23 @@ void load_program(const char *filename) {
         }
     }
     fclose(f);
+    printf("LOADING %s\nREADY.\n", fname);
 }
 
-int main(int argc, char **argv) {
-    if (argc < 2) {
-        printf("USAGE: cbmbasic <script.bas>\n");
-        return 1;
-    }
-    
-    srand((unsigned int)time(NULL));
-    load_program(argv[1]);
-    
+static void cmd_help(void) {
+    printf("=== COMMODORE 64 BASIC V2 HELP ===\n");
+    printf("COMMANDS:   RUN [file], LIST, LOAD [file], SAVE [file], NEW, CLR, CONT, BYE/GOODBYE, HELP\n");
+    printf("STATEMENTS: PRINT, INPUT, GET, LET, GOTO, GOSUB, RETURN, IF..THEN, FOR..TO..STEP, NEXT,\n");
+    printf("            DIM, READ, DATA, RESTORE, REM, STOP, END, POKE, SYS, WAIT, DEF FN, OPEN, CLOSE, SLEEP\n");
+    printf("FUNCTIONS:  PEEK, FRE, POS, TAB, SPC, SGN, INT, ABS, SQR, RND, LOG, EXP, COS, SIN, TAN, ATN,\n");
+    printf("            LEN, STR$, VAL, ASC, CHR$, LEFT$, RIGHT$, MID$\n");
+    printf("VARIABLES:  A-Z, A0-Z9, A$, A%%, A(dim), A$(dim) (strings up to 255 chars)\n");
+}
+
+static void run_program(void) {
+    clear_vars();
+    build_cbm_data_pool();
+    end_prog = 0;
     curr_line = prog;
     if (curr_line) curr_ptr = curr_line->text;
     
@@ -1052,6 +1413,125 @@ int main(int argc, char **argv) {
                 curr_line = curr_line->next;
                 if (curr_line) curr_ptr = curr_line->text;
                 break;
+            }
+        }
+    }
+    printf("\nREADY.\n");
+}
+
+int main(int argc, char **argv) {
+    char line[1024];
+    char line_buf[1024];
+    char *p;
+    int batch_mode = 0;
+    int file_arg_idx = 0;
+    int i;
+    
+    srand((unsigned int)time(NULL));
+    clear_program();
+    clear_vars();
+    
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--batch") == 0 || strcmp(argv[i], "-q") == 0) {
+            batch_mode = 1;
+        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: cbm [options] [filename.bas]\n");
+            printf("Options:\n");
+            printf("  -b, --batch   Run in batch mode and exit after program completes\n");
+            printf("  -h, --help    Show this help message\n");
+            return 0;
+        } else if (argv[i][0] != '-' && file_arg_idx == 0) {
+            file_arg_idx = i;
+        }
+    }
+    
+    printf("    **** COMMODORE 64 BASIC V2 ****\n");
+    printf(" 64K RAM SYSTEM  38911 BASIC BYTES FREE\n\n");
+    printf("READY.\n");
+    
+    if (file_arg_idx > 0) {
+        load_program(argv[file_arg_idx]);
+        run_program();
+        if (batch_mode) {
+            return 0;
+        }
+    }
+    
+    while (1) {
+        if (!fgets(line, sizeof(line), stdin)) {
+            break;
+        }
+        
+        {
+            int len = (int)strlen(line);
+            while (len > 0 && (line[len - 1] == '\r' || line[len - 1] == '\n')) {
+                line[--len] = '\0';
+            }
+        }
+        
+        p = line;
+        while (*p == ' ' || *p == '\t') p++;
+        if (!*p) continue;
+        
+        if (isdigit((unsigned char)*p)) {
+            int num = atoi(p);
+            while (isdigit((unsigned char)*p)) p++;
+            while (*p == ' ' || *p == '\t') p++;
+            if (*p == '\0') {
+                delete_line(num);
+            } else {
+                add_line(num, p);
+            }
+        } else {
+            /* Command or immediate statement */
+            strncpy(line_buf, p, sizeof(line_buf) - 1);
+            line_buf[sizeof(line_buf) - 1] = '\0';
+            
+            if (my_strncasecmp(p, "RUN", 3) == 0 && (p[3] == ' ' || p[3] == '\0' || p[3] == '"')) {
+                p += 3;
+                while (*p == ' ' || *p == '\t') p++;
+                if (*p) load_program(p);
+                run_program();
+            } else if (my_strncasecmp(p, "LIST", 4) == 0) {
+                list_program();
+                printf("READY.\n");
+            } else if (my_strncasecmp(p, "NEW", 3) == 0) {
+                clear_program();
+                clear_vars();
+                printf("READY.\n");
+            } else if (my_strncasecmp(p, "CLR", 3) == 0) {
+                clear_vars();
+                printf("READY.\n");
+            } else if (my_strncasecmp(p, "LOAD", 4) == 0) {
+                p += 4;
+                while (*p == ' ' || *p == '\t') p++;
+                load_program(p);
+            } else if (my_strncasecmp(p, "SAVE", 4) == 0) {
+                p += 4;
+                while (*p == ' ' || *p == '\t') p++;
+                save_program(p);
+            } else if (my_strncasecmp(p, "HELP", 4) == 0) {
+                cmd_help();
+                printf("READY.\n");
+            } else if (my_strncasecmp(p, "BYE", 3) == 0 || my_strncasecmp(p, "GOODBYE", 7) == 0 ||
+                       my_strncasecmp(p, "SYSTEM", 6) == 0 || my_strncasecmp(p, "QUIT", 4) == 0) {
+                break;
+            } else {
+                Line dummy;
+                dummy.num = 0;
+                dummy.text = tokenize(line_buf);
+                dummy.next = NULL;
+                curr_line = &dummy;
+                curr_ptr = dummy.text;
+                end_prog = 0;
+                while (*curr_ptr && !end_prog) {
+                    execute_statement();
+                    if (end_prog) break;
+                    if (*curr_ptr == ':') curr_ptr++;
+                    else if (!*curr_ptr) break;
+                }
+                if (dummy.text) free(dummy.text);
+                printf("\nREADY.\n");
             }
         }
     }

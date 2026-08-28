@@ -1,371 +1,136 @@
-BASIC++ Help System — User & Developer Tutorial
+======================================================================
+  BASIC++ V6.5.2 HOW TO USE HELP
+======================================================================
 
-Version 4.2.3 | C17 \| ECMA-116 Compliant
 
----
+======================================================================
+  1. THE HELP COMMAND
+======================================================================
 
-Table of Contents
+The HELP command is the interactive documentation system built into every edition of BASIC++. It displays reference information for any keyword, statement, function, or topic directly at the prompt. There is no need to leave the interpreter to consult external documentation.
 
-1. Using the Built-In Help
-2. HELP Command Reference
-3. CATALOG Command Reference
-4. INFO Command Reference
-5. How Help Is Organized
-6. Adding Your Own Help Entries (Static)
-7. Adding Help via the Function Registry
-8. Adding Help for Modules
-9. Help for User-Defined Functions (DEF FN)
-10. Help for SUB/FUNCTION Definitions
-11. Tips & Best Practices
-12. Quick Reference Card
+To look up a specific keyword, type HELP followed by the keyword name:
 
----
+> HELP PRINT
+> HELP FOR
+> HELP LEFT$
+> HELP ON ERROR
 
-1. Using the Built-In Help
+HELP accepts keywords with or without their type suffixes. HELP LEFT and HELP LEFT$ both display the LEFT$ reference. Multi-word keywords use their standard spacing: HELP ON ERROR, HELP LINE INPUT, HELP SELECT CASE.
 
-BASIC++ is a self-describing interpreter. Every command, function, operator, and system setting is documented within the interpreter itself. You never need an external manual.
+Type HELP alone with no argument to see a list of all available help topics organized by category.
 
-Three commands give you access to the help system:
 
-| Command | Purpose |
-|---------|---------|
-| HELP | Command reference (detailed, per-keyword) |
-| CATALOG | Complete keyword listing (compact, by category) |
-| INFO | System information (version, limits, build) |
+======================================================================
+  2. THE CATALOG COMMAND
+======================================================================
 
----
+The CATALOG command lists all available keywords, functions, and statements in the current dialect. It organizes them into categories including statements, functions (numeric, string, system), operators, commands, and subsystem keywords:
 
-2. HELP Command Reference
+> CATALOG
 
-Syntax:
+CATALOG output is formatted for the active console width and displays keywords in columns. Each entry shows the keyword name and its type (statement, function, command). CATALOG does not display detailed descriptions ? use HELP for that.
 
+CATALOG accepts an optional category filter: CATALOG FUNCTIONS shows only function keywords. CATALOG STATEMENTS shows only statement keywords. CATALOG OPERATORS shows only operator keywords.
 
-HELP                    ' Show all commands by category
-HELP keyword            ' Show detailed help for one keyword
 
+======================================================================
+  3. THE CATEGORY COMMAND
+======================================================================
 
-Examples:
+The CATEGORY (or CATEGORIES) command provides focused category-level
+introspection:
 
+> CATEGORY
+> CATEGORY ABS
+> CATEGORY "String Functions"
+> PRINT CATEGORY$("SHUFFLE$")
 
-HELP PRINT
-  PRINT - Display output to the console
-  Usage: PRINT "Hello";A or PRINT A,B
+- CATEGORY alone lists all distinct categories in the environment.
+- CATEGORY <keyword> displays the category of that specific keyword.
+- CATEGORY <category_name> lists all keywords belonging to that category.
+- CATEGORY$(keyword$) returns the category string in expressions.
 
-HELP LEFT$
-  LEFT$ - Left N characters
-  Usage: PRINT LEFT$("HELLO",3)  ' HEL
 
+======================================================================
+  4. THE INFO COMMAND
+======================================================================
 
-Tips:
-- Keywords are case-insensitive: HELP print = HELP PRINT
-- The $ suffix is optional: HELP LEFT = HELP LEFT$
-- If a keyword is not found in the static database, HELP also searches the function registry
-- If still not found, HELP prints "No help available."
 
----
+INFO displays system-level information about the running interpreter. This includes the version number, edition name (Standard or Lite), the codename (Phoenix), the build profile (Modern/64-Bit, Lite/64-Bit, FreeDOS 16-Bit, or Embedded), the active dialect, memory allocation sizes, and the host platform:
 
-3. CATALOG Command Reference
+> INFO
+BASIC++ Standard Edition v6.5.2 "Phoenix"
+Profile: Modern / 64-Bit
+Dialect: GW-BASIC
+Program Memory: 128 MB
+Variable Memory: 128 MB
+String Heap: 256 MB
+Scratch Area: 128 MB
+Stack Depth: 1023
+Named Variables: 8192
+Security Level: OPEN
 
 
-CATALOG
+======================================================================
+  4. THE VER COMMAND
+======================================================================
 
+VER prints the version string to the console: BASIC++ v6.5.2. The VER$ function returns the version as a string value that can be stored or used in expressions: V$ = VER$.
 
-CATALOG lists every command and registered function in a compact, columnar format, organized by category. This is the "table of contents" for the entire language.
 
-Output format:
+======================================================================
+  5. THE VARS COMMAND
+======================================================================
 
+VARS dumps all active variables and their current values. This is a debugging aid that shows every variable name, its type, and its value. String values are displayed in quotes. Arrays show their dimensions and element count.
 
-=== BASIC++ CATALOG ===
 
-[Control Flow]
- CALL         CASE         CAUSE        DECLARE  ...
+======================================================================
+  6. THE DEVICES COMMAND
+======================================================================
 
-[Input / Output]
- CLS          COLOR        HOME         INKEY$   ...
+DEVICES lists all registered virtual devices in the device bus. Each entry shows the device slot number, the device type name, and its current status (active, idle, or disabled).
 
-[Arithmetic / Math]
- ABS          ATN          CDBL         CINT     ...
 
-[String Functions]
- ASC          BIN$         CHR$         HEX$     ...
+======================================================================
+  7. CONTEXT-SENSITIVE HELP TOPICS
+======================================================================
 
-...
+HELP accepts the following topic categories when no specific keyword is given:
 
-[Registered Functions - Math]
- ABS          ATN          COS          EXP      ...
+HELP ERRORS ? Lists all error codes and their descriptions.
+HELP OPERATORS ? Shows the operator precedence table.
+HELP TYPES ? Describes the data type system.
+HELP FILES ? File I/O overview.
+HELP GRAPHICS ? Graphics statement overview.
+HELP SOUND ? Sound and music reference.
+HELP DEBUG ? Debugging command reference.
+HELP SECURITY ? Security level documentation.
+HELP DIALECTS ? Available dialect list and descriptions.
+HELP MODULES ? Module system reference.
 
-142 commands, 28 functions registered.
 
+======================================================================
+  8. OFFLINE REFERENCE FILES
+======================================================================
 
-Keywords within each category are sorted alphabetically. The final line shows total counts.
+The help system reads its content from built-in text compiled into the interpreter. The same content is also available as offline reference files in the help/ directory of the distribution:
 
-> [!NOTE]
-> The CATALOG command is unavailable in BASIC++ Lite builds. It is excluded by the BASIC_LITE_BUILD preprocessor guard in help.h. In Lite builds, use HELP for keyword reference.
+help/Users_Guide.TXT ? End-user guide
+help/Programmers_Guide.TXT ? Programming reference
+help/Error_Handling.TXT ? Error codes and handling patterns
+help/QUICK_REFERENCE.TXT ? Concise syntax card
 
----
-
-4. INFO Command Reference
+These files are plain ASCII text with no formatting dependencies. They can be viewed with any text editor, printed, or piped through command-line tools.
 
 
-INFO
+======================================================================
+  9. INTROSPECTION FUNCTIONS
+======================================================================
 
+Several built-in functions provide programmatic access to the information displayed by HELP, CATALOG, and INFO:
 
-Displays system configuration and build information:
+VER$ returns the version string. DIALECT$ returns the active dialect name. MEMMAP$ returns the active memory map name. ALIAS$(keyword$) returns the current alias for a keyword, or an empty string if no alias is set.
 
-
-=== BASIC++ System Information ===
- Version:     1.1.0
- Dialect:     GWBS (GW-BASIC)
- Security:    STANDARD
- Modules:     2 loaded
- Functions:   28 registered
- Program:     0 lines
- Max Lines:   1000
- Variables:   26 (A-Z)
- Stack:       64 levels
- Breakpoints: 16 max
- Build:       Jun 09 2026 22:30:00
- Standard:    C17
-
-
----
-
-5. How Help Is Organized
-
-Both HELP and CATALOG group keywords into 15 functional categories. Keywords are sorted alphabetically within each category at display time (runtime sort, not source order).
-
-| Category | What It Covers |
-|----------|---------------|
-| Control Flow | IF, FOR, GOTO, GOSUB, WHILE, DO, SELECT CASE, SUB, FUNCTION, etc. |
-| Input / Output | PRINT, INPUT, CLS, LOCATE, COLOR, WIDTH, WRITE, INKEY$, etc. |
-| Arithmetic / Math | ABS, SIN, COS, RND, INT, SQR, LOG, EXP, FIX, CINT, RANDOMIZE, etc. |
-| String Functions | LEN, LEFT$, MID$, CHR$, ASC, HEX$, BIN$, UCASE$, TRIM$, INSTR, etc. |
-| Variables & Memory | LET, DIM, DATA, READ, PEEK, POKE, SWAP, CONST, TYPE, VARPTR, etc. |
-| File I/O | OPEN, CLOSE, GET, PUT, EOF, LOF, SEEK, FIELD, LSET, RSET, etc. |
-| Graphics | SCREEN, DRAW, PSET, CIRCLE, PAINT, PALETTE, VIEW, WINDOW, etc. |
-| Sound | BEEP, SOUND, PLAY |
-| System & Environment | SYSTEM, SHELL, ENVIRON$, DIALECT, DATE$, TIME$, CLOCK$, ALARM$, etc. |
-| Debugging & Testing | BREAK, CONT, VARS, TRON, TROFF, ASSERT, TEST, SELFTEST, etc. |
-| Program Management | RUN, LIST, SAVE, LOAD, NEW, MERGE, COMPILE, etc. |
-| Editing | RENUM, DELETE, EDIT, AUTO, ALIAS |
-| Devices & Networking | VDEV, VNET, DEVMAP, FUJINET, N:, FUJI:, CLOCK:, etc. |
-| Operators | AND, OR, NOT, XOR, MOD, EQV, IMP |
-| Introspection | HELP, CATALOG, INFO, VER, KEY |
-
----
-
-6. Adding Your Own Help Entries (Static)
-
-To add a new command or keyword to the help system, edit the static help_db[] array in help.c. Each entry has four fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| keyword | string | The keyword name (e.g. "PRINT") |
-| summary | string | One-line description |
-| usage | string | Usage example |
-| category | HelpCatId | Which category it belongs to |
-
-Step-by-step:
-
-1. Open help.c and find the help_db[] array
-2. Find the category section where your keyword belongs (marked with comments like / ===== Control Flow ===== /)
-3. Add your entry:
-
-   { "WAIT", "Wait for port status",
-   "WAIT port, AND_mask [,XOR_mask]",    HCAT_DEVICE },
-
-4. The display routines sort alphabetically at runtime, but keep source roughly alphabetical for readability
-5. Rebuild
-
-Category IDs (from help.c):
-
-| ID | Category |
-|----|----------|
-| HCAT_FLOW | Control Flow |
-| HCAT_IO | Input / Output |
-| HCAT_MATH | Arithmetic / Math |
-| HCAT_STRING | String Functions |
-| HCAT_VARMEM | Variables & Memory |
-| HCAT_FILEIO | File I/O |
-| HCAT_GFX | Graphics |
-| HCAT_SOUND | Sound |
-| HCAT_SYSENV | System & Environment |
-| HCAT_DEBUG | Debugging & Testing |
-| HCAT_PROGMGMT | Program Management |
-| HCAT_EDIT | Editing |
-| HCAT_DEVICE | Devices & Networking |
-| HCAT_OPER | Operators |
-| HCAT_INTRO | Introspection |
-
-Adding a New Category
-
-1. Add a new enum value to HelpCatId in help.c (before HCAT_COUNT)
-2. Add the display name to help_cat_names[]
-3. Use the new ID in your help_db[] entries
-4. Rebuild
-
----
-
-7. Adding Help via the Function Registry
-
-If you are implementing a function (not a statement), register it through builtins.c using the FunctionEntry struct. Each FunctionEntry has a help_text field.
-
-Step-by-step:
-
-1. Write your function handler in builtins.c:
-
-   BValue builtin_myfunc(BValue args, int argc, void rt)
-   {
-       /* ... your implementation ... */
-   }
-
-
-2. Add a keyword ID to lexer.h (KeywordId enum):
-
-   KW_MYFUNC,    / MYFUNC - my custom function /
-
-
-3. Add the keyword to keyword_table[] in lexer.c:
-
-   { "MYFUNC", KW_MYFUNC, DFLAG_ALL },
-
-
-4. If the function returns a string ($ suffix), add it to lexer_keyword_needs_dollar() in lexer.c
-
-5. Register it in builtins_register() in builtins.c:
-
-   { "MYFUNC$", KW_MYFUNC, FCAT_STRING, FRET_STRING,
-     1, 2, FSAFE_STATE, 1, builtin_myfunc,
-     "My function: MYFUNC$(x) converts x to ..." }
-   /*                                    ^^^^^^^^^^^
-                                         help_text!  */
-
-
-6. The help_text string appears in HELP, CATALOG, and HELP MYFUNC$
-
-Function Categories (from funcreg.h):
-
-| ID | Category |
-|----|----------|
-| FCAT_CORE | Core functions |
-| FCAT_MATH | Math functions |
-| FCAT_STRING | String functions |
-| FCAT_IO | I/O functions |
-| FCAT_UTIL | Utility functions |
-| FCAT_USER | User-defined functions |
-
-> Tip: You can also add a matching entry to help_db[] in help.c for the same keyword. HELP will find both entries and display them.
-
----
-
-8. Adding Help for Modules
-
-Modules extend BASIC++ with loadable capabilities. When you create a module, register help text for each command and function it provides.
-
-Example: The FUJINET module adds N:, FUJI:, and CLOCK: devices:
-
-
-{ "FUJINET", "FujiNet virtual device module",
-"MODULE \"FUJINET\" to activate N:/FUJI:/CLOCK: devices",
-                                        HCAT_DEVICE },
-
-{ "N:", "FujiNet network device",
-"OPEN #1,\"N:TCP://host:port/\",\"RW\" then READ/WRITE",
-                                        HCAT_DEVICE },
-
-
-For module authors:
-
-1. Add help_db[] entries for each command/device your module provides
-2. Register any functions with help_text in the FunctionEntry
-3. For extensive documentation, create a separate .txt file and reference it
-4. Consider adding a HELP sub-page: MODULE "MYMOD" HELP
-
----
-
-9. Help for User-Defined Functions (DEF FN)
-
-User-defined functions created with DEF FN are stored in the runtime's user_funcs[] table. They are not automatically added to HELP or CATALOG because they are runtime-defined.
-
-Document them with REM comments:
-
-
-100 REM ---- User Functions ----
-110 REM FNA(X) - Square of X
-120 DEF FNA(X) = X * X
-130 REM FNB(X,Y) - Hypotenuse
-140 DEF FNB(X,Y) = SQR(XX + YY)
-
-
-To see what user functions are currently defined, use VARS.
-
----
-
-10. Help for SUB/FUNCTION Definitions
-
-Named SUB and FUNCTION definitions (QBasic-style) are also runtime constructs. Document them with comments:
-
-
-SUB PrintBanner (title$)
-' PrintBanner - Display a centered title banner
-' Usage: CALL PrintBanner("My Program")
-  PRINT STRING$(40, "=")
-  PRINT TAB((40 - LEN(title$)) / 2); title$
-  PRINT STRING$(40, "=")
-END SUB
-
-
-These do not appear in HELP or CATALOG, but they are listed by VARS when active.
-
----
-
-11. Tips & Best Practices
-
-Do
-
-- Keep help_text strings short (under 50 chars) — they must fit on an 80-column terminal
-- Use the usage field to show a realistic example, not just syntax
-- Put $-suffixed keywords in help_db[] with the $ ("LEFT$", not "LEFT")
-- Keep source entries roughly alphabetical within each category section
-
-Don't
-
-- Don't duplicate entries — if a keyword appears in both help_db[] and the function registry, that's fine, but don't put the same keyword in help_db[] twice
-- Don't use category HCAT_COUNT — it's the sentinel value
-- Don't exceed 256 entries per category — the runtime sort buffer is 256 indices
-
----
-
-12. Quick Reference Card
-
-Interactive Commands
-
-| Command | Description |
-|---------|-------------|
-| HELP | Full command reference |
-| HELP keyword | Help for one keyword |
-| CATALOG | All keywords by category |
-| INFO | System information |
-| VER | Version string only |
-
-Extending Help (For Developers)
-
-| Component | File |
-|-----------|------|
-| help_db[] | Static help entries (help.c) |
-| FunctionEntry | Function registry (builtins.c) |
-| help_cat_names[] | Category display names (help.c) |
-| HelpCatId | Category enum (help.c) |
-| sort_indices() | Alphabetical sort (automatic) |
-
-Source Files
-
-| File | Purpose |
-|------|---------|
-| help.c | Help system implementation |
-| help.h | Help system header |
-| builtins.c | Function registry & handlers |
-| funcreg.h | Function registration types |
-| lexer.h | Keyword ID enum (KeywordId) |
-| lexer.c | Keyword table (keyword_table[]) |
-| config.h | Version number & limits |
+FRE(0) returns the amount of free memory in the string heap. FRE(-1) returns the largest contiguous free block. FRE(-2) returns total remaining variable space. These values are useful for monitoring memory pressure in long-running programs.

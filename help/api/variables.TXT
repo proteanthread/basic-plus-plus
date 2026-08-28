@@ -1,0 +1,26 @@
+C17 API REFERENCE: VARIABLE CONTEXT (runtime/variables.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Variable Context Subsystem manages scalar variable bindings, symbol
+tables, implicit/explicit declarations (OPTION EXPLICIT), local procedure
+scopes (SHARED, STATIC), and COMMON variable preservation.
+
+2. KEY TYPES & STRUCTS
+- VariableContext: Opaque variable manager handle.
+
+3. CORE API FUNCTIONS
+- var_init(mem, str) -> VariableContext *
+- var_shutdown(ctx)
+- var_lookup(ctx, name, create_if_missing) -> BValue *
+- var_declare(ctx, name) -> BValue *
+- var_assign(ctx, name, val) -> bool
+- var_clear_all(ctx)
+- var_mark_common(ctx, name) / var_is_common(ctx, name) -> bool
+- var_clear_for_chain(ctx)
+- var_set_scope(ctx, scope) / var_clear_scope(ctx, prefix)
+- var_set_shared(ctx, name)
+
+4. ARCHITECTURAL INVARIANTS
+- String assignments properly release previous references via str_release().
+- COMMON variables survive CHAIN and RUN "file", R context resets.

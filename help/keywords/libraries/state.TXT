@@ -1,0 +1,12 @@
+state Runtime Execution State Subsystem (libkernel)
+======================================================================
+
+The state library manages VM execution frames, call stacks, loop contexts,
+and error handling vectors.
+
+
+INVARIANTS
+----------------------------------------------------------------------
+
+  - All procedure call frames and loop contexts reside on heap stacks.
+  - Persistent state is retrieved directly from virtual devices.

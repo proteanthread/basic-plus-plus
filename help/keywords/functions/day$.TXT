@@ -1,0 +1,18 @@
+DAY$ Current Day Name String Function
+======================================================================
+
+The DAY$ function returns the current day of the week as a text string
+(e.g. "Monday", "Tuesday").
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    name$ = DAY$
+    name$ = DAY$()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Today is "; DAY$

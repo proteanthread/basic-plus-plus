@@ -1,22 +1,13 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ — a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * What it does: Implements a standalone key-value hash map and serialization utilities.
- * Why it exists: Provides Ring 1 data structure utilities independent of VM context.
- * Why it works this way: Uses dynamic arrays with case-insensitive key lookup.
- * What can be changed: Internal storage array can be upgraded to hash bucket arrays.
- * What cannot be changed: BppMap public functions exposed via runtime/collections.h.
- * What to expect: Reliable key-value storage and JSON/XML/YAML/INI string conversion.
- * What to do if something breaks: Check key allocation and free routines.
- * Assumptions: Keys are 7-bit ASCII strings.
- * Portability concerns: Strict C17 compliant, pure 7-bit ASCII.
- * Future expansions: Add BSON binary serialization support.
- * External extension hooks: Exposed via runtime/collections.h.
- */
+// FILENAME: map.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libcore, libengine
+// NEEDS: libcore (collections.h, string.h)
+// NEEDS: libengine (string.c)
+// NEEDS: libplatform (platform.h)
+// Provides core logic and interface definitions for map within BASIC++.
+//
+// ---- Includes ----
 
 #include "runtime/collections.h"
 #include "platform/platform.h"

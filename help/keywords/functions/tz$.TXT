@@ -1,0 +1,16 @@
+TZ$ Timezone Abbreviation String Function
+======================================================================
+
+The TZ$ function returns the current local timezone abbreviation.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    zone$ = TZ$
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "TZ: "; TZ$

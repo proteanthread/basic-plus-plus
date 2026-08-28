@@ -1,46 +1,12 @@
-/**
- * @file mathext.c
- * @brief Extended mathematical function module implementation (CUBE, HYPOT, CLAMP, DEG2RAD, RAD2DEG, POW).
- *
- * 1. WHAT IT DOES:
- * Implements and registers extended mathematical functions (CUBE, HYPOT, CLAMP, DEG2RAD, RAD2DEG, POW, TESTSYS, TESTIO).
- *
- * 2. WHY IT EXISTS:
- * Extends basic math built-ins with secondary trigonometric, power, and range constraint functions per ECMA-116 standard.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Registers static function table entries into global FunctionRegistry during engine initialization; handlers operate on double-precision BValue arguments.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'module'. Includes "runtime/funcreg.h", <math.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Core feature included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Register additional math functions (HYPERBOLIC, LOG10, ERF).
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Double precision floating-point evaluation rules and zero-division checks.
- *
- * 8. WHAT TO EXPECT:
- * Returns double or float BValue result.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check for domain errors (square root of negative, zero division in tan/sec/csc).
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Arguments array validated for required argument count.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. M_PI fallback macro definition.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/runtime/funcreg.c
- * Prerequisite Header Files:
- * - engine/include/runtime/funcreg.h
- */
+// FILENAME: mathext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (funcreg.h, funcreg.c, math.h)
+// NEEDS: libengine (math.c)
+// Provides core logic and interface definitions for mathext within BASIC++.
+//
+// ---- Includes ----
 
 #include "runtime/funcreg.h"
 #include <math.h>
@@ -49,14 +15,14 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-/* C CUBE function handler */
+// C CUBE function handler
 static BValue fn_cube(BValue *args, int argc, void *rt) {
     (void)argc; (void)rt;
     double val = bval_to_float(&args[0]);
     return bval_float(val * val * val);
 }
 
-/* C HYPOT function handler */
+// C HYPOT function handler
 static BValue fn_hypot(BValue *args, int argc, void *rt) {
     (void)argc; (void)rt;
     double a = bval_to_float(&args[0]);
@@ -64,7 +30,7 @@ static BValue fn_hypot(BValue *args, int argc, void *rt) {
     return bval_float(sqrt(a * a + b * b));
 }
 
-/* C CLAMP function handler */
+// C CLAMP function handler
 static BValue fn_clamp(BValue *args, int argc, void *rt) {
     (void)argc; (void)rt;
     double x = bval_to_float(&args[0]);
@@ -75,21 +41,21 @@ static BValue fn_clamp(BValue *args, int argc, void *rt) {
     return bval_float(x);
 }
 
-/* C DEG2RAD function handler */
+// C DEG2RAD function handler
 static BValue fn_deg2rad(BValue *args, int argc, void *rt) {
     (void)argc; (void)rt;
     double deg = bval_to_float(&args[0]);
     return bval_float(deg * M_PI / 180.0);
 }
 
-/* C RAD2DEG function handler */
+// C RAD2DEG function handler
 static BValue fn_rad2deg(BValue *args, int argc, void *rt) {
     (void)argc; (void)rt;
     double rad = bval_to_float(&args[0]);
     return bval_float(rad * 180.0 / M_PI);
 }
 
-/* C POW function handler */
+// C POW function handler
 static BValue fn_pow(BValue *args, int argc, void *rt) {
     (void)argc; (void)rt;
     double base = bval_to_float(&args[0]);

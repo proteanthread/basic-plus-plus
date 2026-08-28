@@ -1,0 +1,18 @@
+BASIC++ FUNCTION REFERENCE: CVI
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  result% = CVI(string_2_bytes)
+
+Unpacks a 2-byte binary string into a 16-bit signed integer. Inverse of MKI$.
+
+2. PARAMETERS & RETURN VALUES
+- string_2_bytes: String expression of exactly 2 bytes.
+- Returns: 16-bit signed integer (-32768 to 32767).
+
+3. ERROR CODES
+- Error 5 (ERR_ILLEGAL_FUNCTION_CALL): String length is not 2 bytes.
+- Error 13 (ERR_TYPE_MISMATCH): Non-string argument.
+
+4. EXAMPLES
+  10 VAL% = CVI(BUFFER$)

@@ -1,0 +1,39 @@
+CATEGORY / CATEGORIES Statement & Introspection Function
+
+SYNTAX:
+  CATEGORY
+  CATEGORY <keyword>
+  CATEGORY "<keyword>"
+  CATEGORY <category_name>
+  CATEGORY "<category_name>"
+  CATEGORIES [keyword | category_name]
+
+FUNCTION SYNTAX:
+  result$ = CATEGORY$(keyword$)
+  result$ = CATEGORY(keyword$)
+  result$ = CATEGORIES$(keyword$)
+  result$ = CATEGORIES(keyword$)
+
+DESCRIPTION:
+  The CATEGORY statement provides unified metadata introspection for
+  discovering, inspecting, and filtering language features by category
+  across all built-in statements, math functions, string functions,
+  virtual devices, and dynamic specifications.
+
+MODES:
+  1. Category Overview (CATEGORY alone):
+     Displays a complete, sorted list of all available categories.
+  2. Keyword Query (CATEGORY ABS):
+     Outputs the specific category of that keyword.
+  3. Category Listing (CATEGORY "String Functions"):
+     Lists all keywords belonging to that category in columns.
+  4. Introspective Function (PRINT CATEGORY$("ABS")):
+     Returns the category name as a string, or "" if not found.
+
+EXAMPLES:
+  CATEGORY
+  CATEGORY ABS
+  CATEGORY "SHUFFLE$"
+  CATEGORY "Arithmetic / Math"
+  PRINT CATEGORY$("ABS")
+  PRINT CATEGORY$("SHUFFLE$")

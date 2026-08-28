@@ -1,0 +1,16 @@
+CPOW Complex Power / Exponentiation Function
+======================================================================
+
+The CPOW function raises a complex base to a complex exponent (z^w).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res = CPOW(complex_base, complex_exp)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT REAL(CPOW(COMPLEX(2, 0), COMPLEX(3, 0)))   : REM Outputs 8

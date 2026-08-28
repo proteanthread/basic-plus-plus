@@ -1,39 +1,19 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-/**
- * @file feature_reg.c
- * @brief Implementation of Self-Registering Feature Hooks & Dynamic Introspection Registry.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements thread-safe / static registration storage for statement
- *   keywords, built-in functions, and help topics registered by micro-libraries.
- * - Why it exists: Enables dynamic introspection (HELP, CATALOG) to reflect only the
- *   specific micro-libraries compiled into the binary.
- * - Why it works this way: Bounded, fixed-size registries populated during boot or initializer
- *   calls. Uses case-insensitive string lookups for fast retrieval.
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Capacity limits, case-insensitivity helpers.
- * - What cannot be changed: Thread-safety and zero-swallowing invariants.
- * - What to expect: Registration operations return false if storage is full.
- * - What to do if something breaks: Check registration array bounds or NULL parameters.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Registered strings are either string literals or static memory.
- * - Portability concerns: C17 compliant, pure ASCII terminal string matching.
- *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add dynamic array growth helper if limits expand.
- * - How to write external extensions: External DLLs/plugins call feature_register_* upon load.
- */
+// FILENAME: feature_reg.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot (common_internal.h)
+// NEEDED BY: libengine (mux.c)
+// NEEDS: libcore (ctype.h, ctype.c, feature_reg.h, hal.h, memops.h, memops.c)
+// NEEDS: libcore (strops.h, strops.c)
+// Provides core logic and interface definitions for feature_reg within BASIC++.
+//
+// ---- Includes ----
 
 #include "core/feature_reg.h"
-#include <string.h>
-#include <ctype.h>
-#include <stdio.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "hal/hal.h"
 
 static FeatureKeywordEntry s_keywords[MAX_FEATURE_KEYWORDS];
 static size_t s_keyword_count = 0;
@@ -48,7 +28,7 @@ static void helper_str_toupper(char *dest, const char *src, size_t max_len) {
     size_t i = 0;
     if (!dest || !src || max_len == 0) return;
     for (i = 0; i < max_len - 1 && src[i] != '\0'; i++) {
-        dest[i] = (char)toupper((unsigned char)src[i]);
+        dest[i] = (char)runtime_toupper((unsigned char)src[i]);
     }
     dest[i] = '\0';
 }
@@ -57,9 +37,9 @@ void feature_reg_init(void) {
     s_keyword_count = 0;
     s_builtin_count = 0;
     s_help_count = 0;
-    memset(s_keywords, 0, sizeof(s_keywords));
-    memset(s_builtins, 0, sizeof(s_builtins));
-    memset(s_help_entries, 0, sizeof(s_help_entries));
+    runtime_memset(s_keywords, 0, sizeof(s_keywords));
+    runtime_memset(s_builtins, 0, sizeof(s_builtins));
+    runtime_memset(s_help_entries, 0, sizeof(s_help_entries));
 }
 
 bool feature_register_keyword(const char *keyword, int token_id, const char *category) {
@@ -105,7 +85,7 @@ const FeatureKeywordEntry* feature_find_keyword(const char *name) {
     if (!name) return NULL;
     helper_str_toupper(target, name, sizeof(target));
     for (i = 0; i < s_keyword_count; i++) {
-        if (strcmp(s_keywords[i].name, target) == 0) return &s_keywords[i];
+        if (runtime_strcmp(s_keywords[i].name, target) == 0) return &s_keywords[i];
     }
     return NULL;
 }
@@ -125,7 +105,7 @@ const FeatureBuiltinEntry* feature_find_builtin(const char *name) {
     if (!name) return NULL;
     helper_str_toupper(target, name, sizeof(target));
     for (i = 0; i < s_builtin_count; i++) {
-        if (strcmp(s_builtins[i].name, target) == 0) return &s_builtins[i];
+        if (runtime_strcmp(s_builtins[i].name, target) == 0) return &s_builtins[i];
     }
     return NULL;
 }
@@ -145,7 +125,8 @@ const FeatureHelpEntry* feature_find_help(const char *topic) {
     if (!topic) return NULL;
     helper_str_toupper(target, topic, sizeof(target));
     for (i = 0; i < s_help_count; i++) {
-        if (strcmp(s_help_entries[i].topic, target) == 0) return &s_help_entries[i];
+        if (runtime_strcmp(s_help_entries[i].topic, target) == 0) return &s_help_entries[i];
     }
     return NULL;
 }
+

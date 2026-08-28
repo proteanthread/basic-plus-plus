@@ -1,486 +1,84 @@
-# Binary Formats in BASIC++
+# BASIC++ v6.5.2 Binary Formats
 
+## 1. OVERVIEW
 
----
+BASIC++ works with several binary file formats for program storage, data exchange, and legacy compatibility. This document describes each format and the tools that read and write them.
 
-## Table of Contents
+## 2. ASCII PROGRAM FILES (.BAS, .BPP)
 
-- .BPP Format (Programs)
-  - Commands
-  - File Structure
-  - Header (16 bytes)
-  - Line Record (variable length)
-  - Usage
-  - Dialect Auto-Switch
-- .BPL Format (Libraries)
-  - Commands
-  - File Structure
-  - Header (32 bytes)
-  - Extension Types
-  - Symbol Table Entry (variable length)
-  - Source Line Record (variable length)
-  - CRC-16/CCITT Integrity
-  - Usage
-- Custom Detokenizer Hook
-  - Supported Formats (via modules)
-  - C API
-- PCode VM Internals
-  - Opcode Ranges
-  - Core Opcode Listing
-  - Sentinel Opcodes
-  - PCodeProgram Structure
-  - PCodeInstr and PCodeOperand
-- Round-Trip Workflows
-  - Program Round-Trip
-  - Library Round-Trip
-  - PCode Execution (BRUN)
-- Version Compatibility
-- See Also
+The default program file format is plain ASCII text. Each line begins with a line number followed by a space and the statement text. Lines are terminated by CR+LF (Windows) or LF (Unix). The file encoding is UTF-8 on modern builds and ASCII on FreeDOS builds.
 
----
+SAVE "PROGRAM.BAS" writes the current program in ASCII format. SAVE "PROGRAM.BAS", A explicitly requests ASCII format. LOAD "PROGRAM.BAS" reads it back.
 
-> **Milestone 27** — Serialization and Portable Execution
+The .bpp extension is used for BASIC++ extended programs that use features beyond GW-BASIC compatibility. The file format is identical to .bas.
 
-BASIC++ provides two binary file formats for portable storage and execution
-of programs and libraries. Both use little-endian byte ordering and are
-platform-independent.
+## 3. PROTECTED PROGRAM FILES
 
----
+SAVE "PROGRAM.BAS", P saves the program in a protected format. Protected programs are obfuscated: the source text is XOR-encrypted with a simple key. LIST and EDIT are disabled for protected programs. This provides casual copy protection, not cryptographic security.
 
-## .BPP Format (Programs)
+LOAD reads protected files transparently. The interpreter decrypts the source internally.
 
-The `.bpp` format stores BASIC++ programs in a compact binary container.
+## 4. TOKENIZED PROGRAM FILES (GW-BASIC BINARY FORMAT)
 
-### Commands
+GW-BASIC stored programs in a binary tokenized format where keywords were replaced by single-byte or two-byte token codes. This format is compact but not human-readable.
 
-| Command | Purpose | Security |
-|---------|---------|----------|
-| `BSAVE "file.bpp"` | Save program to .BPP | SECOP_FILE_WRITE |
-| `BLOAD "file.bpp"` | Load .BPP into program store | SECOP_FILE_READ |
-| `BRUN` | Compile in-memory program to PCode + execute | — |
+BASIC++ can read GW-BASIC tokenized files through the detok (detokenizer) tool:
 
-### File Structure
-
-```
-┌─────────────────────────────┐
-│  Header (16 bytes)          │
-├─────────────────────────────┤
-│  Line Record 0              │
-│  Line Record 1              │
-│  ...                        │
-│  Line Record N-1            │
-└─────────────────────────────┘
+```bash
+detok GWPROG.BAS > PROGRAM.TXT
 ```
 
-### Header (16 bytes)
-
-| Offset | Size | Field | Description |
-|--------|------|-------|-------------|
-| 0–3 | 4 | Magic | `"BPP"` + `0x1A` (Ctrl-Z EOF marker) |
-| 4 | 1 | Version | Format version (currently 1) |
-| 5 | 1 | Dialect | `DialectId` of the creating session |
-| 6–7 | 2 | Flags | Reserved (zero) |
-| 8–9 | 2 | Line count | Number of line records (LE16) |
-| 10–15 | 6 | Reserved | Padding (zero) |
-
-### Line Record (variable length)
-
-| Size | Field | Description |
-|------|-------|-------------|
-| 2 | Line number | LE16 |
-| 2 | Text length | LE16 (N) |
-| N | Source text | Raw ASCII, no NUL terminator |
-
-Source text is stored **verbatim** — the interpreter re-tokenizes each line
-when it executes. This keeps the format simple and maximally compatible.
-
-### Usage
-
-```basic
-10 PRINT "Hello, World!"
-20 END
-BSAVE "hello.bpp"
-NEW
-BLOAD "hello.bpp"
-RUN
-```
-
-### Dialect Auto-Switch
-
-If the `.bpp` file was saved with a different dialect than the current
-session, `BLOAD` automatically switches dialects to match.
-
----
-
-## .BPL Format (Libraries)
-
-The `.bpl` format stores pre-compiled BASIC++ libraries (SUBs, FUNCTIONs,
-DEF FN definitions) for distribution without source code.
-
-### Commands
-
-| Command | Purpose |
-|---------|---------|
-| `COMPILE LIBRARY "name"` | Save loaded library to .BPL |
-| `COMPILE LIBRARY "name", "out.bpl"` | Save with explicit filename |
-| `LOAD LIBRARY "file.bpl"` | Load pre-compiled library |
-
-### File Structure
-
-```
-┌─────────────────────────────┐
-│  Header (32 bytes)          │
-├─────────────────────────────┤
-│  Symbol Table               │
-│    Entry 0                  │
-│    Entry 1                  │
-│    ...                      │
-├─────────────────────────────┤
-│  Source Lines               │
-│    Line 0                   │
-│    Line 1                   │
-│    ...                      │
-└─────────────────────────────┘
-```
-
-### Header (32 bytes)
-
-| Offset | Size | Field | Description |
-|--------|------|-------|-------------|
-| 0–3 | 4 | Magic | `"BPL"` + `0x1A` (Ctrl-Z EOF marker) |
-| 4 | 1 | Version | Format version (currently 1) |
-| 5 | 1 | Security | Required `SecLevel` |
-| 6 | 1 | Ext type | Extension type (see table below) |
-| 7 | 1 | Flags | Reserved (zero) |
-| 8–9 | 2 | Symbol count | Number of symbol entries (LE16) |
-| 10–11 | 2 | Line count | Number of source lines (LE16) |
-| 12–13 | 2 | Str pool | String pool size (LE16, reserved) |
-| 14–15 | 2 | CRC-16 | CRC-16/CCITT integrity checksum |
-| 16–31 | 16 | Name | Library name (NUL-padded) |
-
-### Extension Types
-
-| Code | Type | File Extension | Description |
-|------|------|---------------|-------------|
-| 0 | LIB | `.LIB` | Library (SUB/FUNCTION collection) |
-| 1 | FN | `.FN` | External function |
-| 2 | FT | `.FT` | External feature |
-| 3 | MOD | `.MOD` | External module |
-| 4 | PLG | `.PLG` | External plugin |
-
-### Symbol Table Entry (variable length)
-
-| Size | Field | Description |
-|------|-------|-------------|
-| 1 | Type | 0=SUB, 1=FUNCTION, 2=DEF_FN |
-| 1 | Params | Parameter count |
-| 2 | Offset | Instruction/line offset (LE16) |
-| 1 | Name len | Length of name (N) |
-| N | Name | ASCII symbol name |
+The detok executable (engine build target) reads the binary token stream, maps each token back to its keyword text, and outputs a plain text program file. The output can then be loaded by BASIC++.
 
-### Source Line Record (variable length)
+## 5. BYTECODE FORMAT
 
-| Size | Field | Description |
-|------|-------|-------------|
-| 2 | VLine | Virtual line number (LE16) |
-| 2 | Length | Text length (LE16, N) |
-| N | Text | Source text (no NUL) |
+The bppc compiler generates bytecode files that contain a compact binary representation of the program's operations. The bytecode format consists of:
 
-### CRC-16/CCITT Integrity
+1. A file header with magic number, version, and metadata.
+2. A constant pool containing string literals and numeric constants.
+3. A bytecode section containing the opcode stream (BppOpcode values from engine/include/types/types.h).
 
-The checksum is computed across **all** source lines (accumulated, not
-per-line). On load, the stored CRC is validated against the loaded content.
-A mismatch prints a warning but does not prevent loading (for backward
-compatibility).
+Bytecode files are loaded by the VM stub and executed through the bytecode execution loop, bypassing the tokenizer and parser for faster startup.
 
-### Usage
-
-```basic
-' Save a library to .BPL
-LOAD LIBRARY "TURTLE.LIB"
-COMPILE LIBRARY "TURTLE"
-' Creates TURTLE.bpl
-
-' Load pre-compiled library
-LOAD LIBRARY "TURTLE.bpl"
-CALL FORWARD(100)
-```
-
----
-
-## Custom Detokenizer Hook & Built-in Legacy Support
-
-The `BLOAD` command supports a **pluggable detokenizer** for loading
-tokenized program files from other BASIC systems.
-
-When `BLOAD` encounters a file that doesn't begin with the `"BPP"` magic
-bytes, it checks for a registered custom detokenizer. If one exists, the
-entire file is read into memory (up to 256KB) and passed to the callback.
-
-### Default Built-in Detokenizer (GW-BASIC)
-
-BASIC++ registers a default detokenizer that automatically parses legacy
-**GW-BASIC tokenized programs** starting with the `0xFF` signature byte.
-No manual registration is required; loading such a file automatically
-re-constructs the ASCII representation and loads it into memory.
-
-### Supported Formats (via modules)
-
-| Format | First Byte | System | Status |
-|--------|-----------|--------|--------|
-| GW-BASIC tokenized | `0xFF` | IBM PC, MS-DOS | **Built-in / Default** |
-| Commodore PRG | Load address | C64, VIC-20, C128 | Pluggable callback |
-| Atari BASIC | Variable table | Atari 400/800/XL/XE | Pluggable callback |
-
-### C API
-
-```c
-/* Register a custom detokenizer (overriding the default) */
-bytecode_set_detokenizer(my_detokenizer_fn);
-
-/* Callback signature */
-typedef int (*DetokenizerFn)(
-    const unsigned char *data,  /* raw file bytes */
-    int len,                    /* file length */
-    char *out_text,             /* output buffer */
-    int max_out                 /* buffer size */
-);
-/* Return >= 0 on success, -1 on failure */
-```
-
----
-
-## Standalone Binary Packaging Format
-
-Standalone executables generated via `bppc --standalone` package compiled `.BPP` bytecode payload inside a native executable binary (EXE on Windows, ELF on Linux) using a runner stub (`basstub`):
-
-```
-┌──────────────────────────────────────────────┐
-│  Runner Stub Executable (basstub / ELF / EXE)│
-├──────────────────────────────────────────────┤
-│  Appended .BPP Bytecode Payload              │
-├──────────────────────────────────────────────┤
-│  Footer: Payload Size (LE32, 4 bytes)        │
-│  Footer: 'BPPE' Magic (4 bytes: 0x45505042)  │
-└──────────────────────────────────────────────┘
-```
-
-The compiled stub opens itself at startup, reads the footer to determine the size of the payload, seeks to the payload, loads it into the VM, and runs it natively.
-
----
-
-## PCode VM Internals
-
-The `BRUN` command compiles the in-memory program into a compact PCode
-representation and executes it via the bytecode virtual machine. The PCode
-format is purely in-memory — it is **never** serialized to disk.
-
-### Opcode Ranges
-
-| Range   | Constant             | Value | Purpose                        |
-|---------|----------------------|-------|--------------------------------|
-| Core    | `0`–`79`             | 0–79  | Built-in interpreter opcodes   |
-| Extended| `PCODE_EXTENDED_BASE`| 80    | Extended opcodes (80–127)      |
-| Module  | `PCODE_MODULE_BASE`  | 128   | Module-provided opcodes (128–191) |
-| JIT     | `PCODE_JIT_BASE`     | 192   | JIT hint opcodes (192–255)     |
-
-### Core Opcode Listing
-
-| Opcode | Name          | Description                              |
-|--------|---------------|------------------------------------------|
-| 0      | `NOP`         | No operation                             |
-| 1      | `HALT`        | Terminate program                        |
-| 2      | `STOP`        | Stop execution (can be resumed)          |
-| 3      | `REM`         | Comment (skipped)                        |
-| 4      | `DATA`        | Inline DATA values                       |
-| 5      | `LINE`        | Line number marker                       |
-| 6      | `POP`         | Discard top of stack                     |
-| 8      | `PUSH_INT`    | Push integer literal                     |
-| 9      | `PUSH_FLOAT`  | Push float literal                       |
-| 10     | `PUSH_STRING` | Push string literal (pool offset+len)    |
-| 11     | `PUSH_ZERO`   | Push constant 0                          |
-| 12     | `PUSH_ONE`    | Push constant 1                          |
-| 16     | `LOAD_VAR`    | Load numeric variable                    |
-| 17     | `LOAD_STRVAR` | Load string variable                     |
-| 18     | `LOAD_NAMED`  | Load named variable                      |
-| 19     | `LOAD_AT`     | Load array element (computed index)      |
-| 20     | `LOAD_DIM`    | Load DIM array element                   |
-| 24     | `STORE_VAR`   | Store numeric variable                   |
-| 25     | `STORE_STRVAR`| Store string variable                    |
-| 26     | `STORE_NAMED` | Store named variable                     |
-| 27     | `STORE_AT`    | Store array element (computed index)     |
-| 28     | `STORE_DIM`   | Store DIM array element                  |
-| 32     | `ADD`         | Arithmetic addition                      |
-| 33     | `SUB`         | Arithmetic subtraction                   |
-| 34     | `MUL`         | Arithmetic multiplication                |
-| 35     | `DIV`         | Arithmetic division                      |
-| 36     | `MOD`         | Modulo                                   |
-| 37     | `POW`         | Exponentiation                           |
-| 38     | `NEG`         | Unary negation                           |
-| 39     | `CONCAT`      | String concatenation                     |
-| 40     | `CMP_EQ`      | Compare equal                            |
-| 41     | `CMP_NE`      | Compare not equal                        |
-| 42     | `CMP_LT`      | Compare less than                        |
-| 43     | `CMP_GT`      | Compare greater than                     |
-| 44     | `CMP_LE`      | Compare less than or equal               |
-| 45     | `CMP_GE`      | Compare greater than or equal            |
-| 48     | `AND`         | Logical AND                              |
-| 49     | `OR`          | Logical OR                               |
-| 50     | `NOT`         | Logical NOT                              |
-| 52     | `JUMP`        | Unconditional jump                       |
-| 53     | `JUMP_FALSE`  | Jump if top of stack is false            |
-| 54     | `JUMP_TRUE`   | Jump if top of stack is true             |
-| 55     | `GOSUB`       | Subroutine call (push return address)    |
-| 56     | `RETURN`      | Return from subroutine                   |
-| 57     | `ON_GOTO`     | Computed GOTO (ON n GOTO)                |
-| 58     | `ON_GOSUB`    | Computed GOSUB (ON n GOSUB)              |
-| 60     | `PRINT_EXPR`  | Print expression value                   |
-| 61     | `PRINT_NL`    | Print newline                            |
-| 62     | `PRINT_TAB`   | Print TAB spacing                        |
-| 63     | `PRINT_SPC`   | Print SPC spacing                        |
-| 64     | `INPUT_VAR`   | Input numeric variable                   |
-| 65     | `INPUT_STRVAR`| Input string variable                    |
-| 66     | `INPUT_PROMPT`| Input with prompt string                 |
-| 68     | `FUNC1`       | Call 1-argument built-in function        |
-| 69     | `FUNC2`       | Call 2-argument built-in function        |
-| 70     | `FUNC3`       | Call 3-argument built-in function        |
-| 72     | `FOR_INIT`    | Initialize FOR loop                      |
-| 73     | `FOR_CHECK`   | Check FOR loop condition                 |
-| 74     | `NEXT`        | Advance FOR loop iterator                |
-| 75     | `DIM_ALLOC`   | Allocate DIM array                       |
-| 76     | `READ_NUM`    | READ numeric value from DATA             |
-| 77     | `READ_STR`    | READ string value from DATA              |
-| 78     | `RESTORE`     | Reset DATA pointer                       |
-
-> **Note:** Opcodes 7, 13–15, 23, 29–31, 46–47, 51, 59, 67, 71, and 79
-> are reserved for future use within the core range.
-
-### Sentinel Opcodes
-
-| Opcode | Name                  | Description                       |
-|--------|-----------------------|-----------------------------------|
-| 80     | `PCODE_EXTENDED_BASE` | First extended opcode             |
-| 128    | `PCODE_MODULE_BASE`   | First module-provided opcode      |
-| 192    | `PCODE_JIT_BASE`      | First JIT hint opcode             |
-
-### PCodeProgram Structure
-
-The compiled program is held in a `PCodeProgram` struct:
-
-```c
-typedef struct {
-    PCodeInstr *instrs;      /* Dynamic array of instructions     */
-    int         count;       /* Number of instructions emitted    */
-    int         capacity;    /* Allocated instruction slots        */
-    char       *str_pool;    /* String literal pool (packed)       */
-    int         str_used;    /* Bytes used in string pool          */
-    int         str_capacity;/* Allocated string pool size         */
-    int        *line_map;    /* Instruction index → source line    */
-    int        *on_tables;   /* ON GOTO/GOSUB target tables        */
-    int         on_table_count;    /* Number of ON table entries   */
-    int         on_table_capacity; /* Allocated ON table slots     */
-} PCodeProgram;
-```
-
-### PCodeInstr and PCodeOperand
-
-Each instruction is a `PCodeInstr` containing an opcode and an operand union:
-
-```c
-typedef struct {
-    unsigned char op;        /* Opcode (0–255)                     */
-    PCodeOperand  operand;   /* Operand payload (union)            */
-} PCodeInstr;
-
-typedef union {
-    long   ival;             /* Integer literal                    */
-    double fval;             /* Float literal                      */
-    int    offset;           /* Jump target / variable index       */
-    struct { int idx; int len; } str;  /* String pool ref          */
-    struct {
-        char name[MAX_VAR_NAME_LEN + 1];
-        int  ndims;
-    } dim;                   /* DIM array descriptor               */
-} PCodeOperand;
-```
-
-The `op` field selects the operation; the operand union carries the payload
-appropriate to that opcode. String literals reference a `(idx, len)` slice
-into the `str_pool` buffer rather than storing pointers, making the PCode
-representation position-independent within a single session.
-
----
-
-## Round-Trip Workflows
-
-### Program Round-Trip
-
-```basic
-' Create a program
-10 PRINT "Hello"
-20 FOR I = 1 TO 5
-30   PRINT I
-40 NEXT I
-50 END
-
-' Save to binary
-BSAVE "demo.bpp"
-
-' Clear and reload
-NEW
-BLOAD "demo.bpp"
-LIST
-RUN
-```
-
-### Library Round-Trip
-
-```basic
-' Load from source and compile to binary
-LOAD LIBRARY "MATH.LIB"
-COMPILE LIBRARY "MATH"
-
-' Later session: load pre-compiled
-NEW
-LOAD LIBRARY "MATH.bpl"
-PRINT SQUARE(7)
-```
-
-### PCode Execution (BRUN)
-
-```basic
-' BRUN compiles to PCode and executes via VM
-' (faster for compute-heavy programs)
-10 S = 0
-20 FOR I = 1 TO 1000000
-30   S = S + SQR(I)
-40 NEXT I
-50 PRINT "Sum:"; S
-BRUN
-```
-
----
-
-## Version Compatibility
-
-| Field | .BPP | .BPL |
-|-------|------|------|
-| Current version | 1 | 1 |
-| Version validation | ✅ Strict (reject on mismatch) | ✅ Strict |
-| Dialect tracking | ✅ Auto-switch on load | — |
-| CRC integrity | — | ✅ Warning on mismatch |
-
-Files created with a future format version will be rejected with a clear
-error message. There is no automatic migration — re-save from the original
-source if needed.
-
----
-
-## See Also
-
-- `SAVE` / `LOAD` — Text-format program I/O
-- `COMPILE` — Transpile to C source code
-- `LIBRARY` — Library management commands
-- `BRUN` — PCode VM execution
-- [Library System](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/Library_System.md)
-- [Virtual Machines](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/Virtual_Machines.md)
+## 6. TRANSPILED C17 OUTPUT
+
+The bppc compiler can also produce C17 source code that, when compiled with a C17 compiler, produces a standalone native executable. The generated C includes:
+
+- A VM stub with the execution loop.
+- Embedded string constants.
+- Compiled statement representations.
+- Required runtime library functions.
+
+The generated C file compiles with any C17-compliant compiler (GCC, Clang, MSVC).
+
+## 7. STATE SAVE/RESTORE FORMAT
+
+STATESAVE "filename" writes the complete VM state to a binary file. STATELOAD "filename" restores it. The state file contains:
+
+- All variable values and types.
+- All array contents.
+- The string heap.
+- The program text.
+- Stack states (FOR, GOSUB, DO, WHILE, SELECT, SUB, TRY).
+- The current execution position.
+- Open file channel states.
+- Event trap configurations.
+
+State save files are version-specific and may not be compatible across BASIC++ versions.
+
+## 8. RANDOM ACCESS DATA FILES
+
+Programs that use OPEN FOR RANDOM create binary data files with fixed-length records. The record structure is defined by FIELD statements or by TYPE variable sizes. These files can be read by any program that knows the record layout.
+
+## 9. BINARY DATA FILES
+
+Programs that use OPEN FOR BINARY and BGET/BPUT create raw binary data files with no record structure. The program is responsible for interpreting the byte layout.
+
+## 10. FILE FORMAT DETECTION
+
+When LOAD encounters a file, it examines the first byte to determine the format:
+
+- 0xFF: GW-BASIC tokenized format → passed to the detokenizer.
+- 0xFE: GW-BASIC protected format → passed to the decryptor.
+- 0x42 ('B'): BASIC++ bytecode format → loaded by the bytecode loader.
+- Other: Treated as ASCII text → loaded line by line.

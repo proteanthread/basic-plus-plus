@@ -1,0 +1,20 @@
+vdev Virtual Device Subsystem (libkernel)
+======================================================================
+
+The vdev library manages character streams, virtual device channels,
+and console output redirection.
+
+
+INVARIANTS
+----------------------------------------------------------------------
+
+  - All console output must route through VDevContext (no raw printf).
+  - Multiplexes files, serial devices, printers, and sockets (#0..#255).
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    int vdev_putc(VDevContext *vdev, int ch);
+    int vdev_puts(VDevContext *vdev, const char *str);
+    int vdev_printf(VDevContext *vdev, const char *fmt, ...);

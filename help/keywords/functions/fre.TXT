@@ -1,0 +1,25 @@
+FRE Free Memory Query Function
+======================================================================
+
+The FRE function returns the number of bytes of available free memory
+or compacts string memory.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    free_bytes& = FRE(0)
+    free_bytes& = FRE("")
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - FRE(0): Available heap memory for variables and arrays.
+  - FRE(""): Compacts string pool and returns available string space.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Free RAM: "; FRE(0); " bytes"

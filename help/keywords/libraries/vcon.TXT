@@ -1,0 +1,20 @@
+vcon Virtual Console Subsystem (libkernel)
+======================================================================
+
+The vcon library controls screen text buffers, cursor tracking (CSRLIN,
+POS), color attributes, and virtual terminal emulation.
+
+
+INVARIANTS
+----------------------------------------------------------------------
+
+  - Authoritative cursor and dimension state read directly from VCon.
+  - Pure 7-bit ASCII console formatting.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    void vcon_get_cursor(VConContext *vcon, int *row, int *col);
+    void vcon_set_cursor(VConContext *vcon, int row, int col);
+    void vcon_cls(VConContext *vcon);

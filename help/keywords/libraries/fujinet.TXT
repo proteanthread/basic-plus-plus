@@ -1,0 +1,20 @@
+fujinet FujiNet Network Device Emulation (libhardware)
+======================================================================
+
+The fujinet library emulates FujiNet network adapters, TNFS remote disk
+mounting, and N: network stream devices.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - N: network device virtualization.
+  - Remote disk image mounting over network (TNFS).
+  - Socket bridging to BASIC I/O channels.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    void fujinet_init(void);
+    int fujinet_mount_disk(int drive, const char *url);

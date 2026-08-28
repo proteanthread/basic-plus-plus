@@ -1,54 +1,14 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file varptr.c
- * @brief VARPTR and VARPTR$ function evaluator implementation.
- *
- * 1. WHAT IT DOES:
- * Evaluates VARPTR(var) (returns numeric address as double/uintptr_t) and VARPTR$(var) (returns string descriptor).
- *
- * 2. WHY IT EXISTS:
- * Classic GW-BASIC & QBASIC memory address introspection functionality.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Casts pointer addresses via uintptr_t to ensure 64-bit safety without compiler warnings.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake static library target 'func_varptr'. Includes "functions/varptr.h",
- * "vm/vm.h", "memory/memory.h", <stdint.h>, <stdio.h>, <string.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in desktop ('baspp') and REPL ('bpp') editions.
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Add memory segment offsets.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * BValue (*)(VMContext*, int, BValue*) evaluator signature.
- *
- * 8. WHAT TO EXPECT:
- * Returns address pointer representations.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check pointer address alignment and 64-bit uintptr_t type conversions.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. 64-bit pointer safety via uintptr_t.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files: None
- * Prerequisite Header Files:
- * - engine/include/functions/varptr.h
- * - engine/include/vm/vm.h
- * - engine/include/memory/memory.h
- */
+// FILENAME: varptr.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (sys_fn.c)
+// NEEDS: libcore (funcreg.h, funcreg.c, memory.h, memory.c)
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (varptr.h)
+// NEEDS: libengine (string.c, vm.h)
+// Provides runtime implementation for the VARPTR built-in function in BASIC++.
+//
+// ---- Includes ----
 
 #include <stdint.h>
 #include <stdio.h>
@@ -78,7 +38,7 @@ BValue func_varptr_eval(BValue *args, int arg_count, void *rt) {
     res.type = VAL_NUMBER;
     res.as.number = (double)addr;
 
-    /* Release input string args */
+    // Release input string args
     for (int i = 0; i < arg_count; i++) {
         if (args[i].type == VAL_STRING && args[i].as.string) {
             str_release(str_ctx, args[i].as.string);

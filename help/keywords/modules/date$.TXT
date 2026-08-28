@@ -1,0 +1,18 @@
+DATE$ System Date String Function & Variable
+======================================================================
+
+The DATE$ function/variable returns or sets the current system date as
+"MM-DD-YYYY".
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    cur_date$ = DATE$
+    DATE$ = "MM-DD-YYYY"
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Date: "; DATE$

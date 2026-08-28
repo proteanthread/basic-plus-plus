@@ -1,0 +1,17 @@
+RANDOMIZE Random Number Generator Seeding Statement
+======================================================================
+
+The RANDOMIZE statement seeds the pseudo-random number generator.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    RANDOMIZE [seed_value]
+    RANDOMIZE TIMER
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 RANDOMIZE TIMER

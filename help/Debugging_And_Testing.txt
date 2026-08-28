@@ -1,424 +1,184 @@
-BASIC++ Debugging and Testing
+======================================================================
+  BASIC++ V6.5.2 DEBUGGING AND TESTING GUIDE
+======================================================================
 
-Version 4.2.3
 
+======================================================================
+  1. INTERACTIVE DEBUGGING
+======================================================================
 
----
+BASIC++ provides a built-in interactive debugger accessible from the REPL. The debugger operates at the BASIC line level and provides inspection of variables, call stacks, and execution state without external tools.
 
-Table of Contents
 
-- Trace Mode (TRON / TROFF)
-- Breakpoints (BREAK)
-- Stopping and Continuing (STOP / CONT)
-- Variables Inspection (VARS)
-- Assertions (ASSERT)
-- Test Blocks (TEST / ENDTEST)
-- Built-in Self-Test (SELFTEST)
-- Error Line and Code (ERL / ERR)
-- Debugging Workflow
-- CHECK — Static Program Analysis
-- VERIFY — Full Program Verification
-- BACKTRACE — Call Stack Dump
-- ERROR$ — Error Message Lookup
+----------------------------------------------------------------------
+  Trace Mode
+----------------------------------------------------------------------
 
----
+TRON enables line-number trace mode. When active, the interpreter prints the line number in brackets before executing each line:
 
-This guide covers all debugging and testing features built into BASIC++. These tools help you find bugs, verify behavior, and build confidence in your programs.
+> TRON
+> RUN
+[10][20][30][40]
+Ok
+> TROFF
 
----
+TROFF disables trace mode. The TRACE statement provides finer control: TRACE ON enables tracing, TRACE OFF disables it, and TRACE STEP enables single-step mode where the interpreter pauses after each line and waits for input.
 
-Trace Mode (TRON / TROFF)
 
-TRON enables line-number tracing. As each line executes, its number is printed in square brackets:
+----------------------------------------------------------------------
+  Breakpoints
+----------------------------------------------------------------------
 
+BREAK n sets a breakpoint at line n. When the interpreter reaches that line during RUN, it pauses execution and enters the debugger prompt. From the debugger prompt you can:
 
-TRON
-RUN
-[10][20][30][40][50]
+- PRINT expr ? Evaluate and display an expression.
+- VARS ? Display all variable values.
+- CONT ? Continue execution until the next breakpoint or end of program.
+- BACKTRACE ? Display the call stack (GOSUB and SUB/FUNCTION frames).
+- DUMP ? Display internal VM state including stack depths and error state.
 
+BREAK LIST shows all active breakpoints. BREAK CLEAR n removes a breakpoint. BREAK CLEAR removes all breakpoints. The maximum breakpoint count is 64 on modern builds, 8 on FreeDOS, and 4 on embedded.
 
-TROFF disables tracing.
 
-Trace output goes to the console (STDOUT) and is interleaved with normal PRINT output. This is useful for finding infinite loops, unexpected GOTO/GOSUB paths, and confirming execution order.
+----------------------------------------------------------------------
+  The DEBUG Command
+----------------------------------------------------------------------
 
-Example:
+DEBUG ON enables verbose debug output, which includes lexer token trace, parser decisions, and expression evaluation steps. This produces substantial output and is primarily useful for diagnosing interpreter bugs rather than BASIC program bugs. DEBUG OFF disables it.
 
 
-10 TRON
-20 FOR I = 1 TO 3
-30 PRINT I
-40 NEXT I
-50 TROFF
+----------------------------------------------------------------------
+  The STOP Statement
+----------------------------------------------------------------------
 
+STOP pauses program execution and enters the debugger at the current line. Variables are preserved and CONT resumes execution. STOP is equivalent to a breakpoint that is embedded in the source code rather than set interactively.
 
-Output:
 
-[10][20][30] 1
-[40][20][30] 2
-[40][20][30] 3
-[40][50]
+======================================================================
+  2. THE SELFTEST COMMAND
+======================================================================
 
-
----
-
-Breakpoints (BREAK)
-
-BREAK sets a breakpoint on a specific line number. When execution reaches that line, the program pauses and drops to direct mode (like STOP).
-
-
-BREAK 100          ' Set breakpoint at line 100
-BREAK -100         ' Clear breakpoint at line 100
-BREAK              ' List all active breakpoints
-
-
-When a breakpoint fires:
-
-
-Break at line 100
->
-
-
-You can examine variables with VARS or PRINT, then resume with CONT.
-
-Multiple breakpoints are supported (up to 256 simultaneously). Breakpoints survive RUN but are cleared by NEW.
-
----
-
-Stopping and Continuing (STOP / CONT)
-
-STOP pauses execution and drops to direct mode:
-
-
-100 STOP
-
-
-When STOP executes:
-
-
-Break in 100
->
-
-
-In direct mode you can:
-- PRINT variables to inspect state
-- Use VARS to see all variables
-- Modify variables with LET
-- Resume execution with CONT
-
-CONT resumes from where the program stopped. It remembers the exact position (line and statement). If you modify the program (add/delete lines), CONT may not work correctly — use RUN instead.
-
----
-
-Variables Inspection (VARS)
-
-VARS displays variables and environment information:
-
-| Command | Description |
-|---------|-------------|
-| VARS | Show all program variables |
-| VARS USER | Show user-defined variables only |
-| VARS ENV | Show OS environment variables |
-| VARS SYSTEM | Show BASIC++ system state |
-| VARS ALL | Show everything |
-
-VARS USER output example:
-
-[User Variables]
-A         = 42
-B$        = "Hello"
-X(3)      = 99
-I         = 10
-
-
-VARS SYSTEM output example:
-
-[System Variables]
-Dialect   = GWBS
-Version   = 2.0.0
-Memory    = 524288 bytes
-Free      = 511420 bytes
-
-
----
-
-Assertions (ASSERT)
-
-ASSERT tests a condition and reports pass or fail:
-
-
-ASSERT 2 + 3 = 5         ' passes
-ASSERT A > 0             ' passes if A is positive
-ASSERT LEN("HELLO") = 5  ' passes
-
-
-When an assertion passes, nothing is printed (silent).
-When an assertion fails:
-
-
-ASSERT FAILED in line 100: 2 + 3 = 6
-
-
-ASSERT is useful for validating function output, checking boundary conditions, and regression testing. In a TEST block, ASSERT results contribute to the block's pass/fail count.
-
----
-
-Test Blocks (TEST / ENDTEST)
-
-TEST and ENDTEST create named test blocks that collect multiple assertions and report results:
-
-
-TEST "Arithmetic"
-ASSERT 2 + 3 = 5
-ASSERT 10 - 7 = 3
-ASSERT 4 * 5 = 20
-ENDTEST
-
-
-Output:
-
-TEST "Arithmetic": 3 passed, 0 failed
-
-
-If any assertion fails:
-
-TEST "Arithmetic": 2 passed, 1 failed FAIL
-
-
-You can have multiple TEST blocks in a single program:
-
-
-10 TEST "Math"
-20 ASSERT ABS(-5) = 5
-30 ASSERT INT(3.7) = 3
-40 ENDTEST
-50 TEST "Strings"
-60 ASSERT LEN("ABC") = 3
-70 ASSERT LEFT$("HELLO", 3) = "HEL"
-80 ENDTEST
-
-
----
-
-Built-in Self-Test (SELFTEST)
-
-SELFTEST runs the interpreter's internal validation suite. It tests 12 core subsystems and reports build configuration before running:
-
+SELFTEST runs the interpreter's built-in validation suite. It exercises the lexer, parser, expression evaluator, control flow structures, string operations, array operations, error handling, and virtual device layer. SELFTEST is the primary verification mechanism for build correctness.
 
 > SELFTEST
-=== BASIC++ SELF-TEST ===
-Build type........ Console (text-only / terminal)
-SDL2 support...... Enabled
-Lexer............. PASS
-Value system...... PASS
-String pool....... PASS
-Function registry. PASS
-Memory pool....... PASS
-configuration.... PASS
-Parser Precedence. PASS (X = 14, expected 14)
-Loop Control Flow. PASS (Y = 15, expected 15)
-VFS File I/O...... PASS
-Device Aliases.... PASS
-Graphics/SDL2..... PASS (Subsystems initialized, hidden renderer operational)
-Multitask & VM.... PASS
-=== SELF-TEST COMPLETE ===
 
+Run from the command line:
 
-SELFTEST is a direct-mode command. It does not affect the current program or variables. Use it after building from source to verify the interpreter is working correctly.
+```bash
+baspp -c "SELFTEST"
+bpp -c "SELFTEST"
 
-Notes:
-- Build type reports Console (text-only / terminal) or GUI (SDL-based window).
-- The Graphics/SDL2 test may show DISABLED on builds compiled with NO_SDL2.
-- When run with --log, detailed diagnostic output is written to the log file with the [SELFTEST] tag, including SDL version info, renderer details, and memory pool diagnostics.
+Both baspp and bpp must pass SELFTEST with zero failures. A failure indicates a regression in the interpreter and must be investigated before any other work proceeds.
 
----
 
-Error Line and Code (ERL / ERR)
+======================================================================
+  3. THE ASSERT STATEMENT
+======================================================================
 
-After an error occurs (and is caught by ON ERROR GOTO):
+ASSERT tests a condition and reports an error if it evaluates to false:
 
-| Variable | Description |
-|----------|-------------|
-| ERL | Line number where the error occurred |
-| ERR | Numeric error code |
+10 X = 42
+20 ASSERT X = 42
+30 ASSERT X > 0
+40 ASSERT X < 100
 
-Example:
+When an ASSERT fails, it reports the line number, the condition text, and the actual values of the operands. ASSERT does not stop program execution by default; it increments the fail counter and continues. Use ASSERT in combination with TEST/ENDTEST blocks for structured testing.
 
 
-10 ON ERROR GOTO 100
-20 X = 1 / 0
-30 END
-100 PRINT "Error"; ERR; "at line"; ERL
-110 RESUME NEXT
+======================================================================
+  4. TEST BLOCKS
+======================================================================
 
+TEST and ENDTEST bracket a named test block. The interpreter tracks pass, fail, and total assertion counts within each block:
 
-Output:
+10 TEST "Arithmetic Operations"
+20   ASSERT 2 + 2 = 4
+30   ASSERT 10 / 3 > 3.33
+40   ASSERT 10 MOD 3 = 1
+50   ASSERT INT(3.7) = 3
+60   ASSERT FIX(-3.7) = -3
+70 ENDTEST
+80 TEST "String Operations"
+90   ASSERT LEN("HELLO") = 5
+100  ASSERT LEFT$("HELLO", 3) = "HEL"
+110  ASSERT MID$("HELLO", 2, 3) = "ELL"
+120  ASSERT INSTR("HELLO WORLD", "WORLD") = 7
+130 ENDTEST
 
-Error 11 at line 20
+After a TEST block completes, the interpreter prints the test name, the pass count, the fail count, and the total. At program end, a summary of all test blocks is displayed.
 
 
----
+======================================================================
+  5. THE VERIFY STATEMENT
+======================================================================
 
-Debugging Workflow
+VERIFY tests a condition similar to ASSERT but unconditionally stops program execution if the condition is false. Use VERIFY for critical invariants that indicate a fundamental problem if violated:
 
-A typical debugging session:
+10 VERIFY A$ <> ""   ' Stop if input is empty
 
-1. RUN your program
-2. If it hangs, press Ctrl+C to break
-3. Use TRON to enable tracing, then RUN again
-4. Once you find the problem area, set breakpoints:
 
-   BREAK 200
-   BREAK 350
+======================================================================
+  6. THE CHECK STATEMENT
+======================================================================
 
-5. RUN again. When a breakpoint fires, inspect:
+CHECK performs a type or state check and reports the result without stopping execution:
 
-   PRINT X, Y, Z
-   VARS USER
+10 CHECK X > 0       ' Reports pass/fail to debug output
 
-6. CONT to resume, or fix the code and RUN again
-7. Write ASSERTs to prevent regressions:
 
-   ASSERT X > 0
-   ASSERT LEN(A$) <= 255
+======================================================================
+  7. REGRESSION TEST ORGANIZATION
+======================================================================
 
-8. Wrap tests in TEST blocks for organized reporting
-9. Use CHECK or VERIFY for static analysis before running
+Regression tests are BASIC++ programs stored under the tests/ directory. They are organized by category:
 
----
+tests/
+  gwbasic/              ? GW-BASIC compatibility tests
+    test_print.bas      ? PRINT statement variants
+    test_for.bas        ? FOR/NEXT loops
+    test_if.bas         ? IF/THEN/ELSE branching
+    test_while.bas      ? WHILE/WEND loops
+    test_select.bas     ? SELECT CASE
+    test_string.bas     ? String functions
+    test_array.bas      ? Array operations
+    test_file.bas       ? File I/O
+    test_error.bas      ? Error handling
+    test_sub.bas        ? SUB/FUNCTION procedures
+    ...
+  categories.json       ? Maps categories to test files
+  keywords.json         ? Maps keywords to test files
 
-CHECK — Static Program Analysis
+Execute regression tests using baspp directly:
 
-CHECK analyzes a program for common issues without running it:
+```bash
+baspp tests/gwbasic/test_print.bas
+baspp tests/gwbasic/test_for.bas
 
+Never use Python, Bash, or other external script wrappers to run tests. All automation must be written in BASIC++ itself and executed by the interpreter.
 
-> CHECK                      ' Check current program in memory
-> CHECK "filename.bas"       ' Check a file on disk
 
+======================================================================
+  8. THE DAP DEBUG SERVER
+======================================================================
 
-CHECK reports:
+The baspp standard edition includes a Debug Adapter Protocol (DAP) server that allows external IDEs to connect and debug BASIC++ programs with a graphical interface. The DAP server is implemented in engine/src/debug/dap_server.c and is part of the libstandard library.
 
-- Errors: FOR without matching NEXT, GOTO/GOSUB targets that don't exist
-- Warnings: Variables used but never assigned, variables assigned but never read
-- Program statistics: Lines, variables, FOR loops, subroutines, branch targets
-- Memory usage: Source text bytes, line storage, total footprint
-- Cyclomatic complexity: Simple / moderate / complex / very complex / extremely complex
 
-Example:
+======================================================================
+  9. STATE SAVE AND RESTORE
+======================================================================
 
+STATESAVE writes the complete VM state (program, variables, arrays, call stacks, execution position) to a file. STATELOAD restores a saved state. This allows suspending and resuming long-running programs across sessions.
 
-> CHECK
-=== CHECK: Program Analysis ===
 
-  120 FOR X=0 TO 7:FOR Y=0 TO 7:READ J:IF J=15 THEN 180
-    ERROR: FOR X without matching NEXT
-  WARNING (line 50): Variable Z used but never assigned
+======================================================================
+  10. DEBUGGING TIPS
+======================================================================
 
---- Program Statistics ---
-  Lines:      42
-  Variables:  8
-  FOR loops:  3
-  Subroutines: 2 GOSUB calls
-
---- Memory Usage ---
-  Source text:  1024 bytes
-  Line storage: 10920 bytes
-  Total:        11944 bytes
-
---- Complexity ---
-  Cyclomatic: 12 (moderate)
-
-=== 1 error, 1 warning ===
-
-
----
-
-VERIFY — Full Program Verification
-
-VERIFY runs everything CHECK does, plus additional deep analysis:
-
-
-> VERIFY                     ' Verify current program
-> VERIFY "filename.bas"      ' Verify a file on disk
-
-
-Includes everything CHECK reports, plus:
-
-- Cross-reference validation
-- DATA/READ balance analysis
-- Branch target integrity checks
-- Type suffix consistency
-
-Example:
-
-
-> VERIFY "mygame.bas"
-=== VERIFY: mygame.bas ===
-=== CHECK: Program Analysis ===
-
---- Program Statistics ---
-  Lines:      155 (137 code, 18 comments)
-  Variables:  20
-  DATA/READ:  34 items, 2 reads
-  FOR loops:  10
-  Subroutines: 13 GOSUB calls
-
---- Memory Usage ---
-  Source text:  4220 bytes
-  Total:        44520 bytes
-
---- Complexity ---
-  Cyclomatic: 40 (very complex)
-
-=== 0 errors, 3 warnings ===
-
-
----
-
-BACKTRACE — Call Stack Dump
-
-BACKTRACE shows the current GOSUB/SUB/FUNCTION call stack. Use it after a STOP, BREAK, or Ctrl+C to see how the program reached the current point:
-
-
-> BACKTRACE
-[3] line 500 (GOSUB from 200)
-[2] line 300 (GOSUB from 100)
-[1] line 100 (main)
-
-
-This is invaluable for debugging deeply nested subroutine calls or recursive FUNCTION definitions.
-
----
-
-ERROR$ — Error Message Lookup
-
-ERROR$(n) returns the human-readable description for any error code:
-
-
-100 ON ERROR GOTO 900
-110 X = 1 / 0
-120 END
-900 PRINT "Error "; ERR; ": "; ERROR$(ERR); " at line "; ERL
-910 RESUME NEXT
-
-
-Output:
-
-Error 11: Division by zero at line 110
-
-
-Common error codes:
-
-| Code | ERROR$ | Meaning |
-|------|--------|---------|
-| 1 | WHAT? | Syntax error |
-| 2 | Syntax error | Statement syntax |
-| 5 | Illegal function call | Bad argument |
-| 11 | Division by zero | Math error |
-| 53 | File not found | I/O error |
-
-Tips:
-- Use BREAK for targeted debugging
-- Use TRON for understanding flow
-- Use ASSERT at the start of subroutines to validate input assumptions
-- Use TEST blocks to create repeatable test suites
-- SELFTEST after any source-level changes to the interpreter itself
+1. Use TRON to trace the execution path when a program produces unexpected results.
+2. Use STOP at a suspected problem line and PRINT to inspect variables.
+3. Use ASSERT liberally within TEST blocks to create reproducible test cases.
+4. Use the ERR variable in an ON ERROR GOTO handler to log which errors occur and where.
+5. Use FRE(0) to check available string heap space if you suspect a memory issue.
+6. Use VARS to dump all active variables when the program state seems wrong.
+7. Use BACKTRACE to inspect the call stack when RETURN produces unexpected jumps.

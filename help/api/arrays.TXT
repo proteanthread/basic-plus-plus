@@ -1,0 +1,30 @@
+C17 API REFERENCE: ARRAY SUBSYSTEM (runtime/arrays.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Array Subsystem manages multi-dimensional array descriptors, dynamic
+bounds, element storage, and OPTION BASE compliance (0 or 1). Supports
+numeric, string, and user-defined struct elements up to 8 dimensions.
+
+2. KEY TYPES & STRUCTS
+- ArrayContext: Opaque subsystem handle.
+- BppArray: Internal descriptor storing name, element_type, num_dims,
+  bounds[8], lower_bounds[8], total_elements, elements (BValue *).
+
+3. CORE API FUNCTIONS
+- arr_init(mem, str) -> ArrayContext *
+- arr_shutdown(ctx)
+- arr_clear_all(ctx)
+- arr_clear_for_chain(ctx, var_ctx)
+- arr_dim(ctx, name, num_dims, bounds) -> BppError
+- arr_erase(ctx, name) -> bool
+- arr_get_element(ctx, name, num_dims, indices, err) -> BValue *
+- arr_exists(ctx, name) -> bool
+- arr_ubound(ctx, name, dimension, out_found) -> int
+- arr_set_option_base(ctx, base)
+- arr_get_option_base(ctx) -> int
+
+4. INVARIANTS & SAFETY RULES
+- Elements of type VAL_STRING must be released via str_release() when
+  erased or overwritten.
+- Iteration loops must use arr_get_option_base(ctx) for starting indices.

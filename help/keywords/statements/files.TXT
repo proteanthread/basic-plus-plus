@@ -1,0 +1,29 @@
+FILES Filesystem Directory Listing Statement
+============================================
+
+Displays a formatted list of files and directories on the active screen matching an optional wildcard.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    FILES [pattern$]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 76 (ERR_PATH_NOT_FOUND): Path not found.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Standard GW-BASIC directory listing command.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 FILES "*.DAT"
+    20 FILES "C:\GAMES\*.BAS"

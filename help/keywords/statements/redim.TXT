@@ -1,0 +1,21 @@
+BASIC++ STATEMENT REFERENCE: REDIM
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  REDIM [PRESERVE] arrayname(subscripts) [AS type] [, ...]
+
+Dynamically reallocates memory for a dynamic array, changing its dimensions
+or element count during program execution.
+
+2. PARAMETERS
+- PRESERVE: Optional clause to keep existing data when resizing the last dimension.
+- arrayname: The dynamic array identifier.
+- subscripts: New dimension bounds.
+
+3. ERROR CODES
+- Error 9 (ERR_SUBSCRIPT_OUT_OF_RANGE): Invalid subscript bounds.
+- Error 10 (ERR_DUPLICATE_DEFINITION): Attempted to REDIM a static array.
+
+4. EXAMPLES
+  10 REDIM A(50)
+  20 REDIM PRESERVE A(100)

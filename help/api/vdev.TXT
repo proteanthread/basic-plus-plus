@@ -1,0 +1,26 @@
+C17 API REFERENCE: MASTER VIRTUAL DEVICE BUS (device/vdev.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Master Virtual Device Bus provides a unified peripheral and stream I/O
+abstraction for consoles, files, serial ports, printers, audio, networks,
+and GPIO across BASIC++ v6.5.2.
+
+2. DEVICE CLASSES (VDevClass)
+- CONSOLE, FILE, SERIAL, PRINTER, AUDIO, NETWORK, GPIO, I2C, SPI, SENSOR.
+
+3. KEY TYPES & STRUCTS
+- VDevOps: Function pointer table (open, read, write, getc, putc, ioctl, close).
+- VDev: Unified device descriptor struct with name, class, caps, ops.
+- VDevContext: Opaque bus manager handle.
+
+4. CORE API FUNCTIONS
+- vdev_bus_init(mem) -> VDevContext *
+- vdev_bus_shutdown(ctx)
+- vdev_bus_attach(ctx, dev) -> bool
+- vdev_bus_detach(ctx, name) -> bool
+- vdev_bus_find(ctx, name) -> VDev *
+- vdev_open / vdev_close / vdev_read / vdev_write / vdev_puts / vdev_ioctl
+
+5. ARCHITECTURAL INVARIANTS
+- Route all console and terminal output through VDev abstractions (no raw printf).

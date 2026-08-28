@@ -1,54 +1,13 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file state.c
- * @brief Runtime component implementation and public API surface for state.c.
- *
- * WHAT IT DOES:
- * Implements the core responsibilities, data structures, and function evaluation logic for state.c within the runtime subsystem.
- *
- * WHY IT EXISTS:
- * Ensures decoupled modularity, strict C17 portability, and clear micro-library architectural boundary enforcement.
- *
- * WHY IT WORKS THIS WAY:
- * Designed with zero-initialization defaults, bounded memory operations, and explicit error code propagation to the VM state.
- *
- * WHAT CAN BE CHANGED:
- * Subsystem configuration defaults, local execution helper routines, and documentation annotations.
- *
- * WHAT CANNOT BE CHANGED:
- * Public API symbol declarations, micro-library metadata structures, and thread-safe error reporting contracts.
- *
- * WHAT TO EXPECT:
- * High-performance deterministic execution with zero side-effects outside designated state structures.
- *
- * WHAT TO DO IF SOMETHING BREAKS:
- * Verify context initialization, trace BppError return codes, and inspect log outputs for bounds assertions.
- *
- * ASSUMPTIONS:
- * Valid subsystem contexts and required memory pools are allocated prior to executing API handlers.
- *
- * PORTABILITY CONCERNS:
- * Strict C17 compliance, 64-bit pointer safety, and pure ASCII string operations across desktop, IoT, and embedded targets.
- *
- * FUTURE EXPANSIONS:
- * Additional dialect compatibility mappings, telemetry instrumentation, and microcontroller payload stubs.
- */
-
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file state.c
- * @brief Session State Save/Load implementation.
- */
+// FILENAME: state.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (arrays.h, arrays.c, memory.h, memory.c, state.h, string.h)
+// NEEDS: libcore (variables.h, variables.c)
+// NEEDS: libengine (string.c)
+// Provides core logic and interface definitions for state within BASIC++.
+//
+// ---- Includes ----
 
 #include "runtime/state.h"
 #include "runtime/variables.h"
@@ -69,16 +28,16 @@ BppError vm_state_save(VMContext *vm, const char *filename) {
         return err;
     }
 
-    /* 1. Header */
+    // 1. Header
     fwrite("BPPSTATE", 1, 8, fp);
-    uint32_t version = 100; /* 1.00 */
+    uint32_t version = 100; // 1.00
     fwrite(&version, sizeof(version), 1, fp);
 
     extern BppLineNumber vm_get_current_line(VMContext *vm);
     BppLineNumber cur_line = vm_get_current_line(vm);
     fwrite(&cur_line, sizeof(cur_line), 1, fp);
 
-    /* 2. Program Lines */
+    // 2. Program Lines
     size_t count = 0;
     BppProgramLine *lines = mem_program_get_all(vm_get_mem(vm), &count);
     uint32_t line_count = (uint32_t)count;
@@ -93,7 +52,7 @@ BppError vm_state_save(VMContext *vm, const char *filename) {
         }
     }
 
-    /* 3. Variables */
+    // 3. Variables
     if (!var_serialize(vm_get_var(vm), fp)) {
         err.code = 58;
         err.message = "Failed to serialize variables";
@@ -101,7 +60,7 @@ BppError vm_state_save(VMContext *vm, const char *filename) {
         return err;
     }
 
-    /* 4. Arrays */
+    // 4. Arrays
     if (!arr_serialize(vm_get_arr(vm), fp)) {
         err.code = 58;
         err.message = "Failed to serialize arrays";
@@ -124,7 +83,7 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
         return err;
     }
 
-    /* 1. Header */
+    // 1. Header
     char magic[8];
     if (fread(magic, 1, 8, fp) != 8 || memcmp(magic, "BPPSTATE", 8) != 0) {
         err.code = 53;
@@ -151,7 +110,7 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
     extern void vm_set_current_line(VMContext *vm, BppLineNumber line);
     vm_set_current_line(vm, cur_line);
 
-    /* 2. Program Lines */
+    // 2. Program Lines
     mem_program_clear(vm_get_mem(vm));
     uint32_t line_count = 0;
     if (fread(&line_count, sizeof(line_count), 1, fp) != 1) {
@@ -201,7 +160,7 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
         if (text) free(text);
     }
 
-    /* 3. Variables */
+    // 3. Variables
     if (!var_deserialize(vm_get_var(vm), fp)) {
         err.code = 53;
         err.message = "Failed to deserialize variables";
@@ -209,7 +168,7 @@ BppError vm_state_load(VMContext *vm, const char *filename) {
         return err;
     }
 
-    /* 4. Arrays */
+    // 4. Arrays
     if (!arr_deserialize(vm_get_arr(vm), fp)) {
         err.code = 53;
         err.message = "Failed to deserialize arrays";

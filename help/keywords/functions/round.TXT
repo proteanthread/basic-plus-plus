@@ -1,0 +1,16 @@
+ROUND Numeric Rounding Function
+======================================================================
+
+The ROUND function rounds a number to a specified number of decimal places.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    rounded# = ROUND(numeric_expression [, decimal_places%])
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT ROUND(12.3456, 2)   : REM Outputs 12.35

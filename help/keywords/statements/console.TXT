@@ -1,0 +1,29 @@
+CONSOLE Console Display Configuration Statement
+===============================================
+
+Configures virtual terminal console scrolling regions and display properties.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    CONSOLE [start_line%] [, [num_lines%] [, [flag%]]]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Line count outside terminal bounds.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Controls ANSI scrolling regions and terminal multiplexer panes.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 CONSOLE 1, 24, 1
+    20 PRINT "Console window configured."

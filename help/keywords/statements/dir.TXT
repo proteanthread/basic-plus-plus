@@ -1,0 +1,29 @@
+DIR Directory File Listing Statement
+====================================
+
+Queries and lists directory contents matching an optional filename pattern.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    DIR [pattern$]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 76 (ERR_PATH_NOT_FOUND): Directory not found.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Routes through VFS abstraction layer.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DIR "*.BAS"
+    20 DIR "SUBDIR/"

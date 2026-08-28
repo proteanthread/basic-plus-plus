@@ -1,58 +1,6 @@
-/*
- * PROJECT:  TRS-80 Level I BASIC Interpreter (C89 Port)
- * FILENAME: level1.c
- * VERSION:  2.1.0
- *
- * Prototype: based on TRS-80 Level I BASIC (Steve Leininger, 1977)
- *
- * DESCRIPTION:
- *   A portable interpreter for the TRS-80 Model I Level I BASIC dialect.
- *   Uses 16-bit signed integer arithmetic, strict left-to-right expression
- *   evaluation (no operator precedence), and a minimal statement set
- *   faithful to the original 2KB ROM BASIC.
- *
- * DIALECT NOTES (TRS-80 Level I BASIC):
- *   - 26 variables: A through Z (16-bit signed integers, -32768 to +32767)
- *   - Statements: PRINT, LET, INPUT, GOTO, IF/THEN, REM,
- *     END, STOP, CLEAR, BEEP, DATA, READ, RESTORE, ON/GOTO
- *   - Commands: RUN, LIST, NEW, SAVE, LOAD, CONT, HELP, BYE
- *   - Functions: ABS(X), INT(X), RND(X), MEM, TAB(X)
- *   - LET keyword is mandatory (bare variable assignment is not allowed)
- *   - Expression operators: +  -  *  /  (left-to-right, no precedence)
- *   - Relational operators: =  <  >  <=  >=  <>  #
- *   - Line numbers: 1 through 32767
- *   - Strings in PRINT only (no string variables)
- *   - No GOSUB/RETURN in this configuration
- *
- * HOW TO COMPILE:
- *   MSVC:  cl /TC /W4 /WX /Za /O2 /D_CRT_SECURE_NO_WARNINGS level1.c
- *   GCC:   gcc -ansi -Wall -Wextra -O2 -o level1 level1.c
- *
- * MEMORY LAYOUT:
- *   program_storage   500 lines x 132 bytes = ~64KB
- *   data_pool          256 entries x 2 bytes = 512 bytes
- *   variables           52 bytes   (26 x short)
- */
-
-/* =========================================================================
- * STANDARD LIBRARY INCLUDES
- *
- * WHAT CAN BE CHANGED:
- *   Nothing here.  All five headers are required by the interpreter.
- *
- * WHAT CANNOT BE CHANGED:
- *   Do not add C99 or POSIX headers (stdint.h, stdbool.h, unistd.h).
- *   The file must remain strict C89 for maximum portability.
- *
- * WHAT TO EXPECT:
- *   <time.h> is used solely for srand(time(NULL)) at startup.
- *   <ctype.h> functions must always receive (unsigned char) casts.
- *
- * IF SOMETHING BREAKS:
- *   Verify the compiler is invoked in C89/C90 mode (/Za on MSVC,
- *   -ansi on GCC).  If ctype warnings appear, check that every
- *   isdigit/isalpha/toupper/tolower call has proper casts.
- * ========================================================================= */
+// FILENAME: level1.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// DESCRIPTION: Complete TRS-80 Level I / Level II BASIC interpreter in freestanding C89.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,628 +8,466 @@
 #include <ctype.h>
 #include <time.h>
 
-/* =========================================================================
- * CONSTANTS AND TUNABLE LIMITS
- *
- * These control the memory budget and behaviour boundaries of the
- * interpreter.  All limits are intentionally conservative to keep
- * the interpreter small.
- *
- * WHAT CAN BE CHANGED:
- *   - MAX_LINES: increase to allow more stored program lines
- *   - LINE_LEN:  increase for longer source lines (keep < 250)
- *   - MAX_DATA:  increase if programs use very large DATA blocks
- *   - TAB_WIDTH: change comma-tab spacing (original TRS-80 used 14)
- *
- * WHAT CANNOT BE CHANGED:
- *   - NUM_VARS must remain 26 (single-letter A-Z variables are
- *     baked into the parser and expression evaluator)
- *
- * WHAT TO EXPECT:
- *   Total static memory is roughly MAX_LINES * (LINE_LEN+2) plus
- *   small overhead for variables and the data pool.  With the
- *   defaults below, total is approximately 67 KB.
- *
- * IF SOMETHING BREAKS:
- *   If OUT OF MEMORY appears during line entry, increase MAX_LINES.
- *   If input is silently truncated, increase LINE_LEN.
- *   If OUT OF DATA appears unexpectedly, increase MAX_DATA.
- * ========================================================================= */
-
-#define MAX_LINES   500
-#define LINE_LEN    130
-#define NUM_VARS    26
-#define MAX_DATA    256
-#define TAB_WIDTH   14
-
-/* Total memory budget reported by the MEM keyword. */
-#define TOTAL_MEM   ((long)MAX_LINES * (long)(LINE_LEN + 2) + \
-                     (long)NUM_VARS * 2L + (long)MAX_DATA * 2L)
-
-/* =========================================================================
- * PROGRAM STORAGE
- *
- * The stored program is an array of lines sorted in ascending order
- * by line number.  Each entry has a 16-bit line number and a fixed-
- * length character buffer holding the source text (everything after
- * the line number).
- *
- * WHAT CAN BE CHANGED:
- *   - Storage could be converted to a linked list or dynamic array
- *     if the fixed-size array is too limiting.
- *
- * WHAT CANNOT BE CHANGED:
- *   - Lines must remain sorted by line number; the binary-search
- *     lookup in find_line() and the sequential scan in the RUN
- *     loop both depend on sorted order.
- *
- * WHAT TO EXPECT:
- *   Inserting a line in the middle shifts all subsequent lines down
- *   by one slot (O(n) cost).  For a 500-line program this is fast
- *   enough to be imperceptible.
- *
- * IF SOMETHING BREAKS:
- *   If lines appear out of order in LIST output, check find_insert_pos().
- *   If store_line() silently drops lines, check the MAX_LINES limit.
- * ========================================================================= */
-
-static short  line_nums[MAX_LINES];
-static char   line_text[MAX_LINES][LINE_LEN + 2];
-static int    program_count = 0;
-
-/* =========================================================================
- * INTERPRETER STATE (variables, flags, counters)
- *
- * All mutable interpreter state lives here.  Variables are 16-bit
- * signed shorts (matching the TRS-80 integer model).  The running
- * flag, program counter (pc), and print column are updated during
- * program execution.
- *
- * WHAT CAN BE CHANGED:
- *   - Variable type could be widened to int or long for extended
- *     arithmetic, but that would break the 16-bit dialect contract.
- *
- * WHAT CANNOT BE CHANGED:
- *   - The running flag must be cleared to halt execution (this is
- *     how errors, END, and STOP terminate the run loop).
- *   - pc is an index into the sorted line_nums[]/line_text[] arrays;
- *     it is NOT a line number.
- *
- * WHAT TO EXPECT:
- *   After RUN, all variables are zeroed.  After CLEAR, all variables
- *   are zeroed but the program is preserved.
- *
- * IF SOMETHING BREAKS:
- *   If GOTO jumps to the wrong line, verify that pc is being set to
- *   the array index (from find_line()), not the line number itself.
- * ========================================================================= */
-
-static short  vars[NUM_VARS];
-static int    running    = 0;
-static int    pc         = 0;
-static int    print_col  = 0;
-static int    error_flag = 0;
-
-/* =========================================================================
- * CONT / STOP SUBSYSTEM
- *
- * When a STOP statement executes, the interpreter halts and saves
- * the program counter so that CONT can resume execution from the
- * line following the STOP.
- *
- * WHAT CAN BE CHANGED:
- *   - cont_pc could be extended to also save/restore the data_ptr
- *     or variable state for a richer "continue" experience.
- *
- * WHAT CANNOT BE CHANGED:
- *   - CONT must print CAN'T CONTINUE if no STOP has occurred.
- *   - STOP must print BREAK IN LINE <n>.
- *
- * WHAT TO EXPECT:
- *   CONT resumes at the line AFTER the STOP.  Variables and the
- *   DATA pointer are NOT reset by CONT.
- *
- * IF SOMETHING BREAKS:
- *   If CONT resumes at the wrong line, check that cont_pc is set
- *   to (pc + 1), not pc.  If CAN'T CONTINUE fires incorrectly,
- *   check the stopped flag.
- * ========================================================================= */
-
-static int    stopped    = 0;
-static int    cont_pc    = 0;
-
-/* =========================================================================
- * DATA / READ / RESTORE SUBSYSTEM
- *
- * DATA statements are declarative: they are skipped during normal
- * execution.  At the start of RUN, build_data_pool() scans every
- * stored line for DATA keywords and collects all comma-separated
- * integer values into a flat pool.  READ consumes values from the
- * pool sequentially.  RESTORE resets the read pointer to the start.
- *
- * WHAT CAN BE CHANGED:
- *   - MAX_DATA to increase/decrease the pool size
- *   - Value type could be extended to support strings or floats
- *
- * WHAT CANNOT BE CHANGED:
- *   - DATA must be scanned before the first READ (this happens
- *     automatically inside cmd_run())
- *   - RESTORE always resets to the beginning of the pool
- *   - DATA values are collected in line-number order
- *
- * WHAT TO EXPECT:
- *   - READ past the end of the pool produces OUT OF DATA error
- *   - DATA items are comma-separated signed integers
- *   - Multiple DATA statements across different lines are merged
- *     into a single sequential pool
- *
- * IF SOMETHING BREAKS:
- *   - Verify build_data_pool() is called at the start of cmd_run()
- *   - Check data_ptr bounds in exec_read()
- *   - Confirm parse_number() handles negative values via the sign
- *     check in build_data_pool()
- * ========================================================================= */
-
-static short  data_pool[MAX_DATA];
-static int    data_count = 0;
-static int    data_ptr   = 0;
-
-/* Reusable input buffer for the REPL. */
-static char   input_buf[LINE_LEN + 2];
-
-#ifdef _WIN32
-#ifdef __cplusplus
-extern "C" {
+#ifndef BASIC_RAM_SIZE
+#define BASIC_RAM_SIZE    65536L
 #endif
-__declspec(dllimport) int __stdcall Beep(unsigned long dwFreq, unsigned long dwDuration);
-#ifdef __cplusplus
-}
-#endif
-#endif
+
+#define MAX_LINES         2000
+#define LINE_LEN          255
+#define NUM_VARS          26
+#define MAX_ARRAY_SIZE    2048
+#define MAX_STR_LEN       255
+#define MAX_DATA          512
+#define TAB_WIDTH         14
+#define GOSUB_STACK_SIZE  64
+#define FOR_STACK_SIZE    32
+#define SCREEN_W          128
+#define SCREEN_H          48
+
+typedef struct {
+    int line_number;
+    char text[LINE_LEN + 1];
+} ProgramLine;
+
+typedef struct {
+    int var_idx;
+    short target;
+    short step;
+    int line_idx;
+} ForFrame;
+
+/* Program Storage */
+static ProgramLine pgm[MAX_LINES];
+static int num_lines = 0;
+
+/* Variables */
+static short vars[NUM_VARS];
+static short array_data[MAX_ARRAY_SIZE];
+static int   array_size = 100;
+static char  string_vars[NUM_VARS][MAX_STR_LEN + 1];
+
+/* Data Pool */
+static short data_pool[MAX_DATA];
+static int   data_count = 0;
+static int   data_ptr = 0;
+
+/* Virtual Screen for SET/RESET/POINT */
+static unsigned char vscreen[SCREEN_H][SCREEN_W / 8];
+
+/* Execution Stacks & State */
+static int   gosub_stack[GOSUB_STACK_SIZE];
+static int   gosub_sp = 0;
+
+static ForFrame for_stack[FOR_STACK_SIZE];
+static int   for_sp = 0;
+
+static int   pc = 0;
+static int   running = 0;
+static int   stopped_pc = -1;
+static int   print_col = 0;
+
+static char *parser_ptr = NULL;
+static char  curr_line_buf[LINE_LEN + 1];
+
+/* Forward Declarations */
+static void  clear_variables(void);
+static void  clear_program(void);
+static void  skip_spaces(void);
+static int   match_keyword(const char *kw);
+static int   peek_keyword(const char *kw);
+static int   find_line(int ln);
+static void  store_line(const char *raw);
+static void  build_data_pool(void);
+static void  save_program(const char *filename);
+static void  load_program(const char *filename);
+static void  list_program(const char *args);
+static void  run_program(void);
+static void  exec_statement(void);
+static void  exec_line_statements(char *line);
+static short parse_expression(void);
+static short parse_relational(void);
 
 static void trigger_beep(void) {
-#ifdef _WIN32
-    Beep(800, 250);
-#else
-    putchar('\a');
+    printf("\a");
     fflush(stdout);
-#endif
 }
 
-/* =========================================================================
- * FORWARD DECLARATIONS
- * ========================================================================= */
-
-static void   exec_line(char *line);
-static short  parse_expr(char **p);
-static short  parse_relational(char **p);
-
-/*
- * uppercase_line
- * Converts an entire input line to uppercase, preserving string
- * literals inside double quotes.  These early machines only had
- * uppercase characters.
- */
-static void uppercase_line(char *str)
-{
-    int in_quotes = 0;
-    while (*str) {
-        if (*str == '"') in_quotes = !in_quotes;
-        else if (!in_quotes) *str = (char)toupper((unsigned char)*str);
-        str++;
+static void report_error(const char *msg) {
+    if (running && pc >= 0 && pc < num_lines) {
+        printf("%s IN LINE %d\n", msg, pgm[pc].line_number);
+    } else {
+        printf("%s\n", msg);
     }
+    running = 0;
 }
 
-/* =========================================================================
- * UTILITY: WHITESPACE AND KEYWORD MATCHING
- *
- * These small helpers are used throughout the parser and executor.
- * skip_spaces() advances a pointer past spaces and tabs.
- * match_keyword() checks for a case-insensitive keyword at the
- * current position and advances past it if found.  peek_keyword()
- * does the same check without advancing.
- *
- * WHAT CAN BE CHANGED:
- *   - skip_spaces() could be extended to skip other whitespace
- *     characters if needed (form feed, etc.)
- *
- * WHAT CANNOT BE CHANGED:
- *   - match_keyword() and peek_keyword() must enforce a word
- *     boundary after the keyword (prevents "PRINTERS" from
- *     matching "PRINT")
- *   - All toupper() calls must cast through (unsigned char) first
- *
- * WHAT TO EXPECT:
- *   Keywords are matched case-insensitively: "print", "PRINT",
- *   and "Print" all work.
- *
- * IF SOMETHING BREAKS:
- *   If a keyword is not recognized, check the word-boundary test
- *   at the end of match_keyword().  If the wrong keyword matches,
- *   check that the keyword table in exec_line() tests longer
- *   keywords before shorter prefixes.
- * ========================================================================= */
-
-static void skip_spaces(char **p)
-{
-    while (**p == ' ' || **p == '\t') {
-        (*p)++;
+static void clear_variables(void) {
+    int i;
+    for (i = 0; i < NUM_VARS; i++) {
+        vars[i] = 0;
+        string_vars[i][0] = '\0';
     }
+    memset(array_data, 0, sizeof(array_data));
+    memset(vscreen, 0, sizeof(vscreen));
+    gosub_sp = 0;
+    for_sp = 0;
+    data_ptr = 0;
+    print_col = 0;
 }
 
-static int match_keyword(char **p, const char *kw)
-{
-    char *s = *p;
-    while (*kw) {
-        if ((char)toupper((unsigned char)*s) != *kw) {
-            return 0;
-        }
+static void clear_program(void) {
+    num_lines = 0;
+    clear_variables();
+    stopped_pc = -1;
+    pc = 0;
+    running = 0;
+}
+
+static void skip_spaces(void) {
+    while (*parser_ptr == ' ' || *parser_ptr == '\t') parser_ptr++;
+}
+
+static int my_strncasecmp(const char *s1, const char *s2, int n) {
+    int i;
+    for (i = 0; i < n; i++) {
+        int c1 = toupper((unsigned char)s1[i]);
+        int c2 = toupper((unsigned char)s2[i]);
+        if (c1 != c2) return c1 - c2;
+        if (c1 == '\0') return 0;
+    }
+    return 0;
+}
+
+static void uppercase_line(char *s) {
+    int in_quote = 0;
+    while (*s) {
+        if (*s == '"') in_quote = !in_quote;
+        else if (!in_quote) *s = (char)toupper((unsigned char)*s);
         s++;
-        kw++;
     }
-    if (isalpha((unsigned char)*s) || isdigit((unsigned char)*s)) {
-        return 0;
-    }
-    *p = s;
-    return 1;
 }
 
-static int peek_keyword(char *p, const char *kw)
-{
-    while (*kw) {
-        if ((char)toupper((unsigned char)*p) != *kw) {
-            return 0;
+static int match_keyword(const char *kw) {
+    int len;
+    skip_spaces();
+    len = (int)strlen(kw);
+    if (my_strncasecmp(parser_ptr, kw, len) == 0) {
+        char next = parser_ptr[len];
+        if (kw[len - 1] == '.') {
+            parser_ptr += len;
+            return 1;
         }
-        p++;
-        kw++;
-    }
-    if (isalpha((unsigned char)*p) || isdigit((unsigned char)*p)) {
-        return 0;
-    }
-    return 1;
-}
-
-/* =========================================================================
- * UTILITY: NUMERIC LITERAL PARSER
- *
- * Reads an unsigned decimal integer from the text, clamping at 32767
- * to stay within 16-bit signed range.
- *
- * WHAT CAN BE CHANGED:
- *   - The clamp value could be raised if arithmetic is widened
- *
- * WHAT CANNOT BE CHANGED:
- *   - The function only reads unsigned values; sign handling is
- *     done by callers (parse_atom for unary minus, build_data_pool
- *     for signed DATA values)
- *
- * WHAT TO EXPECT:
- *   Numbers larger than 32767 are silently clamped.  Leading zeros
- *   are consumed without error.
- *
- * IF SOMETHING BREAKS:
- *   If numbers parse incorrectly, check that the input pointer is
- *   positioned on a digit character before calling this function.
- * ========================================================================= */
-
-static short parse_number(char **p)
-{
-    long val = 0;
-    while (isdigit((unsigned char)**p)) {
-        val = val * 10 + (**p - '0');
-        if (val > 32767) {
-            val = 32767;
+        if (!isalnum((unsigned char)next) && next != '$') {
+            parser_ptr += len;
+            return 1;
         }
-        (*p)++;
     }
-    return (short)val;
+    return 0;
 }
 
-/* =========================================================================
- * PROGRAM STORAGE: FIND, INSERT, DELETE
- *
- * Lines are stored in a sorted array.  Binary search locates lines
- * for GOTO/IF-THEN lookups and for replacement/deletion during
- * editing.  Insertion shifts elements to maintain sorted order.
- *
- * WHAT CAN BE CHANGED:
- *   - The storage could be replaced with a hash table for O(1)
- *     lookup, but sequential RUN iteration would then require
- *     a separate sorted index.
- *
- * WHAT CANNOT BE CHANGED:
- *   - The array must remain sorted by line number at all times.
- *   - Entering a line number with no text must delete that line.
- *
- * WHAT TO EXPECT:
- *   Entering "10 PRINT A" stores line 10.  Entering "10" alone
- *   (no text) deletes line 10.  Replacing line 10 with new text
- *   overwrites the existing line in place.
- *
- * IF SOMETHING BREAKS:
- *   If find_line() returns -1 for a line that should exist, the
- *   array may have become unsorted.  Check store_line() for off-by-
- *   one errors in the shift loop.
- * ========================================================================= */
+static int peek_keyword(const char *kw) {
+    int len;
+    skip_spaces();
+    len = (int)strlen(kw);
+    if (my_strncasecmp(parser_ptr, kw, len) == 0) {
+        char next = parser_ptr[len];
+        if (kw[len - 1] == '.') return 1;
+        if (!isalnum((unsigned char)next) && next != '$') {
+            return 1;
+        }
+    }
+    return 0;
+}
 
-static int find_line(short num)
-{
-    int lo = 0;
-    int hi = program_count - 1;
-    while (lo <= hi) {
-        int mid = (lo + hi) / 2;
-        if (line_nums[mid] == num) return mid;
-        if (line_nums[mid] < num) lo = mid + 1;
-        else                      hi = mid - 1;
+static int find_line(int ln) {
+    int i;
+    for (i = 0; i < num_lines; i++) {
+        if (pgm[i].line_number == ln) return i;
     }
     return -1;
 }
 
-static int find_insert_pos(short num)
-{
-    int lo = 0;
-    int hi = program_count;
-    while (lo < hi) {
-        int mid = (lo + hi) / 2;
-        if (line_nums[mid] < num) lo = mid + 1;
-        else                      hi = mid;
-    }
-    return lo;
-}
+static void store_line(const char *raw) {
+    int ln;
+    char *endp;
+    int idx, i;
+    const char *text;
 
-static void store_line(short num, const char *text)
-{
-    int idx;
-    int i;
+    while (*raw == ' ' || *raw == '\t') raw++;
+    if (!isdigit((unsigned char)*raw)) return;
 
-    while (*text == ' ' || *text == '\t') {
-        text++;
-    }
+    ln = (int)strtol(raw, &endp, 10);
+    text = endp;
+    while (*text == ' ' || *text == '\t') text++;
 
-    idx = find_line(num);
+    idx = find_line(ln);
 
-    /* Empty text after the line number means delete the line. */
     if (*text == '\0') {
         if (idx >= 0) {
-            for (i = idx; i < program_count - 1; i++) {
-                line_nums[i] = line_nums[i + 1];
-                strcpy(line_text[i], line_text[i + 1]);
-            }
-            program_count--;
+            for (i = idx; i < num_lines - 1; i++) pgm[i] = pgm[i + 1];
+            num_lines--;
         }
         return;
     }
 
-    /* Replace existing line in place. */
     if (idx >= 0) {
-        strncpy(line_text[idx], text, LINE_LEN);
-        line_text[idx][LINE_LEN] = '\0';
+        strncpy(pgm[idx].text, text, LINE_LEN);
+        pgm[idx].text[LINE_LEN] = '\0';
         return;
     }
 
-    /* Insert new line at the correct sorted position. */
-    if (program_count >= MAX_LINES) {
+    if (num_lines >= MAX_LINES) {
         printf("OUT OF MEMORY\n");
         return;
     }
 
-    idx = find_insert_pos(num);
-    for (i = program_count; i > idx; i--) {
-        line_nums[i] = line_nums[i - 1];
-        strcpy(line_text[i], line_text[i - 1]);
-    }
-    line_nums[idx] = num;
-    strncpy(line_text[idx], text, LINE_LEN);
-    line_text[idx][LINE_LEN] = '\0';
-    program_count++;
+    idx = 0;
+    while (idx < num_lines && pgm[idx].line_number < ln) idx++;
+
+    for (i = num_lines; i > idx; i--) pgm[i] = pgm[i - 1];
+
+    pgm[idx].line_number = ln;
+    strncpy(pgm[idx].text, text, LINE_LEN);
+    pgm[idx].text[LINE_LEN] = '\0';
+    num_lines++;
 }
 
-/* =========================================================================
- * DATA POOL BUILDER
- *
- * Called once at the start of RUN.  Scans all stored program lines
- * in line-number order, looking for DATA statements.  Each DATA
- * line's comma-separated integer values are appended to the flat
- * data_pool[] array.
- *
- * WHAT CAN BE CHANGED:
- *   - Could be extended to support string DATA items
- *   - Could parse floating-point values if arithmetic is extended
- *
- * WHAT CANNOT BE CHANGED:
- *   - Must be called before the first READ executes
- *   - Must scan lines in ascending line-number order
- *   - Must reset data_count and data_ptr to zero
- *
- * WHAT TO EXPECT:
- *   DATA 10, -5, 30 produces three entries in the pool.
- *   Malformed DATA items (non-numeric) stop parsing for that line.
- *
- * IF SOMETHING BREAKS:
- *   - If READ returns wrong values, print data_pool[] contents
- *     after build_data_pool() to verify the scan
- *   - If negative DATA values fail, check the sign-handling code
- * ========================================================================= */
-
-static void build_data_pool(void)
-{
+static void build_data_pool(void) {
     int i;
     data_count = 0;
-    data_ptr   = 0;
+    data_ptr = 0;
 
-    for (i = 0; i < program_count; i++) {
-        char *p = line_text[i];
-        skip_spaces(&p);
+    for (i = 0; i < num_lines; i++) {
+        char buf[LINE_LEN + 1];
+        char *p = buf;
+        strncpy(buf, pgm[i].text, LINE_LEN);
+        buf[LINE_LEN] = '\0';
 
-        if (!peek_keyword(p, "DATA")) {
-            continue;
-        }
-        p += 4;
-        skip_spaces(&p);
-
-        while (*p != '\0' && data_count < MAX_DATA) {
-            short val;
-            int   neg = 0;
-            skip_spaces(&p);
-            if (*p == '-') {
-                neg = 1;
-                p++;
-                skip_spaces(&p);
-            } else if (*p == '+') {
-                p++;
-                skip_spaces(&p);
-            }
-            if (!isdigit((unsigned char)*p)) {
-                break;
-            }
-            val = parse_number(&p);
-            if (neg) {
-                val = (short)(-val);
-            }
-            data_pool[data_count++] = val;
-            skip_spaces(&p);
-            if (*p == ',') {
-                p++;
+        while (*p) {
+            while (*p == ' ' || *p == '\t') p++;
+            if (strncmp(p, "DATA", 4) == 0 && !isalnum((unsigned char)p[4])) {
+                p += 4;
+                while (*p && *p != ':') {
+                    while (*p == ' ' || *p == '\t') p++;
+                    if (*p == '+' || *p == '-' || isdigit((unsigned char)*p)) {
+                        short val = (short)strtol(p, &p, 10);
+                        if (data_count < MAX_DATA) data_pool[data_count++] = val;
+                    }
+                    while (*p == ' ' || *p == '\t') p++;
+                    if (*p == ',') p++;
+                    else if (*p == ':') break;
+                    else if (*p) p++;
+                }
             } else {
-                break;
+                while (*p && *p != ':') p++;
+                if (*p == ':') p++;
             }
         }
     }
 }
 
+static void resolve_filename(const char *raw, char *out, int sz) {
+    const char *src = raw;
+    int len;
+    while (*src == ' ' || *src == '\t') src++;
+    if (*src == '"') src++;
+    strncpy(out, src, sz - 5);
+    out[sz - 5] = '\0';
+    len = (int)strlen(out);
+    while (len > 0 && (out[len - 1] == ' ' || out[len - 1] == '\t' || out[len - 1] == '\r' || out[len - 1] == '\n' || out[len - 1] == '"')) {
+        out[--len] = '\0';
+    }
+    if (len == 0) return;
+    if (len >= 4) {
+        char e0 = out[len - 4];
+        char e1 = (char)toupper((unsigned char)out[len - 3]);
+        char e2 = (char)toupper((unsigned char)out[len - 2]);
+        char e3 = (char)toupper((unsigned char)out[len - 1]);
+        if (e0 == '.' && e1 == 'B' && e2 == 'A' && e3 == 'S') return;
+    }
+    if (len + 4 < sz) strcat(out, ".BAS");
+}
+
+static void save_program(const char *filename) {
+    FILE *fp;
+    char fname[256];
+    int i;
+    if (filename == NULL || *filename == '\0') {
+        printf("SYNTAX ERROR\n");
+        return;
+    }
+    resolve_filename(filename, fname, sizeof(fname));
+    fp = fopen(fname, "w");
+    if (!fp) {
+        printf("FILE ERROR\n");
+        return;
+    }
+    for (i = 0; i < num_lines; i++) {
+        fprintf(fp, "%d %s\n", pgm[i].line_number, pgm[i].text);
+    }
+    fclose(fp);
+    printf("READY\n");
+}
+
+static void load_program(const char *filename) {
+    FILE *fp;
+    char fname[256];
+    char buf[LINE_LEN + 20];
+    if (filename == NULL || *filename == '\0') {
+        printf("SYNTAX ERROR\n");
+        return;
+    }
+    resolve_filename(filename, fname, sizeof(fname));
+    fp = fopen(fname, "r");
+    if (!fp) {
+        printf("FILE NOT FOUND\n");
+        return;
+    }
+    clear_program();
+    while (fgets(buf, sizeof(buf), fp)) {
+        int blen = (int)strlen(buf);
+        while (blen > 0 && (buf[blen - 1] == '\n' || buf[blen - 1] == '\r')) buf[--blen] = '\0';
+        if (buf[0] != '\0') store_line(buf);
+    }
+    fclose(fp);
+    printf("READY\n");
+}
+
+static void list_program(const char *args) {
+    int lo = 0, hi = 32767, i;
+    const char *p = args;
+    while (*p == ' ' || *p == '\t') p++;
+    if (isdigit((unsigned char)*p)) {
+        lo = (int)strtol(p, (char **)&p, 10);
+        hi = lo;
+        while (*p == ' ' || *p == '\t') p++;
+        if (*p == ',' || *p == '-') {
+            p++;
+            while (*p == ' ' || *p == '\t') p++;
+            if (isdigit((unsigned char)*p)) {
+                hi = (int)strtol(p, NULL, 10);
+            } else {
+                hi = 32767;
+            }
+        }
+    }
+    for (i = 0; i < num_lines; i++) {
+        if (pgm[i].line_number >= lo && pgm[i].line_number <= hi) {
+            printf("%d %s\n", pgm[i].line_number, pgm[i].text);
+        }
+    }
+}
+
 /* =========================================================================
- * EXPRESSION EVALUATOR
- *
- * The TRS-80 Level I BASIC evaluates expressions strictly left-to-right
- * with NO operator precedence.  2+3*4 yields 20, not 14.
- *
- * Grammar (left-to-right, flat):
- *   expr   := atom ( ('+' | '-' | '*' | '/') atom )*
- *   atom   := number | variable | '(' expr ')' | '-' atom | '+' atom
- *           | ABS '(' expr ')' | INT '(' expr ')'
- *           | RND '(' expr ')' | TAB '(' expr ')' | MEM
- *
- * WHAT CAN BE CHANGED:
- *   - New functions can be added to parse_atom() following the
- *     existing pattern (peek_keyword, parse arguments, return value)
- *   - To add operator precedence, replace parse_expr() with a
- *     recursive-descent parser using separate term/factor rules
- *     (but that would break TRS-80 Level I compatibility)
- *
- * WHAT CANNOT BE CHANGED:
- *   - Left-to-right evaluation order (no precedence) is fundamental
- *     to the Level I dialect; changing it alters program behavior
- *   - parse_atom() must handle unary minus/plus recursively
- *   - Division by zero must halt execution and print an error
- *
- * WHAT TO EXPECT:
- *   - 2+3*4 evaluates to 20 (not 14)
- *   - Parentheses override left-to-right order: 2+(3*4) = 14
- *   - ABS(-5) = 5, INT(7) = 7 (no-op), RND(6) = 1..6
- *   - MEM returns free memory as a 16-bit value (capped at 32767)
- *   - TAB(X) emits spaces to reach column X and returns 0
- *   - Unknown tokens in atom position return 0 silently
- *
- * IF SOMETHING BREAKS:
- *   - If expressions give wrong results, trace through parse_atom()
- *     and parse_expr() call by call with sample input
- *   - If division-by-zero does not halt, check that running is
- *     set to 0 in the '/' case of parse_expr()
- *   - If RND always returns the same sequence, verify srand() is
- *     called in main()
+ * EXPRESSION EVALUATION (TRS-80 LEVEL I FLAT LEFT-TO-RIGHT)
  * ========================================================================= */
 
-static short parse_atom(char **p)
-{
-    short val;
-    skip_spaces(p);
+static short parse_atom(void) {
+    short val = 0;
+    if (!running) return 0;
+    skip_spaces();
 
-    /* Unary minus. */
-    if (**p == '-') {
-        (*p)++;
-        val = parse_atom(p);
-        return (short)(-val);
+    if (*parser_ptr == '-') {
+        parser_ptr++;
+        return (short)-parse_atom();
+    }
+    if (*parser_ptr == '+') {
+        parser_ptr++;
+        return parse_atom();
     }
 
-    /* Unary plus (consumed, no effect). */
-    if (**p == '+') {
-        (*p)++;
-        return parse_atom(p);
-    }
-
-    /* Parenthesised sub-expression. */
-    if (**p == '(') {
-        (*p)++;
-        val = parse_expr(p);
-        skip_spaces(p);
-        if (**p == ')') (*p)++;
+    if (*parser_ptr == '(') {
+        parser_ptr++;
+        val = parse_expression();
+        skip_spaces();
+        if (*parser_ptr == ')') parser_ptr++;
         return val;
     }
 
-    /* Numeric literal. */
-    if (isdigit((unsigned char)**p)) {
-        return parse_number(p);
+    if (isdigit((unsigned char)*parser_ptr)) {
+        return (short)strtol(parser_ptr, &parser_ptr, 10);
     }
 
-    /* ABS(X): absolute value. */
-    if (peek_keyword(*p, "ABS")) {
-        *p += 3;
-        skip_spaces(p);
-        if (**p == '(') {
-            (*p)++;
-            val = parse_expr(p);
-            skip_spaces(p);
-            if (**p == ')') (*p)++;
+    /* ABS(X) */
+    if (match_keyword("ABS")) {
+        skip_spaces();
+        if (*parser_ptr == '(') {
+            parser_ptr++;
+            val = parse_expression();
+            skip_spaces();
+            if (*parser_ptr == ')') parser_ptr++;
         } else {
-            val = parse_atom(p);
+            val = parse_atom();
         }
-        return (val < 0) ? (short)(-val) : val;
+        return (val < 0 ? (short)-val : val);
     }
 
-    /* INT(X): integer truncation (no-op for integer arithmetic). */
-    if (peek_keyword(*p, "INT")) {
-        *p += 3;
-        skip_spaces(p);
-        if (**p == '(') {
-            (*p)++;
-            val = parse_expr(p);
-            skip_spaces(p);
-            if (**p == ')') (*p)++;
+    /* INT(X) */
+    if (match_keyword("INT")) {
+        skip_spaces();
+        if (*parser_ptr == '(') {
+            parser_ptr++;
+            val = parse_expression();
+            skip_spaces();
+            if (*parser_ptr == ')') parser_ptr++;
         } else {
-            val = parse_atom(p);
+            val = parse_atom();
         }
         return val;
     }
 
-    /* RND(X): random integer from 1 to X inclusive. */
-    if (peek_keyword(*p, "RND")) {
+    /* SGN(X) */
+    if (match_keyword("SGN")) {
+        skip_spaces();
+        if (*parser_ptr == '(') {
+            parser_ptr++;
+            val = parse_expression();
+            skip_spaces();
+            if (*parser_ptr == ')') parser_ptr++;
+        } else {
+            val = parse_atom();
+        }
+        if (val > 0) return 1;
+        if (val < 0) return -1;
+        return 0;
+    }
+
+    /* RND(X) - 1 to X */
+    if (match_keyword("RND")) {
         short upper;
-        *p += 3;
-        skip_spaces(p);
-        if (**p == '(') {
-            (*p)++;
-            upper = parse_expr(p);
-            skip_spaces(p);
-            if (**p == ')') (*p)++;
+        skip_spaces();
+        if (*parser_ptr == '(') {
+            parser_ptr++;
+            upper = parse_expression();
+            skip_spaces();
+            if (*parser_ptr == ')') parser_ptr++;
         } else {
-            upper = parse_atom(p);
+            upper = parse_atom();
         }
         if (upper <= 0) upper = 1;
-        return (short)(rand() % upper + 1);
+        return (short)((rand() % upper) + 1);
     }
 
-    /* TAB(X): emit spaces to reach column X, return 0. */
-    if (peek_keyword(*p, "TAB")) {
+    /* MEM / M. */
+    if (match_keyword("MEM") || match_keyword("M.")) {
+        long used = (long)num_lines * (long)(LINE_LEN + 2) + (long)data_count * 2L;
+        long free_mem = (long)BASIC_RAM_SIZE - used;
+        if (free_mem > 32767) free_mem = 32767;
+        if (free_mem < 0) free_mem = 0;
+        return (short)free_mem;
+    }
+
+    /* TAB(X) / T.(X) */
+    if (match_keyword("TAB") || match_keyword("T.")) {
         short col;
-        *p += 3;
-        skip_spaces(p);
-        if (**p == '(') {
-            (*p)++;
-            col = parse_expr(p);
-            skip_spaces(p);
-            if (**p == ')') (*p)++;
+        skip_spaces();
+        if (*parser_ptr == '(') {
+            parser_ptr++;
+            col = parse_expression();
+            skip_spaces();
+            if (*parser_ptr == ')') parser_ptr++;
         } else {
-            col = parse_atom(p);
+            col = parse_atom();
         }
         if (col < 0) col = 0;
         while (print_col < col) {
@@ -691,996 +477,714 @@ static short parse_atom(char **p)
         return 0;
     }
 
-    /* MEM: free memory keyword (no parentheses). */
-    if (peek_keyword(*p, "MEM")) {
-        long used;
-        *p += 3;
-        used = (long)program_count * (long)(LINE_LEN + 2)
-             + (long)data_count * 2L;
-        val = (short)((TOTAL_MEM - used) > 32767 ? 32767 : (TOTAL_MEM - used));
-        return val;
+    /* POINT(X, Y) */
+    if (match_keyword("POINT")) {
+        short x, y;
+        skip_spaces();
+        if (*parser_ptr == '(') parser_ptr++;
+        x = parse_expression();
+        skip_spaces();
+        if (*parser_ptr == ',') parser_ptr++;
+        y = parse_expression();
+        skip_spaces();
+        if (*parser_ptr == ')') parser_ptr++;
+        if (x < 0 || x >= SCREEN_W || y < 0 || y >= SCREEN_H) return 0;
+        return (vscreen[y][x / 8] & (1 << (x % 8))) ? 1 : 0;
     }
 
-    /* Single-letter variable A-Z. */
-    if (isalpha((unsigned char)**p)) {
-        int idx = (char)toupper((unsigned char)**p) - 'A';
-        if (idx >= 0 && idx < NUM_VARS) {
-            (*p)++;
-            return vars[idx];
+    /* PEEK(addr) */
+    if (match_keyword("PEEK")) {
+        skip_spaces();
+        if (*parser_ptr == '(') {
+            parser_ptr++;
+            (void)parse_expression();
+            skip_spaces();
+            if (*parser_ptr == ')') parser_ptr++;
+        } else {
+            (void)parse_atom();
         }
+        return 0;
+    }
+
+    /* INP(port) */
+    if (match_keyword("INP")) {
+        skip_spaces();
+        if (*parser_ptr == '(') {
+            parser_ptr++;
+            (void)parse_expression();
+            skip_spaces();
+            if (*parser_ptr == ')') parser_ptr++;
+        } else {
+            (void)parse_atom();
+        }
+        return 0;
+    }
+
+    /* Variable A-Z or Array A(X) or String A$ */
+    if (isalpha((unsigned char)*parser_ptr)) {
+        char v = (char)toupper((unsigned char)*parser_ptr++);
+        int idx = v - 'A';
+        skip_spaces();
+        if (*parser_ptr == '$') {
+            parser_ptr++;
+            return 0;
+        }
+        if (v == 'A' && *parser_ptr == '(') {
+            short arr_idx;
+            parser_ptr++;
+            arr_idx = parse_expression();
+            skip_spaces();
+            if (*parser_ptr == ')') parser_ptr++;
+            if (arr_idx < 0 || arr_idx >= MAX_ARRAY_SIZE) {
+                report_error("SUBSCRIPT OUT OF RANGE");
+                return 0;
+            }
+            return array_data[arr_idx];
+        }
+        if (idx >= 0 && idx < NUM_VARS) return vars[idx];
     }
 
     return 0;
 }
 
-/* Left-to-right expression: atom op atom op atom ... */
-static short parse_expr(char **p)
-{
-    short val = parse_atom(p);
-    for (;;) {
+static short parse_expression(void) {
+    short val;
+    if (!running) return 0;
+    val = parse_atom();
+
+    while (running) {
         char op;
         short rhs;
-        skip_spaces(p);
-        op = **p;
-        if (op != '+' && op != '-' && op != '*' && op != '/') {
-            break;
-        }
-        (*p)++;
-        rhs = parse_atom(p);
-        switch (op) {
-            case '+': val = (short)(val + rhs); break;
-            case '-': val = (short)(val - rhs); break;
-            case '*': val = (short)(val * rhs); break;
-            case '/':
-                if (rhs == 0) {
-                    printf("DIVISION BY ZERO");
-                    if (running) {
-                        printf(" IN LINE %d", (int)line_nums[pc - 1]);
-                    }
-                    printf("\n");
-                    running = 0;
-                    error_flag = 1;
-                    return 0;
-                }
-                val = (short)(val / rhs);
-                break;
+        skip_spaces();
+        op = *parser_ptr;
+        if (op != '+' && op != '-' && op != '*' && op != '/') break;
+        parser_ptr++;
+        rhs = parse_atom();
+        if (op == '+') val = (short)(val + rhs);
+        else if (op == '-') val = (short)(val - rhs);
+        else if (op == '*') val = (short)(val * rhs);
+        else if (op == '/') {
+            if (rhs == 0) { report_error("DIVISION BY ZERO"); return 0; }
+            val = (short)(val / rhs);
         }
     }
     return val;
 }
 
-/* =========================================================================
- * RELATIONAL (CONDITION) EVALUATOR
- *
- * Wraps parse_expr() and checks for an optional trailing relational
- * operator.  If one is found, evaluates both sides and returns 1
- * (true) or 0 (false).  If no relational operator follows, returns
- * the raw expression value.
- *
- * WHAT CAN BE CHANGED:
- *   - New relational operators can be added (though the standard
- *     set covers all common cases)
- *
- * WHAT CANNOT BE CHANGED:
- *   - The # operator must remain an alias for <> (TRS-80 convention)
- *   - Relational operators must bind looser than arithmetic
- *     (handled by calling parse_expr() for each side)
- *
- * WHAT TO EXPECT:
- *   - IF A=5 THEN ... evaluates the = as equality, not assignment
- *   - Relational operators return exactly 1 or 0
- *
- * IF SOMETHING BREAKS:
- *   - If <= is parsed as < followed by =, check the two-character
- *     lookahead logic
- *   - If # does not work, verify it is handled after the > branch
- * ========================================================================= */
+static short parse_relational(void) {
+    short lhs;
+    if (!running) return 0;
+    skip_spaces();
 
-static short parse_relational(char **p)
-{
-    short lhs = parse_expr(p);
-    short rhs;
-    skip_spaces(p);
-
-    if (**p == '<') {
-        (*p)++;
-        if (**p == '>') {
-            (*p)++;
-            rhs = parse_expr(p);
-            return (short)(lhs != rhs ? 1 : 0);
+    /* String comparison check */
+    if (isalpha((unsigned char)*parser_ptr)) {
+        char *look = parser_ptr;
+        while (isalnum((unsigned char)*look)) look++;
+        if (*look == '$') {
+            char v = (char)toupper((unsigned char)*parser_ptr++);
+            int idx = v - 'A';
+            char op1, op2;
+            char rhs_str[MAX_STR_LEN + 1];
+            if (*parser_ptr == '$') parser_ptr++;
+            skip_spaces();
+            op1 = *parser_ptr;
+            if (op1 == '=' || op1 == '<' || op1 == '>' || op1 == '#') {
+                parser_ptr++;
+                op2 = *parser_ptr;
+                if (op2 == '=' || op2 == '>') parser_ptr++;
+                else op2 = '\0';
+                skip_spaces();
+                rhs_str[0] = '\0';
+                if (*parser_ptr == '"') {
+                    int k = 0;
+                    parser_ptr++;
+                    while (*parser_ptr && *parser_ptr != '"' && k < MAX_STR_LEN) rhs_str[k++] = *parser_ptr++;
+                    rhs_str[k] = '\0';
+                    if (*parser_ptr == '"') parser_ptr++;
+                } else if (isalpha((unsigned char)*parser_ptr)) {
+                    char rv = (char)toupper((unsigned char)*parser_ptr++);
+                    int ri = rv - 'A';
+                    if (*parser_ptr == '$') parser_ptr++;
+                    if (ri >= 0 && ri < NUM_VARS) strcpy(rhs_str, string_vars[ri]);
+                }
+                if (idx >= 0 && idx < NUM_VARS) {
+                    int cmp = strcmp(string_vars[idx], rhs_str);
+                    if (op1 == '=' && op2 == '\0') return (short)(cmp == 0 ? 1 : 0);
+                    if (op1 == '#' || (op1 == '<' && op2 == '>')) return (short)(cmp != 0 ? 1 : 0);
+                    if (op1 == '<' && op2 == '\0') return (short)(cmp < 0 ? 1 : 0);
+                    if (op1 == '>' && op2 == '\0') return (short)(cmp > 0 ? 1 : 0);
+                    if (op1 == '<' && op2 == '=') return (short)(cmp <= 0 ? 1 : 0);
+                    if (op1 == '>' && op2 == '=') return (short)(cmp >= 0 ? 1 : 0);
+                }
+            }
+            return 0;
         }
-        if (**p == '=') {
-            (*p)++;
-            rhs = parse_expr(p);
-            return (short)(lhs <= rhs ? 1 : 0);
-        }
-        rhs = parse_expr(p);
-        return (short)(lhs < rhs ? 1 : 0);
     }
 
-    if (**p == '>') {
-        (*p)++;
-        if (**p == '=') {
-            (*p)++;
-            rhs = parse_expr(p);
-            return (short)(lhs >= rhs ? 1 : 0);
-        }
-        rhs = parse_expr(p);
-        return (short)(lhs > rhs ? 1 : 0);
-    }
+    lhs = parse_expression();
+    skip_spaces();
 
-    if (**p == '=') {
-        (*p)++;
-        rhs = parse_expr(p);
-        return (short)(lhs == rhs ? 1 : 0);
-    }
+    if (*parser_ptr == '<' || *parser_ptr == '>' || *parser_ptr == '=' || *parser_ptr == '#') {
+        char op1 = *parser_ptr++;
+        char op2 = '\0';
+        short rhs;
+        if (*parser_ptr == '=' || *parser_ptr == '>') op2 = *parser_ptr++;
+        rhs = parse_expression();
 
-    if (**p == '#') {
-        (*p)++;
-        rhs = parse_expr(p);
-        return (short)(lhs != rhs ? 1 : 0);
+        if (op1 == '=' && op2 == '\0') return (short)(lhs == rhs ? 1 : 0);
+        if (op1 == '#' || (op1 == '<' && op2 == '>')) return (short)(lhs != rhs ? 1 : 0);
+        if (op1 == '<' && op2 == '\0') return (short)(lhs < rhs ? 1 : 0);
+        if (op1 == '>' && op2 == '\0') return (short)(lhs > rhs ? 1 : 0);
+        if (op1 == '<' && op2 == '=') return (short)(lhs <= rhs ? 1 : 0);
+        if (op1 == '>' && op2 == '=') return (short)(lhs >= rhs ? 1 : 0);
     }
-
     return lhs;
 }
 
 /* =========================================================================
- * STATEMENT EXECUTION HANDLERS
- *
- * Each exec_*() function implements one BASIC statement.  They
- * receive a pointer-to-pointer into the source line, positioned
- * just after the keyword that triggered the dispatch.  They consume
- * their arguments and leave the pointer at the end of the statement.
- *
- * WHAT CAN BE CHANGED:
- *   - New statements can be added by writing a new exec_*() handler
- *     and adding a match_keyword() check in exec_line()
- *   - PRINT formatting (tab width, newline rules) can be adjusted
- *
- * WHAT CANNOT BE CHANGED:
- *   - LET must remain mandatory (bare A=5 must produce SYNTAX ERROR)
- *   - INPUT must prompt with "? " (TRS-80 convention)
- *   - GOTO must halt with UNDEFINED LINE if the target does not exist
- *   - IF/THEN must support both "THEN linenum" (implicit GOTO) and
- *     "THEN statement" (inline execution)
- *   - STOP must print BREAK IN LINE and set state for CONT
- *
- * WHAT TO EXPECT:
- *   - PRINT separators: semicolon keeps cursor at current column,
- *     comma advances to next TAB_WIDTH tab stop
- *   - Trailing semicolon suppresses the newline after PRINT
- *   - ON expr GOTO with out-of-range index silently falls through
- *   - READ past end of data pool produces OUT OF DATA error
- *
- * IF SOMETHING BREAKS:
- *   - If PRINT output is misaligned, check print_col tracking
- *   - If IF/THEN fails to branch, trace parse_relational() output
- *   - If ON GOTO jumps to the wrong line, verify the 1-based index
- *     counting in the comma-separated target list
+ * STATEMENT HANDLERS
  * ========================================================================= */
 
-/* ---- PRINT statement ---- */
-static void exec_print(char **p)
-{
-    int need_newline = 1;
+static void cmd_print(void) {
+    int need_nl = 1;
+    skip_spaces();
+    if (*parser_ptr == '\0' || *parser_ptr == ':') { putchar('\n'); print_col = 0; return; }
 
-    skip_spaces(p);
+    while (*parser_ptr != '\0' && *parser_ptr != ':' && running) {
+        skip_spaces();
+        if (*parser_ptr == '\0' || *parser_ptr == ':') break;
 
-    /* Bare PRINT: emit a blank line. */
-    if (**p == '\0' || **p == ':') {
-        putchar('\n');
-        print_col = 0;
-        return;
-    }
-
-    while (**p != '\0' && **p != ':') {
-        skip_spaces(p);
-
-        if (**p == '\0' || **p == ':') {
-            break;
-        }
-
-        /* String literal. */
-        if (**p == '"') {
-            (*p)++;
-            while (**p != '\0' && **p != '"') {
-                putchar(**p);
+        if (*parser_ptr == '"') {
+            parser_ptr++;
+            while (*parser_ptr && *parser_ptr != '"') {
+                putchar(*parser_ptr++);
                 print_col++;
-                (*p)++;
             }
-            if (**p == '"') (*p)++;
-            need_newline = 1;
-        }
-        /* TAB function inside PRINT. */
-        else if (peek_keyword(*p, "TAB")) {
-            parse_atom(p);
-            need_newline = 1;
-        }
-        /* Numeric expression. */
-        else {
-            short val;
-            char *before = *p;
-            error_flag = 0;
-            val = parse_expr(p);
-            if (error_flag) {
-                return;
-            }
-            /* If parse_expr consumed nothing, the remaining text is
-               not a valid expression.  Break to avoid an infinite loop. */
-            if (*p == before) {
-                break;
-            }
-            if (val >= 0) printf(" ");
-            printf("%d ", (int)val);
-            {
-                int n = val;
-                int w = 2;
-                if (n < 0) { w++; n = -n; } else { w++; }
-                while (n >= 10) { w++; n /= 10; }
-                print_col += w;
-            }
-            need_newline = 1;
-        }
-
-        skip_spaces(p);
-
-        /* Semicolon: suppress newline, stay at current column. */
-        if (**p == ';') {
-            (*p)++;
-            need_newline = 0;
-        }
-        /* Comma: advance to next tab stop. */
-        else if (**p == ',') {
+            if (*parser_ptr == '"') parser_ptr++;
+            need_nl = 1;
+        } else if (*parser_ptr == ';') {
+            parser_ptr++;
+            need_nl = 0;
+        } else if (*parser_ptr == ',') {
             int next_tab;
-            (*p)++;
+            parser_ptr++;
             next_tab = ((print_col / TAB_WIDTH) + 1) * TAB_WIDTH;
-            while (print_col < next_tab) {
-                putchar(' ');
-                print_col++;
+            while (print_col < next_tab) { putchar(' '); print_col++; }
+            need_nl = 0;
+        } else if (peek_keyword("TAB") || peek_keyword("T.")) {
+            parse_atom();
+            need_nl = 1;
+        } else {
+            /* Check for string variable A$ */
+            char *look = parser_ptr;
+            while (isalnum((unsigned char)*look)) look++;
+            if (*look == '$') {
+                char v = (char)toupper((unsigned char)*parser_ptr++);
+                int idx = v - 'A';
+                if (*parser_ptr == '$') parser_ptr++;
+                if (idx >= 0 && idx < NUM_VARS) {
+                    printf("%s", string_vars[idx]);
+                    print_col += (int)strlen(string_vars[idx]);
+                }
+                need_nl = 1;
+            } else {
+                short val = parse_expression();
+                if (!running) return;
+                if (val >= 0) { printf(" "); print_col++; }
+                printf("%d ", (int)val);
+                {
+                    int n = val, w = 2;
+                    if (n < 0) { w++; n = -n; } else { w++; }
+                    while (n >= 10) { w++; n /= 10; }
+                    print_col += w;
+                }
+                need_nl = 1;
             }
-            need_newline = 0;
         }
     }
-
-    if (need_newline) {
-        putchar('\n');
-        print_col = 0;
-    }
+    if (need_nl && running) { putchar('\n'); print_col = 0; }
 }
 
-/* ---- LET statement (mandatory keyword) ---- */
-static void exec_let(char **p)
-{
+static void cmd_let(void) {
+    char v;
     int idx;
-    skip_spaces(p);
-    if (!isalpha((unsigned char)**p)) {
-        printf("SYNTAX ERROR");
-        if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-        printf("\n");
-        running = 0;
+    char *look;
+
+    skip_spaces();
+    if (!isalpha((unsigned char)*parser_ptr)) { report_error("SYNTAX ERROR"); return; }
+
+    look = parser_ptr;
+    while (isalnum((unsigned char)*look)) look++;
+
+    if (*look == '$') {
+        v = (char)toupper((unsigned char)*parser_ptr++);
+        idx = v - 'A';
+        if (*parser_ptr == '$') parser_ptr++;
+        skip_spaces();
+        if (*parser_ptr != '=') { report_error("SYNTAX ERROR"); return; }
+        parser_ptr++;
+        skip_spaces();
+        if (*parser_ptr == '"') {
+            int k = 0;
+            parser_ptr++;
+            while (*parser_ptr && *parser_ptr != '"' && k < MAX_STR_LEN) {
+                if (idx >= 0 && idx < NUM_VARS) string_vars[idx][k++] = *parser_ptr;
+                parser_ptr++;
+            }
+            if (idx >= 0 && idx < NUM_VARS) string_vars[idx][k] = '\0';
+            if (*parser_ptr == '"') parser_ptr++;
+        } else if (isalpha((unsigned char)*parser_ptr)) {
+            char rv = (char)toupper((unsigned char)*parser_ptr++);
+            int ri = rv - 'A';
+            if (*parser_ptr == '$') parser_ptr++;
+            if (idx >= 0 && idx < NUM_VARS && ri >= 0 && ri < NUM_VARS) {
+                strcpy(string_vars[idx], string_vars[ri]);
+            }
+        }
         return;
     }
-    idx = (char)toupper((unsigned char)**p) - 'A';
-    (*p)++;
-    skip_spaces(p);
-    if (**p != '=') {
-        printf("SYNTAX ERROR");
-        if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-        printf("\n");
-        running = 0;
+
+    v = (char)toupper((unsigned char)*parser_ptr++);
+    idx = v - 'A';
+    skip_spaces();
+
+    if (v == 'A' && *parser_ptr == '(') {
+        short arr_idx;
+        parser_ptr++;
+        arr_idx = parse_expression();
+        skip_spaces();
+        if (*parser_ptr == ')') parser_ptr++;
+        skip_spaces();
+        if (*parser_ptr != '=') { report_error("SYNTAX ERROR"); return; }
+        parser_ptr++;
+        if (arr_idx < 0 || arr_idx >= MAX_ARRAY_SIZE) {
+            report_error("SUBSCRIPT OUT OF RANGE"); return;
+        }
+        array_data[arr_idx] = parse_expression();
         return;
     }
-    (*p)++;
-    vars[idx] = parse_expr(p);
+
+    if (*parser_ptr != '=') { report_error("SYNTAX ERROR"); return; }
+    parser_ptr++;
+    if (idx >= 0 && idx < NUM_VARS) {
+        vars[idx] = parse_expression();
+    }
 }
 
-/* ---- INPUT statement ---- */
-static void exec_input(char **p)
-{
-    int idx;
-    char buf[64];
-    skip_spaces(p);
-    if (!isalpha((unsigned char)**p)) {
-        printf("SYNTAX ERROR");
-        if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-        printf("\n");
-        running = 0;
+static void cmd_input(void) {
+    char buf[LINE_LEN + 1];
+    char *look;
+
+    skip_spaces();
+    if (*parser_ptr == '"') {
+        parser_ptr++;
+        while (*parser_ptr && *parser_ptr != '"') putchar(*parser_ptr++);
+        if (*parser_ptr == '"') parser_ptr++;
+        skip_spaces();
+        if (*parser_ptr == ';' || *parser_ptr == ',') parser_ptr++;
+    }
+
+    skip_spaces();
+    if (!isalpha((unsigned char)*parser_ptr)) { report_error("SYNTAX ERROR"); return; }
+
+    look = parser_ptr;
+    while (isalnum((unsigned char)*look)) look++;
+
+    if (*look == '$') {
+        char v = (char)toupper((unsigned char)*parser_ptr++);
+        int idx = v - 'A';
+        if (*parser_ptr == '$') parser_ptr++;
+        printf("? "); fflush(stdout);
+        if (fgets(buf, sizeof(buf), stdin)) {
+            int blen = (int)strlen(buf);
+            while (blen > 0 && (buf[blen - 1] == '\n' || buf[blen - 1] == '\r')) buf[--blen] = '\0';
+            if (idx >= 0 && idx < NUM_VARS) {
+                strncpy(string_vars[idx], buf, MAX_STR_LEN);
+                string_vars[idx][MAX_STR_LEN] = '\0';
+            }
+        }
         return;
     }
-    idx = (char)toupper((unsigned char)**p) - 'A';
-    (*p)++;
-    printf("? ");
-    fflush(stdout);
-    if (fgets(buf, sizeof(buf), stdin) == NULL) {
-        running = 0;
-        return;
+
+    {
+        char v = (char)toupper((unsigned char)*parser_ptr++);
+        int idx = v - 'A';
+        printf("? "); fflush(stdout);
+        if (fgets(buf, sizeof(buf), stdin)) {
+            if (idx >= 0 && idx < NUM_VARS) vars[idx] = (short)strtol(buf, NULL, 10);
+        }
     }
-    vars[idx] = (short)atoi(buf);
 }
 
-/* ---- GOTO statement ---- */
-static void exec_goto(char **p)
-{
+static void cmd_goto(void) {
     short target;
     int idx;
-    skip_spaces(p);
-    if (!isdigit((unsigned char)**p)) {
-        printf("SYNTAX ERROR");
-        if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-        printf("\n");
-        running = 0;
-        return;
-    }
-    target = parse_number(p);
+    skip_spaces();
+    target = parse_expression();
     idx = find_line(target);
-    if (idx < 0) {
-        printf("UNDEFINED LINE %d", (int)target);
-        if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-        printf("\n");
-        running = 0;
-        return;
-    }
+    if (idx < 0) { report_error("UNDEFINED LINE"); return; }
     pc = idx;
 }
 
-/* ---- IF/THEN statement ---- */
-static void exec_if(char **p)
-{
-    short cond;
-    skip_spaces(p);
-    cond = parse_relational(p);
-    skip_spaces(p);
-
-    if (!match_keyword(p, "THEN")) {
-        printf("SYNTAX ERROR");
-        if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-        printf("\n");
-        running = 0;
-        return;
-    }
-
-    if (cond == 0) {
-        while (**p != '\0') (*p)++;
-        return;
-    }
-
-    skip_spaces(p);
-    if (isdigit((unsigned char)**p)) {
-        exec_goto(p);
-    } else {
-        exec_line(*p);
-        while (**p != '\0') (*p)++;
-    }
-}
-
-/* ---- ON expr GOTO line1, line2, ... ---- */
-static void exec_on_goto(char **p)
-{
-    short selector;
-    int   count;
+static void cmd_gosub(void) {
     short target;
+    int idx;
+    skip_spaces();
+    target = parse_expression();
+    idx = find_line(target);
+    if (idx < 0) { report_error("UNDEFINED LINE"); return; }
+    if (gosub_sp >= GOSUB_STACK_SIZE) { report_error("GOSUB STACK OVERFLOW"); return; }
+    gosub_stack[gosub_sp++] = pc + 1;
+    pc = idx;
+}
 
-    skip_spaces(p);
-    selector = parse_expr(p);
-    skip_spaces(p);
+static void cmd_return(void) {
+    if (gosub_sp <= 0) { report_error("RETURN WITHOUT GOSUB"); return; }
+    pc = gosub_stack[--gosub_sp];
+}
 
-    if (!match_keyword(p, "GOTO")) {
-        printf("SYNTAX ERROR");
-        if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-        printf("\n");
-        running = 0;
+static void cmd_for(void) {
+    char v;
+    int vi;
+    short start_val, limit_val, step_val = 1;
+
+    skip_spaces();
+    if (!isalpha((unsigned char)*parser_ptr)) { report_error("SYNTAX ERROR"); return; }
+    v = (char)toupper((unsigned char)*parser_ptr++);
+    vi = v - 'A';
+    if (vi < 0 || vi >= NUM_VARS) return;
+
+    skip_spaces();
+    if (*parser_ptr != '=') { report_error("SYNTAX ERROR"); return; }
+    parser_ptr++;
+
+    start_val = parse_expression();
+    vars[vi] = start_val;
+
+    skip_spaces();
+    if (!match_keyword("TO")) { report_error("SYNTAX ERROR"); return; }
+
+    limit_val = parse_expression();
+
+    skip_spaces();
+    if (match_keyword("STEP")) {
+        step_val = parse_expression();
+    }
+
+    if (for_sp > 0 && for_stack[for_sp - 1].var_idx == vi) {
+        for_stack[for_sp - 1].target = limit_val;
+        for_stack[for_sp - 1].step = step_val;
+        for_stack[for_sp - 1].line_idx = pc + 1;
         return;
     }
 
-    count = 0;
-    target = 0;
-    for (;;) {
-        int idx;
-        skip_spaces(p);
-        if (!isdigit((unsigned char)**p)) break;
-        count++;
-        target = parse_number(p);
-        if (count == selector) {
-            idx = find_line(target);
-            if (idx < 0) {
-                printf("UNDEFINED LINE %d", (int)target);
-                if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-                printf("\n");
-                running = 0;
-            } else {
-                pc = idx;
-            }
-            return;
+    if (for_sp >= FOR_STACK_SIZE) { report_error("FOR STACK OVERFLOW"); return; }
+    for_stack[for_sp].var_idx = vi;
+    for_stack[for_sp].target = limit_val;
+    for_stack[for_sp].step = step_val;
+    for_stack[for_sp].line_idx = pc + 1;
+    for_sp++;
+}
+
+static void cmd_next(void) {
+    int vi = -1;
+    skip_spaces();
+    if (isalpha((unsigned char)*parser_ptr)) {
+        char v = (char)toupper((unsigned char)*parser_ptr++);
+        vi = v - 'A';
+    }
+    if (for_sp <= 0) { report_error("NEXT WITHOUT FOR"); return; }
+
+    if (vi >= 0 && for_stack[for_sp - 1].var_idx != vi) {
+        int found = -1, f;
+        for (f = for_sp - 1; f >= 0; f--) {
+            if (for_stack[f].var_idx == vi) { found = f; break; }
         }
-        skip_spaces(p);
-        if (**p == ',') {
-            (*p)++;
+        if (found >= 0) for_sp = found + 1;
+        else { report_error("NEXT WITHOUT FOR"); return; }
+    }
+
+    {
+        ForFrame *ff = &for_stack[for_sp - 1];
+        int var_i = ff->var_idx;
+        vars[var_i] = (short)(vars[var_i] + ff->step);
+
+        if ((ff->step > 0 && vars[var_i] <= ff->target) ||
+            (ff->step < 0 && vars[var_i] >= ff->target)) {
+            pc = ff->line_idx;
         } else {
-            break;
-        }
-    }
-    (void)target;
-}
-
-/* ---- READ statement ---- */
-static void exec_read(char **p)
-{
-    for (;;) {
-        int idx;
-        skip_spaces(p);
-        if (!isalpha((unsigned char)**p)) {
-            printf("SYNTAX ERROR");
-            if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-            printf("\n");
-            running = 0;
-            return;
-        }
-        idx = (char)toupper((unsigned char)**p) - 'A';
-        (*p)++;
-        if (data_ptr >= data_count) {
-            printf("OUT OF DATA");
-            if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-            printf("\n");
-            running = 0;
-            return;
-        }
-        vars[idx] = data_pool[data_ptr++];
-        skip_spaces(p);
-        if (**p == ',') {
-            (*p)++;
-        } else {
-            break;
+            for_sp--;
         }
     }
 }
 
-/* ---- STOP statement ---- */
-static void exec_stop(void)
-{
-    printf("BREAK");
-    if (running) {
-        printf(" IN LINE %d", (int)line_nums[pc - 1]);
+static void cmd_if(void) {
+    short cond;
+    skip_spaces();
+    cond = parse_relational();
+    if (!running) return;
+    skip_spaces();
+    if (!match_keyword("THEN") && !match_keyword("GOTO")) {
+        report_error("SYNTAX ERROR"); return;
     }
-    printf("\n");
-    stopped = 1;
-    cont_pc = pc;
-    running = 0;
-}
-
-/* =========================================================================
- * COMMAND HANDLERS (direct mode)
- *
- * Commands are entered without a line number and execute immediately.
- * They manage the program lifecycle: running, listing, clearing,
- * saving, loading, and continuing after a STOP.
- *
- * WHAT CAN BE CHANGED:
- *   - LIST could be extended to support LIST -n (from start to n)
- *   - RUN could accept a starting line number (but the spec says
- *     RUN with arguments produces SYNTAX ERROR)
- *   - SAVE/LOAD filename handling can be adjusted
- *
- * WHAT CANNOT BE CHANGED:
- *   - RUN must clear variables and rebuild the data pool
- *   - NEW must clear everything (program, variables, data, CONT state)
- *   - CONT must resume at the saved position without resetting state
- *   - CONT with no prior STOP must print CAN'T CONTINUE
- *   - BYE must print GOODBYE and exit
- *
- * WHAT TO EXPECT:
- *   - RUN with any argument produces SYNTAX ERROR
- *   - LIST with no arguments lists the entire program
- *   - LIST n lists only line n; LIST n-m lists lines n through m
- *   - SAVE/LOAD auto-append .BAS if the filename lacks it
- *   - LOAD clears the existing program before loading
- *
- * IF SOMETHING BREAKS:
- *   - If RUN skips lines, check that pc starts at 0 and the while
- *     loop increments correctly
- *   - If CONT jumps to the wrong line, check that cont_pc is set
- *     to pc (which is already pre-incremented in the run loop).
- *   - If SAVE produces garbled output, check fprintf format strings
- *   - If LOAD skips lines, verify the line-number parsing in the
- *     load loop
- * ========================================================================= */
-
-/* ---- HELP command ---- */
-static void cmd_help(void)
-{
-    printf("\nTRS-80 Level I BASIC v2.1\n");
-    printf("===========================\n");
-    printf("Statements:  PRINT  LET  INPUT  GOTO  IF/THEN  REM\n");
-    printf("             END  STOP  CLEAR  BEEP\n");
-    printf("             DATA  READ  RESTORE  ON...GOTO\n");
-    printf("Commands:    RUN  LIST  NEW  SAVE  LOAD  CONT  HELP  BYE\n");
-    printf("Functions:   ABS()  INT()  RND()  MEM  TAB()\n");
-    printf("Operators:   +  -  *  /  =  <  >  <=  >=  <>  #\n\n");
-}
-
-/* ---- RUN command ---- */
-static void cmd_run(char *p)
-{
-    int i;
-
-    skip_spaces(&p);
-    if (*p != '\0') {
-        printf("SYNTAX ERROR\n");
-        return;
-    }
-
-    if (program_count == 0) return;
-
-    for (i = 0; i < NUM_VARS; i++) vars[i] = 0;
-
-    build_data_pool();
-
-    stopped = 0;
-    cont_pc = 0;
-
-    running = 1;
-    pc = 0;
-    print_col = 0;
-
-    while (running && pc < program_count) {
-        char *lp = line_text[pc];
-        pc++;
-        exec_line(lp);
-    }
-
-    if (running) {
-        running = 0;
-    }
-}
-
-/* ---- LIST command ---- */
-static void cmd_list(char *p)
-{
-    int i;
-    short start_ln = 0;
-    short end_ln   = 32767;
-
-    skip_spaces(&p);
-
-    if (isdigit((unsigned char)*p)) {
-        start_ln = parse_number(&p);
-        end_ln = start_ln;
-        skip_spaces(&p);
-        if (*p == '-') {
-            p++;
-            skip_spaces(&p);
-            if (isdigit((unsigned char)*p)) {
-                end_ln = parse_number(&p);
-            } else {
-                end_ln = 32767;
-            }
-        }
-    }
-
-    for (i = 0; i < program_count; i++) {
-        if (line_nums[i] >= start_ln && line_nums[i] <= end_ln) {
-            printf("%d %s\n", (int)line_nums[i], line_text[i]);
-        }
-    }
-}
-
-/* ---- NEW command ---- */
-static void cmd_new(void)
-{
-    int i;
-    program_count = 0;
-    for (i = 0; i < NUM_VARS; i++) vars[i] = 0;
-    data_count = 0;
-    data_ptr   = 0;
-    stopped    = 0;
-    cont_pc    = 0;
-}
-
-/* ---- CONT command ---- */
-static void cmd_cont(void)
-{
-    if (!stopped) {
-        printf("CAN'T CONTINUE\n");
-        return;
-    }
-
-    stopped = 0;
-    running = 1;
-    pc = cont_pc;
-
-    while (running && pc < program_count) {
-        char *lp = line_text[pc];
-        pc++;
-        exec_line(lp);
-    }
-
-    if (running) {
-        running = 0;
-    }
-}
-
-/* =========================================================================
- * FILE I/O: SAVE AND LOAD
- *
- * Programs are saved and loaded as plain-text files.  Each line in
- * the file is formatted as "linenum source_text\n".  Filenames may
- * be given with or without quotes.  If the filename does not already
- * end in .BAS (case-insensitive), ".BAS" is appended automatically.
- *
- * WHAT CAN BE CHANGED:
- *   - The auto-extension could be changed to .bas (lowercase)
- *   - The filename buffer size (256) can be increased
- *   - A tokenized binary format could be added alongside text
- *
- * WHAT CANNOT BE CHANGED:
- *   - SAVE with no filename must produce SYNTAX ERROR
- *   - LOAD must clear the existing program before loading
- *   - LOAD with a missing file must print FILE NOT FOUND
- *
- * WHAT TO EXPECT:
- *   - SAVE "test" and SAVE test both save to test.BAS
- *   - SAVE "test.BAS" does not double-append the extension
- *   - LOAD replaces the current program entirely
- *
- * IF SOMETHING BREAKS:
- *   - If filenames are garbled, check build_filename() quote handling
- *   - If LOAD does not find the file, verify the auto-.BAS logic
- *   - If loaded programs are corrupt, check the line-parsing loop
- *     in cmd_load() (stripping newlines, parsing line numbers)
- * ========================================================================= */
-
-static void build_filename(char *dst, int dst_size, char **p)
-{
-    int  len = 0;
-    int  has_ext = 0;
-    char *dot;
-
-    skip_spaces(p);
-
-    if (**p == '"') {
-        (*p)++;
-        while (**p != '\0' && **p != '"' && len < dst_size - 5) {
-            dst[len++] = **p;
-            (*p)++;
-        }
-        if (**p == '"') (*p)++;
+    skip_spaces();
+    if (cond) {
+        if (isdigit((unsigned char)*parser_ptr)) cmd_goto();
+        else exec_statement();
     } else {
-        while (**p != '\0' && **p != ' ' && **p != '\t' && len < dst_size - 5) {
-            dst[len++] = **p;
-            (*p)++;
-        }
-    }
-    dst[len] = '\0';
-
-    dot = strrchr(dst, '.');
-    if (dot != NULL) {
-        if (((char)toupper((unsigned char)dot[1]) == 'B') &&
-            ((char)toupper((unsigned char)dot[2]) == 'A') &&
-            ((char)toupper((unsigned char)dot[3]) == 'S') &&
-            dot[4] == '\0') {
-            has_ext = 1;
-        }
-    }
-
-    if (!has_ext) {
-        strcat(dst, ".BAS");
+        parser_ptr += strlen(parser_ptr);
     }
 }
 
-static void cmd_save(char *p)
-{
-    char fname[256];
-    FILE *fp;
-    int   i;
-
-    skip_spaces(&p);
-    if (*p == '\0') {
-        printf("SYNTAX ERROR\n");
-        return;
-    }
-    build_filename(fname, sizeof(fname), &p);
-
-    fp = fopen(fname, "w");
-    if (fp == NULL) {
-        printf("FILE ERROR\n");
-        return;
-    }
-    for (i = 0; i < program_count; i++) {
-        fprintf(fp, "%d %s\n", (int)line_nums[i], line_text[i]);
-    }
-    fclose(fp);
-    printf("OK\n");
-}
-
-static void cmd_load(char *p)
-{
-    char fname[256];
-    FILE *fp;
-    char buf[LINE_LEN + 20];
-
-    skip_spaces(&p);
-    if (*p == '\0') {
-        printf("SYNTAX ERROR\n");
-        return;
-    }
-    build_filename(fname, sizeof(fname), &p);
-
-    fp = fopen(fname, "r");
-    if (fp == NULL) {
-        printf("FILE NOT FOUND\n");
-        return;
+static void cmd_on_goto(void) {
+    short selector;
+    int count = 0;
+    int is_gosub = 0;
+    skip_spaces();
+    selector = parse_expression();
+    skip_spaces();
+    if (match_keyword("GOSUB") || match_keyword("GS.")) is_gosub = 1;
+    else if (!match_keyword("GOTO") && !match_keyword("G.")) {
+        report_error("SYNTAX ERROR"); return;
     }
 
-    cmd_new();
-
-    while (fgets(buf, sizeof(buf), fp) != NULL) {
-        char *bp = buf;
-        short lnum;
-        {
-            size_t slen = strlen(buf);
-            if (slen > 0 && buf[slen - 1] == '\n') buf[slen - 1] = '\0';
-            slen = strlen(buf);
-            if (slen > 0 && buf[slen - 1] == '\r') buf[slen - 1] = '\0';
+    while (running && *parser_ptr != '\0' && *parser_ptr != ':') {
+        short target;
+        skip_spaces();
+        target = parse_expression();
+        count++;
+        if (count == selector) {
+            int idx = find_line(target);
+            if (idx < 0) { report_error("UNDEFINED LINE"); return; }
+            if (is_gosub) {
+                if (gosub_sp >= GOSUB_STACK_SIZE) { report_error("GOSUB STACK OVERFLOW"); return; }
+                gosub_stack[gosub_sp++] = pc + 1;
+            }
+            pc = idx;
+            return;
         }
-        skip_spaces(&bp);
-        if (!isdigit((unsigned char)*bp)) continue;
-        lnum = parse_number(&bp);
-        skip_spaces(&bp);
-        store_line(lnum, bp);
+        skip_spaces();
+        if (*parser_ptr == ',') parser_ptr++;
+        else break;
     }
-    fclose(fp);
-    printf("OK\n");
 }
 
-/* =========================================================================
- * MAIN LINE DISPATCHER
- *
- * Parses the keyword at the start of a line and dispatches to the
- * appropriate statement handler or command handler.  This is the
- * central routing function called for both direct-mode input and
- * stored-program lines during RUN.
- *
- * WHAT CAN BE CHANGED:
- *   - New keywords can be added by inserting a match_keyword() check
- *     before the fallback error at the bottom.  Order matters: longer
- *     keywords that share prefixes with shorter ones must be tested
- *     first (e.g. "RESTORE" before "REM" is not an issue because
- *     match_keyword enforces word boundaries, but be cautious).
- *
- * WHAT CANNOT BE CHANGED:
- *   - LET must be mandatory.  The bare-variable-assignment detector
- *     near the bottom of this function must remain to enforce this.
- *   - The ? shorthand for PRINT must be supported.
- *   - Unknown keywords must produce SYNTAX ERROR.
- *
- * WHAT TO EXPECT:
- *   - Commands like RUN, LIST, NEW, etc. work in both direct mode
- *     and inside a program (though using them inside a program is
- *     unusual and may have odd side effects).
- *   - DATA lines are skipped during execution (they are declarative).
- *   - REM lines are ignored entirely.
- *
- * IF SOMETHING BREAKS:
- *   - If a valid keyword is not recognized, check that match_keyword()
- *     is testing for the exact uppercase spelling.
- *   - If the wrong handler fires, check keyword ordering for prefix
- *     collisions.
- *   - If SYNTAX ERROR appears for valid input, check that the keyword
- *     is followed by a word boundary in the input.
- * ========================================================================= */
+static void cmd_read(void) {
+    while (running) {
+        char v;
+        int idx;
+        skip_spaces();
+        if (!isalpha((unsigned char)*parser_ptr)) { report_error("SYNTAX ERROR"); return; }
+        v = (char)toupper((unsigned char)*parser_ptr++);
+        idx = v - 'A';
+        if (data_ptr >= data_count) { report_error("OUT OF DATA"); return; }
+        if (idx >= 0 && idx < NUM_VARS) vars[idx] = data_pool[data_ptr++];
+        skip_spaces();
+        if (*parser_ptr == ',') parser_ptr++;
+        else break;
+    }
+}
 
-static void exec_line(char *line)
-{
-    char *p = line;
-    skip_spaces(&p);
+static void cmd_set(void) {
+    short x, y;
+    skip_spaces();
+    if (*parser_ptr == '(') parser_ptr++;
+    x = parse_expression();
+    skip_spaces();
+    if (*parser_ptr == ',') parser_ptr++;
+    y = parse_expression();
+    skip_spaces();
+    if (*parser_ptr == ')') parser_ptr++;
+    if (x >= 0 && x < SCREEN_W && y >= 0 && y < SCREEN_H) {
+        vscreen[y][x / 8] |= (1 << (x % 8));
+    }
+}
 
-    if (*p == '\0') return;
+static void cmd_reset(void) {
+    short x, y;
+    skip_spaces();
+    if (*parser_ptr == '(') parser_ptr++;
+    x = parse_expression();
+    skip_spaces();
+    if (*parser_ptr == ',') parser_ptr++;
+    y = parse_expression();
+    skip_spaces();
+    if (*parser_ptr == ')') parser_ptr++;
+    if (x >= 0 && x < SCREEN_W && y >= 0 && y < SCREEN_H) {
+        vscreen[y][x / 8] &= ~(1 << (x % 8));
+    }
+}
 
-    /* ---- Statements ---- */
+static void cmd_help(void) {
+    printf("=== TRS-80 LEVEL I BASIC HELP ===\n");
+    printf("COMMANDS:   RUN [file], LIST [range], LOAD/CLOAD [file], SAVE/CSAVE [file], NEW, CONT/C., CLEAR, BYE/GOODBYE, HELP\n");
+    printf("STATEMENTS: PRINT/P./?, INPUT/I., LET/L., GOTO/G., GOSUB/GS., RETURN/R., IF..THEN/F.,\n");
+    printf("            FOR..TO..STEP/F., NEXT/N., READ, DATA, RESTORE, REM, STOP/ST., END, POKE, CLS/CL., SET, RESET, POINT\n");
+    printf("FUNCTIONS:  PEEK, MEM/M., TAB/T., RND, ABS, INT, SGN, POINT\n");
+    printf("VARIABLES:  A-Z (16-bit integers), A(expr) (1D array), A$, B$ (strings A$-Z$)\n");
+}
 
-    if (match_keyword(&p, "PRINT")) {
-        exec_print(&p);
-        return;
-    }
-    if (*p == '?') {
-        p++;
-        exec_print(&p);
-        return;
-    }
-    if (match_keyword(&p, "LET")) {
-        exec_let(&p);
-        return;
-    }
-    if (match_keyword(&p, "INPUT")) {
-        exec_input(&p);
-        return;
-    }
-    if (match_keyword(&p, "GOTO")) {
-        exec_goto(&p);
-        return;
-    }
-    if (match_keyword(&p, "IF")) {
-        exec_if(&p);
-        return;
-    }
-    if (match_keyword(&p, "ON")) {
-        exec_on_goto(&p);
-        return;
-    }
-    if (match_keyword(&p, "READ")) {
-        exec_read(&p);
-        return;
-    }
-    if (match_keyword(&p, "RESTORE")) {
-        data_ptr = 0;
-        return;
-    }
-    if (match_keyword(&p, "DATA")) {
-        return;
-    }
-    if (match_keyword(&p, "REM")) {
-        return;
-    }
-    if (match_keyword(&p, "END")) {
-        running = 0;
-        return;
-    }
-    if (match_keyword(&p, "STOP")) {
-        exec_stop();
-        return;
-    }
-    if (match_keyword(&p, "CLEAR")) {
-        int i;
-        for (i = 0; i < NUM_VARS; i++) vars[i] = 0;
-        return;
-    }
-    if (match_keyword(&p, "BEEP")) {
-        trigger_beep();
-        return;
-    }
+static void exec_statement(void) {
+    skip_spaces();
+    if (*parser_ptr == '\0' || *parser_ptr == ':') return;
 
-    /* ---- Commands (direct mode) ---- */
+    if (match_keyword("PRINT") || match_keyword("P.") || *parser_ptr == '?') {
+        if (*parser_ptr == '?') parser_ptr++;
+        cmd_print();
+        return;
+    }
+    if (match_keyword("LET") || match_keyword("L."))     { cmd_let(); return; }
+    if (match_keyword("INPUT") || match_keyword("I."))   { cmd_input(); return; }
+    if (match_keyword("GOTO") || match_keyword("G."))    { cmd_goto(); return; }
+    if (match_keyword("GOSUB") || match_keyword("GS."))  { cmd_gosub(); return; }
+    if (match_keyword("RETURN") || match_keyword("R."))  { cmd_return(); return; }
+    if (match_keyword("FOR") || match_keyword("F."))     { cmd_for(); return; }
+    if (match_keyword("NEXT") || match_keyword("N."))    { cmd_next(); return; }
+    if (match_keyword("IF"))                             { cmd_if(); return; }
+    if (match_keyword("ON"))                             { cmd_on_goto(); return; }
+    if (match_keyword("READ"))                           { cmd_read(); return; }
+    if (match_keyword("RESTORE"))                        { data_ptr = 0; return; }
+    if (match_keyword("DATA"))                           { while (*parser_ptr && *parser_ptr != ':') parser_ptr++; return; }
+    if (match_keyword("REM"))                            { parser_ptr += strlen(parser_ptr); return; }
+    if (match_keyword("END"))                            { running = 0; return; }
+    if (match_keyword("STOP") || match_keyword("ST."))   {
+        stopped_pc = pc; running = 0;
+        printf("BREAK");
+        if (pc >= 0 && pc < num_lines) printf(" IN LINE %d", pgm[pc].line_number);
+        printf("\n");
+        return;
+    }
+    if (match_keyword("CLEAR"))                          { clear_variables(); return; }
+    if (match_keyword("BEEP"))                           { trigger_beep(); return; }
 
-    if (match_keyword(&p, "RUN")) {
-        cmd_run(p);
+    /* Screen & Graphics */
+    if (match_keyword("CLS") || match_keyword("CL."))    { printf("\033[2J\033[H"); fflush(stdout); return; }
+    if (match_keyword("SET"))                            { cmd_set(); return; }
+    if (match_keyword("RESET"))                          { cmd_reset(); return; }
+
+    /* Memory / System Emulation */
+    if (match_keyword("POKE")) { (void)parse_expression(); skip_spaces(); if (*parser_ptr==',') parser_ptr++; (void)parse_expression(); return; }
+    if (match_keyword("OUT"))  { (void)parse_expression(); skip_spaces(); if (*parser_ptr==',') parser_ptr++; (void)parse_expression(); return; }
+
+    /* Commands */
+    if (match_keyword("RUN")) {
+        skip_spaces();
+        if (*parser_ptr != '\0') load_program(parser_ptr);
+        run_program();
         return;
     }
-    if (match_keyword(&p, "LIST")) {
-        cmd_list(p);
+    if (match_keyword("LIST"))                           { list_program(parser_ptr); return; }
+    if (match_keyword("NEW"))                            { clear_program(); return; }
+    if (match_keyword("SAVE") || match_keyword("CSAVE") || match_keyword("CS.")) { save_program(parser_ptr); return; }
+    if (match_keyword("LOAD") || match_keyword("CLOAD")) { load_program(parser_ptr); return; }
+    if (match_keyword("CONT") || match_keyword("C.")) {
+        if (stopped_pc < 0) { printf("CAN'T CONTINUE\n"); }
+        else { pc = stopped_pc; stopped_pc = -1; running = 1; }
         return;
     }
-    if (match_keyword(&p, "NEW")) {
-        cmd_new();
-        return;
-    }
-    if (match_keyword(&p, "SAVE")) {
-        cmd_save(p);
-        return;
-    }
-    if (match_keyword(&p, "LOAD")) {
-        cmd_load(p);
-        return;
-    }
-    if (match_keyword(&p, "CONT")) {
-        cmd_cont();
-        return;
-    }
-    if (match_keyword(&p, "HELP")) {
-        cmd_help();
-        return;
-    }
-    if (match_keyword(&p, "BYE")) {
+    if (match_keyword("HELP"))                           { cmd_help(); return; }
+
+    if (match_keyword("BYE") || match_keyword("GOODBYE") || match_keyword("SYSTEM") || match_keyword("QUIT")) {
         printf("GOODBYE\n");
         exit(0);
     }
 
-    /* ---- Bare variable assignment detection ----
-     * Level I BASIC requires the LET keyword.  If we see a letter
-     * followed by '=', the user tried to assign without LET.
-     */
-    if (isalpha((unsigned char)*p)) {
-        char *look = p + 1;
-        skip_spaces(&look);
-        if (*look == '=') {
-            printf("SYNTAX ERROR");
-            if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-            printf("\n");
-            running = 0;
-            return;
-        }
+    /* Bare assignment fallback (e.g. A = 5 or A$ = "HELLO") */
+    if (isalpha((unsigned char)*parser_ptr)) {
+        cmd_let();
+        return;
     }
 
-    /* ---- Unknown statement ---- */
-    printf("SYNTAX ERROR");
-    if (running) printf(" IN LINE %d", (int)line_nums[pc - 1]);
-    printf("\n");
+    report_error("SYNTAX ERROR");
+}
+
+static void exec_line_statements(char *line) {
+    int start_pc = pc;
+    strncpy(curr_line_buf, line, LINE_LEN);
+    curr_line_buf[LINE_LEN] = '\0';
+    parser_ptr = curr_line_buf;
+
+    while (*parser_ptr != '\0' && running) {
+        skip_spaces();
+        if (*parser_ptr == '\0') break;
+        exec_statement();
+        if (pc != start_pc || !running) break;
+        skip_spaces();
+        if (*parser_ptr == ':') parser_ptr++;
+    }
+}
+
+static void run_program(void) {
+    if (num_lines == 0) return;
+    clear_variables();
+    build_data_pool();
+    pc = 0;
+    running = 1;
+
+    while (running && pc >= 0 && pc < num_lines) {
+        int prev = pc;
+        exec_line_statements(pgm[pc].text);
+        if (running && pc == prev) pc++;
+    }
     running = 0;
 }
 
-/* =========================================================================
- * MAIN: READ-EVALUATE-PRINT LOOP (REPL)
- *
- * The main loop reads a line of input, determines whether it is a
- * numbered program line (to be stored) or a direct-mode command
- * (to be executed immediately), and dispatches accordingly.
- *
- * WHAT CAN BE CHANGED:
- *   - The prompt string "> " can be changed to "READY\n> " or
- *     any other format
- *   - The banner text and version number
- *   - Ctrl+C handling could be added with signal(SIGINT, ...)
- *
- * WHAT CANNOT BE CHANGED:
- *   - srand() must be called before any RND() usage
- *   - Lines with a leading number must be stored, not executed
- *   - Lines without a leading number must be executed immediately
- *   - EOF on stdin must exit cleanly
- *
- * WHAT TO EXPECT:
- *   - The interpreter prints the banner, free memory, and READY
- *     at startup
- *   - Empty lines are silently ignored
- *   - Line number 0 or negative is rejected
- *   - The loop runs until BYE is entered or EOF is received
- *
- * IF SOMETHING BREAKS:
- *   - If the prompt does not appear, check that fflush(stdout) is
- *     called after printing the prompt
- *   - If input is garbled, check the newline/carriage-return
- *     stripping code
- *   - If stored lines have wrong content, check that parse_number()
- *     correctly advances the pointer past the line number
- * ========================================================================= */
+int main(int argc, char **argv) {
+    char input_buf[LINE_LEN + 20];
+    int batch_mode = 0;
+    int file_arg_idx = 0;
+    int i;
 
-int main(void)
-{
     srand((unsigned int)time(NULL));
+    clear_program();
 
-    printf("TRS-80 Level I BASIC v2.1\n");
-    printf("%d BYTES FREE\n", (int)TOTAL_MEM);
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--batch") == 0 || strcmp(argv[i], "-q") == 0) {
+            batch_mode = 1;
+        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: level1 [options] [filename.bas]\n");
+            printf("Options:\n");
+            printf("  -b, --batch   Run in batch mode and exit after program completes\n");
+            printf("  -h, --help    Show this help message\n");
+            return 0;
+        } else if (argv[i][0] != '-' && file_arg_idx == 0) {
+            file_arg_idx = i;
+        }
+    }
+
+    printf("TRS-80 LEVEL I BASIC v1.2\n\n");
     printf("READY\n");
 
-    for (;;) {
-        char *p;
-        short lnum;
+    if (file_arg_idx > 0) {
+        load_program(argv[file_arg_idx]);
+        run_program();
+        if (batch_mode) return 0;
+    }
 
+    while (1) {
+        char *p;
         printf("> ");
         fflush(stdout);
 
-        if (fgets(input_buf, sizeof(input_buf), stdin) == NULL) {
-            printf("\n");
-            break;
-        }
+        if (fgets(input_buf, sizeof(input_buf), stdin) == NULL) break;
 
-        /* Strip trailing newline and carriage return. */
         {
-            size_t slen = strlen(input_buf);
-            if (slen > 0 && input_buf[slen - 1] == '\n') input_buf[slen - 1] = '\0';
-            slen = strlen(input_buf);
-            if (slen > 0 && input_buf[slen - 1] == '\r') input_buf[slen - 1] = '\0';
+            int slen = (int)strlen(input_buf);
+            while (slen > 0 && (input_buf[slen - 1] == '\n' || input_buf[slen - 1] == '\r'))
+                input_buf[--slen] = '\0';
         }
-
-        /* Convert entire line to uppercase (preserve quoted strings) */
-        uppercase_line(input_buf);
 
         p = input_buf;
-        skip_spaces(&p);
-
+        while (*p == ' ' || *p == '\t') p++;
         if (*p == '\0') continue;
 
-        /* Numbered line: store it in the program. */
         if (isdigit((unsigned char)*p)) {
-            lnum = parse_number(&p);
-            if (lnum <= 0) {
-                printf("ILLEGAL LINE NUMBER\n");
-                continue;
-            }
-            store_line(lnum, p);
-            continue;
+            store_line(p);
+        } else {
+            running = 1;
+            exec_line_statements(p);
+            running = 0;
         }
-
-        /* Direct-mode command or statement. */
-        exec_line(p);
     }
-
     return 0;
 }

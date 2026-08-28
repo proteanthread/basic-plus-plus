@@ -1,51 +1,19 @@
-/**
- * @file module.c
- * @brief Subsystem implementation for BASIC++ module plugin management, dynamic loading, and capability verification.
- *
- * 1. WHAT IT DOES:
- * Implements module registration pipeline: Validation -> Capability Verification -> Sandbox Allocation -> Registration -> Activation.
- *
- * 2. WHY IT EXISTS:
- * Provides sandboxed module extensibility enabling third-party libraries and native extensions to register statement handlers and functions without host stack corruption.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Maintains a fixed table of ModuleSlot descriptors zero-initialized by default; verifies capability security signatures before enabling module symbols.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'module'. Includes "module/module.h", "security/security.h",
- * <stdio.h>, <stdlib.h>, <string.h>, <ctype.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Core feature included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Add new module capability flags or custom plugin initialization hooks.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Module validation pipeline order and capability security checks per Rule #2.
- *
- * 8. WHAT TO EXPECT:
- * Registers module metadata and returns ERR_NONE or ERR_SECURITY_VIOLATION / ERR_MODULE_NOT_FOUND.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify module table initializations and module_system_init() call order.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Module descriptor pointers are initialized prior to calling registration functions.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. 64-bit pointer safety (`uintptr_t`).
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/security/security.c
- * Prerequisite Header Files:
- * - engine/include/module/module.h
- * - engine/include/security/security.h
- */
+// FILENAME: module.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (exec_internal.h, help.c, system.c)
+// NEEDS: libcore (ctype.h, ctype.c, memory.h, memory.c, module.h, string.h)
+// NEEDS: libengine (string.c, vm.h)
+// NEEDS: libkernel (errors.h, security.h, security.c)
+// Provides core logic and interface definitions for module within BASIC++.
+//
+// ---- Includes ----
 
 #include "module/module.h"
 #include "security/security.h"
+#include "vm/vm.h"
+#include "memory/memory.h"
+#include "types/errors.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -190,7 +158,37 @@ int module_load_dynamic(struct VMContext *vm, const char *path) {
 BppError vm_load_library_file(struct VMContext *vm, const char *filename) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)vm;
-    (void)filename;
+    if (!vm || !filename) {
+        err.code = ERR_ILLEGAL_FUNCTION_CALL;
+        return err;
+    }
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        err.code = ERR_FILE_NOT_FOUND;
+        return err;
+    }
+    MemoryContext *mem = vm_get_mem(vm);
+    char line_buf[1024];
+    BppLineNumber auto_line = 60000;
+    while (fgets(line_buf, sizeof(line_buf), fp)) {
+        size_t len = strlen(line_buf);
+        while (len > 0 && (line_buf[len - 1] == '\r' || line_buf[len - 1] == '\n')) {
+            line_buf[--len] = '\0';
+        }
+        char *p = line_buf;
+        while (isspace((unsigned char)*p)) p++;
+        if (*p != '\0') {
+            if (isdigit((unsigned char)*p)) {
+                BppLineNumber line_num = (BppLineNumber)atof(p);
+                while (isdigit((unsigned char)*p) || *p == '.') p++;
+                while (isspace((unsigned char)*p)) p++;
+                mem_lib_program_insert(mem, line_num, p);
+            } else {
+                mem_lib_program_insert(mem, auto_line, p);
+                auto_line += 10;
+            }
+        }
+    }
+    fclose(fp);
     return err;
 }

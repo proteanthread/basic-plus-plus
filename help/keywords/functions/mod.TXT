@@ -1,0 +1,16 @@
+MOD Modulo / Integer Remainder Operator
+======================================================================
+
+The MOD operator calculates the integer remainder of division.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    remainder = dividend MOD divisor
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT 14 MOD 4   : REM Outputs 2

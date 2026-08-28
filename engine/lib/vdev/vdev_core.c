@@ -1,22 +1,13 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ — a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * What it does: Implements the standalone Virtual Device System core registry and routing.
- * Why it exists: Decouples devices (console, files, graphics, bus) into Ring 2 abstractions.
- * Why it works this way: Maintains an array of VDev slots with string name matching.
- * What can be changed: VDEV_MAX_DEVICES registry limit.
- * What cannot be changed: VDevContext handle lifecycle and device registration contract.
- * What to expect: Fast O(N) device lookups by string identifier (e.g. "CON:", "SCR:").
- * What to do if something breaks: Check VDev name normalization and NULL pointer checks.
- * Assumptions: Device names are 7-bit ASCII strings.
- * Portability concerns: Strict C17 compliant, pure 7-bit ASCII.
- * Future expansions: Add dynamic device unregistration and event queues.
- * External extension hooks: Exposed via vdev.h.
- */
+// FILENAME: vdev_core.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, string.h)
+// NEEDS: libengine (string.c)
+// NEEDS: libkernel (vdev.h, vdev.c)
+// Provides core logic and interface definitions for vdev_core within BASIC++.
+//
+// ---- Includes ----
 
 #include "device/vdev.h"
 #include <string.h>
@@ -66,7 +57,7 @@ bool vdev_register(VDevContext *ctx, VDev dev) {
     if (!ctx || ctx->count >= VDEV_MAX_DEVICES) return false;
     for (size_t i = 0; i < ctx->count; i++) {
         if (strcmp_nocase(ctx->devices[i].name, dev.name) == 0) {
-            return false; /* Duplicate device name */
+            return false; // Duplicate device name
         }
     }
     ctx->devices[ctx->count++] = dev;

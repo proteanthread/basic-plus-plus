@@ -1,0 +1,18 @@
+IOCTL Device Control Statement & Function
+======================================================================
+
+The IOCTL statement and IOCTL$ function send and receive device-specific
+control strings to virtual device channels.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    IOCTL [#]channel, control_string$
+    status$ = IOCTL$([#]channel)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 IOCTL #1, "FLUSH"

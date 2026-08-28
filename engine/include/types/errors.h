@@ -1,22 +1,11 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ — a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * What it does: Defines the centralized BppErrorCode enum mapping GW-BASIC / QBASIC error codes.
- * Why it exists: Eliminates scattered magic numbers in statement handlers, VM, and runtime.
- * Why it works this way: Provides type-safe error codes for VM and external library consumers.
- * What can be changed: Add new error codes while preserving standard numbers (1-76+).
- * What cannot be changed: Numerical values for standard GW-BASIC/QBASIC error codes.
- * What to expect: Clean programmatic error inspection across all BASIC++ libraries.
- * What to do if something breaks: Check error code mapping against documentation.
- * Assumptions: Values fit within standard signed int.
- * Portability concerns: Strict C17 compliant, pure 7-bit ASCII.
- * Future expansions: Add extended subsystem-specific error code ranges.
- * External extension hooks: Plugins return BppError populated with BppErrorCode values.
- */
+// FILENAME: errors.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libcore, libengine, libkernel
+// NEEDS: platform, memory
+// Provides core logic and interface definitions for errors within BASIC++.
+//
+// ---- Includes ----
 
 #ifndef TYPES_ERRORS_H
 #define TYPES_ERRORS_H
@@ -76,4 +65,4 @@ typedef enum {
     ERR_PATH_NOT_FOUND           = 76
 } BppErrorCode;
 
-#endif /* TYPES_ERRORS_H */
+#endif // TYPES_ERRORS_H

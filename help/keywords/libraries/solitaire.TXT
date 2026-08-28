@@ -1,0 +1,13 @@
+solitaire Klondike Card Solitaire Rules & Stack Engine
+======================================================================
+
+The solitaire library implements 52-card deck operations, Klondike
+tableau rules, foundation piles, and move validation.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Standard 52-card representation (suits and ranks).
+  - Klondike tableau, foundation, and waste stack management.
+  - Legal move checking and auto-finish solver helpers.

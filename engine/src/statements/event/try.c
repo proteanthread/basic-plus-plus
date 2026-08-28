@@ -1,52 +1,15 @@
-/**
- * @file try.c
- * @brief TRY, CATCH, END TRY, THROW, and exception handling statement handlers for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements structured exception handling (TRY, CATCH, END TRY, THROW) and structured error recovery blocks.
- *
- * 2. WHY IT EXISTS:
- * Provides modern structured exception handling as a cleaner alternative to legacy line-numbered ON ERROR GOTO.
- *
- * 3. WHY IT WORKS THIS WAY:
- * TRY pushes a TryFrame onto vm->try_stack containing the CATCH block line position.
- * THROW (or a VM error within TRY) jumps line pointer to the CATCH block line and pops the TryFrame.
- * CATCH and END TRY reset active exception frame state.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_try'. Directly includes "types/config.h", "vm/vm.h",
- * "lexer/lexer.h", "runtime/strings.h", "core/dialect.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Fully included in libbasicpp (baspp) and libbasicpp_lite (bpp, bs).
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * To add typed exception filters (e.g. CATCH err AS FileError), parse error type identifier after CATCH keyword.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Frame popping invariant: THROW or unhandled error within TRY MUST restore VM stack depth saved in TryFrame.
- *
- * 8. WHAT TO EXPECT:
- * Pushes/pops vm->try_stack and jumps execution pointer on exception.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Inspect try stack allocation and depth tracking in vm/control.c and vm/error.c.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext. Try stack initialized during VM boot.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Zero platform-specific extensions.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/vm/error.c
- * - engine/src/vm/control.c
- * Prerequisite Header Files:
- * - engine/include/statements/event/try.h
- * - engine/include/vm/vm.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: try.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, dialect.h, dialect.c)
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (strings.h, strings.c)
+// NEEDS: libengine (lexer.h, lexer.c, string.c, vm.h)
+// NEEDS: libkernel (config.h)
+// Provides runtime implementation for the TRY statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "types/config.h"
 #include "vm/vm.h"
@@ -72,7 +35,7 @@ void stmt_try_register(void) {
 extern BValue eval_expression(VMContext *vm, LexerContext *lex, BppError *out_err);
 extern void vm_register_alias(VMContext *vm, const char *name, const char *expansion);
 
-/* TRY statement handler */
+// TRY statement handler
 BppError stmt_try_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -99,7 +62,7 @@ BppError stmt_try_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-    /* Scan forward to locate matching CATCH and END TRY statements */
+    // Scan forward to locate matching CATCH and END TRY statements
     int try_nesting = 0;
     BppLineNumber catch_ln = 0.0;
     const char *catch_pos = NULL;
@@ -145,7 +108,7 @@ BppError stmt_try_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-    /* Push exception frame on TryStack */
+    // Push exception frame on TryStack
     BppTryFrame frame;
     frame.catch_line = catch_ln;
     frame.catch_pos = catch_pos;
@@ -168,24 +131,40 @@ BppError stmt_try_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-/* CATCH statement handler */
+// CATCH statement handler
 BppError stmt_catch_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)lex;
 
     BppTryFrame frame;
     TryStack *tstack = vm_get_try_stack(vm);
     if (try_stack_peek(tstack, &frame) && frame.catch_line == vm_get_current_line(vm)) {
-        /* Reached normally: skip the CATCH block entirely and jump to END TRY */
+        // Reached normally: skip the CATCH block entirely and jump to END TRY
         try_stack_pop(tstack, NULL);
         vm_jump(vm, frame.end_try_line, frame.end_try_pos);
+        return err;
+    }
+
+    if (lex) {
+        BppToken tok = lex_peek(lex);
+        if (tok.type == TOK_IDENT) {
+            char var_name[64] = {0};
+            size_t len = tok.length < sizeof(var_name) - 1 ? tok.length : sizeof(var_name) - 1;
+            memcpy(var_name, tok.start, len);
+            var_name[len] = '\0';
+            lex_next(lex);
+
+            BValue err_val;
+            err_val.type = VAL_NUMBER;
+            err_val.as.number = (double)vm_get_err_code(vm);
+            var_assign(vm_get_var(vm), var_name, err_val);
+        }
     }
 
     return err;
 }
 
-/* END TRY statement handler */
+// END TRY statement handler
 BppError stmt_end_try_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -194,7 +173,7 @@ BppError stmt_end_try_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-/* THROW statement handler */
+// THROW statement handler
 BppError stmt_throw_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
@@ -212,7 +191,7 @@ BppError stmt_throw_handler(VMContext *vm, LexerContext *lex) {
     BppToken next = lex_peek(lex);
     char msg_buf[256] = "User Exception";
     if (next.type == TOK_COMMA) {
-        lex_next(lex); /* Consume comma */
+        lex_next(lex); // Consume comma
         BValue msg_val = eval_expression(vm, lex, &err);
         if (err.code != 0) return err;
         if (msg_val.type != VAL_STRING) {

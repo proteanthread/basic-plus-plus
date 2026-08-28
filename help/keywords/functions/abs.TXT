@@ -1,0 +1,16 @@
+ABS Absolute Value Function
+======================================================================
+
+The ABS function returns the absolute value of a numeric expression.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result = ABS(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT ABS(-15)   : REM Outputs 15

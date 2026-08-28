@@ -1,0 +1,30 @@
+WIDTH Screen and Printer Column Width Statement
+===============================================
+
+Sets the number of text columns (e.g. 40 or 80) and rows (25, 43, 50) for the screen display, printer, or file channel.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    WIDTH [columns%] [, rows%]
+    WIDTH [#]filenum%, columns%
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Width/height not supported by active display.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Controls automatic text wrapping margins.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 WIDTH 80, 25 : REM Standard 80x25 text
+    20 WIDTH 40, 25 : REM 40-column large text mode

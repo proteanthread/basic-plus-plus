@@ -1,0 +1,25 @@
+SYSTEM Engine Exit and Diagnostics Statement
+======================================================================
+
+The SYSTEM statement exits to the host OS or prints runtime diagnostics.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    SYSTEM
+    SYSTEM "PLATFORM" | "VERSION" | "MEMORY" | "COMPILER" | "WORDSIZE"
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - SYSTEM: Closes files, flushes buffers, and exits with return code 0.
+  - SYSTEM query$: Prints diagnostic metadata without exiting.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SYSTEM "VERSION"
+    20 SYSTEM

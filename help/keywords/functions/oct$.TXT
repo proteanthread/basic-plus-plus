@@ -1,0 +1,17 @@
+OCT$ Octal String Conversion Function
+======================================================================
+
+The OCT$ function converts an integer to its base-8 octal string
+representation.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    oct_str$ = OCT$(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT OCT$(24)   : REM Outputs "30"

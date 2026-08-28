@@ -1,0 +1,34 @@
+EXEC Process Execution Statement
+======================================================================
+
+The EXEC statement runs an external command and returns its exit code.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    EXEC command_line$
+    exit_code% = EXEC(command_line$)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Spawns external process via platform abstraction.
+  - Returns integer exit status code.
+  - Security restricted: Error 70 if CAP_SYS is not granted.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  70          ERR_PERMISSION_DENIED Process execution restricted
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 RC% = EXEC("dir")
+    20 PRINT "Return code: "; RC%

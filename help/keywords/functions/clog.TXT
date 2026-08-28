@@ -1,0 +1,17 @@
+CLOG Complex Natural Logarithm Function
+======================================================================
+
+The CLOG function computes the natural logarithm ln(z) of a complex
+number.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res = CLOG(complex_val)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT REAL(CLOG(COMPLEX(1, 0)))   : REM Outputs 0

@@ -1,0 +1,29 @@
+RUN Execute Program Statement
+=============================
+
+Clears all variables and starts execution of the program in memory or loads and executes a program file from disk.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    RUN [line_number% | filename$ [, R]]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 53 (ERR_FILE_NOT_FOUND): Program file does not exist.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Appends ', R' to preserve open file channels across programs.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    RUN           : REM Runs program in memory
+    RUN "MENU.BAS" : REM Loads and runs MENU.BAS

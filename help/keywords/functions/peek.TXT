@@ -1,0 +1,36 @@
+PEEK Read Memory Byte Function
+======================================================================
+
+The PEEK function reads and returns an 8-bit byte value (0 to 255) from
+virtual memory.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    byte_val% = PEEK(address_expression)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Reads byte from active DEF SEG / BANK segment.
+  - Returns integer in range 0..255.
+  - Security checked: Error 70 if restricted.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  5           ERR_ILLEGAL_FUNCTION  Address out of segment bounds
+  70          ERR_PERMISSION_DENIED Memory access restricted
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DEF SEG = &H0040
+    20 PRINT PEEK(&H0010)
+    30 DEF SEG

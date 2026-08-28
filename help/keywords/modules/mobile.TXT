@@ -1,0 +1,14 @@
+mobile Mobile & Handheld Runtime Profile
+======================================================================
+
+The mobile profile configures BASIC++ for smartphones, tablets, and
+handheld gaming consoles.
+
+
+SPECIFICATIONS
+----------------------------------------------------------------------
+
+  - High-DPI display virtualization and auto-scaling.
+  - Multi-touch gesture mapping to mouse/joystick events.
+  - Power-managed event loop and battery-saving idle states.
+  - On-screen touch keyboard integration.

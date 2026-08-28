@@ -1,0 +1,23 @@
+ASIN Arcsine Trigonometric Function
+======================================================================
+
+The ASIN function computes the inverse sine of an expression in radians.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    radians# = ASIN(numeric_expression)
+
+
+DOMAIN
+----------------------------------------------------------------------
+
+  - -1.0 <= x <= 1.0 (Error 5 if outside domain).
+  - Returns range: -PI/2 to +PI/2 radians.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT ASIN(0.0)   : REM Outputs 0

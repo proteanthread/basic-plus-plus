@@ -1,571 +1,83 @@
-# BASIC++ FujiNet Module — User Guide
+# BASIC++ v6.5.2 FujiNet Integration
 
-**Version 4.2.3** · Module: `FUJINET` · Devices: `N:` `FUJI:` `CLOCK:`
+## 1. WHAT IS FujiNet
 
+FujiNet is a network adapter designed for Atari 8-bit computers that provides WiFi connectivity, virtual disk drives, and network I/O through the Atari SIO (Serial I/O) bus. BASIC++ emulates the FujiNet device interface, allowing programs written for FujiNet-equipped Atari systems to run on modern hardware.
 
----
+The FujiNet emulation is implemented in engine/src/device/fujinet.c and is part of the libhardware library.
 
-## Table of Contents
+## 2. THE N: DEVICE
 
-- Overview
-- Activating the Module
-- The N: Network Device
-  - 1 DeviceSpec Format
-  - 2 Supported Protocols
-  - 3 Opening a Connection
-  - 4 Reading and Writing
-  - 5 Closing a Connection
-- HTTP / HTTPS
-  - 1 HTTP GET
-  - 2 HTTP POST
-  - 3 Custom Headers
-  - 4 JSON Parsing
-- TNFS (Trivial Network File System)
-- Telnet / BBS Access
-- UDP Datagrams
-- The FUJI: Configuration Device
-  - 1 WiFi Management
-  - 2 Host Slots
-  - 3 AppKey Storage
-- The CLOCK: Device
-- IOCTL Command Reference
-  - 1 N: Device IOCTLs
-  - 2 FUJI: Device IOCTLs
-  - 3 CLOCK: Device IOCTLs
-- Translation Modes
-- Error Codes
-- Introspection Commands
-- Example Programs
-  - Simple HTTP GET
-  - JSON API Client
-  - TCP Chat Client
-  - TNFS File Reader
-  - Network Time
-- Differences from ENVIRON$
-- Platform Notes
-- Quick Reference
-
----
-
----
-
-## 1. Overview
-
-The FujiNet module brings networking and cloud connectivity to BASIC++ through three virtual devices:
-
-| Device | Description |
-|--------|-------------|
-| `N:` | Network adapter — TCP, UDP, HTTP, HTTPS, TNFS, FTP, and Telnet |
-| `FUJI:` | Configuration device — WiFi status, host slots, AppKey storage |
-| `CLOCK:` | Network time protocol clock — NTP or system clock |
-
-These devices use the same API as the original FujiNet hardware (fujinet-lib), but work on all BASIC++ platforms:
-
-- **Desktop** (Windows, Linux, macOS): native TCP/UDP sockets
-- **FujiNet hardware** (Atari 8-bit, Apple II, C64, CoCo): direct SIO/SmartPort/IEC interface
-
----
-
-## 2. Activating the Module
+FujiNet uses the N: device prefix for network operations. BASIC++ routes N: device paths through the VFS to the VNet subsystem:
 
 ```basic
-MODULE "FUJINET"
+10 OPEN "N:tcp://example.com:80/" FOR INPUT AS #1
+20 INPUT #1, Response$
+30 PRINT Response$
+40 CLOSE #1
 ```
 
-Verify activation:
+The N: prefix is recognized by the VFS as a FujiNet network device path. The remaining path is parsed as a URL with protocol, host, port, and path components.
+
+## 3. SUPPORTED PROTOCOLS
+
+| URL Prefix | Protocol | Description |
+|-----------|----------|-------------|
+| N:tcp:// | TCP | Stream socket connection |
+| N:udp:// | UDP | Datagram socket |
+| N:http:// | HTTP | HTTP client request |
+| N:https:// | HTTPS | HTTPS client request |
+| N:tnfs:// | TNFS | Trivial Network File System |
+
+## 4. HTTP REQUESTS
+
+FujiNet-style HTTP requests:
 
 ```basic
-MODULE                   ' lists all modules
-VDEV                     ' lists registered devices
-DEVMAP                   ' shows device slot table
-VNET                     ' network status
-```
-
----
-
-## 3. The N: Network Device
-
-### 3.1 DeviceSpec Format
-
-```
-N:PROTO://host:port/path
-```
-
-Examples:
-```
-N:TCP://irata.online:8005/
-N:HTTP://api.example.com/data.json
-N:TNFS://tnfs.example.com/games/
-```
-
-### 3.2 Supported Protocols
-
-| Protocol | Default Port | Description |
-|----------|-------------|-------------|
-| TCP | *(required)* | Raw TCP stream |
-| UDP | *(required)* | UDP datagrams |
-| HTTP | 80 | HTTP/1.1 client |
-| HTTPS | 443 | HTTP over TLS (desktop only) |
-| TNFS | 16384 | Trivial Network File System |
-| FTP | 21 | FTP command channel |
-| TELNET | 23 | Telnet with IAC negotiation |
-| SSH | 22 | *(reserved, not yet implemented)* |
-
-### 3.3 Opening a Connection
-
-```basic
-OPEN #1, "N:TCP://irata.online:8005/", "RW"
-```
-
-| Mode | Constant | Description |
-|------|----------|-------------|
-| `"R"` | `FN_MODE_READ` | Read only |
-| `"W"` | `FN_MODE_WRITE` | Write only |
-| `"RW"` | `FN_MODE_READWRITE` | Read/Write |
-| `"A"` | `FN_MODE_APPEND` | Append |
-
-### 3.4 Reading and Writing
-
-```basic
-INPUT #1, A$           ' read a line
-LINE INPUT #1, A$      ' read entire line (with commas)
-PRINT #1, "HELLO"      ' send text with newline
-PRINT #1, A$;          ' send text without newline
-A$ = INPUT$(10, #1)    ' read exactly 10 bytes
-IF EOF(1) THEN PRINT "Connection closed"
-```
-
-### 3.5 Closing a Connection
-
-```basic
-CLOSE #1
-```
-
-Always close connections when done. Open channels are automatically closed on program end or `NEW`.
-
----
-
-## 4. HTTP / HTTPS
-
-### 4.1 HTTP GET
-
-```basic
-10 MODULE "FUJINET"
-20 OPEN #1, "N:HTTP://example.com/", "R"
-30 WHILE NOT EOF(1)
-40   LINE INPUT #1, A$
-50   PRINT A$
-60 WEND
-70 CLOSE #1
-```
-
-### 4.2 HTTP POST
-
-```basic
-10 MODULE "FUJINET"
-20 OPEN #1, "N:HTTP://api.example.com/submit", "RW"
-30 PRINT #1, "name=BASIC&value=42"
-40 IOCTL #1, 265                  ' FNIO_HTTP_POST
-50 LINE INPUT #1, R$              ' read response
-60 PRINT "Response: "; R$
-70 CLOSE #1
-```
-
-### 4.3 Custom Headers
-
-```basic
-IOCTL #1, 263, "Content-Type: application/json"
-' FNIO_HTTP_SET_HEADER — appends header to outgoing request
-```
-
-### 4.4 JSON Parsing
-
-```basic
-10 MODULE "FUJINET"
-20 OPEN #1, "N:HTTP://api.weather.gov/points/41,-105", "R"
-30 IOCTL #1, 256                  ' FNIO_JSON_PARSE
-40 IOCTL #1, 257, "/properties/forecast"
-50 LINE INPUT #1, FORECAST$       ' FNIO_JSON_QUERY result
-60 PRINT "Forecast URL: "; FORECAST$
-70 CLOSE #1
-```
-
-**JSON parsing workflow:**
-
-1. `OPEN` the HTTP URL and receive the response
-2. `IOCTL #ch, 256` — parse the JSON response body
-3. `IOCTL #ch, 257, "/path/to/key"` — query a value
-4. `INPUT #ch, result$` — read the queried value
-
-**JSON path format:**
-
-| Path | Description |
-|------|-------------|
-| `/key` | Object key lookup |
-| `/key1/key2` | Nested key lookup |
-| `/key/0` | Array index (zero-based) |
-| `/key/[0]/subkey` | Array element then key |
-
----
-
-## 5. TNFS (Trivial Network File System)
-
-```basic
-10 MODULE "FUJINET"
-20 OPEN #1, "N:TNFS://tnfs.server.com/path/file.txt", "R"
-30 WHILE NOT EOF(1)
-40   LINE INPUT #1, A$
-50   PRINT A$
-60 WEND
-70 CLOSE #1
-```
-
-TNFS uses UDP packets internally. The module handles session management, mount/unmount, and file operations automatically. Widely used in the FujiNet community for sharing disk images, programs, and game files.
-
----
-
-## 6. Telnet / BBS Access
-
-```basic
-10 MODULE "FUJINET"
-20 OPEN #1, "N:TELNET://bbs.example.com:23/", "RW"
-30 REM Main loop: send/receive
-40 K$ = INKEY$
-50 IF K$ <> "" THEN PRINT #1, K$;
-60 IF NOT EOF(1) THEN
-70   A$ = INPUT$(1, #1)
-80   PRINT A$;
-90 END IF
-100 GOTO 40
-```
-
-The Telnet protocol handles IAC (Interpret As Command) negotiation automatically.
-
----
-
-## 7. UDP Datagrams
-
-```basic
-10 MODULE "FUJINET"
-20 OPEN #1, "N:UDP://192.168.1.100:9000/", "RW"
-30 PRINT #1, "HELLO"           ' send a datagram
-40 LINE INPUT #1, A$           ' receive a datagram
-50 PRINT "Received: "; A$
+10 OPEN "N:http://api.example.com/data" FOR INPUT AS #1
+20 WHILE NOT EOF(1)
+30   LINE INPUT #1, L$
+40   PRINT L$
+50 WEND
 60 CLOSE #1
 ```
 
-UDP is connectionless — packets may be lost or arrive out of order.
-
----
-
-## 8. The FUJI: Configuration Device
-
-### 8.1 WiFi Management
+POST requests use the OUTPUT mode:
 
 ```basic
-IOCTL #1, 293                    ' GET_WIFI_STATUS (1=NO_SSID, 3=CONNECTED, 4=FAILED, 5=LOST)
-IOCTL #1, 289                    ' SCAN_NETWORKS
-IOCTL #1, 290, "0"              ' GET_SCAN_RESULT(0)
-IOCTL #1, 291                    ' GET_SSID
-IOCTL #1, 292, "MyNetwork"      ' SET_SSID (connect)
+10 OPEN "N:http://api.example.com/submit" FOR OUTPUT AS #1
+20 PRINT #1, "name=Alice&score=95"
+30 CLOSE #1
 ```
 
-### 8.2 Host Slots
+## 5. TNFS (TRIVIAL NETWORK FILE SYSTEM)
 
-FujiNet supports 8 host slots for mounting remote servers:
+TNFS provides remote file access over UDP. Programs can read and write files on a TNFS server:
 
 ```basic
-IOCTL #1, 299                    ' READ_HOST_SLOTS
-IOCTL #1, 295, "0"              ' MOUNT_HOST slot 0
+10 OPEN "N:tnfs://server.local/data.txt" FOR INPUT AS #1
+20 LINE INPUT #1, Data$
+30 CLOSE #1
 ```
 
-### 8.3 AppKey Storage
+TNFS is commonly used in the retro computing community for sharing disk images and program files.
 
-Persistent key/value storage for game state, high scores, or preferences:
+## 6. DEVICE STATUS
+
+FujiNet device status is available through the standard device discovery API:
 
 ```basic
-IOCTL #1, 311                    ' OPEN_APPKEY
-IOCTL #1, 309, "highscore=9999" ' WRITE_APPKEY
-IOCTL #1, 310                    ' READ_APPKEY
-LINE INPUT #1, V$
-IOCTL #1, 312                    ' CLOSE_APPKEY
+> DEVICES
+Slot  Type      Name          Status
+  6   FujiNet   FujiNet       Idle
 ```
 
----
+The FujiNet device appears in the device list when the libhardware library is linked. Its status changes to Active when a N: path is opened.
 
-## 9. The CLOCK: Device
+## 7. ATARI COMPATIBILITY
 
-```basic
-10 MODULE "FUJINET"
-20 OPEN #2, "CLOCK:", "R"
-30 LINE INPUT #2, T$
-40 PRINT "Current time: "; T$
-50 CLOSE #2
-```
+Programs written for Atari BASIC with FujiNet extensions can run on BASIC++ with the Atari dialect (APPL or a custom Atari configuration). The N: device prefix, XIO commands, and STATUS operations are translated to BASIC++ VNet operations internally.
 
-**Time format settings:**
+## 8. SECURITY
 
-| IOCTL arg | Format |
-|-----------|--------|
-| `"0"` | Binary simple format |
-| `"1"` | ProDOS format |
-| `"2"` | APETIME format |
-| `"3"` | ISO 8601 string *(default)* |
-
-```basic
-IOCTL #2, 336, "3"              ' Set ISO format
-IOCTL #2, 337, "America/Denver" ' Set timezone
-```
-
----
-
-## 10. IOCTL Command Reference
-
-### 10.1 N: Device IOCTLs
-
-| Code | Name | Description |
-|------|------|-------------|
-| 256 | `JSON_PARSE` | Parse buffered JSON data |
-| 257 | `JSON_QUERY` | Query JSON: `IOCTL #1,257,"/key"` |
-| 258 | `SET_CHANNEL_MODE` | Set channel mode (R/W/RW) |
-| 259 | `SET_TRANSLATION` | Set EOL translation mode |
-| 260 | `GET_BYTES_WAITING` | Get bytes available to read |
-| 261 | `GET_CONNECTED` | Check connection status |
-| 262 | `GET_ERROR` | Get last error code |
-| 263 | `HTTP_SET_HEADER` | Add HTTP header |
-| 264 | `HTTP_GET_HEADER` | Read response header |
-| 265 | `HTTP_POST` | Send HTTP POST request |
-| 266 | `HTTP_PUT` | Send HTTP PUT request |
-| 267 | `HTTP_DELETE` | Send HTTP DELETE request |
-| 268 | `SET_AUX` | Set auxiliary parameter |
-| 269 | `PARSE_URL` | Parse a devicespec URL |
-
-### 10.2 FUJI: Device IOCTLs
-
-| Code | Name | Description |
-|------|------|-------------|
-| 288 | `RESET` | Reset FujiNet device |
-| 289 | `SCAN_NETWORKS` | Scan for WiFi networks |
-| 290 | `GET_SCAN_RESULT` | Get scan result by index |
-| 291 | `GET_SSID` | Get current WiFi SSID |
-| 292 | `SET_SSID` | Set WiFi SSID (connect) |
-| 293 | `GET_WIFI_STATUS` | Get WiFi connection status |
-| 294 | `GET_WIFI_ENABLED` | Check if WiFi is enabled |
-| 295 | `MOUNT_HOST` | Mount a host slot |
-| 296 | `UNMOUNT_HOST` | Unmount a host slot |
-| 297 | `MOUNT_IMAGE` | Mount a disk image |
-| 298 | `UNMOUNT_IMAGE` | Unmount a disk image |
-| 299 | `READ_HOST_SLOTS` | Read all 8 host slots |
-| 300 | `WRITE_HOST_SLOTS` | Write host slots to config |
-| 301 | `READ_DEVICE_SLOTS` | Read all 8 device slots |
-| 302 | `WRITE_DEVICE_SLOTS` | Write device slot config |
-| 303 | `GET_ADAPTER_CONFIG` | Get network adapter info |
-| 304 | `OPEN_DIRECTORY` | Open remote directory |
-| 305 | `READ_DIR_ENTRY` | Read next directory entry |
-| 306 | `CLOSE_DIRECTORY` | Close directory listing |
-| 307 | `SET_DIR_POSITION` | Set directory position |
-| 308 | `GET_DIR_POSITION` | Get directory position |
-| 309 | `WRITE_APPKEY` | Write AppKey data |
-| 310 | `READ_APPKEY` | Read AppKey data |
-| 311 | `OPEN_APPKEY` | Open AppKey with IDs |
-| 312 | `CLOSE_APPKEY` | Close AppKey |
-| 313 | `COPY_FILE` | Copy file between hosts |
-| 314 | `NEW_DISK` | Create new disk image |
-| 315 | `SET_BOOT_MODE` | Set boot mode |
-| 316–319 | `SET/GET_DEVICE/HOST_PATH/PREFIX` | Path management |
-| 320 | `BASE64_ENCODE` | Base64 encode data |
-| 321 | `BASE64_DECODE` | Base64 decode data |
-| 322 | `HASH_COMPUTE` | Compute hash (MD5/SHA) |
-| 323 | `RANDOM_NUMBER` | Get random number |
-| 324 | `DEVICE_ENABLE` | Enable a device slot |
-| 325 | `DEVICE_DISABLE` | Disable a device slot |
-| 326 | `DEVICE_STATUS` | Get device status |
-| 327 | `GENERATE_GUID` | Generate UUID/GUID |
-
-### 10.3 CLOCK: Device IOCTLs
-
-| Code | Name | Description |
-|------|------|-------------|
-| 336 | `CLOCK_SET_FORMAT` | Set time format (0–3) |
-| 337 | `CLOCK_SET_TZ` | Set timezone string |
-
----
-
-## 11. Translation Modes
-
-The `N:` device can translate line endings automatically:
-
-| Mode | Constant | Effect |
-|------|----------|--------|
-| 0 | `TRANS_NONE` | No translation (raw binary) |
-| 1 | `TRANS_CR` | CR (Mac classic) |
-| 2 | `TRANS_LF` | LF (Unix) |
-| 3 | `TRANS_CRLF` | CR+LF (Windows) |
-| 4 | `TRANS_PETSCII` | PETSCII (C64) |
-
-```basic
-IOCTL #1, 259, "2"     ' Set LF translation
-```
-
----
-
-## 12. Error Codes
-
-| Code | Name | Description |
-|------|------|-------------|
-| 0x00 | `ERR_OK` | Success |
-| 0x01 | `ERR_IO_ERROR` | General I/O error |
-| 0x02 | `ERR_BAD_CMD` | Invalid command |
-| 0x03 | `ERR_NO_DEVICE` | Device not found |
-| 0x04 | `ERR_TIMEOUT` | Operation timed out |
-| 0x05 | `ERR_BAD_MODE` | Invalid mode |
-| 0x06 | `ERR_OFFLINE` | Network offline |
-| 0x07 | `ERR_NOT_IMPL` | Not implemented |
-| 0x08 | `ERR_NO_CONNECTION` | Cannot connect |
-| 0x09 | `ERR_NOT_OPEN` | Channel not open |
-| 0x0A | `ERR_ALREADY_OPEN` | Channel already open |
-| 0x0B | `ERR_DNS_FAIL` | DNS resolution failed |
-| 0x0C | `ERR_CONN_REFUSED` | Connection refused |
-| 0x0D | `ERR_CONN_RESET` | Connection reset by peer |
-| 0x0E | `ERR_BUF_OVERFLOW` | Buffer overflow |
-| 0x0F | `ERR_CHANNEL_FULL` | All channels in use |
-| 0x10 | `ERR_JSON_PARSE` | JSON parse error |
-| 0x11 | `ERR_INVALID_URL` | Malformed URL |
-| 0x88 | `ERR_EOF` | End of data |
-
----
-
-## 13. Introspection Commands
-
-| Command | Description |
-|---------|-------------|
-| `VDEV` | List all registered virtual devices |
-| `VNET` | Show network status, connections, WiFi, IP |
-| `DEVMAP` | Show device slots and file channels |
-| `VMACH` | Show module status |
-| `HELP N:` | Help for the N: device |
-| `HELP FUJI:` | Help for the FUJI: device |
-| `HELP CLOCK:` | Help for the CLOCK: device |
-| `HELP FUJINET` | Help for the module |
-
----
-
-## 14. Example Programs
-
-### Simple HTTP GET
-
-```basic
-10 MODULE "FUJINET"
-20 PRINT "Fetching example.com..."
-30 OPEN #1, "N:HTTP://example.com/", "R"
-40 WHILE NOT EOF(1)
-50   LINE INPUT #1, L$
-60   PRINT L$
-70 WEND
-80 CLOSE #1
-```
-
-### JSON API Client
-
-```basic
-10 MODULE "FUJINET"
-20 URL$ = "N:HTTP://jsonplaceholder.typicode.com"
-30 URL$ = URL$ + "/todos/1"
-40 OPEN #1, URL$, "R"
-50 IOCTL #1, 256                ' JSON_PARSE
-60 IOCTL #1, 257, "/title"     ' JSON_QUERY
-70 LINE INPUT #1, TITLE$
-80 PRINT "Todo: "; TITLE$
-90 IOCTL #1, 257, "/completed" ' JSON_QUERY
-100 LINE INPUT #1, DONE$
-110 PRINT "Done: "; DONE$
-120 CLOSE #1
-```
-
-### TCP Chat Client
-
-```basic
-10 MODULE "FUJINET"
-20 INPUT "Host: "; H$
-30 INPUT "Port: "; P
-40 OPEN #1, "N:TCP://" + H$ + ":" + STR$(P) + "/", "RW"
-50 PRINT "Connected. Type /quit to exit."
-60 K$ = INKEY$
-70 IF K$ = CHR$(13) THEN
-80   PRINT #1, MSG$
-90   MSG$ = ""
-100  GOTO 60
-110 END IF
-120 IF K$ <> "" THEN MSG$ = MSG$ + K$
-130 IF NOT EOF(1) THEN
-140   LINE INPUT #1, R$
-150   PRINT R$
-160 END IF
-170 IF MSG$ = "/quit" THEN CLOSE #1: END
-180 GOTO 60
-```
-
-### TNFS File Reader
-
-```basic
-10 MODULE "FUJINET"
-20 OPEN #1, "N:TNFS://tnfs.atari8bit.net/readme.txt", "R"
-30 WHILE NOT EOF(1)
-40   LINE INPUT #1, L$
-50   PRINT L$
-60 WEND
-70 CLOSE #1
-```
-
-### Network Time
-
-```basic
-10 MODULE "FUJINET"
-20 IOCTL #2, 336, "3"       ' ISO format
-30 OPEN #2, "CLOCK:", "R"
-40 LINE INPUT #2, T$
-50 PRINT "The time is: "; T$
-60 CLOSE #2
-```
-
----
-
-## 15. Differences from ENVIRON$
-
-| Feature | Purpose |
-|---------|---------|
-| `ENVIRON$("PATH")` | Reads OS environment variables |
-| `VARS ENV` | Lists all OS environment variables |
-| `N:` | TCP/UDP/HTTP network connections |
-| `FUJI:` | FujiNet hardware configuration |
-| `CLOCK:` | Network time |
-
-The FujiNet module is **completely different** from `ENVIRON$`. It provides network I/O through virtual devices, not environment variables.
-
----
-
-## 16. Platform Notes
-
-| Platform | Details |
-|----------|---------|
-| **Desktop** (Windows/Linux/macOS) | Native sockets, built-in HTTP/1.1, HTTPS available, system clock |
-| **FujiNet Hardware** | Direct SIO/SmartPort/IEC, ESP32 protocol handling, NTP clock, requires fujinet-lib |
-| **FreeDOS** | Requires packet driver + mTCP stack, no HTTPS/TLS, TNFS/UDP via packet driver |
-
----
-
-## Quick Reference
-
-```basic
-MODULE "FUJINET"                  ' Activate the module
-OPEN #n, "N:PROTO://host/", "RW" ' Open network channel
-PRINT #n, data$                  ' Send data
-LINE INPUT #n, data$             ' Receive a line
-INPUT$(len, #n)                  ' Receive exact bytes
-EOF(n)                           ' Check for end of data
-CLOSE #n                         ' Close channel
-IOCTL #n, cmd [, arg$]           ' Device control command
-VDEV                             ' List devices
-VNET                             ' Network status
-DEVMAP                           ' Device map
-```
+FujiNet network operations are subject to the same security level restrictions as all VNet operations. At security levels 3 (EDUCATIONAL) and above, all N: device operations are denied.

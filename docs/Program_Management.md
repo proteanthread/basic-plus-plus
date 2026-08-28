@@ -1,277 +1,82 @@
-# BASIC++ Program Management
+# BASIC++ v6.5.2 Program Management
 
-**Version 4.2.3**
+## 1. CREATING AND EDITING PROGRAMS
 
+NEW clears the current program from memory and resets all variables, arrays, file channels, and the DATA pointer. After NEW, the interpreter is in a clean state ready for a new program.
 
----
+AUTO generates line numbers automatically as you type. AUTO starts numbering at line 10 with a step of 10. AUTO start,step specifies both: `AUTO 100,5` begins at line 100, incrementing by 5. Press Ctrl+C or type a period (.) as the first character on a line to exit AUTO mode.
 
-## Table of Contents
+RENUM renumbers program lines. RENUM alone renumbers starting at 10 with a step of 10. RENUM new,old,step renumbers starting from line old, assigning new numbers starting at new with the given step. All GOTO, GOSUB, ON GOTO, ON GOSUB, RESTORE, RESUME, and other line references are automatically updated.
 
-- Entering a Program
-- Listing the Program (LIST / LLIST)
-  - LIST — Display Program Lines
-  - LLIST — List to Printer (STDERR)
-- Running the Program (RUN)
-- Saving and Loading (SAVE / LOAD)
-  - SAVE — Save Program to Disk
-  - LOAD — Load Program from Disk
-- MERGE — Merge Lines from a File
-- NEW — Clear the Program
-- UNSAVE — Delete the Last Saved File
-- Compiled Output (BSAVE / BLOAD / COMPILE)
-  - COMPILE — Transpile BASIC to C Source
-  - BSAVE — Save Compiled Bytecode
-  - BLOAD — Load Compiled Bytecode
-- Program Lifecycle
-  - A typical session
-  - For larger projects
-  - For deployment
-- Direct Mode vs. Program Mode
-  - Direct Mode (Immediate Mode)
-  - Program Mode (Deferred Mode)
+DELETE removes a range of lines: `DELETE 100-200` removes lines 100 through 200. DELETE -200 removes all lines up to and including 200. DELETE 300- removes line 300 and all lines after it.
 
----
+## 2. LISTING PROGRAMS
 
-This guide covers all commands for loading, saving, listing, running, and managing BASIC++ programs.
+LIST displays the current program. LIST alone shows all lines. LIST n shows a single line. LIST n1-n2 shows a range. LIST -n shows all lines up to n. LIST n- shows all lines from n onward.
 
----
+LLIST sends the program listing to the printer instead of the screen.
 
-## Entering a Program
+LIST outputs formatted source text with consistent indentation. REFORMAT standardizes the indentation and spacing of the entire program without changing line numbers.
 
-Programs are entered by typing numbered lines:
+## 3. SAVING AND LOADING
+
+SAVE "filename" writes the current program to disk as a plain text file. SAVE "filename", A forces ASCII format. SAVE "filename", P saves in a protected (tokenized) format.
+
+LOAD "filename" reads a program file into memory, replacing the current program. Variables are cleared. LOAD "filename", R loads and immediately runs the program.
+
+BSAVE "filename" saves the program in bytecode format. BLOAD "filename" loads a bytecode file. BRUN compiles the current program to bytecode and executes it.
+
+## 4. MERGING PROGRAMS
+
+MERGE "filename" reads a program file and overlays its lines onto the existing program. Lines in the merged file with the same number as existing lines replace those lines. Lines with new numbers are inserted at the correct position. Variables and the execution state are not affected.
+
+MERGE is used to combine modular program files and to insert reusable code libraries into programs.
+
+## 5. CHAINING PROGRAMS
+
+CHAIN loads a new program file and begins executing it, optionally preserving variables:
 
 ```basic
-10 PRINT "Hello, World!"
-20 FOR I = 1 TO 5
-30 PRINT "Count:"; I
-40 NEXT I
-50 END
+10 COMMON Score, Level
+20 CHAIN "LEVEL2.BAS"
 ```
 
-Each line begins with a line number (1–65535). Lines are stored in ascending order regardless of entry order.
+Variables declared with COMMON are preserved across the CHAIN. All other variables are cleared. The COMMON statement must appear before the CHAIN statement.
 
-To replace an existing line, retype it with the same number. To delete a line, type the number alone with no content:
+CHAIN with options:
+- `CHAIN "file"` — Load and run, preserving COMMON variables only.
+- `CHAIN "file", ALL` — Load and run, preserving ALL variables.
+- `CHAIN "file", line` — Load and begin execution at the specified line number.
+- `CHAIN "file", DELETE range` — Load and delete the specified line range from the old program before merging.
+- `CHAIN MERGE "file"` — Merge the file into the current program without clearing any variables.
 
-```
-30
-```
+## 6. THE RUN COMMAND
 
-Line 30 is now deleted. Use `AUTO` for faster line entry.
+RUN executes the current program from the lowest line number. RUN n starts execution at line n.
 
----
+RUN "filename" loads a new file and executes it. All variables are cleared. RUN "filename", R loads and runs, preserving COMMON variables and keeping open file channels.
 
-## Listing the Program (LIST / LLIST)
+## 7. CONT (CONTINUE)
 
-### LIST — Display Program Lines
+CONT resumes execution after a STOP statement, breakpoint, or Ctrl+C interrupt. CONT returns to the exact point where execution was paused.
 
-```
-LIST               ' Show all lines
-LIST 100           ' Show line 100 only
-LIST 100-200       ' Show lines 100 through 200
-LIST -50           ' Show lines from start through 50
-LIST 100-          ' Show lines from 100 to end
-```
+CONT fails with Error 17 (Cannot continue) if:
+- The program has been modified since it stopped (any line added, changed, or deleted).
+- NEW has been executed.
+- An error occurred and was not handled.
 
-### LLIST — List to Printer (STDERR)
+## 8. EDITING LINES
 
-```
-LLIST              ' Print all lines to stderr
-LLIST 100-200      ' Print range to stderr
-```
+Entering a line number followed by a statement replaces any existing line with that number. Entering a line number alone deletes the line. EDIT n opens line n in a simple line editor where you can modify the text.
 
-`LLIST` works identically to `LIST` but sends output to the standard error stream (typically the printer on vintage systems).
+The EDIT command enters an interactive line editor that supports cursor movement (arrow keys), insertion, deletion (Backspace, Delete), and confirmation (Enter). Press Escape to cancel without changes.
 
----
+## 9. PROGRAM MEMORY
 
-## Running the Program (RUN)
+Programs are stored in the MemoryContext managed by the memory subsystem (engine/src/memory/mem_system.c). Each line is stored as a source text string indexed by line number. The program memory allocation is 128 MB on modern builds, 64 MB on lite builds, 32 KB on FreeDOS, and 8 KB on embedded.
 
-```
-RUN                ' Execute from the first line
-RUN 100            ' Execute starting from line 100
-```
+FRE(-2) returns the amount of free variable memory. FRE(0) returns the amount of free string heap space.
 
-`RUN` clears all variables (unless you use `CONT` or `CHAIN`). After the program ends (`END` or last line), you return to direct mode.
+## 10. PROGRAM INFORMATION
 
-If an error occurs during execution, BASIC++ prints:
-```
-?Error message in line NNN
-```
-
----
-
-## Saving and Loading (SAVE / LOAD)
-
-### SAVE — Save Program to Disk
-
-```basic
-SAVE "myprog.bas"          ' Save with explicit filename
-SAVE                       ' Auto-save with date/time name
-```
-
-Saves the current program in ASCII text format. The file contains the numbered lines exactly as `LIST` would show them.
-
-When `SAVE` is used without a filename, the program is saved with an automatic default name based on the current date and time:
-
-```
-SAVE
-
-Saves as:  06-11-202616-27-48.BAS
-           (MM-DD-YYYYHH-MM-SS.BAS)
-```
-
-This is useful for quick saves during development — you never lose work because you forgot to name the file.
-
-### LOAD — Load Program from Disk
-
-```basic
-LOAD "myprog.bas"
-```
-
-Loads a program from disk, replacing any program currently in memory. Variables are cleared.
-
-After `LOAD`, the program is ready to `LIST` or `RUN`.
-
----
-
-## MERGE — Merge Lines from a File
-
-```basic
-MERGE "extra.bas"
-```
-
-`MERGE` reads lines from a file and adds them to the current program. Existing lines with the same numbers are replaced; lines with new numbers are inserted.
-
-This is useful for:
-- Adding subroutine libraries to a program
-- Combining program fragments
-- Patching specific lines
-
----
-
-## NEW — Clear the Program
-
-```
-NEW
-```
-
-`NEW` erases the program from memory **and** clears all variables, arrays, and DATA pointers. It does **not** affect:
-- The current dialect setting
-- Security level
-- Loaded modules
-- Alias definitions
-
----
-
-## UNSAVE — Delete the Last Saved File
-
-```
-UNSAVE
-```
-
-`UNSAVE` deletes the file that was last used with `SAVE` or `LOAD`. This is especially handy after a bare `SAVE` (auto-named):
-
-```
-SAVE                       ' Creates 06-11-202616-27-48.BAS
-' ... realize you don't need it ...
-UNSAVE                     ' Deletes 06-11-202616-27-48.BAS
-```
-
-Without `UNSAVE`, auto-saved files would accumulate on disk. `UNSAVE` keeps your directory clean.
-
-`UNSAVE` is equivalent to `KILL` on the last filename, and originates from the Tymshare SUPER BASIC dialect.
-
----
-
-## Compiled Output (BSAVE / BLOAD / COMPILE)
-
-### COMPILE — Transpile BASIC to C Source
-
-```basic
-COMPILE "output.c"
-```
-
-Converts the current BASIC++ program to equivalent ANSI C source code. The output can be compiled with any C compiler:
-
-```bash
-cl /O2 output.c           # MSVC
-gcc -O2 -o output output.c # GCC
-```
-
-**Limitations:**
-- Not all statements are supported (e.g., interactive `INPUT` may require linking a runtime support library)
-- Dynamic features (`CHAIN`, `MERGE`, `EVAL`) cannot be compiled
-- See [Compiling_BASIC_Programs](Compiling_BASIC_Programs.md) for full details
-
-### BSAVE — Save Compiled Bytecode
-
-```basic
-BSAVE "prog.bpp"
-```
-
-Saves the program in BASIC++ bytecode format. This is a binary representation of the tokenized program that loads faster than ASCII text.
-
-### BLOAD — Load Compiled Bytecode
-
-```basic
-BLOAD "prog.bpp"
-```
-
-Loads a bytecode file previously saved with `BSAVE`. The program is ready to `RUN` immediately.
-
----
-
-## Program Lifecycle
-
-### A typical session
-
-1. Enter program lines (or `LOAD` from disk)
-2. `LIST` to verify
-3. `RUN` to execute
-4. Debug as needed (`BREAK`, `STOP`, `VARS`, `TRON`)
-5. `SAVE` to preserve your work
-6. `NEW` when starting a new program
-
-### For larger projects
-
-1. `SAVE` individual modules as separate files
-2. `LOAD` the main program
-3. `MERGE` subroutine libraries
-4. `RUN` the combined program
-5. `SAVE` the final assembled program
-
-### For deployment
-
-1. `COMPILE` to produce standalone C code
-2. Compile with a C compiler for your target platform
-3. Distribute the native executable
-
----
-
-## Direct Mode vs. Program Mode
-
-### Direct Mode (Immediate Mode)
-
-Commands without line numbers execute immediately:
-
-```
-PRINT 2 + 3             ' Prints: 5
-A = 42                  ' Sets variable A
-PRINT A                 ' Prints: 42
-```
-
-Direct mode is for testing, debugging, and running commands.
-
-### Program Mode (Deferred Mode)
-
-Lines with numbers are stored for later execution:
-
-```basic
-10 A = 42
-20 PRINT A
-```
-
-These lines are stored but not executed until you type `RUN`.
-
-Most commands work in both modes. Exceptions:
-- `RUN`, `LIST`, `LOAD`, `SAVE`, `NEW` are direct-mode only
-- `DATA`, `DEF FN` are typically program-mode only
+The program line count is available through introspection. VARS displays all active variables. DUMP shows the VM state including stack depths and error state. LIST shows the program text. INFO shows the overall system configuration.

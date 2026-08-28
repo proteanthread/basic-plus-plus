@@ -1,0 +1,17 @@
+COMPLEX Complex Number Constructor Function
+======================================================================
+
+The COMPLEX function constructs a complex value from real and imaginary
+components.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    z = COMPLEX(real_part, imag_part)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 Z = COMPLEX(2, 5)

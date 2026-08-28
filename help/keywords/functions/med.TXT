@@ -1,0 +1,18 @@
+MED Statistical Median Value Function
+======================================================================
+
+The MED function calculates the median (middle) value of a set of
+numbers or an array.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    median = MED(val1, val2 [, ...])
+    median = MED(array())
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT MED(10, 20, 30, 40, 50)   : REM Outputs 30

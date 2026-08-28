@@ -1,0 +1,13 @@
+missile Ballistic Intercept & Missile Defense Arcade Template
+======================================================================
+
+The missile template implements defensive counter-missile trajectories,
+expanding explosion blast physics, and city damage tracking.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Vector trajectory interpolation.
+  - Expanding flak burst collision detection.
+  - Score multipliers and battery ammo tracking.

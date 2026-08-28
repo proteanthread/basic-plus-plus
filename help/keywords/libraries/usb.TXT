@@ -1,0 +1,19 @@
+usb Virtual USB Device & Gamepad Subsystem (libhardware)
+======================================================================
+
+The usb library maps modern USB controllers, joysticks, and serial
+adapters to the virtual device bus.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Maps USB gamepads to JOY(), STICK(), and STRIG() functions.
+  - Hotplug detection without VM loop interruption.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    void usb_init(void);
+    int usb_poll_gamepad(int player, GamepadState *state);

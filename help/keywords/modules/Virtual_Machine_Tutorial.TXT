@@ -1,0 +1,28 @@
+BASIC++ Virtual Machine Architecture & Execution Tutorial
+======================================================================
+
+The BASIC++ v6.5.2 Virtual Machine operates on a strict non-recursive,
+ephemeral-tokenization pipeline.
+
+
+EXECUTION PIPELINE
+----------------------------------------------------------------------
+
+    Source Text -> Lexer -> Parser (AST) -> Bytecode -> VM Loop
+
+
+CORE VM INVARIANTS
+----------------------------------------------------------------------
+
+  1. Strict Non-Recursive VM: All stacks reside on the heap.
+  2. Ephemeral Tokenization: Source text is parsed on-demand.
+  3. Dialect-Agnostic Bytecode: Syntax resolved at parser level.
+  4. Reference-Counted Strings: Managed via str_create/str_release.
+
+
+STANDARD MEMORY FOOTPRINTS
+----------------------------------------------------------------------
+
+  - baspp (Desktop) : 640 MB (671088640 bytes)
+  - bpp (Lite REPL) : 384 MB (402653184 bytes)
+  - bs (Batch)      : 64 MB (67108864 bytes)

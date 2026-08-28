@@ -1,0 +1,20 @@
+metadata Micro-Library & Keyword Metadata Registry (libcore)
+======================================================================
+
+The metadata library registers structured introspection metadata for
+every keyword, statement, function, and subsystem in the engine.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Backs interactive HELP and CATALOG commands.
+  - Registers syntax, categories, help text, and error codes.
+  - Enforces 100% introspection parity across all keywords.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    void microlib_register(const MicroLibMetadata *meta);
+    const MicroLibMetadata *microlib_lookup(const char *name);

@@ -1,0 +1,33 @@
+C17 API REFERENCE: VIRTUAL MACHINE ENGINE CORE (vm/vm.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Virtual Machine Engine Core executes program lines, manages interpreter
+heap stacks, coordinates error trapping (ON ERROR GOTO), and aggregates
+all subsystem contexts.
+
+2. KEY TYPES & STRUCTS
+- VMContext: Central virtual machine execution handle.
+- BppSubFrame: Heap call frame for GOSUB, SUB, and FUNCTION procedures.
+
+3. CONTEXT ACCESSORS
+- vm_get_mem(vm)  -> MemoryContext *
+- vm_get_str(vm)  -> StringContext *
+- vm_get_var(vm)  -> VariableContext *
+- vm_get_arr(vm)  -> ArrayContext *
+- vm_get_file(vm) -> FileContext *
+- vm_get_vdev(vm) -> VDevContext *
+- vm_get_vcon(vm) -> VConContext *
+- vm_get_vfs(vm)  -> VfsContext *
+
+4. CORE API FUNCTIONS
+- vm_init(mem, str, var, vdev) -> VMContext *
+- vm_shutdown(vm)
+- vm_run_program(vm)
+- vm_execute_line(vm, line_text) -> BppError
+- vm_reset_for_run(vm)
+- vm_set_error(vm, code, msg) / vm_get_error(vm) -> int
+
+5. ARCHITECTURAL INVARIANTS
+- Strict non-recursive execution on interpreter heap stacks.
+- Dialect-agnostic execution engine core.

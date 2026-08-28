@@ -1,0 +1,31 @@
+C17 API REFERENCE: BGI GRAPHICS INTERFACE (device/bgi.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The BGI (BASIC++ Graphics Interface) provides a software rasterizer, 42
+retro hardware mode profiles, geometric primitives, viewports, palettes,
+and split-screen text window rendering.
+
+2. KEY TYPES & STRUCTS
+- BGI_MemLayout: LINEAR_ARGB8888, INDEXED_8BPP, PLANAR_4PLANE, CELL_ATTRIBUTES.
+- BGI_VideoMode: Mode descriptor with resolution, bpp, palette, cell size.
+- BGIContext: Graphics rasterizer and rendering state.
+
+3. CORE API FUNCTIONS
+- bgi_init() -> BGIContext *
+- bgi_shutdown(ctx)
+- bgi_set_mode(ctx, mode_id) -> bool
+- bgi_set_screen(ctx, w, h, bpp, cols, rows) -> bool
+- bgi_put_pixel(ctx, x, y, color)
+- bgi_get_pixel(ctx, x, y) -> uint32_t
+- bgi_line(ctx, x1, y1, x2, y2, color)
+- bgi_rectangle(ctx, x1, y1, x2, y2, color, filled)
+- bgi_circle(ctx, cx, cy, radius, color, filled)
+- bgi_ellipse(ctx, cx, cy, rx, ry, color, filled)
+- bgi_flood_fill(ctx, x, y, fill_color, boundary_color)
+- bgi_set_viewport(ctx, x1, y1, x2, y2, clip)
+- bgi_set_palette_entry(ctx, index, argb)
+
+4. ARCHITECTURAL INVARIANTS
+- Freestanding C17 implementation with zero host graphics requirements.
+- Viewport clipping enforced on all drawing primitives.

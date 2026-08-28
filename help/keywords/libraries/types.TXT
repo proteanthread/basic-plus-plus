@@ -1,0 +1,27 @@
+types Unified Value & Type Representation (libkernel)
+======================================================================
+
+The types subsystem defines the fundamental data types, BValue tagged
+unions, tokens, and error structs across the engine.
+
+
+VALUE TYPES
+----------------------------------------------------------------------
+
+  - VAL_NONE   : Null / empty state
+  - VAL_NUMBER : 64-bit IEEE 754 float (double)
+  - VAL_STRING : Reference-counted string handle (BppString*)
+  - VAL_ERROR  : Error code indicator
+
+
+C17 STRUCT
+----------------------------------------------------------------------
+
+    typedef struct BValue {
+        BValType type;
+        union {
+            double number;
+            struct BppString *string;
+            int error_code;
+        } as;
+    } BValue;

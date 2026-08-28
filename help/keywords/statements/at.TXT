@@ -1,0 +1,28 @@
+AT Screen Cursor Positioning Clause
+===================================
+
+Specifies 1-based text cursor coordinates directly within PRINT statements.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    PRINT AT row%, col%; expression
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Coordinates outside screen bounds.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Common in Sinclair ZX Spectrum and Locomotive BASIC dialects.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT AT 10, 20; "Hello at Row 10 Col 20"

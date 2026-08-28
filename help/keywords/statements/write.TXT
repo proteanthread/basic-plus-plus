@@ -1,0 +1,30 @@
+WRITE Delimited Output Statement
+================================
+
+Outputs expressions to the screen or a file, separating items with commas and enclosing strings in quotation marks.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    WRITE [#filenum%,] expression [, expression...]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 52 (ERR_BAD_FILE_NUMBER): File channel is not open.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Produces valid CSV format data for subsequent INPUT statements.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 OPEN "O", #1, "DATA.CSV"
+    20 WRITE #1, "Alice", 28, 95.5
+    30 CLOSE #1

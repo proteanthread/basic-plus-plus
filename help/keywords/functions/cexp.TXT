@@ -1,0 +1,16 @@
+CEXP Complex Exponential Function
+======================================================================
+
+The CEXP function calculates the exponential e^z of a complex number.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res = CEXP(complex_val)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT REAL(CEXP(COMPLEX(0, 0)))   : REM Outputs 1

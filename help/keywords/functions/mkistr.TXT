@@ -1,0 +1,18 @@
+BASIC++ FUNCTION REFERENCE: MKI$ / MKISTR
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  result$ = MKI$(integer_expr%)
+
+Converts a 16-bit signed integer into a 2-byte binary string. Deserialized
+using CVI.
+
+2. PARAMETERS & RETURN VALUES
+- integer_expr%: Integer value (-32768 to 32767).
+- Returns: 2-byte binary string.
+
+3. ERROR CODES
+- Error 13 (ERR_TYPE_MISMATCH): Non-numeric argument.
+
+4. EXAMPLES
+  10 LSET S$ = MKI$(500)

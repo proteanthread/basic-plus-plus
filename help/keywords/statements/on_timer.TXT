@@ -1,0 +1,31 @@
+ON_TIMER Timer Interval Event Trapping Statement
+================================================
+
+Installs an event handler that triggers periodically at the specified elapsed second interval.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    ON TIMER(seconds%) GOSUB {line_number% | @label}
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Interval <= 0 or > 86400.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Requires TIMER ON to activate.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 ON TIMER(1) GOSUB 100 : REM Every 1 second
+    20 TIMER ON
+    30 DO : LOOP
+    100 PRINT "Tick: "; TIME$ : RETURN

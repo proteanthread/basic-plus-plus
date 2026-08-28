@@ -1,0 +1,23 @@
+POS Cursor Horizontal Column Query Function
+===========================================
+
+Returns the current 1-based horizontal column position of the text cursor.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    col% = POS(dummy%)
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Returns active column offset (1..WIDTH).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Hello";
+    20 PRINT " (Cursor was at col: "; POS(0); ")"

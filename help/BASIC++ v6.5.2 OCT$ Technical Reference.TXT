@@ -1,0 +1,383 @@
+BASIC++ v6.5.2
+OCT$ TECHNICAL REFERENCE
+
+1. FUNCTION DEFINITION
+
+OCT$ is a BASIC++ numeric-to-string conversion function that produces the octal representation of a numeric expression. The returned value is a string containing the base-8 representation of the converted integer value.
+
+The function is intended for compatibility with BASIC dialects that provide OCT$ as a numeric conversion function. Historical Microsoft BASIC implementations define OCT$ as a conversion from a decimal numeric expression to an octal string and specify that the argument is rounded to an integer before conversion.
+
+2. SYNTAX
+
+``basic
+OCT$(expression)
+`
+
+The expression is evaluated before OCT$ performs the conversion.
+
+The result is a string value and should normally be assigned to a string variable or passed to a string-compatible operation.
+
+`basic
+A$ = OCT$(255)
+PRINT A$
+`
+
+The expected result is:
+
+`text
+377
+`
+
+3. NUMERIC CONVERSION
+
+The argument is evaluated as a BASIC++ numeric value. The conversion routine then obtains the integer value required by the OCT$ implementation.
+
+The supplied BASIC++ specification states that a non-integral value is rounded before conversion. This behavior is consistent with documented BASIC implementations of OCT$.
+
+For example:
+
+`basic
+PRINT OCT$(18)
+`
+
+produces:
+
+`text
+22
+`
+
+because decimal 18 is represented as octal 22.
+
+The conversion uses base 8. The valid octal digit set is:
+
+`text
+01234567
+`
+
+Each output digit represents three binary bits.
+
+4. FUNCTION RESULT
+
+OCT$ returns a string rather than a numeric value. The result therefore enters the BASIC++ string management system.
+
+For a numeric value of zero, the normal representation is:
+
+`text
+0
+`
+
+For positive values, the output contains the octal digits required to represent the integer without unnecessary leading zeroes.
+
+The exact handling of negative values must follow the integer representation specified by the active BASIC++ dialect. Historical BASIC implementations differ in their treatment of negative values and integer widths, so negative-value behavior must be defined explicitly by the BASIC++ compatibility specification rather than inferred from the host C implementation.
+
+5. LEXICAL PROCESSING
+
+OCT$ is recognized by the BASIC++ lexer as a function identifier or keyword according to its registration in the language keyword and function tables.
+
+The lexer converts the source occurrence into the corresponding token. The parser then recognizes the function call and constructs the AST representation for the expression.
+
+For:
+
+`basic
+A$ = OCT$(255)
+`
+
+the parser must recognize an assignment whose right-hand operand is a function-call expression. The OCT$ node contains the expression representing the argument 255.
+
+The function itself does not perform source-level tokenization. Lexical processing belongs to the lexer.
+
+6. AST PROCESSING
+
+The supplied BASIC++ implementation architecture represents expressions as ASTNode structures.
+
+The OCT$ function node contains a reference to its operand expression. The evaluator processes the operand before invoking the OCT$ implementation.
+
+The resulting evaluation sequence is therefore conceptually:
+
+`text
+source text
+    |
+    v
+lexer
+    |
+    v
+tokens
+    |
+    v
+parser
+    |
+    v
+AST
+    |
+    v
+argument evaluation
+    |
+    v
+numeric BValue
+    |
+    v
+OCT$ conversion
+    |
+    v
+string BValue
+`
+
+The AST must remain valid for the duration of the evaluation operation. Temporary parser data must not be referenced after its lifetime has ended.
+
+7. VALUE TYPE VALIDATION
+
+The OCT$ implementation receives the evaluated argument as a BValue.
+
+The function must verify that the BValue contains an acceptable numeric type before accessing its numeric member.
+
+A type mismatch must be converted to the BASIC++ runtime error defined for incompatible function arguments. The documented implementation associates this condition with Error 13, ERRTYPEMISMATCH.
+
+A BValue union member must never be accessed solely on the assumption that the parser generated a numeric expression. Runtime evaluation can produce values whose types differ from the expected function argument.
+
+8. RANGE VALIDATION
+
+The implementation must validate the numeric range supported by the active BASIC++ dialect before performing the conversion.
+
+The supplied implementation documentation identifies Error 5, ERRILLEGALFUNCTION_CALL, as the runtime error for values outside the permitted range.
+
+The range is an implementation property and must not be silently replaced with the range of the host C integer type. A 64-bit host compiler does not automatically change the defined BASIC++ numeric range.
+
+Where compatibility with a specific historical BASIC dialect is required, its documented integer width and negative-value representation must be implemented explicitly.
+
+9. STRING ALLOCATION
+
+The OCT$ result is stored as a BASIC++ string value. The function therefore uses the runtime string management system rather than directly exposing a C character buffer to the BASIC program.
+
+Temporary storage required during conversion must be allocated through the runtime memory system.
+
+The supplied architecture describes a string-pool mechanism and transient storage for intermediate string values. Any implementation using reference-counted strings must retain and release references according to the normal BValue ownership rules.
+
+A failure to allocate the result string must produce a BASIC++ runtime error rather than returning an invalid pointer.
+
+10. IMPLEMENTATION LOCATION
+
+The supplied OCT$ documentation identifies the built-in implementation as:
+
+`text
+source/strings/builtinsstring.c
+`
+
+with registration performed through:
+
+`text
+source/functions/builtins.c
+`
+
+The broader BASIC++ architecture also describes keyword-specific implementation files under the engine source tree. The actual repository layout must therefore be treated as authoritative when implementing or relocating OCT$.
+
+If the implementation is moved to a dedicated module, all registration tables, CMake targets, headers, documentation, and source references must be updated together.
+
+11. BASIC++ C IMPLEMENTATION REQUIREMENTS
+
+The OCT$ implementation must conform to ISO C17.
+
+The implementation must not require C++ features, compiler-specific pragmas, or compiler-specific language extensions.
+
+Pointer-derived integer values must use uintptrt or intptrt where such conversion is required.
+
+The function must not depend on the byte order of the host CPU. Conversion from a numeric value to an octal representation is a mathematical operation and should operate identically on little-endian and big-endian systems.
+
+The function must not use an operating-system API directly.
+
+12. OCTAL CONVERSION ALGORITHM
+
+The mathematical conversion from a non-negative integer to octal can be implemented using repeated division by eight.
+
+For each iteration, the remainder of the value divided by eight is one octal digit. The value is then divided by eight and the process continues until the quotient becomes zero.
+
+Conceptually:
+
+`text
+value = 255
+
+255 / 8 = 31 remainder 7
+31  / 8 = 3  remainder 7
+3   / 8 = 0  remainder 3
+`
+
+The remainders are generated least-significant digit first:
+
+`text
+7 7 3
+`
+
+They must therefore be emitted in reverse order:
+
+`text
+377
+`
+
+The implementation may use another conversion method provided that the resulting BASIC++ behavior is identical and the method does not introduce an implementation-dependent representation.
+
+13. ERROR PROPAGATION
+
+The OCT$ implementation must return errors through the BASIC++ runtime error mechanism.
+
+A type failure must produce ERRTYPEMISMATCH.
+
+An invalid argument count must produce the corresponding argument-count error.
+
+An argument outside the supported numeric range must produce ERRILLEGALFUNCTION_CALL where required by the dialect specification.
+
+A memory allocation failure must not result in an invalid string object.
+
+A security failure is only applicable if the OCT$ implementation indirectly accesses a protected subsystem. The conversion itself does not require filesystem, device, or operating-system access.
+
+14. MEMORY SAFETY
+
+The function must not write beyond the storage allocated for the result string.
+
+The output buffer must be large enough for the maximum octal representation supported by the numeric type plus its terminating character.
+
+String manipulation must use bounded operations where the operation involves externally supplied or non-null-terminated data.
+
+The implementation must not rely on an assumed host integer width when calculating the maximum output length.
+
+Any temporary string reference acquired during evaluation must be released on both the success and error paths.
+
+15. PORTABILITY
+
+OCT$ must behave consistently across the BASIC++ target environments.
+
+The function is independent of terminal type, operating-system API, filesystem implementation, and CPU endianness.
+
+The host compiler's integer representation must not be allowed to change the BASIC++ language semantics.
+
+If BASIC++ is compiled with a no-floating-point configuration, such as the documented BPPNOFLOAT configuration, the argument evaluation system must provide the integer representation expected by OCT$. The conversion routine itself should operate on the value type supplied by the language runtime rather than attempting to detect the host CPU's floating-point capabilities.
+
+16. TEST CASES
+
+The basic conversion tests should include:
+
+`basic
+PRINT OCT$(0)
+PRINT OCT$(1)
+PRINT OCT$(7)
+PRINT OCT$(8)
+PRINT OCT$(9)
+PRINT OCT$(15)
+PRINT OCT$(16)
+PRINT OCT$(18)
+PRINT OCT$(255)
+`
+
+Expected positive-value results are:
+
+`text
+0
+1
+7
+10
+11
+17
+20
+22
+377
+`
+
+The function should also be tested with non-integral values where the active dialect specifies rounding.
+
+`basic
+PRINT OCT$(18.4)
+PRINT OCT$(18.5)
+`
+
+The expected results depend on the rounding rule defined by the BASIC++ numeric subsystem and must be fixed by the language test suite.
+
+Invalid argument types must also be tested.
+
+`basic
+PRINT OCT$("TEST")
+`
+
+The test must verify that the interpreter reports the defined type error and does not attempt to interpret the string storage as a numeric value.
+
+Argument-count validation must be tested separately.
+
+`basic
+PRINT OCT$()
+PRINT OCT$(1,2)
+`
+
+Both cases must terminate through the normal BASIC++ error mechanism.
+
+17. REGRESSION TESTING
+
+Changes to OCT$ must be followed by the BASIC++ self-test suite.
+
+`text
+baspp -c "SELFTEST"
+`
+
+Regression tests must verify lexical recognition, parser construction, argument evaluation, numeric conversion, string allocation, error propagation, and output formatting.
+
+The test suite should verify that the same source program produces the same OCT$ result across supported host architectures.
+
+For example:
+
+`basic
+10 FOR N = 0 TO 255
+20 PRINT N; OCT$(N)
+30 NEXT N
+``
+
+This provides a compact conversion table and exercises repeated allocation and release of temporary string values.
+
+18. DEBUGGING
+
+When OCT$ fails during parsing, the lexer output should be inspected first. The expected token sequence must identify OCT$ as the registered function followed by an opening parenthesis, the argument expression, and the closing parenthesis.
+
+When the parser succeeds but execution fails, the evaluated BValue should be inspected before the conversion routine accesses the numeric field.
+
+When the output is incorrect, the integer value entering the conversion routine should be examined independently from the generated string.
+
+When memory failures occur, string allocation and release operations should be traced. A repeated call such as OCT$(N) inside a FOR loop is useful for detecting leaks and incorrect reference counting.
+
+When a compiler or linker error occurs, the source file and function registration must be checked against the active CMake target.
+
+19. PERFORMANCE
+
+OCT$ performs a small amount of integer arithmetic followed by string construction. The number of conversion iterations is proportional to the number of octal digits in the resulting representation.
+
+For an unsigned integer value N greater than zero, the number of octal digits is proportional to log base 8 of N. The operation therefore requires a bounded number of division and remainder operations for a fixed-width numeric type.
+
+The function is suitable for repeated use in BASIC loops, although repeated string construction can become significant on systems with limited memory or slow allocation routines.
+
+Embedded configurations should avoid unnecessary temporary copies of the result string.
+
+20. HISTORICAL COMPATIBILITY
+
+OCT$ is present in several BASIC-family implementations. Microsoft GW-BASIC documents OCT$ as a conversion from a decimal value to an octal string and specifies rounding of the argument before conversion. Modern BASIC implementations such as QB64 likewise provide OCT$ as a numeric-to-string conversion function.
+
+BASIC++ should distinguish the general OCT$ operation from dialect-specific numeric-width behavior. In particular, historical implementations may use different integer widths and different representations for negative values.
+
+Compatibility behavior should therefore be defined by the BASIC++ dialect specification rather than by whatever integer type happens to be selected by the host compiler.
+
+21. RELATED FUNCTIONS
+
+OCT$ belongs to the numeric-to-string conversion portion of the BASIC++ runtime.
+
+Related conversion functions include HEX$, STR$, VAL, ASC, and CHR$.
+
+HEX$ performs hexadecimal conversion.
+
+STR$ converts a numeric value to its normal string representation.
+
+VAL converts a numeric string representation back into a numeric value according to the active BASIC++ syntax rules.
+
+ASC converts a character to its numeric character code.
+
+CHR$ converts a numeric character code to a string containing the corresponding character.
+
+22. IMPLEMENTATION CONTRACT
+
+The OCT$ implementation has a narrow responsibility. It accepts an evaluated numeric expression, validates the argument according to the active dialect, converts the resulting integer to base 8, creates a BASIC++ string containing the result, and returns that string through the normal BValue mechanism.
+
+Lexical analysis, parsing, variable lookup, expression evaluation, string ownership, memory allocation, error propagation, and VM dispatch remain responsibilities of their respective subsystems.
+
+Keeping these responsibilities separate prevents OCT$ from acquiring dependencies on unrelated portions of the interpreter and allows the function to remain portable across the BASIC++ execution targets.

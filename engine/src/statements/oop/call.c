@@ -1,51 +1,15 @@
-/**
- * @file call.c
- * @brief CALL sub_name[(arg1, arg2, ...)] procedure invocation statement handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements CALL sub_name[(arg1, arg2, ...)] statement handler for invoking user-defined SUB procedures and C library callbacks.
- *
- * 2. WHY IT EXISTS:
- * Executes modular procedures, pushing call frame metadata onto the non-recursive VM call stack per QBASIC/GW-BASIC standards.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Evaluates procedure arguments into temporary parameters, validates procedure existence in the VM procedure registry, and transfers control to procedure body.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_call'. Includes "statements/oop/call.h",
- * "vm/vm.h", "lexer/lexer.h", "eval/eval.h", "device/vdev.h", "security/security.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Fully included in libbasicpp (baspp) and libbasicpp_lite (bpp, bs) per Rule #1 (SUPPORT_OOP).
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support CALL ABSOLUTE or C-bridge function dispatch when building native interop extensions.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Call stack ownership transfer discipline: Relinquish argument ownership or release intermediate values after pushing call frames.
- *
- * 8. WHAT TO EXPECT:
- * Pushes procedure frame and returns ERR_NONE on success or ERR_SUB_NOT_DEFINED on lookup failure.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check procedure parameter refcount cleanup and stack frame balance.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext and procedure table.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. 64-bit pointer safe parameter passing.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/statements/oop/sub.c
- * - engine/src/eval/eval.c
- * - engine/src/vm/vm_stack.c
- * Prerequisite Header Files:
- * - engine/include/statements/oop/call.h
- * - engine/include/vm/vm.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: call.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (perform.c)
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libengine (call.h, eval.h, eval.c, interrupt.h, interrupt.c)
+// NEEDS: libengine (lexer.h, lexer.c, map.h, map.c, string.c, sub.h, sub.c)
+// NEEDS: libengine (vm.h)
+// NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+// Provides runtime implementation for the CALL statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "statements/oop/call.h"
 #include "vm/vm.h"
@@ -56,11 +20,36 @@
 #include "runtime/micro_lib_metadata.h"
 #include <string.h>
 
+#include "statements/oop/sub.h"
+#include "statements/system/hardware/interrupt.h"
+#include "runtime/map.h"
+
 BppError stmt_call_handler(VMContext *vm, LexerContext *lex) {
-    BppError err;
-    memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
-    return err;
+    BppToken tok = lex_peek(lex);
+    if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_INTERRUPT) ||
+        (tok.type == TOK_IDENT && tok.length == 9 && strncasecmp(tok.start, "INTERRUPT", 9) == 0)) {
+        lex_next(lex);
+        return stmt_interrupt_handler(vm, lex);
+    }
+    if ((tok.type == TOK_KEYWORD && tok.as.keyword == KW_INTERRUPTX) ||
+        (tok.type == TOK_IDENT && tok.length == 10 && strncasecmp(tok.start, "INTERRUPTX", 10) == 0)) {
+        lex_next(lex);
+        return stmt_interruptx_handler(vm, lex);
+    }
+    if (tok.type == TOK_IDENT && memchr(tok.start, '.', tok.length) != NULL) {
+        BppError err;
+        memset(&err, 0, sizeof(err));
+        BValue res = eval_expression(vm, lex, &err);
+        if (err.code == 0) {
+            if (res.type == VAL_STRING && res.as.string) {
+                str_release(vm_get_str(vm), res.as.string);
+            } else if (res.type == VAL_MAP && res.as.map) {
+                map_release(vm_get_str(vm), res.as.map);
+            }
+        }
+        return err;
+    }
+    return vm_call_sub_procedure(vm, lex);
 }
 
 void stmt_call_register(void) {

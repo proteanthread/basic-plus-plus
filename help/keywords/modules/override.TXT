@@ -1,0 +1,40 @@
+OVERRIDE Statement Handler Interception Statement
+======================================================================
+
+The OVERRIDE statement replaces the built-in C execution handler of a
+BASIC keyword with a custom user subroutine (GOSUB or SUB).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    OVERRIDE keyword WITH GOSUB line_number
+    OVERRIDE keyword WITH SUB procedure_name
+    OVERRIDE RESTORE keyword
+    OVERRIDE LIST
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Intercepts keyword execution at runtime.
+  - OVERRIDE RESTORE restores native C engine handler.
+  - OVERRIDE LIST displays all active statement overrides.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  2           ERR_SYNTAX_ERROR      Invalid OVERRIDE syntax
+  5           ERR_ILLEGAL_FUNCTION  Attempting to override protected keyword
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 OVERRIDE CLS WITH GOSUB 500
+    20 CLS
+    30 END
+    500 PRINT "Cleared": RETURN

@@ -1,15 +1,12 @@
-/* =====================================================================
- * What it does: Header file for WHILE statement handler micro-library.
- * Why it exists: Fulfills 1-to-1 keyword-to-filename mapping for WHILE keyword.
- * Why it works this way: Declares WHILE evaluation entry point and self-registration routine.
- * What can be changed: Pre-scan and skip-to-WEND logic.
- * What cannot be changed: BppError return type, C17 standard compliance.
- * What to expect: Pure execution pushing WhileStack frame or skipping to matching WEND.
- * What to do if something breaks: Check active WhileStack frames in VM.
- * Assumptions: VMContext initialized.
- * Portability concerns: Fully standard C17.
- * Future expansions: Support for short-circuit boolean condition evaluation.
- * ===================================================================== */
+// FILENAME: while.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (while.c)
+// NEEDS: libengine (lexer.h, lexer.c, vm.h)
+// NEEDS: libkernel (types.h)
+// Provides runtime implementation for the WHILE statement in BASIC++.
+//
+// ---- Includes ----
 
 #ifndef STMT_WHILE_H
 #define STMT_WHILE_H
@@ -24,4 +21,4 @@
 BppError stmt_while_handler(VMContext *vm, LexerContext *lex);
 void stmt_while_register(void);
 
-#endif /* STMT_WHILE_H */
+#endif // STMT_WHILE_H

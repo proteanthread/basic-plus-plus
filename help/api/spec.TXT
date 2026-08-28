@@ -1,0 +1,23 @@
+C17 API REFERENCE: SPECIFICATION REGISTRY (runtime/spec.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Language Specification Registry provides declarative specification loading
+(.spec, .yaml), companion micro-library linkage, and dialect metaprogramming.
+
+2. KEY TYPES & STRUCTS
+- SpecCategory: SPEC_CAT_STATEMENT, SPEC_CAT_FUNCTION.
+- SpecObject: Struct containing name, version, category, lib_path,
+  required_level, kw_id, lib_loaded.
+
+3. CORE API FUNCTIONS
+- spec_registry_init()
+- spec_load_file(vm, filename) -> int
+- spec_load_companion_libraries(vm, dir_part) -> int
+- spec_register_inline(vm, name, cat, lib_path, req_level) -> int
+- spec_find_by_name(name) -> SpecObject *
+- spec_find_by_kw_id(kw_id) -> SpecObject *
+
+4. ARCHITECTURAL INVARIANTS
+- Supports defining and validating language extensions dynamically.
+- Up to 128 concurrent language specifications (MAX_SPECS).

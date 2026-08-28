@@ -1,0 +1,17 @@
+NUM String to Number Parsing Function
+======================================================================
+
+The NUM function parses a string and returns its numeric floating-point
+value.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    numeric_val# = NUM(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT NUM("45.67")   : REM Outputs 45.67

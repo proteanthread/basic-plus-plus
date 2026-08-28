@@ -1,195 +1,142 @@
-# Building A Minimal BASIC++ ("blite")
+# BASIC++ v6.5.2 Building A Minimal BASIC++
 
-This document details the configuration, compile-time feature gates, and build system steps to compile the ultra-minimal target **BASIC++ Lite** (`blite.exe` on Windows and `blite` on Linux), and details how to achieve the smallest binary footprint possible.
+## 1. PURPOSE
 
----
+A minimal build of BASIC++ strips away optional subsystems to produce the smallest possible interpreter binary. This is useful for embedded targets (ESP32, Arduino, Raspberry Pi Pico), constrained environments (FreeDOS real mode with less than 640 KB), educational deployments where only core BASIC is needed, and CI/CD pipelines that need a fast-building BASIC executor.
 
-## 1. Overview of BASIC++ Lite (v4.2.3)
+## 2. WHAT "MINIMAL" MEANS
 
-`blite` is an integer-only profile of BASIC++ designed specifically for microcontrollers, embedded boards, and real-mode DOS operating systems (such as Arduino, ESP32, Raspberry Pi Pico, and FreeDOS). 
+The full baspp standard edition links all 12 micro-libraries in the chain from libboot through libadvanced. A minimal build stops at a lower point in the chain and disables optional feature gates. The absolute minimum functional interpreter requires libboot, libplatform, libkernel, and libengine — four libraries that provide the lexer, parser, expression evaluator, variable system, and VM execution loop.
 
-It strips away floats, advanced console options, filesystems, and modular extensions to ensure standard-compliant BASIC interpreter functionality under severe memory budgets.
+With only these four libraries you get: line-numbered program entry, LET, PRINT, INPUT, IF/THEN/ELSE, FOR/NEXT, WHILE/WEND, DO/LOOP, GOTO, GOSUB/RETURN, DIM, DATA/READ/RESTORE, DEF FN, REM, END, STOP, RUN, LIST, NEW, and all arithmetic, comparison, and logical operators.
 
-### Features & Limits
-*   **Integer Math**: Signed 32-bit `long` integers (`int32_t`). Floating-point parsing and operators are disabled.
-*   **String Pool**: Full support for string operations and built-ins (`LEFT$`, `RIGHT$`, `MID$`, `CHR$`, `STR$`, `VAL`, `INSTR`, `STRING$`, etc.).
-*   **Variable Scope**: Up to **64 active variable slots** by default.
-*   **Array Capping**: Capped at 3-dimensional numeric arrays with a maximum of **512 elements** total.
-*   **Line Numbers**: Valid line number ranges are restricted to `1` through `16384`.
-*   **System Variables**: Includes 24 active system variables (such as `VER` = `4.2.3`, `CWD$` returning the working folder name, `DATE$`, `TIME$`, `CLOCK$`, `HOSTNAME$`, `USERNAME$`, `PWD$`, `CWD$`).
-*   **INI Configuration**: Bypasses INI files (`blite.cfg`) completely at boot.
+You lose: file I/O (OPEN, CLOSE, GET, PUT), network operations, the HELP system, SELFTEST, the TUI editor, graphics, sound, ALIAS/OVERRIDE/SCOPE, modules, tasks, security enforcement, and BIOS virtualization.
 
----
+## 3. MINIMAL BUILD CONFIGURATION
 
-## 2. Choosing CORE vs OPTIONAL Files
+### Embedded Profile
 
-To achieve the smallest binary footprint, your build system must strictly link only the **CORE** files and exclude all **OPTIONAL** files from compilation.
-
-### The CORE Source Files
-These must be compiled and linked together to produce a functional `blite` binary:
-1.  `source/core/main.c` (interpreter initialization and REPL loop)
-2.  `source/core/memory.c` (dynamic memory allocator)
-3.  `source/core/errors.c` (runtime error handlers)
-4.  `source/core/value.c` (type representation)
-5.  `source/core/stringpool.c` (pooled string management)
-6.  `source/core/platform.c` (OS-specific abstractions)
-7.  `source/core/security.c` (sandbox rules)
-8.  `source/core/boot.c` (subsystem setup)
-9.  `source/core/rpn.c` (stack math)
-10. `source/core/console.c` (active screen terminal buffers)
-11. `source/core/lite_stubs.c` (minimal file I/O stub configurations)
-12. `source/lexer/lexer.c` (keyword tokenization)
-13. `source/lexer/keyword_props.c` (operator syntax)
-14. `source/lexer/alias_lang.c` (dialect syntax overrides)
-15. `source/parser/parser.c` (statement dispatch)
-16. `source/parser/parser_expr.c` (recursive-descent expression evaluator)
-17. `source/flow/parser_flow.c` (flow commands: GOTO, IF)
-18. `source/flow/parser_loops.c` (loop commands: FOR, NEXT)
-19. `source/io/parser_io.c` (basic text console inputs and prints)
-20. `source/io/vfs.c` (virtual path definitions)
-21. `source/variables/parser_vars.c` (variable resolver)
-22. `source/variables/parser_assign.c` (let/dim assignment)
-23. `source/strings/builtins_string.c` (core string library)
-24. `source/math/builtins_math.c` (integer basic math library)
-25. `source/functions/funcreg.c` (builtin registry)
-26. `source/functions/parser_deffn.c` (user fn definitions)
-27. `source/functions/builtins.c` (builtin register handlers)
-28. `source/help/parser_help.c` (minimal console help parser)
-29. `source/help/help.c` (Lite static help dictionary database)
-30. `source/config/parser_config.c` (dialect overrides)
-31. `source/config/override.c` (dialect scope modifications)
-32. `source/config/scope.c` (scope namespaces)
-33. `source/config/scope_stack.c` (scope lookup stack)
-34. `source/progmgmt/parser_progmgmt.c` (source code editor management)
-35. `source/progmgmt/parser_cmds.c` (console shell commands)
-36. `source/virtual/vdev.c` (virtual hardware/BIOS stubs)
-37. `source/virtual/vm.c` (virtual machine execution)
-38. `source/memory/memmap.c` (RAM segmentation maps)
-39. `source/memory/builtins_memory.c` (peek and poke variables)
-40. `source/system/builtins_system.c` (runtime variables resolver)
-41. `source/system/builtins_io.c` (text screen helper variables)
-45. `source/modules/module.c` (module initialization stub)
-46. `source/modules/mod_stdlib.c` (standard library registration stub)
-47. `source/runtime/runtime.c` (runtime state container)
-48. `source/runtime/exec.c` (REPL statement execution loop)
-49. `source/misc/parser_misc.c` (miscellaneous statements)
-50. `source/spec.c` (dialect syntax specification tables)
-51. `source/display/ldisdbl.c` (double precision float emulation)
-52. `source/config/config_file.c` (configuration file handling)
-53. `source/modules/stdlib_core.c` (core standard library helpers)
-55. `source/core/error_registry.c` (numeric error code mapping)
-56. `source/core/pcode_compiler.c` (P-Code compiler)
-57. `source/core/pcode_emit.c` (P-Code bytecode generator)
-58. `source/core/vm_exec.c` (VM bytecode interpreter)
-59. `source/core/task.c` (multitasking worker task manager)
-60. `source/io/format_using.c` (PRINT USING parsing & execution)
-61. `source/io/format_input.c` (INPUT USING parsing & execution)
-
-### The OPTIONAL Source Files (Exclude to Save Space)
-Excluding these files entirely from your compilation target will significantly reduce the binary size:
-*   **Transpiler**: `ast.c`, `codegen.c`, `bytecode.c`, `detok.c` (unused in Lite REPL mode)
-*   **Matrix Algebra**: `parser_mat.c`
-*   **VFS & File operations**: `parser_filemgmt.c`, `parser_blockio.c`, `parser_streamio.c`, `fileio.c`, `builtins_fileio.c`, `device_alias.c`, `vdev_net.c`
-*   **Graphics & Sound**: `parser_graphics.c`, `gfxbuf.c`, `builtins_graphics.c`, `parser_sound.c` (except parameterless `BEEP` inside `parser_misc.c`), `parser_display.c`
-*   **Advanced Features**: `parser_shell.c`, `parser_txn.c`, `txn.c`, `builtins_txn.c`, `builtins_net.c`, `builtins_sio.c`, `builtins_bio.c`, `parser_virtual.c`
-*   **Extensions**: `modules/mod_usb.c`, `modules/mod_fujinet.c`, `modules/mod_upnp.c`, `modules/mod_jit.c`, `modules/ext_lib.c`, `modules/ext_func.c`, `modules/ext_feature.c`, `modules/ext_plugin.c`, `modules/lib_space.c`, `modules/bpl_format.c`, `modules/parser_block.c`, `modules/gw_math_mbf.c`, `modules/gw_memory.c`, `modules/gw_sdl2.c`, `modules/gw_plugin.c`, `modules/gw_serial.c`, `modules/mod_gwbasic.c`
-
----
-
-## 3. Preprocessor Feature Gates (`config.h`)
-
-To configure compile-time gates for `blite`, define `BASIC_LITE_BUILD` at compilation. This activates the following gates:
-
-```c
-#ifdef BASIC_LITE_BUILD
-  // Limit settings for Lite profile
-  #undef MAX_NAMED_VARS
-  #define MAX_NAMED_VARS 64
-  #undef MAX_ARRAY_ELEMENTS
-  #define MAX_ARRAY_ELEMENTS 512
-  #undef LINE_NUMBER_MAX
-  #define LINE_NUMBER_MAX 16384
-
-  // Feature gates for blite
-  #undef SUPPORT_GRAPHICS
-  #undef SUPPORT_SOUND
-  #undef SUPPORT_FILEMGMT
-  #undef SUPPORT_MAT
-  #undef SUPPORT_STRUCT
-  #undef SUPPORT_ERRHAND
-  #undef SUPPORT_SHELL
-  #undef SUPPORT_DEBUG
-  #undef SUPPORT_COMPILER
-  #undef SUPPORT_VFS
-  #undef SUPPORT_TXN
-#endif
+```bash
+cmake .. -DBASIC_EMBEDDED=ON \
+         -DSUPPORT_FILES=OFF \
+         -DSUPPORT_TRY=OFF \
+         -DSUPPORT_STRUCT=OFF \
+         -DSUPPORT_MODULE=OFF \
+         -DSUPPORT_TASK=OFF \
+         -DSUPPORT_HELP=OFF \
+         -DSUPPORT_GRAPHICS=OFF \
+         -DSUPPORT_MAT=OFF \
+         -DSUPPORT_NET=OFF \
+         -DSUPPORT_GEMINI=OFF \
+         -DSUPPORT_BIOS=OFF \
+         -DSUPPORT_OOP=OFF \
+         -DSUPPORT_EDITOR=OFF
 ```
 
----
+This configuration produces an interpreter with the embedded memory profile:
 
-## 4. Compiler-Level Size Optimization
+| Pool | Size |
+|------|------|
+| Program memory | 8 KB |
+| Variable space | 4 KB |
+| String heap | 4 KB |
+| Scratch area | 2 KB |
+| Stack depth | 31 |
+| Named variables | 64 |
+| DIM arrays | 16 |
+| Array elements | 512 |
+| User functions | 8 |
 
-To achieve the absolute smallest binary footprint, apply the following optimization flags to your toolchain:
+### FreeDOS 16-Bit Profile
 
-### 1. Optimize for Size (`-Os`)
-Instruct the compiler to prioritize code size over execution speed:
-*   **GCC / Clang**: Add `-Os` to compiler flags.
-*   **MSVC**: Add `/O1` (Minimize Size) and `/Ob0` (Disable Inline Expansion unless explicitly defined).
-
-### 2. Link-Time Optimization (`-flto`)
-Enable interprocedural optimizations across all C compile units. This allows the compiler to strip dead functions, inline critical routines, and merge common constants:
-*   **GCC / Clang**: Add `-flto` to both compile and link stages.
-*   **MSVC**: Add `/GL` to compile flags, and `/LTCG` to link flags.
-
-### 3. Dead-Code Elimination (`-ffunction-sections`)
-Compile functions and data items into their own individual linker sections, and command the linker to prune any sections that are never referenced:
-*   **GCC / Clang Compile Flags**: `-ffunction-sections -fdata-sections`
-*   **GCC / Clang Linker Flags**: `-Wl,--gc-sections`
-*   **MSVC Linker Flags**: `/OPT:REF` (Eliminate Unreferenced Data) and `/OPT:ICF` (Remove Duplicate Functions).
-
----
-
-## 5. Further Squeezing Resource Budgets
-
-For extreme microcontrollers (e.g., ATmega platforms with only a few kilobytes of RAM), you can manually tighten resource parameters in `source/config.h`:
-
-1.  **Reduce Symbol Table Count**: Change `MAX_NAMED_VARS` from `64` to `26` (which permits exactly one active variable per letter, A to Z).
-2.  **Prune String Pool Space**: Set `MAX_STRING_POOL` to `512` or `1024` bytes.
-3.  **Minimize the Stack**: Set `MAX_STACK_DEPTH` down to `8` or `16` (reduces memory consumption during nested `GOSUB` or expression calls).
-5.  **16-bit Integer Downsizing**: Change default integer storage types from 32-bit `long` (`int32_t`) to 16-bit `short` (`int16_t`) if the target microcontroller has an 8-bit or 16-bit registers (e.g., AVR ATmega).
-
----
-
-## 6. Size Optimization Linker Script Snippet
-
-To prune unreferenced data and discard compiler debug/exception entries in GCC-based environments, append this target configuration block to your board's linker script (`linker.ld`):
-
-```ld
-SECTIONS
-{
-  /* Discard debug notes and exception frame metadata to minimize size */
-  /DISCARD/ :
-  {
-    *(.comment)
-    *(.note*)
-    *(.eh_frame*)
-  }
-}
+```bash
+cmake .. -DBASIC_FREEDOS_16=ON \
+         -DCMAKE_SYSTEM_NAME=DOS \
+         -DCMAKE_C_COMPILER=wcc
 ```
 
----
+The FreeDOS profile provides more resources than embedded but fits within conventional memory:
 
-## 7. Dialect Suitability in BASIC++ Lite
+| Pool | Size |
+|------|------|
+| Program memory | 32 KB |
+| Variable space | 16 KB |
+| String heap | 16 KB |
+| Scratch area | 8 KB |
+| Stack depth | 63 |
+| Named variables | 128 |
+| DIM arrays | 32 |
+| Array elements | 2048 |
+| User functions | 16 |
 
-When running under the memory-constrained `BASIC_LITE_BUILD` profile, selecting an appropriate BASIC dialect is critical for stability and feature availability:
+## 4. ADDING FEATURES BACK INCREMENTALLY
 
-### Highly Suited Dialects
-*   **Palo Alto Tiny BASIC (`PATB`)**: Best choice for microcontrollers with extremely limited memory (< 16 KB SRAM, e.g. Arduino Mega). Since PATB is integer-only and defines a tiny keyword list, it naturally matches the compiler gates of the Lite profile and has the smallest memory signature.
-*   **TRS-80 Level I / II (`TRS80`)**: Highly compatible. Relies on simple integer-oriented execution paths, minimal token tracking structures, and compact syntax logic.
+Starting from a minimal build, features can be added back individually by enabling their gates. Each feature corresponds to a specific library in the chain and its associated SUPPORT_* flag:
 
-### Moderate Dialects
-*   **GW-BASIC (`GWBS`)**: Default target dialect for slim FreeDOS builds. Good capability layout, but developers should note that advanced math/graphics structures are gated.
+To add file I/O, enable SUPPORT_FILES and link libscript. This adds OPEN, CLOSE, INPUT #, PRINT #, GET, PUT, EOF, LOC, LOF, SEEK, FILES, DIR, KILL, MKDIR, RMDIR, CHDIR.
 
-### Unsuitable Dialects
-*   **ECMA-116 (`E116`) / QBasic (`QBAS`)**: Not recommended. These dialects rely heavily on features stripped from the Lite build—including double-precision float matrices, structured blocks (`SELECT CASE`, custom types), multiline custom functions, and direct file handles. Compiling them in Lite results in mostly stubbed commands, bloating the flash with dead paths.
+To add the HELP system and SELFTEST, enable SUPPORT_HELP and link libcore. This requires libscript, so file I/O is included automatically.
 
+To add error trapping with TRY/CATCH, enable SUPPORT_TRY. This is available at the libengine level and requires no additional library links.
+
+To add MAT matrix operations, enable SUPPORT_MAT. This is available at the libengine level.
+
+To add network operations (VNET, Gemini), link libserver and enable SUPPORT_NET and SUPPORT_GEMINI.
+
+To add metaprogramming (ALIAS, OVERRIDE, SCOPE), link libflex.
+
+To add the TUI editor, link libstandard and enable SUPPORT_EDITOR. This requires ncurses on Linux.
+
+To add graphics, link libadvanced and ensure SDL2 is available. Enable SUPPORT_GRAPHICS.
+
+## 5. CUSTOM BUILD CONFIGURATIONS
+
+The feature gate system allows creating custom configurations for specific deployment scenarios:
+
+### Educational Classroom Build
+
+An educational build includes core language, help, and testing, but disables system access:
+
+```bash
+cmake .. -DSUPPORT_FILES=OFF \
+         -DSUPPORT_TASK=OFF \
+         -DSUPPORT_NET=OFF \
+         -DSUPPORT_MODULE=OFF
+```
+
+This produces an interpreter where students can write and test programs but cannot access the filesystem, network, or external modules. Combine with `--security=3` (EDUCATIONAL) at runtime for additional restrictions.
+
+### IoT Sensor Platform Build
+
+A sensor platform needs file I/O and networking but not graphics or the editor:
+
+```bash
+cmake .. -DBASIC_LITE_BUILD=ON \
+         -DSUPPORT_GRAPHICS=OFF \
+         -DSUPPORT_EDITOR=OFF \
+         -DSUPPORT_BIOS=OFF
+```
+
+### CI/CD Pipeline Build
+
+A pipeline build produces only the bs batch runner with minimal dependencies:
+
+```bash
+cmake .. --target bs \
+         -DSUPPORT_GRAPHICS=OFF \
+         -DSUPPORT_EDITOR=OFF \
+         -DSUPPORT_BIOS=OFF
+```
+
+## 6. BINARY SIZE CONSIDERATIONS
+
+The full baspp standard edition with all features compiles to approximately 2-4 MB depending on the platform and optimization level. A minimal embedded build compiles to under 64 KB. The primary size contributors are:
+
+- The lexer keyword table (grows with keyword count)
+- The statement dispatch table (one function pointer per keyword)
+- The expression evaluator function library
+- The HELP text database (significant; disable SUPPORT_HELP to exclude)
+- The BGI rasterizer and font data (disable SUPPORT_GRAPHICS to exclude)
+- The BIOS emulation tables (disable SUPPORT_BIOS to exclude)
+
+Compile with -Os (optimize for size) rather than -O2 (optimize for speed) when binary size is critical.

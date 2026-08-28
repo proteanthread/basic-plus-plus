@@ -1,0 +1,24 @@
+ACOS Arccosine Trigonometric Function
+======================================================================
+
+The ACOS function computes the inverse cosine of an expression in
+radians.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    radians# = ACOS(numeric_expression)
+
+
+DOMAIN
+----------------------------------------------------------------------
+
+  - -1.0 <= x <= 1.0 (Error 5 if outside domain).
+  - Returns range: 0 to PI radians.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT ACOS(1.0)   : REM Outputs 0

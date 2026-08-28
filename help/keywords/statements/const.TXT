@@ -1,0 +1,19 @@
+BASIC++ STATEMENT REFERENCE: CONST
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  CONST constname = expression [, constname2 = expression2 ...]
+
+Declares named immutable constants whose values cannot be altered during
+program execution.
+
+2. PARAMETERS
+- constname: The constant identifier.
+- expression: Literal value or constant expression.
+
+3. ERROR CODES
+- Error 17: Cannot assign to constant.
+- Error 10 (ERR_DUPLICATE_DEFINITION): Duplicate constant declaration.
+
+4. EXAMPLES
+  10 CONST MAX_SIZE = 1024, TITLE$ = "Network Server"

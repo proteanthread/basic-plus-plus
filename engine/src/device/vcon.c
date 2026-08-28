@@ -1,86 +1,23 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file vcon.c
- * @brief Virtual Console (`CON:`) 2D cell matrix, cursor, and ANSI terminal renderer implementation.
- *
- * 1. WHAT IT DOES:
- *    Implements virtual console operations (`vcon_create()`, `vcon_write_char()`, `vcon_puts()`, `vcon_locate()`, `vcon_cls()`,
- *    `vcon_set_color()`), maintaining the 80x25 / 80x50 character back-buffer matrix, scrolling on bottom-line overflow,
- *    and rendering ANSI color escape codes to physical terminals via `plat_console`.
- *
- * 2. WHY IT EXISTS:
- *    Renders console output deterministically across Windows Console, Linux PTYs, ANSI serial terminals, and embedded consoles
- *    without relying on external library dependencies like NCurses.
- *
- * 3. WHY IT WORKS THIS WAY:
- *    Allocates `VConCell` matrix (`cols * rows`) initialized to space characters with default attributes. Updates cursor position
- *    and handles special control characters (`\n`, `\r`, `\t`, `\b`).
- *
- * 4. DEPENDENCIES & COMPILATION:
- *    - Required Headers: `device/vcon.h`, `platform/plat_console.h`, `types/errors.h`
- *    - CMake Target: Part of `vcon` micro-library target in `engine/CMakeLists.txt`.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- *    - Included in `baspp`, `bpp`, and `bs`.
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- *    - To change tab stop width (default 8): adjust `VCON_TAB_SIZE`.
- *    - To alter scroll buffer behavior (top-line scroll vs wrapping): update `vcon_scroll_up()`.
- *
- * 7. WHAT CANNOT BE CHANGED:
- *    - 1-based indexing interface mapping for `vcon_locate(row, col)`.
- *    - Matrix bounds checking preventing out-of-buffer writes.
- *
- * 8. WHAT TO EXPECT:
- *    - `vcon_write_char()` automatically advances cursor column and scrolls when reaching row end.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- *    - Inspect cursor row (`vcon->cursor_row`) and column (`vcon->cursor_col`) boundaries.
- *    - Verify memory allocation size `cols * rows * sizeof(VConCell)` in `vcon_create()`.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- *     - `VConContext` pointer initialized via `vcon_create()`.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- *     - Strict C17 compliance (`-std=c17`).
- *     - Pure 7-bit ASCII text output.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- *     Prerequisite Source Files:
- *     - engine/src/platform/plat_console.c
- *     Prerequisite Header Files:
- *     - engine/include/device/vcon.h
- *     - engine/include/platform/plat_console.h
- *     - engine/include/types/errors.h
- */
-
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file vdev_vcon.c
- * @brief Virtual Consoles & Virtual Terminals (VCON/VTERM) implementation.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements character formatting, screen scrolling, and basic
- *   ANSI escape parsing on virtual consoles.
- * - Why it exists: Provides independent visual console states for multi-screen displays.
- * - Why it works this way: It buffers chars, handles wraps, and updates virtual cursor grids.
- */
+// FILENAME: vcon.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libcore, libengine, libkernel
+// NEEDS: libcore (alloc.h, alloc.c, ctype.h, ctype.c, hal.h)
+// NEEDS: libcore (memops.h, memops.c, num_parse.h, num_parse.c)
+// NEEDS: libcore (snprintf.h, snprintf.c, strops.h, strops.c)
+// NEEDS: libkernel (vcon.h)
+// Implements virtual device and graphics rendering logic for vcon.
+//
+// ---- Includes ----
 
 #include "device/vcon.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "runtime/conv/num_parse.h"
+#include "runtime/format/snprintf.h"
+#include "hal/hal.h"
 
 struct VConContext {
     BppVirtualConsole consoles[VCON_MAX_CONSOLES];
@@ -90,18 +27,23 @@ struct VConContext {
 static void vcon_init_single(BppVirtualConsole *vc) {
     vc->cursor_row = 0;
     vc->cursor_col = 0;
-    vc->current_color = 7; /* Standard grey */
+    vc->current_color = 7; // Standard grey
     vc->ansi_state = false;
     vc->ansi_len = 0;
-    memset(vc->grid, ' ', sizeof(vc->grid));
-    memset(vc->attribs, 7, sizeof(vc->attribs));
+    runtime_memset(vc->grid, ' ', sizeof(vc->grid));
+    runtime_memset(vc->attribs, 7, sizeof(vc->attribs));
 }
 
 VConContext *g_vcon_context = NULL;
 
 VConContext *vcon_init(void) {
-    VConContext *ctx = (VConContext *)calloc(1, sizeof(VConContext));
+    HalContext *hal = hal_get();
+    VConContext *ctx = NULL;
+    if (hal && hal->mem.alloc) {
+        ctx = (VConContext *)hal->mem.alloc(sizeof(VConContext));
+    }
     if (!ctx) return NULL;
+    runtime_memset(ctx, 0, sizeof(VConContext));
     ctx->active_index = 0;
     for (int i = 0; i < VCON_MAX_CONSOLES; ++i) {
         vcon_init_single(&ctx->consoles[i]);
@@ -115,9 +57,13 @@ void vcon_shutdown(VConContext *ctx) {
         if (g_vcon_context == ctx) {
             g_vcon_context = NULL;
         }
-        free(ctx);
+        HalContext *hal = hal_get();
+        if (hal && hal->mem.free) {
+            hal->mem.free(ctx);
+        }
     }
 }
+
 
 bool vcon_select(VConContext *ctx, int index) {
     if (!ctx || index < 0 || index >= VCON_MAX_CONSOLES) return false;
@@ -141,29 +87,29 @@ void vcon_get_cursor(VConContext *ctx, int index, int *row, int *col) {
 }
 
 static void vcon_scroll(BppVirtualConsole *vc) {
-    /* Shift rows up */
+    // Shift rows up
     for (int r = 0; r < VCON_ROWS - 1; ++r) {
-        memcpy(vc->grid[r], vc->grid[r + 1], VCON_COLS);
-        memcpy(vc->attribs[r], vc->attribs[r + 1], VCON_COLS);
+        runtime_memcpy(vc->grid[r], vc->grid[r + 1], VCON_COLS);
+        runtime_memcpy(vc->attribs[r], vc->attribs[r + 1], VCON_COLS);
     }
-    /* Clear bottom row */
-    memset(vc->grid[VCON_ROWS - 1], ' ', VCON_COLS);
-    memset(vc->attribs[VCON_ROWS - 1], vc->current_color, VCON_COLS);
+    // Clear bottom row
+    runtime_memset(vc->grid[VCON_ROWS - 1], ' ', VCON_COLS);
+    runtime_memset(vc->attribs[VCON_ROWS - 1], vc->current_color, VCON_COLS);
     vc->cursor_row = VCON_ROWS - 1;
 }
 
 static void parse_ansi_cmd(BppVirtualConsole *vc, char cmd, int *params, int param_count) {
     switch (cmd) {
-        case 'J': /* Clear Screen */
+        case 'J': // Clear Screen
             if (param_count > 0 && params[0] == 2) {
-                memset(vc->grid, ' ', sizeof(vc->grid));
-                memset(vc->attribs, vc->current_color, sizeof(vc->attribs));
+                runtime_memset(vc->grid, ' ', sizeof(vc->grid));
+                runtime_memset(vc->attribs, vc->current_color, sizeof(vc->attribs));
                 vc->cursor_row = 0;
                 vc->cursor_col = 0;
             }
             break;
         case 'H':
-        case 'f': /* Cursor position */
+        case 'f': // Cursor position
             {
                 int r = (param_count > 0) ? params[0] - 1 : 0;
                 int c = (param_count > 1) ? params[1] - 1 : 0;
@@ -206,18 +152,18 @@ static void handle_ansi(BppVirtualConsole *vc, char c) {
         vc->ansi_buf[vc->ansi_len] = '\0';
     }
 
-    if (isalpha((unsigned char)c)) {
-        /* End of sequence. Parse parameters */
+    if (runtime_isalpha((unsigned char)c)) {
+        // End of sequence. Parse parameters
         vc->ansi_state = false;
         int params[8];
         int param_count = 0;
         char *p = vc->ansi_buf;
-        if (*p == '[') p++; /* skip bracket */
+        if (*p == '[') p++; // skip bracket
 
         while (*p && param_count < 8) {
-            if (isdigit((unsigned char)*p)) {
-                params[param_count++] = (int)strtol(p, NULL, 10);
-                while (*p && isdigit((unsigned char)*p)) p++;
+            if (runtime_isdigit((unsigned char)*p)) {
+                params[param_count++] = (int)runtime_strtoll(p, NULL, 10);
+                while (*p && runtime_isdigit((unsigned char)*p)) p++;
             } else {
                 p++;
             }
@@ -235,7 +181,7 @@ void vcon_write_char(VConContext *ctx, int index, int c) {
         return;
     }
 
-    if (c == 27) { /* ESC */
+    if (c == 27) { // ESC
         vc->ansi_state = true;
         vc->ansi_len = 0;
         vc->ansi_buf[0] = '\0';
@@ -263,7 +209,7 @@ void vcon_write_char(VConContext *ctx, int index, int c) {
         return;
     }
 
-    /* Print character */
+    // Print character
     vc->grid[vc->cursor_row][vc->cursor_col] = (char)c;
     vc->attribs[vc->cursor_row][vc->cursor_col] = vc->current_color;
     vc->cursor_col++;
@@ -331,8 +277,8 @@ void vcon_clear_screen(VConContext *ctx, int index, int mode) {
         vc->current_color = (uint8_t)(((mode & 0x0F) << 4) | (vc->current_color & 0x0F));
     }
     if (mode == -1 || mode == -3 || (mode >= 0 && mode <= 15)) {
-        memset(vc->grid, ' ', sizeof(vc->grid));
-        memset(vc->attribs, vc->current_color, sizeof(vc->attribs));
+        runtime_memset(vc->grid, ' ', sizeof(vc->grid));
+        runtime_memset(vc->attribs, vc->current_color, sizeof(vc->attribs));
         vc->cursor_row = 0;
         vc->cursor_col = 0;
     }
@@ -361,7 +307,7 @@ bool vcon_get_key_labels_visible(VConContext *ctx) {
 void vcon_set_key_label(VConContext *ctx, int key_idx, const char *text) {
     (void)ctx;
     if (key_idx >= 1 && key_idx <= 10 && text) {
-        snprintf(g_key_labels[key_idx - 1], sizeof(g_key_labels[key_idx - 1]), "%d%.13s", key_idx, text);
+        runtime_snprintf(g_key_labels[key_idx - 1], sizeof(g_key_labels[key_idx - 1]), "%d%.13s", key_idx, text);
     }
 }
 
@@ -372,4 +318,5 @@ const char *vcon_get_key_label(VConContext *ctx, int key_idx) {
     }
     return "";
 }
+
 

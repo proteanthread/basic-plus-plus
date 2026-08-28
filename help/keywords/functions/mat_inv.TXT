@@ -1,0 +1,17 @@
+MAT_INV Matrix Inversion Function & Statement
+======================================================================
+
+The MAT INV statement computes the matrix inverse of a non-singular
+square matrix.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    MAT B = INV(A)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 MAT B = INV(A) : PRINT "Determinant: "; DET

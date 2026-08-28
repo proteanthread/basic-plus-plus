@@ -1,0 +1,28 @@
+FILEMOD$ File Modification Formatted Timestamp Function
+=======================================================
+
+Returns the last modification date and time of a file as a formatted ISO 8601 string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    t$ = FILEMOD$(filename$)
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 53 (ERR_FILE_NOT_FOUND): File does not exist.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Formatted as YYYY-MM-DD HH:MM:SS.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Last modified: "; FILEMOD$("MAIN.BAS")

@@ -1,0 +1,31 @@
+LINE Graphics Line & Box Drawing Statement
+==========================================
+
+Draws lines, rectangles, and solid filled boxes on the graphics screen, or reads full lines of text.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    LINE [[(x1%, y1%)]-(x2%, y2%) [, [color%] [, [B | BF] [, style%]]]]
+    LINE INPUT [;] ["prompt";] string_var$
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Coordinates outside screen resolution.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  B draws hollow outline; BF draws solid filled box.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SCREEN 12
+    20 LINE (50, 50)-(200, 150), 14, B  : REM Yellow rectangle
+    30 LINE (220, 50)-(370, 150), 10, BF : REM Filled green box

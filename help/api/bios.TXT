@@ -1,0 +1,24 @@
+C17 API REFERENCE: PC BIOS VIRTUALIZATION (bios/bios.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The BIOS Virtualization Subsystem provides freestanding PC/XT/AT/PCjr
+system firmware emulation, x86 software interrupt dispatch (INT 10h..1Ah),
+BDA (BIOS Data Area) state tracking, and CRTC register simulation.
+
+2. KEY TYPES & STRUCTS
+- BiosModel: IBM_PC, IBM_XT, IBM_AT, IBM_PCJR.
+- BiosRegisters: 16-bit real-mode register set (AX, BX, CX, DX, SI, DI, SP, BP, FLAGS).
+- BiosContext: Opaque BIOS subsystem state.
+
+3. CORE API FUNCTIONS
+- bios_init(model) -> BiosContext *
+- bios_shutdown(ctx)
+- bios_reset(ctx)
+- bios_interrupt(ctx, int_num, regs) -> bool
+- bios_get_bda(ctx) -> uint8_t *
+- bios_timer_tick(ctx)
+
+4. ARCHITECTURAL INVARIANTS
+- Freestanding ISO C17 code with zero libc dependencies.
+- BDA video registers reflect cursor positions, columns, and timer ticks.

@@ -1,449 +1,93 @@
-# BASIC++ Systems Programming Guide
-## Developing System Applications, Drivers, and Operating Systems
+# BASIC++ v6.5.2 Systems Programming
 
-## Table of Contents
+## 1. OVERVIEW
 
-  1. Overview: Why Systems Programming in BASIC++?
-  2. The Transpilation Engine (C89 Code Generation)
-  3. Direct Memory Manipulation (PEEK, POKE, DEF SEG, VARPTR)
-  4. The Virtual Device Layer (VDev) as a Driver Model
-  5. Writing System Applications & Utilities
-  6. Designing an Operating System in BASIC++
-  7. Practical Code Examples
-     - Example A: Register and MMIO Manipulation
-     - Example B: Custom Hardware VDev Driver in C
-     - Example C: Minimal Bootable "Hello Kernel" Shim
-  8. Memory Budgets and Constraints
-  9. Limitations and Best Practices
- 10. Related Documents
+BASIC++ provides systems-level access through virtual device interfaces, memory manipulation statements, BIOS emulation, and direct hardware interaction. These facilities allow BASIC++ programs to perform tasks traditionally reserved for C or assembly language, while maintaining the interpreter's safety guarantees through the virtual device and security layers.
 
+## 2. POKE AND PEEK
 
-## 1. Overview: Why Systems Programming in BASIC++?
-
-Historically, BASIC has been seen as a high-level, interpreted language
-designed primarily for beginners. However, BASIC++ contains architectural
-features that enable it to be used as a powerful systems programming
-language:
-
-  - Zero-Dependency Transpiler: The `COMPILE` directive translates
-    BASIC++ programs into self-contained ANSI C89 code, allowing it to
-    target bare-metal platforms, microcontrollers, and kernel-space
-    environments with no dynamic link runtime or interpreter overhead.
-  - Direct Hardware Access: Low-level memory keywords (`PEEK`, `POKE`,
-    `DEF SEG`, and `VARPTR`) enable direct interaction with register
-    spaces, memory-mapped I/O (MMIO), and framebuffers.
-  - Device Virtualization: The virtual device (`VDev`) framework
-    provides an interface for writing hardware drivers, allowing
-    standard BASIC I/O statements (`OPEN`, `PRINT #`, `INPUT #`, `CLOSE`)
-    to read and write to peripheral hardware (GPIO, I2C, SPI, UART).
-  - Configurable Security Sandboxing: A built-in three-level security
-    sandbox can lock down programs to secure user-space boundaries.
-
-By combining the fast development speed of BASIC with the target efficiency
-of the C89 compiler backend, developers can write everything from low-level
-system tools to custom operating system kernels.
-
-
-## 2. The Transpilation Engine (C89 Code Generation)
-
-Writing systems software requires speed and direct hardware control. Running
-an interpreter in kernel space or on a bare-metal microcontroller has too much
-overhead. BASIC++ solves this via its native compiler/transpiler.
-
-### 2.1 The COMPILE Command
-The `COMPILE` command takes the BASIC++ program currently loaded in
-the interpreter's memory and outputs a standalone C89 source file:
+POKE address, value writes a byte (0-255) to the specified address in the BIOS emulation memory space. PEEK(address) reads a byte from that address:
 
 ```basic
-10 PRINT "Initializing Hardware..."
-20 POKE &H3F8, 65  ' Write 'A' to serial port COM1
-30 END
-COMPILE "system_utility.c"
+10 POKE &H0449, 3       ' Set BIOS video mode to 3 (80x25 text)
+20 Mode = PEEK(&H0449)  ' Read current video mode
+30 PRINT "Video mode:"; Mode
 ```
 
-The output file `system_utility.c` is pure ANSI C89. It does not require
-the interpreter code to be compiled alongside it. Instead, it embeds a tiny
-C runtime shim containing helper functions for GOSUB stack management, string
-buffers, and BASIC I/O emulation.
+The BIOS memory space mirrors the IBM PC memory layout. Key addresses include the BIOS Data Area (0x0400-0x04FF), video RAM (0xB8000 for text mode, 0xA0000 for graphics mode), and the interrupt vector table (0x0000-0x03FF).
 
-### 2.2 Compilation Pipeline
-To build a system binary:
+POKE and PEEK operate on the virtual BIOS memory, not on the host system's physical memory. They are safe to use and cannot corrupt the host operating system.
 
-1. Transpile to C source using the interpreter:
-   ```bash
-   basicpp -c myprog.bas -o myprog.c
-   ```
-2. Compile with a target toolchain:
-   - **For User-Space Utilities (Linux/GCC)**:
-     ```bash
-     gcc -O2 -Wall -o myprog myprog.c -lm
-     ```
-   - **For Bare-Metal/Microcontrollers (Pico/ARM)**:
-     ```bash
-     arm-none-eabi-gcc -O2 -nostdlib -T link.ld -o kernel.elf myprog.c
-     ```
+## 3. INP AND OUT
 
-
-## 3. Direct Memory Manipulation (PEEK, POKE, DEF SEG, VARPTR)
-
-To write drivers and low-level code, you must read and write to specific
-memory locations. BASIC++ provides four primary instructions for this.
-
-### 3.1 PEEK and POKE
-- `PEEK(address)` returns a single-byte value stored at the target address.
-- `POKE address, value` writes a single byte to the target address.
-
-By default, in the interpreted environment, these operate on a 64 KB
-virtual memory segment emulating retro address space (`MAX_MEM_SEGMENT`).
-However, when compiled or configured for real systems work, they can be
-bound directly to physical address space.
-
-### 3.2 DEF SEG
-`DEF SEG = segment_address` sets the segment prefix for subsequent
-`PEEK` and `POKE` commands. This mimics the classic x86 real-mode segment
-addressing model.
-- Setting `DEF SEG = 0` (default) references standard offset memory.
-- In systems applications, `DEF SEG` can be used to switch between memory
-  banks, peripheral MMIO regions, or physical page directories.
-
-### 3.3 VARPTR
-`VARPTR(variable)` returns a numeric offset/pointer index representing where
-the variable is located in the internal variable storage table. This allows
-developers to pass references to variables or arrays to C modules and system
-APIs.
-
-### 3.4 DEF USR Addresses
-
-BASIC++ supports up to 10 user-defined machine language function addresses
-(USR0 through USR9), stored in the `usr_addresses[MAX_USR_FUNCS]` array in
-the `RuntimeState` structure.
+INP(port) reads a byte from a virtual I/O port. OUT port, value writes a byte to a virtual I/O port. These emulate the x86 IN and OUT instructions for accessing hardware registers:
 
 ```basic
-10 DEF USR0 = &HC000    ' Set USR0 address
-20 DEF USR1 = &HD000    ' Set USR1 address
-30 X = USR0(A)          ' Call USR0 with argument A
+10 OUT &H3D4, 14         ' CRT controller: cursor high byte register
+20 OUT &H3D5, 0          ' Set cursor high byte to 0
+30 OUT &H3D4, 15         ' CRT controller: cursor low byte register
+40 OUT &H3D5, 80         ' Set cursor low byte to 80 (position 80)
 ```
 
-The `MAX_USR_FUNCS` constant is set to 10 in `runtime.h`.
+Like POKE/PEEK, INP/OUT operate on virtualized ports and do not access real hardware.
 
-### 3.5 DEFTYPE Map
+## 4. BIOS INTERRUPT CALLS
 
-The `deftype_map[26]` array (A-Z) in `RuntimeState` tracks default variable
-types set by `DEFINT`, `DEFSNG`, `DEFDBL`, and `DEFSTR` statements.
+The BIOS emulation subsystem (engine/src/bios/) provides virtual implementations of IBM PC BIOS interrupts:
 
-| Constant | Value | Type |
-|----------|-------|------|
-| `DEFTYPE_NONE` | 0 | No default (variant) |
-| `DEFTYPE_INT` | 1 | Integer |
-| `DEFTYPE_SNG` | 2 | Single-precision |
-| `DEFTYPE_DBL` | 3 | Double-precision |
-| `DEFTYPE_STR` | 4 | String |
+- **INT 10h** — Video services (mode setting, cursor, character output, scrolling).
+- **INT 13h** — Disk services (read/write sectors, disk parameters).
+- **INT 16h** — Keyboard services (read key, check buffer, shift state).
+- **INT 1Ah** — Time services (read/set clock, read date).
+
+Programs that use POKE/PEEK to manipulate BIOS data area registers trigger the appropriate BIOS service routines through the BiosVRAMObserver callback mechanism. Writing to video RAM addresses (0xB8000-0xBFFFF for text, 0xA0000-0xAFFFF for graphics) updates the virtual display.
+
+## 5. SYS AND USR
+
+SYS address calls a machine-language subroutine at the specified address in the BIOS emulation space. This is used for PC-compatible programs that expect to call ROM routines.
+
+USR(n) calls a user-defined machine language function registered at slot n. USR functions receive a single numeric argument and return a numeric result. On modern builds, USR functions are implemented as C callbacks registered through the host interop layer.
+
+## 6. VARPTR AND VARPTR$
+
+VARPTR(variable) returns the internal address of a variable in the variable table. VARPTR$(variable) returns a string representation of the variable's internal descriptor.
+
+These functions are primarily used for passing variable addresses to machine-language routines and for debugging the variable system. They do not return host memory addresses — the addresses are internal to the BASIC++ variable manager.
+
+## 7. MEMORY MANAGEMENT
+
+CLEAR resets all variables to their default values (zero for numeric, empty string for strings) and optionally sets the string heap size:
 
 ```basic
-10 DEFINT A-M         ' Variables A through M default to integer
-20 DEFSTR N-Z         ' Variables N through Z default to string
+10 CLEAR               ' Reset all variables
+20 CLEAR , 50000        ' Reset and set string heap to 50000 bytes
 ```
 
+FRE(0) returns the free string heap space. FRE(-1) returns the largest contiguous free block. FRE(-2) returns free variable space. FRE("") forces a garbage collection pass on the string heap and returns the free space after collection.
 
-## 4. The Virtual Device Layer (VDev) as a Driver Model
+## 8. PROCESS CONTROL
 
-The Virtual Device (`VDev`) layer (defined in `source/vdev.h`) is the primary
-abraction boundary for hardware interaction. Instead of hardcoding hardware
-access, BASIC++ routes file-like syntax through a device registry.
+SYSTEM exits the interpreter and returns to the operating system. SYSTEM n sets the exit code. BYE is an alias for SYSTEM.
 
-### 4.1 Device Classes (`VDCLASS`)
-Devices are registered with specific classes that indicate their capabilities:
+SHELL "command" spawns a child process to execute the command. SHELL with no argument opens an interactive shell.
 
-  Class Name        ID    Purpose
-  ----------        --    -------
-  `VDCLASS_CON`      1    Console screen and keyboard
-  `VDCLASS_ERR`      2    System error output
-  `VDCLASS_FILE`     3    Storage file streams
-  `VDCLASS_LPT`      4    Printer output
-  `VDCLASS_GPIO`     7    Digital general-purpose I/O pins
-  `VDCLASS_I2C`      8    Inter-Integrated Circuit communication bus
-  `VDCLASS_SPI`      9    Serial Peripheral Interface bus
-  `VDCLASS_SENSOR`  10    Sensors (accelerometer, temperature, etc.)
-  `VDCLASS_DISPLAY` 11    LCD, OLED, and TFT graphic screens
-  `VDCLASS_STORAGE` 12    Block storage devices (SD cards, Flash chips)
+ENVIRON "VAR=VALUE" sets an environment variable. ENVIRON$("VAR") reads one.
 
-### 4.2 Standard Driver Callbacks
-Every custom driver registered in the `VDev` table implements a simple set
-of function pointers in C:
+HOSTNAME$ returns the machine's hostname. USERNAME$ returns the current user's login name. PATH$ returns the system PATH.
 
-```c
-struct VDev {
-    const char *name;
-    int dev_class;
-    int dev_caps;
-    int (*dev_open)(struct VDev *d, const char *path, int mode);
-    int (*dev_close)(struct VDev *d);
-    int (*dev_read)(struct VDev *d);
-    int (*dev_write)(struct VDev *d, int ch);
-    int (*dev_ioctl)(struct VDev *d, int cmd, void *arg);
-    void *user_data;
-};
-```
+## 9. DATE AND TIME
 
-### 4.3 Using Drivers in BASIC++
-Once a driver is registered, BASIC++ code accesses it using uniform file commands:
+DATE$ returns the current date as "MM-DD-YYYY". TIME$ returns the current time as "HH:MM:SS". CLOCK$ returns a full timestamp. TIMER returns seconds since midnight as a double-precision value. TICKS returns the system tick count.
+
+DATE$ and TIME$ can be assigned to set the system clock (on platforms that allow it and at security levels that permit it):
 
 ```basic
-10 OPEN "GPIO17:" FOR OUTPUT AS #1
-20 PRINT #1, "1"  ' Set pin 17 HIGH
-30 CLOSE #1
+10 DATE$ = "12-25-2026"
+20 TIME$ = "00:00:00"
 ```
 
+## 10. RANDOM NUMBER GENERATION
 
-## 5. Writing System Applications & Utilities
+RANDOMIZE seeds the pseudo-random number generator. RANDOMIZE TIMER uses the current time as a seed. RANDOMIZE n uses a specific seed for reproducible sequences. RND returns the next pseudo-random number between 0 (inclusive) and 1 (exclusive).
 
-You can write system utilities, command-line interfaces (CLIs), and background
-daemons using BASIC++.
-
-### 5.1 Shell Integration and Capture
-BASIC++ provides direct interaction with the host operating system shell:
-- `SHELL "command"` executes a command synchronously, displaying its output to
-  the console.
-- `SHELL$("command")` executes the command and captures its standard output
-  directly into a BASIC++ string variable.
-- `ERRORLEVEL` is a read-only variable that returns the exit code of the last
-  command run via `SHELL` or `EXEC`.
-
-Example CLI tool template:
-```basic
-10 INPUT "Directory to search: "; DIR$
-20 IF NOT EXIST(DIR$) THEN PRINT "Directory does not exist": END
-30 A$ = SHELL$("dir " + DIR$)
-40 PRINT "Found output:"
-50 PRINT A$
-```
-
-### 5.2 Environment Variables
-The operating system environment is accessible via:
-- `ENVIRON$("VARIABLE")` to fetch an environment variable.
-- `ENVIRON "NAME=VALUE"` to write or overwrite an environment variable.
-
-### 5.3 System Information
-The `SYSTEM` function can be used to query basic platform metrics:
-- `SYSTEM "OS"` returns the operating system name (e.g. `WINDOWS`, `LINUX`, `FREEDOS`).
-- `SYSTEM "ARCH"` returns the processor architecture (e.g. `X86_64`, `ARM64`).
-
-
-## 6. Designing an Operating System in BASIC++
-
-Creating a complete operating system with BASIC++ involves combining a tiny,
-bare-metal boot assembly/C loader with transpiled BASIC++ applications.
-
-```
-┌───────────────────────────────────────────────┐
-│              BASIC++ User Apps                │  (Restricted Security Sandbox)
-├───────────────────────────────────────────────┤
-│            Transpiled BASIC++ Kernel          │  (Open Security Level 0)
-├───────────────────────────────────────────────┤
-│      C Startup / Interrupt Service Routine     │  (Hardware Layer)
-├───────────────────────────────────────────────┤
-│                  Bare Metal                   │  (x86 / ARM Hardware)
-└───────────────────────────────────────────────┘
-```
-
-### 6.1 The Boot Pipeline
-1. **Bootloader**: The system powers on and executes a bootloader (e.g., GRUB
-   on x86 using Multiboot, or U-Boot on ARM).
-2. **C Startup code (`crt0.s` / `main.c`)**: Initializes the system stack, sets
-   up Page Tables, enables Interrupts (IDT/GDT), and maps basic physical memory.
-3. **The BASIC++ Kernel**: The main function loops and hands control to the
-   transpiled C program representing the BASIC kernel.
-
-### 6.2 Low-level Interrupt Vector Mapping
-Hardware interrupts (like keyboard press, timer ticks, disk readiness) can be
-handled by mapping physical vectors to C callbacks. The C interrupt service routine
-(ISR) can write event flags to shared memory which is then read by the BASIC
-program via `PEEK` or monitored via standard BASIC event trapping statements
-(e.g., `ON TIMER`, `ON KEY`).
-
-### 6.3 User Space Sandboxing and Security
-An OS written in BASIC++ can run user programs written in BASIC safely. By
-utilizing the interpreter's built-in sandbox settings, the kernel can load and
-execute third-party code in a restricted space:
-
-```basic
-' Kernel code boots in level 0 (Full System Access)
-' Before loading user program "app.bas":
-SECURITY LEVEL 2  ' Restricts file writes, reads, network, and execution
-LOAD "app.bas"
-RUN
-```
-
-
-## 7. Practical Code Examples
-
-### Example A: Register and MMIO Manipulation
-The following code writes directly to the x86 PC serial port (COM1, base
-address `&H3F8`) to transmit a string character-by-character.
-
-```basic
-10 ' --- Send "HELLO" to COM1 serial port using direct port mapping ---
-20 COM1_BASE = &H3F8
-30 MESSAGE$ = "HELLO" + CHR$(13) + CHR$(10)
-40 FOR I = 1 TO LEN(MESSAGE$)
-50   CHAR_CODE = ASC(MID$(MESSAGE$, I, 1))
-60   ' Wait for Transmitter Holding Register (THR) Empty (Bit 5 of LSR at base + 5)
-70   WHILE (PEEK(COM1_BASE + 5) AND &H20) = 0
-85     ' Do nothing, wait for transmission buffer to be ready
-90   WEND
-100   POKE COM1_BASE, CHAR_CODE  ' Send character byte
-110 NEXT I
-120 END
-```
-
-### Example B: Custom Hardware VDev Driver in C
-This C source registers a custom LED driver slot in BASIC++'s virtual device layer
-for an embedded board.
-
-```c
-#include <stdio.h>
-#include <string.h>
-#include "vdev.h"
-
-// Simulated LED GPIO registers
-static int led_state = 0;
-
-static int led_open(VDev *d, const char *path, int mode) {
-    (void)d; (void)path; (void)mode;
-    printf("[System Log] LED device opened.\n");
-    return 0; // Success
-}
-
-static int led_write(VDev *d, int ch) {
-    (void)d;
-    if (ch == '1' || ch == 1) {
-        led_state = 1;
-        printf("[Hardware Pin] LED turned ON.\n");
-    } else {
-        led_state = 0;
-        printf("[Hardware Pin] LED turned OFF.\n");
-    }
-    return 0;
-}
-
-static int led_ioctl(VDev *d, int cmd, void *arg) {
-    (void)d;
-    if (cmd == 1) { // Read status query
-        *(int *)arg = led_state;
-        return 0;
-    }
-    return -1; // Unknown command
-}
-
-void register_led_driver(void) {
-    VDev dev;
-    memset(&dev, 0, sizeof(dev));
-    dev.name = "LED:";
-    dev.dev_class = 11; // VDCLASS_DISPLAY / Status indicator
-    dev.dev_caps = VDCAP_WRITE;
-    dev.dev_open = led_open;
-    dev.dev_write = led_write;
-    dev.dev_ioctl = led_ioctl;
-    dev.dev_description = "Onboard Status LED";
-    vdev_register(&dev);
-}
-```
-
-Once `register_led_driver()` is called during kernel startup, user programs
-can control the hardware with standard code:
-```basic
-10 OPEN "LED:" FOR OUTPUT AS #1
-20 PRINT #1, "1" : SLEEP 1
-30 PRINT #1, "0" : SLEEP 1
-40 CLOSE #1
-```
-
-### Example C: Minimal Bootable "Hello Kernel" Shim
-This is a minimalist `main.c` file that initializes a bare-metal kernel environment
-and executes the transpiled BASIC++ kernel.
-
-```c
-#include <stdio.h>
-#include "config.h"
-
-// Forward declaration of the transpiled BASIC++ entry function
-extern void program_entry(void);
-
-// Simulated hardware initialization
-void init_hardware_subsystems(void) {
-    printf("[Kernel Init] Setting up GDT and IDT...\n");
-    printf("[Kernel Init] Mapping MMIO addresses...\n");
-    printf("[Kernel Init] Initializing system timer...\n");
-}
-
-int main(void) {
-    // 1. Initialize physical hardware
-    init_hardware_subsystems();
-
-    // 2. Log system startup
-    printf("[Kernel Init] Handing execution to BASIC++ Kernel...\n\n");
-
-    // 3. Jump to the transpiled BASIC++ code block
-    program_entry();
-
-    // 4. If the BASIC program exits, halt the CPU
-    printf("\n[Kernel Halt] Kernel reached end of execution block. Halting.\n");
-    while (1) {
-        // inline assembler instruction to halt CPU
-#if defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__))
-        __asm__ __volatile__("hlt");
-#endif
-    }
-    return 0;
-}
-```
-
-
-## 8. Memory Budgets and Constraints
-
-Operating systems and system tools running on constrained target platforms
-(like x86 Real Mode or ARM Cortex chips) must be careful with RAM allocation.
-Compile-time pools in `config.h` should be configured to save space:
-
-  Resource Pool           Default Size    Recommended Embedded OS Size
-  -------------           ------------    ───────────────────────────
-  Program Storage         4,096 lines     256 - 512 lines
-  Raw Program Text Pool   64 KB           8 KB - 16 KB
-  Variable Storage Pool   64 KB           4 KB - 8 KB
-  String Allocation Pool  32 KB           4 KB - 8 KB
-  Stack Depth Pool        256 levels      32 levels
-  Virtual Memory Segment  64 KB           4 KB (Or mapped directly to RAM)
-
-A complete basic kernel shim and transpiled binary can run comfortably inside
-64 KB to 128 KB of conventional SRAM.
-
-
-## 9. Limitations and Best Practices
-
-  - **Pointer Arithmetic**: Standard BASIC variables do not support
-    traditional C pointers. Use `VARPTR` to get address offsets and pass
-    them to C modules, or use `PEEK`/`POKE` offsets under a declared segment
-    address (`DEF SEG`).
-  - **No Dynamic Allocations**: The compiler runtime maps BASIC arrays statically.
-    Avoid dynamically resizing arrays (`REDIM`) in high-frequency loop routines
-    to avoid running out of program elements.
-  - **String Allocation Limits**: The internal string pool allocates memory
-    using a pooled allocator. Reclaiming memory relies on clear program scope
-    or explicit garbage collection steps (`FRE`). Keep system string allocations
-    short (under 255 characters) to prevent memory fragmentation.
-  - **Single Dialect Focus**: For systems applications, use a single dialect
-    like `QBAS` (QBasic) to allow block structures (`SUB`, `FUNCTION`, `SELECT CASE`)
-    which keep system code modular, and enforce `OPTION STRICT` to catch variables
-    with typos.
-
-
-## 10. Related Documents
-
-  - `Transpiler.md`              BASIC++ to C89 code generation pipeline
-  - `Memory_Maps.md`             Virtual Address Space and Segment Configuration
-  - `Virtual_Devices.md`         Registering Virtual IO Devices (VDev)
-  - `Embedded_Platforms.md`      Compiling and building on Arduino/ESP32 boards
-  - `External_Modules.md`        Writing C plugins and runtime modules
-
-
-## End of Document
+The RNG uses a linear congruential generator compatible with GW-BASIC's algorithm. RND(0) repeats the last random number. RND(n) where n < 0 seeds the generator and returns the first value.

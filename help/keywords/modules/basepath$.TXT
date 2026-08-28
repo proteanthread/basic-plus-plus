@@ -1,0 +1,25 @@
+BASEPATH$ Canonical Directory Path Function
+======================================================================
+
+The BASEPATH$ function returns the canonical absolute path of the
+currently executing script or module directory.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    dir$ = BASEPATH$
+    file_path$ = BASEPATH$(relative_file$)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Resolves absolute directory of active script.
+  - Joins relative filename to script base directory.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Active Base Path: "; BASEPATH$

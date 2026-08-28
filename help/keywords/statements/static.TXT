@@ -1,0 +1,21 @@
+BASIC++ STATEMENT REFERENCE: STATIC
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  STATIC var1 [AS Type] [, var2 [AS Type] ...]
+
+Declares local procedure variables whose values persist across procedure
+invocations rather than being destroyed on exit.
+
+2. PARAMETERS
+- var: Variable identifier.
+- Type: Optional data type specification.
+
+3. ERROR CODES
+- Error 10 (ERR_DUPLICATE_DEFINITION): Duplicate variable in same procedure.
+
+4. EXAMPLES
+  10 SUB Accumulate()
+  20   STATIC Total#
+  30   Total# = Total# + 10.5
+  40 END SUB

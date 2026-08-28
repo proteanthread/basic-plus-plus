@@ -1,0 +1,16 @@
+HI High Byte / Word Extractor Function
+======================================================================
+
+The HI function extracts the high-order byte of a 16-bit integer.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    high_byte% = HI(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT HI(&HABCD)   : REM Outputs 171 (&HAB)

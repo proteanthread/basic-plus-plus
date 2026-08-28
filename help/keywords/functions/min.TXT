@@ -1,0 +1,17 @@
+MIN Minimum Value Function
+======================================================================
+
+The MIN function returns the smallest value among its arguments or array.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    smallest = MIN(val1, val2 [, val3, ...])
+    smallest = MIN(array())
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT MIN(50, 20, 80)   : REM Outputs 20

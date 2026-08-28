@@ -1,74 +1,125 @@
-/**
- * @file load.c
- * @brief LOAD filename_expr [, R] program source loading statement handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements LOAD filename_expr [, R] statement handler for reading program source files from disk into active VM memory.
- *
- * 2. WHY IT EXISTS:
- * Loads BASIC++ source programs from disk storage into the VM buffer for interactive editing or immediate execution per GW-BASIC / QBASIC standards.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Clears existing VM memory state via vm_clear_variables(), opens target file, reads line-by-line into VM source buffer, and optionally executes immediately if ',R' option flag set.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_load'. Includes "statements/program/load.h",
- * "types/errors.h", "vm/vm.h", "lexer/lexer.h", "eval/eval.h", "device/vdev.h", "security/security.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Fully included in libbasicpp (baspp) and libbasicpp_lite (bpp, bs) per Rule #1 (Core Included).
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support detokenizing legacy GW-BASIC binary file formats (.BAS tokenized files) or project workspace files.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Bounded file reading: Open files MUST use bounded path buffers and check for ERR_FILE_NOT_FOUND (Error 53) per Rule #1.
- *
- * 8. WHAT TO EXPECT:
- * Loads source program into VM, resets program pointer, and returns ERR_NONE or ERR_FILE_NOT_FOUND.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify file path opening routines and source line buffer allocation limits.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Cross-platform path handling.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/statements/program/clear.c
- * - engine/src/vm/vm_context.c
- * Prerequisite Header Files:
- * - engine/include/statements/program/load.h
- * - engine/include/vm/vm.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: load.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, memory.h, memory.c)
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (strings.h, strings.c, variables.h, variables.c)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, load.h, string.c, vm.h)
+// NEEDS: libkernel (errors.h, security.h, security.c, vdev.h, vdev.c)
+// Provides runtime implementation for the LOAD statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "statements/program/load.h"
 #include "types/errors.h"
 #include "vm/vm.h"
 #include "lexer/lexer.h"
 #include "eval/eval.h"
+#include "memory/memory.h"
+#include "runtime/variables.h"
+#include "runtime/strings.h"
 #include "device/vdev.h"
 #include "security/security.h"
 #include "runtime/micro_lib_metadata.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
 
 BppError stmt_load_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
+    if (!vm || !lex) {
+        err.code = ERR_ILLEGAL_FUNCTION_CALL;
+        return err;
+    }
+
+    BValue fn_val = eval_expression(vm, lex, &err);
+    if (err.code != 0) {
+        return err;
+    }
+    if (fn_val.type != VAL_STRING || !fn_val.as.string) {
+        if (fn_val.type == VAL_STRING && fn_val.as.string) {
+            str_release(vm_get_str(vm), fn_val.as.string);
+        }
+        err.code = ERR_TYPE_MISMATCH;
+        return err;
+    }
+
+    const char *filename = str_data(fn_val.as.string);
+    bool run_after = false;
+
+    BppToken tok = lex_peek(lex);
+    if (tok.type == TOK_COMMA) {
+        lex_next(lex);
+        tok = lex_peek(lex);
+        if (tok.type == TOK_IDENT && tok.length == 1 && (tok.start[0] == 'R' || tok.start[0] == 'r')) {
+            lex_next(lex);
+            run_after = true;
+        }
+    }
+
+    mem_program_clear(vm_get_mem(vm));
+    if (!run_after) {
+        var_clear_all(vm_get_var(vm));
+    }
+    vm_reset_for_run(vm);
+
+    BppError load_err = vm_load_program_file(vm, filename);
+    str_release(vm_get_str(vm), fn_val.as.string);
+    if (load_err.code != 0) {
+        return load_err;
+    }
+
+    if (run_after) {
+        vm_run_program(vm);
+    }
     return err;
 }
 
-BppError stmt_merge_handler(VMContext *vm, LexerContext *lex) {
-    BppError err;
-    memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
-    return err;
+static void vm_process_include_line(VMContext *vm, BppLineNumber base_line, const char *line) {
+    const char *p = strstr(line, "$INCLUDE");
+    if (!p) return;
+    p += 8;
+    while (*p == ':' || isspace((unsigned char)*p)) p++;
+    char quote = *p;
+    if (quote != '\'' && quote != '"') return;
+    p++;
+    char inc_path[256];
+    size_t k = 0;
+    while (*p && *p != quote && k < sizeof(inc_path) - 1) {
+        inc_path[k++] = *p++;
+    }
+    inc_path[k] = '\0';
+    if (k > 0) {
+        FILE *ifp = fopen(inc_path, "r");
+        if (ifp) {
+            char inc_line[1024];
+            int inc_idx = 1;
+            while (fgets(inc_line, sizeof(inc_line), ifp)) {
+                size_t ilen = strlen(inc_line);
+                while (ilen > 0 && (inc_line[ilen - 1] == '\r' || inc_line[ilen - 1] == '\n')) {
+                    inc_line[--ilen] = '\0';
+                }
+                char *ip = inc_line;
+                while (isspace((unsigned char)*ip)) ip++;
+                if (*ip != '\0' && *ip != '\'') {
+                    if (isdigit((unsigned char)*ip)) {
+                        BppLineNumber lnum = (BppLineNumber)atof(ip);
+                        while (isdigit((unsigned char)*ip) || *ip == '.') ip++;
+                        while (isspace((unsigned char)*ip)) ip++;
+                        if (*ip != '\0') mem_program_store(vm_get_mem(vm), lnum, ip);
+                    } else {
+                        BppLineNumber sub_line = (base_line > 0.0) ? (base_line + (double)inc_idx * 0.0001) : (0.0001 * (double)inc_idx);
+                        mem_program_store(vm_get_mem(vm), sub_line, ip);
+                        inc_idx++;
+                    }
+                }
+            }
+            fclose(ifp);
+        }
+    }
 }
 
 BppError vm_load_program_file(VMContext *vm, const char *filename) {
@@ -78,6 +129,7 @@ BppError vm_load_program_file(VMContext *vm, const char *filename) {
         err.code = ERR_ILLEGAL_FUNCTION_CALL;
         return err;
     }
+    vm_set_current_filename(vm, filename);
     FILE *fp = fopen(filename, "r");
     if (!fp) {
         err.code = ERR_FILE_NOT_FOUND;
@@ -89,8 +141,27 @@ BppError vm_load_program_file(VMContext *vm, const char *filename) {
         while (len > 0 && (line_buf[len - 1] == '\r' || line_buf[len - 1] == '\n')) {
             line_buf[--len] = '\0';
         }
-        if (len > 0) {
-            vm_execute_line(vm, line_buf);
+        char *p = line_buf;
+        while (isspace((unsigned char)*p)) p++;
+        if (*p != '\0') {
+            BppLineNumber line_num = 0.0;
+            if (isdigit((unsigned char)*p)) {
+                line_num = (BppLineNumber)atof(p);
+            }
+            if (strstr(p, "$INCLUDE") != NULL) {
+                vm_process_include_line(vm, line_num, p);
+            }
+            if (isdigit((unsigned char)*p)) {
+                while (isdigit((unsigned char)*p) || *p == '.') p++;
+                while (isspace((unsigned char)*p)) p++;
+                if (*p == '\0') {
+                    mem_program_remove(vm_get_mem(vm), line_num);
+                } else {
+                    mem_program_store(vm_get_mem(vm), line_num, p);
+                }
+            } else {
+                vm_execute_line(vm, p);
+            }
         }
     }
     fclose(fp);

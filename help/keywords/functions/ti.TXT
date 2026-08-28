@@ -1,0 +1,18 @@
+TI System Timer Ticks Function
+======================================================================
+
+The TI function returns the 60Hz tick count since power-on (Commodore
+compatible).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    t& = TI
+    t& = TI()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "TI ticks: "; TI

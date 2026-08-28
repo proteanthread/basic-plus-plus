@@ -1,0 +1,36 @@
+KEYWORD Runtime Keyword Management Statement
+======================================================================
+
+The KEYWORD statement provides programmatic control and introspection
+over the lexer's keyword dispatch table.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    KEYWORD LIST
+    KEYWORD DEFINE identifier AS existing_keyword
+    KEYWORD DISABLE identifier
+    KEYWORD RESTORE identifier
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - KEYWORD LIST: Lists active keywords in the engine.
+  - KEYWORD DEFINE: Creates new keyword token mapping.
+  - KEYWORD DISABLE: Allows using a keyword name as a normal variable.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  2           ERR_SYNTAX_ERROR      Invalid KEYWORD syntax
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 KEYWORD LIST

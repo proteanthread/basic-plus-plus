@@ -1,0 +1,16 @@
+XOR Bitwise and Logical Exclusive OR Operator
+======================================================================
+
+The XOR operator performs logical or bitwise exclusive disjunction.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result = expr1 XOR expr2
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT (5 XOR 3)   : REM Outputs 6

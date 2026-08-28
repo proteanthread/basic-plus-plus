@@ -1,0 +1,17 @@
+SECONDS Current Second Function
+======================================================================
+
+The SECONDS function returns the current second of the minute (0 to 59).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    sec% = SECONDS
+    sec% = SECONDS()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Second: "; SECONDS

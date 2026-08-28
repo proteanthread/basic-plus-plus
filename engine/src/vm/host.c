@@ -1,66 +1,22 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ — a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file host.c
- * @brief VM host interface adapter and BppHostInterface binding implementation for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements `vm_create_host_interface()` to populate a host-decoupled `BppHostInterface` struct backed by `VMContext`.
- *
- * 2. WHY IT EXISTS:
- * Connects host-agnostic statement handlers, plugins, and embedded runtimes to the real BASIC++ VM state.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Wraps VM I/O (`vdev_puts`, `vdev_putc`), variable access (`var_get_number`, `var_set_number`), and error reporting in static callback function wrappers.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "vm/host.h", "vm/vm.h",
- * "runtime/variables.h", "runtime/strings.h", "device/vdev.h", <stdio.h>, <string.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Add new function pointer wrappers to `BppHostInterface` (e.g. socket I/O, canvas rendering).
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Callback function pointer signatures in `BppHostInterface`.
- *
- * 8. WHAT TO EXPECT:
- * `vm_create_host_interface()` populates valid non-NULL callback pointers into `BppHostInterface` struct.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify `user_data` pointer validity (must be non-NULL `VMContext*`).
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized `VMContext` pointer.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. 64-bit pointer safe (`void* user_data`).
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/vm/context.c
- * - engine/src/device/vdev.c
- * - engine/src/runtime/variables.c
- * Prerequisite Header Files:
- * - engine/include/vm/host.h
- * - engine/include/vm/vm.h
- * - engine/include/runtime/variables.h
- * - engine/include/device/vdev.h
- */
+// FILENAME: host.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (memops.h, memops.c, strings.h, strings.c, strops.h, strops.c)
+// NEEDS: libcore (variables.h, variables.c)
+// NEEDS: libengine (host.h, vm.h)
+// NEEDS: libkernel (vdev.h, vdev.c)
+// Implements bytecode virtual machine execution and state for host.
+//
+// ---- Includes ----
 
 #include "vm/host.h"
 #include "vm/vm.h"
 #include "runtime/variables.h"
 #include "runtime/strings.h"
 #include "device/vdev.h"
-#include <stdio.h>
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
 
 static void host_vm_output(void *user_data, const char *text) {
     VMContext *vm = (VMContext *)user_data;
@@ -120,12 +76,12 @@ static void host_vm_set_string_var(void *user_data, const char *name, const char
     if (vm && name && val) {
         BValue *v = var_lookup(vm_get_var(vm), name, true);
         if (v) {
-            /* Release any existing string reference before overwriting */
+            // Release any existing string reference before overwriting
             if (v->type == VAL_STRING && v->as.string) {
                 str_release(vm_get_str(vm), v->as.string);
             }
             v->type = VAL_STRING;
-            v->as.string = str_create(vm_get_str(vm), val, strlen(val));
+            v->as.string = str_create(vm_get_str(vm), val, runtime_strlen(val));
         }
     }
 }

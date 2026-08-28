@@ -1,33 +1,12 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file funcreg.c
- * @brief Dynamic Function Registry system implementation.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Manages registration, overriding, counting, and retrieving callable functions.
- * - Why it exists: Provides dynamic modular vocabulary expansion securely.
- * - Why it works this way: It stores registered entries in a linear array. Lookups perform case-insensitive
- *   string matching.
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Limits on MAX_FUNCTIONS.
- * - What cannot be changed: Case-insensitive name comparisons, safety checks, and basic entry layouts.
- * - What to expect: funcreg_register copies entries by value.
- * - What to do if something breaks: Trace indices and verify that names do not contain spaces.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Standard C17.
- * - Portability concerns: Case-insensitive lookups use standard helper functions to ensure portability.
- *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Upgrade the lookup array to a hash table or binary search tree.
- * - How to write external extensions: Declare static FunctionEntry lists and call funcreg_register.
- */
+// FILENAME: funcreg.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libext
+// NEEDS: libcore (ctype.h, ctype.c, funcreg.h, string.h)
+// NEEDS: libengine (string.c)
+// Provides core logic and interface definitions for funcreg within BASIC++.
+//
+// ---- Includes ----
 
 #include "runtime/funcreg.h"
 #include <string.h>
@@ -66,10 +45,10 @@ int funcreg_register(const FunctionEntry *entry) {
         return -1;
     }
 
-    /* Check for duplicates by name */
+    // Check for duplicates by name
     for (int i = 0; i < funcreg_table_count; i++) {
         if (str_iequal(funcreg_table[i].name, entry->name)) {
-            /* Duplicate name - override the entry */
+            // Duplicate name - override the entry
             funcreg_table[i] = *entry;
             funcreg_table[i].module_name = current_registering_module;
             return 0;

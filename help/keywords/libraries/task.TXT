@@ -1,0 +1,13 @@
+task Background Task & Scheduler Subsystem (libserver)
+======================================================================
+
+The task library provides background task spawning, thread pools, and
+asynchronous message queue dispatching.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    TaskHandle task_spawn(TaskCallback cb, void *user_data);
+    void task_wait(TaskHandle handle);
+    void task_cancel(TaskHandle handle);

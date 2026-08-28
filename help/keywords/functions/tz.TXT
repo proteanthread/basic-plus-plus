@@ -1,0 +1,17 @@
+TZ Timezone Offset Function
+======================================================================
+
+The TZ function returns the current timezone offset in hours relative
+to UTC.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    offset_hours = TZ
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "UTC Offset: "; TZ; " hours"

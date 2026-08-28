@@ -1,296 +1,144 @@
-# BASIC++ System and Environment
+# BASIC++ v6.5.2 System and Environment
 
-**Version 4.2.3**
+## 1. SYSTEM INFORMATION
 
-
----
-
-## Table of Contents
-
-- Exiting the Interpreter
-  - BYE / SYSTEM — Exit BASIC++
-- Dialect Management
-  - DIALECT — Switch BASIC Dialect
-  - DIALECT$ — Read Current Dialect Name
-- Directory and File Management
-- Shell and OS Commands
-  - SHELL — Execute OS Command
-  - SHELL$ — Capture Command Output
-  - EXEC — Fire-and-Forget Command
-  - ERRORLEVEL — Last Shell Exit Code
-- Environment Variables
-  - ENVIRON$ — Read Environment Variable
-  - ENVIRON — Set Environment Variable
-- Time and Date
-- Program Chaining
-  - CHAIN — Load and Run Another Program
-  - COMMON — Share Variables with CHAIN
-- Security Levels
-- SLEEP — Pause Execution
-- Module Management
-- System Information
-  - INFO — Display System State
-  - VER — Display Version
-  - SYSTEM — Query Platform Info
-
----
-
-This guide covers all system, environment, and OS interaction commands in BASIC++.
-
----
-
-## Exiting the Interpreter
-
-### BYE / SYSTEM — Exit BASIC++
-
-```
-BYE              ' Exit to operating system
-SYSTEM           ' Same as BYE
-```
-
-Both commands close all open files, release memory, and return to the OS. Any unsaved program is lost.
-
----
-
-## Dialect Management
-
-### DIALECT — Switch BASIC Dialect
-
-BASIC++ supports 16 built-in BASIC dialects:
-
-| Command | Dialect |
-|---------|---------|
-| `DIALECT "GWBS"` | GW-BASIC *(default)* |
-| `DIALECT "QBAS"` | QBasic |
-| `DIALECT "PATB"` | Palo Alto Tiny BASIC |
-| `DIALECT "TRS1"` | TRS-80 Level I |
-| `DIALECT "TRS2"` | TRS-80 Level II |
-| `DIALECT "AINT"` | Applesoft Integer BASIC |
-| `DIALECT "ASFT"` | Applesoft Floating-Point BASIC |
-| `DIALECT "ATRI"` | Atari BASIC |
-| `DIALECT "C64B"` | Commodore 64 BASIC |
-| `DIALECT "COCO"` | TRS-80 Color Computer |
-| `DIALECT "EC55"` | ECMA-55 Minimal BASIC |
-| `DIALECT "E116"` | ECMA-116 Full BASIC |
-| `DIALECT "MBAS"` | Microsoft MBASIC (CP/M) |
-| `DIALECT "SINC"` | Sinclair ZX Spectrum BASIC |
-| `DIALECT "SBLQ"` | Sinclair QL SuperBASIC |
-| `DIALECT "SBAS"` | Tymshare SUPER BASIC |
-
-Without arguments, `DIALECT` prints the current dialect:
-
-```
-DIALECT
-Current dialect: GWBS (GW-BASIC)
-```
-
-### DIALECT$ — Read Current Dialect Name
+INFO displays the complete system configuration including version, build target, dialect, memory profile, security level, and available subsystems:
 
 ```basic
-PRINT DIALECT$     ' prints "GWBS"
-IF DIALECT$ = "PATB" THEN PRINT "Tiny BASIC mode"
+> INFO
+BASIC++ Standard Edition v6.5.2 "Phoenix"
+Build: baspp (Standard Console & SDL Combined)
+Dialect: GWBS (GW-BASIC Compatible)
+Memory: MODERN (640 MB)
+Security: OPEN (Level 0)
+Platform: Windows x64
+Keywords: 367
+Errors: 43 codes
+Libraries: 12
+Modules: 3 loaded
 ```
 
-`DIALECT$` is a read-only string variable.
+VER or VERSION displays the version string: `BASIC++ v6.5.2`. VER$ returns the version as a string for use in expressions: `IF VER$ >= "6.5" THEN ...`.
 
----
+## 2. ENVIRONMENT VARIABLES
 
-## Directory and File Management
-
-| Command | Description |
-|---------|-------------|
-| `FILES` / `DIR` | List all files in current directory |
-| `FILES "*.BAS"` / `DIR "*.BAS"` | List matching files |
-| `CHDIR "C:\GAMES"` | Change current directory |
-| `CHDIR ".."` | Go up one directory |
-| `MKDIR "newdir"` | Create a directory |
-| `RMDIR "olddir"` | Remove a directory (must be empty) |
-| `KILL "temp.dat"` | Delete a file |
-| `SCRATCH "temp.dat"` | Delete a file (SBASIC alias for KILL) |
-| `NAME "old.bas" AS "new.bas"` | Rename a file (GW-BASIC syntax) |
-| `RENAME "old.bas", "new.bas"` | Rename a file (alternative syntax) |
-
----
-
-## Shell and OS Commands
-
-### SHELL — Execute OS Command
+ENVIRON$("NAME") reads an environment variable from the host operating system:
 
 ```basic
-SHELL "dir"              ' Run command, wait for completion
-SHELL "notepad file.txt" ' Open Notepad
+10 PRINT "Home: "; ENVIRON$("HOME")
+20 PRINT "User: "; ENVIRON$("USERNAME")
+30 PRINT "Path: "; ENVIRON$("PATH")
+40 PRINT "Temp: "; ENVIRON$("TEMP")
 ```
 
-`SHELL` pauses BASIC++ until the command finishes.
-
-### SHELL$ — Capture Command Output
+ENVIRON "NAME=VALUE" sets an environment variable for the current process and its children:
 
 ```basic
-A$ = SHELL$("date /t")
-PRINT A$                 ' prints today's date
+10 ENVIRON "MYAPP_CONFIG=production"
+20 SHELL "myapp.exe"
 ```
 
-`SHELL$` runs the command and returns its STDOUT as a string.
+The change affects only the current process. It does not modify the system environment permanently.
 
-### EXEC — Fire-and-Forget Command
+## 3. SYSTEM FUNCTIONS
+
+HOSTNAME$ returns the machine's network hostname.
+
+USERNAME$ returns the current user's login name.
+
+PATH$ returns the system PATH environment variable.
+
+PWD$ returns the current working directory.
+
+DIALECT$ returns the active dialect name ("GWBS", "QBAS", "SBAS", "E116", etc.).
+
+MEMMAP$ returns the active memory profile ("MODERN", "LITE", "FREEDOS", "EMBEDDED").
+
+CLOCK$ returns a full timestamp string.
+
+## 4. DATE AND TIME
+
+DATE$ returns the current date as "MM-DD-YYYY":
 
 ```basic
-EXEC "notepad"
+10 PRINT DATE$           ' e.g., "08-15-2026"
 ```
 
-`EXEC` launches the command without waiting for it to finish. BASIC++ continues executing immediately.
-
-### ERRORLEVEL — Last Shell Exit Code
+TIME$ returns the current time as "HH:MM:SS":
 
 ```basic
-SHELL "command"
-PRINT ERRORLEVEL         ' 0 = success, nonzero = error
+10 PRINT TIME$           ' e.g., "14:30:45"
 ```
 
----
-
-## Environment Variables
-
-### ENVIRON$ — Read Environment Variable
+TIMER returns the number of seconds elapsed since midnight as a double-precision value:
 
 ```basic
-A$ = ENVIRON$("PATH")
-A$ = ENVIRON$("HOME")
-A$ = ENVIRON$("USERNAME")
+10 Start = TIMER
+20 ' ... do work ...
+30 Elapsed = TIMER - Start
+40 PRINT "Elapsed:"; Elapsed; "seconds"
 ```
 
-Returns the value of the named variable, or empty string if not found.
+TICKS returns the system tick count (platform-dependent resolution).
 
-### ENVIRON — Set Environment Variable
+DATE$ and TIME$ can be assigned to set the system clock (requires appropriate OS permissions and security level 0 or 1):
 
 ```basic
-ENVIRON "MYVAR=hello"
+10 DATE$ = "12-25-2026"
+20 TIME$ = "00:00:00"
 ```
 
-Sets an environment variable for the current process.
+## 5. PROCESS EXIT
 
----
-
-## Time and Date
-
-| Function | Description | Example Output |
-|----------|-------------|----------------|
-| `TIME$` | Current time (HH:MM:SS, 24-hour) | `"14:30:45"` |
-| `DATE$` | Current date (MM-DD-YYYY) | `"06-11-2026"` |
-| `TIMER` | Seconds since midnight (float) | `52245.123` |
-| `CLOCK$` | Full timestamp (YYYY-MM-DD HH:MM:SS) | `"2026-06-11 14:30:45"` |
-| `ALARM$` | Get/set alarm time (advisory only) | `"23:00:00"` |
-
-**Timing example:**
+SYSTEM exits the interpreter. SYSTEM n exits with the specified exit code. BYE is an alias for SYSTEM 0.
 
 ```basic
-T = TIMER
-' ... do work ...
-PRINT "Elapsed:"; TIMER - T; "seconds"
+10 IF ErrorOccurred THEN SYSTEM 1
+20 SYSTEM 0
 ```
 
----
-
-## Program Chaining
-
-### CHAIN — Load and Run Another Program
+ERRORLEVEL contains the exit code of the last SHELL command:
 
 ```basic
-CHAIN "next.bas"
+10 SHELL "command"
+20 IF ERRORLEVEL > 0 THEN PRINT "Command failed"
 ```
 
-`CHAIN` loads the named program and runs it. By default, all variables are cleared.
+## 6. THE SHELL COMMAND
 
-### COMMON — Share Variables with CHAIN
+SHELL "command" executes an OS command and returns when it completes:
 
 ```basic
-COMMON A, B$, C()
+10 SHELL "dir *.bas"            ' Windows
+20 SHELL "ls -la *.bas"         ' Linux
 ```
 
-Variables listed in `COMMON` are preserved across `CHAIN`. Both the calling and called program must declare the same `COMMON` variables.
+SHELL with no argument opens an interactive OS shell. Type EXIT to return to BASIC++.
 
-**Example:**
+SHELL is denied at security levels 2 and above.
 
-Program 1 (`main.bas`):
-```basic
-10 A = 42
-20 B$ = "Hello"
-30 COMMON A, B$
-40 CHAIN "part2.bas"
-```
+## 7. EXEC STATEMENT
 
-Program 2 (`part2.bas`):
-```basic
-10 COMMON A, B$
-20 PRINT A, B$     ' prints 42  Hello
-```
+EXEC has two behaviors depending on context:
 
----
+Inside a program, EXEC "string" interprets the string as if typed at the BASIC++ prompt. If the string has a line number, the line is stored. If not, it is executed immediately. This is the self-programming facility (see Self_Programming.md).
 
-## Security Levels
+As a process operation, EXEC replaces the BASIC++ process with the specified command (on Unix, this is the exec system call). Unlike SHELL, EXEC does not return.
+
+## 8. RANDOM NUMBERS
+
+RANDOMIZE seeds the pseudo-random number generator. RANDOMIZE TIMER uses the current time (common pattern for non-reproducible sequences). RANDOMIZE n uses a specific seed for reproducible sequences.
+
+RND returns the next pseudo-random number in the range [0, 1). RND(0) repeats the last number. RND(n) where n < 0 seeds the generator.
 
 ```basic
-SECURITY 0             ' OPEN: no restrictions
-SECURITY 1             ' STANDARD: limited file/shell access
-SECURITY 2             ' RESTRICTED: no file, shell, or POKE
-
-SECURITY "OPEN"        ' Same as SECURITY 0
-SECURITY "STANDARD"    ' Same as SECURITY 1
-SECURITY "RESTRICTED"  ' Same as SECURITY 2
-
-SECURITY LEVEL 1       ' Alternative syntax
+10 RANDOMIZE TIMER
+20 FOR I = 1 TO 6
+30   DiceRoll = INT(RND * 6) + 1
+40   PRINT DiceRoll;
+50 NEXT I
 ```
 
-> **Important:** Security is a **one-way ratchet** — you can increase the level but never decrease it within a session. This prevents untrusted code from escaping restrictions.
+## 9. SLEEP AND DELAY
 
----
-
-## SLEEP — Pause Execution
-
-```basic
-SLEEP              ' Pause until keypress
-SLEEP 5            ' Pause for 5 seconds
-```
-
-`SLEEP` pauses program execution. With no argument, it waits for a keypress. With a numeric argument, it waits for the specified number of seconds.
-
----
-
-## Module Management
-
-```basic
-MODULE "STDLIB"        ' Activate standard library module
-MODULE "FUJINET"       ' Activate FujiNet network module
-MODULE "USB"           ' Activate USB device module
-MODULE                 ' List loaded modules
-```
-
-Modules add additional functions, statements, and virtual devices to the interpreter. See [External_Modules](External_Modules.md) for full module documentation.
-
----
-
-## System Information
-
-### INFO — Display System State
-
-```
-INFO
-```
-
-Prints current interpreter state: version, dialect, security level, loaded modules, memory usage, and platform info.
-
-### VER — Display Version
-
-```
-VER
-```
-
-Prints the BASIC++ version string.
-
-### SYSTEM — Query Platform Info
-
-```basic
-A$ = SYSTEM("OS")        ' "Windows", "Linux", "macOS"
-A$ = SYSTEM("ARCH")      ' "x86_64", "x86", "arm"
-A$ = SYSTEM("VERSION")   ' "2.0.0"
-```
+SLEEP n pauses for n seconds. SLEEP with no argument waits for a keypress. DELAY n pauses for n milliseconds. PAUSE displays a prompt and waits for a keypress.

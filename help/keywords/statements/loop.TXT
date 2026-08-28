@@ -1,0 +1,24 @@
+LOOP Structured Loop Termination Statement
+==========================================
+
+Marks the end of a DO structured loop block, optionally testing a continuation or exit condition.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    LOOP [{WHILE | UNTIL} condition]
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Pairs with DO statement.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DO
+    20   X = X + 1
+    30 LOOP UNTIL X >= 10

@@ -1,0 +1,29 @@
+PSET Set Graphics Pixel Coordinate Statement
+============================================
+
+Plots a single pixel at coordinate (x,y) with the specified foreground color.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    PSET (x%, y%) [, color%]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Coordinates outside screen bounds.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Updates internal pen coordinates for relative drawing.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SCREEN 12
+    20 PSET (320, 240), 14 : REM Yellow pixel at center

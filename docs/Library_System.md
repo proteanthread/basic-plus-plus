@@ -1,198 +1,81 @@
-Library System
-==============
+# BASIC++ v6.5.2 Library System Reference
 
----
+## 1. THE 12-LIBRARY MODULAR ARCHITECTURE
 
-## Table of Contents
+BASIC++ is compiled as a chain of 12 static micro-libraries. Each library depends on all libraries below it in the chain, forming an accumulative dependency graph. The build targets (baspp, bpp, bs) link at different points in the chain, which determines which features are available in each edition.
 
-- Loading Libraries
-- Unloading Libraries
-- Calling Library Functions
-- Compiling Libraries
-- .BPL File Format
-- Library File Format (.LIB)
-- Security
-- Variable Isolation
-- Sample Libraries
-- Examples
-- See Also
+The chain order is fixed. New features are placed in the lowest appropriate library layer. Moving a feature to a higher layer is acceptable (it becomes available to fewer build targets). Moving a feature to a lower layer requires careful verification that the feature's dependencies are satisfied at that level.
 
----
+## 2. LIBRARY CHAIN
 
-BASIC++ supports loading external libraries (.LIB source files
-and .BPL pre-compiled binary files) that provide reusable
-SUB, FUNCTION, and DEF FN definitions.
+### libboot (Layer 1)
+Boot phase sequence controller. Contains engine/src/bootstrap/common/common.c. Provides initialization sequencing that all other layers depend on. No external dependencies beyond the C standard library.
 
-LOADING LIBRARIES
------------------
+### libplatform (Layer 2)
+OS platform abstraction. Contains 9 source files implementing the plat_* API:
 
-  LOAD LIBRARY "filename.lib"
+| File | Purpose |
+|------|---------|
+| plat_console.c | Terminal input/output, console mode, raw key reading |
+| plat_fs.c | File operations, directory listing, path manipulation |
+| plat_sys.c | System info, environment variables, process execution |
+| plat_time.c | Wall clock, monotonic timer, sleep |
+| plat_thread.c | Threading primitives (mutex, thread create/join) |
+| plat_dl.c | Dynamic library loading (dlopen/LoadLibrary) |
+| plat_net.c | TCP/UDP socket operations |
+| plat_regex.c | POSIX regex or platform-specific pattern matching |
+| plat_clipboard.c | System clipboard read/write |
 
-    Loads a source library. The interpreter:
-    1. Reads REM @LIBRARY, @VERSION, @SECURITY headers
-    2. Checks security level compatibility
-    3. Scans for SUB/FUNCTION/DEF FN declarations
-    4. Stores source lines for interpreter-mode execution
-    5. Initializes an isolated variable space (26 vars A-Z)
+All Win32 vs POSIX #ifdef logic is contained here. No code above this layer may include windows.h, unistd.h, or any platform-specific header.
 
-  LOAD LIBRARY "filename.bpl"
+### libkernel (Layer 3)
+Core VM context, lexer, memory manager, security sandbox, BIOS virtualization, and virtual device bus. This is the largest layer, containing the lexer (engine/src/lexer/lexer.c), the VM context and control flow (engine/src/vm/context.c, control.c, data.c, error.c, events.c, host.c, math.c, stack.c), the memory system (engine/src/memory/mem_system.c), the security subsystem (engine/src/security/security.c), the BIOS emulation (engine/src/bios/bios*.c), and the virtual device layer (engine/src/device/vdev.c, vcon.c, bus.c, console.c, mux.c).
 
-    Loads a pre-compiled binary library. Same as source
-    but skips parsing — loads symbols and source lines
-    directly from the portable binary format.
+### libengine (Layer 4)
+The AST evaluator, parser, runtime functions, variables, strings, and the bytecode execution loop. Contains the expression evaluator (engine/src/eval/eval.c, ast.c, dispatch.c, ops.c, rpn.c, stack.c, type.c, helpers.c), the microplex engine (engine/src/eval/microplex.c), the parser (engine/src/parser/parser.c), and all runtime systems (engine/src/runtime/variables.c, strings.c, arrays.c, funcreg.c, num_format.c, print_using.c, override.c, etc.).
 
-UNLOADING LIBRARIES
--------------------
+### libhardware (Layer 5)
+Segmented virtual memory (vmem), BGI rasterizer, and FujiNet hardware emulation. Contains the segmented memory system (engine/src/memory/segmented_mem.c), the BGI graphics core (engine/src/device/bgi/bgi_core.c, bgi_font.c, bgi_modes.c, bgi_raster.c, bgi_palette.c), and the FujiNet emulation (engine/src/device/fujinet.c).
 
-  UNLOAD LIBRARY "LIBNAME"
+### libserver (Layer 6)
+Network socket operations (VNet), Gemini protocol client, background task system, virtual filesystem (VFS), cryptographic functions, and regex module. Contains engine/src/runtime/vnet.c, gemini.c, task.c, vfs.c, crypto.c, and engine/src/module/regex.c.
 
-    Removes a loaded library from memory. Frees all
-    associated symbol table entries and source lines.
+### libscript (Layer 7)
+File I/O operations. Contains engine/src/runtime/file.c. The bs batch script runner links at this layer, gaining file I/O plus all upstream capabilities.
 
-CALLING LIBRARY FUNCTIONS
--------------------------
+### libcore (Layer 8)
+Foundational REPL, introspection commands (HELP, CATALOG, SELFTEST), and the documentation generator. Contains engine/src/docgen/docgen.c and engine/src/statements/dialect/help.c, introspection.c, selftest.c. The bpp lite edition links at this layer.
 
-  CALL LibName_SubName(arg1, arg2, ...)
+### libflex (Layer 9)
+Dynamic metaprogramming subsystem. Contains ALIAS (engine/src/statements/dialect/alias.c), KEYWORD (keyword.c), OVERRIDE (override.c), REMOVE (remove.c), and SCOPE (scope.c).
 
-    Calls a SUB defined in a loaded library. Arguments
-    are evaluated and passed to the library's variable
-    space. The caller's variables are saved and restored.
+### libstandard (Layer 10)
+TUI workstation with the multi-window editor multiplexer and the DAP debug server. Contains the editor implementations (engine/src/editor/edit.c, editor.c, editor_manager.c, edlin.c, tui_multiplexer.c, vi.c, ws.c) and the DAP server (engine/src/debug/dap_server.c). Requires ncurses on Linux.
 
-  LET result = LibName_FuncName(arg1, arg2)
+### libadvanced (Layer 11)
+Desktop visual graphics and multimedia. Contains SDL2/OpenGL bindings, the AAlib ASCII art fallback (engine/src/device/bgi/aalib/aalib.c), and the graphics device interface (engine/src/device/gfx.c). The baspp standard edition links at this layer.
 
-    Calls a FUNCTION and returns a value.
+### libext (Layer 12)
+Open-ended extension template. Provides a skeleton for user and third-party extensions that link against the full library chain.
 
-COMPILING LIBRARIES
--------------------
+## 3. LINK GRAPH
 
-  COMPILE LIBRARY "LIBNAME"
+```text
+baspp  -> libadvanced -> libstandard -> libflex -> libcore -> libscript -> libserver
+                                                                              |
+bpp    -------------------------------------------------> libcore -> libscript -> libserver
+                                                                              |
+bs     ----------------------------------------------------------> libscript -> libserver
+                                                                              |
+       libserver -> libhardware -> libengine -> libkernel -> libplatform -> libboot
+```
 
-    Saves a loaded library to .BPL (BASIC++ Portable
-    Library) binary format. The output file defaults
-    to LIBNAME.bpl.
+## 4. ADDING A NEW LIBRARY
 
-  COMPILE LIBRARY "LIBNAME", "output.bpl"
+If a new subsystem requires its own library (rare), it must be inserted at the correct position in the chain. The insertion criteria are:
 
-    Saves to a specific output file.
+1. The new library's dependencies must all be satisfied by libraries below it.
+2. The new library must not introduce dependencies on libraries above it.
+3. All existing targets that link above the insertion point automatically gain the new library.
 
-.BPL FILE FORMAT
-----------------
-
-  The .BPL format is a portable, OS-independent binary:
-
-  HEADER (32 bytes):
-    Bytes  0-3:   Magic "BPL\x1A"
-    Byte   4:     Format version (1)
-    Byte   5:     Security level
-    Byte   6:     Extension type (LIB/FN/FT/MOD/PLG)
-    Byte   7:     Flags (reserved)
-    Bytes  8-9:   Symbol count (LE16)
-    Bytes 10-11:  Source line count (LE16)
-    Bytes 12-13:  Reserved (LE16)
-    Bytes 14-15:  CRC16 checksum
-    Bytes 16-31:  Library name (NUL-padded)
-
-  SYMBOL TABLE (variable-length entries):
-    1 byte:   type (0=SUB, 1=FUNCTION, 2=DEF_FN)
-    1 byte:   parameter count
-    2 bytes:  entry offset (LE16)
-    1 byte:   name length
-    N bytes:  name (ASCII)
-
-  SOURCE LINES (4 + len bytes each):
-    2 bytes:  virtual line number (LE16)
-    2 bytes:  text length (LE16)
-    N bytes:  line text (ASCII)
-
-LIBRARY FILE FORMAT (.LIB)
---------------------------
-
-  Libraries are plain text files with REM header tags:
-
-    REM @LIBRARY LibName
-    REM @VERSION 1.0
-    REM @SECURITY OPEN
-    REM @REQUIRES NONE
-
-    SUB LibName_Init(width, height)
-        LOCAL w, h
-        w = width: h = height
-        ...
-    END SUB
-
-    FUNCTION LibName_Calculate(x, y)
-        LibName_Calculate = x * y + 1
-    END FUNCTION
-
-    DEF FN LibName_Square(x) = x * x
-
-SECURITY
---------
-
-  Libraries specify their required security level via:
-
-    REM @SECURITY OPEN       (Level 0 - no restrictions)
-    REM @SECURITY SAFE       (Level 1)
-    REM @SECURITY STANDARD   (Level 2)
-    REM @SECURITY RESTRICTED (Level 3)
-    REM @SECURITY STRICT     (Level 4)
-
-  The interpreter's current security level must be >=
-  the library's required level for loading to succeed.
-  Level 5 (PARANOID) blocks all external loading.
-
-  See: HELP SECURITY
-
-VARIABLE ISOLATION
-------------------
-
-  Each library has its own isolated variable space:
-  - 26 numeric variables (A-Z) per library
-  - 26 string variables (A$-Z$) per library
-  - Named variables within SUBs use LOCAL for scoping
-  - Library variables persist between calls
-  - Caller's variables are saved/restored on CALL
-
-SAMPLE LIBRARIES
-----------------
-
-  BASIC++ ships with 7 sample libraries in ./samples/:
-
-  TURTLE.LIB  - Text-based turtle graphics engine
-  TINYDB.LIB  - Simple SQL-like database commands
-  REGEX.LIB   - Regular expression matching
-  ADVENT.LIB  - Text adventure game toolkit
-  GAMEKIT.LIB - Console game development kit
-  IOTKIT.LIB  - IoT device simulation toolkit
-  EXTCMDS.LIB - Additional utility commands
-
-EXAMPLES
---------
-
-  Example 1: Load and use turtle graphics
-
-    LOAD LIBRARY "samples/TURTLE.LIB"
-    CALL TURTLE_INIT(40, 20)
-    CALL TURTLE_PENDOWN
-    CALL TURTLE_FORWARD(10)
-    CALL TURTLE_RIGHT(90)
-    CALL TURTLE_FORWARD(10)
-    CALL TURTLE_DRAW
-    UNLOAD LIBRARY "TURTLE"
-
-  Example 2: Compile a library
-
-    LOAD LIBRARY "samples/TURTLE.LIB"
-    COMPILE LIBRARY "TURTLE"
-    REM Creates TURTLE.bpl
-    UNLOAD LIBRARY "TURTLE"
-    LOAD LIBRARY "TURTLE.bpl"
-    REM Loaded from pre-compiled binary
-
-SEE ALSO
---------
-
-  HELP SECURITY
-  HELP MODULES
-  HELP SUB
-  HELP FUNCTION
+Add the new library definition in engine/CMakeLists.txt following the pattern of existing libraries: add_library, target_include_directories, target_link_libraries.

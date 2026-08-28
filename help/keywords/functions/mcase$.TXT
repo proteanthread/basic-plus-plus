@@ -1,0 +1,17 @@
+MCASE$ Mixed / Matching Case String Transformation Function
+======================================================================
+
+The MCASE$ function formats text into title case (capitalizing initial
+letters of words).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res$ = MCASE$(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT MCASE$("hello world")   : REM Outputs "Hello World"

@@ -1,30 +1,67 @@
-# FujiNet Emulation Layer API Reference
+# C17 API Reference: FujiNet Hardware Emulation (`device/fujinet.h`)
 
-Header File: [`include/fujinet.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/fujinet.h)
+## 1. Subsystem Overview & Responsibilities
 
-## Overview
-Mimics retro Atari/Commodore FujiNet network interface device specifications.
+The FujiNet Subsystem (`device/fujinet.h`, implemented in `engine/src/device/fujinet.c`) provides peripheral bus emulation for the multi-platform FujiNet retro-computing network adapter across Atari 8-bit, Apple II, Commodore 64, and modern BASIC++ virtual devices.
 
-## Exposed API Entities
-### Functions
-| Function | Return Type | Arguments |
-|----------|-------------|-----------|
-| `fujinet_init_system` | `void` | `VMContext *vm` |
-| `fujinet_shutdown_system` | `void` | `void` |
-| `fujinet_create_n_dev` | `VDev` | `VMContext *vm` |
-| `fujinet_create_fuji_dev` | `VDev` | `VMContext *vm` |
-| `fujinet_create_clock_dev` | `VDev` | `VMContext *vm` |
+Key architectural responsibilities include:
+- **`N:` Network Adapter Virtual Device**: Connects open channels to remote TCP sockets, UDP datagrams, HTTP/HTTPS endpoints, JSON queries, and Telnet BBS sessions using FujiNet SIO protocol framing.
+- **`FUJI:` Configuration Virtual Device**: Emulates the FujiNet management interface, allowing configuration of Wi-Fi credentials, host disk slot mappings (`D1:` .. `D8:`), and device firmware settings.
+- **`CLOCK:` Network Time Virtual Device**: Retrieves network time protocol (NTP) timestamps, providing ISO datetime strings to retro-computing clock registers.
+- **VDev Bus Integration**: Registers virtual devices directly with `VDevContext`, enabling standard BASIC I/O statements (`OPEN "N:HTTP://..."`, `INPUT#`, `PRINT#`) to access modern network protocols transparently.
 
-## C Integration Example
-The following C example demonstrates how to integrate this subsystem:
+## 2. Header Inclusion & Prerequisites
+
 ```c
-#include "fujinet.h"
-
-void init_fujinet() {
-    fujinet_initialize();
-}
+#include "device/fujinet.h"
+#include "device/vdev.h"
+#include "vm/vm.h"
 ```
 
-## Guidelines & Architecture Constraints
-- **C17 Portability**: Compile under strict C17 standards.
-- **Memory Integrity**: All contexts and pointers passed must be zero-initialized.
+## 3. Function Prototypes & Operational Contracts
+
+### System Lifecycle
+```c
+/**
+ * @brief Initializes the FujiNet driver subsystem and binds network devices to VDevContext.
+ * @param vm Pointer to active VMContext.
+ */
+void fujinet_init_system(VMContext *vm);
+
+/**
+ * @brief Shuts down the FujiNet subsystem, closing active network adapters and sockets.
+ */
+void fujinet_shutdown_system(void);
+```
+
+### Device Instantiation
+```c
+/**
+ * @brief Creates the 'N:' network adapter virtual device struct.
+ */
+VDev fujinet_create_n_dev(VMContext *vm);
+
+/**
+ * @brief Creates the 'FUJI:' configuration virtual device struct.
+ */
+VDev fujinet_create_fuji_dev(VMContext *vm);
+
+/**
+ * @brief Creates the 'CLOCK:' network time virtual device struct.
+ */
+VDev fujinet_create_clock_dev(VMContext *vm);
+```
+
+## 4. Architectural Invariants
+
+- **Sandboxed Network Capability**: Opening or communicating through FujiNet `N:` devices requires `CAP_NET` privilege in `SecurityContext`.
+- **SIO Protocol Framing**: Translates higher-level HTTP/JSON calls to FujiNet SIO command frames (`0x4E` 'N' command set).
+
+## 5. Code Example: Opening FujiNet N: Device from BASIC++
+
+```basic
+10 OPEN "N:HTTPS://api.github.com/zen" FOR INPUT AS #1
+20 LINE INPUT #1, ZEN_QUOTE$
+30 PRINT "GitHub Zen: "; ZEN_QUOTE$
+40 CLOSE #1
+```

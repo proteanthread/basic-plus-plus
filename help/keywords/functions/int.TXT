@@ -1,0 +1,23 @@
+INT Greatest Integer (Floor) Function
+======================================================================
+
+The INT function calculates the largest integer less than or equal to
+the argument (floor towards -infinity).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res = INT(numeric_expression)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Rounds towards -infinity (INT(-3.1) = -4, whereas FIX(-3.1) = -3).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT INT(5.8)   : REM Outputs 5

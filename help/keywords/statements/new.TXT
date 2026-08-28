@@ -1,0 +1,22 @@
+NEW Erase Program Memory Command
+================================
+
+Erases all program lines from memory, clears all variables, closes all files, and resets the interpreter state.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    NEW
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Emits Ok / Ready prompt depending on edition.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    NEW : REM Clear workspace for a new program

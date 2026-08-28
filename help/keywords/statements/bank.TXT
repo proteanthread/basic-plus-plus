@@ -1,0 +1,37 @@
+BANK Memory Bank Selection Statement
+======================================================================
+
+The BANK statement selects the active 64KB memory bank in BASIC++
+segmented memory architecture.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    BANK bank_number%
+    current_bank% = BANK()
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Selects 64KB bank for subsequent PEEK/POKE.
+  - Bank range: 0 to RAMBANKS() - 1.
+  - Subject to security capabilities (Error 70 if restricted).
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  5           ERR_ILLEGAL_FUNCTION  Bank number out of range
+  70          ERR_PERMISSION_DENIED Memory access restricted
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 BANK 1
+    20 POKE &H1000, 255
+    30 PRINT PEEK(&H1000)

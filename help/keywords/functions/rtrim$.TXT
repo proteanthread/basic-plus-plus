@@ -1,0 +1,16 @@
+RTRIM$ Right-Trim Whitespace Function
+======================================================================
+
+The RTRIM$ function removes trailing whitespace and tabs from a string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    trimmed$ = RTRIM$(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT RTRIM$("Hello   ")   : REM Outputs "Hello"

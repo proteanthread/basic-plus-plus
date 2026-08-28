@@ -1,0 +1,47 @@
+BASIC++ C17 PUBLIC API MASTER REFERENCE GUIDE
+======================================================================
+
+1. HEADER INCLUSION
+The primary master header is "bpp_api.h". In freestanding builds, include
+specific modular headers:
+  #include "core/boot.h"
+  #include "vm/vm.h"
+  #include "types/types.h"
+
+2. CORE LIFECYCLE APIS (core/boot.h)
+- boot_init(const BppBootConfig *cfg) -> VMContext *
+  Initializes memory pools (640MB/384MB/64MB), registers libraries, boots VM.
+- boot_eval_string(VMContext *vm, const char *code) -> BppError
+  Executes an inline BASIC code string.
+- boot_shutdown(VMContext *vm)
+  Flushes streams, frees memory pools, and shuts down subsystems.
+
+3. TAGGED UNION BVALUE (types/types.h)
+Tagged union representing all runtime values:
+  typedef enum { VAL_NULL, VAL_NUMBER, VAL_STRING, VAL_ERROR } BValueType;
+  typedef struct {
+      BValueType type;
+      union {
+          double        number;
+          BppString    *string;
+          BppErrorCode  error;
+      } as;
+  } BValue;
+
+4. FUNCTION & STATEMENT REGISTRATION
+- funcreg_register(name, callback, min_args, max_args, desc)
+  Registers native C functions. Signature:
+  BValue func(VMContext *vm, int argc, BValue *argv, BppError *out_err);
+- stmt_register(keyword, handler, syntax, help_text)
+  Registers custom statement handlers. Signature:
+  BppError stmt(VMContext *vm, LexerContext *lex);
+
+5. VIRTUAL DEVICE INTERFACE (device/vdev.h)
+VDev struct provides a standard I/O function table (ops):
+  init, open, read, write, getc, putc, flush, close, destroy.
+Devices attach to the bus via vdev_bus_attach(bus, device).
+
+6. STRING LIFECYCLE (runtime/strings.h)
+- str_create(sc, data, len) -> BppString *
+- str_retain(sc, str) -> BppString *
+- str_release(sc, str)  [Mandatory two-parameter release pattern]

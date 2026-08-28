@@ -1,0 +1,21 @@
+iot Lite REPL Target Edition Specification
+======================================================================
+
+The iot edition (bpp / bpp.exe) is a lightweight headless REPL
+optimized for terminals, IoT gateways, and embedded SBCs.
+
+
+SPECIFICATIONS
+----------------------------------------------------------------------
+
+  - Default Memory: 384 MB (402653184 bytes).
+  - Prompt: "] " with "Ready." status.
+  - Excludes SDL2 graphics, BGI rasterizer, TUI multiplexer, and vmem.
+  - Pure terminal and network execution.
+
+
+USAGE
+----------------------------------------------------------------------
+
+    bpp                      : Interactive Lite REPL
+    bpp script.bas           : Execute script

@@ -1,115 +1,127 @@
-/**
- * @file sub.c
- * @brief SUB sub_name[(params)] ... END SUB procedure declaration and exit statement handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements SUB sub_name[(params)] ... END SUB and EXIT SUB statement handlers for user-defined void procedures.
- *
- * 2. WHY IT EXISTS:
- * Defines modular void procedures without return values per QBASIC and ANSI BASIC specifications.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Registers procedure parameters into procedure table, skips procedure body during main program scan, and handles EXIT SUB / END SUB stack frame popping.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_sub'. Includes "statements/oop/sub.h",
- * "types/errors.h", "vm/vm.h", "lexer/lexer.h", "eval/eval.h", "device/vdev.h", "security/security.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Fully included in libbasicpp (baspp) and libbasicpp_lite (bpp, bs) per Rule #1 (SUPPORT_OOP).
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support OPTIONAL parameters or VARARGS parameter lists in procedure signatures.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Non-recursive call stack invariant: Procedure frame popped from heap VM stack; zero Host C stack depth recursion during procedure body evaluation.
- *
- * 8. WHAT TO EXPECT:
- * Skips procedure body during parsing scan or returns control to caller, returning ERR_NONE.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check call stack frame unwinding and local parameter refcount releases.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Thread-safe per VMContext execution thread.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/statements/oop/call.c
- * - engine/src/eval/eval.c
- * - engine/src/vm/vm_stack.c
- * Prerequisite Header Files:
- * - engine/include/statements/oop/sub.h
- * - engine/include/vm/vm.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: sub.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (call.c, eval_expr_internal.h, exec_control_internal.h)
+// NEEDED BY: libengine (exec_dispatch.c, exec_internal.h, let.c, ops.c)
+// NEEDED BY: libengine (sub_internal.h)
+// NEEDS: libengine (sub_internal.h)
+// Provides runtime implementation for the SUB statement in BASIC++.
+//
+// ---- Includes ----
 
-#include "statements/oop/sub.h"
-#include "types/errors.h"
-#include "vm/vm.h"
-#include "lexer/lexer.h"
-#include "eval/eval.h"
-#include "device/vdev.h"
-#include "security/security.h"
-#include "runtime/micro_lib_metadata.h"
-#include <string.h>
+#include "statements/oop/sub_internal.h"
+
+//
+// ---- Statement Handlers ----
 
 BppError stmt_sub_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
+
+    if (vm_is_running(vm)) {
+        BppLineNumber target_line = 0;
+        int nest = 0;
+        MemoryContext *mem = vm_get_mem(vm);
+        size_t count = 0;
+        BppProgramLine *lines = mem_program_get_all(mem, &count);
+
+        BppLineNumber cur_line = vm_get_current_line(vm);
+        for (size_t i = 0; i < count; i++) {
+            if (lines[i].line_number > cur_line) {
+                LexerContext *chk_lex = lex_init(mem, lines[i].text);
+                if (chk_lex) {
+                    BppToken tok = lex_next(chk_lex);
+                    if (tok.type == TOK_NUMBER) tok = lex_next(chk_lex);
+                    if (tok.type == TOK_KEYWORD && (tok.as.keyword == KW_PUBLIC || tok.as.keyword == KW_PRIVATE)) {
+                        tok = lex_next(chk_lex);
+                    }
+                    if (tok.type == TOK_KEYWORD && (tok.as.keyword == KW_SUB || tok.as.keyword == KW_FUNCTION)) {
+                        nest++;
+                    } else if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_END) {
+                        BppToken ntok = lex_next(chk_lex);
+                        if (ntok.type == TOK_KEYWORD && (ntok.as.keyword == KW_SUB || ntok.as.keyword == KW_FUNCTION)) {
+                            if (nest > 0) {
+                                nest--;
+                            } else {
+                                target_line = lines[i].line_number;
+                                lex_shutdown(chk_lex);
+                                break;
+                            }
+                        }
+                    }
+                    lex_shutdown(chk_lex);
+                }
+            }
+        }
+        if (target_line > 0) {
+            vm_jump(vm, target_line, NULL);
+        }
+    }
     return err;
 }
 
 BppError stmt_end_sub_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
+    return err;
+}
+
+BppError stmt_subend_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+    return err;
+}
+
+BppError stmt_subexit_handler(VMContext *vm, LexerContext *lex) {
+    (void)lex;
+    BppError err;
+    memset(&err, 0, sizeof(err));
+    BppSubFrame frame;
+    if (!vm_sub_pop(vm, &frame)) {
+        err.code = 33;
+        err.message = "SUBEXIT without active SUB/FUNCTION";
+        return err;
+    }
+    vm_jump(vm, frame.line, frame.pos);
     return err;
 }
 
 BppError stmt_procedure_handler(VMContext *vm, LexerContext *lex) {
-    BppError err;
-    memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
-    return err;
+    return stmt_sub_handler(vm, lex);
 }
 
-BppError vm_call_sub_procedure(VMContext *vm, LexerContext *lex) {
-    BppError err;
-    memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
-    return err;
-}
-
-bool find_procedure(VMContext *vm, const char *name, BppKeywordId proc_kw, BppLineNumber *out_line, const char **out_text) {
-    (void)vm; (void)name; (void)proc_kw;
-    if (out_line) *out_line = 0;
-    if (out_text) *out_text = NULL;
-    return false;
-}
-
-BValue invoke_user_function(VMContext *vm, const char *name, BValue *args, int argc, BppError *err) {
-    (void)vm; (void)name; (void)args; (void)argc;
-    BValue val;
-    memset(&val, 0, sizeof(val));
-    val.type = VAL_NUMBER;
-    val.as.number = 0.0;
-    if (err) err->code = ERR_UNDEFINED_USER_FUNCTION;
-    return val;
-}
+//
+// ---- Metadata Registration ----
 
 void stmt_sub_register(void) {
     static const MicroLibMetadata meta = {
         .name = "SUB",
-        .category = "Control Flow",
-        .syntax = "SUB name [(parameter_list)] ... END SUB",
-        .help_text = "Declares the name, parameters, and code that define a SUB procedure block.",
-        .error_codes = "Error 2: Syntax Error, Error 35: SUB/FUNCTION Without END, Error 36: Illegal Parameter List"
+        .category = "Procedures & OOP",
+        .syntax = "SUB name [(param1, param2...)] [STATIC]",
+        .help_text = "Declares a named subroutine block with formal parameters.",
+        .error_codes = "Error 2: Syntax Error, Error 35: Undefined SUB"
     };
     microlib_register(&meta);
 }
 
+void stmt_end_sub_register(void) {
+    static const MicroLibMetadata meta = {
+        .name = "END SUB",
+        .category = "Procedures & OOP",
+        .syntax = "END SUB",
+        .help_text = "Terminates a SUB procedure block.",
+        .error_codes = "Error 2: Syntax Error"
+    };
+    microlib_register(&meta);
+}
+
+void stmt_procedure_register(void) {
+    static const MicroLibMetadata meta = {
+        .name = "PROCEDURE",
+        .category = "Procedures & OOP",
+        .syntax = "PROCEDURE name [(param_list)]",
+        .help_text = "Declares a named procedure block.",
+        .error_codes = "Error 2: Syntax Error"
+    };
+    microlib_register(&meta);
+}

@@ -1,0 +1,24 @@
+SGN Signum Function
+======================================================================
+
+The SGN function returns the sign of a number (-1, 0, or 1).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    sign_val% = SGN(numeric_expression)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Returns -1 if x < 0.
+  - Returns  0 if x = 0.
+  - Returns +1 if x > 0.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT SGN(-10)   : REM Outputs -1

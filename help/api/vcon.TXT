@@ -1,0 +1,27 @@
+C17 API REFERENCE: VIRTUAL CONSOLE DISPLAY (device/vcon.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Virtual Console Subsystem manages 8 virtual consoles, 25x80 character
+and attribute grids, ANSI parsing, cursor positions, and soft-key labels.
+
+2. KEY TYPES & STRUCTS
+- BppVirtualConsole: grid[25][80], attribs[25][80], cursor_row, cursor_col,
+  current_color, ansi_state, ansi_buf.
+- VConContext: Opaque virtual console manager handle.
+
+3. CORE API FUNCTIONS
+- vcon_init() / vcon_shutdown()
+- vcon_select(ctx, index) -> bool
+- vcon_write_char(ctx, index, c)
+- vcon_locate(ctx, index, row, col)
+- vcon_get_cursor(ctx, index, out_row, out_col)
+- vcon_get_char_at(ctx, index, row, col) -> int
+- vcon_set_color(ctx, index, fg, bg)
+- vcon_set_view_print(ctx, index, top, bottom)
+- vcon_set_key_labels_visible(ctx, visible)
+- vcon_set_key_label(ctx, key_idx, text)
+
+4. ARCHITECTURAL INVARIANTS
+- Authoritative source for cursor and screen metrics.
+- Output text adheres strictly to 7-bit ASCII encoding.

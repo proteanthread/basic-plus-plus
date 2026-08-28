@@ -1,0 +1,21 @@
+server Batch Runner & Server Profile
+======================================================================
+
+The server profile (bs / bs.exe) is the headless non-interactive batch
+runner for automation, pipelines, CGI, and server daemons.
+
+
+SPECIFICATIONS
+----------------------------------------------------------------------
+
+  - Default Memory: 64 MB (67108864 bytes).
+  - Zero banner, zero prompt, non-interactive execution only.
+  - Sub-2ms startup time with stream I/O pipes.
+  - Links libserver for network sockets, crypto, and VFS.
+
+
+USAGE
+----------------------------------------------------------------------
+
+    bs script.bas            : Run batch script
+    cat script.bas | bs      : Run via stdin pipeline

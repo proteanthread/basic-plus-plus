@@ -1,314 +1,142 @@
-SUPER BASIC (Tymshare SDS-940) Dialect Reference
+======================================================================
+  BASIC++ V6.5.2 SUPER BASIC COMPATIBILITY & EXTENDED CAPABILITIES
+======================================================================
+
+
+======================================================================
+  1. HISTORY & ARCHITECTURAL OVERVIEW
+======================================================================
+
+SDS 940 (1968) and DEC PDP-10 (1970-1972) Super BASIC introduced
+extended language features: native complex numbers, bidirectional
+string/ASCII array conversions (CHANGE), fine-grained layout control
+(MARGIN, ZONE), direct text and modify file modes (TEXT, APPEND, MODIFY),
+template-based formatted output (IMAGE, FORM), line input preservation
+(LINPUT), and full matrix file I/O (MAT READ, MAT PRINT #, MAT INPUT #).
+
+In BASIC++ v6.5.2, all of these features are implemented as first-class
+native engine capabilities with 100% backward compatibility for GW-BASIC,
+BASICA, and QBASIC.
+
+
+======================================================================
+  2. NATIVE COMPLEX NUMBER SYSTEM
+======================================================================
+
+Imaginary Literals & Construction:
+  10 LET Z1 = 3 + 4I
+  20 LET Z2 = CMPLX(5, -12)
+
+Complex Arithmetic & Operators (+, -, *, /, ^, unary -, ==, <>):
+  10 LET Z_ADD = (3 + 4I) + (1 - 2I)      ' Result: 4 + 2I
+  20 LET Z_SUB = (3 + 4I) - (1 + 2I)      ' Result: 2 + 2I
+  30 LET Z_MUL = (3 + 4I) * (1 - 2I)      ' Result: 11 - 2I
+  40 LET Z_DIV = (11 - 2I) / (1 - 2I)     ' Result: 3 + 4I
+  50 LET Z_POW = (0 + 1I) ^ 2             ' Result: -1 + 0I
+
+Built-in Complex Functions:
+  CMPLX(r, i), REAL(z), IMAG(z), CONJ(z), ARG(z), CMPLX$(z)
+  CSQR(z), CLOG(z), CEXP(z), CSIN(z), CCOS(z), CTAN(z)
+  CASN(z), CACS(z), CATN(z)
+
+Type Declarations & IEEE Binary Serialization:
+  DEFCPX letter[-letter]
+  COMPLEX var1, var2, ...
+  MKC$(z), CVC(s$), MKL$(n&), CVL(s$)
+
+
+======================================================================
+  3. STRING & ASCII CONVERSION (CHANGE)
+======================================================================
+
+The CHANGE statement converts bidirectionally between strings and 1D
+numeric ASCII arrays. A(0) holds the string length:
+
+  10 LET S$ = "HELLO"
+  20 CHANGE S$ TO A          ' A(0)=5, A(1)=72, A(2)=69, A(3)=76, A(4)=76, A(5)=79
+  30 LET A(1) = 74           ' Replace 'H' with 'J'
+  40 CHANGE A TO RES$        ' RES$ = "JELLO"
+  50 LET A(0) = 3            ' Truncate length
+  60 CHANGE A TO SHORT$      ' SHORT$ = "JEL"
+
+
+======================================================================
+  4. CONSOLE & FILE OUTPUT FORMATTING (MARGIN, ZONE, IMAGE, FORM)
+======================================================================
+
+Margins and Comma Print Zones:
+  10 ZONE 10                 ' Set comma tab width to 10 columns
+  20 MARGIN 132              ' Set line wrap margin to 132 columns
+  30 ZONE #1, 20             ' Set zone width for file channel #1
+  40 MARGIN #1, 120
+
+Formatted Templates (IMAGE & FORM):
+  100 IMAGE : Total: $$$$,$$$.##   Status: \      \
+  110 PRINT USING 100, 1250.75, "APPROVED"
+  120 FORM C10, N5.2, C5
+
+
+======================================================================
+  5. TIMESHARING FILE I/O & MATRIX I/O
+======================================================================
+
+Dedicated File Open Statements:
+  TEXT [#]ch, "file"         ' Open file in sequential text output mode
+  APPEND [#]ch, "file"       ' Open file in append output mode
+  MODIFY [#]ch, "file"       ' Open file for read/write random modify mode
+  LINPUT [#ch,] ["prompt";] var$  ' Read entire line preserving delimiters
+
+Matrix File I/O & MAT READ:
+  10 OPTION BASE 1
+  20 DATA 10, 20, 30, 40, 50, 60
+  30 DIM M(2, 3)
+  40 MAT READ M              ' Populate 2x3 matrix from DATA items
+  50 TEXT #1, "matrix.dat"
+  60 MAT PRINT #1, M         ' Write formatted matrix to file
+  70 CLOSE #1
+  80 OPEN "matrix.dat" FOR INPUT AS #1
+  90 DIM M2(2, 3)
+  100 MAT INPUT #1, M2       ' Read matrix from file
+  110 CLOSE #1
+  120 MAT PRINT M2           ' Display matrix on console
+ 
+ 
+======================================================================
+  6. ADVANCED MATH, TRIGONOMETRIC, HYPERBOLIC & MATRIX OPERATIONS
+======================================================================
+ 
+Hyperbolic Functions:
+  SINH(x), HSN(x)            ' Hyperbolic sine
+  COSH(x), HCS(x)            ' Hyperbolic cosine
+  TANH(x), HTN(x)            ' Hyperbolic tangent
+ 
+Reciprocal Trigonometric & Inverse Aliases:
+  COT(x)                     ' Cotangent (1 / tan(x))
+  SEC(x)                     ' Secant (1 / cos(x))
+  CSC(x)                     ' Cosecant (1 / sin(x))
+  ASN(x), ASIN(x)            ' Inverse arcsine (radians, [-1, 1])
+  ACS(x), ACOS(x)            ' Inverse arccosine (radians, [-1, 1])
+ 
+Angular Conversions, Logarithms & Utilities:
+  RAD(deg)                   ' Convert degrees to radians
+  DEG(rad)                   ' Convert radians to degrees
+  LOG10(x), LGT(x)           ' Common base-10 logarithm
+  LOG2(x)                    ' Binary base-2 logarithm
+  EXN(x), EXP(x)             ' Exponential e^x
+  COMP(a, b)                 ' Comparison: -1 (a<b), 0 (a=b), 1 (a>b)
+  PDIF(a, b)                 ' Positive difference: a-b if a>b else 0
+  DET, DET(), DET(A)         ' Matrix determinant
+ 
+Matrix Algebraic Operations:
+  10 OPTION BASE 1
+  20 DIM A(2, 2), B(2, 2), V(2), M(2, 2)
+  30 MAT B = A + 5           ' Scalar addition
+  40 MAT B = A - 2           ' Scalar subtraction
+  50 MAT B = 3 * A           ' Scalar multiplication
+  60 MAT B = A / 10          ' Scalar division
+  70 MAT RES1 = V * M        ' Vector-matrix multiplication (1xN * NxP -> 1xP)
+  80 MAT RES2 = M * V        ' Matrix-vector multiplication (MxN * Nx1 -> Mx1)
+  90 DIM S$(2, 2), S_COPY$(2, 2)
+  100 MAT S$ = NUL$          ' String matrix clear
+  110 MAT S_COPY$ = S$       ' String matrix copy with refcounting
 
-Version 4.2.3
-
----
-
-Table of Contents
-
-- History
-- Activation
-- Extended Math Functions
-  - Inverse Trigonometric
-  - Hyperbolic
-  - Logarithms
-  - Comparison & Utility
-  - Constant
-- UNLESS Statement (JOSS-Style Negated IF)
-- BY Keyword (FOR Loop Step Alternative)
-- SCRATCH and UNSAVE Commands
-  - SCRATCH
-  - UNSAVE
-- Complex Numbers
-- configuration
-- Complete Function Reference
-- See Also
-
----
-
-Dialect Code: SUPB
-
----
-
-History
-
-SUPER BASIC was developed by Mark Alexander and Dan Streng at Tymshare, Inc. for the Scientific Data Systems (SDS) 940 mainframe computer, circa 1968.
-
-Tymshare was a pioneering time-sharing company that allowed multiple users to access a central mainframe via teletype terminals connected over telephone lines. At its peak, Tymshare served thousands of simultaneous users across the United States.
-
-SUPER BASIC was one of the most advanced BASIC dialects of its era. While microcomputer BASICs were still years away, SUPER BASIC already offered features that wouldn't appear on personal computers until the 1980s:
-
-- Complex number arithmetic (real + imaginary)
-- Double precision via # suffix
-- Extended mathematical functions (inverse trig, hyperbolics)
-- Comparison and utility functions (COMP, PDIF)
-- PI as a built-in constant
-- JOSS-inspired postfix modifiers (UNLESS)
-- FOR...BY...TO ordering (step before limit)
-- Enhanced matrix operations
-
-The SDS 940 was a 24-bit computer with hardware paging and memory protection — advanced for 1968. It ran the Berkeley Timesharing System (BTS), which supported up to 64 simultaneous users.
-
----
-
-Activation
-
-
-DIALECT "SUPB"
-
-
-This changes:
-- Statement separator to : (colon)
-- LET is mandatory (like ECMA-55)
-- Maximum line number extends to 99999
-- Ready prompt: READY
-- CLS is not available (mainframes used teletype output)
-
----
-
-Extended Math Functions
-
-Inverse Trigonometric
-
-| Function | Description | Domain | Range |
-|----------|-------------|--------|-------|
-| ASIN(x) | Arcsine (radians) | −1 ≤ x ≤ 1 | −π/2 to π/2 |
-| ACOS(x) | Arccosine (radians) | −1 ≤ x ≤ 1 | 0 to π |
-
-
-PRINT ASIN(1)       ' 1.5708 (PI/2)
-PRINT ASIN(0.5)     ' 0.5236 (PI/6)
-PRINT ACOS(0)       ' 1.5708 (PI/2)
-PRINT ACOS(-1)      ' 3.14159 (PI)
-
-
-Hyperbolic
-
-| Function | Description | Formula |
-|----------|-------------|---------|
-| SINH(x) | Hyperbolic sine | (e^x − e^(−x)) / 2 |
-| COSH(x) | Hyperbolic cosine | (e^x + e^(−x)) / 2 |
-| TANH(x) | Hyperbolic tangent | SINH(x) / COSH(x) |
-
-
-PRINT SINH(0)       ' 0
-PRINT SINH(1)       ' 1.1752
-PRINT COSH(0)       ' 1
-PRINT COSH(1)       ' 1.5431
-PRINT TANH(0)       ' 0
-PRINT TANH(1)       ' 0.7616
-
-
-Identity: COSH(x)^2 - SINH(x)^2 = 1
-
-Logarithms
-
-| Function | Description | Formula |
-|----------|-------------|---------|
-| LOG10(x) | Common logarithm (base 10) | LOG(x) / LOG(10) |
-| LOG2(x) | Binary logarithm (base 2) | LOG(x) / LOG(2) |
-
-
-PRINT LOG10(100)    ' 2
-PRINT LOG10(1000)   ' 3
-PRINT LOG2(8)       ' 3
-PRINT LOG2(256)     ' 8
-PRINT LOG2(1024)    ' 10
-
-
-Comparison & Utility
-
-| Function | Description |
-|----------|-------------|
-| COMP(a, b) | Three-way comparison: −1 if a < b, 0 if a = b, +1 if a > b |
-| PDIF(a, b) | Positive difference: MAX(a − b, 0) |
-
-
-PRINT COMP(3, 5)    ' -1
-PRINT COMP(5, 5)    ' 0
-PRINT COMP(7, 3)    ' 1
-
-PRINT PDIF(10, 3)   ' 7
-PRINT PDIF(3, 10)   ' 0
-
-
-Constant
-
-PI — Mathematical constant π = 3.14159265358979...
-
-
-PRINT PI            ' 3.14159265358979
-LET RAD45 = PI / 4
-PRINT SIN(PI / 2)   ' 1
-
-
-> In standard BASIC, you must compute PI as LET PI = 4 * ATN(1). SUPER BASIC provides it as a built-in constant.
-
----
-
-UNLESS Statement (JOSS-Style Negated IF)
-
-SUPER BASIC borrowed the UNLESS keyword from JOSS (1963), the Johnniac Open Shop System developed at RAND Corporation.
-
-UNLESS is the negated form of IF. It executes its THEN clause only when the condition is false. Equivalent to IF NOT (condition) THEN statement.
-
-
-10 LET X = 5
-20 UNLESS X = 0 THEN PRINT "X is nonzero"
-30 UNLESS X > 10 THEN PRINT "X is not greater than 10"
-40 UNLESS X < 0 THEN PRINT "X is not negative"
-
-
-Output:
-
-X is nonzero
-X is not greater than 10
-X is not negative
-
-
-Block form (with END IF):
-
-
-10 UNLESS X = 0
-20   PRINT "X is nonzero"
-30   PRINT "Its value is"; X
-40 END IF
-
-
-UNLESS is particularly useful for guard clauses:
-
-
-100 UNLESS LEN(A$) > 0 THEN GOTO 200
-110 REM ... process non-empty string ...
-200 REM ... continue ...
-
-
----
-
-BY Keyword (FOR Loop Step Alternative)
-
-In SUPER BASIC, the step size in a FOR loop was specified using BY instead of STEP:
-
-
-FOR I = 1 TO 10 BY 2
-
-
-Equivalent to:
-
-
-FOR I = 1 TO 10 STEP 2
-
-
-Both BY and STEP are accepted in BASIC++. The original Tymshare SUPER BASIC also supported reversed ordering (BY before TO):
-
-
-FOR I = 1 BY 2 TO 10
-
-
-Examples:
-
-
-10 REM Count by twos
-20 FOR I = 1 TO 10 BY 2
-30   PRINT I;
-40 NEXT I
-50 PRINT
-' Output: 1 3 5 7 9
-
-10 REM Countdown
-20 FOR I = 10 TO 1 BY -1
-30   PRINT I;
-40 NEXT I
-50 PRINT
-' Output: 10 9 8 7 6 5 4 3 2 1
-
-
----
-
-SCRATCH and UNSAVE Commands
-
-SCRATCH
-
-
-SCRATCH "temp.dat"
-
-
-Deletes a file from disk. This is the SUPER BASIC equivalent of KILL in Microsoft BASICs. If the file does not exist, a "File not found" message is displayed (no error is raised).
-
-UNSAVE
-
-
-UNSAVE
-
-
-Deletes the currently-loaded program's save file from disk. In the original Tymshare system, this removed the program from the user's file space on the mainframe.
-
----
-
-Complex Numbers
-
-SUPER BASIC was one of the first BASIC dialects to natively support complex number arithmetic. In BASIC++, complex numbers use the COMPLEX() function:
-
-
-10 LET Z = COMPLEX(3, 4)    ' 3 + 4i
-20 PRINT REAL(Z)              ' 3
-30 PRINT IMAG(Z)              ' 4
-
-
-Complex numbers support standard arithmetic (+, -, *, /) and can be used with ABS() to compute the modulus (magnitude).
-
----
-
-configuration
-
-| Property | Value |
-|----------|-------|
-| Dialect ID | DIALECT_SBASIC |
-| Short code | "SUPB" |
-| Dialect flag | DFLAG_SBAS (bit 15) |
-| Separator | : (colon) |
-| LET required | Yes |
-| THEN required | Yes |
-| Max line number | 99999 |
-| Ready prompt | "READY" |
-| Print zone width | 15 |
-| CLS available | No (teletype output) |
-| Floating point | Yes |
-| Strings | Yes |
-| Arrays | Yes |
-| FOR/NEXT | Yes |
-| WHILE/WEND | No |
-| DO/LOOP | No |
-| DATA/READ | Yes |
-| DEF FN | Yes |
-| Extended variables | Yes |
-| ON ERROR | No |
-| TRON/TROFF | Yes |
-| MERGE/CHAIN | No |
-
----
-
-Complete Function Reference
-
-| Function | Args | Description |
-|----------|------|-------------|
-| ASIN(x) | 1 | Arcsine (radians) |
-| ACOS(x) | 1 | Arccosine (radians) |
-| SINH(x) | 1 | Hyperbolic sine |
-| COSH(x) | 1 | Hyperbolic cosine |
-| TANH(x) | 1 | Hyperbolic tangent |
-| LOG10(x) | 1 | Common logarithm (base 10) |
-| LOG2(x) | 1 | Binary logarithm (base 2) |
-| COMP(a, b) | 2 | Compare (−1, 0, +1) |
-| PDIF(a, b) | 2 | Positive difference MAX(a−b, 0) |
-| PI | 0 | Constant 3.14159265... |
-
-Plus all standard BASIC functions: ABS, ATN, COS, EXP, FIX, INT, LOG, RND, SGN, SIN, SQR, TAN, and string functions.
-
----
-
-See Also
-
-- Quick_Reference — Complete keyword listing
-
-@COPYLEFT ALL WRONGS RESERVED

@@ -1,36 +1,6 @@
-/*
- * PROJECT:  Dartmouth BASIC 1964 Interpreter (C89 Port)
- * FILENAME: 1964.c
- * VERSION:  1.0.0
- *
- * Prototype: based on the original Dartmouth BASIC by Kemeny and Kurtz (1964)
- *
- * DESCRIPTION:
- *   A strictly compliant ANSI C89 interpreter for the original 1964 dialect
- *   of Dartmouth BASIC. Features strict floating point arithmetic, historic
- *   unary minus precedence, A-Z and A0-Z9 variables, 1D and 2D arrays, 
- *   single-line DEF functions, and historic interactive commands.
- *
- * DIALECT NOTES (Dartmouth BASIC 1964):
- *   - Variables: A-Z and A0-Z9 (all strictly floating-point)
- *   - Arrays: A-Z (1D and 2D arrays via DIM)
- *   - Statements: LET, PRINT, END, READ, DATA, GOTO, IF/THEN, FOR/NEXT,
- *                 GOSUB, RETURN, DEF, DIM, REM, STOP
- *   - Functions: SIN, COS, TAN, ATN, EXP, LOG, ABS, SQR, RND, INT
- *   - DEF functions: FNA through FNZ (single-line definition)
- *   - Operators: + - * / ^ (Exponentiation)
- *   - Relational: = < > <= >= <>
- *   - Historic Precedence: Unary minus binds tighter than ^ (-X^2 is (-X)^2)
- *   - LET keyword is mandatory
- *   - Strings are ONLY allowed as literals in PRINT statements
- *   - Built-in HELP command added for project parity
- *   - Interactive Commands: HELLO, NEW, OLD, SAVE, REPLACE, UNSAVE,
- *                           LIST, RUN, CATALOG/CAT, SCRATCH, GOODBYE/BYE
- *
- * HOW TO COMPILE:
- *   MSVC:  cl /TC /W4 /WX /Za /O2 /D_CRT_SECURE_NO_WARNINGS 1964.c
- *   GCC:   gcc -ansi -Wall -Wextra -Werror -pedantic -O2 -o 1964 1964.c -lm
- */
+// FILENAME: 1964.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// DESCRIPTION: Provides core logic and implementation for 1964.c within BASIC++.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,6 +35,10 @@
  *   If you get "implicit declaration" warnings, verify all
  *   includes are present and the compiler is in C89 mode.
  * ========================================================================= */
+
+#ifndef BASIC_RAM_SIZE
+#define BASIC_RAM_SIZE   65536L
+#endif
 
 #define MAX_LINES        2000
 #define LINE_LEN         255
@@ -232,9 +206,20 @@ static void skip_spaces(char **p) {
     }
 }
 
+static int my_strncasecmp(const char *s1, const char *s2, size_t n) {
+    size_t i;
+    for (i = 0; i < n; i++) {
+        int c1 = toupper((unsigned char)s1[i]);
+        int c2 = toupper((unsigned char)s2[i]);
+        if (c1 != c2) return c1 - c2;
+        if (c1 == '\0') return 0;
+    }
+    return 0;
+}
+
 static int match_keyword(char **p, const char *kw) {
     size_t len = strlen(kw);
-    if (strncmp(*p, kw, len) == 0) {
+    if (my_strncasecmp(*p, kw, len) == 0) {
         if (!isalpha((unsigned char)((*p)[len])) && (*p)[len] != '$') {
             *p += len;
             skip_spaces(p);
@@ -1206,38 +1191,39 @@ static void cmd_help(void) {
     printf("  SAVE / REPLACE   : Save current program\n");
     printf("  LIST             : Show program lines\n");
     printf("  RUN              : Execute program\n");
-    printf("  CATALOG / CAT    : List files in current directory\n");
-    printf("  SCRATCH          : Clear current program from memory\n");
-    printf("  UNSAVE           : Delete the current saved program file\n");
-    printf("  BYE / GOODBYE    : Exit interpreter\n");
-    printf("  HELP             : Show this message\n\n");
+    printf("=== DARTMOUTH BASIC (1964) HELP ===\n");
+    printf("COMMANDS:   RUN [file], LIST, LOAD/OLD [file], SAVE/REPLACE [file]\n");
+    printf("            NEW [file], SCRATCH, CATALOG, UNSAVE [file], BYE/GOODBYE, HELP\n");
+    printf("STATEMENTS: LET, PRINT, READ, DATA, RESTORE, GOTO, IF..THEN, FOR..TO..STEP,\n");
+    printf("            NEXT, GOSUB, RETURN, DIM, DEF FN<x>(a), STOP, END, REM\n");
+    printf("FUNCTIONS:  SIN, COS, TAN, ATN, EXP, LOG, SQR, ABS, INT, RND\n");
+    printf("VARIABLES:  A-Z, A0-Z9 (numeric scalar) | A-Z(dim), A-Z(row,col) (matrices)\n");
+    printf("READY\n");
 }
 
 static void resolve_filename(const char *raw, char *out, int out_size) {
-    char temp[256];
-    char *p = temp;
+    char buf[256];
+    char *p = buf;
+    char *end;
     size_t len;
-    int i;
     
-    strncpy(temp, raw, 255);
-    temp[255] = '\0';
-    skip_spaces(&p);
-    
-    if (*p == '"') {
-        char *end;
-        p++;
-        end = strchr(p, '"');
-        if (end) *end = '\0';
+    if (!raw || !*raw) {
+        out[0] = '\0';
+        return;
     }
     
-    trim_newline(p);
+    strncpy(buf, raw, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+    
+    while (*p == ' ' || *p == '\t' || *p == '"' || *p == '\'') p++;
+    
+    end = p + strlen(p);
+    while (end > p && (*(end - 1) == ' ' || *(end - 1) == '\t' || *(end - 1) == '\r' || *(end - 1) == '\n' || *(end - 1) == '"' || *(end - 1) == '\'')) {
+        *(--end) = '\0';
+    }
     
     len = strlen(p);
-    for (i = 0; i < (int)len; i++) {
-        p[i] = (char)tolower((unsigned char)p[i]);
-    }
-    
-    if (len > 4 && strcmp(p + len - 4, ".bas") == 0) {
+    if (len >= 4 && (p[len - 4] == '.' || strchr(p, '.') != NULL)) {
         strncpy(out, p, out_size - 1);
     } else {
         sprintf(out, "%.250s.bas", p);
@@ -1272,7 +1258,7 @@ static void load_program(const char *filename) {
     resolve_filename(filename, resolved, sizeof(resolved));
     f = fopen(resolved, "r");
     if (!f) {
-        printf("FILE NOT FOUND\n");
+        printf("FILE NOT FOUND: %s\n", resolved);
         return;
     }
     
@@ -1295,33 +1281,40 @@ static void do_catalog(void) {
 #endif
 }
 
-/* =========================================================================
- * MAIN REPL LOOP
- *
- * WHAT CAN BE CHANGED:
- *   - Prompt strings can be modified.
- *
- * WHAT CANNOT BE CHANGED:
- *   - Execution block variable declarations must stay at the top of the
- *     do/while scope to pass C89 compilation.
- *
- * WHAT TO EXPECT:
- *   The entry point of the interpreter. Handles raw input, line number
- *   detection, and dispatching direct commands vs stored lines.
- *
- * IF SOMETHING BREAKS:
- *   If input hangs or loops indefinitely, check fgets EOF handling
- *   and ensure input buffers are correctly flushed.
- * ========================================================================= */
-
-int main(void) {
+int main(int argc, char **argv) {
     char line[LINE_LEN + 32];
+    int batch_mode = 0;
+    int file_arg_idx = 0;
+    int i;
     
     srand((unsigned int)time(NULL));
     clear_all();
     
-    printf("DARTMOUTH BASIC 1964\n");
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--batch") == 0 || strcmp(argv[i], "-q") == 0) {
+            batch_mode = 1;
+        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            printf("Usage: 1964 [options] [filename.bas]\n");
+            printf("Options:\n");
+            printf("  -b, --batch   Run in batch mode and exit after program completes\n");
+            printf("  -h, --help    Show this help message\n");
+            return 0;
+        } else if (argv[i][0] != '-' && file_arg_idx == 0) {
+            file_arg_idx = i;
+        }
+    }
+    
+    printf("DARTMOUTH BASIC 1964 v1.2\n\n");
     printf("READY\n");
+    
+    if (file_arg_idx > 0) {
+        load_program(argv[file_arg_idx]);
+        run_program();
+        printf("READY\n");
+        if (batch_mode) {
+            return 0;
+        }
+    }
     
     while (1) {
         char *p;
@@ -1332,7 +1325,6 @@ int main(void) {
         }
         
         trim_newline(line);
-        uppercase_input(line);
         p = line;
         skip_spaces(&p);
         
@@ -1362,7 +1354,7 @@ int main(void) {
             clear_all();
             printf("READY\n");
         }
-        else if (match_keyword(&p, "OLD")) {
+        else if (match_keyword(&p, "OLD") || match_keyword(&p, "LOAD")) {
             skip_spaces(&p);
             if (*p == '\0') {
                 printf("OLD PROGRAM NAME--\n");
@@ -1425,18 +1417,20 @@ int main(void) {
             printf("READY\n");
         }
         else if (match_keyword(&p, "RUN")) {
+            skip_spaces(&p);
+            if (*p != '\0') {
+                load_program(p);
+            }
             run_program();
             printf("READY\n");
         }
         else if (match_keyword(&p, "HELP")) {
             cmd_help();
         }
-        else if (match_keyword(&p, "GOODBYE") || match_keyword(&p, "BYE")) {
+        else if (match_keyword(&p, "GOODBYE") || match_keyword(&p, "BYE") || match_keyword(&p, "SYSTEM") || match_keyword(&p, "QUIT")) {
             break;
         }
         else {
-            /* Immediate execution of statements not supported in pure Dartmouth 1964,
-               but we can provide a syntax error message */
             printf("SYNTAX ERROR: IMMEDIATE MODE NOT SUPPORTED OR UNKNOWN COMMAND\n");
         }
     }

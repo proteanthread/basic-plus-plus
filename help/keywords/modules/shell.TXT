@@ -1,0 +1,34 @@
+SHELL Command Line Execution Statement
+======================================================================
+
+The SHELL statement invokes the operating system's command interpreter
+or runs a shell command.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    SHELL
+    SHELL command_string$
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Without arguments: Launches interactive host shell.
+  - With string argument: Executes command and returns.
+  - Security restricted: Error 70 if CAP_SYS is restricted.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  70          ERR_PERMISSION_DENIED Shell execution restricted
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SHELL "echo Hello from OS shell"

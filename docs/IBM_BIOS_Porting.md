@@ -1,83 +1,92 @@
-# Porting the Authentic IBM PC/XT/AT/PCjr BIOS Micro-Library (`libbios`)
-===================================================================
-Version 6.5.1
+# BASIC++ v6.5.2 IBM BIOS Porting Guide
 
-This document describes how to extract and port the BASIC++ **Authentic IBM BIOS Micro-Library** (`libbios`: `bios.c`, `bios_pc.c`, `bios_xt.c`, `bios_at.c`, `bios_jr.c` and `bios.h`) into other external projects—such as bare-metal kernels, standalone x86/8086 emulators, legacy interpreter environments, UEFI CSM boot modules, or educational firmware simulation tools.
+## 1. OVERVIEW
 
----
+The BIOS emulation subsystem (engine/src/bios/) provides a virtual implementation of the IBM PC/XT/AT BIOS. This allows BASIC++ programs that use POKE, PEEK, INP, OUT, and BIOS interrupt-level operations to run on any platform. The BIOS emulation faithfully reproduces the IBM PC memory map, I/O port behavior, and interrupt services.
 
-## 1. Overview & Architecture
+## 2. EMULATED BIOS SERVICES
 
-`libbios` is a self-contained, strict C17 micro-library with **zero external dependencies** on the BASIC++ interpreter. It provides 100% authentic IBM PC (5150), XT (5160), AT (5170), and PCjr (4860) firmware emulation, complete real-mode 1MB memory maps, BIOS Data Area (BDA at `0x400`), Interrupt Vector Tables (`0x000-0x3FF`), hardware port I/O registers (8254 PIT, 8259 PIC, 6845 CRTC, 8042 KBD, CMOS RTC, SN76496 PSG, Sound Blaster DSP, OPL2 FM synthesis), software interrupt services (INT 10h-1Ah, INT 21h, INT 33h, VBE 2.0/3.0, EMS 4.0, XMS 3.0), POST diagnostic code logging (`Port 0x80`), and fine-grained historical BIOS revision support.
+**INT 10h — Video Services**: Mode setting (AH=00h), cursor shape (AH=01h), cursor position (AH=02h), read cursor (AH=03h), scroll up (AH=06h), scroll down (AH=07h), read character (AH=08h), write character (AH=09h, 0Ah), set palette (AH=0Bh), write pixel (AH=0Ch), read pixel (AH=0Dh), TTY output (AH=0Eh), get video mode (AH=0Fh), EGA/VGA functions (AH=10h-13h).
 
-```
-       +---------------------------------------------+
-       |             Your External Project           |
-       |  (Bare-Metal OS, Emulator, or UEFI CSM)     |
-       +----------------------------+----------------+
-                                    |
-                    BiosContext     |  Memory Map &
-                     Handle         |  Interrupt API
-                                    v
-       +---------------------------------------------+
-       |   Authentic IBM BIOS Micro-Library (libbios)  |
-       |  (bios.c, bios_pc.c, bios_xt.c, bios_at.c)    |
-       +-----+------------------+---------------+-----+
-             |                  |               |
-             v                  v               v
-       +-----------+      +-----------+   +-----------+
-       |    BDA    |      |    IVT    |   | Hardware  |
-       | (0x400-4FF|      | (0x000-3FF|   | Port I/O  |
-       +-----------+      +-----------+   +-----------+
-```
+**INT 13h — Disk Services**: Virtual disk read/write for programs that access disk through BIOS calls.
 
----
+**INT 16h — Keyboard Services**: Read key (AH=00h), check buffer (AH=01h), shift state (AH=02h), extended functions (AH=10h-12h).
 
-## 2. API Usage Reference
+**INT 1Ah — Time Services**: Read clock (AH=00h), set clock (AH=01h), read date (AH=04h), set date (AH=05h).
 
-### Context Lifecycle
-```c
-/* Create a new BIOS context for a target model */
-BiosContext* ctx = bios_create(BIOS_MODEL_IBM_PC);
+## 3. BIOS DATA AREA
 
-/* Select specific historical revision (e.g. PC 1981-04-24, XT 1982-11-08, AT 1984-01-10) */
-bios_set_revision(ctx, BIOS_REV_PC_1981_04_24);
+The BIOS Data Area (BDA) at 0x0400-0x04FF is fully emulated. Key fields:
 
-/* Query part number string (e.g. "5700051", "1501512", "1501529") */
-const char* part_no = bios_get_part_number(ctx);
+| Address | Size | Description |
+|---------|------|-------------|
+| 0x0449 | 1 | Current video mode |
+| 0x044A | 2 | Screen width in columns |
+| 0x044E | 2 | Current video page offset |
+| 0x0450 | 16 | Cursor positions (8 pages × 2 bytes) |
+| 0x0460 | 2 | Cursor shape (start/end scan lines) |
+| 0x0462 | 1 | Active display page |
+| 0x0463 | 2 | CRT controller base port (3B4h or 3D4h) |
+| 0x0465 | 1 | CGA mode register value |
+| 0x0466 | 1 | CGA color register value |
+| 0x046C | 4 | Timer tick count |
+| 0x0470 | 1 | Timer overflow flag |
+| 0x0471 | 1 | Ctrl+Break flag |
+| 0x0484 | 1 | EGA/VGA rows minus 1 |
 
-/* Initialize memory and hardware state */
-bios_init(ctx);
+Programs can read these fields with PEEK and write them with POKE:
 
-/* Clean up resources */
-bios_destroy(ctx);
+```basic
+10 Mode = PEEK(&H0449)          ' Read current video mode
+20 Cols = PEEK(&H044A)          ' Read screen width
+30 POKE &H0462, 1               ' Switch to video page 1
 ```
 
-### Memory & Interrupt Services
-```c
-/* PEEK real-mode physical 20-bit address */
-uint8_t val = bios_peek(ctx, 0xFFFF5);
+## 4. VIDEO RAM
 
-/* POKE value to physical address (guards ROM 0xF0000-0xFFFFF) */
-bios_poke(ctx, 0x0413, 0x80);
+The BIOS emulation provides virtual video RAM:
 
-/* POKE raw value (bypasses ROM protection during init) */
-bios_poke_raw(ctx, 0xFFFF5, '0');
+**0xB8000-0xBFFFF**: CGA/EGA/VGA text-mode framebuffer. Each character cell uses 2 bytes (character code + attribute). Writing to this region updates the virtual display through BiosVRAMObserver callbacks.
 
-/* Dispatch software interrupt */
-BiosRegs regs = { .ax = 0x0003 };
-bios_interrupt(ctx, 0x10, &regs);
+**0xA0000-0xAFFFF**: EGA/VGA graphics framebuffer. Writing pixel data to this region is trapped and rendered through the BGI rasterizer.
 
-/* Register custom interrupt callback */
-bios_register_interrupt(ctx, 0x80, my_custom_int_handler, user_data);
+```basic
+10 ' Write "A" in white on blue at position (0,0) in text mode
+20 POKE &HB8000, 65              ' Character "A"
+30 POKE &HB8001, &H1F            ' Attribute: white on blue
 ```
 
----
+## 5. I/O PORTS
 
-## 3. Porting Checklist for External Projects
+The BIOS emulation virtualizes key I/O ports:
 
-1. Copy `engine/include/bios/*.h` into your project's include directory.
-2. Copy `engine/src/bios/*.c` into your project's source directory.
-3. Add `-std=c17` to your C compiler flags.
-4. On POSIX/UNIX targets, add `-D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700 -D_GNU_SOURCE`.
-5. Link `libbios` statically or dynamically with your executable.
+| Port | Description |
+|------|-------------|
+| 3B4h-3B5h | MDA CRT controller |
+| 3D4h-3D5h | CGA/EGA/VGA CRT controller (6845 CRTC) |
+| 3C0h | VGA attribute controller |
+| 3C4h-3C5h | VGA sequencer |
+| 3C7h-3C9h | VGA DAC (palette) |
+| 3CEh-3CFh | VGA graphics controller |
+| 3DAh | CGA/VGA status register |
+| 60h | Keyboard data port |
+| 61h | System control port |
+| 40h-43h | PIT (timer) |
+
+## 6. TRI-MODE HAL DISPATCH
+
+The BIOS subsystem implements the Tri-Mode HAL Dispatch system:
+
+**STATIC_INLINE** — For IoT/embedded microcontrollers where BIOS functions are compiled as inline code for minimum overhead.
+
+**PLUGGABLE_STRUCT** — For host emulators and BASIC++ desktop builds where BIOS functions are called through function pointers, allowing runtime replacement.
+
+**MACRO_OVERRIDE** — For FreeDOS/UEFI builds where BIOS calls are redirected to real hardware through preprocessor macros.
+
+## 7. CPU EMULATION
+
+The BIOS subsystem includes a micro-8086 interpreter (libcpu8086) for executing x86 machine code in BIOS ROM routines. This enables programs that call real BIOS routines (through SYS or USR) to execute the actual x86 instructions in a sandboxed environment.
+
+## 8. PORTING TO NEW PLATFORMS
+
+When porting BASIC++ to a new platform, the BIOS emulation layer requires no changes — it is a pure software emulation. The platform layer (plat_console.c, plat_fs.c, etc.) provides the actual hardware interface. The BIOS emulation sits between BASIC++ statements and the platform layer, translating POKE/PEEK/INP/OUT operations into platform-appropriate calls.

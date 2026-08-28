@@ -1,0 +1,108 @@
+Object-Oriented Programming (OOP) Architecture in BASIC++
+
+Overview
+BASIC++ v6.5.2 introduces a modern, high-performance Object-Oriented Programming (OOP) architecture that co-exists seamlessly with classic BASIC idioms, structured programming, and vintage dotted identifiers.
+
+1. Class Declaration & Encapsulation
+Classes are declared using CLASS ... END CLASS blocks. Access specifiers define the visibility of fields and methods:
+- PUBLIC: Accessible from all scopes and member access chains (obj.field).
+- PRIVATE: Encapsulated within the class methods; rejected if accessed externally.
+- PROTECTED: Accessible within the declaring class and its derived subclasses.
+
+``basic
+CLASS BankAccount
+    PRIVATE:
+        balance AS DOUBLE
+    PUBLIC:
+        owner AS STRING
+
+    SUB NEW(accOwner$, initialDeposit)
+        THIS.owner = accOwner$
+        THIS.balance = initialDeposit
+    END SUB
+
+    FUNCTION GetBalance()
+        GetBalance = THIS.balance
+    END FUNCTION
+
+    SUB Deposit(amount)
+        THIS.balance = THIS.balance + amount
+    END SUB
+END CLASS
+`
+
+2. Object Instantiation & Lifecycle
+Objects can be instantiated dynamically via NEW or statically via DIM AS:
+- SET obj = NEW ClassName(args...) dynamically allocates an instance on the heap and invokes CONSTRUCTOR / SUB NEW.
+- SET obj = NOTHING or SET obj = NULL deterministically invokes the class DESTRUCTOR() and frees memory.
+
+`basic
+SET acc = NEW BankAccount("Alice", 100.0)
+PRINT "Owner: "; acc.owner
+PRINT "Balance: "; acc.GetBalance()
+CALL acc.Deposit(50.0)
+SET acc = NOTHING
+`
+
+3. Inheritance & Polymorphism
+Classes support single inheritance via EXTENDS. Derived classes inherit public and protected members from the base class and can access base class implementations using BASE.Method():
+
+`basic
+CLASS Shape
+    PUBLIC:
+        name AS STRING
+    SUB NEW(sName$)
+        THIS.name = sName$
+    END SUB
+    FUNCTION Describe$()
+        Describe$ = "Shape: " + THIS.name
+    END FUNCTION
+END CLASS
+
+CLASS Circle EXTENDS Shape
+    PUBLIC:
+        radius AS DOUBLE
+    SUB NEW(sName$, cRadius)
+        THIS.name = sName$
+        THIS.radius = cRadius
+    END SUB
+    FUNCTION Area()
+        Area = 3.14159  THIS.radius  THIS.radius
+    END FUNCTION
+    FUNCTION Describe$()
+        Describe$ = "Circle: " + THIS.name
+    END FUNCTION
+END CLASS
+`
+
+4. Operator Overloading
+Classes can overload standard arithmetic and relational operators (+, -, *, /, =) using FUNCTION OPERATOR (operand):
+
+`basic
+CLASS Vector2D
+    PUBLIC:
+        x AS DOUBLE
+        y AS DOUBLE
+    SUB NEW(vx, vy)
+        THIS.x = vx
+        THIS.y = vy
+    END SUB
+    FUNCTION OPERATOR +(v2)
+        OPERATOR = NEW Vector2D(THIS.x + v2.x, THIS.y + v2.y)
+    END FUNCTION
+    FUNCTION OPERATOR -(v2)
+        OPERATOR = NEW Vector2D(THIS.x - v2.x, THIS.y - v2.y)
+    END FUNCTION
+END CLASS
+
+SET v1 = NEW Vector2D(10.0, 20.0)
+SET v2 = NEW Vector2D(5.0, 7.0)
+SET v3 = v1 + v2
+PRINT "v3.x: "; v3.x; " v3.y: "; v3.y
+`
+
+5. Dotted Identifier Disambiguation
+Vintage BASIC programs often use dotted variable names (such as TAX.RATE or USER.NAME$). BASIC++ automatically disambiguates:
+1. If the base identifier (TAX) is an active object reference (VAL_MAP), it resolves as member field access (TAX.RATE).
+2. If TAX is not an object, TAX.RATE is evaluated as a flat vintage scalar variable.
+3. Explicit . syntax inside WITH ... END WITH` blocks cleanly resolves member access against the active object.

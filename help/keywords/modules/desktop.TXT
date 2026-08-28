@@ -1,0 +1,22 @@
+desktop Flagship Desktop Target Edition Specification
+======================================================================
+
+The desktop edition (baspp / baspp.exe) is the flagship desktop
+runtime of BASIC++ v6.5.2.
+
+
+SPECIFICATIONS
+----------------------------------------------------------------------
+
+  - Default Memory: 640 MB (671088640 bytes).
+  - Prompt: "> " with "Ok" status.
+  - Delay-loads SDL2 for graphics (SCREEN) and audio (PLAY).
+  - Full TUI editor multiplexer and virtual devices (vdev, vmem, vnet).
+
+
+USAGE
+----------------------------------------------------------------------
+
+    baspp                    : Interactive REPL
+    baspp script.bas         : Run BASIC script
+    baspp -c "PRINT 1+1"     : Execute inline command

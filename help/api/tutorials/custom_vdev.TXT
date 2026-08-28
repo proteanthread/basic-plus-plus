@@ -1,0 +1,27 @@
+TUTORIAL: IMPLEMENTING CUSTOM VIRTUAL DEVICES (tutorials/custom_vdev.h)
+======================================================================
+
+1. OVERVIEW
+Demonstrates constructing a custom virtual device and attaching it to the
+master Virtual Device Bus (device/vdev.h).
+
+2. VDEV OPERATIONS TABLE
+A device implements the VDevOps function pointer table:
+- open(dev, path, mode) -> bool
+- close(dev)
+- read(dev, buf, count) -> size_t
+- write(dev, buf, count) -> size_t
+- getc(dev) -> int
+- putc(dev, c) -> int
+- ioctl(dev, cmd, arg) -> int
+
+3. REGISTRATION
+  VDev *dev = calloc(1, sizeof(VDev));
+  dev->name = "MYDEV:";
+  dev->ops = my_ops;
+  vdev_bus_attach(bus, dev);
+
+4. USAGE IN BASIC
+  10 OPEN "MYDEV:" FOR OUTPUT AS #1
+  20 PRINT #1, "Streaming data to custom virtual device"
+  30 CLOSE #1

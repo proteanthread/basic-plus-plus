@@ -1,0 +1,24 @@
+C17 API REFERENCE: LEXICAL ANALYZER (lexer/lexer.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+Provides ephemeral token scanning, keyword lookup, bounded token comparisons,
+and lookahead parsing. Tokens are parsed ephemerally and never permanently stored.
+
+2. KEY TYPES & STRUCTS
+- BppTokenType: TOK_EOF, TOK_EOL, TOK_NUMBER, TOK_STRING, TOK_IDENT, TOK_KEYWORD.
+- BppToken: Tagged union with start pointer, length, and typed union (.as).
+
+3. CORE API FUNCTIONS
+- lex_init(mem, source) -> LexerContext *
+- lex_shutdown(lex)
+- lex_next(lex) -> BppToken
+- lex_peek(lex) -> BppToken
+- lex_peek_n(lex, n) -> BppToken
+- lex_get_pos(lex) -> size_t
+
+4. TOKEN SAFETY INVARIANTS
+- TOK_IDENT uses .start and .length ONLY (never access .as.string).
+- Token comparisons must check tok.length == len before strncasecmp.
+- Dual checking: verify both TOK_KEYWORD and TOK_IDENT for option flags.
+- Handlers must advance lexer via lex_next() before returning err.code = 0.

@@ -1,0 +1,62 @@
+BASIC++ EXTENDED NETWORKING & PROTOCOLS ARCHITECTURE: GEMINI, GOPHER, TNFS & FUJINET
+
+OVERVIEW
+BASIC++ v6.5.2 features a comprehensive retro-modern hybrid networking architecture allowing both host systems (baspp.exe, bpp.exe, bs.exe) and microcontroller IoT targets (iot.exe / ESP32) to seamlessly communicate across modern and vintage network protocols.
+
+1. FUJINET REMOTE DEVICE BUS (N:) & PROTOCOL ROUTING
+The FujiNet virtual network bus provides unified device streaming via OPEN "N:<URI>" FOR INPUT/OUTPUT AS #filenum.
+
+Supported Protocol Schemes:
+- N:TCP://host:port : Raw bidirectional TCP socket stream.
+- N:UDP://host:port : Low-latency UDP datagram stream.
+- N:HTTP://host[:port]/path : HTTP 1.0/1.1 REST client stream.
+- N:HTTPS://host[:port]/path : TLS-encrypted HTTPS stream.
+- N:GEMINI://host[:port]/path : Gemini protocol stream over TLS (port 1965).
+- N:GOPHER://host[:port]/type/selector : Vintage Gopher RFC 1436 stream (port 70).
+- N:TNFS://host[:port]/path/file.ext : Remote TNFS filesystem stream (UDP port 9868).
+
+2. TNFS (TRIVIAL NETWORK FILE SYSTEM) SUBSYSTEM
+The TNFS subsystem implements remote virtual disk and file access over UDP port 9868.
+
+Statements & Functions:
+- TNFS.MOUNT host$ [, path$ [, port%]] : Mounts a remote TNFS directory repository (default host tnfs.fujinet.online, default port 9868).
+- TNFS.UNMOUNT : Dismounts active TNFS sessions and clears cached mounts.
+- TNFS.DIR$([path$ [, pattern$]]) : Retrieves formatted remote directory listings.
+
+Example:
+10 TNFS.MOUNT "tnfs.fujinet.online", "/atari", 9868
+20 PRINT TNFS.DIR$("/atari")
+30 OPEN "N:TNFS://tnfs.fujinet.online/atari/AUTORUN.BAS" FOR INPUT AS #1
+40 LINE INPUT #1, L$
+50 PRINT "Read from remote TNFS: "; L$
+60 CLOSE #1
+70 TNFS.UNMOUNT
+
+3. GEMINI PROTOCOL 1X-6X STATUS MACHINE, TOFU & GEMTEXT
+Implements the full Gemini specification with 2-digit status codes, metadata tracking, Trust On First Use (TOFU) certificate validation, client certificate authentication, and interactive Gemtext browsing.
+
+Statements & Functions:
+- GEMINI.GET$(url$) : Fetches capsule content from a gemini:// URL.
+- GEMINI.STATUS%() : Returns the 2-digit integer status code of the last request (e.g., 20 = SUCCESS, 30 = REDIRECT, 60 = CLIENT CERT REQUIRED).
+- GEMINI.META$() : Returns response MIME type, redirect URL, or error message.
+- GEMINI.TOFU ON|OFF : Enables or disables Trust On First Use certificate pinning.
+- GEMINI.CERT cert$, key$ : Configures client certificate and private key paths.
+- GEMINI.BROWSE [url$] : Interactive terminal/TUI Gemtext browser.
+
+4. FUJINET REST & SYSTEM DIAGNOSTICS API
+Provides JSON and diagnostic integration with physical or virtual FujiNet hardware.
+
+Functions:
+- FUJI.STATUS$() : Returns operational status of the FujiNet adapter.
+- FUJI.SSID$() : Returns the connected Wi-Fi SSID.
+- FUJI.IP$() : Returns the IP address assigned to the FujiNet adapter.
+- FUJI.JSON.GET$(url$, key$) : Fetches a JSON endpoint and extracts a specific configuration key value.
+
+5. IOT & MICROCONTROLLER SIGNAL AND REPL SEMANTICS
+In iot.exe and across all BASIC++ REPL binaries:
+- Prompt is : in iot.exe, ] in bpp.exe, > in baspp.exe.
+- Storing or modifying numbered program lines is 100% silent (only the prompt is displayed).
+- Direct statement execution prints Ready. (or Ok) once on completion followed by prompt.
+- CTRL+C is safely trapped to break running loops without crashing.
+- BYE and GOODBYE exit the REPL and VM with status code 0.
+- EXIT keyword is strictly reserved for control flow structures (EXIT FOR, EXIT DO, EXIT WHILE, EXIT SUB, EXIT FUNCTION, EXIT DEF).

@@ -1,0 +1,16 @@
+HEX$ Hexadecimal String Conversion Function
+======================================================================
+
+The HEX$ function converts an integer value to a hexadecimal string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    hex_str$ = HEX$(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT HEX$(255)   : REM Outputs "FF"

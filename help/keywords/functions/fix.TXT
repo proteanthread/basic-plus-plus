@@ -1,0 +1,22 @@
+FIX Integer Truncation Function
+======================================================================
+
+The FIX function truncates a numeric expression towards zero.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res = FIX(numeric_expression)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Truncates towards 0 (FIX(-3.5) = -3, whereas INT(-3.5) = -4).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT FIX(7.89)   : REM Outputs 7

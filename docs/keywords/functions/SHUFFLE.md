@@ -1,0 +1,31 @@
+# `SHUFFLE$` String Character Shuffle Function
+
+## 1. BASIC Usage and Function Definition
+
+The `SHUFFLE$` function returns a copy of a string expression with all its characters randomly scrambled using the Fisher-Yates shuffle algorithm.
+
+### Syntax Signatures:
+```basic
+scrambled$ = SHUFFLE$(str$ [, seed])
+scrambled$ = SHUFFLE(str$ [, seed])
+```
+
+### Operational Rules:
+- Returns a new string of equal length with characters permuted uniformly at random.
+- If `seed` is provided, the pseudo-random generator is initialized with `seed` before shuffling.
+- If `seed` is omitted, `SHUFFLE$` uses and advances the global PRNG state (configured via `RANDOMIZE`), returning a fresh random permutation on each call.
+- Passing an empty string `""` returns `""`.
+- If the first argument is non-string or the second argument is non-numeric, returns `Error 13: Type Mismatch`.
+
+---
+
+## 2. Code Examples
+
+```basic
+10 A$ = "TEK CLUB"
+20 PRINT SHUFFLE$(A$)        : REM E.g. "KTC BUL E"
+30 B$ = SHUFFLE$("BASIC++")
+40 PRINT "Scrambled: "; B$
+50 REM With optional seed for reproducible permutations
+60 PRINT SHUFFLE$("ABCDEF", 42)
+```

@@ -1,0 +1,22 @@
+C17 API REFERENCE: FUJINET HARDWARE EMULATION (device/fujinet.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The FujiNet Subsystem provides peripheral bus emulation for the FujiNet
+network adapter across Atari, Apple II, Commodore, and BASIC++ devices.
+
+2. VIRTUAL DEVICES
+- N:     Network adapter virtual device (TCP, UDP, HTTP, HTTPS, JSON).
+- FUJI:  FujiNet management interface (device configuration, slot mounts).
+- CLOCK: Network time protocol (NTP) virtual clock device.
+
+3. CORE API FUNCTIONS
+- fujinet_init_system(vm)
+- fujinet_shutdown_system()
+- fujinet_create_n_dev(vm) -> VDev
+- fujinet_create_fuji_dev(vm) -> VDev
+- fujinet_create_clock_dev(vm) -> VDev
+
+4. ARCHITECTURAL INVARIANTS
+- Requires CAP_NET capability in SecurityContext.
+- Full SIO command framing compatibility.

@@ -1,0 +1,22 @@
+REFORMAT Program Source Pretty-Print Statement
+==============================================
+
+Reformats, indents, and capitalizes BASIC source code in memory according to standard style guidelines.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    REFORMAT
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Formatting utility command.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    REFORMAT : REM Cleans up active program formatting

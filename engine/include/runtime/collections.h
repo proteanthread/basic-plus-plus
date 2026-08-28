@@ -1,22 +1,11 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ — a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * What it does: Public umbrella header for Ring 1 standalone data structures & utilities.
- * Why it exists: Aggregates map, crypto, string utilities, sorting, and using formatting libraries.
- * Why it works this way: Allows consumers to `#include "runtime/collections.h"` for all data utilities.
- * What can be changed: Add new standalone collection structure declarations.
- * What cannot be changed: BppMap and utility function signatures.
- * What to expect: Clean compilation independent of VM or interpreter engine.
- * What to do if something breaks: Check included standard library headers.
- * Assumptions: C17 compiler compliance.
- * Portability concerns: Strict C17 compliant, pure 7-bit ASCII.
- * Future expansions: Add dynamic vector and queue data structures.
- * External extension hooks: Shared across all BASIC++ target executables and plugins.
- */
+// FILENAME: collections.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (exec_control_internal.h, exec_internal.h, map.c)
+// NEEDS: libkernel (types.h)
+// Provides core logic and interface definitions for collections within BASIC++.
+//
+// ---- Includes ----
 
 #ifndef RUNTIME_COLLECTIONS_H
 #define RUNTIME_COLLECTIONS_H
@@ -25,7 +14,7 @@
 #include <stdbool.h>
 #include "types/types.h"
 
-/* Map Data Structures */
+// Map Data Structures
 typedef struct BppMapEntry {
     char   *key;
     BValue  val;
@@ -42,4 +31,4 @@ BppMap *map_create(void);
 void    map_add_ref(BppMap *map);
 void    map_release(void *str_ctx, BppMap *map);
 
-#endif /* RUNTIME_COLLECTIONS_H */
+#endif // RUNTIME_COLLECTIONS_H

@@ -1,0 +1,17 @@
+TAN Tangent Trigonometric Function
+======================================================================
+
+The TAN function calculates the trigonometric tangent of an angle in
+radians.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result# = TAN(angle_radians)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT TAN(0)   : REM Outputs 0

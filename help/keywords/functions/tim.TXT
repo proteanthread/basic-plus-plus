@@ -1,0 +1,16 @@
+TIM System Timer Minute Function
+======================================================================
+
+The TIM function returns the current minute of the hour (0..59).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    minute% = TIM(0)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT TIM(0)   : REM Outputs current minute

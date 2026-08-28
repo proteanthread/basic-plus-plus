@@ -1,196 +1,93 @@
-# Self-Programming with BASIC++
+# BASIC++ v6.5.2 Self-Programming and Code Generation
 
-**Version 4.2.3**
+## 1. OVERVIEW
 
+BASIC++ programs can examine and modify their own source code at runtime. This capability enables self-modifying programs, code generators, and programs that construct other programs dynamically. The BASIC++ approach treats the program line store as a mutable data structure that accepts insertions, replacements, and deletions while the program is running.
 
----
+## 2. RUNTIME LINE MANIPULATION
 
-## Table of Contents
-
-- Runtime Line Manipulation
-- Data-Driven Programs
-- EVAL-Like Patterns
-  - Using ON GOTO/GOSUB for dispatch tables
-  - Using arrays as lookup tables
-  - Using string functions to build computed values
-- CHAIN and MERGE
-- RENUM and Program Surgery
-- Using SHELL$ for Code Generation
-- Shebang Scripts
-- Program Introspection
-
----
-
-BASIC++ programs can examine and modify themselves at runtime. This guide covers self-modifying code, meta-programming, and program introspection.
-
----
-
-## 1. Runtime Line Manipulation
-
-In BASIC++, programs are stored as text lines in memory. The interpreter does not pre-compile — it re-parses each line every time it executes. This means you can:
-
-- Add lines to a running program
-- Delete lines from a running program
-- Modify lines from a running program
-
-**Example — a program that writes itself:**
+A BASIC++ program can insert new lines by constructing a string containing a line number and a statement, then executing it as if the user had typed it at the prompt. The technique uses the EXEC statement:
 
 ```basic
-10 REM This program adds lines at runtime
-20 A$ = "100 PRINT " + CHR$(34) + "I was created!" + CHR$(34)
-30 REM Insert line 100 (as if typed at the keyboard)
-40 PRINT "Self-modification is possible in direct mode"
-50 PRINT "but requires CHAIN or MERGE for runtime insertion"
-```
-
-> **Note:** True self-modification of running code requires careful use of `MERGE` or `CHAIN` to inject new lines.
-
----
-
-## 2. Data-Driven Programs
-
-Instead of modifying code, let `DATA` statements drive behavior:
-
-```basic
-10 REM Data-driven menu system
-20 READ N
-30 FOR I = 1 TO N
-40   READ LABEL$, ACTION
-50   PRINT I; ") "; LABEL$
-60 NEXT I
-70 INPUT "Choice: "; C
-80 RESTORE
-90 READ N
-100 FOR I = 1 TO C
-110   READ LABEL$, ACTION
+100 FOR I = 1000 TO 1090 STEP 10
+110   EXEC STR$(I) + " DATA " + STR$(RND * 100)
 120 NEXT I
-130 ON ACTION GOSUB 1000, 2000, 3000
-140 END
-500 DATA 3
-510 DATA "New Game", 1, "Load Game", 2, "Quit", 3
+130 RUN 1000
 ```
 
----
+This loop generates DATA statements on lines 1000-1090, each containing a random number. The EXEC statement interprets the string as if it were entered at the prompt — if it has a line number, it is stored; if not, it is executed immediately.
 
-## 3. EVAL-Like Patterns
+## 3. DELETING LINES AT RUNTIME
 
-While BASIC++ doesn't have a direct `EVAL` function, you can achieve similar effects by:
-
-### A. Using ON GOTO/GOSUB for dispatch tables
+A program can delete its own lines by executing a line number with no statement:
 
 ```basic
-10 INPUT "Function (1-3): "; F
-20 ON F GOSUB 100, 200, 300
+200 EXEC "1000"     ' Deletes line 1000
 ```
 
-### B. Using arrays as lookup tables
+DELETE also works: `EXEC "DELETE 1000-1090"`.
+
+## 4. LINE INSPECTION
+
+A program can read its own source lines:
+
+LINES returns the total number of lines in the current program.
+LINE$(n) returns the source text of the line with number n, including the line number. If line n does not exist, it returns an empty string.
 
 ```basic
-10 DIM TABLE(100)
-20 FOR I = 0 TO 99
-30   TABLE(I) = I * I
+10 FOR I = 10 TO 100 STEP 10
+20   IF LINE$(I) <> "" THEN PRINT LINE$(I)
+30 NEXT I
+```
+
+## 5. CODE GENERATION PATTERNS
+
+### Generating Lookup Tables
+
+```basic
+10 FOR I = 0 TO 360
+20   Radians = I * PI / 180
+30   EXEC STR$(5000 + I) + " DATA " + STR$(SIN(Radians))
 40 NEXT I
-50 INPUT "Square root of: "; N
-60 PRINT TABLE(N)
+50 PRINT "Generated 361 DATA statements (lines 5000-5360)"
 ```
 
-### C. Using string functions to build computed values
+### Building Computed GOTO Tables
 
 ```basic
-10 INPUT "Expression: "; E$
-20 V = VAL(E$)
-30 PRINT "Value: "; V
+10 FOR I = 1 TO N
+20   EXEC STR$(9000 + I) + " ON CHOICE GOTO " + STR$(1000 * I)
+30 NEXT I
 ```
 
----
-
-## 4. CHAIN and MERGE
-
-**CHAIN** loads a new program and starts executing it:
+### Self-Modifying Prompts
 
 ```basic
-10 PRINT "Program A"
-20 CHAIN "program_b.bas"
+10 Prompt$ = "Enter value: "
+20 EXEC "100 INPUT " + CHR$(34) + Prompt$ + CHR$(34) + "; X"
+30 RUN 100
 ```
 
-Variables are preserved across `CHAIN` by default.
+## 6. SAFETY CONSIDERATIONS
 
-**MERGE** loads lines into the current program without clearing:
+Self-modification is powerful but risky. Programs that modify their own running code can create hard-to-debug conditions:
 
-```basic
-10 REM Main program
-20 MERGE "subroutines.bas"
-30 REM Now subroutine lines are available
-40 GOSUB 5000
-```
+- **CONT Invalidation**: Modifying any line after STOP invalidates CONT (Error 17).
+- **Execution Position**: If a running program deletes or renumbers the line it is about to execute, the VM may skip lines or produce Error 8 (Undefined line number).
+- **GOSUB/FOR Stack Corruption**: If a program deletes lines containing NEXT or RETURN while a FOR or GOSUB is active, the corresponding stack entry refers to a non-existent line.
 
-This enables modular programming — keep subroutine libraries in separate files and `MERGE` them as needed.
+Best practice is to separate the generating code (low line numbers) from the generated code (high line numbers) so that the running generator does not interfere with its own execution.
 
----
+## 7. THE SPECIFICATION SYSTEM
 
-## 5. RENUM and Program Surgery
+The specification system (engine/src/runtime/spec.c) allows BASIC++ programs to define and validate language specifications programmatically. A BASIC++ program can describe its own keyword set, syntax rules, and semantic constraints, then validate those specifications against the running engine.
 
-`RENUM` renumbers all lines, which is useful after inserting many lines into gaps:
+This enables dialect metaprogramming: writing BASIC++ programs that generate, validate, and document language specifications. The specification system is accessed through the SPEC statement family.
 
-```
-RENUM              ' Renumber 10, 20, 30, ...
-RENUM 1000         ' Start at 1000
-RENUM 100, 5       ' Start at 100, step 5
-```
+## 8. RELATIONSHIP TO OVERLAY LOADING
 
-`DELETE` removes ranges:
+Self-programming complements the MERGE and CHAIN overlay system. A program can generate code, SAVE it, and then MERGE or CHAIN to load the generated code into a different execution context. This is the basis for multi-pass code generation where one BASIC++ program writes another.
 
-```
-DELETE 100-500     ' Remove lines 100 through 500
-```
+## 9. THE REFORMAT COMMAND
 
----
-
-## 6. Using SHELL$ for Code Generation
-
-Generate BASIC code from external tools:
-
-```basic
-10 A$ = SHELL$("python generate_data.py")
-20 REM A$ now contains generated DATA statements
-```
-
-Or pipe generated code back into the interpreter:
-
-```basic
-10 SHELL "python gen.py > newcode.bas"
-20 MERGE "newcode.bas"
-30 KILL "newcode.bas"
-```
-
----
-
-## 7. Shebang Scripts
-
-Make BASIC++ programs directly executable on Unix:
-
-```basic
-#!/usr/bin/env basicpp
-10 PRINT "I'm a script!"
-20 PRINT "Args: "; COMMAND$
-```
-
-The `#!` line is silently skipped by the loader.
-
----
-
-## 8. Program Introspection
-
-Examine program state at runtime:
-
-| Command/Function | Description |
-|-----------------|-------------|
-| `LIST` | Display the program (in direct mode) |
-| `FRE(0)` | Free string memory |
-| `FRE(-1)` | Free stack space |
-| `FRE(-2)` | Free array space |
-| `ERR` | Last error number |
-| `ERL` | Line where error occurred |
-| `POS(0)` | Cursor column |
-| `CSRLIN` | Cursor row |
-| `TIMER` | Seconds since midnight |
+REFORMAT standardizes the spacing and indentation of the current program without changing line numbers or logic. This is useful after self-modification to clean up generated code for readability. REFORMAT is implemented as a single-pass scan that normalizes keyword capitalization, statement spacing, and indentation depth.

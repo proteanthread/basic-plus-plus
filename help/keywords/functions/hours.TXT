@@ -1,0 +1,17 @@
+HOURS Current Hour Function
+======================================================================
+
+The HOURS function returns the current hour of the day (0 to 23).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    hr% = HOURS
+    hr% = HOURS()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Hour: "; HOURS

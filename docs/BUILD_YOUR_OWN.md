@@ -1,211 +1,137 @@
-# Build Your Own BASIC++ Dialect: The Definitive Guide
+# BASIC++ v6.5.2 Build Your Own Language
 
-BASIC++ is designed with extreme modularity, backward compatibility, and portability in mind. Adhering strictly to C17 standards without deep OS-specific API entanglements in the core interpreter loop, BASIC++ allows you to deploy highly customized, lightweight BASIC interpreters for everything from massive desktop environments down to embedded microcontrollers (e.g., Arduino, Raspberry Pi Pico, ESP32, FreeRTOS, and BareMetal systems).
+## 1. OVERVIEW
 
-This document provides a comprehensive deep-dive into stripping away unnecessary subsystems, applying the correct C macros, mapping memory footprints, and deploying optimized, custom BASIC interpreters.
+BASIC++ is designed to support user-defined dialects and even non-BASIC languages through its virtual device abstractions and dialect configuration system. This guide explains how to create a custom language that runs on the BASIC++ VM.
 
-By understanding the division between the **Core Interpreter** and the **Sub-System Modules**, you can build a dialect that consumes as little as 40KB of memory, or as large as a full modern retro-environment.
+## 2. DIALECT DEFINITION
 
----
+The simplest approach is to define a custom dialect that selects which keywords are available and how they behave:
 
-## 1. Architectural Philosophy: The Decoupled Monolith
-
-BASIC++ relies on a **Decoupled Monolith** architecture. While the standard build (`basicpp.exe`) produces a feature-rich executable that includes SDL2 graphics, complex file I/O, network sockets, legacy compatibility layers, and dynamic hardware emulation, the parser itself is heavily decoupled from the runtime execution of those features.
-
-When the Lexer tokenizes a keyword like `PLOT`, it resolves it to a numeric ID (`KW_PLOT`). The Parser attempts to construct an Abstract Syntax Tree (AST) using the designated handler `pi_parse_plot()`. If the graphics subsystem is omitted at compile time, the C linker will complain about a missing `pi_parse_plot` function. 
-
-By providing a "stub" function in `lite_stubs.c` that simply throws an `ERR_HOW` (Syntax Error / Feature Not Available), you instantly disable the entire graphics suite while maintaining the strict integrity of the language grammar. This allows the system to recognize the keyword without carrying the massive payload of its runtime logic.
-
----
-
-## 2. Configuration: The Global Build Macros
-
-When invoking your C compiler (GCC, Clang, or MSVC), you can use predefined compiler macros (`-D`) to globally influence the build environment, drastically altering memory footprints and subsystem inclusions.
-
-### `-DBPP_LITE_BUILD`
-**Purpose:** Disables heavy sub-system initializations in `boot.c` and alters default behaviors for memory allocation.
-**Impact:** Prevents the allocation of massive graphics buffers (VRAM arrays) and strips the initialization of network device structures. Bypasses the loading of the standard dialect suite. This is **mandatory** when building for strict memory constraints (less than 256KB of RAM).
-
-### `-DNO_SDL2`
-**Purpose:** Completely severs all ties to the SDL2 headers and library dependencies.
-**Impact:** Ensures the binary has no graphical library dependencies. `vdev.c` and `console.c` will automatically fallback to standard terminal output (`stdout`/`stdin`). Mandatory for headless systems, terminal CLI versions, and microcontrollers.
-
-### `-DINPUT_CONSOLE`
-**Purpose:** Forces the engine to use standard `stdin`/`stdout` for I/O rather than creating a virtual graphical terminal buffer.
-**Impact:** Optimizes away the virtual terminal text rendering buffers.
-
-### `-DBPP_NO_NETWORK`
-**Purpose:** Disables the internal VFS networking socket wrappers.
-**Impact:** Prevents the inclusion of `<winsock2.h>`, `<sys/socket.h>`, and related libraries. Essential for non-networked embedded devices (e.g., standard Arduino Uno).
-
-### `-DBPP_NO_FLOAT` (Theoretical / Advanced)
-**Purpose:** Strips all 64-bit IEEE-754 double precision floating-point logic from `value.c`.
-**Impact:** Converts all math to purely 32-bit integer arithmetic. Extremely useful on 8-bit or 16-bit chips lacking hardware FPU, saving massive execution overhead.
-
----
-
-## 3. The Mandatory Core Components
-
-To build a functioning BASIC++ engine, you must include the bare minimum core components. These manage tokenization, parsing, deterministic memory, and AST interpretation without relying on external libraries or OS functions.
-
-### Core Foundation (`source/core/`)
-- `main.c`: The entry point. Handles CLI arguments (`-c`, `--log`), initializes the runtime, and kicks off `boot_init_runtime()`.
-- `memory.c`: The deterministic memory pool manager. Replaces scattered `malloc()` calls with a tracked block allocator, vital for avoiding fragmentation on embedded devices.
-- `stringpool.c`: A specialized memory pool explicitly for managing transient and permanent strings, garbage collection, and variable assignments.
-- `value.c` & `ldisdbl.c`: The robust type-system. Manages integer, floating-point, double-precision, and string types, handling implicit casting and coercions during evaluation.
-- `errors.c` & `error_registry.c`: The universal error trapping system. Provides `error_raise()` to safely halt and unwind the stack.
-- `platform.c`: The platform abstraction layer. Any direct OS-specific requests (e.g., directory listings, sleep delays) are routed strictly through here.
-- `console.c`: The virtual terminal abstraction. All standard `PRINT` and `INPUT` statements route through here.
-- `stdlib_core.c`: Safe deterministic wrappers for standard C library functions.
-
-### Lexer and Parser (`source/lexer/` and `source/parser/`)
-- `lexer.c` & `keyword_props.c`: Scans the incoming source code and translates text into known tokens. `keyword_props.c` defines the structural behavior and precedence of every keyword.
-- `parser.c`: The recursive descent parser. Processes lines, builds Abstract Syntax Trees (ASTs), and manages statement sequences.
-- `parser_expr.c`: The heavy expression evaluator. Resolves mathematical equations, boolean logic, string concatenation, and function calls.
-
-### Runtime Engine (`source/runtime/`)
-- `runtime.c`: Holds the `RuntimeState` context, symbol tables for variables, and the physical Call Stack.
-- `ast_interpreter.c` & `exec.c`: The AST walker. Evaluates parsed trees and executes the underlying C routines.
-
----
-
-## 4. The Optional Sub-Systems & Specific Files to Omit
-
-To shrink the footprint of BASIC++, remove the following directories or files from your Makefile/build script, and provide stubs via `lite_stubs.c` for any unresolved symbols.
-
-### Graphics, Sound, and Display (Saves ~1.2MB)
-- **Omit Directory:** `source/graphics/` (contains `parser_graphics.c`, `gfxbuf.c`, `builtins_graphics.c`)
-- **Omit Directory:** `source/display/` (contains `parser_display.c`)
-- **Omit Directory:** `source/sound/` (contains `parser_sound.c`)
-- **Omit Module:** `source/modules/sdl2_emu.c`
-- *Arduino/ESP32 Note:* These suites use heavy contiguous memory buffers (1024x768x32bit = ~3.1MB RAM). For microcontrollers, always omit these and compile with `-DNO_SDL2`.
-
-### File I/O and Networking (Saves ~300KB)
-- **Omit Files:** `source/io/parser_fileio.c`, `source/io/fileio.c`, `source/io/builtins_fileio.c`
-- **Omit Files:** `source/io/parser_net.c`, `source/io/builtins_net.c`, `source/io/vdev_net.c`
-- *Arduino/ESP32 Note:* If your board lacks an SD card shield or Wi-Fi chip, omit these files. Route standard `PRINT` commands exclusively out the Serial port via `console.c`.
-
-### Diagnostics, Compilers, and Self-Testing (Saves ~800KB)
-- **Omit Files:** `source/debug.c`, `source/selftests_all.c`
-- **Omit Directory:** `source/codegen/` (AST cross-compilers, bytecode emission)
-- **Omit Directory:** `source/standalone/`
-- *Production Note:* The 412-keyword `selftests_all.c` framework takes up massive amounts of static string literal space. It must **always** be omitted from production microcontroller builds.
-
-### Legacy Dialect Compatibility (Saves ~200KB)
-
----
-
-## 5. Stubbing Missing AST Parser Hooks (`lite_stubs.c`)
-
-When you omit a subsystem, the core parser (`parser.c`) will still attempt to call the parser functions because the grammar lexer (`lexer.c`) still recognizes the keyword. 
-
-To solve this, `core/lite_stubs.c` must be included in your minimalist build. It provides "dummy" implementations for every omitted parser function using the `PARSER_STUB` macro.
-
-```c
-// Inside source/core/lite_stubs.c
-#ifdef BASIC_LITE_BUILD
-
-// A macro to easily stub out omitted language keywords
-#define PARSER_STUB(name) \
-    void name(Lexer *lex, RuntimeState *rt, int line_num) { \
-        (void)lex; (void)rt; \
-        error_raise(ERR_HOW, line_num); /* ERR_HOW = Feature Not Supported */ \
-    }
-
-// Example: Satisfy linker for missing Graphics module
-PARSER_STUB(pi_parse_plot)
-PARSER_STUB(pi_parse_drawto)
-PARSER_STUB(pi_parse_screen)
-PARSER_STUB(pi_parse_palette)
-
-// Example: Satisfy linker for missing File I/O
-PARSER_STUB(pi_parse_open)
-PARSER_STUB(pi_parse_close)
-
-#endif
-```
-By adding `PARSER_STUB(pi_parse_X)` for every missing file, the linker succeeds. When the user types the unsupported command, the interpreter instantly throws an `ERR_HOW` safely, preventing crashes.
-
----
-
-## 6. Target Profiles and Example Makefiles
-
-Below are example Makefile configurations for three primary "Profiles" of BASIC++.
-
-### Profile 1: Headless Microcontroller (Arduino, ESP32, FreeRTOS)
-**Target Profile:** 40KB ROM, <64KB RAM. No OS. Serial output only.
-**Macros:** `-DBPP_LITE_BUILD -DNO_SDL2 -DINPUT_CONSOLE -DBPP_NO_NETWORK`
-
-```makefile
-# Profile 1 Makefile (BareMetal / Microcontroller)
-CC = gcc
-CFLAGS = -std=c17 -Os -DBPP_LITE_BUILD -DNO_SDL2 -DINPUT_CONSOLE -DBPP_NO_NETWORK
-INCLUDES = -I./source/core -I./source
-
-CORE_SRC = \
-    source/core/main.c source/core/memory.c source/core/errors.c \
-    source/core/value.c source/core/stringpool.c source/core/platform.c \
-    source/core/console.c source/core/lite_stubs.c \
-    source/lexer/lexer.c source/lexer/keyword_props.c \
-    source/parser/parser.c source/parser/parser_expr.c \
-    source/runtime/runtime.c source/runtime/ast_interpreter.c source/runtime/exec.c
-
-all:
-	$(CC) $(CFLAGS) $(INCLUDES) -o basic_mcu.bin $(CORE_SRC)
-```
-*Optimization Note:* On AVR chips, modify `memory.c` to pre-allocate a static array rather than calling `malloc()` for the heap pool.
-
-### Profile 2: Terminal CLI Desktop (Linux `baspp-console`, Win `basicpp-console.exe`)
-**Target Profile:** 1.5MB ROM, 2MB RAM. POSIX/Windows OS. Full File I/O and Networking. No Graphics.
-**Macros:** `-DNO_SDL2 -DINPUT_CONSOLE`
-
-```makefile
-# Profile 2 Makefile (POSIX Terminal / Win32 Console)
-CC = gcc
-CFLAGS = -std=c17 -O3 -DNO_SDL2 -DINPUT_CONSOLE
-INCLUDES = -I./source
-
-# Include CORE_SRC + File I/O + Networking + Math + Arrays
-PROFILE2_SRC = $(CORE_SRC) \
-    source/io/parser_fileio.c source/io/fileio.c source/io/vfs.c \
-    source/io/parser_net.c source/io/vdev_net.c source/io/builtins_net.c \
-    source/math/builtins_math.c source/arrays/parser_mat.c \
-    source/system/builtins_system.c
-
-all:
-	$(CC) $(CFLAGS) $(INCLUDES) -o baspp-console $(PROFILE2_SRC)
+```basic
+10 DIALECT DEFINE "LOGO"
+20 DIALECT ALLOW "FORWARD", "BACK", "LEFT", "RIGHT", "PENUP", "PENDOWN"
+30 DIALECT DENY "PRINT", "INPUT", "GOTO", "GOSUB"
+40 DIALECT ACTIVATE "LOGO"
 ```
 
-### Profile 3: Full SDL Desktop Environment (`basicpp.exe`)
-**Target Profile:** 5MB ROM, 32MB RAM. POSIX/Windows OS. Virtual VGA, sound emulation, fully featured.
-**Macros:** *(None)*
+After activation, only the allowed keywords are recognized. Programs using denied keywords get syntax errors.
 
-```makefile
-# Profile 3 Makefile (Full SDL2 Build)
-CC = gcc
-CFLAGS = -std=c17 -O3 
-INCLUDES = -I./source -I/usr/include/SDL2
-LIBS = -lSDL2 -lSDL2main -lm
+## 3. KEYWORD REGISTRATION
 
-# Include PROFILE2_SRC + Graphics + Sound + SDL2 Emu + Debug Tests
-PROFILE3_SRC = $(PROFILE2_SRC) \
-    source/graphics/parser_graphics.c source/graphics/gfxbuf.c \
-    source/sound/parser_sound.c source/display/parser_display.c \
-    source/modules/sdl2_emu.c source/debug.c source/selftests_all.c \
+The KEYWORD statement registers new keywords that map to BASIC++ subroutines:
 
-all:
-	$(CC) $(CFLAGS) $(INCLUDES) -o basicpp $(PROFILE3_SRC) $(LIBS)
+```basic
+10 KEYWORD "FORWARD" AS 5000
+20 KEYWORD "BACK" AS 5100
+30 KEYWORD "LEFT" AS 5200
+40 KEYWORD "RIGHT" AS 5300
+50 KEYWORD "PENUP" AS 5400
+60 KEYWORD "PENDOWN" AS 5500
 ```
 
----
+Each keyword executes its mapped subroutine when used in a program. The subroutine receives arguments through the keyword parameter mechanism.
 
-## 7. Optimizing Memory Footprints for Embedded Deployments
+## 4. BUILDING A LOGO INTERPRETER
 
-When porting to environments with extreme memory limitations (like the 2KB RAM of an Arduino Uno, or the 320KB RAM of an ESP32), you must tweak the global configuration constants inside `source/config.h`.
+A complete Logo-like turtle graphics language on top of BASIC++:
 
-1. **`MAX_VARS` (Default: 4096):** Controls the size of the symbol table. Reduce this to `128` or `64` for microcontrollers.
-2. **`STR_POOL_SIZE` (Default: 1048576 (1MB)):** Reduce this to `4096` (4KB) for strict embedded uses. This restricts the amount of simultaneous string data the runtime can handle.
-3. **`MAX_CALL_STACK` (Default: 2048):** Reduce to `64`. Dictates how deep `GOSUB` or recursive `CALL` statements can nest before throwing an `ERR_OUT_OF_MEMORY`.
-4. **`AST_ARENA_SIZE` (Default: 8388608 (8MB)):** The memory buffer used to compile the incoming source code. Reduce to `16384` (16KB) to enforce a tight limit on how large a basic program can be loaded into the MCU.
+```basic
+' Turtle state
+100 TurtleX = 160 : TurtleY = 100
+110 TurtleAngle = 0 : PenDown = 1
+120 SCREEN 12
 
-By tightly clamping these values, you can definitively restrict BASIC++ to operate cleanly inside a highly constrained RAM envelope without ever triggering random heap faults.
+5000 ' FORWARD distance
+5010 Distance = KEYWORD.PARAM
+5020 NewX = TurtleX + COS(TurtleAngle * PI / 180) * Distance
+5030 NewY = TurtleY + SIN(TurtleAngle * PI / 180) * Distance
+5040 IF PenDown THEN LINE (TurtleX,TurtleY)-(NewX,NewY), 15
+5050 TurtleX = NewX : TurtleY = NewY
+5060 RETURN
+
+5100 ' BACK distance
+5110 Distance = -KEYWORD.PARAM
+5120 GOTO 5020    ' Reuse FORWARD logic
+
+5200 ' LEFT degrees
+5210 TurtleAngle = TurtleAngle - KEYWORD.PARAM
+5220 RETURN
+
+5300 ' RIGHT degrees
+5310 TurtleAngle = TurtleAngle + KEYWORD.PARAM
+5320 RETURN
+
+5400 ' PENUP
+5410 PenDown = 0
+5420 RETURN
+
+5500 ' PENDOWN
+5510 PenDown = 1
+5520 RETURN
+```
+
+Now a user can write Logo programs:
+
+```basic
+200 FORWARD 50
+210 RIGHT 90
+220 FORWARD 50
+230 RIGHT 90
+240 FORWARD 50
+250 RIGHT 90
+260 FORWARD 50
+```
+
+## 5. ALIAS-BASED LOCALIZATION
+
+For creating a localized BASIC, use ALIAS to translate all keywords:
+
+```basic
+10 ALIAS "IMPRIMIR" AS "PRINT"
+20 ALIAS "ENTRADA" AS "INPUT"
+30 ALIAS "SE" AS "IF"
+40 ALIAS "ENTAO" AS "THEN"
+50 ALIAS "SENAO" AS "ELSE"
+60 ALIAS "PARA" AS "FOR"
+70 ALIAS "PROXIMO" AS "NEXT"
+80 ALIAS "FIM" AS "END"
+```
+
+Save these aliases in a startup file and MERGE it before the main program.
+
+## 6. OVERRIDE-BASED EXTENSIONS
+
+OVERRIDE adds pre/post processing to existing keywords:
+
+```basic
+10 OVERRIDE "PRINT" WITH 9000
+9000 ' Add timestamp to all PRINT output
+9010 PRINT.ORIGINAL TIME$; " | "; OVERRIDE.PARAM$
+9020 RETURN
+```
+
+## 7. MODULE-BASED EXTENSIONS
+
+For heavy-duty language extensions, write a C17 module that registers keywords, functions, and devices through the module API. See the External Modules guide for details.
+
+## 8. THE SPECIFICATION SYSTEM
+
+Use the SPEC statement family to formally define and validate your custom language:
+
+```basic
+10 SPEC DEFINE "MyLanguage"
+20 SPEC KEYWORD "FORWARD", "movement", "FORWARD distance"
+30 SPEC KEYWORD "BACK", "movement", "BACK distance"
+40 SPEC FUNCTION "HEADING", "()", "NUMBER", "Returns current angle"
+50 SPEC VALIDATE
+60 SPEC SAVE "mylanguage.spec"
+```
+
+The specification file can be distributed to other users who load it with SPEC LOAD.
+
+## 9. LIMITATIONS
+
+Custom languages built on BASIC++ are limited to the capabilities of the BASIC++ VM. They cannot introduce new data types, new operators, or new control flow constructs beyond what the VM supports. The expression evaluator, variable system, and execution model remain BASIC++. Custom keywords are dispatched as subroutine calls, not as native statement handlers.
+
+For truly novel languages, use the bppc transpiler to compile your language to C17 code that links with the BASIC++ runtime libraries.

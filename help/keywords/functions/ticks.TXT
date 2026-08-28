@@ -1,0 +1,20 @@
+TICKS High-Resolution Millisecond Timer Function
+======================================================================
+
+The TICKS function returns a high-resolution monotonic tick count in
+milliseconds elapsed since process startup.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    ms& = TICKS
+    ms& = TICKS()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 T0 = TICKS
+    20 FOR I = 1 TO 10000 : NEXT I
+    30 PRINT "Time: "; TICKS - T0; " ms"

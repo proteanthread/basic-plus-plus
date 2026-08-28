@@ -1,66 +1,22 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file vnet.c
- * @brief Runtime component implementation and public API surface for vnet.c.
- *
- * WHAT IT DOES:
- * Implements the core responsibilities, data structures, and function evaluation logic for vnet.c within the runtime subsystem.
- *
- * WHY IT EXISTS:
- * Ensures decoupled modularity, strict C17 portability, and clear micro-library architectural boundary enforcement.
- *
- * WHY IT WORKS THIS WAY:
- * Designed with zero-initialization defaults, bounded memory operations, and explicit error code propagation to the VM state.
- *
- * WHAT CAN BE CHANGED:
- * Subsystem configuration defaults, local execution helper routines, and documentation annotations.
- *
- * WHAT CANNOT BE CHANGED:
- * Public API symbol declarations, micro-library metadata structures, and thread-safe error reporting contracts.
- *
- * WHAT TO EXPECT:
- * High-performance deterministic execution with zero side-effects outside designated state structures.
- *
- * WHAT TO DO IF SOMETHING BREAKS:
- * Verify context initialization, trace BppError return codes, and inspect log outputs for bounds assertions.
- *
- * ASSUMPTIONS:
- * Valid subsystem contexts and required memory pools are allocated prior to executing API handlers.
- *
- * PORTABILITY CONCERNS:
- * Strict C17 compliance, 64-bit pointer safety, and pure ASCII string operations across desktop, IoT, and embedded targets.
- *
- * FUTURE EXPANSIONS:
- * Additional dialect compatibility mappings, telemetry instrumentation, and microcontroller payload stubs.
- */
-
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file vnet.c
- * @brief Virtual Network Stack & Sockets (VNet) implementation.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements cross-platform socket management using platform abstractions.
- * - Why it exists: Bridges VM network statements and virtual devices to actual host networks.
- * - Why it works this way: It uses non-blocking or select-guarded socket operations to
- *   prevent execution hangs.
- */
+// FILENAME: vnet.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libcore (error.c)
+// NEEDED BY: libengine (context.c, control.c, data.c, events_internal.h)
+// NEEDED BY: libengine (exec_internal.h, vm_internal.h)
+// NEEDED BY: libkernel (fujinet.c)
+// NEEDS: libcore (hal.h, memops.h, memops.c, strops.h, strops.c)
+// NEEDS: libplatform (platform.h)
+// NEEDS: libserver (vnet.h)
+// Provides core logic and interface definitions for vnet within BASIC++.
+//
+// ---- Includes ----
 
 #include "runtime/vnet.h"
 #include "platform/platform.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "hal/hal.h"
+#include "runtime/string/strops.h"
+#include "runtime/string/memops.h"
 
 typedef struct {
     BppSocket    sock;
@@ -93,10 +49,12 @@ static void platform_net_cleanup_local(VNetContext *ctx) {
 static VNetContext *g_vnet_ctx = NULL;
 
 VNetContext *vnet_init(MemoryContext *mem) {
-    if (!mem) return NULL;
-    VNetContext *ctx = (VNetContext *)calloc(1, sizeof(VNetContext));
+    HalContext *hal = hal_get();
+    VNetContext *ctx = (VNetContext *)(hal && hal->mem.alloc ? hal->mem.alloc(sizeof(VNetContext)) : NULL);
     if (!ctx) return NULL;
+    runtime_memset(ctx, 0, sizeof(VNetContext));
     ctx->mem = mem;
+
     ctx->initialized = false;
     for (int i = 0; i < VNET_MAX_CHANNELS; ++i) {
         ctx->channels[i].sock = BASIC_INVALID_SOCKET;
@@ -120,13 +78,14 @@ void vnet_shutdown(VNetContext *ctx) {
             vnet_close(ctx, i);
         }
         platform_net_cleanup_local(ctx);
-        free(ctx);
+        HalContext *hal = hal_get();
+        if (hal && hal->mem.free) hal->mem.free(ctx);
     }
 }
 
 BppError vnet_open(VNetContext *ctx, int channel, const char *protocol, const char *host, int port) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!ctx) ctx = g_vnet_ctx;
     if (!ctx) {
@@ -136,18 +95,18 @@ BppError vnet_open(VNetContext *ctx, int channel, const char *protocol, const ch
     }
 
     if (channel < 0 || channel >= VNET_MAX_CHANNELS) {
-        err.code = 52; /* Bad file number */
+        err.code = 52; // Bad file number
         err.message = "Bad channel number";
         return err;
     }
 
     if (ctx->channels[channel].sock != BASIC_INVALID_SOCKET) {
-        err.code = 55; /* File already open */
+        err.code = 55; // File already open
         err.message = "Network channel already open";
         return err;
     }
 
-    int socktype = (strcmp(protocol, "UDP") == 0) ? BASIC_SOCK_DGRAM : BASIC_SOCK_STREAM;
+    int socktype = (runtime_strcmp(protocol, "UDP") == 0) ? BASIC_SOCK_DGRAM : BASIC_SOCK_STREAM;
     BppSocket sock = platform_socket_connect(host, port, socktype, &err);
     if (sock == BASIC_INVALID_SOCKET) {
         return err;
@@ -157,19 +116,19 @@ BppError vnet_open(VNetContext *ctx, int channel, const char *protocol, const ch
 
     ctx->channels[channel].sock = sock;
     ctx->channels[channel].connected = true;
-    strncpy(ctx->channels[channel].protocol, protocol, 15);
+    runtime_strncpy(ctx->channels[channel].protocol, protocol, 15);
     ctx->channels[channel].protocol[15] = '\0';
-    strncpy(ctx->channels[channel].host, host, 255);
+    runtime_strncpy(ctx->channels[channel].host, host, 255);
     ctx->channels[channel].host[255] = '\0';
     ctx->channels[channel].port = port;
-    ctx->channels[channel].last_http_status = 200; /* mock success */
+    ctx->channels[channel].last_http_status = 200; // mock success
 
     return err;
 }
 
 BppError vnet_open_host(VNetContext *ctx, int channel, int port) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!ctx) ctx = g_vnet_ctx;
     if (!ctx) {
@@ -199,16 +158,17 @@ BppError vnet_open_host(VNetContext *ctx, int channel, int port) {
 
     ctx->channels[channel].sock = sock;
     ctx->channels[channel].connected = true;
-    strcpy(ctx->channels[channel].protocol, "TCP-LISTEN");
+    runtime_strcpy(ctx->channels[channel].protocol, "TCP-LISTEN");
     ctx->channels[channel].host[0] = '\0';
     ctx->channels[channel].port = port;
 
     return err;
 }
 
+
 BppError vnet_accept(VNetContext *ctx, int listen_channel, int client_channel, char *client_ip_buf, int ip_buf_len) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!ctx) ctx = g_vnet_ctx;
     if (!ctx) {
@@ -239,7 +199,7 @@ BppError vnet_accept(VNetContext *ctx, int listen_channel, int client_channel, c
     BppSocket listen_sock = ctx->channels[listen_channel].sock;
     BppSocket client_sock = platform_socket_accept(listen_sock, client_ip_buf, ip_buf_len, &err);
     if (client_sock == BASIC_INVALID_SOCKET) {
-        err.code = 0; /* No incoming connection at this moment (non-blocking) */
+        err.code = 0; // No incoming connection at this moment (non-blocking)
         return err;
     }
 
@@ -247,9 +207,9 @@ BppError vnet_accept(VNetContext *ctx, int listen_channel, int client_channel, c
 
     ctx->channels[client_channel].sock = client_sock;
     ctx->channels[client_channel].connected = true;
-    strcpy(ctx->channels[client_channel].protocol, "TCP");
+    runtime_strcpy(ctx->channels[client_channel].protocol, "TCP");
     if (client_ip_buf) {
-        strncpy(ctx->channels[client_channel].host, client_ip_buf, 255);
+        runtime_strncpy(ctx->channels[client_channel].host, client_ip_buf, 255);
         ctx->channels[client_channel].host[255] = '\0';
     } else {
         ctx->channels[client_channel].host[0] = '\0';
@@ -261,7 +221,7 @@ BppError vnet_accept(VNetContext *ctx, int listen_channel, int client_channel, c
 
 BppError vnet_send(VNetContext *ctx, int channel, const char *data, size_t len) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
 
     if (!ctx) ctx = g_vnet_ctx;
     if (!ctx || channel < 0 || channel >= VNET_MAX_CHANNELS || ctx->channels[channel].sock == BASIC_INVALID_SOCKET) {
@@ -282,7 +242,7 @@ BppError vnet_send(VNetContext *ctx, int channel, const char *data, size_t len) 
 
 BppError vnet_recv(VNetContext *ctx, int channel, char *buf, size_t max_len, size_t *out_len) {
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     if (out_len) *out_len = 0;
 
     if (!ctx) ctx = g_vnet_ctx;
@@ -305,7 +265,7 @@ BppError vnet_recv(VNetContext *ctx, int channel, char *buf, size_t max_len, siz
         } else if (rec == 0) {
             ctx->channels[channel].connected = false;
         } else {
-            if (err_code != 1) { /* not try-again / would-block */
+            if (err_code != 1) { // not try-again / would-block
                 err.code = 57;
                 err.message = "Receive failed";
             }
@@ -350,7 +310,7 @@ int vnet_http_status(VNetContext *ctx, int channel) {
     return ctx->channels[channel].last_http_status;
 }
 
-/* VDev creation helper */
+// VDev creation helper
 static int net_vdev_putc(VDev *dev, int c) {
     VNetContext *ctx = (VNetContext *)dev->priv;
     char ch = (char)c;
@@ -360,7 +320,7 @@ static int net_vdev_putc(VDev *dev, int c) {
 
 static int net_vdev_puts(VDev *dev, const char *s) {
     VNetContext *ctx = (VNetContext *)dev->priv;
-    vnet_send(ctx, 0, s, strlen(s));
+    vnet_send(ctx, 0, s, runtime_strlen(s));
     return 0;
 }
 
@@ -377,7 +337,7 @@ static int net_vdev_getc(VDev *dev) {
 
 VDev vnet_create_vdev(VNetContext *ctx, const char *name, const char *protocol, const char *host, int port) {
     VDev dev;
-    memset(&dev, 0, sizeof(dev));
+    runtime_memset(&dev, 0, sizeof(dev));
     dev.name = name;
     dev.dev_class = VDCLASS_CUSTOM;
     dev.dev_version = "1.0";
@@ -387,8 +347,9 @@ VDev vnet_create_vdev(VNetContext *ctx, const char *name, const char *protocol, 
     dev.ops.getc = net_vdev_getc;
     dev.priv = ctx;
 
-    /* Automatically open channel 0 for this VDev */
+    // Automatically open channel 0 for this VDev
     vnet_open(ctx, 0, protocol, host, port);
 
     return dev;
 }
+

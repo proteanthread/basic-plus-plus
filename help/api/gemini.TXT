@@ -1,0 +1,14 @@
+C17 API REFERENCE: GEMINI PROTOCOL CLIENT (runtime/gemini.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+Provides a lightweight TLS client for querying and streaming capsules over
+the Gemini internet protocol (gemini://) in BASIC++ v6.5.2.
+
+2. CORE API FUNCTIONS
+- net_gemini_fetch(vm, url, out_err) -> char *
+  Fetches response payload over TLS. Caller must free returned buffer.
+
+3. ARCHITECTURAL INVARIANTS
+- Requires CAP_NET capability in SecurityContext.
+- Integrates with OPEN "GEMINI://..." virtual streams.

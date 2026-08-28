@@ -1,28 +1,11 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-/**
- * @file module.h
- * @brief Module System manager API.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Declares modular registry tables, dynamic load bindings, and capabilities flags.
- * - Why it exists: Provides clean expansion capabilities for hardware and standard extensions.
- * - Why it works this way: Modules declare resources they require via bitmask flags, which are checked
- *   against active security sandbox settings.
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Capabilities flags, slot table capacity.
- * - What cannot be changed: Table counts and lookup interfaces.
- * - What to expect: Initializing resets tables. Activating module calls init hooks.
- * - What to do if something breaks: Trace registration orders and active module flags.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Windows/Unix specific dynamic linking is isolated.
- * - Portability concerns: Stubbed on FreeDOS. Standard C17.
- */
+// FILENAME: module.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (exec_internal.h, help.c, module.c, system.c)
+// NEEDS: libkernel (errors.h, security.h, security.c, types.h)
+// Provides core logic and interface definitions for module within BASIC++.
+//
+// ---- Includes ----
 
 #ifndef MODULE_H
 #define MODULE_H
@@ -83,4 +66,4 @@ struct VMContext;
 int                  module_load_dynamic(struct VMContext *vm, const char *path);
 BppError             vm_load_library_file(struct VMContext *vm, const char *filename);
 
-#endif /* MODULE_H */
+#endif // MODULE_H

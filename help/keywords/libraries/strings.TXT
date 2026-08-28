@@ -1,0 +1,23 @@
+strings Reference-Counted String Manager (libengine)
+======================================================================
+
+The strings library provides immutable reference-counted string memory
+management and pool operations.
+
+
+INVARIANTS
+----------------------------------------------------------------------
+
+  - Two-parameter release: str_release(str_ctx, str).
+  - Copy-on-write immutability.
+  - Automatic zero-refcount memory reclamation.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    BppString *str_create(StringContext *ctx, const char *data, size_t len);
+    BppString *str_retain(BppString *str);
+    void str_release(StringContext *ctx, BppString *str);
+    const char *str_data(const BppString *str);
+    size_t str_len(const BppString *str);

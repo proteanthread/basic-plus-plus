@@ -1,271 +1,74 @@
-# BASIC++ Implementation Status Tracker
+# BASIC++ v6.5.2 Implementation Status
 
-> **Purpose**: Master tracking document for all keywords, functions, and features.
-> **Last Updated**: v6.5.2 (ALIAS, SCOPE, KEYWORD, OVERRIDE, MODULE — 100% Complete)
-> **Legend**: ✅ Complete | ⚠️ Partial | ❌ Not Done | 🔧 In Progress
+## 1. CURRENT VERSION
 
----
+Version 6.5.2, codename "Phoenix". Build date: 2026-08-06. This is the current production version.
 
-## Status Summary
+## 2. BUILD TARGETS
 
-| Metric | Count | Status |
-|--------|-------|--------|
-| Total Keywords & Functions | ~390+ | ✅ 100% Implemented & Verified |
-| In HELP System | 390+ | ✅ 100% Parity |
-| In CATALOG | 390+ | ✅ 100% Parity |
-| Phase 11/13/14/15 New Keywords | ~120+ | ✅ 100% Implemented & Tested |
+| Target | Status | Description |
+|--------|--------|-------------|
+| baspp (Standard Edition) | Shipping | Full desktop with graphics, TUI editor, all subsystems |
+| bpp (Lite Edition) | Shipping | Headless REPL for terminal/IoT/server |
+| bs (Batch Runner) | Shipping | Non-interactive script executor |
+| bppc (Compiler) | Active Development | C17 transpiler and bytecode compiler |
+| detok (Detokenizer) | Shipping | GW-BASIC binary decoder |
 
----
+## 3. DIALECT SUPPORT
 
-## Arithmetic / Math
+| Dialect | Code | Status |
+|---------|------|--------|
+| GW-BASIC | GWBS | Complete — default dialect |
+| QBASIC | QBAS | Complete |
+| ECMA-116 Full BASIC | E116 | Complete — exception handling, enhanced files |
+| ECMA-55 Minimal BASIC | E055 | Complete |
+| Tymshare Super BASIC | SBAS | Complete — BY, UNLESS, extended math |
+| Palo Alto Tiny BASIC | PATB | Complete — minimal keyword set |
+| Sinclair ZX Spectrum BASIC | SINC | Complete — INK, PAPER, BORDER |
+| SuperBASIC (Sinclair QL) | SQLB | Complete — REPeat, DEFine PROCedure |
+| Applesoft BASIC | APPL | Complete — GR, HGR, HPLOT, ONERR |
 
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| ABS | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| ATN | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| COS | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| EXP | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| FIX | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| INT | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| LOG | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| RND | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| SIN | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| SQR | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| TAN | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| CINT | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| CSNG | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| CDBL | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| SGN | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| RANDOMIZE | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| **_ACOS** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_ASIN** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_ATAN2** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_ACOSH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_ASINH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_ATANH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_CEIL** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_HYPOT** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_PI** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_D2R** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_R2D** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_D2G** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_G2D** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+## 4. PLATFORM SUPPORT
 
----
+| Platform | Architecture | Status |
+|----------|-------------|--------|
+| Windows 10/11 | x64 | Fully supported, primary development platform |
+| Windows 10/11 | x86 | Supported |
+| Linux (Ubuntu, Debian, Fedora) | x64 | Fully supported |
+| Linux (Raspberry Pi OS) | ARM64 | Supported |
+| macOS | ARM64 (Apple Silicon) | Supported |
+| FreeDOS | 16-bit x86 | Supported via Open Watcom cross-compilation |
+| ESP32 | Xtensa | Experimental (embedded profile) |
+| Arduino | AVR/ARM | Experimental (embedded profile) |
+| Raspberry Pi Pico | ARM Cortex-M0+ | Experimental (embedded profile) |
 
-## Bit Manipulation (Phase 11a — NEW)
+## 5. LIBRARY CHAIN STATUS
 
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| **_SHL** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SHR** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_READBIT** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SETBIT** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_RESETBIT** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_TOGGLEBIT** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_BITCOUNT** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Library | Layer | Status | Source Count |
+|---------|-------|--------|-------------|
+| libboot | 1 | Complete | 1 file |
+| libplatform | 2 | Complete | 9 files |
+| libkernel | 3 | Complete | ~25 files |
+| libengine | 4 | Complete | ~30 files |
+| libhardware | 5 | Complete | ~10 files |
+| libserver | 6 | Complete | 6 files |
+| libscript | 7 | Complete | 1 file |
+| libcore | 8 | Complete | 4 files |
+| libflex | 9 | Complete | 5 files |
+| libstandard | 10 | Complete | 8 files |
+| libadvanced | 11 | Complete | 7 files |
+| libext | 12 | Template | 1 file |
 
----
+## 6. KEYWORD COUNT
 
-## Control Flow
+The BppKeywordId enum in engine/include/lexer/lexer.h defines 367 keywords. This includes core language statements, built-in functions, operators, file I/O keywords, graphics keywords, metaprogramming keywords, debugging keywords, dialect-specific keywords, ECMA-116 keywords, and virtual subsystem introspection keywords.
 
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| BY | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| CALL | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| CASE | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| DECLARE | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| DEF FN | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| DO | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| ELSE | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| END | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| ERROR | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| FOR | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| FUNCTION | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| GOSUB | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| GOTO | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| IF | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| LOOP | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| NEXT | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| ON | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| RESUME | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| RETURN | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| SELECT | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| SUB | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| TASK | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| TRY/CATCH | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| WHILE/WEND | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| CHAIN | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| COMMON | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| SHARED | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| **ENUM** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **WITH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+## 7. ERROR CODE COVERAGE
 
----
+The BppErrorCode enum in engine/include/types/errors.h defines 43 error codes ranging from ERR_OK (0) to ERR_PATH_NOT_FOUND (76). All codes are actively used by statement handlers with proper range validation and Error 5 (Illegal function call) trapping for out-of-bounds arguments.
 
-## Sound (Phase 11b — NEW)
+## 8. RECENT MILESTONES
 
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| BEEP | ✅ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| SOUND | ✅ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| PLAY | ✅ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| **_SNDOPEN** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SNDPLAY** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SNDLOOP** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SNDSTOP** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SNDPAUSE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SNDVOL** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SNDLEN** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SNDGETPOS** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **NOISE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
----
-
-## Mouse/Joystick (Phase 11b — NEW)
-
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| **MOUSE()** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_MOUSEINPUT** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_MOUSEWHEEL** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_MOUSEHIDE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_MOUSESHOW** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **STICK()** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **STRIG()** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_DEVICES** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_DEVICE$** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
----
-
-## Networking (Phase 11c — NEW)
-
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| NCONNECTED | ✅ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| NHTTPSTATUS | ✅ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| NSTATUS | ✅ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| HTTP_GET$ | ✅ | ⚠️ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| **_OPENHOST** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_OPENCONNECTION** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_CONNECTED** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_CONNECTIONADDRESS$** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
----
-
-## Window Management (Phase 11b — NEW)
-
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| **_TITLE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SCREENMOVE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_FULLSCREEN** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SCREENX** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_SCREENY** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_DESKTOPWIDTH** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_DESKTOPHEIGHT** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_RESIZE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_ICON** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
----
-
-## Image Loading (Phase 11c — NEW)
-
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| **_LOADIMAGE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_FREEIMAGE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_PUTIMAGE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_NEWIMAGE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_COPYIMAGE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
----
-
-## Compression (Phase 11c — NEW)
-
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| **_DEFLATE$** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_INFLATE$** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
----
-
-## Clipboard (Phase 11b — NEW)
-
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| **_CLIPBOARD$** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
----
-
-## Session State (Phase 11c — NEW)
-
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| **_STATESAVE** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_STATELOAD** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **_STATEINFO$** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
----
-
-## String Functions
-
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| ASC | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| CHR$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| HEX$ | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| OCT$ | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| BIN$ | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| GUID$ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| INSTR | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| LCASE$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| LEFT$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| LEN | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| LTRIM$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| MID$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| REPLACE$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| RIGHT$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| RTRIM$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| SPACE$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| STR$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| STRING$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| SWAP | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| TRIM$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| UCASE$ | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| VAL | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-
----
-
-## Console / Screen
-
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| CLS | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| COLOR | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| LOCATE | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| POS | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| CSRLIN | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| TAB | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| SPC | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| WIDTH | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| KEY | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| SCREEN | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-
----
-
-## System & Environment
-
-| Keyword | Implemented | Tested | HELP | CATALOG | API Doc | bppc | trans |
-|---------|:-----------:|:------:|:----:|:-------:|:-------:|:----:|:-----:|
-| ENVIRON$ | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| FRE | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| TIMER | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| TODAY$ | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ | ⚠️ |
-| DIALECT | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| KILL | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-| SECURITY | ✅ | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ |
-
----
-
-> **Note**: This document is a partial inventory. A full programmatic scan of `eval.c` and all `stmt_*.c` files is needed to capture all ~371+ keywords. Categories not yet listed include: Graphics (BGI), File I/O, Program Management, Debug/Testing, Variables/Memory, Devices/Network, Introspection, and Matrix/Array operations. These will be populated during the HELP/CATALOG catch-up phase.
+- v6.5.2: Current release. TRY/CATCH structured exceptions. Alarm system (countdown + daily). MAP data structure. PACK$/UNPACK. Extended bit functions. MUX/DEMUX/BITMUX multiplexing. FILTER/REDUCE array operations. Transaction support (TXN/ATOMIC/COMMIT/ROLLBACK). Mouse input trapping. Sound playback (SNDPLAY/SNDLOOP/SNDSTOP). State save/restore (STATESAVE/STATELOAD).
+- v6.5.0: Engine restructure. Moved source to engine/ directory. 12-library modular architecture. Opaque context pattern. Separated stacks for each control-flow construct.
+- v6.0.0: Major version. Non-recursive VM. Iterative expression evaluator. Reference-counted strings. Structured error system. Security levels.

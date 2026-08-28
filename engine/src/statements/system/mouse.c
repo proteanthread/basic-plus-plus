@@ -1,49 +1,13 @@
-/**
- * @file mouse.c
- * @brief MOUSE ON|OFF|SHOW|HIDE pointer tracking statement handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements MOUSE statement handlers (MOUSE ON, MOUSE OFF, MOUSE SHOW, MOUSE HIDE) for toggling mouse pointer visibility and event tracking.
- *
- * 2. WHY IT EXISTS:
- * Controls GUI and TUI mouse cursor visibility and event polling per QuickBASIC / MS-DOS interrupt 33h mouse driver standards.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Enables/disables mouse cursor state and event hooks in virtual device layer vdev.c.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_mouse'. Includes "statements/system/mouse.h",
- * "vm/vm.h", "lexer/lexer.h", "eval/eval.h", "device/vdev.h", "security/security.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Standard Edition ('baspp') strictly per Rule #1 (Excluded Subsystems from bpp/bs). Excluded from 'bpp' and 'bs'.
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support mouse cursor shape customization (e.g. MOUSE SET CURSOR shape_mask).
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Virtual device polling invariant: Mouse coordinates and button states MUST be queried through virtual device layer vdev.c.
- *
- * 8. WHAT TO EXPECT:
- * Toggles mouse cursor visibility or tracking and returns ERR_NONE.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify virtual device pointer state in vdev.c.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext and active VDev mouse driver context.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Cross-platform mouse event tracking abstraction.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/device/vdev.c
- * Prerequisite Header Files:
- * - engine/include/statements/system/mouse.h
- * - engine/include/vm/vm.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: mouse.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, mouse.h, string.c, vm.h)
+// NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+// Provides runtime implementation for the MOUSE statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "statements/system/mouse.h"
 #include "vm/vm.h"

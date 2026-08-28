@@ -1,0 +1,23 @@
+HOME Cursor Home and Screen Clearing Statement
+==============================================
+
+Clears the text screen and positions the cursor at row 1, column 1 (Apple II style).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    HOME
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Equivalent to CLS in GW-BASIC.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 HOME
+    20 PRINT "Top-left of Apple II screen"

@@ -1,0 +1,16 @@
+RIGHT$ Right Substring Extraction Function
+======================================================================
+
+The RIGHT$ function extracts the rightmost N characters of a string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    sub$ = RIGHT$(string_expression$, count%)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT RIGHT$("PROGRAM", 4)   : REM Outputs "GRAM"

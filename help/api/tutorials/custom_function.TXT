@@ -1,0 +1,32 @@
+TUTORIAL: CREATING NATIVE C FUNCTIONS (tutorials/custom_function.h)
+======================================================================
+
+1. OVERVIEW
+This tutorial demonstrates implementing and registering native C functions
+using the Function Registry API (runtime/funcreg.h).
+
+2. FUNCTION HANDLER SIGNATURE
+  typedef BValue (*FuncHandler)(BValue *args, int argc, void *rt);
+
+3. IMPLEMENTATION PATTERN
+  static BValue func_hypot(BValue *args, int argc, void *rt) {
+      double x = args[0].as.number;
+      double y = args[1].as.number;
+      return bval_float(sqrt(x * x + y * y));
+  }
+
+4. REGISTRATION
+  FunctionEntry entry = {
+      .name = "HYPOT",
+      .category = FCAT_MATH,
+      .ret_type = FRET_FLOAT,
+      .min_args = 2,
+      .max_args = 2,
+      .safety = FSAFE_PURE,
+      .handler = func_hypot,
+      .help_text = "Calculates Euclidean distance sqrt(x^2 + y^2)."
+  };
+  funcreg_register(&entry);
+
+5. USAGE IN BASIC
+  10 PRINT "Hypotenuse: "; HYPOT(3, 4)

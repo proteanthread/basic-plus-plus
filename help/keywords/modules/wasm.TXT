@@ -1,0 +1,20 @@
+wasm WebAssembly Runtime Profile
+======================================================================
+
+The wasm profile targets browser execution of BASIC++ compiled with
+Emscripten and WebAssembly.
+
+
+SPECIFICATIONS
+----------------------------------------------------------------------
+
+  - HTML5 <canvas> rendering for text and BGI graphics modes.
+  - Web Audio API integration for PLAY and SOUND.
+  - Non-blocking browser event loop integration.
+  - In-memory Virtual File System (MEMFS) with IndexedDB persistence.
+
+
+BUILD COMMAND
+----------------------------------------------------------------------
+
+    emcmake cmake -B build_wasm && cmake --build build_wasm

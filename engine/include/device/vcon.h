@@ -1,13 +1,11 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file vcon.h
- * @brief Virtual Console (`CON:`) screen matrix, cursor, and ANSI attribute context header.
- */
+// FILENAME: vcon.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libcore, libengine, libkernel
+// NEEDS: libkernel (types.h)
+// Implements virtual device and graphics rendering logic for vcon.
+//
+// ---- Includes ----
 
 #ifndef DEVICE_VCON_H
 #define DEVICE_VCON_H
@@ -54,4 +52,4 @@ void         vcon_set_key_label(VConContext *ctx, int key_idx, const char *text)
 const char  *vcon_get_key_label(VConContext *ctx, int key_idx);
 bool         vcon_get_key_labels_visible(VConContext *ctx);
 
-#endif /* DEVICE_VCON_H */
+#endif // DEVICE_VCON_H

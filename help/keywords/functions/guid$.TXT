@@ -1,0 +1,16 @@
+GUID$ Globally Unique Identifier String Generator Function
+======================================================================
+
+The GUID$ function generates a 36-character standard version-4 UUID.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    uuid$ = GUID$
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT GUID$   : REM Outputs 36-char hyphenated UUID string

@@ -1,0 +1,20 @@
+C17 API REFERENCE: ARRAY FUNCTIONAL EXTENSIONS (module/arrayext.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+Provides high-performance functional programming transformations across
+arrays: ARRAY MAP, ARRAY FILTER, ARRAY REDUCE, and aggregations (MIN, MAX, SUM).
+
+2. KEY TYPES & CONSTANTS
+- AGG_MIN (1), AGG_MAX (2), AGG_SUM (3).
+
+3. CORE API FUNCTIONS
+- arrayext_execute_map(vm, src, dst, fn, label, expr) -> BppError
+- arrayext_func_map(vm, lex, err) -> BValue
+- arrayext_func_filter(vm, lex, err) -> BValue
+- arrayext_func_reduce(vm, lex, err) -> BValue
+- arrayext_func_aggregate(vm, lex, agg_type, err) -> BValue
+
+4. ARCHITECTURAL INVARIANTS
+- Tight C17 iteration loops bypassing statement overhead.
+- String element lifecycle properly managed via StringContext.

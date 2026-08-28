@@ -1,67 +1,23 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-/**
- * @file bios.c
- * @brief Dispatcher and core memory router for IBM PC/XT/AT/PCjr BIOS subsystem for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements `bios_create()`, `bios_destroy()`, `bios_peek()`, `bios_poke()`, `bios_in()`, `bios_out()`, and interrupt dispatch (INT 10h-1Ah).
- *
- * 2. WHY IT EXISTS:
- * Provides authentic IBM PC/XT/AT/PCjr BIOS emulation parity for low-level memory (BDA, VRAM) and I/O port mapping.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Allocates 1MB real-mode address space (or delegates to attached `BiosMemoryMap`), synchronizes BDA struct, and routes interrupts to machine-specific modules (`bios_pc`, `bios_xt`, `bios_at`, `bios_jr`).
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'libbios'. Includes "bios/bios.h", "bios/bios_pc.h", "bios/bios_xt.h", "bios/bios_at.h", "bios/bios_jr.h", <stdlib.h>, <string.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in `libbasicpp` ('baspp').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Register custom software interrupt handlers (`bios_set_interrupt_handler`) or add new machine model definitions.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Real-mode 1MB address boundary (0x00000..0xFFFFF) and BDA offset layout.
- *
- * 8. WHAT TO EXPECT:
- * `bios_create()` returns a valid `BiosContext*` initialized to specified `BiosModel`.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify 1MB memory pool allocation and BDA (BIOS Data Area) structure offsets at 0x0040:0x0000.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Heap memory available for 1MB flat buffer allocation.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. 64-bit pointer safe (`uintptr_t`).
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/bios/bios_pc.c
- * - engine/src/bios/bios_xt.c
- * - engine/src/bios/bios_at.c
- * - engine/src/bios/bios_jr.c
- * Prerequisite Header Files:
- * - engine/include/bios/bios.h
- * - engine/include/bios/bios_pc.h
- * - engine/include/bios/bios_xt.h
- * - engine/include/bios/bios_at.h
- * - engine/include/bios/bios_jr.h
- */
+// FILENAME: bios.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, libhardware, libkernel
+// NEEDS: libcore (alloc.h, alloc.c, hal.h, memops.h, memops.c)
+// NEEDS: libengine (bios.h)
+// NEEDS: libhardware (bios_at.h, bios_at.c, bios_jr.h, bios_jr.c)
+// NEEDS: libhardware (bios_pc.h, bios_pc.c, bios_xt.h, bios_xt.c)
+// Implements virtual BIOS interrupt and hardware emulation for bios.
+//
+// ---- Includes ----
 
 #include "bios/bios.h"
 #include "bios/bios_pc.h"
 #include "bios/bios_xt.h"
 #include "bios/bios_at.h"
 #include "bios/bios_jr.h"
-
-#include <stdlib.h>
-#include <string.h>
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "hal/hal.h"
 
 typedef struct {
     BiosIntHandlerFn fn;
@@ -74,12 +30,18 @@ struct BiosContext {
     BiosClockMode   clock_mode;
     double          clock_freq;
     BiosMemoryMap   mem_map;
+    BiosVRAMObserver vram_observer;
     uint8_t*        flat_1mb;
     uint8_t         cmos_regs[128];
     uint8_t         cmos_idx;
     uint8_t         last_post_code;
     BiosCustomInt   custom_ints[256];
 };
+
+// Global BIOS context pointer for subsystems that lack direct VM access
+// (e.g., console.c PRINT-to-VRAM sync). Set by bios_create(), cleared by
+// bios_destroy(). Follows same pattern as g_vcon_context in vcon.c.
+BiosContext *g_bios_context = NULL;
 
 static uint8_t default_mem_read(void* user_data, uint32_t addr) {
     BiosContext* ctx = (BiosContext*)user_data;
@@ -94,7 +56,7 @@ static void default_mem_write(void* user_data, uint32_t addr, uint8_t val) {
     if (!ctx || !ctx->flat_1mb || addr >= 1048576U) {
         return;
     }
-    /* Protect BIOS ROM region (0xF0000-0xFFFFF) from accidental overwrite */
+    // Protect BIOS ROM region (0xF0000-0xFFFFF) from accidental overwrite
     if (addr >= 0xF0000U) {
         return;
     }
@@ -102,14 +64,22 @@ static void default_mem_write(void* user_data, uint32_t addr, uint8_t val) {
 }
 
 BiosContext* bios_create(BiosModel model) {
-    BiosContext* ctx = (BiosContext*)calloc(1, sizeof(BiosContext));
+    HalContext *hal = hal_get();
+    BiosContext* ctx = NULL;
+    if (hal && hal->mem.alloc) {
+        ctx = (BiosContext*)hal->mem.alloc(sizeof(BiosContext));
+    }
     if (!ctx) return NULL;
+    runtime_memset(ctx, 0, sizeof(BiosContext));
 
-    ctx->flat_1mb = (uint8_t*)calloc(1, 1048576U);
+    if (hal && hal->mem.alloc) {
+        ctx->flat_1mb = (uint8_t*)hal->mem.alloc(1048576U);
+    }
     if (!ctx->flat_1mb) {
-        free(ctx);
+        if (hal && hal->mem.free) hal->mem.free(ctx);
         return NULL;
     }
+    runtime_memset(ctx->flat_1mb, 0, 1048576U);
 
     ctx->mem_map.user_data = ctx;
     ctx->mem_map.read_u8 = default_mem_read;
@@ -128,16 +98,23 @@ BiosContext* bios_create(BiosModel model) {
     }
 
     bios_init(ctx);
+    g_bios_context = ctx;
     return ctx;
 }
 
 void bios_destroy(BiosContext* ctx) {
     if (!ctx) return;
+    if (g_bios_context == ctx) {
+        g_bios_context = NULL;
+    }
+    HalContext *hal = hal_get();
     if (ctx->flat_1mb) {
-        free(ctx->flat_1mb);
+        if (hal && hal->mem.free) hal->mem.free(ctx->flat_1mb);
         ctx->flat_1mb = NULL;
     }
-    free(ctx);
+    if (hal && hal->mem.free) {
+        hal->mem.free(ctx);
+    }
 }
 
 void bios_set_model(BiosContext* ctx, BiosModel model) {
@@ -244,7 +221,7 @@ BiosDataArea* bios_get_bda(BiosContext* ctx) {
 bool bios_init(BiosContext* ctx) {
     if (!ctx) return false;
 
-    /* Initialize model specific BDA & ROM signatures */
+    // Initialize model specific BDA & ROM signatures
     switch (ctx->model) {
         case BIOS_MODEL_IBM_PC:
             bios_pc_init(ctx);
@@ -270,14 +247,43 @@ uint8_t bios_peek(BiosContext* ctx, uint32_t addr) {
     return ctx->mem_map.read_u8(ctx->mem_map.user_data, addr & 0xFFFFF);
 }
 
+uint8_t bios_peek_raw(BiosContext* ctx, uint32_t addr) {
+    if (!ctx || !ctx->flat_1mb || addr >= 1048576U) return 0xFF;
+    return ctx->flat_1mb[addr & 0xFFFFF];
+}
+
 void bios_poke(BiosContext* ctx, uint32_t addr, uint8_t val) {
     if (!ctx || !ctx->mem_map.write_u8) return;
-    ctx->mem_map.write_u8(ctx->mem_map.user_data, addr & 0xFFFFF, val);
+    uint32_t masked = addr & 0xFFFFF;
+    ctx->mem_map.write_u8(ctx->mem_map.user_data, masked, val);
+
+    // Notify VRAM observer if write falls in a video memory region
+    if (ctx->vram_observer.on_write) {
+        if ((masked >= BIOS_VRAM_EGA_START && masked <= BIOS_VRAM_EGA_END) ||
+            (masked >= BIOS_VRAM_MDA_START && masked <= BIOS_VRAM_MDA_END) ||
+            (masked >= BIOS_VRAM_CGA_START && masked <= BIOS_VRAM_CGA_END)) {
+            ctx->vram_observer.on_write(ctx->vram_observer.user_data, masked, val);
+        }
+    }
 }
 
 void bios_poke_raw(BiosContext* ctx, uint32_t addr, uint8_t val) {
     if (!ctx || !ctx->flat_1mb || addr >= 1048576U) return;
     ctx->flat_1mb[addr & 0xFFFFF] = val;
+}
+
+void bios_set_vram_observer(BiosContext* ctx, const BiosVRAMObserver* observer) {
+    if (!ctx) return;
+    if (observer) {
+        ctx->vram_observer = *observer;
+    } else {
+        runtime_memset(&ctx->vram_observer, 0, sizeof(ctx->vram_observer));
+    }
+}
+
+const BiosVRAMObserver* bios_get_vram_observer(const BiosContext* ctx) {
+    if (!ctx) return NULL;
+    return &ctx->vram_observer;
 }
 
 uint8_t bios_inp(BiosContext* ctx, uint16_t port) {
@@ -304,7 +310,7 @@ void bios_out(BiosContext* ctx, uint16_t port, uint8_t val) {
 void bios_post_code(BiosContext* ctx, uint8_t code) {
     if (!ctx) return;
     ctx->last_post_code = code;
-    /* Write POST diagnostic code to Port 0x80 */
+    // Write POST diagnostic code to Port 0x80
     bios_out(ctx, 0x80, code);
 }
 
@@ -318,7 +324,7 @@ bool bios_register_interrupt(BiosContext* ctx, uint8_t int_num, BiosIntHandlerFn
 bool bios_interrupt(BiosContext* ctx, uint8_t int_num, BiosRegs* regs) {
     if (!ctx || !regs) return false;
 
-    /* Check custom registered interrupt handlers first */
+    // Check custom registered interrupt handlers first
     if (ctx->custom_ints[int_num].fn) {
         if (ctx->custom_ints[int_num].fn(ctx, int_num, regs, ctx->custom_ints[int_num].user_data)) {
             return true;

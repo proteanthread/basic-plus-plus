@@ -1,0 +1,26 @@
+C17 API REFERENCE: FEATURE REGISTRY & STATE (core/feature_reg.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Feature Registry Subsystem provides central registration, feature
+discovery, function catalogs, keyword tables, and HELP topic lookups.
+
+2. KEY TYPES & STRUCTS
+- FeatureKeywordEntry: name, token_id, category.
+- FeatureBuiltinEntry: name, help_text, category.
+- FeatureHelpEntry: topic, summary, usage, category.
+
+3. CORE API FUNCTIONS
+- feature_reg_init()
+- feature_register_keyword(kw, token_id, category) -> bool
+- feature_register_builtin(name, help_text, category) -> bool
+- feature_register_help(topic, summary, usage, category) -> bool
+- feature_get_keyword_count() -> size_t
+- feature_find_keyword(name) -> const FeatureKeywordEntry *
+- feature_get_builtin_count() -> size_t
+- feature_find_builtin(name) -> const FeatureBuiltinEntry *
+- feature_get_help_count() -> size_t
+- feature_find_help(topic) -> const FeatureHelpEntry *
+
+4. ARCHITECTURAL INVARIANTS
+- Fixed-size static tables (up to 512 entries each) with zero heap overhead.

@@ -1,0 +1,23 @@
+IF_POSTFIX Trailing Conditional Statement Modifier
+==================================================
+
+Executes a preceding statement only if the trailing condition expression evaluates to true.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    statement IF condition
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Multiple trailing postfix conditions evaluate right-to-left.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "X is positive" IF X > 0
+    20 LET Y = 10 IF Flag% = 1

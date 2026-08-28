@@ -1,0 +1,15 @@
+map Hash Map & Associative Array Subsystem (libflex)
+======================================================================
+
+The map library implements dynamic hash maps, string-keyed dictionaries,
+and associative array structures.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    HashMap *map_create(void);
+    void map_destroy(HashMap *map);
+    void map_set(HashMap *map, const char *key, BValue val);
+    BValue *map_get(HashMap *map, const char *key);
+    void map_remove(HashMap *map, const char *key);

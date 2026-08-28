@@ -1,0 +1,29 @@
+MOUNT Virtual Filesystem Device Mount Statement
+===============================================
+
+Mounts a host folder, ZIP archive, or memory image onto the virtual filesystem (VFS) namespace.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    MOUNT device_spec$, mount_path$ [, filesystem_type$]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 68 (ERR_DEVICE_UNAVAILABLE): Device could not be mounted.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Extensible VFS architecture.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 MOUNT "C:\GAMES", "/games", "host"
+    20 FILES "/games/"

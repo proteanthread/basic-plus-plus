@@ -1,0 +1,16 @@
+ATN Arctangent Trigonometric Function
+======================================================================
+
+The ATN function computes the inverse tangent of a number in radians.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    radians# = ATN(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT 4 * ATN(1)   : REM Outputs 3.141592653589793

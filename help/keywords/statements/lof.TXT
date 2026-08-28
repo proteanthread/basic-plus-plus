@@ -1,0 +1,30 @@
+LOF Length of File Function
+===========================
+
+Returns the total length of an open file channel in bytes.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    length_bytes& = LOF(filenum%)
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 52 (ERR_BAD_FILE_NUMBER): Channel is not open.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Returns 64-bit integer byte count.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 OPEN "I", #1, "README.TXT"
+    20 PRINT "File size: "; LOF(1); " bytes"
+    30 CLOSE #1

@@ -1,53 +1,102 @@
-# Virtual Device framework API Reference
+# C17 API Reference: Master Virtual Device Bus (`device/vdev.h`)
 
-Header File: [`include/vdev.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/vdev.h)
+## 1. Subsystem Overview & Responsibilities
 
-## Overview
-Exposes virtual hardware/device operations hooks (VDevOps) for custom peripherals.
+The Master Virtual Device Bus Subsystem (`device/vdev.h`, implemented in `engine/src/device/vdev.c`) provides the universal peripheral and stream I/O interface for the BASIC++ v6.5.2 engine, unifying consoles, files, serial ports, printers, audio synthesizers, networks, GPIO pins, sensors, and graphics adapters under a standard object model.
 
-## Exposed API Entities
-### Structs & Types
-- `VDev VDev`
-- `VDevContext VDevContext`
+Key architectural responsibilities include:
+- **Universal Device Abstraction (`VDev`)**: Standardized function table (`VDevOps`) defining polymorphic operations: `open`, `read`, `write`, `getc`, `putc`, `flush`, `ioctl`, and `close`.
+- **Taxonomy Classification (`VDevClass`)**:
+  - `VDCLASS_CONSOLE`: Virtual terminal screen and keyboard (`CON:`, `SCRN:`, `KYBD:`).
+  - `VDCLASS_FILE`: Virtual Filesystem streams and images.
+  - `VDCLASS_SERIAL`: RS-232 / UART communications ports (`COM1:` .. `COM4:`).
+  - `VDCLASS_PRINTER`: Line printer devices (`LPT1:`, `PRN:`).
+  - `VDCLASS_AUDIO`: Sound chips and synthesizer voices (`AUDIO:`, `AY-3-8910:`).
+  - `VDCLASS_NETWORK`: Network socket streams (`N:`, `TCP:`, `UDP:`).
+  - `VDCLASS_GPIO` / `VDCLASS_I2C` / `VDCLASS_SPI`: Embedded microcontroller buses.
+- **Granular Capability Bitmasks**: Declares supported operations (`VDCAP_READ`, `VDCAP_WRITE`, `VDCAP_BINARY`, `VDCAP_SEEK`, `VDCAP_ASYNC`, `VDCAP_HOTPLUG`, `VDCAP_DUPLEX`).
+- **Standardized IOCTL Interface**: Configures baud rates, parity, flow control, buffer sizes, and hardware resets dynamically.
 
-### Functions
-| Function | Return Type | Arguments |
-|----------|-------------|-----------|
-| `vdev_shutdown` | `void` | `VDevContext *ctx` |
-| `vdev_register` | `bool` | `VDevContext *ctx, VDev dev` |
-| `vdev_printf` | `int` | `VDevContext *ctx, const char *fmt, ...` |
-| `vdev_puts` | `int` | `VDevContext *ctx, const char *s` |
-| `vdev_putc` | `int` | `VDevContext *ctx, int c` |
-| `vdev_play_beep` | `void` | `VDevContext *ctx` |
-| `vdev_music_queue_length` | `int` | `void` |
-| `vdev_music_clear` | `void` | `void` |
-| `vdev_play_sound_freq` | `void` | `double freq, double duration_seconds` |
-| `vdev_gfx_poll_events` | `void` | `void` |
-| `vdev_gfx_enable` | `void` | `bool allowed, bool gui_boot` |
-| `vdev_gfx_boot_check` | `void` | `struct VMContext *vm` |
-| `gfx_get_char_at` | `int` | `int row, int col` |
-| `gfx_get_attr_at` | `int` | `int row, int col` |
-| `vdev_read` | `int` | `VDev *d, void *buf, int len` |
-| `vdev_write` | `int` | `VDev *d, const void *buf, int len` |
-| `vdev_seek` | `long` | `VDev *d, long offset, int whence` |
-| `vdev_ioctl` | `int` | `VDev *d, int cmd, void *arg` |
-| `vdev_status` | `int` | `VDev *d` |
-| `vdev_poll` | `int` | `VDev *d` |
-| `vdev_count` | `int` | `VDevContext *ctx` |
-| `vdev_list_all` | `void` | `VDevContext *ctx` |
+## 2. Header Inclusion & Prerequisites
 
-## C Integration Example
-The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "vdev.h"
-
-extern VDev vdev_console_create(void);
-
-void init_vdev(VMContext *vm) {
-    vdev_register(vm_get_vdev(vm), vdev_console_create());
-}
+#include "device/vdev.h"
+#include "memory/memory.h"
+#include "types/types.h"
 ```
 
-## Guidelines & Architecture Constraints
-- **C17 Portability**: Compile under strict C17 standards.
-- **Memory Integrity**: All contexts and pointers passed must be zero-initialized.
+## 3. Data Structures & Types
+
+```c
+typedef struct VDev VDev;
+
+/* Device Operation Table */
+typedef struct {
+    bool   (*init)(VDev *dev, void *user_data);
+    bool   (*open)(VDev *dev, const char *path, int mode);
+    size_t (*read)(VDev *dev, void *buf, size_t count);
+    size_t (*write)(VDev *dev, const void *buf, size_t count);
+    int    (*getc)(VDev *dev);
+    int    (*putc)(VDev *dev, int c);
+    void   (*flush)(VDev *dev);
+    int    (*ioctl)(VDev *dev, int cmd, void *arg);
+    void   (*close)(VDev *dev);
+    void   (*destroy)(VDev *dev);
+} VDevOps;
+
+/* Unified Virtual Device Struct */
+struct VDev {
+    const char *name;           /* Device prefix name (e.g. "COM1:", "LPT1:") */
+    VDevClass   device_class;   /* VDCLASS_SERIAL, VDCLASS_PRINTER, etc. */
+    uint32_t    capabilities;   /* Bitmask of VDCAP_* flags */
+    VDevOps     ops;            /* Operations table */
+    void       *priv_data;      /* Private device state */
+    bool        is_open;        /* Open status */
+};
+
+/* Opaque Virtual Device Bus Context */
+typedef struct VDevContext VDevContext;
+```
+
+## 4. Function Prototypes & Operational Contracts
+
+### Bus Management
+```c
+VDevContext *vdev_bus_init(MemoryContext *mem);
+void         vdev_bus_shutdown(VDevContext *ctx);
+
+bool         vdev_bus_attach(VDevContext *ctx, VDev *dev);
+bool         vdev_bus_detach(VDevContext *ctx, const char *name);
+VDev        *vdev_bus_find(VDevContext *ctx, const char *name);
+```
+
+### Device I/O Operations
+```c
+bool   vdev_open(VDev *dev, const char *path, int mode);
+void   vdev_close(VDev *dev);
+size_t vdev_read(VDev *dev, void *buf, size_t count);
+size_t vdev_write(VDev *dev, const void *buf, size_t count);
+int    vdev_getc(VDev *dev);
+int    vdev_putc(VDev *dev, int c);
+void   vdev_puts(VDev *dev, const char *str);
+void   vdev_flush(VDev *dev);
+int    vdev_ioctl(VDev *dev, int cmd, void *arg);
+```
+
+## 5. Architectural Invariants
+
+- **Console Redirection Rule**: Never call raw standard library output functions (`printf`, `putchar`) directly in statement handlers; route all I/O through `VDevContext` / `vdev_puts()`.
+
+## 6. Code Example: Writing to Virtual Device Bus
+
+```c
+#include "device/vdev.h"
+
+void write_to_printer(VDevContext *bus, const char *document) {
+    VDev *lpt = vdev_bus_find(bus, "LPT1:");
+    if (lpt && vdev_open(lpt, NULL, 0)) {
+        vdev_puts(lpt, document);
+        vdev_close(lpt);
+    }
+}
+```

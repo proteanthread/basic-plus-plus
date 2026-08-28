@@ -1,0 +1,17 @@
+USERNAME$ Active User Name Function
+======================================================================
+
+The USERNAME$ function returns the current operating system username.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    user$ = USERNAME$
+    user$ = USERNAME$()
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "User: "; USERNAME$

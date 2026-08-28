@@ -1,0 +1,22 @@
+VPATH Virtual Filesystem Search Path Configuration Statement
+============================================================
+
+Configures or displays the ordered search paths used by the VFS when locating program and data files.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    VPATH [path_string$]
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Supports semicolon-delimited directory search lists.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 VPATH "/lib;/assets;/data"

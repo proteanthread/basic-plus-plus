@@ -1,0 +1,19 @@
+BASIC++ FUNCTION REFERENCE: LBOUND
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  result = LBOUND(arrayname [, dimension])
+
+Returns the lowest valid subscript index for the specified dimension of an array.
+
+2. PARAMETERS & RETURN VALUES
+- arrayname: The name of the declared array.
+- dimension: Optional 1-based dimension index (default: 1).
+- Returns: Integer representing the lower bound.
+
+3. ERROR CODES
+- Error 9 (ERR_SUBSCRIPT_OUT_OF_RANGE): Array does not exist or dimension out of range.
+
+4. EXAMPLES
+  10 DIM A(-5 TO 10)
+  20 PRINT LBOUND(A)    : REM Outputs: -5

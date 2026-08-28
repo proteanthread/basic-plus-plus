@@ -1,0 +1,34 @@
+DEFSTR Define String Default Type
+======================================================================
+
+The DEFSTR statement declares that all variable identifiers beginning
+with the specified letter(s) or ranges default to string variables.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    DEFSTR letter_range [, letter_range2, ...]
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Declares string type for un-suffixed matching variables.
+  - Overridden by explicit numeric suffixes (%, !, #).
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  2           ERR_SYNTAX_ERROR      Invalid letter range syntax
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DEFSTR S
+    20 MSG = "Hello World"
+    30 PRINT MSG

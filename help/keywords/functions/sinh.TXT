@@ -1,0 +1,16 @@
+SINH Hyperbolic Sine Function
+======================================================================
+
+The SINH function computes the hyperbolic sine of a numeric argument.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result# = SINH(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT SINH(1)   : REM Outputs 1.175201193643801

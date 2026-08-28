@@ -1,0 +1,23 @@
+IMAGE Print Using Format Template Definition Statement
+======================================================
+
+Defines a format string template referenced by formatted PRINT USING operations.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    IMAGE format_string$
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  ECMA-116 standard dialect feature.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 IMAGE "Total: $$###.##"
+    20 PRINT USING 10; 123.45

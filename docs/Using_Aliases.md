@@ -1,187 +1,103 @@
-# Using Aliases in BASIC++
+# BASIC++ v6.5.2 Using Aliases
 
-**Version 4.2.3**
+## 1. THE ALIAS STATEMENT
 
-
----
-
-## Table of Contents
-
-- Syntax
-- How It Works
-- Managing Aliases
-- Alias for String Functions
-- Use Cases
-  - Localization
-  - Shorthand
-  - Compatibility
-  - Teaching
-- Limitations
-
----
-
-The `ALIAS` command lets you redefine keywords, creating custom names for built-in commands and functions.
-
----
-
-## 1. Syntax
+ALIAS creates a new name for an existing keyword, statement, or function. The alias behaves identically to the original — it is a syntactic synonym, not a wrapper or macro:
 
 ```basic
-ALIAS "newname" = KEYWORD
+10 ALIAS "DISPLAY" AS "PRINT"
+20 DISPLAY "Hello, World!"      ' Works exactly like PRINT
 ```
 
-**Examples:**
+After this alias, DISPLAY can be used anywhere PRINT would be used, with all the same syntax (semicolons, commas, USING, #channel, etc.).
+
+## 2. ALIAS SYNTAX
+
+ALIAS "new_name" AS "original_name" creates the alias. Both names are case-insensitive. The original keyword remains available — ALIAS adds a name, it does not replace the original.
 
 ```basic
-ALIAS "IMPRIMER" = PRINT       ' French PRINT
-ALIAS "IMPRIME" = PRINT        ' Portuguese PRINT
-ALIAS "EINGABE" = INPUT        ' German INPUT
-ALIAS "ESCRIBE" = PRINT        ' Spanish PRINT
-ALIAS "WENN" = IF              ' German IF
-ALIAS "DANN" = THEN            ' German THEN
-ALIAS "P" = PRINT              ' Shorthand
-ALIAS "?" = PRINT              ' Shorthand (if not built-in)
+10 ALIAS "AFFICHER" AS "PRINT"      ' French
+20 ALIAS "LIRE" AS "INPUT"          ' French
+30 ALIAS "SI" AS "IF"               ' French
+40 ALIAS "ALORS" AS "THEN"          ' French
+50 ALIAS "FIN" AS "END"             ' French
 ```
 
----
-
-## 2. How It Works
-
-Aliases are processed by the **lexer**, not the parser. When the lexer encounters an identifier, it checks the alias table **before** the keyword table. If the identifier matches an alias, the alias's target keyword is substituted.
-
-This means aliases work everywhere: statements, expressions, function calls, and conditions.
+After these aliases, a program can be written entirely in French keywords:
 
 ```basic
-ALIAS "SCHREIB" = PRINT
-ALIAS "WENN" = IF
-ALIAS "DANN" = THEN
-
-10 SCHREIB "Hallo Welt!"
-20 WENN 1 = 1 DANN SCHREIB "Ja!"
+100 AFFICHER "Bonjour!"
+110 LIRE "Votre nom: "; Nom$
+120 SI Nom$ = "" ALORS FIN
+130 AFFICHER "Bienvenue, "; Nom$
 ```
 
-This runs exactly as if you had written:
+## 3. USE CASES
+
+### Localization
+
+ALIAS allows BASIC++ to be used with keywords in any human language. Teachers can create alias sets for their students' native language.
+
+### Compatibility
+
+Programs from one BASIC dialect can use aliases to map unfamiliar keywords:
 
 ```basic
-10 PRINT "Hallo Welt!"
-20 IF 1 = 1 THEN PRINT "Ja!"
+10 ALIAS "REPEAT" AS "DO"           ' Map REPeat to DO
+20 ALIAS "ENDREPEAT" AS "LOOP"      ' Map END REPeat to LOOP
 ```
 
----
+### Abbreviation
 
-## 3. Managing Aliases
-
-| Command | Description |
-|---------|-------------|
-| `ALIAS LIST` | List all active aliases |
-| `ALIAS CLEAR "newname"` | Remove a specific alias |
-| `ALIAS CLEAR ALL` | Remove all aliases |
-
-Aliases persist across `RUN` and `NEW`. They are session-wide.
-
----
-
-## 4. Alias for String Functions
-
-Aliases work with `$` functions too:
+Frequently used keywords can be abbreviated:
 
 ```basic
-ALIAS "GAUCHE" = LEFT$         ' French LEFT$
-ALIAS "DROITE" = RIGHT$        ' French RIGHT$
-ALIAS "MILIEU" = MID$          ' French MID$
-ALIAS "LONGUEUR" = LEN         ' French LEN
-
-10 A$ = "Bonjour le monde"
-20 PRINT GAUCHE$(A$, 7)         ' prints "Bonjour"
+10 ALIAS "P" AS "PRINT"
+20 ALIAS "I" AS "INPUT"
+30 P "Quick typing!"
 ```
 
-> **Note:** The `$` is automatically handled when the alias target is a `$`-function keyword.
+### Domain-Specific Languages
 
----
-
-## 5. Use Cases
-
-### A. Localization
-
-Create a fully localized BASIC environment:
+Aliases can create domain-specific vocabularies:
 
 ```basic
-ALIAS "AFFICHER" = PRINT
-ALIAS "SAISIR" = INPUT
-ALIAS "ALLER" = GOTO
-ALIAS "SI" = IF
-ALIAS "ALORS" = THEN
-ALIAS "SINON" = ELSE
-ALIAS "FIN" = END
-ALIAS "POUR" = FOR
-ALIAS "A" = TO
-ALIAS "SUIVANT" = NEXT
-
-10 POUR I = 1 A 10
-20   AFFICHER I
-30 SUIVANT I
+10 ALIAS "MEASURE" AS "INPUT"
+20 ALIAS "RECORD" AS "PRINT"
+30 ALIAS "SAMPLE" AS "READ"
 ```
 
-### B. Shorthand
+## 4. ALIAS FOR FUNCTIONS
 
-Create abbreviations for common commands:
+ALIAS works with functions as well as statements:
 
 ```basic
-ALIAS "P" = PRINT
-ALIAS "I" = INPUT
-ALIAS "G" = GOTO
+10 ALIAS "LONGUEUR" AS "LEN"
+20 ALIAS "GAUCHE$" AS "LEFT$"
+30 PRINT LONGUEUR("HELLO")          ' Prints 5
+40 PRINT GAUCHE$("HELLO", 3)        ' Prints HEL
 ```
 
-### C. Compatibility
+## 5. LISTING AND REMOVING ALIASES
 
-Map commands from other BASIC dialects:
+ALIAS with no arguments lists all active aliases:
 
 ```basic
-ALIAS "LOCATE" = PRINT AT     ' Map LOCATE to PRINT AT
-ALIAS "CLS" = CLS             ' (already exists)
+> ALIAS
+Active aliases:
+  DISPLAY -> PRINT
+  AFFICHER -> PRINT
+  LONGUEUR -> LEN
 ```
 
-### D. Teaching
+ALIAS$ returns the original keyword for an alias: `PRINT ALIAS$("DISPLAY")` prints "PRINT". If the name is not an alias, ALIAS$ returns the name itself.
 
-Create English-like keywords for beginners:
+REMOVE "DISPLAY" removes the alias. The original keyword remains unaffected.
 
-```basic
-ALIAS "DISPLAY" = PRINT
-ALIAS "ASK" = INPUT
-ALIAS "REPEAT" = FOR
-ALIAS "UNTIL" = NEXT
-```
+## 6. PERSISTENCE
 
----
+Aliases defined in a program persist for the duration of the session. They are cleared by NEW. Aliases can be saved in a startup file that runs before the main program using CHAIN or MERGE.
 
-## 5b. Language Packs (ALIAS LANG)
+## 7. IMPLEMENTATION
 
-BASIC++ includes built-in language packs that load a complete set of keyword aliases for a natural language with a single command:
-
-```basic
-ALIAS LANG "ES"          ' Load Spanish language pack
-ALIAS LANG "PT"          ' Load Portuguese language pack
-ALIAS LANG "FR"          ' Load French language pack
-ALIAS LANG "DE"          ' Load German language pack
-ALIAS LANG "IT"          ' Load Italian language pack
-ALIAS LANG "JA"          ' Load Japanese (romaji) language pack
-```
-
-| Command | Description |
-|---------|-------------|
-| `ALIAS LANG "code"` | Load a language pack by two-letter code |
-| `ALIAS LANG CLEAR` | Remove all language-pack aliases |
-| `ALIAS LANG LIST` | List available language packs |
-
-Language-pack aliases use the `ASCOPE_LANG` scope and are cleared independently of user-defined aliases.
-
----
-
-## 6. Limitations
-
-- Maximum **128 aliases**
-- Alias names are **case-insensitive**
-- Alias names cannot conflict with existing keywords
-- Aliases **cannot chain** (alias of an alias)
-- Aliases are **not saved** with the program
-- Alias names: max **31 characters**
+ALIAS is implemented in engine/src/statements/dialect/alias.c. It modifies the lexer's keyword lookup table by adding an entry that maps the alias name to the same keyword ID as the original. This means aliased keywords are recognized at lex time and produce the same token type, ensuring complete compatibility with all statement handlers.

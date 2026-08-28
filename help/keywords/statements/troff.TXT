@@ -1,0 +1,24 @@
+TROFF Turn Off Line Tracing Statement
+=====================================
+
+Disables line number execution tracing (GW-BASIC compatibility command).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    TROFF
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Equivalent to TRACE OFF.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 TRON : REM Enable tracing
+    20 X = 10
+    30 TROFF : REM Disable tracing

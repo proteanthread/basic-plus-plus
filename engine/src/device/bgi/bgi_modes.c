@@ -1,54 +1,29 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file bgi_modes.c
- * @brief BGI Heritage Mode Library — Pre-registered video mode descriptors.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Registers all pre-defined heritage video modes into the
- *   BGI mode table. Each mode corresponds to a real historical graphics
- *   adapter, home computer, or game console display system.
- * - Why it exists: Allows BASIC++ programs to activate any pre-SVGA display
- *   mode with a single SCREEN or INITGRAPH command.
- * - Why it works this way: Static const mode descriptors are registered via
- *   BGI_register_mode() during BGI_init(). No VRAM is allocated until a
- *   mode is actually activated with BGI_set_mode().
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Add new mode descriptors for additional hardware.
- * - What cannot be changed: Existing mode_id values (backward compatibility).
- * - What to expect: All modes use the default 16-color palette unless they
- *   override it with a custom palette pointer.
- * - What to do if something breaks: Verify mode_id uniqueness, verify
- *   width/height > 0, verify bits_per_pixel is valid.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: BGI_Context is initialized before this is called.
- * - Portability concerns: Pure ISO C17. No OS dependencies.
- *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add new entries to the modes array.
- * - How to write external extensions: Call BGI_register_mode() at runtime.
- */
+// FILENAME: bgi_modes.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (memops.h, memops.c, snprintf.h, snprintf.c)
+// NEEDS: libengine (bgi.h, bgi.c)
+// Implements virtual device and graphics rendering logic for bgi_modes.
+//
+// ---- Includes ----
 
 #include "device/bgi.h"
-#include <string.h>
+#include "runtime/string/memops.h"
+#include "runtime/format/snprintf.h"
 
-/* ======================================================================
- * Helper macro to define a mode descriptor inline
- * ====================================================================== */
+
+// ======================================================================
+// Helper macro to define a mode descriptor inline
+// ======================================================================
 #define BGI_DEF_MODE(name_str, id, w, h, bits_per_pixel, pal_sz, layout, ar) \
-    { name_str, id, w, h, bits_per_pixel, pal_sz, NULL, layout, 0, 0, ar, 60.0f }
+    { name_str, id, w, h, bits_per_pixel, pal_sz, NULL, layout, 0, 0, ar, 60.0f, 0, 0, false }
 
-/* ======================================================================
- * Heritage Mode Descriptor Table
- * ====================================================================== */
+// ======================================================================
+// Heritage Mode Descriptor Table
+// ======================================================================
 static const BGI_VideoMode bgi_heritage_modes[] = {
-    /* === IBM PC Graphics Adapters === */
+    // === IBM PC Graphics Adapters ===
     BGI_DEF_MODE("CGA SCREEN 1",     BGI_MODE_CGA_1,    320, 200,  2,   4,  BGI_LAYOUT_INDEXED_8BPP,   4.0f/3.0f),
     BGI_DEF_MODE("CGA SCREEN 2",     BGI_MODE_CGA_2,    640, 200,  1,   2,  BGI_LAYOUT_INDEXED_8BPP,   4.0f/3.0f),
     BGI_DEF_MODE("Tandy SCREEN 3",   BGI_MODE_TANDY_3,  160, 200,  4,  16,  BGI_LAYOUT_INDEXED_8BPP,   4.0f/3.0f),
@@ -59,7 +34,7 @@ static const BGI_VideoMode bgi_heritage_modes[] = {
     BGI_DEF_MODE("Hercules HGC",     BGI_MODE_HGC,      720, 348,  1,   2,  BGI_LAYOUT_INDEXED_8BPP,   4.0f/3.0f),
     BGI_DEF_MODE("IBM MDA",          BGI_MODE_MDA,      720, 350,  1,   2,  BGI_LAYOUT_CELL_ATTRIBUTES,4.0f/3.0f),
 
-    /* === Home Computers === */
+    // === Home Computers ===
     BGI_DEF_MODE("C64 Hi-Res",       BGI_MODE_C64_HI,   320, 200,  4,  16,  BGI_LAYOUT_CELL_ATTRIBUTES,4.0f/3.0f),
     BGI_DEF_MODE("C64 Multicolor",   BGI_MODE_C64_MC,   160, 200,  2,   4,  BGI_LAYOUT_CELL_ATTRIBUTES,4.0f/3.0f),
     BGI_DEF_MODE("ZX Spectrum",      BGI_MODE_ZX_SPEC,  256, 192,  1,  16,  BGI_LAYOUT_CELL_ATTRIBUTES,4.0f/3.0f),
@@ -75,7 +50,7 @@ static const BGI_VideoMode bgi_heritage_modes[] = {
     BGI_DEF_MODE("Amstrad CPC M0",   BGI_MODE_AMSTRAD_0, 160,200,  4,  16,  BGI_LAYOUT_INDEXED_8BPP,   4.0f/3.0f),
     BGI_DEF_MODE("BBC Micro Mode 1", BGI_MODE_BBC_M1,   160, 256,  3,   8,  BGI_LAYOUT_INDEXED_8BPP,   4.0f/3.0f),
 
-    /* === Game Consoles === */
+    // === Game Consoles ===
     BGI_DEF_MODE("NES PPU NTSC",     BGI_MODE_NES_NTSC, 256, 240,  6,  54,  BGI_LAYOUT_CELL_ATTRIBUTES,4.0f/3.0f),
     BGI_DEF_MODE("SNES PPU",         BGI_MODE_SNES,     256, 224, 15, 256,  BGI_LAYOUT_INDEXED_8BPP,   4.0f/3.0f),
     BGI_DEF_MODE("Genesis NTSC",     BGI_MODE_GENESIS_N, 320,224,  9, 256,  BGI_LAYOUT_INDEXED_8BPP,   4.0f/3.0f),
@@ -93,9 +68,9 @@ static const BGI_VideoMode bgi_heritage_modes[] = {
 #define BGI_NUM_HERITAGE_MODES \
     (int)(sizeof(bgi_heritage_modes) / sizeof(bgi_heritage_modes[0]))
 
-/* ======================================================================
- * Registration Function
- * ====================================================================== */
+// ======================================================================
+// Registration Function
+// ======================================================================
 
 void BGI_register_heritage_modes(BGI_Context *ctx) {
     if (!ctx) return;
@@ -104,3 +79,46 @@ void BGI_register_heritage_modes(BGI_Context *ctx) {
         BGI_register_mode(ctx, &bgi_heritage_modes[i]);
     }
 }
+
+int BGI_create_custom_mode(BGI_Context *ctx, int width, int height, int bpp, int text_cols, int text_rows, float fps) {
+    if (!ctx) return -1;
+    if (width <= 0 || height <= 0) return -1;
+
+    if (bpp <= 0) bpp = 8; // Default 256 colors
+    if (fps <= 0.0f) fps = 60.0f;
+
+    BGI_VideoMode custom_mode;
+    runtime_memset(&custom_mode, 0, sizeof(custom_mode));
+    runtime_snprintf(custom_mode.mode_name, sizeof(custom_mode.mode_name), "Custom %dx%d (%dbpp)", width, height, bpp);
+
+    custom_mode.mode_id = 0xFFFF0000 | (uint32_t)(width & 0xFFFF);
+    custom_mode.width = (uint16_t)width;
+    custom_mode.height = (uint16_t)height;
+    custom_mode.bits_per_pixel = (uint8_t)bpp;
+    custom_mode.palette_size = (bpp <= 8) ? (1 << bpp) : 0;
+    custom_mode.mem_layout = (bpp <= 8) ? BGI_LAYOUT_INDEXED_8BPP : BGI_LAYOUT_LINEAR_ARGB8888;
+    custom_mode.aspect_ratio = (float)width / (float)height;
+    custom_mode.refresh_hz = fps;
+    custom_mode.text_window_cols = (text_cols > 0) ? (uint8_t)text_cols : 0;
+    custom_mode.text_window_rows = (text_rows > 0) ? (uint8_t)text_rows : 0;
+    custom_mode.text_window_enabled = (text_rows > 0);
+
+    int handle = BGI_register_mode(ctx, &custom_mode);
+    if (handle < 0) return -1;
+
+    int res = BGI_set_mode(ctx, handle);
+    if (res == 0) {
+        ctx->text_window_cols = custom_mode.text_window_cols;
+        ctx->text_window_rows = custom_mode.text_window_rows;
+        ctx->text_window_enabled = custom_mode.text_window_enabled;
+    }
+    return res;
+}
+
+void BGI_set_split_text_window(BGI_Context *ctx, int cols, int rows, bool enabled) {
+    if (!ctx) return;
+    ctx->text_window_cols = (cols > 0) ? cols : 80;
+    ctx->text_window_rows = (rows > 0) ? rows : 4;
+    ctx->text_window_enabled = enabled;
+}
+

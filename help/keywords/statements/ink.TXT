@@ -1,0 +1,29 @@
+INK Foreground Pen Color Setting Statement
+==========================================
+
+Sets the active foreground drawing and text color in Sinclair and Locomotive BASIC dialects.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    INK color_index%
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Color index outside range.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Retains compatibility with ZX Spectrum display hardware.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 INK 2 : REM Set red ink
+    20 PRINT "Red text"

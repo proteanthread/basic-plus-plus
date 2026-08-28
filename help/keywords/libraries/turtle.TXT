@@ -1,0 +1,14 @@
+turtle Logo-Style Turtle Graphics Engine Library
+======================================================================
+
+The turtle library implements Logo-style vector drawing primitives
+(FORWARD, BACK, LEFT, RIGHT, PENUP, PENDOWN).
+
+
+COMMANDS
+----------------------------------------------------------------------
+
+  - TURTLE.FORWARD distance
+  - TURTLE.RIGHT angle
+  - TURTLE.PENUP / TURTLE.PENDOWN
+  - TURTLE.COLOR color_index

@@ -1,0 +1,35 @@
+DEFDBL Define Double-Precision Default Type
+======================================================================
+
+The DEFDBL statement declares that all variable identifiers beginning
+with the specified letter(s) or ranges default to double-precision
+floating-point (64-bit float).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    DEFDBL letter_range [, letter_range2, ...]
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - letter_range can be a single letter (DEFDBL D) or range (DEFDBL A-Z).
+  - Explicit suffixes (e.g. X%, S$) override DEFDBL defaults.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  2           ERR_SYNTAX_ERROR      Invalid letter range syntax
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DEFDBL A-Z
+    20 X = 1.0 / 7.0
+    30 PRINT X

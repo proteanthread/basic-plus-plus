@@ -1,0 +1,25 @@
+ONKEYDOLLAR Keypress Event Trapping Statement
+=============================================
+
+Installs an asynchronous event trap handler for a specific keyboard character.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    ON KEY$(key_char$) GOSUB {line_number% | @label}
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Event-driven programming model.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 ON KEY$("Q") GOSUB 100
+    20 KEY("Q") ON
+    30 DO : LOOP
+    100 PRINT "Quit requested!": END

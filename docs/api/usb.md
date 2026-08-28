@@ -1,33 +1,100 @@
-# USB Peripherals Abstraction API Reference
+# C17 API Reference: Virtual USB Subsystem (`device/usb.h`)
 
-Header File: [`include/usb.h`](file:///c:/Users/rtdos/GitHub/basic-plus-plus/include/usb.h)
+## 1. Subsystem Overview & Responsibilities
 
-## Overview
-Implements the abstract USB device controller and serial pipe operations.
+The Virtual USB Subsystem (`device/usb.h`, implemented in `engine/src/device/usb.c`) provides virtual USB host controller emulation, 4-port root hub management (`USB_MAX_PORTS`), dynamic peripheral device hot-plugging, and HID/mass-storage device abstraction for the BASIC++ v6.5.2 engine.
 
-## Exposed API Entities
-### Structs & Types
-- `UsbContext UsbContext`
+Key architectural responsibilities include:
+- **4-Port Virtual USB Hub**: Manages up to 4 concurrent virtual USB ports (ports 1 to 4).
+- **Supported Device Types (`BppUsbDevType`)**:
+  - `USB_DEV_KEYBOARD`: Virtual USB HID keyboard device.
+  - `USB_DEV_MOUSE`: Virtual USB HID mouse device.
+  - `USB_DEV_STORAGE`: Virtual USB mass-storage disk drive.
+  - `USB_DEV_DISPLAY`: Virtual USB secondary display monitor.
+- **Dynamic Hot-Plugging**: Connects and disconnects virtual devices at runtime with Vendor ID (`VID`) and Product ID (`PID`) identification (`usb_connect()`, `usb_disconnect()`).
+- **Sandboxed Device Capability**: Verifies `CAP_USB` capability in `SecurityContext` prior to connecting or communicating with virtual USB ports.
 
-### Functions
-| Function | Return Type | Arguments |
-|----------|-------------|-----------|
-| `usb_shutdown` | `void` | `UsbContext *ctx` |
-| `usb_connect` | `bool` | `UsbContext *ctx, int port, BppUsbDevType type, int vid, int pid` |
-| `usb_disconnect` | `void` | `UsbContext *ctx, int port` |
-| `usb_get_port_status` | `bool` | `UsbContext *ctx, int port, BppUsbDevice *out_dev` |
-| `usb_get_connected_count` | `int` | `UsbContext *ctx` |
+## 2. Header Inclusion & Prerequisites
 
-## C Integration Example
-The following C example demonstrates how to integrate this subsystem:
 ```c
-#include "usb.h"
-
-void write_usb() {
-    usb_write_pipe(0, (const unsigned char *)"DATA", 4);
-}
+#include "device/usb.h"
+#include "memory/memory.h"
 ```
 
-## Guidelines & Architecture Constraints
-- **C17 Portability**: Compile under strict C17 standards.
-- **Memory Integrity**: All contexts and pointers passed must be zero-initialized.
+## 3. Data Structures & Types
+
+```c
+#define USB_MAX_PORTS 4
+
+/* Device Type Classification */
+typedef enum {
+    USB_DEV_NONE     = 0,
+    USB_DEV_KEYBOARD = 1,
+    USB_DEV_MOUSE    = 2,
+    USB_DEV_STORAGE  = 3,
+    USB_DEV_DISPLAY  = 4
+} BppUsbDevType;
+
+/* Virtual USB Device Descriptor */
+typedef struct {
+    BppUsbDevType type;         /* Device class */
+    char          name[32];     /* Device product string */
+    int           vendor_id;    /* 16-bit VID */
+    int           product_id;   /* 16-bit PID */
+    bool          connected;    /* True if currently attached */
+} BppUsbDevice;
+
+/* Opaque Handle to USB Subsystem Context */
+typedef struct UsbContext UsbContext;
+```
+
+## 4. Function Prototypes & Operational Contracts
+
+```c
+/**
+ * @brief Initializes the virtual USB host controller context.
+ */
+UsbContext *usb_init(MemoryContext *mem);
+
+/**
+ * @brief Shuts down the USB controller and disconnects all virtual ports.
+ */
+void usb_shutdown(UsbContext *ctx);
+
+/**
+ * @brief Connects a virtual device to a designated USB port (1..4).
+ * @return true on success, false if port invalid or already occupied.
+ */
+bool usb_connect(UsbContext *ctx, int port, BppUsbDevType type, int vid, int pid);
+
+/**
+ * @brief Disconnects a device from a USB port.
+ */
+void usb_disconnect(UsbContext *ctx, int port);
+
+/**
+ * @brief Retrieves the status and descriptor of a specific USB port.
+ */
+bool usb_get_port_status(UsbContext *ctx, int port, BppUsbDevice *out_dev);
+
+/**
+ * @brief Returns total number of currently connected USB devices.
+ */
+int usb_get_connected_count(UsbContext *ctx);
+```
+
+## 5. Architectural Invariants
+
+- **Port Range Enforcement**: Port indices must be between 1 and `USB_MAX_PORTS` (4).
+- **Capability Guard**: Direct USB manipulation requires `CAP_USB` in `SecurityContext`.
+
+## 6. Code Example: Connecting a Virtual USB Storage Device
+
+```c
+#include "device/usb.h"
+
+void attach_flash_drive(UsbContext *usb) {
+    /* Connect virtual flash drive at port 1 (VID=0x0781, PID=0x5583) */
+    usb_connect(usb, 1, USB_DEV_STORAGE, 0x0781, 0x5583);
+}
+```

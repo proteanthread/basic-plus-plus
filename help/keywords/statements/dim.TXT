@@ -1,0 +1,25 @@
+BASIC++ STATEMENT REFERENCE: DIM
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  DIM [SHARED] arrayname(subscripts) [AS type] [, arrayname2(...)]
+  DIM arrayname(lower TO upper [, ...])
+
+Declares and allocates memory for subscripted array variables. Sets dimension
+bounds, type, and optional SHARED module scope.
+
+2. PARAMETERS
+- arrayname: Identifier name for the array.
+- subscripts: Upper bounds or explicit ranges (lower TO upper). Max 8 dimensions.
+- AS type: INTEGER, LONG, SINGLE, DOUBLE, STRING, or user-defined TYPE.
+- SHARED: Shares array with all procedures in the current module.
+
+3. ERROR CODES
+- Error 9 (ERR_SUBSCRIPT_OUT_OF_RANGE): Subscript exceeds allocated dimensions.
+- Error 10 (ERR_DUPLICATE_DEFINITION): Array redimensioned without ERASE.
+- Error 13 (ERR_TYPE_MISMATCH): Type mismatch in bounds expression.
+
+4. EXAMPLES
+  10 DIM Names$(1 TO 50)
+  20 DIM Grid(10, 10) AS DOUBLE
+  30 DIM Offset(-10 TO 10)

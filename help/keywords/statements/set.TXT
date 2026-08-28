@@ -1,0 +1,22 @@
+SET Environment Variable Configuration Statement
+================================================
+
+Sets an environment variable or runtime engine configuration property.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    SET var_name$ = string_value$
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Mutates runtime configuration and OS environment block.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SET "BPP_DIALECT" = "QBASIC"

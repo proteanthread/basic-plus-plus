@@ -1,0 +1,28 @@
+FILESIZE File Size Query Function
+=================================
+
+Returns the total size of the specified file in bytes.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    bytes& = FILESIZE(filename$)
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 53 (ERR_FILE_NOT_FOUND): File does not exist.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Returns 64-bit integer file length.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "File size: "; FILESIZE("ARCHIVE.ZIP"); " bytes"

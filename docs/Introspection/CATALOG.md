@@ -1,69 +1,92 @@
-# CATALOG
+# CATALOG Statement Reference
 
-## 1. Syntax & Parameters
-`CATALOG`
-`CATALOG [category_or_topic]`
+The `CATALOG` statement lists the master inventory of all built-in keywords, statements, and mathematical/string functions in BASIC++ v6.5.2, organized by functional category.
 
-**Parameters:**
-* `category_or_topic` (Optional): Specific subject to filter the introspective output.
+## Syntax
 
-## 2. Description & Usage
-The `CATALOG` keyword serves as a comprehensive introspection facility for the BASIC++ environment. It traverses the internal dictionaries and system registries to output diagnostic, structural, and user-facing documentation. The functionality accommodates deep NLP querying, boundary validation, and real-time environment status. It is designed to expose state safely without side-effects.
-
-## 3. Code Examples
 ```basic
-10 REM Basic invocation
-20 CATALOG
-30 REM Filtered invocation
-40 CATALOG "STRINGS"
+CATALOG
+CATALOG "category_name"
 ```
 
-## 4. Internal C-Source Mapping
-* `source/help/help.c` - Core registry and output formatting.
-* `source/help/parser_help.c` - Syntax parsing and lexer integration.
-* `source/core/interp.c` - Runtime dispatcher.
-* `source/virtual/vm.c` - Bytecode OP mapping.
-* `source/core/debug.c` - Deep memory introspection and state logging.
-* `source/standalone/mock_bios/mock_bios_core.c` - Hardware abstraction layers (for BIOS-related data).
+## Parameters
 
-## 5. Implementation Details
-Execution path: `pi_parse_catalog` is triggered by `KW_CATALOG` in the lexer (`lexer.c`) and evaluated via `parser.c`. The `RuntimeState *rt` struct is referenced exclusively in a read-only context to extract current configuration variables, version hashes, and registered identifiers. The string pool is queried, and output is routed via the abstract VFS/console layer (`console.h`) to prevent raw `printf` divergence between GUI (SDL) and headless terminals. 
-Struct mutations: None (Guaranteed zero side effects, no mutation of `Lexer` state apart from pointer advancement).
-Boundary conditions: Handling null pointer references on unregistered topics, maximum string buffer limits (typically 2048 bytes), and stack overflow prevention during recursive struct traversal. 
+- **`"category_name"`** *(Optional)* — A string expression filtering the catalogue output to a specific functional category (e.g. `CATALOG "Strings"`, `CATALOG "Math"`, `CATALOG "Graphics & Sound"`).
+- If invoked without arguments, `CATALOG` prints all registered categories and total keyword counts.
 
-## 6. Cross-References / See Also
-* `HELP` - Interactive user assistance.
-* `CATALOG` - Categorized keyword and function listings.
-* `INFO` - System and memory diagnostics.
-* `VER` - Interpreter versioning and build hashes.
-* `BIOS` - Low-level mock BIOS configurations (IBM PC, PCjr, XT, AT).
+## Description
 
-## 7. Historical Context
-In traditional 16-bit dialects (GW-BASIC, QBASIC), introspection was limited to rudimentary `SYSTEM` or `FILES` commands. The `CATALOG` command bridges the gap between classic minimalism and modern ECMA-116/Full BASIC standards, providing 64-bit safe, cross-platform telemetry that matches POSIX and Windows 11 architectures perfectly.
+The `CATALOG` command serves as an interactive environment inventory explorer. It scans the internal help registry (`engine/src/statements/dialect/help_data.h`) and metadata registries, presenting keywords in clean tabular columns.
 
-## 8. Manual Testing Guide
-To manually test the `CATALOG` command:
-1. Open terminal and run: `basicpp-console.exe --log -c "CATALOG"`
-2. Verify the output matches the expected introspection tree without throwing syntax errors.
-3. Check `blite.log` or console output for memory leaks or C4311/C4312 warning artifacts.
-4. Launch the SDL build: `basicpp.exe`
-5. Execute `CATALOG` and ensure the GUI console buffers the text symmetrically without raw stdout bypasses.
+### Standard Categories:
+1. **`Control Flow`** — Branching, looping, subroutines, event traps (`IF`, `FOR`, `DO/LOOP`, `SELECT`, `ON ERROR`, `GOSUB`).
+2. **`Variables & Memory`** — Array allocation, variable types, scopes, segment access (`DIM`, `DEF SEG`, `PEEK`, `POKE`, `COMMON`, `TYPE`).
+3. **`Strings`** — String analysis, search, substring extraction, formatting (`LEFT$`, `MID$`, `RIGHT$`, `INSTR`, `RTRIM$`, `OCT$`, `HEX$`).
+4. **`Math`** — Arithmetic, trigonometry, logarithms, matrix math (`SIN`, `COS`, `LOG`, `EXP`, `MAT`, `HI`, `LO`).
+5. **`Input / Output`** — Console streams, printers, serial devices (`PRINT`, `INPUT`, `LOCATE`, `COLOR`, `LPRINT`, `LPOS`, `IOCTL`).
+6. **`Graphics & Sound`** — BGI raster graphics, pixel shaders, audio synthesis (`SCREEN`, `PSET`, `LINE`, `CIRCLE`, `SOUND`, `PLAY`).
+7. **`Filesystem`** — File handles, random access, directory navigation (`OPEN`, `CLOSE`, `GET`, `PUT`, `KILL`, `CHDIR`, `FILES`).
+8. **`Devices & Network`** — Sockets, Gemini protocol, virtual devices (`VDEV`, `MOUNT`, `DEVICES`, `NET`).
+9. **`Debug & Testing`** — Tracing, breakpoints, self-test verification (`TRON`, `TROFF`, `DEBUG`, `ASSERT`, `SELFTEST`).
+10. **`System & Environ`** — Timers, alarms, environment strings, system control (`TIME$`, `DATE$`, `JIFFIES`, `ENVIRON$`, `SYSTEM`).
 
+---
 
-### 9. Memory Management & Garbage Collection Profile
-Under the hood, this keyword operates within the strict bounds of the BASIC++ deterministic memory manager (`core/memory.c`). When executed, any intermediate strings generated by this operation are routed to the Transient Memory Arena within the String Pool (`core/stringpool.c`). If the arena exceeds its high-water mark, an aggressive mark-and-sweep garbage collection pass is immediately triggered before the instruction completes. On embedded architectures (compiled with `-DBPP_LITE_BUILD`), this transient arena is statically clamped (default 4KB), meaning iterative loops invoking this keyword must be designed carefully to avoid `ERR_OUT_OF_MEMORY` traps. Developers porting to bare-metal systems must verify that the `memory.c` heap allocator correctly points to a continuous SRAM block without fragmentation.
+## Code Examples
 
-### 10. Portability & Hardware Porting Concerns
-Because BASIC++ is strictly C17 ISO/IEC 9899:2018 compliant, this keyword relies on zero proprietary OS APIs. When compiling for headless microcontrollers (such as the Arduino Mega or ESP32) using the `-DNO_SDL2` macro, this instruction routes all its graphical or I/O side effects through the Platform Abstraction Layer (PAL). Hardware implementers must ensure that `platform_sleep()` and `platform_get_ticks()` are properly mapped in `core/platform.c` if this keyword involves timing, yielding, or hardware-level interrupts. In cases where the underlying hardware lacks a floating-point unit (FPU), the lexer automatically maps numeric outputs to 32-bit fixed integer types if `-DBPP_NO_FLOAT` is enforced.
+### Example 1: Full System Catalogue
+```basic
+CATALOG
+REM Outputs summary of all categories and available keywords
+```
 
-### 11. Abstract Syntax Tree (AST) Life Cycle
-During the parsing phase, the Recursive Descent Parser encounters the token associated with this keyword. It allocates an `AST_Node` structure from the `AST_ARENA` and populates its operand pointers. At runtime, the `ast_interpreter.c` engine performs a post-order traversal to evaluate all child expression nodes before triggering the final execution hook. This two-pass system guarantees that syntax errors (like mismatched parentheses or missing commas) are caught globally before any destructive side-effects occur. Once parsed, the `AST_Node` resides in memory until `NEW` or `RUN` is executed, at which point the entire arena is zeroed out to prevent memory leaks.
+### Example 2: Filtering by Category
+```basic
+CATALOG "Graphics & Sound"
+REM Lists all drawing primitives, color settings, and audio playback statements
+```
 
-### 12. C17 Standard Safety & Security Boundaries
-Security and isolation are paramount. This keyword utilizes strict bounds-checking to prevent buffer overflows. Internally, any array indexing or string manipulation defaults to `size_t` for addressing, preventing negative index wraps. Stack-smashing protections are enforced virtually by the `MAX_CALL_STACK` limit defined in `config.h`. Any attempt by this keyword to access unallocated heap memory will trigger the interpreter's internal fault handler, raising a trappable BASIC error rather than causing a segmentation fault at the OS level.
+---
 
-### 13. Deterministic Execution & Regression Prevention
-To prevent regressions across builds (Windows, Linux, or MCU), the execution of this keyword is entirely deterministic. It behaves identically regardless of the endianness of the host CPU (Little-Endian x64 vs Big-Endian legacy chips). The testing suite in `selftests_all.c` ensures that the byte-for-byte output of this operation remains identical. If a developer modifies the underlying C source code for this keyword, they MUST run the `SELFTEST` suite to verify that parsing precedence, token mapping, and garbage collection behavior have not drifted.
+## Engine Implementation (`help.c`)
 
-### 14. Performance Profiling & Optimization Rules
-For developers writing performance-critical algorithms in BASIC++, be aware that calling this keyword inside a `FOR...NEXT` or `WHILE...WEND` loop incurs a minimal virtual dispatch overhead. Because the interpreter uses a switch-case dispatch engine in `exec.c`, the branch predictor on modern CPUs will optimize repeated calls. However, on 8-bit or 16-bit chips, minimizing the use of string-mutating variants of this keyword will drastically improve frame rates and execution speed.
+In `engine/src/statements/system/help.c`, `stmt_catalog_handler` parses optional category filters and iterates through the `g_help_entries` database in `help_data.h`:
+
+```c
+BppError stmt_catalog_handler(VMContext *vm, LexerContext *lex) {
+    VDevContext *vdev = vm_get_vdev(vm);
+    BppToken tok = lex_next(lex);
+
+    if (tok.type == TOK_STRING || tok.type == TOK_IDENT) {
+        /* Filter and list keywords matching the category */
+        catalog_display_category(vdev, tok.start, tok.length);
+    } else {
+        /* Display all categories with item counts */
+        catalog_display_all(vdev);
+    }
+    return BPP_OK;
+}
+```
+
+---
+
+## Error Codes
+
+| Error Code | Name | Condition |
+|------------|------|-----------|
+| 13 | Type Mismatch (`ERR_TYPE_MISMATCH`) | Argument passed to `CATALOG` is a numeric type |
+
+---
+
+## Cross-References
+
+- **`HELP`** — Queries detailed syntax, parameters, and examples for a single keyword.
+- **`INFO`** — Displays system health, memory usage metrics, and build info.
+- **`How_To_Use_Help.md`** — Comprehensive guide to the interactive help subsystem.
+
+---
+
+## Proposed Expansion or Changes
+
+1. **JSON Catalogue Export**: Support `CATALOG --json` or `CATALOG$()` to export the entire language catalogue as structured JSON data for IDEs and tooling.
+2. **Columnar Screen Formatting**: Dynamically calculate terminal width (`WIDTH`) to format keywords in 3, 4, or 5 columns automatically.

@@ -1,492 +1,135 @@
-# Building BASIC++ — Makefile Tutorial
+# BASIC++ v6.5.2 Building BASIC++
 
+## 1. PREREQUISITES
 
----
+Building BASIC++ requires:
 
-## Table of Contents
+- **CMake 3.16 or later** for the build system configuration.
+- **A C17-compliant compiler**: GCC 7+, Clang 5+, MSVC 2019+, or Open Watcom (for FreeDOS 16-bit targets).
+- **SDL2 development libraries** (optional, required only for baspp graphics support). On Linux: `libsdl2-dev`. On Windows: SDL2 development package from libsdl.org. On FreeDOS/embedded: not required.
+- **ncurses** (Linux only, required for TUI editor in libstandard): `libncurses-dev`.
 
-- Overview
-  - Feature Gates (SUPPORT_* Macros)
-  - Console vs SDL Builds
-- Quick Start
-  - Linux / MinGW (gcc)
-  - Windows 11 (MSVC)
-  - FreeDOS (OpenWatcom 16-bit)
-  - FreeDOS (OpenWatcom 32-bit)
-  - Debug Build (gcc)
-- How the Makefile Works
-  - 1 Source Groups
-  - 2 Header Dependencies
-  - 3 Compiler Flags
-  - 4 Output Location
-- Customizing for Your System
-  - 1 Changing the Compiler
-  - 2 Changing Optimization
-  - 3 Changing the Output Name
-  - 4 Changing the Output Directory
-  - 5 Cross-Compiling (ARM / Raspberry Pi)
-  - 6 Adding Linker Flags
-- Selecting Dialects
-  - Dialect Reference
-- Selecting Modules
-  - Module Reference
-- Memory Tuning
-  - Preset Profiles
-- Adding a New Source File
-- Common Issues
-  - "ldisdbl" pragma warning (MSVC)
-  - "_CRT_SECURE_NO_WARNINGS" (MSVC)
-  - 640K limit (OpenWatcom 16-bit)
-  - Missing advapi32.lib (MSVC)
-  - make vs nmake (Windows)
-- Verification
-- See Also
+## 2. STANDARD BUILD (WINDOWS)
 
----
-
-## Overview
-
-BASIC++ is written in portable C17 with no external dependencies
-beyond the C standard library.  A single `Makefile` supports all four target
-platforms:
-
-| Platform       | Compiler         | Target          | Executable     |
-|----------------|------------------|-----------------|----------------|
-| Linux / MinGW  | gcc / clang      | 64-bit ELF/PE   | `baspp`        |
-| Windows 11     | MSVC (`cl.exe`)  | 64-bit PE       | `basicpp.exe`  |
-| FreeDOS        | OpenWatcom 16-bit| 16-bit DOS MZ   | `baspp.exe`      |
-| FreeDOS        | OpenWatcom 32-bit| 32-bit DOS/4GW  | `baspp.exe`      |
-
-The core language engine is largely identical across platforms, with
-platform-specific adaptations isolated in `core/platform.c` and
-`virtual/vdev.c`.  However, `config.h` does contain several `#ifdef`
-branches that control build profiles and feature availability:
-
-| Macro            | Purpose                                          |
-|------------------|--------------------------------------------------|
-| `BASIC_FREEDOS`   | FreeDOS / OpenWatcom build profile               |
-| `BASIC_EMBEDDED`  | Embedded / bare-metal build profile              |
-| `BASIC_LITE_BUILD`| BASIC++ Lite minimal build (undefines all features) |
-| `INPUT_CONSOLE` | Console-mode build (defines `BASICPP_NAME` as `'BASIC++ Standard'`) |
-
-For a complete file-by-file reference, see `source/SOURCE_TREE.txt`.
-
-### Feature Gates (SUPPORT_* Macros)
-
-`config.h` defines a set of `SUPPORT_*` macros that act as compile-time
-feature gates.  Each macro enables or disables an entire subsystem:
-
-| Macro                   | Subsystem                              |
-|-------------------------|----------------------------------------|
-| `SUPPORT_GRAPHICS`  | SDL2 graphics and SCREEN modes         |
-| `SUPPORT_SOUND`     | SOUND, PLAY, BEEP audio support        |
-| `SUPPORT_FILEMGMT`  | File management (OPEN, CLOSE, etc.)    |
-| `SUPPORT_MAT`       | MAT (matrix) operations               |
-| `SUPPORT_STRUCT`    | Structured programming (SUB, FUNCTION) |
-| `SUPPORT_ERRHAND`   | Error handling (ON ERROR, RESUME)      |
-| `SUPPORT_SHELL`     | SHELL command / OS access              |
-| `SUPPORT_DEBUG`     | TRON, TROFF, DEBUG commands            |
-| `SUPPORT_COMPILER`  | COMPILE command (C transpiler)         |
-| `SUPPORT_VFS`       | Virtual File System                    |
-| `SUPPORT_TXN`       | Transaction support                    |
-
-When `BASIC_LITE_BUILD` is defined, **all** `SUPPORT_*` macros are
-undefined, producing the smallest possible binary (BASIC++ Lite).
-
-### Console vs SDL Builds
-
-The build system produces two executables on Windows and Linux:
-
-| Build             | Windows Executable    | Linux Executable | Define          | Banner Name        |
-|-------------------|-----------------------|------------------|-----------------|--------------------|
-| **Console/Text**  | `basicpp-console.exe` | `baspp-console`  | `INPUT_CONSOLE` | `BASIC++ Standard` |
-| **SDL/GUI**       | `basicpp.exe`         | `baspp`          | *(not defined)* | `BASIC++ SDL`      |
-
-When `INPUT_CONSOLE` is defined, the interpreter boots as a text-only
-console application (`BASIC++ Standard`).  When it is **not** defined, the
-interpreter boots with SDL2 windowed output (`BASIC++ SDL`).  Both builds
-share the same source — the only difference is the initial I/O path: the
-console build initializes SDL on demand (e.g., on a `SCREEN` command),
-while the SDL build initializes it at boot.
-
----
-
-## 1. Quick Start
-
-### Linux / MinGW (gcc)
+The standard Windows build produces baspp.exe, bpp.exe, and bs.exe:
 
 ```bash
-cd source
-make
+cd basic-plus-plus
+mkdir build_win
+cd build_win
+cmake .. -G "Visual Studio 17 2022" -A x64
+cmake --build . --target baspp --config Release
+cmake --build . --target bpp --config Release
+cmake --build . --target bs --config Release
 ```
 
-Output: `../baspp`
-
-### Windows 11 (MSVC)
-
-Open a **Developer Command Prompt** (or run `vcvarsall.bat x64`), then:
+For Debug builds with symbols and assertions enabled:
 
 ```bash
-cd source
-nmake /f Makefile msvc
+cmake --build . --target baspp --config Debug
 ```
 
-Output: `..\basicpp.exe` (GUI build) and `..\basicpp-console.exe` (Console build)
+The built executables are located in build_win/Release/ (or build_win/Debug/ for debug builds).
 
-**Alternative** (standalone cl command):
-```bash
-cl /TC /std:c17 /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS /DINPUT_CONSOLE /DNO_SDL2 /Fe:..\basicpp-console.exe core\*.c lexer\*.c parser\*.c flow\*.c arrays\*.c variables\*.c errors\*.c display\*.c io\*.c memory\*.c modules\*.c dialect\*.c help\*.c /link advapi32.lib ws2_32.lib Shell32.lib User32.lib Gdi32.lib Winmm.lib
-```
-
-### FreeDOS (OpenWatcom 16-bit)
+## 3. STANDARD BUILD (LINUX)
 
 ```bash
-cd source
-make watcom
+cd basic-plus-plus
+mkdir build_linux
+cd build_linux
+cmake .. -DCMAKE_C_STANDARD=17
+make -j$(nproc) baspp bpp bs
 ```
 
-Output: `../baspp.exe` (16-bit DOS, large memory model)
+On Linux, libplatform links against the math library (-lm) and libstandard links against ncurses. These are resolved automatically by the CMake configuration.
 
-> [!WARNING]
-> The 16-bit build may hit the 640K conventional memory limit with all
-> features enabled.  Use `make watcom386` for the full interpreter.
+## 4. BUILD TARGETS
 
-### FreeDOS (OpenWatcom 32-bit)
+The CMake configuration defines the following executable targets:
+
+| Target | Description | Links up to | Default Memory |
+|--------|-------------|-------------|----------------|
+| baspp | Standard Desktop Edition | libadvanced | 640 MB |
+| bpp | Lite Headless REPL | libcore | 384 MB |
+| bs | Batch Script Runner | libscript | 64 MB |
+| bppc | Compiler & Transpiler | libengine | N/A |
+| detok | GW-BASIC Detokenizer | libkernel | N/A |
+
+Each target links the specified library and all libraries below it in the 12-library chain. For example, baspp links libadvanced, which transitively includes libstandard, libflex, libcore, libscript, libserver, libhardware, libengine, libkernel, libplatform, and libboot.
+
+## 5. BUILD DEFINITIONS
+
+The build system defines several preprocessor macros that control edition behavior:
+
+**BASIC_LITE_BUILD** — Defined when building the bpp lite edition. Changes the prompt from `> ` to `] `, the status message from `Ok` to `Ready.`, the banner name from "Standard" to "Lite", and disables SUPPORT_GRAPHICS, SUPPORT_BIOS, SUPPORT_JSON, SUPPORT_XML, SUPPORT_INI, and SUPPORT_EDITOR.
+
+**BASIC_STANDARD_BUILD** — Defined when building the baspp standard edition. Enables the BGI graphics subsystem and AAlib ASCII art fallback.
+
+**BASIC_CORE_BUILD** — Defined for all engine library targets. Indicates that engine headers are available.
+
+**BASIC_FREEDOS_16** — Defined when cross-compiling for FreeDOS 16-bit using Open Watcom. Drastically reduces memory allocations (32 KB program, 16 KB variables, 16 KB strings).
+
+**BASIC_EMBEDDED** — Defined when targeting microcontrollers (ESP32, Arduino, Pico). Minimal memory allocations (8 KB program, 4 KB variables, 4 KB strings).
+
+## 6. SDL2 CONFIGURATION
+
+The baspp standard edition delay-loads SDL2 on demand when the SCREEN or graphics commands are first used. SDL2 is not required at startup and not required for text-mode programs.
+
+On Windows, place SDL2.dll in the same directory as baspp.exe or in the system PATH. On Linux, install libsdl2-2.0 via your package manager. If SDL2 is not found at runtime, graphics commands report Error 73 (Advanced feature disabled) and text-mode operation continues normally.
+
+To build without SDL2 entirely:
 
 ```bash
-cd source
-make watcom386
+cmake .. -DSUPPORT_GRAPHICS=OFF
 ```
 
-Output: `../baspp.exe` (32-bit, DOS/4GW protected mode)
+## 7. CROSS-COMPILATION
 
-### Debug Build (gcc)
+### FreeDOS 16-bit
+
+Cross-compile with Open Watcom for 16-bit DOS:
 
 ```bash
-cd source
-make debug
+cmake .. -DCMAKE_SYSTEM_NAME=DOS -DCMAKE_C_COMPILER=wcc -DBASIC_FREEDOS_16=ON
 ```
 
-Flags: `-g -O0 -DDEBUG` (debug symbols, no optimization)
+This produces a 16-bit real-mode executable that fits within conventional memory limits. The stack depth is limited to 63 frames, named variables to 128, and DIM arrays to 32.
 
----
+### Embedded (ESP32, Arduino)
 
-## 2. How the Makefile Works
-
-### 2.1 Source Groups
-
-Source files are organized into named groups by domain:
-
-```makefile
-CORE_SOURCES    = core/main.c core/memory.c core/errors.c ...
-LEXER_SOURCES   = lexer/lexer.c lexer/keyword_props.c ...
-PARSER_SOURCES  = parser/parser.c parser/parser_expr.c
-FLOW_SOURCES    = flow/parser_flow.c flow/parser_loops.c
-IO_SOURCES      = io/parser_io.c io/fileio.c ...
-MODULES_SOURCES = modules/module.c modules/mod_stdlib.c ...
-```
-
-These are concatenated into the master list:
-
-```makefile
-SOURCES = $(CORE_SOURCES) $(LEXER_SOURCES) $(PARSER_SOURCES) \
-          $(FLOW_SOURCES) $(IO_SOURCES) ... $(MISC_SOURCES)
-```
-
-### 2.2 Header Dependencies
-
-All `.h` headers live in `source/` root.  The `-I.` flag lets subdirectory
-files find them.  The Makefile uses a conservative model — every `.o` depends
-on ALL headers:
-
-```makefile
-%.o: %.c $(HEADERS)
-    $(CC) $(CFLAGS) -c $< -o $@
-```
-
-Any header change triggers a full rebuild.  For ~80 source files, this takes
-under 10 seconds on modern hardware.
-
-### 2.3 Compiler Flags
-
-| Compiler     | Flags                                                      |
-|--------------|------------------------------------------------------------|
-| **gcc**      | `-std=c17 -Wall -Wextra -O2 -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2` |
-| **MSVC**     | `/TC /std:c17 /W3 /O2 /I. /D_CRT_SECURE_NO_WARNINGS`       |
-| **Watcom 16**| `-ml -0 -za -wx -ox -i=. -dBPP_FREEDOS`                    |
-| **Watcom 32**| `-mf -za -wx -ox -i=. -dBPP_FREEDOS`                    |
-
-Key flags explained:
-
-- `-std=c17` / `-za` / `/TC` — strict ANSI C for maximum portability
-- `-DNO_SDL2` — compile standard console-only interpreter without SDL graphics dependency
-- `-D_POSIX_C_SOURCE=200809L` — expose POSIX standard library API extensions on Unix/Linux
-- `-ml` — large memory model (16-bit: far code + far data)
-- `-mf` — flat memory model (32-bit: DPMI protected mode)
-- `-0` — 8086 instruction set (broadest DOS compatibility)
-- `/link advapi32.lib ... winmm.lib` — Windows API & runtime subsystem helper libraries
-
-### 2.4 Output Location
-
-All executables go to the project root (parent of `source/`):
-
-```makefile
-OUTDIR = ..
-TARGET = $(OUTDIR)/baspp
-```
-
----
-
-## 3. Customizing for Your System
-
-### 3.1 Changing the Compiler
+Define BASIC_EMBEDDED to target microcontrollers with extremely constrained resources:
 
 ```bash
-make CC=clang
+cmake .. -DBASIC_EMBEDDED=ON -DCMAKE_C_COMPILER=xtensa-esp32-elf-gcc
 ```
 
-Or edit the Makefile:
+The embedded build excludes all optional subsystems and limits memory to 8 KB program, 4 KB variables, 4 KB strings, and 2 KB scratch.
 
-```makefile
-CC = clang
-```
+## 8. VERIFYING THE BUILD
 
-Tested compilers: gcc 12+, clang 15+, MSVC 19+, OpenWatcom 2.0.
-
-### 3.2 Changing Optimization
-
-```makefile
-# Maximum speed
-CFLAGS = -std=c17 -Wall -Wextra -O3 -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
-
-# Smallest binary
-CFLAGS = -std=c17 -Wall -Wextra -Os -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
-
-# Debugging
-CFLAGS = -std=c17 -Wall -Wextra -g -O0 -DDEBUG -I. -D_POSIX_C_SOURCE=200809L -DNO_SDL2
-```
-
-### 3.3 Changing the Output Name
+After building, verify correctness by running the self-test suite:
 
 ```bash
-make TARGET=../mybasic
+./baspp -c "SELFTEST"
+./bpp -c "SELFTEST"
 ```
 
-### 3.4 Changing the Output Directory
+Both targets must pass SELFTEST with zero failures. The self-test exercises the lexer, parser, expression evaluator, control flow, string operations, array operations, file I/O, and error handling.
+
+Run the regression test suite:
 
 ```bash
-make OUTDIR=/usr/local/bin
+./baspp tests/gwbasic/test_print.bas
+./baspp tests/gwbasic/test_for.bas
+./baspp tests/gwbasic/test_if.bas
 ```
 
-### 3.5 Cross-Compiling (ARM / Raspberry Pi)
+## 9. FEATURE GATE OVERRIDES
+
+Individual features can be enabled or disabled at build time by passing -D flags to CMake:
 
 ```bash
-make CC=arm-linux-gnueabihf-gcc
+cmake .. -DSUPPORT_GRAPHICS=OFF -DSUPPORT_NET=OFF -DSUPPORT_TASK=OFF
 ```
 
-The code has no x86-specific dependencies.
-
-### 3.6 Adding Linker Flags
-
-```makefile
-LDFLAGS = -lreadline -lncurses    # add libraries
-LDFLAGS = -static                  # static linking
-```
-
----
-
-## 4. Selecting Dialects
-
-By default, all 16 dialects are compiled in.  To build a smaller binary with
-only specific dialects:
-
-**Step 1.** Edit `DIALECT_SOURCES` in the Makefile:
-
-```makefile
-# Example: ECMA-55 + Tiny BASIC only
-DIALECT_SOURCES = \
-    dialect/dialect_patb.c dialect/dialect_ecma55.c
-```
-
-
-```c
-{
-    /* All other calls removed */
-}
-```
-
-**Step 3.** Rebuild: `make clean && make`
-
-### Dialect Reference
-
-| Flag | File                   | Description                          |
-|------|------------------------|--------------------------------------|
-| PATB | `dialect_patb.c`       | Palo Alto Tiny BASIC (1976)          |
-| TRS1 | `dialect_trs1.c`       | TRS-80 Level I (1977)                |
-| TRS2 | `dialect_trs2.c`       | TRS-80 Level II / Model III (1978)   |
-| EC55 | `dialect_ecma55.c`     | ECMA-55 Minimal BASIC (1984)         |
-| AINT | `dialect_aint.c`       | Apple II Integer BASIC (1977)        |
-| ASFT | `dialect_asft.c`       | Applesoft BASIC (1978)               |
-| ATAR | `dialect_atari.c`      | Atari BASIC (1979)                   |
-| C64B | `dialect_c64.c`        | Commodore BASIC v2 (1982)            |
-| COCO | `dialect_coco.c`       | Color Computer BASIC (1980)          |
-| MBAS | `dialect_mbasic.c`     | MBASIC / BASIC-80 / CP/M (1978)     |
-| SINC | `dialect_sinclair.c`   | Sinclair ZX Spectrum (1982)          |
-| SQLB | `dialect_superbasic.c` | Sinclair QL SuperBASIC (1984)        |
-| SUPB | `dialect_sbasic.c`     | Tymshare SUPER BASIC (1968)          |
-
----
-
-## 5. Selecting Modules
-
-Optional modules can be omitted to reduce binary size:
-
-**Step 1.** Edit `MODULES_SOURCES`:
-
-```makefile
-# Minimal (stdlib only)
-MODULES_SOURCES = \
-    modules/module.c modules/mod_stdlib.c
-```
-
-**Step 2.** Edit `core/main.c` — remove registration calls:
-
-```c
-/* mod_usb_register();     -- removed */
-/* mod_fujinet_register(); -- removed */
-/* mod_upnp_register();    -- removed */
-```
-
-### Module Reference
-
-| Module  | File              | Devices Registered     | Required? |
-|---------|-------------------|------------------------|-----------|
-| STDLIB  | `mod_stdlib.c`    | *(function library)*   | **Yes**   |
-| USB     | `mod_usb.c`       | `USB:`, `HID:`, `USBSER:` | No    |
-| FUJINET | `mod_fujinet.c`   | `N:`, `FUJI:`, `CLOCK:`   | No    |
-| UPNP    | `mod_upnp.c`     | `UPNP:`, `SOAP:`          | No    |
-
----
-
-## 6. Memory Tuning
-
-For memory-constrained targets (FreeDOS 16-bit), reduce pool sizes in
-`source/config.h`:
-
-```c
-/* Key tunable settings (config.h defaults) */
-#define PROGRAM_MEMORY_SIZE  8388608L /* 8 MB stored program text  */
-#define VARIABLE_MEMORY_SIZE 1048576L /* 1 MB runtime variable space */
-#define MAX_STRING_POOL      16777216L/* 16 MB string value space  */
-#define MAX_PROGRAM_LINES    65536    /* Max line statements       */
-#define MAX_STACK_DEPTH      1024     /* Nested GOSUB/FOR limits   */
-#define MAX_NAMED_VARS       4096     /* Max runtime named vars    */
-#define MAX_DIM_ARRAYS       1024     /* DIM array slots           */
-#define MAX_ARRAY_ELEMENTS   4194304  /* Max total array elements  */
-```
-
-### Preset Profiles
-
-| Setting | Lite/Embedded | FreeDOS Lite | Modern Default |
-|---|---|---|---|
-| `PROGRAM_MEMORY_SIZE` | 8 KB | 32 KB | 8 MB |
-| `VARIABLE_MEMORY_SIZE`| 4 KB | 16 KB | 1 MB |
-| `MAX_STRING_POOL` | 8 KB | 16 KB | 16 MB |
-| `MAX_PROGRAM_LINES` | 256 | 1,024 | 65,536 |
-| `MAX_STACK_DEPTH` | 32 | 64 | 1,024 |
-| `MAX_NAMED_VARS` | 64 | 128 | 4,096 |
-| `MAX_DIM_ARRAYS` | 16 | 32 | 1,024 |
-| `MAX_ARRAY_ELEMENTS` | 1,024 | 2,048 | 4,194,304 |
-
----
-
-## 7. Adding a New Source File
-
-1. Create the `.c` file in the correct subdirectory
-2. Create a `.h` file in `source/` root if it has a public API
-3. Add the `.c` to the appropriate `*_SOURCES` group in the Makefile
-4. Add any new `.h` to the `HEADERS` list
-5. For OpenWatcom targets, add an explicit compile line:
-
-```makefile
-$(WCC) $(WCFLAGS) -fo=newfile.obj subdir/newfile.c
-```
-
-6. Add the `.obj` name to `WATCOM_OBJS`
-
-> [!IMPORTANT]
-> Don't forget to also update:
-> - `help/help.c` — if adding new BASIC keywords
-> - `source/SOURCE_TREE.txt` — always
-> - `core/main.c` — if adding a new module
-
----
-
-## 8. Common Issues
-
-### "ldisdbl" pragma warning (MSVC)
-
-```
-core\ldisdbl.c(2): warning C4068: unknown pragma 'aux'
-```
-
-Expected and harmless.  The pragma is for OpenWatcom only.
-
-### "_CRT_SECURE_NO_WARNINGS" (MSVC)
-
-MSVC flags `fopen`, `sprintf`, etc. as "unsafe".  The
-`/D_CRT_SECURE_NO_WARNINGS` flag suppresses these.  We use standard C
-functions for cross-platform portability.
-
-### 640K limit (OpenWatcom 16-bit)
-
-The full 16-bit build may approach the 640K conventional memory limit.
-
-**Solutions:**
-- Use `make watcom386` (32-bit build with extended memory)
-- Reduce pool sizes in `config.h`
-- Remove optional modules and dialects
-
-### Missing advapi32.lib (MSVC)
-
-The `/link advapi32.lib` flag is required on Windows for the security
-subsystem.  If you see linker errors about `RegOpenKeyEx`, ensure
-`advapi32.lib` is linked.
-
-### make vs nmake (Windows)
-
-- **GNU make**: `make` or `make msvc`
-- **Microsoft nmake**: `nmake /f Makefile msvc`
-- The gcc/clang targets use GNU make syntax (pattern rules)
-- The `msvc` target is a simple command and works with either
-
----
-
-## 9. Verification
-
-After building, verify the interpreter:
-
-```bash
-./baspp -v                        # Linux
-basicpp.exe -v                    # Windows
-baspp.exe -v                        # FreeDOS
-```
-
-Expected: `BASIC++ 4.2.3`
-
-Run the built-in self-test:
-
-```bash
-./baspp -q -c "SELFTEST"
-```
-
-Expected: `ALL TESTS PASSED` (runs full suite of lexer, value, memory, string pool, VFS, and SDL checks)
-
----
-
-## See Also
-
-- `source/SOURCE_TREE.txt` — complete file-by-file reference
-- `help/Event_Trapping.txt` — event & interrupt trapping tutorial
-- `help/Error_Handling.txt` — ON ERROR GOTO, RESUME, error codes
-- `docs/Event_Trapping.md` — markdown event trapping reference
+This produces a custom build with only the desired subsystems. The feature gates are defined in engine/include/types/config.h and affect which source files are compiled into the micro-libraries.

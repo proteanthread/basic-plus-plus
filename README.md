@@ -1,47 +1,48 @@
 [![GitGem](https://gitgem.org/api/badge/github/proteanthread/basic-plus-plus.svg)](https://gitgem.org/github/proteanthread/basic-plus-plus)
 
 # BASIC++ Interpreter
-## Version 6.1.0
+## Version 6.5.2
 
 I don't care what you do with my code, just don't take my code and sell it and/or don't take my code, modify my code, and sell it. This code is not for sale.
 
-### I do encourage you to fork this into your own implementation.  Everything you need is right there in the source.
+### I do encourage you to fork this into your own implementation. Everything you need is right there in the source.
 
 ---
 
 ## Abstract
 
-BASIC++ ships with a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler, and 774 documentation files.
+BASIC++ v6.5.2 ships with a configurable 6-level security sandbox, a virtual device layer, a plugin system, a native code transpiler/compiler (`bppc`), and 1034 synchronized documentation files (`docs/` Markdown and `help/` Plaintext).
 
-Designed for small memory footprints and readable source code. Runs on Windows 11, Linux, and FreeDOS. Suitable for embedded systems, legacy hardware, and as a teaching tool for interpreter design (tokenization, recursive-descent parsing, virtual machines, and environment management).
+Designed for small memory footprints, strict C17 portability (-std=c17), and readable source code. Runs on Windows 11, Linux, FreeDOS, and embedded microcontrollers. Suitable for embedded systems, legacy hardware, and as a teaching tool for interpreter design (tokenization, non-recursive AST evaluation, virtual machines, and environment management).
 
 
 ## Standalone Legacy Interpreters
 
-Alongside the main BASIC++ interpreter, the repository includes four fully self-contained, single-file legacy interpreters at the root directory. These are intended as highly portable, C89-compliant educational references:
+Alongside the main BASIC++ interpreter, the repository includes five fully self-contained, single-file legacy interpreters at `standalone/`. These are preserved as highly portable, freestanding C89 (ANSI) / C90 (ISO) educational and historical references:
 
-- **tinybasic.c**: Palo Alto Tiny BASIC clone.
-- **level1.c**: TRS-80 Level I BASIC clone.
-- **apple2.c**: Apple II Integer BASIC clone.
-- **1964.c**: Original Dartmouth BASIC 1964 clone.
+- **1964.c**: Original Dartmouth BASIC 1964 interpreter.
+- **level1.c**: TRS-80 Level I BASIC 1977 interpreter.
+- **woz.c**: Apple II Integer BASIC 1977 interpreter by Steve Wozniak.
+- **cbm.c**: Commodore PET / 64 BASIC v2.0 1977 interpreter.
+- **tinybasic.c**: Palo Alto Tiny BASIC 1976 interpreter by Dr. Li-Chen Wang.
 
 ---
 
-## 1. Interpreter Editions
+## 1. Interpreter Editions & Targets (v6.5.2)
 
-BASIC++ is distributed in three distinct compilation tiers, allowing it to scale from modern graphical workstations down to resource-constrained microcontrollers. The core architectural keywords, parsing logic, and execution semantics remain identical across all tiers; they differ only in their hardware abstractions and subsystem inclusions.
+BASIC++ is distributed in three decoupled compilation executables, allowing it to scale from modern graphical workstations down to resource-constrained microcontrollers:
 
-### 1.1 BASIC++ SDL (GUI Edition)
-**Binaries:** asicpp.exe (Windows), aspp (Linux)
-The full-featured graphical interpreter. This build statically links against SDL2, providing a dedicated GUI window upon boot. It supports the complete suite of visual and auditory features, including the 320x200 16-color virtual framebuffer (SCREEN 1), dynamic palette manipulation (COLOR, PALETTE), vector drawing (LINE, CIRCLE, PAINT), and audio synthesis (SOUND, PLAY).
+### 1.1 `baspp` / `baspp.exe` (Flagship Desktop Edition)
+Standard Console & SDL Combined. GW-BASIC / QBASIC style (`>` prompt with `Ok` status). Delay-loads `SDL2.dll` on demand for `SCREEN`/graphics commands. Default memory pool: 640 MB (`671088640L` bytes).
 
-### 1.2 BASIC++ Standard (Console Edition)
-**Binaries:** asicpp-console.exe (Windows), aspp-console (Linux)
-The standard command-line interface (CLI) interpreter. It boots directly into the host OS terminal (e.g., PowerShell, bash) without initializing a GUI window, ensuring seamless integration with shell pipes, redirections, and headless execution. However, it retains full compatibility with the SDL tier: if a program executes a graphical or audio command (like SCREEN 1), the interpreter will dynamically boot the SDL2 engine on-demand, create a window, and seamlessly continue execution.
+### 1.2 `bpp` / `bpp.exe` (Lite REPL Edition)
+Headless interactive REPL optimized for terminal environments and IoT. Apple II / Commodore style (`]` prompt with `Ready.` status). Default memory pool: 384 MB (`402653184L` bytes). Excludes SDL2 graphics, BGI canvas drawing, SDL audio, TUI editor multiplexer, and segmented memory (`vmem`).
 
-### 1.3 BASIC++ Lite3 (Embedded Edition)
-**Binaries:** lite.exe (Windows), lite (Linux)
-A stripped-down, ultra-lightweight build optimized strictly for minimal memory footprints and execution speed. Designed for embedded environments (e.g., Arduino, Raspberry Pi Pico, FreeRTOS), it entirely omits the SDL layer, the graphics framebuffer, network subsystems, and other heavy external modules. It executes core BASIC logic and standard console I/O using standard C library functions.
+### 1.3 `bs` / `bs.exe` (Batch Script Runner)
+Headless non-interactive batch script runner optimized for PowerShell, Bash, CGI pipelines, and automated jobs. Default memory pool: 64 MB (`67108864L` bytes). Zero banner, zero prompt, zero REPL iterations.
+
+### 1.4 `bppc` / `bppc.exe` (Compiler & Transpiler)
+Separate build target that transpiles BASIC source to clean C17 or appends bytecode directly to a C17 VM stub.
 
 ---
 

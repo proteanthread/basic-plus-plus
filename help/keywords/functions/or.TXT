@@ -1,0 +1,16 @@
+OR Bitwise and Logical Disjunction Operator
+======================================================================
+
+The OR operator performs logical or bitwise disjunction.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result = expr1 OR expr2
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT (2 OR 4)   : REM Outputs 6

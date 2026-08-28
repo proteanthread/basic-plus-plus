@@ -1,0 +1,421 @@
+===============================================================================
+BASIC++ v6.5.2 Engine Features, Subsystems & Micro-Libraries Reference
+===============================================================================
+Location: engine/Engine_Features.TXT
+
+Authoritative Engine Source Reference: Generated strictly from the engine/
+source code (engine/src/ and engine/include/).
+
+-------------------------------------------------------------------------------
+1. Product Architecture & 11-Modular Library Spectrum
+-------------------------------------------------------------------------------
+
+The BASIC++ v6.5.2 engine is structured into an 11-modular library spectrum linked
+accumulatively (libboot -> libplatform -> libkernel -> libengine -> libhardware ->
+libserver -> libscript -> libcore -> libflex -> libstandard -> libadvanced -> libext),
+ensuring strict C17 portability, modularity, and zero hidden initialization dependencies.
+
+Libraries and Subsystem Responsibilities:
+
+* libboot:
+  Bootloader sequence controller.
+  Key Source Modules: bootstrap/boot.c, bootstrap/common/common.c
+
+* libplatform:
+  OS platform abstraction (zero OS calls in upper layers).
+  Key Source Modules: platform/plat_console.c, plat_fs.c, plat_sys.c, plat_time.c,
+  plat_thread.c, plat_dl.c, plat_net.c, plat_regex.c, plat_clipboard.c
+
+* libkernel:
+  Core VM context, lexer, memory manager, security sandbox, BIOS virtualization,
+  VDev/VCon device bus.
+  Key Source Modules: vm/context.c, lexer/lexer.c, memory/memory.c,
+  security/security.c, bios/bios_pc.c, device/vdev.c, device/vcon.c
+
+* libengine:
+  AST evaluator, RPN stack engine, parser, runtime functions, variables, strings,
+  bytecode looper.
+  Key Source Modules: eval/eval.c, eval/rpn.c, parser/parser.c, vm/exec.c,
+  runtime/variables.c, runtime/strings.c
+
+* libhardware:
+  Segmented memory (vmem), BGI software rasterizer, FujiNet hardware emulation.
+  Key Source Modules: device/bgi/bgi_core.c, bgi_raster.c, bgi_modes.c,
+  bgi_palette.c, bgi_font.c, device/fujinet.c
+
+* libserver:
+  Network sockets (vnet), Gemini protocol, background tasks, VFS, crypto, regex.
+  Key Source Modules: device/vnet.c, server/gemini.c, server/task.c, security/crypto.c
+
+* libscript:
+  Headless batch script runner and file I/O operations.
+  Key Source Modules: bootstrap/server/server.c, statements/filesystem/
+
+* libcore:
+  Foundational REPL environment, numeric formatting, PRINT USING engine,
+  metadata registry.
+  Key Source Modules: bootstrap/iot/iot.c, runtime/numfmt.c, runtime/metadata.c
+
+* libflex:
+  Dynamic metaprogramming (ALIAS, OVERRIDE, SCOPE), module loader, math & array ext.
+  Key Source Modules: scope/scope.c, module/module.c, eval/functions/
+
+* libstandard:
+  Standard TUI workstation, multi-window TUI editor multiplexer, DAP debug server.
+  Key Source Modules: editor/tui_multiplexer.c, editor/editor_buffer.c, debug/dap.c
+
+* libadvanced:
+  Desktop visual graphics (baspp), multimedia, SDL2/OpenGL bindings.
+  Key Source Modules: bootstrap/desktop/desktop.c, device/gfx.c
+
+* libinterop_core:
+  Cross-language handle table, COM interop, JSON-RPC, Universal IR.
+  Key Source Modules: interop/interop_core.c, interop_handle.c, interop_ipc.c,
+  interop_com.c, compiler/compiler_ir.c
+
+-------------------------------------------------------------------------------
+2. Executable Target Editions & Memory Allocations
+-------------------------------------------------------------------------------
+
+BASIC++ builds into five distinct executable binary targets optimized for different
+execution environments:
+
+1. baspp.exe / baspp (Flagship Desktop Edition)
+   Default Memory Pool: 640 MB (671088640L bytes)
+   Interactive Prompt: >
+   Output Status: Ok\n>
+   Subsystems: Full SDL2 graphics, BGI software rasterizer, TUI multiplexer, DAP server.
+
+2. bpp.exe / bpp (Lite REPL Edition)
+   Default Memory Pool: 384 MB (402653184L bytes)
+   Interactive Prompt: ]
+   Output Status: Ready.\n]
+   Subsystems: Terminal console REPL. Weak symbol fallbacks in vdev.c for headless linking.
+
+3. bs.exe / bs (Batch Script Runner)
+   Default Memory Pool: 64 MB (67108864L bytes)
+   Interactive Prompt: None
+   Output Status: None
+   Subsystems: Headless non-interactive execution for PowerShell, Bash, CGI pipelines.
+
+4. bppc.exe / bppc (Compiler & Transpiler)
+   Default Memory Pool: Dynamic
+   Interactive Prompt: Command-line
+   Output Status: Diagnostics
+   Subsystems: Standalone binary transpiler & bytecode emitter tool.
+
+5. detok.exe / detok (GW-BASIC Detokenizer)
+   Default Memory Pool: Dynamic
+   Interactive Prompt: Command-line
+   Output Status: Text Output
+   Subsystems: Decodes legacy GW-BASIC binary file format to text.
+
+-------------------------------------------------------------------------------
+3. Core Engine Subsystems & Architectural Features
+-------------------------------------------------------------------------------
+
+3.1 Deterministic 9-Phase Bootloader Sequence
+Bootstrapped via boot_engine() in engine/src/bootstrap/common/common.c:
+  Phase 1: Platform Initialization (plat_init) - Binds OS console, time, filesystem.
+  Phase 2: Memory Partitioning (mem_init) - Allocates memory pool (64 MB to 640 MB).
+  Phase 3: Virtual Device Registration (vdev_init) - Registers CON:, KYBD:, SCRN:.
+  Phase 4: Variable & String Heap Init (var_table_init, str_pool_init).
+  Phase 5: Virtual Machine Context Creation (vm_create) - Allocates VMContext state.
+  Phase 6: Statement Registration (stmt_register_all) - Registers statement libraries.
+  Phase 7: Function Registration (func_register_all) - Registers 60 function libraries.
+  Phase 8: Capability Verification (security_init) - Configures sandbox bitmask.
+  Phase 9: Environment Readiness (vm_set_ready) - Initializes REPL prompt readiness.
+
+3.2 Non-Recursive Virtual Machine & Memory Management
+- Strict Non-Recursive Execution: All AST evaluations, line executions, and bytecode
+  loops operate on interpreter-managed heap stacks with ZERO C recursion.
+- Reference-Counted String Heap: Dynamic string handles managed via str_retain() and
+  str_release(), preventing memory leaks on success and error paths.
+- Centralized Heap Tracker: MemoryContext tracks all dynamic allocations,
+  zero-initializing buffers by default (calloc/memset), and performing automated
+  garbage collection on VM tear-down.
+
+3.3 Virtual Device Bus (VDev) & Virtual Console (VCon)
+- Pluggable device bus dispatch table supporting custom virtual devices (CON:, KYBD:,
+  SCRN:, PRN:, CAS1:, VNET:, Y: device discovery).
+- ANSI escape sequence parsing, screen buffer scrolling, cursor coordinate tracking
+  (g_cursor_x, g_cursor_y), and color attribute mapping.
+
+3.4 BGI Retro Display Engine & Pluggable BIOS Hal
+- 42 Video Modes (SET MODE): Maps profile configurations across MDA, CGA, EGA, VGA,
+  MCGA, Hercules, Atari 800 (GRAPHICS 0..15), Commodore 64, and Apple II retro modes.
+- Tri-Mode BIOS HAL Dispatch: Embedded freestanding libbios (PC, XT, AT, Jr) supporting
+  C17 HLE, built-in 8086 micro-interpreter (libcpu8086), and direct VRAM observer
+  callbacks (0xB8000, 0xA0000).
+
+3.5 Security Sandbox System (SecurityContext)
+Configurable capability bitmask permissions:
+- SEC_PERM_FILE_READ - Filesystem read operations.
+- SEC_PERM_FILE_WRITE - Filesystem write/kill/mkdir operations.
+- SEC_PERM_EXEC - Execution of external system commands (SYSTEM, SHELL).
+- SEC_PERM_NET - Network socket access (VNET:).
+- SEC_PERM_RAW_MEM - Direct hardware peek/poke memory access (PEEK, POKE).
+Violation triggers Error 70 (ERR_PERMISSION_DENIED).
+
+3.6 Dynamic Metaprogramming & Scope System
+- ALIAS - Remaps keyword identifiers dynamically at runtime.
+- OVERRIDE - Replaces statement execution handlers with custom BASIC or C logic.
+- SCOPE - Establishes isolated lexical variable and statement visibility scopes.
+- KEYWORD - Extends the lexer dictionary with new custom statements.
+- REMOVE - Suppresses specified keywords from lexer parsing.
+
+3.7 PRINT USING Formatting Engine
+Complete format string specification parser in engine/src/runtime/numfmt.c:
+- Numeric Specifiers: # (digit position), . (decimal point), , (thousands separator),
+  + (leading/trailing sign), - (trailing negative sign), $$ (floating dollar sign),
+  **$ (star fill with floating dollar), ** (star fill), ^^^^ (exponential notation).
+- String Specifiers: ! (first character only), \ \ (n+2 character field), & (variable).
+- Literal Escaping: _ (escapes next literal character).
+
+3.8 Cross-Language Interoperability Subsystem
+- Interop handle table (interop_handle.c) for object reference tracking across languages.
+- Type marshaling (interop_marshal.c) supporting C, C++, C#, Python, and JS data types.
+- JSON-RPC server (interop_jsonrpc.c) for remote execution pipelines.
+- Win32 COM dispatch (interop_com.c) for OLE/COM object automation.
+- Universal Compiler IR (compiler_ir.c) for native code generation passes.
+
+-------------------------------------------------------------------------------
+4. Complete Inventory of Built-in Function Micro-Libraries (60 Functions)
+-------------------------------------------------------------------------------
+
+All 60 built-in functions are implemented in engine/src/eval/functions/ and register
+MicroLibMetadata signatures:
+
+Bitwise Functions (7 Functions):
+  BITCOUNT(n)        - Counts number of set bits (population count) in integer n.
+  READBIT(n, b)      - Reads bit value (0 or 1) at bit position b.
+  RESETBIT(n, b)     - Returns integer n with bit position b cleared (set to 0).
+  SETBIT(n, b)       - Returns integer n with bit position b set to 1.
+  SHL(n, count)      - Bitwise shift left of integer n by count bits.
+  SHR(n, count)      - Bitwise shift right of integer n by count bits.
+  TOGGLEBIT(n, b)    - Returns integer n with bit position b inverted.
+
+Mathematical Functions (21 Functions):
+  ABS(x)             - Absolute value of numeric expression x.
+  ACOS(x)            - Arccosine of x in radians.
+  ASIN(x)            - Arcsine of x in radians.
+  ATAN2(y, x)        - Four-quadrant arctangent of y/x in radians.
+  ATN(x)             - Arctangent of x in radians.
+  CEIL(x)            - Smallest integer value greater than or equal to x.
+  CLAMP(x, min, max) - Constrains x within numeric bounds [min, max].
+  COS(x)             - Cosine of x in radians.
+  EXP(x)             - Base-e exponential e^x.
+  FIX(x)             - Truncates x to an integer towards zero.
+  FLOOR(x)           - Largest integer value less than or equal to x.
+  INT(x)             - Floor integer conversion of numeric expression x.
+  LERP(a, b, t)      - Linear interpolation between a and b by factor t.
+  LOG(x)             - Natural logarithm (base-e) of x.
+  PI()               - Mathematical constant pi approx 3.141592653589793.
+  RND([n])           - Pseudo-random float in range [0.0, 1.0).
+  ROUND(x [, dec])   - Rounds x to specified decimal precision.
+  SGN(x)             - Signum function (-1 for negative, 0 for zero, 1 for positive).
+  SIN(x)             - Sine of x in radians.
+  SQR(x)             - Square root of x (requires x >= 0).
+  TAN(x)             - Tangent of x in radians.
+
+String Functions (19 Functions):
+  BIN$(n)            - Returns binary string representation of integer n.
+  CHR$(code)         - Returns single-character string matching ASCII code point.
+  HEX$(n)            - Returns hexadecimal string representation of integer n.
+  INSTR([st,] s, f)  - Position of substring f inside s starting at st.
+  LCASE$(str)        - Converts string str to lower-case ASCII.
+  LEFT$(str, n)      - Extracts leftmost n characters from str.
+  LEN(str)           - Returns character length of string expression str.
+  LTRIM$(str)        - Strips leading whitespace from str.
+  MID$(s, st [, len])- Extracts substring starting at st for len characters.
+  OCT$(n)            - Returns octal string representation of integer n.
+  PACK$(fmt, v1...)  - Binary data packing into a binary string.
+  RIGHT$(str, n)     - Extracts rightmost n characters from str.
+  RTRIM$(str)        - Strips trailing whitespace from str.
+  SPACE$(n)          - Generates string of n spaces.
+  STR$(x)            - Formats numeric expression x as a string.
+  STRING$(n, char)   - Generates string of length n repeating character char.
+  TRIM$(str)         - Strips leading and trailing whitespace from str.
+  UCASE$(str)        - Converts string str to upper-case ASCII.
+  UNPACK$(fmt, str)  - Unpacks binary data from string into variables.
+  VAL(str)           - Parses numeric value from string str.
+
+System & Environment Functions (11 Functions):
+  CLOCK()            - Returns high-resolution numeric system clock timestamp.
+  CLOCK$()           - Returns ISO 8601 formatted date/time string.
+  DATE$()            - Returns current system date string (MM-DD-YYYY).
+  ENVIRON$(var)      - Reads system environment variable value.
+  FRE(type)          - Returns available free memory bytes in heap pool.
+  INKEY$()           - Non-blocking single-character read from keyboard queue.
+  INP(port)          - Reads 8-bit byte from I/O port address.
+  PEEK(addr)         - Reads byte from direct VM memory address.
+  TICKS()            - Returns system millisecond tick count since boot.
+  TIME$()            - Returns current system time string (HH:MM:SS).
+  TIMER()            - Returns seconds elapsed since midnight as a float.
+
+Variable & Pointer Functions (2 Functions):
+  VARPTR(var)        - Returns memory pointer offset of variable var.
+  VARPTR$(var)       - Returns descriptor header string of variable var.
+
+-------------------------------------------------------------------------------
+5. Complete Inventory of Implemented Statement Handlers & Commands
+-------------------------------------------------------------------------------
+
+All statement handlers reside in engine/src/statements/ and register syntax signatures:
+
+Core Control Flow Statements:
+  END                - Terminates program execution cleanly and releases context memory.
+  GOSUB line         - Pushes return address onto call stack and jumps to line.
+  GOTO line          - Unconditional jump to specified line number.
+  IF expr THEN stmt  - Conditional branch evaluation. Supports single and block IF.
+  INPUT prompt, vars - Interactive keyboard input with optional prompt.
+  PRINT expr_list    - Text output to CON:. Supports ;, ,, and USING formatters.
+  RANDOMIZE [seed]   - Seeds the pseudo-random number generator.
+  REM [comment]      - Non-executing comment line.
+  RETURN             - Pops return address from call stack and resumes execution.
+  SELECT CASE expr   - Multi-branch decision structure.
+  STOP               - Suspends program execution and enters debugging break mode.
+
+Loops & Iteration:
+  FOR var=st TO end  - Counter-based loop structure with optional STEP.
+  NEXT [var]         - Advances counter and loops back to corresponding FOR.
+  WHILE expr...WEND  - Pre-condition loop while expression evaluates to true.
+  DO...LOOP          - Flexible pre/post-condition loop structure.
+  EXIT {FOR|WHILE|DO}- Immediate break out of active loop context.
+
+Variables, Declarations & Memory:
+  LET var = expr     - Variable assignment (optional LET keyword).
+  DIM var(dims)      - Array dimension allocation with option base awareness.
+  ERASE array_list   - Deallocates array memory buffers.
+  OPTION BASE {0|1}  - Sets default lower bound index for array dimensions.
+  DEFINT letters     - Sets default integer type for identifier letter ranges.
+  DEFSNG letters     - Sets default single-precision float type for letter ranges.
+  DEFDBL letters     - Sets default double-precision float type for letter ranges.
+  DEFSTR letters     - Sets default string type for letter ranges.
+  CLEAR              - Re-initializes all program variables and clears stacks.
+  COMMON var_list    - Declares shared global variables passed across CHAIN calls.
+  SHARED var_list    - Exposes global variables inside subroutines/functions.
+  DATA val_list      - Inline static data elements.
+  READ var_list      - Reads values sequentially from DATA statements.
+  RESTORE [line]     - Resets DATA reader pointer to beginning or specified line.
+  SWAP var1, var2    - Exchanges values between two variables.
+  POKE addr, byte    - Writes 8-bit byte to VM memory address.
+
+Filesystem & File I/O Statements:
+  OPEN mode, #chan, f- Opens file for INPUT, OUTPUT, APPEND, BINARY, or RANDOM.
+  CLOSE [#chan_list] - Flushes and closes file channels.
+  FIELD #chan, w AS v- Binds random access buffer fields to string variables.
+  FILES [pattern]    - Displays directory file listing.
+  GET #chan [, rec]  - Reads record from random access or binary file.
+  PUT #chan [, rec]  - Writes record to random access or binary file.
+  INPUT# chan, vars  - Reads formatted input from open file channel.
+  PRINT# chan, exprs - Writes formatted text output to file channel.
+  WRITE# chan, exprs - Writes comma-delimited raw data to file channel.
+  SEEK #chan, pos    - Sets byte offset read/write position in open file.
+  BLOAD file [, off] - Loads binary memory image into VM memory.
+  BSAVE file, off, len- Saves VM memory block to binary file.
+  KILL filename      - Deletes file from filesystem.
+  NAME old AS new    - Renames file on filesystem.
+  MKDIR path         - Creates new directory.
+  LOCK #chan [, rng] - Locks file region for concurrent access.
+
+BGI Graphics & Visual Display Statements:
+  SCREEN mode        - Sets video display mode (Modes 0..42).
+  COLOR fg, bg, brd  - Sets active foreground, background, and border palette colors.
+  CLS [mode]         - Clears screen or text graphics window.
+  HOME               - Moves console cursor to top-left position (0, 0).
+  LINE (x1,y1)-(x2,y2)- Draws line, box (B), or filled box (BF).
+  CIRCLE (x, y), r   - Draws circle or ellipse arc.
+  PSET (x, y), col   - Sets pixel coordinate color.
+  PRESET (x, y), col - Resets pixel coordinate to background color.
+  PAINT (x, y), fill - Boundary flood fill algorithm.
+  DRAW command_str   - Executes turtle graphics vector drawing command language.
+  PALETTE attr, col  - Customizes palette color hardware mappings.
+  VIEW (x1,y1)-(x2,y2)- Defines active graphics viewport boundary.
+  WINDOW (x1,y1)-(x2,y2)- Sets world coordinate mapping transform.
+  BGI command, args  - Dispatches native BGI vector drawing and mode profiles.
+
+Sound & Audio Statements:
+  BEEP               - Generates standard 800 Hz alert tone sound.
+  SOUND freq, dur    - Plays tone at frequency (Hz) for duration (clock ticks).
+  PLAY music_str     - Music Macro Language (MML) parser playing multi-voice melodies.
+  VOICE idx, wave    - Sets synthesizer wave generator voice type.
+  MUSIC command_str  - Advanced multi-channel synthesizer control.
+
+Events & Exception Handling Statements:
+  ON ERROR GOTO line - Enables global error trap handler line (or disables when 0).
+  RESUME {NEXT|line} - Resumes execution after handling an error.
+  TRY...CATCH...END  - Structured exception handling block.
+  ON KEY(n) GOSUB    - Traps function key presses.
+  ON TIMER(s) GOSUB  - Traps background timer intervals.
+  ON COM(n) GOSUB    - Traps serial communication events.
+
+Dialect, Metaprogramming & Introspection:
+  ALIAS "old" AS "new"- Remaps keyword identifiers dynamically at runtime.
+  OVERRIDE "kw" WITH - Replaces statement execution logic with custom handler.
+  SCOPE PUSH|POP|LOC - Manages lexical variable/statement visibility scopes.
+  KEYWORD "new_kw"   - Registers new statement keyword into lexer dictionary.
+  REMOVE "kw"        - Suppresses keyword from lexer parsing.
+  HELP [topic]       - Interactive HELP system querying MicroLibMetadata.
+  INTROSPECT [sys]   - Introspects VM symbol tables, memory state, and devices.
+  SELFTEST           - Executes built-in system self-diagnostics suite.
+
+System, Concurrency & Security:
+  SECURITY bitmask   - Configures sandbox security permission bitmask.
+  SYSTEM             - Halts VM looper and exits process to OS shell.
+  TASK RUN|KILL|LIST - Background task manager looper control.
+  TEST suite_name    - Runs automated test assertions.
+  VERSION            - Displays engine version and edition configuration details.
+
+OOP & Structured Types:
+  TYPE...END TYPE    - Defines User-Defined Type (UDT) struct layout.
+  CLASS...END CLASS  - Defines Object-Oriented Class structure.
+  WITH obj...END WITH- Scoped property access block.
+
+Transactions & Program Management:
+  TXN BEGIN|COMMIT   - Transactional memory block control.
+  RUN [line|file]    - Resets VM state and executes program (, R preserves COMMON vars & files).
+  LOAD filename      - Loads BASIC program file into VM source buffer.
+  SAVE filename      - Saves current program source buffer to file.
+  CHAIN file [, line]- Passes execution context to new program, preserving COMMON (or ALL/MERGE).
+  MERGE filename     - Overlays program lines into memory without clearing variables/stack.
+  NEW                - Clears active program buffer and resets variable table.
+  LIST [range]       - Displays source line listing to console CON:.
+  EDIT line          - Opens interactive TUI editor on specified line.
+  AUTO [start, inc]  - Generates automatic line numbers for prompt input.
+  RENUM [start, inc] - Renumbers lines and updates GOTO/GOSUB/RESTORE line references.
+
+-------------------------------------------------------------------------------
+6. Universal Dual-Format (Prefix & Infix) Engine
+-------------------------------------------------------------------------------
+
+The engine provides full syntactic and semantic interchangeability between
+infix expressions and prefix functional calls across 19 operations:
+
+  Operation     Category                Infix Form            Prefix Form
+  ---------     --------                ----------            -----------
+  AND           Logic / Bitwise         a AND b               AND(a, b [, ...])
+  OR            Logic / Bitwise         a OR b                OR(a, b [, ...])
+  XOR           Logic / Bitwise         a XOR b               XOR(a, b)
+  NOT           Logic / Bitwise         NOT a                 NOT(a)
+  IMP           Logic / Bitwise         a IMP b               IMP(a, b)
+  EQV           Logic / Bitwise         a EQV b               EQV(a, b)
+  SHL           Bitwise Shift           a SHL b               SHL(a, b)
+  SHR           Bitwise Shift           a SHR b               SHR(a, b)
+  READBIT       Bit Manipulation        a READBIT b           READBIT(a, b)
+  SETBIT        Bit Manipulation        a SETBIT b            SETBIT(a, b)
+  RESETBIT      Bit Manipulation        a RESETBIT b          RESETBIT(a, b)
+  TOGGLEBIT     Bit Manipulation        a TOGGLEBIT b         TOGGLEBIT(a, b)
+  BITCOUNT      Bit Manipulation        -                     BITCOUNT(a)
+  MOD           Math / Modulo           a MOD b               MOD(a, b)
+  REMAINDER     Math / Modulo           a REMAINDER b         REMAINDER(a, b)
+  MIN           Math / Extrema          a MIN b               MIN(a, b [, ...])
+  MAX           Math / Extrema          a MAX b               MAX(a, b [, ...])
+  HYPOT         Math / Geometry         a HYPOT b             HYPOT(a, b [, ...])
+  ATAN2         Math / Geometry         y ATAN2 x             ATAN2(y, x)
+
+Every operator is registered as a standalone micro-library under
+engine/src/eval/functions/ (libengine) and is queryable via interactive HELP
+and CATALOG.
+===============================================================================
+

@@ -1,0 +1,26 @@
+SIZE Data Structure Size Function
+======================================================================
+
+The SIZE function returns the size in bytes occupied by a variable,
+TYPE structure, or array in memory.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    bytes% = SIZE(variable_name)
+    bytes% = SIZE(type_name)
+    bytes% = SIZE(array_name())
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Returns exact memory footprint in bytes.
+  - Useful for TYPE structures, random access record lengths, and buffers.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Double size: "; SIZE(X#)

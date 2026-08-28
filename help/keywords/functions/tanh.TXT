@@ -1,0 +1,16 @@
+TANH Hyperbolic Tangent Function
+======================================================================
+
+The TANH function computes the hyperbolic tangent of a numeric argument.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result# = TANH(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT TANH(0)   : REM Outputs 0

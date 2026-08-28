@@ -1,0 +1,24 @@
+TRON Turn On Line Tracing Statement
+===================================
+
+Enables line number execution tracing, displaying each executed line number in brackets (e.g. '[10][20]').
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    TRON
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Equivalent to TRACE ON.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 TRON
+    20 PRINT "Hello with tracing"
+    30 TROFF

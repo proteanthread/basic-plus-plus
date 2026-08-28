@@ -1,0 +1,24 @@
+RESET Close All Files and Flush Buffers Statement
+=================================================
+
+Closes all open file channels and flushes all pending file system disk buffers.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    RESET
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Safe bulk file channel closer.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 OPEN "O", #1, "FILE1.DAT"
+    20 OPEN "O", #2, "FILE2.DAT"
+    30 RESET : REM Closes channels 1 and 2

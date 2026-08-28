@@ -1,51 +1,13 @@
-/**
- * @file task.c
- * @brief TASK multitasking manager statement handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements TASK statement handler for managing background cooperative/preemptive multitasking threads (TASK LIST, TASK WAIT task_id, TASK KILL task_id, TASK "script.bas").
- *
- * 2. WHY IT EXISTS:
- * Exposes Task Manager APIs to BASIC++ program space for executing concurrent BASIC scripts and managing background processes.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Validates security permissions via security_check(SECOP_SYSTEM), parses subcommand or task script path, and invokes task manager thread controls (task_spawn, task_kill, task_wait, task_list).
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_task'. Includes "statements/system/task.h",
- * "lexer/lexer.h", "runtime/task.h", "eval/eval.h", "device/vdev.h", "security/security.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs'). Multitasking requires SECOP_SYSTEM privilege under security sandboxes.
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support thread priority configuration (TASK PRIORITY task_id, level) and inter-task communication pipes.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Security invariant: Multitasking operations MUST check SECOP_SYSTEM security privilege before spawning or killing tasks.
- *
- * 8. WHAT TO EXPECT:
- * Spawns background VM thread or manages task lifecycle; returns ERR_NONE or ERR_PERMISSION_DENIED.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check task manager thread pool status in engine/src/runtime/task.c.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext and active task manager thread pool.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Cross-platform thread abstraction (win32 threads / pthreads).
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/runtime/task.c
- * - engine/src/security/security.c
- * - engine/src/eval/eval.c
- * Prerequisite Header Files:
- * - engine/include/statements/system/task.h
- * - engine/include/runtime/task.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: task.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (goodbye.c, resume.c, suspend.c, system.c)
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, stmt.h, string.c, task.h)
+// NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+// Provides runtime implementation for the TASK statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "stmt/stmt.h"
 #include "lexer/lexer.h"
@@ -61,31 +23,31 @@ BppError stmt_task_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
 
-    /* Security check: multitasking requires SECOP_SYSTEM privilege */
+    // Security check: multitasking requires SECOP_SYSTEM privilege
     if (security_check(SECOP_SYSTEM, 0) != 0) {
-        err.code = 70; /* Permission denied */
+        err.code = 70; // Permission denied
         err.message = "Permission denied: TASK multitasking blocked under sandbox settings";
         return err;
     }
 
     BppToken tok = lex_peek(lex);
 
-    /* 1. TASK (no args) -> Show list */
+    // 1. TASK (no args) -> Show list
     if (tok.type == TOK_EOL || tok.type == TOK_EOF) {
         task_list(vm_get_vdev(vm));
         return err;
     }
 
-    /* 2. Check for keywords: LIST, WAIT, KILL */
+    // 2. Check for keywords: LIST, WAIT, KILL
     if (tok.type == TOK_KEYWORD) {
         if (tok.as.keyword == KW_LIST) {
-            lex_next(lex); /* Consume LIST */
+            lex_next(lex); // Consume LIST
             task_list(vm_get_vdev(vm));
             return err;
         }
 
         if (tok.as.keyword == KW_WAIT) {
-            lex_next(lex); /* Consume WAIT */
+            lex_next(lex); // Consume WAIT
             BValue pid_val = eval_expression(vm, lex, &err);
             if (err.code != 0) return err;
 
@@ -102,7 +64,7 @@ BppError stmt_task_handler(VMContext *vm, LexerContext *lex) {
         }
 
         if (tok.as.keyword == KW_KILL) {
-            lex_next(lex); /* Consume KILL */
+            lex_next(lex); // Consume KILL
             BValue pid_val = eval_expression(vm, lex, &err);
             if (err.code != 0) return err;
 
@@ -119,9 +81,9 @@ BppError stmt_task_handler(VMContext *vm, LexerContext *lex) {
         }
     }
 
-    /* 3. Check for global label target: TASK ::label */
+    // 3. Check for global label target: TASK ::label
     if (tok.type == TOK_GLOBAL_LABEL) {
-        lex_next(lex); /* Consume label */
+        lex_next(lex); // Consume label
         char label_name[64];
         int len = (int)(tok.length < sizeof(label_name) - 1 ? tok.length : sizeof(label_name) - 1);
         memcpy(label_name, tok.as.string, len);
@@ -137,7 +99,7 @@ BppError stmt_task_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-    /* 4. Otherwise: Evaluate expression (can be string filename or numeric PID) */
+    // 4. Otherwise: Evaluate expression (can be string filename or numeric PID)
     BValue val = eval_expression(vm, lex, &err);
     if (err.code != 0) return err;
 

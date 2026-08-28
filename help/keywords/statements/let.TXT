@@ -1,0 +1,36 @@
+LET Variable Assignment Statement
+======================================================================
+
+The LET statement assigns the value of an expression to a variable or
+array element. The keyword LET is optional.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    [LET] variable = expression
+    [LET] array(index) = expression
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Keyword LET is optional (A = 10 is identical to LET A = 10).
+  - Enforces type matching (Error 13 on mismatch).
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  2           ERR_SYNTAX_ERROR      Missing '=' or variable name
+  13          ERR_TYPE_MISMATCH     Assigning string to number or vice versa
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 LET A = 50
+    20 B = 100
+    30 PRINT A + B

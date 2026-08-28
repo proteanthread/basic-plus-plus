@@ -1,0 +1,129 @@
+================================================================================
+BASIC++ VINTAGE ECOSYSTEMS COMPLETE LANGUAGE & DIALECT REFERENCE MANUAL
+================================================================================
+
+1. OVERVIEW & ARCHITECTURE
+--------------------------------------------------------------------------------
+BASIC++ v6.x provides full runtime parity and unified dialect adaptation across
+7 historic microcomputer, minicomputer, and portable BASIC families:
+
+1. Family 1: Tandy TRS-80 & CP/M Disk Systems (TRSDOS 1.3-2.3, 6.x, NEWDOS/80,
+   LDOS, DosPLUS, MULTIDOS, MBASIC-80, CBASIC/CB-80, BASCOM).
+2. Family 2: Tandy Color Computer & Motorola 6809 Ecosystem (Color BASIC 1.0-1.3,
+   Extended Color BASIC, Disk Extended Color BASIC, CoCo 3, Microware BASIC09
+   Levels 1 & 2, MC-10).
+3. Family 3: Tandy 1000 & Portable Systems (Tandy 1000 GW-BASIC 3-Voice Sound
+   Chip SN76496 & TGA, Model 100/102/200 8/16-line LCD Portable BASIC).
+4. Family 4: Sharp Pocket Computers (Sharp PC-1 through PC-8, CE-150 plotters).
+5. Family 5: Apple /// Business BASIC & SOS Ecosystem (Apple /// Business BASIC
+   1.x running under Apple SOS 1.3).
+6. Family 6: DEC RSTS/E BASIC-PLUS-2 Ecosystem (DEC PDP-11 RSTS/E, RMS-11, MAP
+   buffer overlays, UNTIL modifier).
+7. Family 7: HP-3000 / HP-9845 BASIC Ecosystem (HP-3000 TSB, HP-9845 workstations,
+   structured SUB/SUBEND, MAT matrix algebra, ASSIGN streams).
+
+All vintage features are integrated directly into the Unified Master Dialect
+and adhere to the Zero-Regression Invariant.
+
+
+2. FAMILY 1: TANDY TRS-80 & CP/M DISK SYSTEMS
+--------------------------------------------------------------------------------
+Supported: TRS-80 Models I/II/III/4/12/16; TRSDOS, NEWDOS/80, LDOS, CP/M MBASIC.
+- FRE(0): Free memory reporting (free_bytes& = FRE(0)).
+- FIELD: Random record buffer definition (FIELD #ch, len1 AS f1$, len2 AS f2$).
+- LSET / RSET: Field buffer text justification (LSET fld$ = "val").
+- PUT / GET: Direct random access record read/write (PUT #ch, rec_num).
+- TRON / TROFF: Execution trace enable/disable.
+- KILL: Delete file from disk (KILL "filename.ext").
+- NAME...AS: Rename file (NAME "old.dat" AS "new.dat").
+- STRING$: String repeat generator (s$ = STRING$(count, ascii_code)).
+
+
+3. FAMILY 2: COLOR COMPUTER & MOTOROLA 6809 (BASIC09 LEVELS 1 & 2)
+--------------------------------------------------------------------------------
+Supported: Tandy Color Computer 1/2/3, MC-10, Microware OS-9 Levels 1 & 2.
+- REPEAT...UNTIL: Post-test loop structure (REPEAT ... UNTIL cond).
+- LOOP...ENDLOOP: Structured infinite loop container.
+- EXITIF: Conditional loop exit with optional THEN statement (EXITIF cond [THEN stmt]).
+- TYPE...ENDTYPE: Pascal-style structured type/record definition (TYPE Name \n field: TYPE \n ENDTYPE).
+- PARAM: Formal procedure parameter binding (PARAM var1: TYPE, var2: TYPE).
+- MODDIR$: OS-9 memory module directory query (mods$ = MODDIR$).
+- SOUND: Tone generation (SOUND freq, duration).
+- JOYSTK / STICK: Joystick coordinate interrogation (x% = STICK(0)).
+- STRIG / BUTTON: Joystick button interrogation (b% = STRIG(0)).
+- DEFINT / DEFSTR: Fast type range definitions (DEFINT I-N).
+
+
+4. FAMILY 3: TANDY 1000 & PORTABLE SYSTEMS
+--------------------------------------------------------------------------------
+Supported: Tandy 1000 SX/EX/TX/HX/TL/SL/RL, Tandy Model 100/102/200 Portables.
+- SOUND: Frequency, duration, voice, and volume tone generator (SOUND 440, 10, 1, 15).
+- PLAY: Complete Music Macro Language engine (PLAY "O3 L16 C D E F G").
+- TIME$ / DATE$ / DAY$: System real-time clock and calendar day query.
+- MAXNUM: Constant representing maximum floating point value.
+
+
+5. FAMILY 4: SHARP POCKET COMPUTERS (PC-1 THROUGH PC-8)
+--------------------------------------------------------------------------------
+Supported: Sharp PC-1211, PC-1500, PC-1251, PC-1246, PC-1270, PC-1260, CE-150.
+- BEEP: Piezo sound buzzer (BEEP count [, duration]).
+- SIN / COS / TAN: High-precision trigonometric functions.
+- EXP / LOG / LOG10: Exponential and logarithmic functions.
+- DEGREE / RADIAN / GRAD: Angle mode configuration.
+
+
+6. FAMILY 5: APPLE /// BUSINESS BASIC & SOS ECOSYSTEM
+--------------------------------------------------------------------------------
+Supported: Apple /// Computer (2 MHz 6502B), Apple SOS 1.3, Business BASIC 1.x.
+- CREATE: SOS file resource creation (CREATE "file.dat" [, type]).
+- DESTROY: SOS file deletion (DESTROY "file.dat").
+- LOCK / UNLOCK: SOS file attributes and record-level locking (LOCK #ch, rec).
+- TYP: File position data type inspection (t% = TYP(#ch)).
+- EXCHANGE: High-speed variable and array element exchange (EXCHANGE v1, v2).
+- PREFIX$: SOS current default volume path query (p$ = PREFIX$).
+- VIEWPORT: Display graphics and text window boundary clipping.
+
+
+7. FAMILY 6: DEC RSTS/E BASIC-PLUS-2 ECOSYSTEM
+--------------------------------------------------------------------------------
+Supported: DEC PDP-11 RSTS/E, VAX-11 / VMS BASIC, RMS-11 record management.
+- MAP (name): Named shared memory buffer overlay (MAP (BUF) v1 [= len], v2).
+- MAP...MAPEND: Multi-line structured buffer block definition.
+- OPEN...MAP: Binds RMS-11 channel to named MAP buffer with RECORDSIZE.
+- PUT / GET #ch, RECORD n: Direct record I/O synchronized with MAP variables.
+- FIND #ch [, RECORD n]: High-speed record positioning without buffer transfer.
+- RECORD #ch, n: Direct channel record pointer positioning.
+- Postfix UNTIL: Repeated execution guard (stmt UNTIL cond).
+
+
+8. FAMILY 7: HP-3000 / HP-9845 BASIC ECOSYSTEM
+--------------------------------------------------------------------------------
+Supported: HP-3000 TSB, HP-9845A/B/C Technical Desktop Workstations.
+- SUB...SUBEND: Structured subprogram procedure declaration.
+- SUBEXIT: Early return statement from within SUB subprogram.
+- CALL: Explicit invocation of SUB procedure with pass-by-ref binding.
+- MAT C = A * B: Matrix multiplication with automatic dimensioning.
+- MAT C = A + B / A - B: Matrix addition and subtraction.
+- MAT C = (k) * A: Matrix scalar multiplication.
+- MAT C = INV(A) / TRN(A): Matrix inverse and transpose.
+- MAT C = CON / ZER / IDN: Constant, zero, and identity matrix initializers.
+- DET(A): Matrix determinant computation.
+- DOT(u, v) / CROSS(u, v): 3D Vector dot and cross products.
+- ASSIGN @Path TO "file" / *: Dynamic path stream binding and closing.
+- ASSIGN #ch TO "file" / *: Numeric channel assignment and deallocation.
+
+
+9. MASTER VERIFICATION
+--------------------------------------------------------------------------------
+Run non-interactive verification across all 7 families:
+  baspp.exe --batch tests\vintage_ecosystems_master.bas
+  baspp.exe --batch tests\dec_rstse_suite.bas
+  baspp.exe --batch tests\dec_rstse_advanced.bas
+  baspp.exe --batch tests\hp_series_suite.bas
+  baspp.exe --batch tests\hp_series_advanced.bas
+  baspp.exe --batch tests\apple3_business_suite.bas
+  baspp.exe --batch tests\apple3_sos_advanced.bas
+  baspp.exe --batch tests\basic09_suite.bas
+  baspp.exe --batch tests\basic09_level2_advanced.bas
+  baspp.exe -c "SELFTEST"
+================================================================================

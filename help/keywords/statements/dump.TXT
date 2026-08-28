@@ -1,0 +1,22 @@
+DUMP Memory Hex Dump Diagnostic Statement
+=========================================
+
+Prints a formatted hex and ASCII memory dump for low-level debugging and memory inspection.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    DUMP address& [, length%]
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Safe read-only memory inspector bounded to allocated RAM pool.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DUMP 0, 64 : REM Dumps first 64 bytes of virtual memory

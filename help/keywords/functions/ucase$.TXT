@@ -1,0 +1,17 @@
+UCASE$ Uppercase String Conversion Function
+======================================================================
+
+The UCASE$ function converts all lowercase letters in a string to
+uppercase.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    upper_str$ = UCASE$(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT UCASE$("hello world")   : REM Outputs "HELLO WORLD"

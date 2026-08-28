@@ -1,28 +1,14 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file map_serialize.c
- * @brief JSON, XML, YAML, and INI serialization / deserialization converters for BppMap.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements parser and stringifier logic for JSON, XML, YAML, and INI formats.
- * - Why it exists: Provides dynamic data conversion for system communication and configuration formats.
- * - Why it works this way: It uses robust string-parsing loops to extract keys and values without
- *   external library dependencies, ensuring 100% portability to any host system.
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Parsing grammar rules, escaping sequences.
- * - What cannot be changed: API signatures for stringifier and parser functions.
- * - What to expect: Parsers return a new BppMap (with ref_count = 1). Stringifiers return dynamic allocated C strings.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Input strings are null-terminated. Output strings are dynamically allocated via malloc.
- * - Portability concerns: None. ANSI/ISO C17 compliant.
- */
+// FILENAME: map_serialize.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (ctype.h, ctype.c, num_format.h, num_format.c, string.h)
+// NEEDS: libcore (strings.h, strings.c)
+// NEEDS: libengine (map.h, map.c, string.c)
+// NEEDS: libkernel (config.h)
+// Provides core logic and interface definitions for map_serialize within BASIC++.
+//
+// ---- Includes ----
 
 #include "runtime/map.h"
 #include "runtime/strings.h"
@@ -39,7 +25,7 @@
 static void stringify_json_internal(BppMap *map, char **p_buf, size_t *p_cap, size_t *p_len);
 #endif
 
-/* Helper: skip whitespace */
+// Helper: skip whitespace
 static const char *skip_ws(const char *p) {
     while (*p && isspace((unsigned char)*p)) p++;
     return p;
@@ -52,9 +38,9 @@ static const char *skip_inline_ws(const char *p) {
 }
 #endif
 
-/* Safe realloc helper. Doubles the buffer capacity.
- * On failure, the original buffer is preserved and false is returned.
- * On success, *p_buf and *p_cap are updated and true is returned. */
+// Safe realloc helper. Doubles the buffer capacity.
+// On failure, the original buffer is preserved and false is returned.
+// On success, *p_buf and *p_cap are updated and true is returned.
 static bool safe_buf_grow(char **p_buf, size_t *p_cap) {
     size_t new_cap = *p_cap * 2;
     char *new_buf = (char *)realloc(*p_buf, new_cap);
@@ -83,11 +69,11 @@ static void buf_append_char(char **p_buf, size_t *p_cap, size_t *p_len, char c) 
 
 #if SUPPORT_JSON
 
-/* Helper: parse a JSON string token */
+// Helper: parse a JSON string token
 static char *parse_json_string(const char **p_in) {
     const char *p = *p_in;
     if (*p != '"') return NULL;
-    p++; /* skip '"' */
+    p++; // skip '"'
     const char *start = p;
     while (*p && *p != '"') p++;
     size_t len = p - start;
@@ -101,7 +87,7 @@ static char *parse_json_string(const char **p_in) {
     return res;
 }
 
-/* Helper: parse a JSON value (number, string, nested map) */
+// Helper: parse a JSON value (number, string, nested map)
 static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
     BValue val;
     val.type = VAL_NONE;
@@ -118,7 +104,7 @@ static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
             *ok = true;
         }
     } else if (*p == '{') {
-        p++; /* skip '{' */
+        p++; // skip '{'
         BppMap *sub = map_create();
         if (sub) {
             p = skip_ws(p);
@@ -137,7 +123,7 @@ static BValue parse_json_value(void *str_ctx, const char **p_in, bool *ok) {
                         free(k);
                         break;
                     }
-                    p++; /* skip ':' */
+                    p++; // skip ':'
                     p = skip_ws(p);
                     bool val_ok = false;
                     BValue v = parse_json_value(str_ctx, &p, &val_ok);
@@ -225,12 +211,12 @@ static void stringify_json_internal(BppMap *map, char **p_buf, size_t *p_cap, si
             buf_append_char(p_buf, p_cap, p_len, ',');
         }
 
-        /* Format key */
+        // Format key
         char k_fmt[512];
         snprintf(k_fmt, sizeof(k_fmt), "\"%s\":", map->entries[i].key);
         buf_append_str(p_buf, p_cap, p_len, k_fmt);
 
-        /* Format value */
+        // Format value
         BValue val = map->entries[i].val;
         if (val.type == VAL_NUMBER) {
             char num_buf[64];
@@ -271,7 +257,7 @@ char *map_stringify_json(BppMap *map) {
 }
 #endif
 
-/* XML Parser & Stringifier */
+// XML Parser & Stringifier
 #if SUPPORT_XML
 BppMap *map_parse_xml(void *str_ctx, const char *xml) {
     BppMap *map = map_create();
@@ -282,12 +268,12 @@ BppMap *map_parse_xml(void *str_ctx, const char *xml) {
         p = skip_ws(p);
         if (*p == '<') {
             if (*(p + 1) == '/') {
-                /* End tag: skip */
+                // End tag: skip
                 while (*p && *p != '>') p++;
                 if (*p == '>') p++;
                 continue;
             }
-            p++; /* skip '<' */
+            p++; // skip '<'
             const char *t_start = p;
             while (*p && *p != '>') p++;
             size_t t_len = p - t_start;
@@ -297,7 +283,7 @@ BppMap *map_parse_xml(void *str_ctx, const char *xml) {
             tag[t_len] = '\0';
             if (*p == '>') p++;
 
-            /* Parse contents until next '<' */
+            // Parse contents until next '<'
             const char *val_start = p;
             while (*p && *p != '<') p++;
             size_t val_len = p - val_start;
@@ -307,10 +293,10 @@ BppMap *map_parse_xml(void *str_ctx, const char *xml) {
                 val_str[val_len] = '\0';
             }
 
-            /* If it's a nested XML element (contains '<' before end tag) */
+            // If it's a nested XML element (contains '<' before end tag)
             p = skip_ws(p);
             if (*p == '<' && *(p + 1) != '/') {
-                /* Nested child tag - parse recursively */
+                // Nested child tag - parse recursively
                 free(val_str);
                 BppMap *sub = map_parse_xml(str_ctx, val_start);
                 BValue val;
@@ -319,9 +305,9 @@ BppMap *map_parse_xml(void *str_ctx, const char *xml) {
                 map_set(str_ctx, map, tag, val);
                 map_release(str_ctx, sub);
             } else {
-                /* Simple text content */
+                // Simple text content
                 BValue val;
-                /* Try to parse as number first */
+                // Try to parse as number first
                 char *endptr;
                 double d = strtod(val_str, &endptr);
                 if (endptr != val_str && *skip_ws(endptr) == '\0') {
@@ -338,7 +324,7 @@ BppMap *map_parse_xml(void *str_ctx, const char *xml) {
                 free(val_str);
             }
 
-            /* Consume close tag </tag> */
+            // Consume close tag </tag>
             if (*p == '<' && *(p + 1) == '/') {
                 while (*p && *p != '>') p++;
                 if (*p == '>') p++;
@@ -356,12 +342,12 @@ static void stringify_xml_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
         char tag[256];
         snprintf(tag, sizeof(tag), "%s", map->entries[i].key);
 
-        /* Open tag */
+        // Open tag
         buf_append_char(p_buf, p_cap, p_len, '<');
         buf_append_str(p_buf, p_cap, p_len, tag);
         buf_append_char(p_buf, p_cap, p_len, '>');
 
-        /* Value */
+        // Value
         BValue val = map->entries[i].val;
         if (val.type == VAL_NUMBER) {
             char num_buf[64];
@@ -374,7 +360,7 @@ static void stringify_xml_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
             stringify_xml_internal(val.as.map, p_buf, p_cap, p_len);
         }
 
-        /* Close tag */
+        // Close tag
         buf_append_char(p_buf, p_cap, p_len, '<');
         buf_append_char(p_buf, p_cap, p_len, '/');
         buf_append_str(p_buf, p_cap, p_len, tag);
@@ -402,14 +388,14 @@ char *map_stringify_xml(BppMap *map) {
 }
 #endif
 
-/* YAML Parser & Stringifier */
+// YAML Parser & Stringifier
 BppMap *map_parse_yaml(void *str_ctx, const char *yaml) {
     BppMap *map = map_create();
     if (!yaml || !map) return map;
 
     const char *p = yaml;
     while (*p) {
-        /* Parse line-by-line */
+        // Parse line-by-line
         p = skip_ws(p);
         if (*p == '\0') break;
 
@@ -421,7 +407,7 @@ BppMap *map_parse_yaml(void *str_ctx, const char *yaml) {
             if (k_len >= sizeof(tag)) k_len = sizeof(tag) - 1;
             memcpy(tag, k_start, k_len);
             tag[k_len] = '\0';
-            p++; /* skip ':' */
+            p++; // skip ':'
 
             p = skip_ws(p);
             const char *val_start = p;
@@ -462,12 +448,12 @@ BppMap *map_parse_yaml(void *str_ctx, const char *yaml) {
 static void stringify_yaml_internal(BppMap *map, char **p_buf, size_t *p_cap, size_t *p_len, int indent) {
     if (!map) return;
     for (int i = 0; i < map->count; ++i) {
-        /* Add indentation spaces */
+        // Add indentation spaces
         for (int s = 0; s < indent; ++s) {
             buf_append_char(p_buf, p_cap, p_len, ' ');
         }
 
-        /* Format key */
+        // Format key
         char k_fmt[256];
         snprintf(k_fmt, sizeof(k_fmt), "%s: ", map->entries[i].key);
         buf_append_str(p_buf, p_cap, p_len, k_fmt);
@@ -500,7 +486,7 @@ char *map_stringify_yaml(BppMap *map) {
     return buf;
 }
 
-/* INI Parser & Stringifier */
+// INI Parser & Stringifier
 #if SUPPORT_INI
 BppMap *map_parse_ini(void *str_ctx, const char *ini) {
     BppMap *map = map_create();
@@ -513,15 +499,15 @@ BppMap *map_parse_ini(void *str_ctx, const char *ini) {
         p = skip_ws(p);
         if (*p == '\0') break;
 
-        /* Check for comment */
+        // Check for comment
         if (*p == ';' || *p == '#') {
             while (*p && *p != '\n') p++;
             continue;
         }
 
-        /* Check for section: [section] */
+        // Check for section: [section]
         if (*p == '[') {
-            p++; /* skip '[' */
+            p++; // skip '['
             const char *s_start = p;
             while (*p && *p != ']' && *p != '\n') p++;
             if (*p == ']') {
@@ -530,9 +516,9 @@ BppMap *map_parse_ini(void *str_ctx, const char *ini) {
                 if (s_len >= sizeof(sect)) s_len = sizeof(sect) - 1;
                 memcpy(sect, s_start, s_len);
                 sect[s_len] = '\0';
-                p++; /* skip ']' */
+                p++; // skip ']'
 
-                /* Create section map if not exists */
+                // Create section map if not exists
                 BValue val;
                 if (map_get(map, sect, &val) && val.type == VAL_MAP) {
                     current_section = val.as.map;
@@ -548,11 +534,11 @@ BppMap *map_parse_ini(void *str_ctx, const char *ini) {
             continue;
         }
 
-        /* Parse key = value */
+        // Parse key = value
         const char *k_start = p;
         while (*p && *p != '=' && *p != '\n') p++;
         if (*p == '=') {
-            /* Trim trailing whitespace from key */
+            // Trim trailing whitespace from key
             const char *k_end = p - 1;
             while (k_end > k_start && isspace((unsigned char)*k_end)) k_end--;
             size_t k_len = k_end - k_start + 1;
@@ -561,11 +547,11 @@ BppMap *map_parse_ini(void *str_ctx, const char *ini) {
             memcpy(tag, k_start, k_len);
             tag[k_len] = '\0';
 
-            p++; /* skip '=' */
+            p++; // skip '='
             p = skip_inline_ws(p);
             const char *val_start = p;
             while (*p && *p != '\n') p++;
-            /* Trim trailing whitespace from value */
+            // Trim trailing whitespace from value
             const char *val_end = p - 1;
             while (val_end > val_start && isspace((unsigned char)*val_end)) val_end--;
             size_t val_len = (val_end >= val_start) ? (val_end - val_start + 1) : 0;
@@ -600,7 +586,7 @@ BppMap *map_parse_ini(void *str_ctx, const char *ini) {
 static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, size_t *p_len) {
     if (!map) return;
 
-    /* First pass: print all simple keys */
+    // First pass: print all simple keys
     for (int i = 0; i < map->count; ++i) {
         BValue val = map->entries[i].val;
         if (val.type != VAL_MAP) {
@@ -622,7 +608,7 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
         }
     }
 
-    /* Second pass: print sections */
+    // Second pass: print sections
     for (int i = 0; i < map->count; ++i) {
         BValue val = map->entries[i].val;
         if (val.type == VAL_MAP) {
@@ -630,7 +616,7 @@ static void stringify_ini_internal(BppMap *map, char **p_buf, size_t *p_cap, siz
             snprintf(s_hdr, sizeof(s_hdr), "\n[%s]\n", map->entries[i].key);
             buf_append_str(p_buf, p_cap, p_len, s_hdr);
 
-            /* Print sub-keys */
+            // Print sub-keys
             BppMap *sub = val.as.map;
             for (int j = 0; j < sub->count; ++j) {
                 char k_fmt[256];

@@ -1,0 +1,30 @@
+NEXT End of FOR Loop Statement
+==============================
+
+Increments the loop counter variable and branches back to the matching FOR statement if not complete.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    NEXT [variable [, variable...]]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 1 (ERR_NEXT_WITHOUT_FOR): No matching FOR statement active.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Supports multiple nested counters in single statement (e.g. NEXT J, I).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 FOR I = 1 TO 5
+    20   PRINT I
+    30 NEXT I

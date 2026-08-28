@@ -1,0 +1,16 @@
+TCASE$ Title Case String Transformation Function
+======================================================================
+
+The TCASE$ function formats words in a string into Title Case.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    res$ = TCASE$(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT TCASE$("a tale of two cities")

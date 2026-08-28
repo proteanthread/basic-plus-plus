@@ -1,33 +1,11 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-/**
- * @file basic_version.h
- * @brief Version information for the BASIC++ interpreter.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Defines the version number (Major, Minor, Patch), codename, release date, and build info.
- * - Why it exists: To act as the single source of truth for version numbers across the CMake build system,
- *   REPL banners, documentation, and error reports.
- * - Why it works this way: By centralizing these definition macros in a single header, we avoid version
- *   inconsistencies where config.h and script build files mismatch.
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: The major, minor, patch numbers, codename, and release date when releasing new features.
- * - What cannot be changed: The macro names themselves (BASIC_VERSION_MAJOR, etc.) as the interpreter REPL and build files query them.
- * - What to expect: Changes here will propagate to all binary editions and self-test reports during compilation.
- * - What to do if something breaks: Ensure the version definitions compile without syntax errors and that the date format remains a string.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Assumes standard C macro substitution is supported by the compiler (universal in C17).
- * - Portability concerns: None. Fully C17 and older standard compatible.
- *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Additional macros (e.g. build number, git commit hash) can be added cleanly.
- * - How to write external extensions: External plugins can query the version from the VM context to check version compatibility.
- */
+// FILENAME: version.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: baspp.exe, bpp.exe, libcore, libengine, libkernel, libstandard
+// NEEDS: platform, memory
+// Provides core logic and interface definitions for version within BASIC++.
+//
+// ---- Includes ----
 
 #ifndef TYPES_VERSION_H
 #define TYPES_VERSION_H
@@ -39,7 +17,7 @@
 #define BASIC_VERSION_DATE     "2026-08-06"
 #define BASIC_VERSION_CODENAME "Phoenix"
 
-/* Clean non-prefixed aliases per project rules */
+// Clean non-prefixed aliases per project rules
 #define VERSION_MAJOR    BASIC_VERSION_MAJOR
 #define VERSION_MINOR    BASIC_VERSION_MINOR
 #define VERSION_PATCH    BASIC_VERSION_PATCH
@@ -47,4 +25,4 @@
 #define VERSION_DATE     BASIC_VERSION_DATE
 #define VERSION_CODENAME BASIC_VERSION_CODENAME
 
-#endif /* TYPES_VERSION_H */
+#endif // TYPES_VERSION_H

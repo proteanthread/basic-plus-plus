@@ -1,0 +1,24 @@
+STOP Program Execution Breakpoint Statement
+===========================================
+
+Suspends program execution, displays a break message with line number, and returns to interactive prompt mode.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    STOP
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Execution can be resumed at next line via CONT command.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 X = 100
+    20 STOP : REM Breakpoint: Examine X
+    30 PRINT "Resumed: "; X

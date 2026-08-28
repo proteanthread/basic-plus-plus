@@ -1,0 +1,32 @@
+WINDOW Cartesian Coordinate Window Definition Statement
+=======================================================
+
+Defines logical Cartesian floating-point coordinates for the graphics screen, enabling mathematical graphing.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    WINDOW [[SCREEN] (x1#, y1#)-(x2#, y2#)]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Inverted or zero-dimension window bounds.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  SCREEN flag places (x1, y1) at top-left; omitting SCREEN places (x1, y1) at bottom-left.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SCREEN 12
+    20 WINDOW (-3.14, -1.0)-(3.14, 1.0) : REM Graphing coordinates
+    30 FOR X = -3.14 TO 3.14 STEP 0.05
+    40   PSET (X, SIN(X)), 14
+    50 NEXT X

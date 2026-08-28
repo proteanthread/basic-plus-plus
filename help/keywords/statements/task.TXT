@@ -1,0 +1,25 @@
+TASK Background Thread and Task Management Statement
+====================================================
+
+Creates, inspects, and manages asynchronous background execution worker threads.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    TASK CREATE task_name$, entry_sub$
+    TASK KILL task_id%
+    TASK STATUS [task_id%]
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Multi-threading engine abstraction.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 TASK CREATE "Worker", "ComputePi"
+    20 TASK STATUS

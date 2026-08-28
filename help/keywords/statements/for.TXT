@@ -1,0 +1,26 @@
+FOR Indexed Loop Initiation Statement
+=====================================
+
+Executes a block of code repeatedly while incrementing or decrementing a counter variable.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    FOR variable = start_val TO end_val [STEP increment_val]
+      [statements]
+    NEXT [variable]
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Non-recursive loop stack maintained on VM heap.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 FOR I = 1 TO 10 STEP 2
+    20   PRINT "I = "; I
+    30 NEXT I

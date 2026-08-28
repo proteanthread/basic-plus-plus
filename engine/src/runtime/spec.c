@@ -1,61 +1,17 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file spec.c
- * @brief Runtime component implementation and public API surface for spec.c.
- *
- * WHAT IT DOES:
- * Implements the core responsibilities, data structures, and function evaluation logic for spec.c within the runtime subsystem.
- *
- * WHY IT EXISTS:
- * Ensures decoupled modularity, strict C17 portability, and clear micro-library architectural boundary enforcement.
- *
- * WHY IT WORKS THIS WAY:
- * Designed with zero-initialization defaults, bounded memory operations, and explicit error code propagation to the VM state.
- *
- * WHAT CAN BE CHANGED:
- * Subsystem configuration defaults, local execution helper routines, and documentation annotations.
- *
- * WHAT CANNOT BE CHANGED:
- * Public API symbol declarations, micro-library metadata structures, and thread-safe error reporting contracts.
- *
- * WHAT TO EXPECT:
- * High-performance deterministic execution with zero side-effects outside designated state structures.
- *
- * WHAT TO DO IF SOMETHING BREAKS:
- * Verify context initialization, trace BppError return codes, and inspect log outputs for bounds assertions.
- *
- * ASSUMPTIONS:
- * Valid subsystem contexts and required memory pools are allocated prior to executing API handlers.
- *
- * PORTABILITY CONCERNS:
- * Strict C17 compliance, 64-bit pointer safety, and pure ASCII string operations across desktop, IoT, and embedded targets.
- *
- * FUTURE EXPANSIONS:
- * Additional dialect compatibility mappings, telemetry instrumentation, and microcontroller payload stubs.
- */
-
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file spec.c
- * @brief Dynamic Keyword Specification & Feature Registry manager implementation.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements management of dynamically registered statement/function keywords,
- *   parsing .spec and .yaml descriptors, and registering inline blocks.
- * - Why it exists: Supports custom vocabularies and isolated procedural plugins (Phase 19).
- * - Why it works this way: Custom keywords are registered in the lexer dynamically (assigned IDs >= 1000)
- *   and mapped to SpecObjects.
- */
+// FILENAME: spec.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot (common_internal.h)
+// NEEDED BY: libcore (error.c)
+// NEEDED BY: libengine (category.c, context.c, control.c, data.c)
+// NEEDED BY: libengine (events_internal.h, exec_dispatch.c, exec_internal.h)
+// NEEDED BY: libengine (help.c, vm_internal.h)
+// NEEDS: libcore (ctype.h, ctype.c, spec.h, string.h, vfs.h, vfs.c)
+// NEEDS: libengine (string.c)
+// NEEDS: libkernel (config.h, security.h, security.c, vdev.h, vdev.c)
+// Provides core logic and interface definitions for spec within BASIC++.
+//
+// ---- Includes ----
 
 #include "runtime/spec.h"
 #include "runtime/vfs.h"
@@ -113,10 +69,10 @@ int spec_register_inline(VMContext *vm, const char *name, SpecCategory cat, cons
         return -1;
     }
 
-    /* Check if already registered */
+    // Check if already registered
     SpecObject *existing = spec_find_by_name(name);
     if (existing) {
-        return 0; /* Already registered */
+        return 0; // Already registered
     }
 
     SpecObject *spec = &spec_registry[spec_count];
@@ -134,7 +90,7 @@ int spec_register_inline(VMContext *vm, const char *name, SpecCategory cat, cons
         safe_strcpy(spec->required_level, "STANDARD", sizeof(spec->required_level));
     }
 
-    /* Register keyword with lexer dynamically */
+    // Register keyword with lexer dynamically
     spec->kw_id = keyword_register_custom(name);
     if (spec->kw_id == KW_NONE) {
         return -1;
@@ -145,13 +101,13 @@ int spec_register_inline(VMContext *vm, const char *name, SpecCategory cat, cons
 }
 
 static void trim_spaces(char *str) {
-    /* Trim trailing spaces/newlines */
+    // Trim trailing spaces/newlines
     size_t len = strlen(str);
     while (len > 0 && (isspace((unsigned char)str[len - 1]) || str[len - 1] == '\r' || str[len - 1] == '\n')) {
         str[len - 1] = '\0';
         len--;
     }
-    /* Trim leading spaces */
+    // Trim leading spaces
     char *start = str;
     while (*start && isspace((unsigned char)*start)) {
         start++;
@@ -173,7 +129,7 @@ static void extract_quoted(const char *src, char *dest, size_t dest_max) {
             return;
         }
     }
-    /* Fallback: copy without quotes */
+    // Fallback: copy without quotes
     safe_strcpy(dest, src, dest_max);
     trim_spaces(dest);
 }
@@ -278,13 +234,13 @@ int spec_load_file(VMContext *vm, const char *filename) {
     char resolved_path[512];
     vfs_resolve(vm_get_vfs(vm), filename, resolved_path, sizeof(resolved_path));
 
-    /* Verify path sandbox read access */
+    // Verify path sandbox read access
     if (security_check_file_path(resolved_path, 0) != 0) {
-        return -2; /* Permission denied */
+        return -2; // Permission denied
     }
 
     int parse_res = -1;
-    /* Check file extension */
+    // Check file extension
     const char *ext = strrchr(resolved_path, '.');
     if (ext && (strcasecmp(ext, ".yaml") == 0 || strcasecmp(ext, ".yml") == 0)) {
         parse_res = parse_spec_yaml(vm, resolved_path);
@@ -293,7 +249,7 @@ int spec_load_file(VMContext *vm, const char *filename) {
     }
 
     if (parse_res == 0) {
-        /* Extract directory part of the spec file to load companion libs relative to it */
+        // Extract directory part of the spec file to load companion libs relative to it
         char dir_part[512] = {0};
         const char *last_slash = strrchr(resolved_path, '/');
         const char *last_backslash = strrchr(resolved_path, '\\');
@@ -347,7 +303,7 @@ int spec_load_companion_libraries(VMContext *vm, const char *dir_part) {
                 spec_registry[i].lib_loaded = true;
                 loaded_count++;
             } else {
-                /* Try to load directly from the current directory as fallback */
+                // Try to load directly from the current directory as fallback
                 err = vm_load_library_file(vm, spec_registry[i].lib_path);
                 if (err.code == 0) {
                     spec_registry[i].lib_loaded = true;

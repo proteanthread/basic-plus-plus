@@ -1,0 +1,14 @@
+tinydb Embedded Key-Value Database Subsystem (libserver)
+======================================================================
+
+The tinydb library provides embedded, transactional key-value database
+persistence.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    TinyDB *tinydb_open(const char *path);
+    int tinydb_put(TinyDB *db, const char *key, const void *val, size_t len);
+    int tinydb_get(TinyDB *db, const char *key, void *out, size_t *out_len);
+    void tinydb_close(TinyDB *db);

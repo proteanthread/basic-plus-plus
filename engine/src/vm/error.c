@@ -1,56 +1,12 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
+// FILENAME: error.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel, libplatform, libserver
+// Implements bytecode virtual machine execution and state for error.
+//
+// ---- Includes ----
 
-/**
- * @file error.c
- * @brief VM error handling, error code lookup, ON ERROR GOTO dispatch, and RESUME logic for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements `vm_raise_error()`, `vm_error_message()`, `vm_on_error_goto()`, `vm_resume()`, and error state management.
- *
- * 2. WHY IT EXISTS:
- * Provides GW-BASIC and QBASIC ON ERROR GOTO / RESUME / RESUME NEXT error trapping and standard BASIC error code lookup.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Maps integer error codes (1..255) to standard BASIC error message strings, records error line (`ERR`), error code (`ERR`), and error line number (`ERL`), and handles GOTO dispatch when ON ERROR handler is registered.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "vm/vm.h", "vm_internal.h",
- * "stmt/stmt.h", "device/vdev.h", <stdio.h>, <string.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Add new custom error code mappings (e.g. ECMA-116 or BASIC++ extended error codes).
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Standard BASIC error code numbers (e.g. 1 = NEXT without FOR, 2 = Syntax error, 3 = RETURN without GOSUB, 4 = Out of DATA, 5 = Illegal function call, 6 = Overflow, 7 = Out of memory, 9 = Subscript out of range, 11 = Division by zero, 13 = Type mismatch).
- *
- * 8. WHAT TO EXPECT:
- * `vm_raise_error()` sets `vm->last_error`, prints error message if unhandled, or jumps to ON ERROR GOTO handler line.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify `vm->on_error_line` target line existence and `RESUME` stack state.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext pointer.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Static constant string lookup table avoids heap allocations during panic.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/vm/context.c
- * - engine/src/device/vdev.c
- * Prerequisite Header Files:
- * - engine/include/vm/vm.h
- * - engine/src/vm/vm_internal.h
- * - engine/include/device/vdev.h
- */
 #include "vm/vm.h"
 #include "vm_internal.h"
 #include "stmt/stmt.h"
@@ -73,12 +29,11 @@
 #include "runtime/variables.h"
 #include "platform/platform.h"
 #include "core/struct.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <ctype.h>
-
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "hal/hal.h"
 
 void vm_set_error(VMContext *vm, int code, const char *msg) {
     if (vm) {
@@ -92,7 +47,7 @@ void vm_set_error(VMContext *vm, int code, const char *msg) {
 
 void vm_clear_error(VMContext *vm) {
     if (vm) {
-        memset(&vm->last_error, 0, sizeof(BppError));
+        runtime_memset(&vm->last_error, 0, sizeof(BppError));
     }
 }
 
@@ -103,12 +58,19 @@ bool vm_has_error(VMContext *vm) {
 BppError vm_get_error(VMContext *vm) {
     if (vm) return vm->last_error;
     BppError null_err;
-    memset(&null_err, 0, sizeof(null_err));
+    runtime_memset(&null_err, 0, sizeof(null_err));
     return null_err;
 }
 
+
 int vm_get_err_code(VMContext *vm) {
     return vm ? vm->err_code : 0;
+}
+
+void vm_clear_err_code(VMContext *vm) {
+    if (vm) {
+        vm->err_code = 0;
+    }
 }
 
 BppLineNumber vm_get_err_line(VMContext *vm) {
@@ -196,7 +158,7 @@ void vm_trigger_try_catch_handler(VMContext *vm, int code, const char *msg) {
         var_assign(vm->var, "ERR", err_val);
 
         const char *m = msg ? msg : "";
-        BppStringRef str_ref = str_create(vm->str, m, strlen(m));
+        BppStringRef str_ref = str_create(vm->str, m, runtime_strlen(m));
         BValue errs_val;
         errs_val.type = VAL_STRING;
         errs_val.as.string = str_ref;

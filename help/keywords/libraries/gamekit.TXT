@@ -1,0 +1,13 @@
+gamekit Game Development Asset & Animation Library
+======================================================================
+
+The gamekit library provides sprite sheet animations, tilemap loading,
+and audio playback helpers for game development.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Sprite animation state machines.
+  - Tilemap rasterization and map collision.
+  - Sound effect and music triggering.

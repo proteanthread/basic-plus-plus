@@ -1,0 +1,16 @@
+SIN Sine Trigonometric Function
+======================================================================
+
+The SIN function computes the sine of an angle in radians.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result# = SIN(angle_radians)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT SIN(0)   : REM Outputs 0

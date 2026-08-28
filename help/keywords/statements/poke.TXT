@@ -1,0 +1,35 @@
+POKE Write Memory Byte Statement
+======================================================================
+
+The POKE statement writes an 8-bit byte value (0 to 255) into virtual
+memory at the specified address.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    POKE address_expression, byte_value_expression
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Writes byte value (0..255) to active DEF SEG / BANK segment.
+  - Security checked: Error 70 if restricted.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  5           ERR_ILLEGAL_FUNCTION  Byte value outside 0..255
+  70          ERR_PERMISSION_DENIED Memory write restricted
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 DEF SEG = &HB800
+    20 POKE 0, 65
+    30 DEF SEG

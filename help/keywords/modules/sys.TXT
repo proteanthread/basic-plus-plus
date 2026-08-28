@@ -1,0 +1,32 @@
+SYS Machine Code Execution Statement
+======================================================================
+
+The SYS statement calls machine language routines or native C
+extensions at a specified memory address (Commodore/Apple compatible).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    SYS address_expression [, arg1, arg2, ...]
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Calls routine at virtual address.
+  - Security sandboxed: Error 70 if restricted.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  70          ERR_PERMISSION_DENIED SYS execution restricted
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SYS &H1000

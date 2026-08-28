@@ -1,0 +1,23 @@
+variables Variable Context & Symbol Table Manager (libkernel)
+======================================================================
+
+The variables library implements the symbol table, scope lookup stack,
+and variable allocation lifecycle.
+
+
+INVARIANTS
+----------------------------------------------------------------------
+
+  - Manages global, local, and COMMON variable contexts.
+  - var_clear_all: full variable reset for RUN / NEW.
+  - var_clear_for_chain: retains COMMON variables across CHAIN.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    VariableContext *var_create(void);
+    BValue *var_lookup(VariableContext *vc, const char *name, bool create);
+    void var_set(VariableContext *vc, const char *name, BValue val);
+    void var_clear_all(VariableContext *vc);
+    void var_clear_for_chain(VariableContext *vc);

@@ -1,0 +1,17 @@
+NUM$ Numeric Formatted String Function
+======================================================================
+
+The NUM$ function converts a number to a string without adding leading
+spaces for positive numbers.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    num_str$ = NUM$(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT NUM$(123)   : REM Outputs "123"

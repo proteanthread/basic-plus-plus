@@ -1,0 +1,13 @@
+editor Multi-Window TUI Editor Subsystem (libstandard)
+======================================================================
+
+The editor library provides the full-screen interactive TUI code editor
+and terminal multiplexer.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Syntax highlighting for BASIC code.
+  - Multi-window split editing and watch panes.
+  - Interactive debugging integration.

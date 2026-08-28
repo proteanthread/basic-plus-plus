@@ -1,57 +1,12 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
+// FILENAME: data.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore, libengine, libkernel, libplatform, libserver
+// Implements bytecode virtual machine execution and state for data.
+//
+// ---- Includes ----
 
-/**
- * @file data.c
- * @brief VM DATA, READ, and RESTORE stream pointer tracking and evaluation logic for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements `vm_data_scan()`, `vm_data_read()`, and `vm_data_restore()` for inline program DATA item stream reading.
- *
- * 2. WHY IT EXISTS:
- * Provides GW-BASIC and QBASIC DATA/READ/RESTORE sequential data parsing and line label RESTORE positioning.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Scans program source code for `DATA` statements, stores item positions in `vm->data_items` array, tracks current read offset (`vm->data_ptr`), and parses string/number items into `BValue` on `READ`.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake library targets 'libbasicpp' and 'libbasicpp_lite'. Includes "vm/vm.h", "vm_internal.h",
- * "stmt/stmt.h", "eval/eval.h", "runtime/variables.h", "runtime/strings.h", <stdlib.h>, <string.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support typed DATA streams (e.g. DATA INT, DATA FLOAT) or RESTORE with string labels.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Sequential READ pointer advancement and RESTORE line resetting invariant.
- *
- * 8. WHAT TO EXPECT:
- * `vm_data_read()` returns `VAL_STRING` or `VAL_NUMBER` BValue or ERR_OUT_OF_DATA (error 4) on stream exhaustion.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify `vm_data_scan()` execution before program run and inspect `vm->data_ptr` index bounds.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid `VMContext` with loaded program lines.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. All string tokens bounded by length (`memcmp`/`strncpy`).
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/vm/context.c
- * - engine/src/runtime/strings.c
- * - engine/src/eval/eval.c
- * Prerequisite Header Files:
- * - engine/include/vm/vm.h
- * - engine/src/vm/vm_internal.h
- * - engine/include/eval/eval.h
- */
 #include "vm/vm.h"
 #include "vm_internal.h"
 #include "stmt/stmt.h"
@@ -74,19 +29,19 @@
 #include "runtime/variables.h"
 #include "platform/platform.h"
 #include "core/struct.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <ctype.h>
-
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "runtime/ctype/ctype.h"
+#include "hal/hal.h"
 
 void vm_build_data_table(VMContext *vm) {
     if (!vm) return;
+    HalContext *hal = hal_get();
 
-    /* Free old table */
+    // Free old table
     if (vm->data_items) {
-        free(vm->data_items);
+        if (hal && hal->mem.free) hal->mem.free(vm->data_items);
         vm->data_items = NULL;
     }
     vm->data_count = 0;
@@ -96,10 +51,13 @@ void vm_build_data_table(VMContext *vm) {
     size_t count = 0;
     BppProgramLine *lines = mem_program_get_all(mem, &count);
 
-    /* Allocate capacity */
+    // Allocate capacity
     int capacity = 32;
-    vm->data_items = (BppDataPosition *)calloc(capacity, sizeof(BppDataPosition));
+    if (hal && hal->mem.alloc) {
+        vm->data_items = (BppDataPosition *)hal->mem.alloc(capacity * sizeof(BppDataPosition));
+    }
     if (!vm->data_items) return;
+    runtime_memset(vm->data_items, 0, capacity * sizeof(BppDataPosition));
 
     for (size_t i = 0; i < count; ++i) {
         LexerContext *lex = lex_init(mem, lines[i].text);
@@ -108,41 +66,59 @@ void vm_build_data_table(VMContext *vm) {
         BppToken tok = lex_next(lex);
         while (tok.type != TOK_EOF) {
             if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_DATA) {
-                while (true) {
-                    BppToken val_tok = lex_peek(lex);
-                    if (val_tok.type == TOK_EOL || val_tok.type == TOK_EOF || 
-                        (val_tok.type == TOK_KEYWORD && val_tok.as.keyword != KW_NONE)) {
-                        break;
-                    }
+                const char *p = tok.start + tok.length;
+                while (*p) {
+                    while (*p && runtime_isspace((unsigned char)*p)) p++;
+                    if (*p == '\0' || *p == ':' || *p == '\n' || *p == '\r') break;
 
                     if (vm->data_count >= capacity) {
+                        int old_cap = capacity;
                         capacity *= 2;
-                        BppDataPosition *temp = (BppDataPosition *)realloc(vm->data_items, capacity * sizeof(BppDataPosition));
+                        BppDataPosition *temp = NULL;
+                        if (hal && hal->mem.realloc) {
+                            temp = (BppDataPosition *)hal->mem.realloc(vm->data_items, capacity * sizeof(BppDataPosition));
+                        } else if (hal && hal->mem.alloc) {
+                            temp = (BppDataPosition *)hal->mem.alloc(capacity * sizeof(BppDataPosition));
+                            if (temp && vm->data_items) {
+                                runtime_memcpy(temp, vm->data_items, old_cap * sizeof(BppDataPosition));
+                                if (hal->mem.free) hal->mem.free(vm->data_items);
+                            }
+                        }
                         if (!temp) {
                             lex_shutdown(lex);
                             return;
                         }
-                        /* Zero-init new entries per project rules */
-                        memset(temp + (capacity / 2), 0, (capacity / 2) * sizeof(BppDataPosition));
+                        runtime_memset(temp + old_cap, 0, (capacity - old_cap) * sizeof(BppDataPosition));
                         vm->data_items = temp;
                     }
 
                     vm->data_items[vm->data_count].line = lines[i].line_number;
-                    vm->data_items[vm->data_count].pos = val_tok.start;
+                    vm->data_items[vm->data_count].pos = p;
                     vm->data_count++;
 
-                    lex_next(lex); /* Consume literal */
-                    BppToken comma = lex_peek(lex);
-                    if (comma.type == TOK_COMMA) {
-                        lex_next(lex); /* Consume ',' */
+
+                    if (*p == '"') {
+                        p++;
+                        while (*p && *p != '"' && *p != '\n' && *p != '\r') p++;
+                        if (*p == '"') p++;
+                    } else {
+                        while (*p && *p != ',' && *p != ':' && *p != '\n' && *p != '\r') p++;
+                    }
+
+                    while (*p && runtime_isspace((unsigned char)*p)) p++;
+                    if (*p == ',') {
+                        p++;
                     } else {
                         break;
                     }
                 }
+                lex_shutdown(lex);
+                lex = lex_init(mem, p);
+                if (!lex) break;
             }
             tok = lex_next(lex);
         }
-        lex_shutdown(lex);
+        if (lex) lex_shutdown(lex);
     }
 }
 

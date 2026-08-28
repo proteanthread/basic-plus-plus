@@ -1,0 +1,25 @@
+POINT Pixel Color Query Function
+================================
+
+Returns the color attribute of the pixel at (x,y), or returns current graphics pen coordinates.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    color_val% = POINT(x%, y%)
+    coord = POINT(mode%)
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Returns -1 if (x,y) is outside active screen viewport.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SCREEN 12
+    20 PSET (100, 100), 14
+    30 PRINT "Color at (100, 100) is: "; POINT(100, 100) : REM Outputs 14

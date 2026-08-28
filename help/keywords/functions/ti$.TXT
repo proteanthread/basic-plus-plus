@@ -1,0 +1,18 @@
+TI$ Timer Clock String Function & Variable
+======================================================================
+
+The TI$ variable/function returns a 6-digit string time "HHMMSS"
+(Commodore 64 compatible).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    time_str$ = TI$
+    TI$ = "HHMMSS"
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "TI$: "; TI$

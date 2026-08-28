@@ -1,0 +1,25 @@
+C17 API REFERENCE: SEGMENTED MEMORY & REAL-MODE (memory/segmented_mem.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Segmented Memory Subsystem provides 8086 real-mode 1MB address space
+virtualization, DEF SEG registers, virtual variable handles (VARSEG/VARPTR),
+and memory reading/writing (PEEK/POKE).
+
+2. KEY TYPES & STRUCTS
+- VMemContext: Opaque segmented memory handle.
+
+3. CORE API FUNCTIONS
+- vmem_init(var_ctx) -> VMemContext *
+- vmem_shutdown(ctx)
+- vmem_set_def_seg(ctx, seg)
+- vmem_get_def_seg(ctx) -> uint16_t
+- vmem_register_handle(ctx, val, is_str) -> uint32_t
+- vmem_resolve_handle(ctx, handle, out_is_str) -> BValue *
+- vmem_peek(ctx, address, out_val) -> int
+- vmem_poke(ctx, address, val) -> int
+
+4. ARCHITECTURAL INVARIANTS
+- Physical address = (DEF SEG * 16) + offset.
+- Host pointers are safely mapped through 32-bit virtual handles.
+- Included in Standard Edition (baspp); excluded from Lite Edition (bpp).

@@ -1,0 +1,16 @@
+PI Archimedes' Mathematical Constant Function / Constant
+======================================================================
+
+The PI function returns the mathematical constant Pi.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    pi_val# = PI
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT PI   : REM Outputs 3.141592653589793

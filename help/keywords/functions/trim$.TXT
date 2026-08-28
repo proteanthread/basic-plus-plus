@@ -1,0 +1,17 @@
+TRIM$ Whitespace Trimming Function
+======================================================================
+
+The TRIM$ function removes leading and trailing spaces and tabs from a
+string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    trimmed$ = TRIM$(string_expression$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT TRIM$("   hello   ")   : REM Outputs "hello"

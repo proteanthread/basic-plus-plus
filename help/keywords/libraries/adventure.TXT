@@ -1,0 +1,12 @@
+adventure Classic Colossal Cave Style Adventure Engine
+======================================================================
+
+The adventure library provides classic Colossal Cave adventure mechanics,
+vocabulary tokenizers, and treasure scoring systems.
+
+
+COMMANDS
+----------------------------------------------------------------------
+
+  - Two-word verb-noun parsing (TAKE LAMP, GO NORTH, OPEN DOOR).
+  - Item state tracking and inventory limits.

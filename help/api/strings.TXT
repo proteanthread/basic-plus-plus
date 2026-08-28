@@ -1,0 +1,25 @@
+C17 API REFERENCE: STRING POOL RUNTIME (runtime/strings.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The String Pool Runtime Subsystem manages reference-counted string
+allocations, concatenation, slicing, length caching, and garbage collection.
+
+2. KEY TYPES & STRUCTS
+- StringContext: Opaque string heap manager.
+- BppStringRef: Handle to reference-counted BppString struct.
+
+3. CORE API FUNCTIONS
+- str_init(mem) -> StringContext *
+- str_shutdown(ctx)
+- str_create(ctx, data, length) -> BppStringRef
+- str_add_ref(ref)
+- str_release(ctx, ref)  [Mandatory 2-parameter signature]
+- str_concat(ctx, a, b) -> BppStringRef
+- str_mid(ctx, ref, start, len) -> BppStringRef
+- str_data(ref) -> const char *
+- str_len(ref) -> size_t
+
+4. STRING LIFECYCLE INVARIANTS
+- str_release() requires StringContext as the first argument.
+- Handlers evaluating string expressions are the owners and must release.

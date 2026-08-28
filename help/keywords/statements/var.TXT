@@ -1,0 +1,20 @@
+BASIC++ STATEMENT REFERENCE: VAR
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  VAR varname [AS Type] [= initial_expression]
+
+Declares a variable with optional explicit typing or automatic type inference
+and optional initial value assignment.
+
+2. PARAMETERS
+- varname: Variable identifier.
+- Type: Optional data type.
+- initial_expression: Initial assignment expression.
+
+3. ERROR CODES
+- Error 10 (ERR_DUPLICATE_DEFINITION): Variable declared multiple times.
+
+4. EXAMPLES
+  10 VAR Limit% = 500
+  20 VAR Prefix$ = "Log_"

@@ -1,0 +1,12 @@
+custom_statement Custom Statement Extension Template
+======================================================================
+
+Guide and template for implementing custom BASIC++ statement handlers in C.
+
+
+SAFETY RULES
+----------------------------------------------------------------------
+
+  - Always advance lexer tokens (lex_next).
+  - Release evaluated strings via str_release(str_ctx, val.as.string).
+  - Explicit bounds check: return Error 5 on out-of-bounds arguments.eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeer

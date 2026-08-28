@@ -1,15 +1,11 @@
-/* =====================================================================
- * What it does: Declarations for the BITMUX statement handler.
- * Why it exists: Provides public function signature for stmt_bitmux.c micro-library target.
- * Why it works this way: Defines stmt_bitmux_handler function prototype.
- * What can be changed: Additional helper function prototypes if expanded.
- * What cannot be changed: C17 header guards, VMContext / LexerContext types.
- * What to expect: Clean compilation when included independently.
- * What to do if something breaks: Check included header paths relative to engine/include/.
- * Assumptions: VMContext and LexerContext types are defined.
- * Portability concerns: Strict C17 compliant.
- * Future expansions: Multi-dimensional BITMUX statement declarations.
- * ===================================================================== */
+// FILENAME: bitmux.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libengine (lexer.h, lexer.c, vm.h)
+// Provides runtime implementation for the BITMUX statement in BASIC++.
+//
+// ---- Includes ----
 
 #ifndef STATEMENTS_STMT_BITMUX_H
 #define STATEMENTS_STMT_BITMUX_H
@@ -20,4 +16,4 @@
 BppError stmt_bitmux_handler(VMContext *vm, LexerContext *lex);
 void stmt_bitmux_register(void);
 
-#endif /* STATEMENTS_STMT_BITMUX_H */
+#endif // STATEMENTS_STMT_BITMUX_H

@@ -1,0 +1,21 @@
+// FILENAME: auto.h
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (auto.c)
+// NEEDS: libengine (lexer.h, lexer.c, vm.h)
+// NEEDS: libkernel (types.h)
+// Provides runtime implementation for the AUTO statement in BASIC++.
+//
+// ---- Includes ----
+
+#ifndef STATEMENTS_PROGRAM_AUTO_H
+#define STATEMENTS_PROGRAM_AUTO_H
+
+#include "types/types.h"
+#include "vm/vm.h"
+#include "lexer/lexer.h"
+
+BppError stmt_auto_handler(VMContext *vm, LexerContext *lex);
+void stmt_auto_register(void);
+
+#endif // STATEMENTS_PROGRAM_AUTO_H

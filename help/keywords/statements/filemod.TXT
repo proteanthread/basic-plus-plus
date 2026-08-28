@@ -1,0 +1,28 @@
+FILEMOD File Modification Numeric Timestamp Function
+====================================================
+
+Returns the last modification timestamp of a file as a 64-bit Unix epoch integer.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    t# = FILEMOD(filename$)
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 53 (ERR_FILE_NOT_FOUND): File does not exist.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Facilitates fast modification date comparisons.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Epoch timestamp: "; FILEMOD("DATA.DAT")

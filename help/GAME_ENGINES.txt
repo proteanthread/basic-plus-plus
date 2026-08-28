@@ -1,45 +1,162 @@
-# Game Engine Master Guide
+======================================================================
+  BASIC++ V6.5.2 GAME ENGINE PATTERNS
+======================================================================
 
-BASIC++ 5.0.1 introduced a modular architecture for the 11 built-in games (Adventure, Zelda, Pacman, Mario, Donkey Kong, Defender, Missile Command, Peg Solitaire, Solitaire, Starfield, and Space Invaders). 
 
-This guide explains how the engines themselves operate.
+======================================================================
+  1. OVERVIEW
+======================================================================
 
-## Architecture Overview
+BASIC++ provides all the building blocks for writing games: pixel graphics, sprite animation, keyboard/joystick input, sound effects, music, timer events, and double-buffered display. This guide covers common game engine patterns using these facilities.
 
-All engines are standard BASIC++ `.BAS` files found in the `games/` directory. They contain **zero** hardcoded rendering logic other than standard text-mode `LOCATE`, `COLOR`, and `PRINT` commands.
 
-### Dependency Injection
-Each engine relies on one or more external `.LIB` files for its mechanics. For instance:
-- `mario.BAS` and `donkeykong.BAS` load `platformer.LIB`.
-- `pacman.BAS` loads `maze.LIB`.
+======================================================================
+  2. THE MAIN GAME LOOP
+======================================================================
 
-The engine simply uses `LOAD LIBRARY "lib\library_name.LIB"` at the top of the file to import the subroutines.
+Every game needs a main loop that processes input, updates game state, and renders the display:
 
-### Game Loops
-All engines use a tight, non-blocking input loop using `INKEY$` combined with the `TICKS` timer to maintain a consistent frame rate. 
+100 SCREEN 7, , 0, 1       ' Draw on page 0, display page 1
+110 RANDOMIZE TIMER
+120 ' Initialize game state
+130 PlayerX = 160 : PlayerY = 100
+140 Score = 0 : GameOver = 0
+150 ' Main loop
+160 WHILE NOT GameOver
+170   GOSUB 1000             ' Process input
+180   GOSUB 2000             ' Update game state
+190   GOSUB 3000             ' Render frame
+200   PCOPY 0, 1             ' Flip display buffer
+210 WEND
+220 SCREEN 0 : END
 
-```basic
-GFT = TICKS
-... (Update logic)
-GT2 = TICKS: GT1 = GT2 - GFT
-IF GT1 < 50 THEN DELAY 50 - GT1
-```
 
-### Save States (`.SAV`)
-All game engines support persistent progress saving. Pressing `S` during gameplay will `GOSUB 8000` (or similar) to serialize variables to a `<game>.sav` file via `OPEN ... FOR OUTPUT`. Pressing `L` will deserialize the variables.
+======================================================================
+  3. INPUT HANDLING
+======================================================================
 
-## List of Engines
+Non-blocking input using INKEY$:
 
-| Game | Library Dependency | Description |
-|---|---|---|
-| `adventure.BAS` | `rpg_procgen.LIB` | Node-based procedural adventure |
-| `zelda.BAS` | `rpg_procgen.LIB` | Cellular automata grid procedural action-adventure |
-| `pacman.BAS` | `maze.LIB` | Grid-based pathing and collision |
-| `mario.BAS` | `platformer.LIB` | Gravity and jumping mechanics |
-| `donkeykong.BAS` | `platformer.LIB` | Gravity and ladders |
-| `defender.BAS` | `arcade_shooter.LIB` | Side-scrolling vector terrain |
-| `missile.BAS` | `arcade_shooter.LIB` | Vector-based radii explosion mechanics |
-| `pegsol.BAS` | `boardgame.LIB` | Grid cursor and validation mechanics |
-| `solitaire.BAS` | `boardgame.LIB` | Card shuffling and drawing |
-| `starfield.BAS` | `vfx.LIB` | 3D projection rendering |
-| `invaders.BAS` | `swarm.LIB` | Grid-based multi-entity movement |
+1000 ' Process input
+1010 K$ = INKEY$
+1020 IF K$ = "" THEN RETURN
+1030 IF LEN(K$) = 2 THEN
+1040   Code = ASC(MID$(K$, 2, 1))
+1050   IF Code = 72 THEN PlayerY = PlayerY - Speed    ' Up
+1060   IF Code = 80 THEN PlayerY = PlayerY + Speed    ' Down
+1070   IF Code = 75 THEN PlayerX = PlayerX - Speed    ' Left
+1080   IF Code = 77 THEN PlayerX = PlayerX + Speed    ' Right
+1090 END IF
+1100 IF K$ = " " THEN GOSUB 4000      ' Fire (spacebar)
+1110 IF K$ = CHR$(27) THEN GameOver = 1 ' Escape to quit
+1120 RETURN
+
+Joystick input using STICK and STRIG:
+
+1200 JoyX = STICK(0) : JoyY = STICK(1)
+1210 IF JoyX < 100 THEN PlayerX = PlayerX - Speed
+1220 IF JoyX > 156 THEN PlayerX = PlayerX + Speed
+1230 IF JoyY < 100 THEN PlayerY = PlayerY - Speed
+1240 IF JoyY > 156 THEN PlayerY = PlayerY + Speed
+1250 IF STRIG(0) THEN GOSUB 4000
+
+
+======================================================================
+  4. SPRITE ANIMATION WITH XOR
+======================================================================
+
+The classic technique for sprite animation uses PUT with XOR action:
+
+' Draw sprite (XOR on)
+PUT (SpriteX, SpriteY), SpriteData%, XOR
+' Update position
+SpriteX = SpriteX + DX : SpriteY = SpriteY + DY
+' Erase old sprite (XOR off) ? automatically erased when redrawn
+
+For smoother animation, use double-buffered page flipping (PCOPY) instead of XOR.
+
+
+======================================================================
+  5. COLLISION DETECTION
+======================================================================
+
+Pixel-level collision using POINT:
+
+5000 ' Check if player hits obstacle
+5010 IF POINT(PlayerX, PlayerY) = ObstacleColor THEN
+5020   GOSUB 6000            ' Handle collision
+5030 END IF
+5040 RETURN
+
+Bounding box collision:
+
+5100 FUNCTION Collide(x1,y1,w1,h1, x2,y2,w2,h2)
+5110   IF x1+w1 < x2 THEN Collide = 0 : EXIT FUNCTION
+5120   IF x2+w2 < x1 THEN Collide = 0 : EXIT FUNCTION
+5130   IF y1+h1 < y2 THEN Collide = 0 : EXIT FUNCTION
+5140   IF y2+h2 < y1 THEN Collide = 0 : EXIT FUNCTION
+5150   Collide = 1
+5160 END FUNCTION
+
+
+======================================================================
+  6. TIMED UPDATES
+======================================================================
+
+Use ON TIMER for fixed-rate game logic:
+
+10 ON TIMER(0.033) GOSUB 2000     ' ~30 FPS update
+20 TIMER ON
+
+
+======================================================================
+  7. SOUND EFFECTS
+======================================================================
+
+7000 ' Explosion sound
+7010 FOR I = 500 TO 100 STEP -50
+7020   SOUND I, 1
+7030 NEXT I
+7040 RETURN
+
+7100 ' Laser sound
+7110 FOR I = 2000 TO 500 STEP -200
+7120   SOUND I, 0.5
+7130 NEXT I
+7140 RETURN
+
+
+======================================================================
+  8. BACKGROUND MUSIC
+======================================================================
+
+Use PLAY with MB (music background) to play music while the game runs:
+
+8000 PLAY "MB T160 L8 O3 EDCDEEE DDD EGG EDCDEEE EDDC"
+8010 RETURN
+
+ON PLAY(2) GOSUB 8000 refills the music buffer when it runs low.
+
+
+======================================================================
+  9. SCORE AND HUD
+======================================================================
+
+Use DISPLAY for non-scrolling HUD elements:
+
+9000 DISPLAY 1, 1, "Score: " + STR$(Score)
+9010 DISPLAY 1, 60, "Lives: " + STRING$(Lives, CHR$(3))
+9020 RETURN
+
+
+======================================================================
+  10. SCREEN MODE SELECTION
+======================================================================
+
+| Game Type | Recommended Mode |
+|-----------|-----------------|
+| Simple arcade | SCREEN 1 (320x200, 4 colors) |
+| Detailed arcade | SCREEN 7 (320x200, 16 colors) |
+| Strategy/RPG | SCREEN 9 (640x350, 16 colors) |
+| Pixel art | SCREEN 13 (320x200, 256 colors) |
+| High-res | SET SCREEN 640, 480, 8 |

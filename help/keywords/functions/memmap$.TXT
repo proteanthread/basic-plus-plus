@@ -1,0 +1,35 @@
+MEMMAP$ Memory Layout Diagnostic String Function
+======================================================================
+
+The MEMMAP$ function returns a formatted multi-line ASCII diagnostic
+string displaying the active memory layout, segmented memory, bank
+mappings, and variable metrics.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    map$ = MEMMAP$()
+    map$ = MEMMAP$(selector%)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - MEMMAP$() / MEMMAP$(0): Complete memory map overview.
+  - MEMMAP$(1): Segmented memory region diagnostics.
+  - MEMMAP$(2): Variable table and array metrics.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  13          ERR_TYPE_MISMATCH     Non-numeric selector provided
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT MEMMAP$()

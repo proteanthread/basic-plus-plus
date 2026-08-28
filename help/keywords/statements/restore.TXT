@@ -1,0 +1,31 @@
+RESTORE Reset DATA Statement Pointer Statement
+==============================================
+
+Resets the internal DATA pointer to the beginning of the program, or to the specified line number/label.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    RESTORE [line_number% | @label]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 8 (ERR_UNDEFINED_LINE_NUMBER): Target line not found.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Allows multiple passes over embedded data tables.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 READ A, B
+    20 RESTORE : REM Reset back to line 40
+    30 READ C, D
+    40 DATA 10, 20

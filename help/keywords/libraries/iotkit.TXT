@@ -1,0 +1,13 @@
+iotkit Internet of Things & Sensor Integration Library
+======================================================================
+
+The iotkit library provides GPIO pin control, sensor reading, and MQTT
+telemetry integration.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Digital and PWM GPIO pin control.
+  - I2C and SPI sensor bus access.
+  - MQTT telemetry publishing.

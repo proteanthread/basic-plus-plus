@@ -1,0 +1,53 @@
+================================================================================
+  Phase 2D: libhardware & libserver Freestanding Conversion Specification
+================================================================================
+
+1. Overview
+--------------------------------------------------------------------------------
+Phase 2D completes the freestanding C17 architectural conversion for both the
+Hardware Subsystem (libhardware) and the Cloud Server & Networking Subsystem
+(libserver). All standard C library allocations (malloc, calloc, free), memory
+manipulations (memset, memcpy, memmove), string operations (strlen, strcpy,
+strcmp, strncpy, strcasecmp), mathematical calls (abs, cos, sin, sqrt), and
+formatting functions (snprintf) have been migrated to the pure C17 freestanding
+Runtime Library (runtime_*) and the Hardware Abstraction Layer (hal_get()->mem.*,
+hal_get()->io.*, hal_get()->time.*).
+
+
+2. Converted Components & Source Inventory
+--------------------------------------------------------------------------------
+
+2.1 Hardware Subsystem (libhardware)
+  - engine/src/device/bgi/bgi_autodetect.c: Freestanding C17 display detection
+  - engine/src/device/bgi/bgi_core.c: Framebuffer & VRAM allocation via HAL
+  - engine/src/device/bgi/bgi_font.c: Font metrics converted to runtime strops
+  - engine/src/device/bgi/bgi_modes.c: Video mode registry converted to runtime
+  - engine/src/device/bgi/bgi_palette.c: Freestanding palette indexing
+  - engine/src/device/bgi/bgi_raster.c: Primitives converted to runtime math & mem
+  - engine/src/device/fujinet.c: N:, FUJI:, CLOCK: converted to HAL IO & time
+  - engine/src/memory/segmented_mem.c: Segment table converted to HAL mem & memops
+  - engine/src/runtime/microplex.c: String & bit multiplexing converted to strops
+
+2.2 Cloud Server & Networking Subsystem (libserver)
+  - engine/src/runtime/crypto.c: Hashes & LZ77 converted to runtime & HAL mem
+  - engine/src/runtime/gemini.c: Gemini fetcher converted to HAL mem & snprintf
+  - engine/src/runtime/task.c: Background task manager converted to runtime
+  - engine/src/runtime/vfs.c: Virtual File System mounts converted to runtime & HAL
+  - engine/src/runtime/vnet.c: Socket tunnel converted to runtime & HAL mem
+  - engine/src/module/regex.c: Regex bridge converted to runtime & HAL free
+
+
+3. Verification and Quality Gates
+--------------------------------------------------------------------------------
+1. Zero Hosted Libc Dependencies: Audited all 15 source files for zero hosted
+   C headers (<stdio.h>, <stdlib.h>, <string.h>, <math.h>, <time.h>).
+2. Dedicated Unit Test Suites:
+   - tests/hardware_freestanding_test.c: Validates BGI modes, rasterizer, clipping,
+     floodfill, font metrics, segmented memory, microplex, and FujiNet devices.
+   - tests/server_freestanding_test.c: Validates crypto hashes, LZ77 roundtrip,
+     VFS mount/resolve, task manager lifecycle, and VNet channels.
+3. Master Regression Coverage:
+   - tests/qb_vbdos_master.bas: 10/10 packages PASSED (100%).
+   - tests/vintage_ecosystems_master.bas: 14/14 packages PASSED (100%).
+   - tests/vintage_deep_fuzz_stress.bas: 8/8 tests PASSED (100%).
+================================================================================

@@ -1,0 +1,22 @@
+SCRATCH Clear Scratch Pad Buffer Statement
+==========================================
+
+Clears the VFS scratch storage partition and temporary memory buffers.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    SCRATCH
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  System maintenance statement.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 SCRATCH : REM Cleans temporary storage

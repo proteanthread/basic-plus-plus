@@ -1,0 +1,13 @@
+mario Side-Scrolling Tile Platformer Template
+======================================================================
+
+The mario template implements horizontal tilemap scrolling, variable
+jumping physics, and tile block collision.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Tile collision grid (solids, breakable blocks, question boxes).
+  - Variable jump velocity and gravity physics.
+  - Enemy stomping and collision detection.

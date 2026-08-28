@@ -1,0 +1,16 @@
+IMP Bitwise and Logical Implication Operator
+======================================================================
+
+The IMP operator performs logical or bitwise implication ((NOT A) OR B).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result = expr1 IMP expr2
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT (0 IMP 1)   : REM Outputs -1 (true)

@@ -1,0 +1,22 @@
+MOUNTS Display Active VFS Mounts Statement
+==========================================
+
+Displays a table of all currently active virtual filesystem mount points and devices.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    MOUNTS
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Diagnostic utility statement.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 MOUNTS : REM Prints active mount table

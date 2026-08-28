@@ -1,0 +1,23 @@
+READBIT Bit Extraction (Universal Dual-Format)
+
+1. BASIC Usage and Function/Operator Definition
+
+The READBIT keyword extracts the value (0 or 1) of a specific bit position (0 to 63) in a 64-bit integer. It is fully supported in both infix and prefix notation.
+
+Syntax Signatures:
+``basic
+result = value READBIT bit_pos
+result = READBIT(value, bit_pos)
+`
+
+Operational Rules:
+- Returns ((uint64t)value >> (uint64t)bit_pos) & 1.
+- bit_pos must be in the range 0 to 63.
+- In RPN stack evaluation blocks: { value bit_pos READBIT }.
+
+2. Code Examples
+
+`basic
+10 PRINT "Infix: "; 8 READBIT 3 : REM Outputs 1
+20 PRINT "Prefix: "; READBIT(34359738368, 35) : REM Outputs 1
+``

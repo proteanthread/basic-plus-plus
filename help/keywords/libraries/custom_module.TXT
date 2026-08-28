@@ -1,0 +1,12 @@
+custom_module Custom Extension Module Template
+======================================================================
+
+Guide and template for creating dynamic C shared modules (.dll / .so)
+loaded via the module loader.
+
+
+EXPORTS
+----------------------------------------------------------------------
+
+    int bpp_module_init(VMContext *vm);
+    void bpp_module_shutdown(VMContext *vm);

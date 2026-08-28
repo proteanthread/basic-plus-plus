@@ -1,0 +1,28 @@
+INP Hardware I/O Port Input Function
+====================================
+
+Reads a single 8-bit byte value from the specified hardware or virtualized I/O port address.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    byte_val% = INP(port_address%)
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 70 (ERR_PERMISSION_DENIED): Direct I/O disabled in secure sandbox mode.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Virtual BIOS and device bus trap handler routing.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 STATUS% = INP(&H3DA) : REM Read CGA status register

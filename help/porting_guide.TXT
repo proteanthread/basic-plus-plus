@@ -1,136 +1,122 @@
-================================================================================
-                    PORTING GUIDE FOR BASIC++
-================================================================================
+======================================================================
+  BASIC++ V6.5.2 PORTING GUIDE
+======================================================================
 
-This plain-text porting guide accompanies BUILD_YOUR_OWN.md and offers a 
-highly detailed, definitive overview and step-by-step checklist for embedding 
-BASIC++ on new architectures, specialized OS environments, or highly 
-constrained embedded microcontrollers (Arduino, ESP32, BareMetal).
 
-Because BASIC++ adheres strictly to the C17 ISO standard, porting primarily 
-revolves around defining memory boundaries, optimizing config macros, and 
-implementing the Platform Abstraction Layer (PAL), rather than rewriting 
-core language logic.
+======================================================================
+  1. OVERVIEW
+======================================================================
 
---------------------------------------------------------------------------------
-1. THE MANDATORY CORE
---------------------------------------------------------------------------------
-To successfully compile and execute a "Hello World" in BASIC++, your toolchain 
-MUST compile the following minimal engine components:
+This guide covers porting BASIC++ to a new operating system or hardware platform. The porting effort is concentrated in the platform abstraction layer (libplatform). All other engine code is platform-independent C17.
 
-* core/main.c          (Entry point and CLI handling)
-* core/memory.c        (Deterministic memory pool management)
-* core/errors.c        (Error handling engine)
-* core/error_registry.c(Error definitions and strings)
-* core/value.c         (Type system for strings, numbers, floats)
-* core/stringpool.c    (Memory-safe string allocation)
-* core/platform.c      (Platform abstractions - SEE SECTION 5)
-* core/console.c       (Terminal standard I/O abstraction)
-* core/stdlib_core.c   (Safe wrappers for C standard library functions)
-* core/lite_stubs.c    (Satisfies linker for omitted parser hooks)
-* lexer/lexer.c        (Core tokenization)
-* lexer/keyword_props.c(Keyword definitions)
-* parser/parser.c      (Core grammar and AST construction)
-* parser/parser_expr.c (Expression evaluation)
-* runtime/runtime.c    (Execution engine state and symbol tables)
-* runtime/exec.c       (Statement execution)
-* runtime/ast_interpreter.c (AST walking engine)
 
---------------------------------------------------------------------------------
-2. OPTIONAL SUB-SYSTEMS (THE MODULAR APPROACH)
---------------------------------------------------------------------------------
-BASIC++ contains numerous subsystems that provide advanced functionality. These 
-can be entirely excluded from the build to save space (up to 2MB) and reduce 
-heavy OS dependencies. When excluding these, you MUST provide stub functions 
-in `lite_stubs.c` (see Section 4).
+======================================================================
+  2. PORTING CHECKLIST
+======================================================================
 
-* Graphics & Display (source/graphics/ and source/display/): 
-  Requires SDL2 in standard builds. Exclude to run headless. Saves ~1MB RAM.
-* Sound (source/sound/): 
-  Requires audio APIs. Exclude on systems without speakers.
-* File I/O (source/io/parser_fileio.c, source/io/fileio.c, source/io/vfs.c): 
-  Provides OPEN, CLOSE, GET, PUT. Exclude on systems lacking a filesystem (like 
-  Arduino Uno) or implement a custom Virtual File System (VFS). Saves ~100KB.
-* Networking (source/io/parser_net.c, source/io/builtins_net.c): 
-  Provides TCP/IP sockets. Exclude on systems without network stacks.
-* Self-Testing (source/debug.c, source/selftests_all.c): 
-  Exclude in production binaries. The 412-keyword selftest consumes massive 
-  string literal memory. Always omit for microcontrollers.
+To port BASIC++ to a new platform, implement the following platform modules:
 
---------------------------------------------------------------------------------
-3. CONFIGURATION FLAGS AND MEMORY TUNING
---------------------------------------------------------------------------------
-Define these macros in your build environment (CFLAGS) to bypass subsystems 
-globally without editing source files:
+1. **plat_console.c** ? Terminal initialization, cursor positioning, color attributes, raw key input, screen size queries.
+2. **plat_fs.c** ? File open/close/read/write, directory operations, path normalization.
+3. **plat_sys.c** ? Process exit, environment variables, hostname, username, shell execution.
+4. **plat_time.c** ? Current date/time, high-resolution timer, sleep/delay.
+5. **plat_thread.c** ? Mutex creation/locking (even if single-threaded, stub implementations are needed).
+6. **plat_dl.c** ? Dynamic library loading (or stub that always fails if not supported).
+7. **plat_net.c** ? TCP/UDP socket creation, connect, send, receive (or stub for no-network builds).
+8. **plat_regex.c** ? POSIX regex or custom implementation (or stub).
+9. **plat_clipboard.c** ? System clipboard read/write (or stub).
 
-* BASIC_LITE_BUILD: 
-  Disables heavy sub-system initialization in boot.c, drastically reducing 
-  memory footprint. Mandatory for microcontrollers.
-* NO_SDL2: 
-  Removes GUI hooks and directs PRINT to terminal standard output (stdin/stdout).
-  Severing this dependency makes the build purely POSIX/CLI driven.
-* INPUT_CONSOLE:
-  Forces standard library console input instead of event-driven SDL input.
-* BASIC_NO_NETWORK:
-  Disables the internal VFS networking socket wrappers (removes `<winsock2.h>`).
 
-*** EXTREME MEMORY TUNING FOR ARDUINO / ESP32 ***
-Edit `source/config.h` to physically restrict the runtime engine:
-1. MAX_VARS: Change from 4096 to 64 (Restricts symbol table size).
-2. STR_POOL_SIZE: Change from 1MB to 4096 (4KB string garbage collector limit).
-3. MAX_CALL_STACK: Change from 2048 to 64 (Limits GOSUB/CALL depth).
-4. AST_ARENA_SIZE: Change from 8MB to 16384 (Limits the size of loaded scripts).
+======================================================================
+  3. MINIMUM VIABLE PORT
+======================================================================
 
---------------------------------------------------------------------------------
-4. WRITING CUSTOM STUBS (SATISFYING THE LINKER)
---------------------------------------------------------------------------------
-When removing sub-systems like Graphics or File I/O, the parser core might 
-still contain hardcoded tokens for keywords like PLOT or OPEN. If your target 
-architecture does not link the graphics parser, the linker will fail.
+A minimal port requires only three modules: plat_console, plat_fs, and plat_time. With these three, the bpp lite edition can run with PRINT, INPUT, file I/O, and timing functions. Network, clipboard, dynamic loading, and regex can be stubbed.
 
-You MUST provide a "stub" file that satisfies the linker and throws a runtime 
-syntax error when the keyword is invoked by the user. Use `core/lite_stubs.c`!
 
-Example (lite_stubs.c):
-  void pi_parse_plot(Lexer *lex, RuntimeState *rt, int line_num) {
-      error_raise(ERR_HOW, line_num); // Throws "How?" Syntax Error
-  }
+======================================================================
+  4. STUB IMPLEMENTATIONS
+======================================================================
 
---------------------------------------------------------------------------------
-5. THE PLATFORM ABSTRACTION LAYER (PAL)
---------------------------------------------------------------------------------
-To make BASIC++ completely OS-agnostic, the core engine NEVER calls OS-specific 
-APIs (like Windows' Sleep() or POSIX's usleep()) directly. Instead, it calls 
-platform-neutral wrappers in `core/platform.c`.
+Each platform module has a well-defined API. Stubs return appropriate "not supported" values:
 
-When porting to a custom OS or bare-metal environment, you must edit 
-`core/platform.c` and implement the following handlers:
+// plat_net.c stub for no-network platforms
+int plat_net_connect(const char* host, int port) {
+    return -1;  // Connection not supported
+}
 
-* platform_sleep(ms):
-  Implement a blocking delay. On Arduino, this maps directly to `delay(ms)`.
-* platform_get_ticks():
-  Return milliseconds since boot. On Arduino, this is `millis()`.
-* platform_get_env():
-  Return environment variables. If your system has none, return NULL.
-* platform_console_init() / platform_console_cleanup():
-  Initialize UART, Serial ports, or VGA memory for text output.
-* memory pool hooks (CRITICAL for Embedded):
-  By default, `core/memory.c` uses `malloc` to request its large memory banks. 
-  On microcontrollers, you MUST statically allocate a massive array 
-  (e.g., `uint8_t static_heap[32768]`) and rewrite `memory.c` initialization 
-  to point the memory pool to that static array instead of dynamic allocation 
-  to avoid heap fragmentation entirely.
+The engine handles stub returns gracefully ? denied operations produce Error 73 (Advanced feature disabled).
 
---------------------------------------------------------------------------------
-6. PORTING CHECKLIST
---------------------------------------------------------------------------------
-[ ] Set up a custom Makefile or build script linking only the Core files.
-[ ] Define -DBPP_LITE_BUILD, -DNO_SDL2, and -DBPP_NO_NETWORK in compiler flags.
-[ ] Reduce STR_POOL_SIZE and AST_ARENA_SIZE in `config.h` to fit your SRAM.
-[ ] Ensure `core/lite_stubs.c` is included in the build to catch omitted modules.
-[ ] Attempt to compile. For every "Unresolved External Symbol" error emitted 
-    by the linker, add a dummy function to `lite_stubs.c` throwing `ERR_HOW`.
-[ ] Map `platform_sleep` and `platform_get_ticks` to your hardware timers.
-[ ] If compiling for a microcontroller, rewrite `memory.c` to use a static array.
-[ ] Run the compiled binary!
-================================================================================
+
+======================================================================
+  5. CONSOLE PORTING
+======================================================================
+
+The console module is usually the most complex port. It must provide:
+
+- Raw mode input (character-by-character without line buffering).
+- Non-blocking key reading (for INKEY$).
+- Cursor positioning (absolute row/column).
+- Color attribute setting (foreground/background).
+- Screen size queries (rows and columns).
+- Screen clearing.
+
+On POSIX systems, this uses termios and ANSI escape sequences. On Windows, the Console API. On embedded, UART serial output with VT100 escape codes.
+
+
+======================================================================
+  6. FILESYSTEM PORTING
+======================================================================
+
+The filesystem module must handle path format differences:
+
+- Path separators (/ vs \).
+- Drive letters (Windows) vs mount points (Unix).
+- Case sensitivity (Unix is case-sensitive, Windows is not).
+- Maximum path length.
+- File attribute handling.
+
+The VFS normalizes paths before they reach the platform layer, so most path issues are handled automatically.
+
+
+======================================================================
+  7. BUILD SYSTEM
+======================================================================
+
+Add a new CMake toolchain file in cmake/ for the target platform. The toolchain file specifies the compiler, linker, system libraries, and platform-specific defines.
+
+Create a new CMake preset or profile:
+
+if(MY_NEW_PLATFORM)
+    set(BASIC_MY_PLATFORM ON)
+    add_definitions(-DBASIC_MY_PLATFORM)
+    set(PLATFORM_SOURCES
+        engine/lib/platform/plat_console_myplatform.c
+        engine/lib/platform/plat_fs_myplatform.c
+        engine/lib/platform/plat_time_myplatform.c
+    )
+endif()
+
+
+======================================================================
+  8. TESTING A PORT
+======================================================================
+
+After implementing the platform modules, verify with:
+
+1. bpp -c "PRINT 2+2" ? Basic arithmetic.
+2. bpp -c "SELFTEST" ? Built-in self-test.
+3. Run the test suite: bpp tests/gwbasic/*.bas.
+4. Verify file I/O: create, read, write, delete files.
+5. Verify console: cursor positioning, colors, INKEY$.
+
+
+======================================================================
+  9. EXISTING PORTS AS REFERENCE
+======================================================================
+
+Use the existing platform implementations as reference:
+
+- **Windows**: engine/lib/platform/plat_*.c (Win32 API, #ifdef _WIN32 blocks).
+- **Linux**: Same files (POSIX API, #ifdef __linux__ blocks).
+- **FreeDOS**: cmake/dos16.cmake + #ifdef BASIC_FREEDOS_16 blocks.

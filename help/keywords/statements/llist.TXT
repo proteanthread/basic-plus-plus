@@ -1,0 +1,32 @@
+LLIST Printer Program Source Listing Command
+============================================
+
+Outputs program source lines from memory directly to the default line printer device (LPT1).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    LLIST [start_line%] - [end_line%]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 25 (ERR_DEVICE_FAULT): Printer is offline or out of paper.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Routes through the built-in virtual text-to-PDF pseudo-printer driver.
+  Outputs standard PDF 1.4 documents formatted with built-in Courier font,
+  saving automatically to <program_name>.pdf (or OUTPUT.PDF if no file loaded).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    LLIST         : REM Prints entire program listing to PDF
+    LLIST 10-50   : REM Prints lines 10 to 50 to PDF
+    LLIST 100-    : REM Prints from line 100 to end of program to PDF

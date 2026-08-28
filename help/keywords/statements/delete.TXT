@@ -1,0 +1,32 @@
+DELETE Program Line Deletion Command
+====================================
+
+Deletes a single program line or a contiguous range of lines from active program memory.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    DELETE [start_line%] - [end_line%]
+    DELETE line%
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 8 (ERR_UNDEFINED_LINE_NUMBER): Specified line range not found.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Silent execution in non-interactive batch runners.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 REM Line to keep
+    20 REM Line to delete
+    30 REM Line to delete
+    DELETE 20-30

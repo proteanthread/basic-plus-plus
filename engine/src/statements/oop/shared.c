@@ -1,50 +1,14 @@
-/**
- * @file shared.c
- * @brief SHARED, STATIC, LOCAL variable scoping statement handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements SHARED var1 [, var2...], STATIC var1, and LOCAL var1 variable scoping statement handlers inside SUB/FUNCTION procedures.
- *
- * 2. WHY IT EXISTS:
- * Binds local procedure variables to global scope symbols (SHARED) or preserves local values across procedure invocations (STATIC) per QBASIC standards.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Updates symbol resolution flags in active procedure scope context to redirect variable read/write operations to main module scope or persistent static storage.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_shared'. Includes "statements/oop/shared.h",
- * "vm/vm.h", "lexer/lexer.h", "eval/eval.h", "device/vdev.h", "security/security.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Fully included in libbasicpp (baspp) and libbasicpp_lite (bpp, bs) per Rule #1 (SUPPORT_OOP).
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support THREADLOCAL or GLOBAL explicit qualifiers if extending concurrency primitives.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Variable lifetime invariant: STATIC variables must retain values across calls until program exit; SHARED aliases global symbol.
- *
- * 8. WHAT TO EXPECT:
- * Registers variable scope links in VM procedure scope table and returns ERR_NONE.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify variable lookup precedence (Local > Shared/Static > Global) in vm_var.c.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext and active procedure context.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Heap allocation zero-initialized via calloc.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/statements/oop/sub.c
- * - engine/src/vm/vm_var.c
- * Prerequisite Header Files:
- * - engine/include/statements/oop/shared.h
- * - engine/include/vm/vm.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: shared.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (share.c)
+// NEEDS: libcore (micro_lib_metadata.h, micro_lib_metadata.c, string.h)
+// NEEDS: libcore (variables.h, variables.c)
+// NEEDS: libengine (eval.h, eval.c, lexer.h, lexer.c, shared.h, string.c, vm.h)
+// NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+// Provides runtime implementation for the SHARED statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "statements/oop/shared.h"
 #include "vm/vm.h"
@@ -55,24 +19,128 @@
 #include "runtime/micro_lib_metadata.h"
 #include <string.h>
 
+#include "runtime/variables.h"
+
 BppError stmt_shared_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
+
+    if (!vm || !lex) {
+        err.code = 5; err.message = "Null VM or lexer context";
+        return err;
+    }
+
+    VariableContext *var = vm_get_var(vm);
+
+    while (lex_peek(lex).type != TOK_EOF && lex_peek(lex).type != TOK_EOL) {
+        BppToken tok = lex_next(lex);
+        if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) {
+            err.code = 2; err.message = "Expected variable name in SHARED statement";
+            return err;
+        }
+
+        char name[64] = {0};
+        size_t len = (tok.length < sizeof(name) - 1) ? tok.length : sizeof(name) - 1;
+        memcpy(name, tok.start, len);
+
+        var_set_shared(var, name);
+
+        BppToken next = lex_peek(lex);
+        if (next.type == TOK_COMMA) {
+            lex_next(lex);
+        } else {
+            break;
+        }
+    }
+
     return err;
 }
 
 BppError stmt_local_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
+
+    if (!vm || !lex) {
+        err.code = 5; err.message = "Null VM or lexer context";
+        return err;
+    }
+
+    VariableContext *var = vm_get_var(vm);
+
+    while (lex_peek(lex).type != TOK_EOF && lex_peek(lex).type != TOK_EOL) {
+        BppToken tok = lex_next(lex);
+        if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) {
+            err.code = 2; err.message = "Expected variable name in LOCAL statement";
+            return err;
+        }
+
+        char name[64] = {0};
+        size_t len = (tok.length < sizeof(name) - 1) ? tok.length : sizeof(name) - 1;
+        memcpy(name, tok.start, len);
+
+        var_declare(var, name);
+
+        BppToken next = lex_peek(lex);
+        if ((next.type == TOK_KEYWORD && next.as.keyword == KW_AS) ||
+            (next.type == TOK_IDENT && next.length == 2 && (next.start[0] == 'A' || next.start[0] == 'a') && (next.start[1] == 'S' || next.start[1] == 's'))) {
+            lex_next(lex); // Consume AS
+            if (lex_peek(lex).type == TOK_IDENT || lex_peek(lex).type == TOK_KEYWORD) {
+                lex_next(lex); // Consume type
+            }
+        }
+
+        next = lex_peek(lex);
+        if (next.type == TOK_COMMA) {
+            lex_next(lex);
+        } else {
+            break;
+        }
+    }
+
     return err;
 }
 
 BppError stmt_static_handler(VMContext *vm, LexerContext *lex) {
     BppError err;
     memset(&err, 0, sizeof(err));
-    (void)vm; (void)lex;
+
+    if (!vm || !lex) {
+        err.code = 5; err.message = "Null VM or lexer context";
+        return err;
+    }
+
+    VariableContext *var = vm_get_var(vm);
+
+    while (lex_peek(lex).type != TOK_EOF && lex_peek(lex).type != TOK_EOL) {
+        BppToken tok = lex_next(lex);
+        if (tok.type != TOK_IDENT && tok.type != TOK_KEYWORD) {
+            err.code = 2; err.message = "Expected variable name in STATIC statement";
+            return err;
+        }
+
+        char name[64] = {0};
+        size_t len = (tok.length < sizeof(name) - 1) ? tok.length : sizeof(name) - 1;
+        memcpy(name, tok.start, len);
+
+        var_declare(var, name);
+
+        BppToken next = lex_peek(lex);
+        if ((next.type == TOK_KEYWORD && next.as.keyword == KW_AS) ||
+            (next.type == TOK_IDENT && next.length == 2 && (next.start[0] == 'A' || next.start[0] == 'a') && (next.start[1] == 'S' || next.start[1] == 's'))) {
+            lex_next(lex); // Consume AS
+            if (lex_peek(lex).type == TOK_IDENT || lex_peek(lex).type == TOK_KEYWORD) {
+                lex_next(lex); // Consume type
+            }
+        }
+
+        next = lex_peek(lex);
+        if (next.type == TOK_COMMA) {
+            lex_next(lex);
+        } else {
+            break;
+        }
+    }
+
     return err;
 }
 

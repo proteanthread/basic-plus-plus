@@ -1,0 +1,28 @@
+LOAD Program File Loading Statement
+===================================
+
+Loads a BASIC program file from disk into memory, optionally running it immediately if ', R' is appended.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    LOAD filename$ [, R]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 53 (ERR_FILE_NOT_FOUND): Specified program file does not exist.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Clears current variable state unless CHAIN is used.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    LOAD "GAME.BAS", R : REM Loads and immediately executes GAME.BAS

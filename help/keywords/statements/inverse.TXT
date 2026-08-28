@@ -1,0 +1,30 @@
+INVERSE Reverse Video Display Mode Statement
+============================================
+
+Toggles reverse video text rendering (swapping foreground and background colors).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    INVERSE inverse_flag%
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Flag must be 0 or 1.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Apple II and ZX Spectrum display attribute compatibility.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 INVERSE 1
+    20 PRINT " REVERSE HIGHLIGHT "
+    30 INVERSE 0

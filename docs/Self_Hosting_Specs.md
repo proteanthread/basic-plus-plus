@@ -1,322 +1,108 @@
-# Self-Hosting Specification Architecture
+# BASIC++ v6.5.2 Self-Hosting Specifications
 
+## 1. OVERVIEW
 
----
+BASIC++ supports defining, validating, generating, and documenting its own language specifications natively through BASIC++ scripts, modules, and the specification system. This capability is called "dialect metaprogramming" — the language can describe itself.
 
-## Table of Contents
+## 2. THE SPECIFICATION SYSTEM
 
-- Dynamic Keyword Dictionary
-- Specification File Format (.BPPSPEC)
-  - Supported Directives
-  - Category Types
-- Loading Features
-  - From the BASIC++ Command Line
-  - From Plugins
-  - From the Config File
-- Companion .LIB Files
-  - Example: turtle.lib
-  - Library Loading Flow
-  - Execution Flow
-- Security Pinning
-- Specification Registry
-  - Listing Loaded Specs
-  - Finding a Spec by Name
-- Dependencies
-- Complete Example
-  - Step 1: Create the Spec File (counter.spec)
-  - Step 2: Create the Library (counter.lib)
-  - Step 3: Use It
-- Architecture Summary
+The specification system (engine/src/runtime/spec.c) provides statements for defining language specifications programmatically:
 
----
-
-BASIC++ includes a **Self-Hosting Specification Architecture** that
-transforms the interpreter into a self-extensible language ecosystem.
-New statements, functions, and commands can be defined at runtime
-using declarative `.bppspec` files without recompiling the interpreter.
-
----
-
-## 1. Dynamic Keyword Dictionary
-
-The interpreter maintains a **dynamic keyword registry**. Core keywords
-(PRINT, IF, FOR, etc.) are pre-registered at compile time, but new
-keywords can be injected at runtime. Custom keywords receive IDs
-starting from 1000, separate from the core keyword enum.
-
-When the parser encounters a custom keyword, it dispatches to the
-specification system which locates the companion `.LIB` file and
-executes the implementation.
-
----
-
-## 2. Specification File Format (.BPPSPEC)
-
-Specifications are declarative text files. Each file defines one or
-more specifications using a block syntax:
+SPEC DEFINE name$ creates a new named specification. SPEC KEYWORD name$, category$, syntax$ registers a keyword in the specification. SPEC FUNCTION name$, params$, returns$, desc$ registers a function. SPEC VALIDATE runs validation checks against the active specification.
 
 ```basic
-DEFINE SPECIFICATION "TURTLE"
-    CATEGORY "STATEMENT"
-    VERSION "1.0"
-    SECURITY "SAFE"
-    DEPENDS "GRAPHICS"
-    LIB "turtle.lib"
-END SPECIFICATION
+10 SPEC DEFINE "MyDialect"
+20 SPEC KEYWORD "SHOUT", "statement", "SHOUT expression"
+30 SPEC KEYWORD "WHISPER", "statement", "WHISPER expression"
+40 SPEC FUNCTION "LOUD$", "(s$)", "STRING", "Convert to uppercase with !"
+50 SPEC VALIDATE
+60 PRINT "Specification valid: "; SPEC.VALID
 ```
 
-### Supported Directives
+## 3. DIALECT CONFIGURATION
 
-| Directive | Required | Description |
-|-----------|----------|-------------|
-| `DEFINE SPECIFICATION "name"` | Yes | Opens a spec block; name becomes the keyword |
-| `CATEGORY "type"` | Yes | `STATEMENT`, `FUNCTION`, `DIALECT`, `MODULE`, `LIBRARY`, `DEVICE` |
-| `VERSION "x.y"` | No | Version string for tracking |
-| `LIB "path.lib"` | No | Path to companion BASIC++ library |
-| `SECURITY "level"` | No | Required security level (e.g., `SAFE`, `STANDARD`) |
-| `DEPENDS "name1,name2"` | No | Comma-separated list of required specs |
-| `END SPECIFICATION` | Yes | Closes the block and registers the keyword |
-
-Lines starting with `#` are comments. Blank lines are ignored.
-
-### Category Types
-
-- **STATEMENT** — Registers a new executable statement keyword
-- **FUNCTION** — Registers a new callable function keyword
-- **MODULE** — Defines a loadable module
-- **LIBRARY** — Defines a library package
-- **DEVICE** — Defines a virtual device driver
-
-Only `STATEMENT` and `FUNCTION` categories trigger dynamic keyword
-registration.
-
----
-
-## 3. Loading Features
-
-### From the BASIC++ Command Line
+A BASIC++ program can define a custom dialect by specifying which keywords are available, how they parse, and what defaults apply:
 
 ```basic
-LOAD FEATURE "turtle.spec"
+10 DIALECT DEFINE "TEACHING"
+20 DIALECT ALLOW "PRINT", "INPUT", "IF", "THEN", "ELSE", "END"
+30 DIALECT ALLOW "FOR", "NEXT", "GOTO", "GOSUB", "RETURN"
+40 DIALECT DENY "SHELL", "POKE", "EXEC", "KILL"
+50 DIALECT DEFAULT "OPTION BASE", 1
+60 DIALECT ACTIVATE "TEACHING"
 ```
 
-This command:
-1. Checks `SECOP_EXT_LOAD` permission
-2. Validates the file path against security policy
-3. Parses the `.bppspec` file and registers new keywords
-4. Loads the companion `.lib` file into the library program space
-5. Checks security pinning against the current level
+The DIALECT DEFINE/ALLOW/DENY/DEFAULT/ACTIVATE sequence creates a restricted dialect suitable for educational environments. Only allowed keywords are recognized; denied keywords produce syntax errors.
 
-### From Plugins
+## 4. DOCUMENTATION GENERATION
 
-Plugins can auto-load `.spec` files during activation. When a plugin
-directory contains `.spec` files, they are automatically loaded via
-`spec_load_file()` during plugin initialization.
-
-### From the Config File
-
-You can register keyword aliases in the config file:
-
-```ini
-alias.MOSTRAR = PRINT
-alias.ENTRADA = INPUT
-```
-
-This registers `MOSTRAR` as an alias for `PRINT` at startup.
-
----
-
-## 4. Companion .LIB Files
-
-The behavior of custom statements is implemented in companion `.LIB`
-files. These are pure BASIC++ source files (or `.BPL` bytecode archives)
-that define SUBs and FUNCTIONs.
-
-### Example: turtle.lib
+The DOCGEN statement generates documentation from the specification and metadata registries:
 
 ```basic
-REM @LIBRARY TURTLE
-REM @VERSION 1.0
-REM @SECURITY SAFE
-
-SUB FORWARD(D)
-    REM Move turtle forward D pixels
-    REM Implementation using graphics primitives
-END SUB
-
-SUB TURNLEFT(A)
-    REM Turn turtle left A degrees
-END SUB
+10 DOCGEN "HELP", "output_help.txt"    ' Generate HELP text
+20 DOCGEN "CATALOG", "catalog.txt"      ' Generate CATALOG listing
+30 DOCGEN "HTML", "reference.html"      ' Generate HTML reference
 ```
 
-When the interpreter encounters the `TURTLE` statement, it looks up
-the loaded library by name and invokes the matching symbol (SUB).
+The documentation generator (engine/src/docgen/docgen.c) reads the MetadataRegistry and produces formatted output in the specified format.
 
-### Library Loading Flow
+## 5. METADATA REGISTRY
 
-```
-LOAD FEATURE "turtle.spec"
-    |
-    v
-spec_load_file("turtle.spec")
-    |-- Parse DEFINE SPECIFICATION
-    |-- keyword_register_custom("TURTLE") -> ID 1000+
-    |-- Store in spec_registry[]
-    |
-    v
-ext_lib_load("turtle.lib")
-    |-- Parse BASIC++ source
-    |-- Register SUBs/FUNCTIONs as symbols
-    |-- Store in lib_space[]
-```
-
-### Execution Flow
-
-```
-User types: TURTLE FORWARD 100
-    |
-    v
-parser.c: keyword ID >= KW_CUSTOM_START
-    |-- pi_parse_custom_statement()
-    |-- Security pinning check
-    |-- lib_space_find_by_name("TURTLE")
-    |-- lib_space_invoke_by_name(lib, "TURTLE", rt)
-    |-- Executes SUB FORWARD in library space
-```
-
----
-
-## 5. Security Pinning
-
-Specifications can declare a required security level:
+Every keyword, function, and statement in BASIC++ can have metadata attached:
 
 ```basic
-DEFINE SPECIFICATION "NETWORK_SCAN"
-    CATEGORY "STATEMENT"
-    SECURITY "OPEN"
-    LIB "netscan.lib"
-END SPECIFICATION
+10 METADATA "PRINT", "category", "Output"
+20 METADATA "PRINT", "syntax", "PRINT [expression] [; | ,] ..."
+30 METADATA "PRINT", "description", "Outputs values to the console"
+40 METADATA "PRINT", "example", "PRINT ""Hello, World!"""
+50 METADATA "PRINT", "since", "1.0"
 ```
 
-The security check occurs at **two points**:
-1. **Load time** — `ext_feature_load()` verifies the current security
-   level matches the spec's requirement
-2. **Execution time** — `pi_parse_custom_statement()` re-checks before
-   dispatching to ensure the level hasn't changed
+The HELP command reads this metadata to display interactive help. The CATALOG command reads it to display the keyword catalog.
 
-If the security level doesn't match, the spec is rejected with:
-```
-SORRY? SPEC 'NETWORK_SCAN' requires security level OPEN (current: STANDARD)
-```
+## 6. SELF-VALIDATION
 
-If `SECURITY` is omitted, the spec is "unpinned" and runs at any level.
-
----
-
-## 6. Specification Registry
-
-The spec registry holds up to `MAX_SPECS` (128) loaded specifications.
-You can introspect the registry at runtime:
-
-### Listing Loaded Specs
-
-The `spec_list_all()` function (called internally) prints all
-registered specifications with their name, version, category, library
-path, and security pinning.
-
-### Finding a Spec by Name
-
-```c
-SpecObject *spec = spec_find("TURTLE");
-if (spec) {
-    printf("Found: %s v%s\n", spec->name, spec->version);
-}
-```
-
----
-
-## 7. Dependencies
-
-Specifications can declare dependencies on other specs:
+A BASIC++ program can validate its own correctness using the built-in test framework:
 
 ```basic
-DEFINE SPECIFICATION "SPRITE"
-    CATEGORY "STATEMENT"
-    DEPENDS "GRAPHICS,TURTLE"
-    LIB "sprite.lib"
-END SPECIFICATION
+10 TEST "Arithmetic"
+20   ASSERT 2 + 2 = 4
+30   ASSERT 10 / 3 = 3.333333, 0.0001
+40   ASSERT SQR(144) = 12
+50 ENDTEST
+60 TEST "Strings"
+70   ASSERT LEN("HELLO") = 5
+80   ASSERT LEFT$("HELLO", 3) = "HEL"
+90   ASSERT UCASE$("hello") = "HELLO"
+100 ENDTEST
 ```
 
-The `DEPENDS` field is parsed and stored. Dependency resolution
-ensures that required specs are loaded before the dependent spec
-can execute.
+SELFTEST runs all TEST blocks and reports pass/fail results.
 
----
+## 7. LANGUAGE EXTENSION
 
-## 8. Complete Example
-
-### Step 1: Create the Spec File (counter.spec)
+The KEYWORD statement registers a new keyword that maps to a BASIC++ subroutine:
 
 ```basic
-DEFINE SPECIFICATION "COUNTER"
-    CATEGORY "STATEMENT"
-    VERSION "1.0"
-    LIB "counter.lib"
-END SPECIFICATION
+10 KEYWORD "SHOUT" AS 5000
+20 ' Now SHOUT works as a statement
+30 SHOUT "Hello!"
+40 END
+5000 ' Handler for SHOUT
+5010 ' Parameter is passed via the keyword mechanism
+5020 PRINT UCASE$(KEYWORD.PARAM$); "!"
+5030 RETURN
 ```
 
-### Step 2: Create the Library (counter.lib)
+The REMOVE statement removes a registered keyword: `REMOVE "SHOUT"`.
+
+## 8. SPECIFICATION EXPORT
+
+Specifications can be saved to files for reuse:
 
 ```basic
-REM @LIBRARY COUNTER
-REM @VERSION 1.0
-
-SUB COUNTER(N)
-    DIM I
-    FOR I = 1 TO N
-        PRINT I; " ";
-    NEXT I
-    PRINT
-END SUB
+10 SPEC SAVE "mydialect.spec"
+20 SPEC LOAD "mydialect.spec"
 ```
 
-### Step 3: Use It
-
-```basic
-LOAD FEATURE "counter.spec"
-COUNTER 10
-```
-
-Output: `1  2  3  4  5  6  7  8  9  10`
-
----
-
-## 9. Architecture Summary
-
-```
-.bppspec file ──> spec_load_file() ──> Spec Registry (128 slots)
-                                           |
-                                           v
-                                    keyword_register_custom()
-                                           |
-                                           v
-                                    Dynamic Keyword Table (ID 1000+)
-                                           |
-                                           v
-                                    parser.c dispatch (KW_CUSTOM_START+)
-                                           |
-                                           v
-                                    pi_parse_custom_statement()
-                                           |
-                                           v
-.lib file ──> ext_lib_load() ──> Library Program Space
-                                           |
-                                           v
-                                    lib_space_invoke_by_name()
-```
-
-The entire pipeline is:
-- **Declarative** — no C code needed for new keywords
-- **Secure** — security pinning at load and execution time
-- **Portable** — `.lib` files are pure BASIC++ (no native code)
-- **Composable** — specs can declare dependencies on other specs
+This allows sharing dialect definitions between programs and between users.

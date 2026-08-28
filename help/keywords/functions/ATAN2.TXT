@@ -1,0 +1,24 @@
+ATAN2 2-Argument Arctangent (Universal Dual-Format)
+
+1. BASIC Usage and Function/Operator Definition
+
+The ATAN2 keyword computes the angle $\theta$ in radians between the positive x-axis and the ray to point $(x, y)$, using the signs of both arguments to determine the correct quadrant ($-\pi \le \theta \le \pi$). It is supported in both infix (y ATAN2 x) and prefix (ATAN2(y, x)) notation.
+
+Syntax Signatures:
+``basic
+theta = y ATAN2 x
+theta = ATAN2(y, x)
+`
+
+Operational Rules:
+- Returns $\operatorname{atan2}(y, x)$ in radians in range $[-\pi, \pi]$.
+- In RPN stack evaluation blocks: { y x ATAN2 }.
+
+2. Code Examples
+
+`basic
+10 REM Infix notation
+20 PRINT "1 ATAN2 1 = "; 1 ATAN2 1 : REM Outputs 0.785398... (pi/4)
+30 REM Prefix functional notation
+40 PRINT "ATAN2(0, -1) = "; ATAN2(0, -1) : REM Outputs 3.14159... (pi)
+``

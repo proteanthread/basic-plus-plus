@@ -1,0 +1,22 @@
+INSTR Substring Search Function
+======================================================================
+
+The INSTR function searches for a substring within a target string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    pos% = INSTR([start_pos%,] target_string$, search_substring$)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Returns 1-based character position (0 if not found).
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT INSTR("HELLO WORLD", "WORLD")   : REM Outputs 7

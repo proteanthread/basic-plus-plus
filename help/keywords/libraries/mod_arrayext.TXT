@@ -1,0 +1,14 @@
+mod_arrayext Extended Array Operations Module (libflex)
+======================================================================
+
+The mod_arrayext module implements high-performance sorting, searching,
+reversing, and slicing for BASIC arrays.
+
+
+OPERATIONS
+----------------------------------------------------------------------
+
+  - ARRAY.SORT array() [, ASC | DESC]
+  - idx% = ARRAY.SEARCH(array(), target)
+  - ARRAY.REVERSE array()
+  - ARRAY.COPY src(), dst()

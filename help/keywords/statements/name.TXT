@@ -1,0 +1,29 @@
+NAME Rename File Statement
+==========================
+
+Renames an existing file or directory on disk or in the virtual filesystem.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    NAME old_filename$ AS new_filename$
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 53 (ERR_FILE_NOT_FOUND): Source file does not exist.
+  - Error 58 (ERR_FILE_ALREADY_EXISTS): Target file name already exists.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Cannot move files across distinct physical drives.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 NAME "TEMP.DAT" AS "FINAL.DAT"

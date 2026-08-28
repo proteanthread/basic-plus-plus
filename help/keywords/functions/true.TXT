@@ -1,0 +1,17 @@
+TRUE Boolean True Constant
+======================================================================
+
+The TRUE keyword is a built-in constant evaluating to -1.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    flag% = TRUE
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 FLAG = TRUE
+    20 IF FLAG THEN PRINT "Condition True"

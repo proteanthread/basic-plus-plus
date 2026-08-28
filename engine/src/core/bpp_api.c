@@ -1,20 +1,11 @@
-/* =====================================================================
- * What it does: Implementation of the BASIC++ Master C Facade API.
- * Why it exists: Provides clean, high-level embedding wrappers for third-party application developers.
- * Why it works this way: Routes C API calls directly to internal boot, VM execution, variable manipulation, and expression evaluation routines.
- * Dependencies & compilation target: Target C17, depends on <stdlib.h>, <string.h>, "bpp_api.h", "core/boot.h", "vm/vm.h", "eval/eval.h", "lexer/lexer.h", "runtime/strings.h", "runtime/variables.h", "runtime/funcreg.h", "platform/platform.h", "types/version.h".
- * Edition inclusion/exclusion: Included in libbasicpp and libbasicpp_lite.
- * How to modify or extend it: Add additional high-level API convenience functions.
- * What cannot be changed: Function signatures, ownership semantics, memory safety invariants.
- * What to expect: Fast, safe, deterministic execution. Returns 0 on success.
- * What to do if something breaks: Check return code and verify context pointer validity.
- * Assumptions & preconditions: Caller initializes engine via bpp_init before calling execution routines.
- * Portability & C17 concerns: Strict C17 compliance. Zero pointer-to-int casting.
- * Component dependencies & prerequisite source files:
- *   - engine/src/bootstrap/common/common.c
- *   - engine/src/vm/context.c
- *   - engine/include/bpp_api.h
- * ===================================================================== */
+// FILENAME: bpp_api.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libboot, libcore, libengine, libkernel, libplatform
+// Provides core logic and interface definitions for bpp_api within BASIC++.
+//
+// ---- Includes ----
 
 #include "bpp_api.h"
 #include "core/boot.h"
@@ -26,11 +17,12 @@
 #include "runtime/funcreg.h"
 #include "platform/platform.h"
 #include "types/version.h"
+#include "runtime/memory/alloc.h"
+#include "runtime/string/memops.h"
+#include "runtime/string/strops.h"
+#include "hal/hal.h"
 
-#include <stdlib.h>
-#include <string.h>
-
-/* Internal Host Registry Callback Entry */
+// Internal Host Registry Callback Entry
 typedef struct HostFuncWrapper {
     BppHostFn fn;
     void *userdata;
@@ -40,28 +32,50 @@ typedef struct HostFuncWrapper {
 static HostFuncWrapper g_host_funcs[64];
 static int g_host_func_count = 0;
 
+static char *api_strdup(const char *s) {
+    if (!s) return NULL;
+    HalContext *hal = hal_get();
+    size_t len = runtime_strlen(s);
+    char *copy = NULL;
+    if (hal && hal->mem.alloc) {
+        copy = (char *)hal->mem.alloc(len + 1);
+    }
+    if (copy) {
+        runtime_memcpy(copy, s, len + 1);
+    }
+    return copy;
+}
+
+static void api_strfree(char *s) {
+    if (!s) return;
+    HalContext *hal = hal_get();
+    if (hal && hal->mem.free) {
+        hal->mem.free(s);
+    }
+}
+
 static BValue host_func_bridge(BValue *args, int argc, void *rt) {
     (void)rt;
     BValue res;
-    memset(&res, 0, sizeof(res));
+    runtime_memset(&res, 0, sizeof(res));
     res.type = VAL_NONE;
 
-    /* Match function name from registry */
-    const FunctionEntry *entry = funcreg_get(0); /* Matched via funcreg */
+    // Match function name from registry
+    const FunctionEntry *entry = funcreg_get(0); // Matched via funcreg
     (void)entry;
 
     if (g_host_func_count > 0 && g_host_funcs[0].fn) {
         BppValue bargs[16];
         int count = (argc > 16) ? 16 : argc;
         for (int i = 0; i < count; i++) {
-            memset(&bargs[i], 0, sizeof(bargs[i]));
+            runtime_memset(&bargs[i], 0, sizeof(bargs[i]));
             if (args[i].type == VAL_NUMBER || args[i].type == VAL_INTEGER) {
                 bargs[i].type = BPP_VAL_NUMBER;
                 bargs[i].as.number = args[i].as.number;
             } else if (args[i].type == VAL_STRING && args[i].as.string) {
                 bargs[i].type = BPP_VAL_STRING;
                 const char *s = str_data(args[i].as.string);
-                bargs[i].as.string = s ? strdup(s) : NULL;
+                bargs[i].as.string = s ? api_strdup(s) : NULL;
             }
         }
 
@@ -73,7 +87,7 @@ static BValue host_func_bridge(BValue *args, int argc, void *rt) {
 
         for (int i = 0; i < count; i++) {
             if (bargs[i].type == BPP_VAL_STRING && bargs[i].as.string) {
-                free(bargs[i].as.string);
+                api_strfree(bargs[i].as.string);
             }
         }
     }
@@ -82,7 +96,7 @@ static BValue host_func_bridge(BValue *args, int argc, void *rt) {
 
 BPP_API BppEngineContext* bpp_init(size_t ram_bytes) {
     platform_init();
-    size_t alloc_size = (ram_bytes > 0) ? ram_bytes : 671088640L; /* Default 640MB */
+    size_t alloc_size = (ram_bytes > 0) ? ram_bytes : 671088640L; // Default 640MB
     VMContext *vm = boot_system(alloc_size);
     return (BppEngineContext*)vm;
 }
@@ -112,12 +126,12 @@ BPP_API int bpp_load_and_run(BppEngineContext *ctx, const char *filepath) {
 
 BPP_API BppValue bpp_eval_expr(BppEngineContext *ctx, const char *expression) {
     BppValue res;
-    memset(&res, 0, sizeof(res));
+    runtime_memset(&res, 0, sizeof(res));
     res.type = BPP_VAL_NULL;
 
     if (!ctx || !expression) {
         res.type = BPP_VAL_ERROR;
-        res.as.error_code = 5; /* Illegal Function Call */
+        res.as.error_code = 5; // Illegal Function Call
         return res;
     }
 
@@ -126,12 +140,12 @@ BPP_API BppValue bpp_eval_expr(BppEngineContext *ctx, const char *expression) {
     LexerContext *lex = lex_init(mem, expression);
     if (!lex) {
         res.type = BPP_VAL_ERROR;
-        res.as.error_code = 7; /* Out of Memory */
+        res.as.error_code = 7; // Out of Memory
         return res;
     }
 
     BppError err;
-    memset(&err, 0, sizeof(err));
+    runtime_memset(&err, 0, sizeof(err));
     BValue bval = eval_expression(vm, lex, &err);
     lex_shutdown(lex);
 
@@ -144,7 +158,7 @@ BPP_API BppValue bpp_eval_expr(BppEngineContext *ctx, const char *expression) {
     } else if (bval.type == VAL_STRING && bval.as.string) {
         res.type = BPP_VAL_STRING;
         const char *raw_str = str_data(bval.as.string);
-        res.as.string = raw_str ? strdup(raw_str) : NULL;
+        res.as.string = raw_str ? api_strdup(raw_str) : NULL;
     }
 
     return res;
@@ -153,7 +167,7 @@ BPP_API BppValue bpp_eval_expr(BppEngineContext *ctx, const char *expression) {
 BPP_API void bpp_value_release(BppValue *val) {
     if (!val) return;
     if (val->type == BPP_VAL_STRING && val->as.string) {
-        free(val->as.string);
+        api_strfree(val->as.string);
         val->as.string = NULL;
     }
     val->type = BPP_VAL_NULL;
@@ -170,7 +184,7 @@ BPP_API int bpp_register_func(BppEngineContext *ctx, const char *name, BppHostFn
     }
 
     FunctionEntry entry;
-    memset(&entry, 0, sizeof(entry));
+    runtime_memset(&entry, 0, sizeof(entry));
     entry.name = name;
     entry.keyword = KW_NONE;
     entry.category = FCAT_USER;
@@ -202,7 +216,7 @@ BPP_API int bpp_set_var_num(BppEngineContext *ctx, const char *var_name, double 
     VMContext *vm = (VMContext*)ctx;
     VariableContext *vars = vm_get_var(vm);
     BValue val;
-    memset(&val, 0, sizeof(val));
+    runtime_memset(&val, 0, sizeof(val));
     val.type = VAL_NUMBER;
     val.as.number = value;
     return var_assign(vars, var_name, val) ? 0 : -1;
@@ -216,9 +230,9 @@ BPP_API bool bpp_get_var_str(BppEngineContext *ctx, const char *var_name, char *
     if (val && val->type == VAL_STRING && val->as.string) {
         const char *s = str_data(val->as.string);
         if (s) {
-            size_t len = strlen(s);
+            size_t len = runtime_strlen(s);
             if (len >= buf_size) len = buf_size - 1;
-            memcpy(out_buf, s, len);
+            runtime_memcpy(out_buf, s, len);
             out_buf[len] = '\0';
             return true;
         }
@@ -234,20 +248,50 @@ BPP_API int bpp_set_var_str(BppEngineContext *ctx, const char *var_name, const c
     StringContext *str_ctx = vm_get_str(vm);
 
     BValue val;
-    memset(&val, 0, sizeof(val));
+    runtime_memset(&val, 0, sizeof(val));
     val.type = VAL_STRING;
-    val.as.string = str_create(str_ctx, value ? value : "", value ? strlen(value) : 0);
+    val.as.string = str_create(str_ctx, value ? value : "", value ? runtime_strlen(value) : 0);
 
     return var_assign(vars, var_name, val) ? 0 : -1;
 }
+
 
 BPP_API void bpp_set_console_output_cb(BppEngineContext *ctx, BppConsoleOutputCb cb, void *userdata) {
     (void)ctx;
     (void)cb;
     (void)userdata;
-    /* Host console output intercept hook */
+    // Host console output intercept hook
 }
 
 BPP_API const char* bpp_version_string(void) {
     return BASIC_VERSION_STRING;
 }
+
+// ============================================
+// Cross-Language Interop API Extensions v1.0
+// ============================================
+
+BPP_API const char *basicpp_version_string(void) {
+    return "6.5.2";
+}
+
+BPP_API int basicpp_version_major(void) {
+    return 6;
+}
+
+BPP_API int basicpp_version_minor(void) {
+    return 5;
+}
+
+BPP_API int basicpp_version_patch(void) {
+    return 2;
+}
+
+BPP_API const InteropError *basicpp_get_last_error(void) {
+    return interop_error_get_last();
+}
+
+BPP_API void basicpp_clear_error(void) {
+    interop_error_clear();
+}
+

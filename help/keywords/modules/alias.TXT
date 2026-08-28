@@ -1,0 +1,39 @@
+ALIAS Metaprogramming Identifier & Operator Synonym Statement
+======================================================================
+
+The ALIAS statement creates custom synonyms, alternative language
+keywords, or custom operator mappings at runtime.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    ALIAS new_keyword = existing_keyword
+    ALIAS OPER new_operator = existing_operator
+    ALIAS LIST
+    ALIAS CLEAR
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Registers runtime synonyms in the lexer and parser.
+  - Protected keywords (SCOPE, ALIAS, KEYWORD, OVERRIDE, RUN) cannot be
+    clobbered.
+  - ALIAS LIST displays all active runtime aliases.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  2           ERR_SYNTAX_ERROR      Invalid ALIAS syntax
+  5           ERR_ILLEGAL_FUNCTION  Attempting to override protected keyword
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 ALIAS SAY = PRINT
+    20 SAY "Hello World!"

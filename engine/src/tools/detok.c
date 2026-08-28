@@ -1,44 +1,13 @@
-/**
- * @file detok.c
- * @brief Legacy GW-BASIC Tokenized Binary File Detokenizer Tool implementation.
- *
- * 1. WHAT IT DOES:
- * Implements `detok_main()`, decoding tokenized 0xFF-header binary GW-BASIC files (`.BAS`) into plain text ASCII BASIC code.
- *
- * 2. WHY IT EXISTS:
- * Provides standalone utility functionality to decode legacy 1980s GW-BASIC tokenized binary files into modern text formats.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Parses line-pointer offsets, 16-bit line numbers, and maps byte tokens (>= 0x80) and 2-byte tokens (0xFF Prefix) to ASCII keywords via `k_gw_tokens` tables.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into standalone CMake target 'detok'. Includes <stdio.h>, <stdlib.h>, <string.h>, <stdbool.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Excluded from 'libbasicpp' and 'libbasicpp_lite'. Compiled into standalone executable target 'detok'.
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Update `k_gw_tokens` dictionary tables for QuickBASIC token extensions.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Legacy GW-BASIC 0xFF file header signature and 16-bit line offset parsing math.
- *
- * 8. WHAT TO EXPECT:
- * Command-line binary input results in pure 7-bit ASCII BASIC source printed to stdout or written to output file.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify 0xFF magic byte signature and endian-safe 16-bit word decoding.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Input file exists and contains valid GW-BASIC binary tokens.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Endian-safe 16-bit integer unpacking.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files: None (Standalone execution payload).
- * Prerequisite Header Files: None.
- */
+// FILENAME: detok.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (string.h)
+// NEEDS: libengine (string.c, version.c)
+// NEEDS: libkernel (version.h)
+// Implements toolchain and compiler subsystem components for detok.
+//
+// ---- Includes ----
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -137,9 +106,11 @@ static const char *lookup_token(unsigned char tok) {
     return NULL;
 }
 
+#include "types/version.h"
+
 int main(int argc, char **argv) {
     if (argc < 2) {
-        printf("GW-BASIC Detokenizer (detok) - v6.0.0\n");
+        printf("GW-BASIC Detokenizer (detok) - v%s\n", BASIC_VERSION_STRING);
         printf("Usage: detok <input.bas> [output.txt]\n");
         return 1;
     }
@@ -161,7 +132,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* 1. Check Signature Byte */
+    // 1. Check Signature Byte
     int sig = fgetc(in);
     if (sig != 0xFF) {
         fprintf(stderr, "Warning: File does not start with signature byte 0xFF. Proceeding anyway.\n");
@@ -170,20 +141,20 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* 2. Decode lines */
+    // 2. Decode lines
     while (true) {
-        /* Read next line offset pointer (2 bytes) */
+        // Read next line offset pointer (2 bytes)
         int addr_low = fgetc(in);
         int addr_high = fgetc(in);
         if (addr_low == EOF || addr_high == EOF) break;
 
         unsigned short next_addr = (unsigned short)(addr_low | (addr_high << 8));
         if (next_addr == 0x0000) {
-            /* End of program */
+            // End of program
             break;
         }
 
-        /* Read line number (2 bytes) */
+        // Read line number (2 bytes)
         int num_low = fgetc(in);
         int num_high = fgetc(in);
         if (num_low == EOF || num_high == EOF) break;
@@ -191,7 +162,7 @@ int main(int argc, char **argv) {
 
         fprintf(out, "%u ", line_num);
 
-        /* Read statement characters/tokens until 0x00 (EOL) */
+        // Read statement characters/tokens until 0x00 (EOL)
         while (true) {
             int c = fgetc(in);
             if (c == 0x00 || c == EOF) {

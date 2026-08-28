@@ -1,0 +1,26 @@
+C17 API REFERENCE: DIAGNOSTIC LOGGER (debug/logger.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Diagnostic Logger provides opt-in multi-channel logging, execution
+tracing, error capture, and console replication to .OUT files.
+
+2. OPT-IN LOGGING INVARIANT
+All targets initialize with logger_init(NULL, NULL) by default. No .LOG or
+.OUT files may be written to disk unless explicitly requested via --log,
+--debug, or --trace.
+
+3. CORE API FUNCTIONS
+- logger_init(log_path, out_path) -> bool
+- logger_close()
+- log_info(fmt, ...)
+- log_warn(fmt, ...)
+- log_error(fmt, ...)
+- log_write_out(buf, len)
+- logger_set_debug(debug) / logger_is_debug() -> bool
+- logger_set_trace(trace) / logger_is_trace() -> bool
+- logger_set_dry_run(dry_run) / logger_is_dry_run() -> bool
+
+4. ARCHITECTURAL INVARIANTS
+- Zero unsolicited file creation on host filesystem.
+- Safe format string handling and timestamp generation.

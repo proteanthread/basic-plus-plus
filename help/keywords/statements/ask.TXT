@@ -1,0 +1,29 @@
+ASK Device and Screen Attribute Query Statement
+===============================================
+
+Queries system, screen, or device configuration properties in ECMA-116 compliant mode.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    ASK item% [, result_var...]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Invalid property queried.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Conforms to ECMA-116 standard dialect extensions.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 ASK SCREEN WIDTH W%
+    20 PRINT "Current screen width: "; W%

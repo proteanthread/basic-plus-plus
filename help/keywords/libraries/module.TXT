@@ -1,0 +1,20 @@
+module Dynamic Module & Extension Subsystem (libflex)
+======================================================================
+
+The module library manages loading, validating, and activating sandboxed
+external C dynamic extensions.
+
+
+PIPELINE
+----------------------------------------------------------------------
+
+  Validation -> Capability Verification -> Sandbox Allocation ->
+  Registration -> Activation.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    int module_load(const char *path, SecurityContext *sec);
+    int module_unload(const char *name);
+    int module_count(void);

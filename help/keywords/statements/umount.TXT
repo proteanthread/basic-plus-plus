@@ -1,0 +1,28 @@
+UMOUNT Unmount VFS Filesystem Device Statement
+==============================================
+
+Unmounts a previously mounted virtual filesystem device or directory path.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    UMOUNT mount_path$
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 76 (ERR_PATH_NOT_FOUND): Mount path not found.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Flushes and closes all open handles on the mount before unmounting.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 UMOUNT "/games"

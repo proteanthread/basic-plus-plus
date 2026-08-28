@@ -1,0 +1,20 @@
+funcreg Built-in Function Registry (libkernel)
+======================================================================
+
+The funcreg library coordinates registration and dispatching for all
+built-in and extension functions.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Fast lookup and signature validation for functions.
+  - Capability safety gates (FSAFE_NONE, FSAFE_FS, FSAFE_SYSTEM).
+  - Domain dispatch integration for DEF FN and DEF STR.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    void funcreg_register(const FunctionEntry *entry);
+    const FunctionEntry *funcreg_lookup(const char *name);

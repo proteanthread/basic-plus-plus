@@ -1,0 +1,13 @@
+advent Interactive Fiction & Text Adventure Engine Library
+======================================================================
+
+The advent library implements room graphs, inventory management, and
+verb-noun command parsers for interactive fiction.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Room connection navigation (N, S, E, W, UP, DOWN).
+  - Item inventory tracking and state flags.
+  - Interactive story parsing.

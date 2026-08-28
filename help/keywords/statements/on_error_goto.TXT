@@ -1,0 +1,26 @@
+ON_ERROR_GOTO Error Trapping Vector Statement
+=============================================
+
+Installs an error trapping handler. Specifying 0 disables error trapping and restores default error termination.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    ON ERROR GOTO {line_number% | @label | 0}
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Essential for robust fault-tolerant BASIC programming.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 ON ERROR GOTO 100
+    20 OPEN "I", #1, "NONEXISTENT.FILE"
+    30 END
+    100 PRINT "Caught error #"; ERR; " on line "; ERL
+    110 RESUME NEXT

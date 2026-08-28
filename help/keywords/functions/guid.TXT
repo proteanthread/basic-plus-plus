@@ -1,0 +1,16 @@
+GUID GUID Validation & Binary Conversion Function
+======================================================================
+
+The GUID function checks if a string is a valid RFC 4122 formatted UUID.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    is_valid% = GUID(uuid_str$)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT GUID("c73bcdcc-2669-4bf6-81d3-e4ae73fb1164")

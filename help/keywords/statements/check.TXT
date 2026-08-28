@@ -1,0 +1,30 @@
+CHECK Assertion and Invariant Check Statement
+=============================================
+
+Validates a logical assertion, terminating execution with an error if the condition evaluates to false.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    CHECK condition [, "failure_message"]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 250 (ERR_ASSERTION_FAILED): Evaluated condition was false (0).
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Zero runtime overhead when assertions are disabled via compiler switches.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 X = 100
+    20 CHECK X > 0, "X must be positive"
+    30 PRINT "Check passed."

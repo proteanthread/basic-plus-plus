@@ -1,44 +1,68 @@
-# BASIC++ Universal Cross-Platform Portability & Environment Guide
+# BASIC++ v6.5.2 Portability Guide
 
-## Architecture Overview
-BASIC++ is engineered from the ground up to target **any operating system, any CPU architecture, and any runtime environment** — from 8-bit/32-bit bare-metal microcontrollers to 64-bit cloud clusters and WebAssembly in browser sandboxes.
+## 1. CROSS-PLATFORM DESIGN
 
----
+BASIC++ is designed to run identically on Windows, Linux, macOS, FreeDOS, and embedded platforms. The platform abstraction layer (libplatform) encapsulates all OS-specific code. Upper layers — the lexer, parser, evaluator, VM, and all statement handlers — contain zero platform-specific code.
 
-## 1. Environment Editions & Target Binary Matrix
+## 2. THE PLATFORM LAYER
 
-| Environment Edition | Code / Target Name | Binary Output | Primary OS & Targets | Default Heap | SDL2 Dependency |
-|---|---|---|---|---|---|
-| **Desktop Workstation** | `basicpp` | `basicpp.dll` / `libbasicpp.so` / `libbasicpp.dylib` | Windows, Linux, macOS | 640 MB | Delay-Loaded |
-| **Cloud Server** | `baspp` | `baspp.exe` / `baspp` | Headless Linux, CGI, Docker | 256 MB | None (`NO_SDL2`) |
-| **Internet of BASIC (IoB)** | `iob` | `iob.dll` / `libiob.so` | Raspberry Pi, Jetson, OpenWrt, ESP32 | 128 MB–384 MB | None (`NO_SDL2`) |
-| **Web Application (WAP)** | `wap` | `wap.wasm` / `wap.js` | Web Browsers, Node.js, PWAs | 16 MB–64 MB | None (`WASM_BUILD`) |
-| **Batch Script Runner** | `bs` | `bs.exe` / `bs` | PowerShell, Bash, Automated Jobs | 64 MB | None (`NO_SDL2`) |
-| **Lite REPL** | `bpp` | `bpp.exe` / `bpp` | IoT Terminals, Serial Consoles | 384 MB | None (`NO_SDL2`) |
-| **Embedded MCU** | `embedded` | `basstub.c` | RP2040, ESP32, STM32, Arduino | 2 KB–16 MB | None (`BASIC_EMBEDDED`) |
-| **Mobile App** | `mobile` | `libbasicpp_mobile.so` / `.framework` | Android (JNI), iOS (Swift/Obj-C) | 128 MB | Native Bridge |
+The platform layer (engine/lib/platform/) provides nine abstraction modules:
 
----
+| Module | File | Purpose |
+|--------|------|---------|
+| plat_console | plat_console.c | Terminal I/O, cursor, color, key input |
+| plat_fs | plat_fs.c | File system operations |
+| plat_sys | plat_sys.c | Process control, hostname, username |
+| plat_time | plat_time.c | Date, time, timer, sleep |
+| plat_thread | plat_thread.c | Thread/mutex primitives |
+| plat_dl | plat_dl.c | Dynamic library loading |
+| plat_net | plat_net.c | Network sockets |
+| plat_regex | plat_regex.c | Regular expression engine |
+| plat_clipboard | plat_clipboard.c | System clipboard access |
 
-## 2. Multi-Language FFI Binding Matrix
+Each module has a single .c file with `#ifdef _WIN32` / `#ifdef __linux__` blocks. No other source file in the engine contains platform-specific code.
 
-| Language | Package Location | Supported Environments & Binaries | Interface Mechanism |
-|---|---|---|---|
-| **C / C++ (C17)** | `engine/include/bpp_api.h` | All (`basicpp.dll`, `libbasicpp.so`, `libbasicpp.dylib`, `libiob.so`) | Direct C17 Header |
-| **Python 3** | `bindings/python/basicpp` | Windows, Linux, macOS (`basicpp`, `iob`) | `ctypes` FFI |
-| **Rust** | `bindings/rust/basicpp-sys` | Windows, Linux, macOS | Cargo FFI sys-crate |
-| **JavaScript / TypeScript** | `bindings/wasm` | Browser, Node.js (`wap.wasm`) | Emscripten WASM Bridge |
-| **Go** | `bindings/go/basicpp` | Linux, Windows, macOS | `cgo` |
-| **Java / Kotlin** | `engine/src/bootstrap/mobile/` | Android ARM64/x86_64 | JNI Bridge |
-| **Swift / Obj-C** | `engine/src/bootstrap/mobile/` | iOS Devices & Simulators | C Module Map |
+## 3. WRITING PORTABLE BASIC++ PROGRAMS
 
----
+BASIC++ programs are automatically portable because the interpreter handles all platform differences. However, some practices ensure maximum portability:
 
-## 3. Environment Specific Guides
-For detailed setup instructions, code snippets, and build flags for each environment profile, refer to:
-- [Desktop Workstation Guide](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/environments/desktop.md) (`basicpp.dll` / `libbasicpp.so` / `libbasicpp.dylib`)
-- [Cloud Server Guide](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/environments/server.md) (`baspp` / `bs`)
-- [Internet of BASIC Guide](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/environments/iot.md) (`iob` / `libiob.so`)
-- [Web Application BASIC Guide](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/environments/wasm.md) (`wap` / `wap.wasm`)
-- [Bare-Metal Embedded MCU Guide](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/environments/embedded.md) (`basstub.c`)
-- [Mobile Platforms Guide](file:///c:/Users/rtdos/GitHub/basic-plus-plus/docs/environments/mobile.md) (Android & iOS)
+**File paths**: Use forward slashes or the BASIC++ VFS path normalization. Avoid hardcoded drive letters on programs intended for Linux.
+
+**Line endings**: BASIC++ handles both CR+LF (Windows) and LF (Unix) in source files.
+
+**Screen size**: Do not assume 80x25. Use screen dimension queries to adapt layout.
+
+**External commands**: SHELL commands are OS-specific. Avoid SHELL in portable programs, or use conditional logic:
+
+```basic
+10 IF INSTR(ENVIRON$("OS"), "Windows") > 0 THEN
+20   SHELL "dir"
+30 ELSE
+40   SHELL "ls"
+50 END IF
+```
+
+## 4. FEATURE AVAILABILITY
+
+| Feature | baspp | bpp | bs | FreeDOS | Embedded |
+|---------|-------|-----|----|---------|----------|
+| PRINT/INPUT | ✓ | ✓ | ✓ | ✓ | ✓ |
+| File I/O | ✓ | ✓ | ✓ | ✓ | Optional |
+| Graphics | ✓ | ✗ | ✗ | ✓ (BIOS) | ✗ |
+| Sound | ✓ | ✗ | ✗ | ✓ (speaker) | ✗ |
+| Networking | ✓ | ✓ | ✓ | ✗ | ✗ |
+| TUI Editor | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Modules | ✓ | ✓ | ✓ | ✗ | ✗ |
+| VMEM | ✓ | ✗ | ✗ | ✗ | ✗ |
+
+Programs that use features not available on the target platform receive Error 73 (Advanced feature disabled).
+
+## 5. ENCODING
+
+BASIC++ uses UTF-8 encoding on modern builds. String functions (LEN, LEFT$, MID$, etc.) operate on bytes, not Unicode code points. This maintains GW-BASIC compatibility where each character is one byte.
+
+FreeDOS and embedded builds use ASCII (7-bit) encoding. Code page 437 (IBM PC) character graphics are available through CHR$ values 128-255 on all platforms.
+
+## 6. NUMERIC PRECISION
+
+All platforms use IEEE 754 double-precision (64-bit) floating point. Numeric results are identical across platforms within the limits of double-precision arithmetic. The RNG algorithm (linear congruential) produces identical sequences from the same seed on all platforms.

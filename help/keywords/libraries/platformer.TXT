@@ -1,0 +1,13 @@
+platformer General 2D Platform Engine & Physics Library
+======================================================================
+
+The platformer library provides kinematic physics, momentum, jump curves,
+moving platforms, and tile collisions.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Sub-pixel kinematic movement and friction.
+  - Variable-height jump arcs and terminal velocity.
+  - Moving platform passenger attachment.

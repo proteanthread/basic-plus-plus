@@ -1,0 +1,13 @@
+spec Language Specification & Metaprogramming Metadata
+======================================================================
+
+The spec library provides programmatic definition, validation, and
+documentation of language dialects and syntax specifications.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Declares custom dialects and DSL extensions.
+  - Generates interactive metadata for HELP and CATALOG commands.
+  - Validates syntax invariants and grammar rules.

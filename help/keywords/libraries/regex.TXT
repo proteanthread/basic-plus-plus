@@ -1,0 +1,14 @@
+regex Regular Expression Engine (libserver)
+======================================================================
+
+The regex library provides regex compilation, string matching, and text
+substitution.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    RegexContext *regex_compile(const char *pattern, int flags);
+    bool regex_match(RegexContext *re, const char *subject);
+    char *regex_replace(RegexContext *re, const char *subj, const char *rep);
+    void regex_free(RegexContext *re);

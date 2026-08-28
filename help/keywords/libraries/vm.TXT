@@ -1,0 +1,21 @@
+vm Virtual Machine Core Engine (libkernel / libengine)
+======================================================================
+
+The vm core coordinates program execution, heap-based call stacks,
+control flow, and bytecode evaluation.
+
+
+INVARIANTS
+----------------------------------------------------------------------
+
+  - Strict Non-Recursive VM: No host C stack recursion.
+  - Dialect-agnostic execution engine.
+  - Managed memory pools (640MB, 384MB, 64MB).
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    VMContext *vm_create(size_t memory_pool_bytes);
+    void vm_destroy(VMContext *vm);
+    BppError vm_execute_line(VMContext *vm, const char *line);

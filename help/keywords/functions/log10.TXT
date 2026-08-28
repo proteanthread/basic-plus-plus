@@ -1,0 +1,16 @@
+LOG10 Common Logarithm (Base-10) Function
+======================================================================
+
+The LOG10 function computes the base-10 logarithm.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result# = LOG10(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT LOG10(100)   : REM Outputs 2

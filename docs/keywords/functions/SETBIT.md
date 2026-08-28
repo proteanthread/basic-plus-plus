@@ -1,0 +1,24 @@
+# `SETBIT` Bit Set Operator (Universal Dual-Format)
+
+## 1. BASIC Usage and Function/Operator Definition
+
+The `SETBIT` keyword sets a specific bit position (0 to 63) of a 64-bit integer to 1. It is supported in both **infix** and **prefix** notation.
+
+### Syntax Signatures:
+```basic
+result = value SETBIT bit_pos
+result = SETBIT(value, bit_pos)
+```
+
+### Operational Rules:
+- Returns `(uint64_t)value | (1ULL << (uint64_t)bit_pos)`.
+- In RPN stack evaluation blocks: `{ value bit_pos SETBIT }`.
+
+---
+
+## 2. Code Examples
+
+```basic
+10 PRINT "Infix: "; 0 SETBIT 10 : REM Outputs 1024
+20 PRINT "Prefix: "; SETBIT(0, 10) : REM Outputs 1024
+```

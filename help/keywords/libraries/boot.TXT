@@ -1,0 +1,21 @@
+boot Core Boot Subsystem (libboot)
+======================================================================
+
+The libboot library controls early startup, argument parsing, memory
+pool initialization, and target executable dispatching.
+
+
+RESPONSIBILITIES
+----------------------------------------------------------------------
+
+  - Platform initialization and memory pool sizing.
+  - Opt-in logging initialization (no log files by default).
+  - VM instance allocation and teardown.
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    int boot_init(int argc, char **argv, VMContext **out_vm);
+    void boot_shutdown(VMContext *vm);
+    int boot_dispatch(VMContext *vm);

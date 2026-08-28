@@ -1,0 +1,18 @@
+C17 API REFERENCE: VERSIONING & TARGET IDENTITY (types/version.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+Defines semantic version constants (v6.5.2), release build dates, codename
+strings, and clean macro identifiers.
+
+2. VERSION CONSTANTS
+- VERSION_MAJOR:    6
+- VERSION_MINOR:    5
+- VERSION_PATCH:    2
+- VERSION_STRING:   "6.5.2"
+- VERSION_DATE:     "2026-08-06"
+- VERSION_CODENAME: "Phoenix"
+
+3. ARCHITECTURAL INVARIANTS
+- Clean non-prefixed macro naming (no new BPP/BPP_ prefixes).
+- Synchronized across startup banners, _VERSION$ variables, and build tools.

@@ -1,0 +1,21 @@
+version Version Identification & Release Metadata (libkernel)
+======================================================================
+
+The version library provides version identification and release banners.
+
+
+CONSTANTS (v6.5.2)
+----------------------------------------------------------------------
+
+  - Version: 6.5.2
+  - baspp Banner: "BASIC++ Standard Edition v6.5.2\n640 MB RAM Available.\n\nOk\n"
+  - bpp Banner  : "BASIC++ Lite Edition v6.5.2\n384 MB RAM Available.\n\nReady.\n"
+
+
+C17 INTERFACE
+----------------------------------------------------------------------
+
+    const char *version_string(void);
+    int version_major(void);
+    int version_minor(void);
+    int version_patch(void);

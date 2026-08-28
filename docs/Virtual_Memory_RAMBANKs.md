@@ -1,122 +1,124 @@
-# Segmented Virtual Memory (RAMBANKs) in BASIC++
+# BASIC++ v6.5.2 Virtual Memory and RAM Banks
 
-BASIC++ features a robust Segmented Virtual Memory Management subsystem that enables the execution of memory-heavy programs beyond the constraints of physical host memory. By abstracting the physical hardware memory layer into discrete, virtual memory pages, BASIC++ provides page-isolated memory spaces for multitasking processes.
+## 1. OVERVIEW
 
----
+The segmented memory subsystem (vmem) provides access to a flat virtual address space partitioned into switchable banks. This emulates the bank-switching memory architecture of classic 8-bit and 16-bit computers where only a subset of total memory is visible at any time. The vmem system is implemented in engine/src/memory/segmented_mem.c and is part of the libhardware library.
 
-## Architecture Overview
+The vmem subsystem is available only in the baspp standard edition. It is excluded from the bpp lite edition and the bs batch runner.
 
-At its core, the Virtual Memory Manager (VMM) organizes memory into segmented pages called **RAMBANKs**:
+## 2. BANK ORGANIZATION
 
-```
-      +----------------------------------------------------+
-      |            Virtual Memory Manager (VMM)            |
-      +----------------------------------------------------+
-           /                  |                       \
-          /                   |                        \
-  +--------------+    +--------------+          +--------------+
-  |  RAMBANK 1   |    |  RAMBANK 2   |   ...    | RAMBANK 254  |
-  |  (Active)    |    |  (Active)    |          |  (Swapped)   |
-  +--------------+    +--------------+          +--------------+
-         |                   |                          ^
-         v                   v                          | LRU Swap
-  [ Task 1 Memory ]   [ Task 2 Memory ]           +------------+
-                                                  | Disk Page  |
-                                                  |   Swaps    |
-                                                  +------------+
+Virtual memory is organized into banks of configurable size. The default configuration provides 256 banks of 4 KB each, giving 1 MB of total segmented storage. Each bank can be mapped into the active window independently.
+
+```text
+Bank 0:  0x00000 - 0x00FFF  (4096 bytes)
+Bank 1:  0x01000 - 0x01FFF  (4096 bytes)
+Bank 2:  0x02000 - 0x02FFF  (4096 bytes)
+...
+Bank 255: 0xFF000 - 0xFFFFF (4096 bytes)
 ```
 
-### Key Specifications:
-*   **Bank Size**: Each RAMBANK is exactly 1 Megabyte ($1,048,576$ bytes) in size, mirroring the design patterns of classic IBM PC BIOS and expanded memory architectures.
-*   **Capacity Limit**: The VMM supports up to **254 RAMBANKs** (Bank IDs `1` to `254`), providing up to 254 MB of virtual address space.
-*   **Memory Swapping**: Active RAMBANKs are resident in the host process's physical heap. Inactive banks are serialized and swapped to disk pages to reclaim system resources when memory capacity limits are reached.
-*   **Eviction Policy**: The memory manager uses a **Least Recently Used (LRU)** cache replacement algorithm. The bank that has not been read from or written to for the longest time is selected for disk eviction when a new bank request cannot be satisfied in-heap.
-*   **Resident Bank Limit**: Only **8 RAMBANKs** (`MAX_RESIDENT_BANKS = 8`) can be resident in physical RAM at any given time. When a 9th bank is accessed, the LRU bank among the 8 residents is evicted (serialized to a `.swp` disk page) to make room. This keeps the interpreter's physical memory footprint bounded to approximately 8 MB of RAMBANK data regardless of how many virtual banks are in use.
+The bank size and count are configurable at initialization.
 
-### Internal Data Structure (RamBank)
+## 3. BASIC++ STATEMENTS FOR VMEM
 
-Each RAMBANK slot is tracked internally via the `RamBank` struct:
+VMEM INIT banks, size — Initializes the segmented memory system with the specified number of banks and bank size in bytes:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `base` | `char *` | Pointer to the 1 MB memory block (NULL if swapped to disk) |
-| `id` | `int` | Bank identifier (1–254) |
-| `resident` | `int` | Non-zero if the bank is currently in physical RAM |
-| `dirty` | `int` | Non-zero if modified since last swap-out (requires write-back) |
-| `shared` | `int` | Non-zero if shared across processes |
-| `last_access` | `long` | Timestamp of last read/write (used by LRU eviction) |
+```basic
+10 VMEM INIT 64, 8192    ' 64 banks of 8 KB = 512 KB total
+```
 
----
+VMEM BANK n — Selects bank n as the active bank. Subsequent VPOKE and VPEEK operations access this bank:
 
-## Memory Security & Encryption
+```basic
+20 VMEM BANK 0
+30 VPOKE 0, 42           ' Write 42 to byte 0 of bank 0
+40 VMEM BANK 1
+50 VPOKE 0, 99           ' Write 99 to byte 0 of bank 1
+```
 
-The VMM implements page-level encryption for swapped disk files to protect active code and variables from inspection on the host machine. The swap behavior adapts dynamically based on the system's active `SECURITY` level:
+VPOKE address, value — Writes a byte (0-255) to the specified offset within the active bank.
 
-1.  **SEC_OPEN (Level 0)**: Swap pages are written as raw, unencrypted binary files (`.swp` files in the temporary directory) for maximum I/O performance.
-2.  **SEC_STANDARD (Level 1) and Higher**: Swap pages are obfuscated using a dynamic XOR-encryption cipher block during write serialization and decrypted on-the-fly during read deserialization.
+VPEEK(address) — Reads a byte from the specified offset within the active bank.
 
----
+VMEM COPY src_bank, dest_bank — Copies the entire contents of one bank to another.
 
-## Process Memory Isolation & Sharing
+VMEM FILL bank, value — Fills all bytes in a bank with the specified value.
 
-To ensure system stability under multitasking, the VMM isolates memory segments on a per-task basis:
-*   **Memory Isolation**: By default, a task or background process can only write to or read from its own designated home bank.
-*   **Shared Memory**: Multiple processes can synchronize or share memory through explicitly declared shared banks. Using the `BANK bank_id SHARED` statement, a memory segment can be unlocked for cross-task reads and writes.
-*   **Synchronization Guards**: All read/write operations on shared RAMBANKs are wrapped with Win32 Critical Sections or POSIX Mutexes. This guarantees thread-safety and prevents race conditions under the native multi-threaded scheduler.
+VMEM SWAP bank1, bank2 — Exchanges the contents of two banks.
 
----
+VMEM CLEAR — Zeros all banks.
 
-## Keywords & Introspection
+VMEM FREE — Releases all segmented memory back to the system.
 
-### 1. PEEKB(bank_id, offset)
-Reads a single byte (8-bit value) from a specific RAMBANK at the given offset.
-*   **Syntax**: `val = PEEKB(bank_id, offset)`
-*   **Constraints**: `bank_id` must be between `1` and `254`. `offset` must be between `0` and `1,048,575` ($1\text{MB} - 1$).
-*   **Example**:
-    ```basic
-    10 REM Read byte 5000 from Shared Memory Bank 5
-    20 BANK 5 SHARED
-    30 VALUE = PEEKB(5, 5000)
-    40 PRINT "Value is "; VALUE
-    ```
+## 4. USE CASES
 
-### 2. POKEB bank_id, offset, value
-Writes a single byte (8-bit value) to a specific RAMBANK at the given offset.
-*   **Syntax**: `POKEB bank_id, offset, value`
-*   **Constraints**: `bank_id` must be between `1` and `254`. `offset` must be between `0` and `1,048,575`. `value` must be between `0` and `255`.
-*   **Example**:
-    ```basic
-    10 REM Write value 42 to Bank 12 offset 100
-    20 BANK 12 SHARED
-    30 POKEB 12, 100, 42
-    ```
+### Sprite and Tile Storage
 
-### 3. FRE(bank_id)
-Queries the free memory capacity in bytes of a specific RAMBANK, or of the system memory pool.
-*   **Syntax**: `free_bytes = FRE(bank_id)`
-*   **Constraints**: If `bank_id` is `0`, returns the total free system memory. If `bank_id` is between `1` and `254`, returns the available memory inside that specific bank.
-*   **Example**:
-    ```basic
-    10 REM Query free space in Bank 2
-    20 PRINT "Bank 2 free space: "; FRE(2); " bytes"
-    ```
+Bank-switched memory is natural for storing sprites, tiles, and animation frames in graphics programs:
 
-### 4. BANK bank_id [modifier] / BANK LIST
-Manages Segmented Virtual Memory banks.
-*   **Modifiers**:
-    *   `BANK bank_id SHARED`: Mark a bank as shared across processes.
-    *   `BANK bank_id PRIVATE`: Mark a bank as private (unshare it).
-    *   `BANK bank_id CLEAR`: Zero-out the memory contents of a bank.
-    *   `BANK bank_id STATUS`: Display status diagnostics of a specific bank.
-    *   `BANK bank_id`: Switch/set the current process's active home bank.
-    *   `BANK LIST`: Display a list of all active/allocated virtual banks.
-    *   `BANK COPY src_bank, src_offset [TO] dst_bank, dst_offset, length`: Fast bulk memory copy between segments.
-    *   `BANK FILL bank_id, offset, length, value`: Fast bulk memory initialization/fill inside a segment.
-*   **Example**:
-    ```basic
-    10 BANK 8 SHARED : REM Authorize shared access to Bank 8
-    20 BANK FILL 8, 0, 1000, 255 : REM Fill first 1000 bytes with 255
-    30 BANK COPY 8, 0 TO 9, 0, 1000 : REM Copy filled bytes from Bank 8 to Bank 9
-    40 BANK 8 STATUS : REM Query Bank 8 status
-    50 BANK LIST     : REM List all active banks
-    ```
+```basic
+10 VMEM INIT 32, 1024    ' 32 banks of 1 KB for sprite data
+20 VMEM BANK 0
+30 FOR I = 0 TO 255
+40   VPOKE I, SpriteData(I)
+50 NEXT I
+60 ' Switch to bank 1 for the next sprite
+70 VMEM BANK 1
+80 FOR I = 0 TO 255
+90   VPOKE I, SpriteData2(I)
+100 NEXT I
+```
+
+### Data Page Switching
+
+Programs that process datasets larger than available variable memory can page data through banks:
+
+```basic
+10 VMEM INIT 16, 16384   ' 16 banks of 16 KB = 256 KB
+20 FOR Page = 0 TO 15
+30   VMEM BANK Page
+40   FOR Offset = 0 TO 16383
+50     VPOKE Offset, ProcessByte(Page, Offset)
+60   NEXT Offset
+70 NEXT Page
+```
+
+### State Snapshots
+
+VMEM COPY creates instant snapshots of memory state for undo operations:
+
+```basic
+10 VMEM COPY 0, 15       ' Save current state to bank 15
+20 ' ... perform operations on bank 0 ...
+30 ' If something went wrong:
+40 VMEM COPY 15, 0       ' Restore saved state
+```
+
+## 5. RELATIONSHIP TO POKE/PEEK
+
+VPOKE and VPEEK operate on the segmented virtual memory space. POKE and PEEK operate on the BIOS emulation memory space (the PC BIOS data area and video RAM regions). These are separate address spaces. VPOKE does not write to the BIOS data area, and POKE does not write to vmem banks.
+
+## 6. PERFORMANCE CONSIDERATIONS
+
+Bank switching is a constant-time operation — it simply changes which bank's pointer is used for subsequent VPOKE/VPEEK calls. The actual data is stored in a contiguous heap allocation. There is no memory copy during a bank switch.
+
+VPOKE and VPEEK are single-byte operations. For bulk transfers, use VMEM COPY or loop over the bank contents. Future versions may add block transfer operations for higher throughput.
+
+## 7. BIOS MEMORY EMULATION
+
+The BIOS emulation subsystem (libhardware, engine/src/bios/) provides a separate virtual address space that mirrors the IBM PC/XT/AT memory layout:
+
+```text
+0x00000 - 0x003FF  Interrupt Vector Table (IVT)
+0x00400 - 0x004FF  BIOS Data Area (BDA)
+0xA0000 - 0xAFFFF  EGA/VGA graphics framebuffer
+0xB0000 - 0xB0FFF  MDA text framebuffer
+0xB8000 - 0xBFFFF  CGA/EGA/VGA text framebuffer
+0xC0000 - 0xCFFFF  Video BIOS ROM
+0xF0000 - 0xFFFFF  System BIOS ROM
+```
+
+POKE and PEEK access this space. For example, PEEK(&H449) reads the current video mode from the BDA. POKE to the video RAM regions updates the virtual display through BiosVRAMObserver callbacks.
+
+This BIOS memory space is entirely separate from VMEM banks and from the BASIC++ program/variable/string memory regions.

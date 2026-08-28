@@ -1,0 +1,18 @@
+ENVIRONSTR Environment String Function Alias
+======================================================================
+
+The ENVIRONSTR function is an alias for ENVIRON$, returning environment
+variable strings.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    val$ = ENVIRONSTR(name_string$)
+    entry$ = ENVIRONSTR(index_number%)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "HOME: "; ENVIRONSTR("HOME")

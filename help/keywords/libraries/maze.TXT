@@ -1,0 +1,13 @@
+maze 2D/3D Maze Generator & Traversal Library
+======================================================================
+
+The maze library generates randomized perfect mazes and renders 2D
+top-down or 3D raycasted views.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Recursive backtracking and Prim's algorithm maze generation.
+  - 2D grid rendering and collision bounds.
+  - Pseudo-3D raycaster wall view.

@@ -1,0 +1,27 @@
+Mock BIOS & Freestanding HAL Porting Guide
+======================================================================
+
+The libbios subsystem provides a freestanding C17 virtual machine BIOS
+layer with zero libc runtime dependencies.
+
+
+TRI-MODE HAL DISPATCH
+----------------------------------------------------------------------
+
+  1. STATIC_INLINE: Direct register mapping for IoT (< 8 KB RAM).
+  2. PLUGGABLE_STRUCT: Function pointer dispatch table for host VM.
+  3. MACRO_OVERRIDE: Interrupt vector trapping for FreeDOS / UEFI.
+
+
+MINIMAL HAL IMPLEMENTATION HOOKS
+----------------------------------------------------------------------
+
+  - bios_hal_putc(char ch)           : Character output to UART/console
+  - bios_hal_getc(void)              : Character input from UART/keyboard
+  - bios_hal_get_ticks_ms(void)      : Monotonic millisecond counter
+
+
+FEATURE GATES
+----------------------------------------------------------------------
+
+  -DFREESTANDING=1 -DBIOS_HAS_VIDEO=1 -DBIOS_HAS_RTC=1

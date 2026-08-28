@@ -1,0 +1,19 @@
+TIME / TIME$ System Time Function & Variable
+======================================================================
+
+The TIME$ variable/function returns the current local time as "HH:MM:SS".
+Numeric TIME returns seconds since midnight.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    current_time$ = TIME$
+    secs# = TIME
+    TIME$ = "HH:MM:SS"
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Time: "; TIME$

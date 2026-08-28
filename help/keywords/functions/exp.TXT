@@ -1,0 +1,16 @@
+EXP Exponential Base-e Function
+======================================================================
+
+The EXP function calculates the natural exponential e^x.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result# = EXP(numeric_expression)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT EXP(1)   : REM Outputs 2.718281828459045

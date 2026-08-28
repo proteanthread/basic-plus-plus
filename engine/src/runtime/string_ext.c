@@ -1,59 +1,13 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file string_ext.c
- * @brief Runtime component implementation and public API surface for string_ext.c.
- *
- * WHAT IT DOES:
- * Implements the core responsibilities, data structures, and function evaluation logic for string_ext.c within the runtime subsystem.
- *
- * WHY IT EXISTS:
- * Ensures decoupled modularity, strict C17 portability, and clear micro-library architectural boundary enforcement.
- *
- * WHY IT WORKS THIS WAY:
- * Designed with zero-initialization defaults, bounded memory operations, and explicit error code propagation to the VM state.
- *
- * WHAT CAN BE CHANGED:
- * Subsystem configuration defaults, local execution helper routines, and documentation annotations.
- *
- * WHAT CANNOT BE CHANGED:
- * Public API symbol declarations, micro-library metadata structures, and thread-safe error reporting contracts.
- *
- * WHAT TO EXPECT:
- * High-performance deterministic execution with zero side-effects outside designated state structures.
- *
- * WHAT TO DO IF SOMETHING BREAKS:
- * Verify context initialization, trace BppError return codes, and inspect log outputs for bounds assertions.
- *
- * ASSUMPTIONS:
- * Valid subsystem contexts and required memory pools are allocated prior to executing API handlers.
- *
- * PORTABILITY CONCERNS:
- * Strict C17 compliance, 64-bit pointer safety, and pure ASCII string operations across desktop, IoT, and embedded targets.
- *
- * FUTURE EXPANSIONS:
- * Additional dialect compatibility mappings, telemetry instrumentation, and microcontroller payload stubs.
- */
-
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file string_ext.c
- * @brief Extended string manipulation functions.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements advanced string functions like SPLIT$, LPAD$, RPAD$, SPRINTF$, LSET$, and RSET$.
- * - Why it exists: Matches and exceeds modern BASIC string handling capabilities.
- * - Why it works this way: Utilizes isolated StringContext for memory safety and snprintf for C-style formatting.
- */
+// FILENAME: string_ext.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (funcreg.h, funcreg.c, num_format.h, num_format.c, string.h)
+// NEEDS: libcore (strings.h, strings.c)
+// NEEDS: libengine (string.c, vm.h)
+// Provides core logic and interface definitions for string_ext within BASIC++.
+//
+// ---- Includes ----
 
 #include "runtime/funcreg.h"
 #include "vm/vm.h"
@@ -63,7 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* SPLIT$(string$, delimiter$, index) -> String */
+// SPLIT$(string$, delimiter$, index) -> String
 BValue string_split_func(BValue *args, int argc, void *rt) {
     VMContext *vm = (VMContext *)rt;
     if (argc < 3 || args[0].type != VAL_STRING || args[1].type != VAL_STRING || args[2].type != VAL_NUMBER) {
@@ -109,26 +63,24 @@ BValue string_split_func(BValue *args, int argc, void *rt) {
     return res;
 }
 
-/* SPRINTF$(format$, arg1, ...) -> String */
+// SPRINTF$(format$, arg1, ...) -> String
 BValue string_sprintf_func(BValue *args, int argc, void *rt) {
     VMContext *vm = (VMContext *)rt;
     if (argc < 1 || args[0].type != VAL_STRING) {
         return bval_float(0);
     }
     
-    /*
-     * Safe format string handling: We parse the format string manually
-     * and only allow a restricted set of safe format specifiers.
-     * This prevents:
-     *   - %n (memory write via format string)
-     *   - %s with numeric arg (undefined behavior / crash)
-     *   - %d/%f with string arg (undefined behavior)
-     *   - Any other dangerous format specifiers
-     */
+    // Safe format string handling: We parse the format string manually
+// and only allow a restricted set of safe format specifiers.
+// This prevents:
+// - %n (memory write via format string)
+// - %s with numeric arg (undefined behavior / crash)
+// - %d/%f with string arg (undefined behavior)
+// - Any other dangerous format specifiers
     const char *fmt = str_data(args[0].as.string);
     char buf[1024];
     size_t buf_pos = 0;
-    int arg_idx = 1; /* Next argument to consume (args[0] is the format string) */
+    int arg_idx = 1; // Next argument to consume (args[0] is the format string)
     
     for (const char *p = fmt; *p != '\0' && buf_pos < sizeof(buf) - 1; p++) {
         if (*p != '%') {
@@ -136,31 +88,31 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
             continue;
         }
         
-        /* Found '%' - parse the format specifier */
+        // Found '%' - parse the format specifier
         const char *spec_start = p;
-        p++; /* Skip '%' */
+        p++; // Skip '%'
         
         if (*p == '\0') {
-            /* Trailing '%' at end of string - emit it literally */
+            // Trailing '%' at end of string - emit it literally
             buf[buf_pos++] = '%';
             break;
         }
         
-        /* Handle %% (literal percent) */
+        // Handle %% (literal percent)
         if (*p == '%') {
             buf[buf_pos++] = '%';
             continue;
         }
         
-        /* Skip optional flags: -, +, 0, space, # */
+        // Skip optional flags: -, +, 0, space, #
         while (*p == '-' || *p == '+' || *p == '0' || *p == ' ' || *p == '#') {
             p++;
         }
-        /* Skip optional width */
+        // Skip optional width
         while (*p >= '0' && *p <= '9') {
             p++;
         }
-        /* Skip optional precision (.digits) */
+        // Skip optional precision (.digits)
         if (*p == '.') {
             p++;
             while (*p >= '0' && *p <= '9') {
@@ -169,17 +121,17 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
         }
         
         if (*p == '\0') {
-            /* Incomplete format specifier - emit the raw text */
+            // Incomplete format specifier - emit the raw text
             while (spec_start <= p && buf_pos < sizeof(buf) - 1) {
                 buf[buf_pos++] = *spec_start++;
             }
             break;
         }
         
-        /* Now *p is the conversion character */
+        // Now *p is the conversion character
         char conv = *p;
         
-        /* Build a safe local format specifier by copying from spec_start to p+1 */
+        // Build a safe local format specifier by copying from spec_start to p+1
         size_t spec_len = (size_t)(p - spec_start + 1);
         char safe_fmt[64];
         if (spec_len >= sizeof(safe_fmt)) {
@@ -192,7 +144,7 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
         
         switch (conv) {
             case 'd': case 'i': case 'x': case 'X': case 'o': case 'u':
-                /* Integer-like specifiers: require numeric argument */
+                // Integer-like specifiers: require numeric argument
                 if (arg_idx < argc && args[arg_idx].type == VAL_NUMBER) {
                     int ival = (int)args[arg_idx].as.number;
                     snprintf(buf + buf_pos, remaining, safe_fmt, ival);
@@ -205,7 +157,7 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
                 break;
                 
             case 'f': case 'e': case 'E': case 'g': case 'G':
-                /* Float specifiers: require numeric argument */
+                // Float specifiers: require numeric argument
                 if (arg_idx < argc && args[arg_idx].type == VAL_NUMBER) {
                     snprintf(buf + buf_pos, remaining, safe_fmt, args[arg_idx].as.number);
                     buf_pos += strnlen(buf + buf_pos, remaining);
@@ -217,7 +169,7 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
                 break;
                 
             case 's':
-                /* String specifier: require string argument */
+                // String specifier: require string argument
                 if (arg_idx < argc && args[arg_idx].type == VAL_STRING && args[arg_idx].as.string) {
                     snprintf(buf + buf_pos, remaining, safe_fmt, str_data(args[arg_idx].as.string));
                     buf_pos += strnlen(buf + buf_pos, remaining);
@@ -228,7 +180,7 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
                 break;
                 
             case 'c':
-                /* Character specifier: require numeric argument (ASCII value) */
+                // Character specifier: require numeric argument (ASCII value)
                 if (arg_idx < argc && args[arg_idx].type == VAL_NUMBER) {
                     int cval = (int)args[arg_idx].as.number;
                     if (cval >= 0 && cval < 128) {
@@ -241,7 +193,7 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
                 break;
                 
             default:
-                /* Unknown or dangerous specifier (including %n) - skip safely */
+                // Unknown or dangerous specifier (including %n) - skip safely
                 if (arg_idx < argc) arg_idx++;
                 break;
         }
@@ -256,7 +208,7 @@ BValue string_sprintf_func(BValue *args, int argc, void *rt) {
 }
 
 
-/* LPAD$(string$, length, padchar$) -> String */
+// LPAD$(string$, length, padchar$) -> String
 BValue string_lpad_func(BValue *args, int argc, void *rt) {
     VMContext *vm = (VMContext *)rt;
     if (argc < 3 || args[0].type != VAL_STRING || args[1].type != VAL_NUMBER || args[2].type != VAL_STRING) {
@@ -299,7 +251,7 @@ BValue string_lpad_func(BValue *args, int argc, void *rt) {
     return res;
 }
 
-/* RPAD$(string$, length, padchar$) -> String */
+// RPAD$(string$, length, padchar$) -> String
 BValue string_rpad_func(BValue *args, int argc, void *rt) {
     VMContext *vm = (VMContext *)rt;
     if (argc < 3 || args[0].type != VAL_STRING || args[1].type != VAL_NUMBER || args[2].type != VAL_STRING) {
@@ -342,7 +294,7 @@ BValue string_rpad_func(BValue *args, int argc, void *rt) {
     return res;
 }
 
-/* LSET$(string$, target_length) -> String */
+// LSET$(string$, target_length) -> String
 BValue string_lset_func(BValue *args, int argc, void *rt) {
     VMContext *vm = (VMContext *)rt;
     if (argc < 2 || args[0].type != VAL_STRING || args[1].type != VAL_NUMBER) {
@@ -380,7 +332,7 @@ BValue string_lset_func(BValue *args, int argc, void *rt) {
     return res;
 }
 
-/* RSET$(string$, target_length) -> String */
+// RSET$(string$, target_length) -> String
 BValue string_rset_func(BValue *args, int argc, void *rt) {
     VMContext *vm = (VMContext *)rt;
     if (argc < 2 || args[0].type != VAL_STRING || args[1].type != VAL_NUMBER) {

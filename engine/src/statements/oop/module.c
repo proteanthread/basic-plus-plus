@@ -1,52 +1,14 @@
-/**
- * @file module.c
- * @brief MODULE name [LOAD | UNLOAD | INFO | LIST | IMPORT <path> | (list)] statement handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements MODULE statement handler for entering module namespace scopes, dynamically loading C extension plugins, listing loaded modules, and importing definitions.
- *
- * 2. WHY IT EXISTS:
- * Provides modular namespace isolation and dynamic plugin extension capabilities for BASIC++ per v6 architecture specs.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Integrates dynamic library loading pipeline (Validation -> Capability Verification -> Sandbox Allocation -> Registration -> Activation), and updates scope module table.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_module'. Includes "stmt/stmt.h",
- * "lexer/lexer.h", "module/module.h", "scope/scope.h", "security/security.h", "device/vdev.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Fully included in libbasicpp (baspp) and libbasicpp_lite (bpp, bs) per Rule #1 (Core Included).
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support MODULE EXPORT <symbol> for exposing symbols from module namespaces.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Plugin loading security gates: Dynamic plugins MUST pass capability verification and sandbox allocation checks before registration.
- *
- * 8. WHAT TO EXPECT:
- * Enters module namespace scope or manages dynamic plugin state, returning ERR_NONE.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify module scope stack pushes and plugin handle release upon UNLOAD.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext, ModuleRegistry, and ScopeContext.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Cross-platform dynamic library loading abstractions.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/module/module.c
- * - engine/src/scope/scope.c
- * - engine/src/security/security.c
- * Prerequisite Header Files:
- * - engine/include/module/module.h
- * - engine/include/scope/scope.h
- * - engine/include/security/security.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: module.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (exec_internal.h, help.c, system.c)
+// NEEDS: libcore (ctype.h, ctype.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (module.h, string.h)
+// NEEDS: libengine (lexer.h, lexer.c, scope.h, scope.c, stmt.h, string.c)
+// NEEDS: libkernel (security.h, security.c, vdev.h, vdev.c)
+// Provides runtime implementation for the MODULE statement in BASIC++.
+//
+// ---- Includes ----
 
 #include "stmt/stmt.h"
 #include "lexer/lexer.h"
@@ -70,7 +32,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
 
     BppToken tok = lex_peek(lex);
 
-    /* 1. MODULE (no args) -> MODULE LIST */
+    // 1. MODULE (no args) -> MODULE LIST
     if (tok.type == TOK_EOL || tok.type == TOK_EOF) {
         int mc = module_count();
         if (mc == 0) {
@@ -94,7 +56,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-    /* Check for END / KW_END subcommand -> exit module scope */
+    // Check for END / KW_END subcommand -> exit module scope
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_END) {
         lex_next(lex);
         scope_namespace_exit(vm);
@@ -102,7 +64,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-    /* 2. Check for subcommands: LOAD, UNLOAD, INFO, LIST, IMPORT */
+    // 2. Check for subcommands: LOAD, UNLOAD, INFO, LIST, IMPORT
     if (tok.type == TOK_KEYWORD || tok.type == TOK_IDENT) {
         char word[64];
         size_t len = tok.length < 63 ? tok.length : 63;
@@ -139,7 +101,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
             return err;
         }
 
-        /* Subcommand: LOAD */
+        // Subcommand: LOAD
         if (tok.as.keyword == KW_LOAD || strcasecmp(word, "LOAD") == 0) {
             lex_next(lex);
             BppToken path_tok = lex_next(lex);
@@ -168,7 +130,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
             return err;
         }
 
-        /* Subcommand: UNLOAD */
+        // Subcommand: UNLOAD
         if (tok.as.keyword == KW_UNLOAD || strcasecmp(word, "UNLOAD") == 0) {
             lex_next(lex);
             BppToken name_tok = lex_next(lex);
@@ -191,7 +153,7 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
             return err;
         }
 
-        /* Subcommand: INFO */
+        // Subcommand: INFO
         if (tok.as.keyword == KW_INFO || strcasecmp(word, "INFO") == 0) {
             lex_next(lex);
             BppToken name_tok = lex_next(lex);
@@ -229,25 +191,57 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
             return err;
         }
 
-        /* Subcommand: LIST */
+        // Subcommand: LIST
         if (tok.as.keyword == KW_LIST || strcasecmp(word, "LIST") == 0) {
             lex_next(lex);
             return stmt_module_handler(vm, lex);
         }
 
-        /* Generic Identifier / Keyword -> Enter MODULE scope namespace */
+        // Generic Identifier / Keyword -> Enter MODULE scope namespace or skip module block during program execution
         BppToken mod_name_tok = lex_next(lex);
         char mod_name[64];
         size_t nlen = mod_name_tok.length < 63 ? mod_name_tok.length : 63;
         memcpy(mod_name, mod_name_tok.start, nlen);
         mod_name[nlen] = '\0';
 
+        if (vm_is_running(vm)) {
+            MemoryContext *mem = vm_get_mem(vm);
+            size_t count = 0;
+            BppProgramLine *lines = mem_program_get_all(mem, &count);
+            BppLineNumber cur_ln = vm_get_current_line(vm);
+            size_t start_idx = 0;
+            for (size_t i = 0; i < count; ++i) {
+                if (lines[i].line_number == cur_ln) { start_idx = i; break; }
+            }
+            int nest = 0;
+            for (size_t i = start_idx + 1; i < count; ++i) {
+                LexerContext *scan = lex_init(mem, lines[i].text);
+                if (!scan) continue;
+                BppToken scan_tok = lex_next(scan);
+                if (scan_tok.type == TOK_NUMBER) scan_tok = lex_next(scan);
+                if (scan_tok.type == TOK_KEYWORD) {
+                    if (scan_tok.as.keyword == KW_MODULE) nest++;
+                    else if (scan_tok.as.keyword == KW_END) {
+                        BppToken ntok = lex_next(scan);
+                        if (ntok.type == TOK_KEYWORD && ntok.as.keyword == KW_MODULE) {
+                            if (nest > 0) nest--;
+                            else {
+                                vm_jump(vm, lines[i].line_number, lines[i].text);
+                                lex_shutdown(scan);
+                                return err;
+                            }
+                        }
+                    }
+                }
+                lex_shutdown(scan);
+            }
+        }
+
         scope_namespace_enter(vm, mod_name);
-        vdev_printf(vdev, "Entered MODULE scope namespace '%s'.\n", mod_name);
         return err;
     }
 
-    /* 3. Treat string as module name to activate or enter: MODULE "name" */
+    // 3. Treat string as module name to activate or enter: MODULE "name"
     if (tok.type == TOK_STRING) {
         lex_next(lex);
         char mname[128];
@@ -265,6 +259,41 @@ BppError stmt_module_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
+BppError stmt_import_handler(VMContext *vm, LexerContext *lex) {
+    BppError err;
+    memset(&err, 0, sizeof(err));
+    if (!vm || !lex) return err;
+
+    BppToken tok = lex_next(lex);
+    if (tok.type == TOK_STRING) {
+        char path[256] = {0};
+        if (tok.as.string) {
+            size_t len = (tok.length < sizeof(path) - 1) ? tok.length : sizeof(path) - 1;
+            memcpy(path, tok.as.string, len);
+        } else if (tok.start) {
+            const char *src = tok.start;
+            size_t len = tok.length;
+            if (len >= 2 && src[0] == '"' && src[len - 1] == '"') {
+                src++;
+                len -= 2;
+            }
+            if (len >= sizeof(path)) len = sizeof(path) - 1;
+            memcpy(path, src, len);
+        }
+        err = vm_load_library_file(vm, path);
+        return err;
+    } else if (tok.type == TOK_IDENT || tok.type == TOK_KEYWORD) {
+        char mod_name[128] = {0};
+        size_t len = (tok.length < sizeof(mod_name) - 1) ? tok.length : sizeof(mod_name) - 1;
+        memcpy(mod_name, tok.start, len);
+        scope_namespace_enter(vm, mod_name);
+        module_activate(mod_name, vm);
+        return err;
+    }
+    err.code = 2; err.message = "Expected module name or file path after IMPORT";
+    return err;
+}
+
 void stmt_module_register(void) {
     static const MicroLibMetadata meta = {
         .name = "MODULE",
@@ -274,5 +303,14 @@ void stmt_module_register(void) {
         .error_codes = "Error 2: Syntax Error, Error 53: File Not Found, Error 70: Permission Denied"
     };
     microlib_register(&meta);
+
+    static const MicroLibMetadata import_meta = {
+        .name = "IMPORT",
+        .category = "Modular Execution",
+        .syntax = "IMPORT module_name | IMPORT \"file.bas\"",
+        .help_text = "Imports a module scope namespace or external BASIC++ source module.",
+        .error_codes = "Error 2: Syntax Error, Error 53: File Not Found"
+    };
+    microlib_register(&import_meta);
 }
 

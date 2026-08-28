@@ -1,0 +1,22 @@
+ERR$ Error Message Description Function
+=======================================
+
+Returns the human-readable text description corresponding to a runtime error code.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    message$ = ERR$([error_code%])
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  If omitted, error_code defaults to the current value of ERR.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT "Error 5 is: "; ERR$(5) : REM Outputs "Illegal function call"

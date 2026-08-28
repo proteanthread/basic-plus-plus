@@ -1,74 +1,13 @@
-/**
- * @file rpn.c
- * @brief Reverse Polish Notation (RPN) expression stack converter and evaluator implementation for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Converts tokenized BASIC expressions into RPN byte arrays and evaluates RPN stack queues iteratively.
- *
- * 2. WHY IT EXISTS:
- * Provides fast bytecode-level expression evaluation for loops and hot VM paths without tokenizing source strings repeatedly per Rule #2.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Transforms AST expressions into postfix RPN instruction arrays; evaluates RPN instructions using a flat evaluation stack allocated on the heap.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'eval'. Includes "eval/eval_internal.h", "eval/eval.h",
- * "vm/vm.h", <stdlib.h>, <string.h>.
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Core feature included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Add RPN opcode variants for vectorized matrix calculations.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * Postfix execution order and stack element popping invariants.
- *
- * 8. WHAT TO EXPECT:
- * Returns BValue result or ERR_EVAL_STACK_OVERFLOW.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Verify RPN opcode encoding and operand stack push/pop balance.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext pointer and non-NULL RPN byte sequence buffer.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Fixed size stack allocation zero-initialized by default.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/eval/eval.c
- * - engine/src/eval/ops.c
- * Prerequisite Header Files:
- * - engine/include/eval/eval.h
- * - engine/include/eval/eval_internal.h
- */
-
-/*
- * Copyright (c) 2025 Basic++ Project
- *
- * This software is provided 'as-is', without any express or implied
- * warranty. In no event will the authors be held liable for any damages
- * arising from the use of this software.
- *
- * Permission is granted to anyone to use this software for any purpose,
- * including commercial applications, and to alter it and redistribute it
- * freely, subject to the following restrictions:
- *
- * 1. The origin of this software must not be misrepresented; you must not
- *    claim that you wrote the original software. If you use this software
- *    in a product, an acknowledgment in the product documentation would be
- *    appreciated but is not required.
- * 2. Altered source versions must be plainly marked as such, and must not be
- *    misrepresented as being the original software.
- * 3. This notice may not be removed or altered from any source distribution.
- */
-
-/**
- * @file eval_rpn.c
- * @brief RPN Expression Evaluation
- */
+// FILENAME: rpn.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (file.h, file.c, funcreg.h, funcreg.c, struct.h, struct.c)
+// NEEDS: libcore (variables.h, variables.c)
+// NEEDS: libengine (eval_internal.h, map.h, map.c)
+// Provides core logic and interface definitions for rpn within BASIC++.
+//
+// ---- Includes ----
 
 #include "eval/eval_internal.h"
 #include "runtime/variables.h"
@@ -77,20 +16,42 @@
 #include "runtime/funcreg.h"
 #include "core/struct.h"
 
+static inline bool eval_is_clause_delimiter(BppToken tok) {
+    if (tok.type == TOK_KEYWORD) {
+        BppKeywordId kw = tok.as.keyword;
+        return (kw == KW_THEN || kw == KW_ELSE || kw == KW_TO || kw == KW_STEP ||
+                kw == KW_AS || kw == KW_GOTO || kw == KW_GOSUB || kw == KW_IF ||
+                kw == KW_UNLESS || kw == KW_UNTIL || kw == KW_BY);
+    }
+    if (tok.type == TOK_IDENT && tok.start && tok.length > 0) {
+        if (tok.length == 2 && runtime_strncasecmp(tok.start, "TO", 2) == 0) return true;
+        if (tok.length == 2 && runtime_strncasecmp(tok.start, "AS", 2) == 0) return true;
+        if (tok.length == 2 && runtime_strncasecmp(tok.start, "IF", 2) == 0) return true;
+        if (tok.length == 2 && runtime_strncasecmp(tok.start, "BY", 2) == 0) return true;
+        if (tok.length == 3 && runtime_strncasecmp(tok.start, "FOR", 3) == 0) return true;
+        if (tok.length == 4 && runtime_strncasecmp(tok.start, "THEN", 4) == 0) return true;
+        if (tok.length == 4 && runtime_strncasecmp(tok.start, "ELSE", 4) == 0) return true;
+        if (tok.length == 4 && runtime_strncasecmp(tok.start, "STEP", 4) == 0) return true;
+        if (tok.length == 4 && runtime_strncasecmp(tok.start, "GOTO", 4) == 0) return true;
+        if (tok.length == 5 && runtime_strncasecmp(tok.start, "GOSUB", 5) == 0) return true;
+        if (tok.length == 5 && runtime_strncasecmp(tok.start, "UNTIL", 5) == 0) return true;
+        if (tok.length == 5 && runtime_strncasecmp(tok.start, "WHILE", 5) == 0) return true;
+        if (tok.length == 6 && runtime_strncasecmp(tok.start, "UNLESS", 6) == 0) return true;
+    }
+    return false;
+}
+
 BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) {
     BValue null_val;
-    memset(&null_val, 0, sizeof(null_val));
+    runtime_memset(&null_val, 0, sizeof(null_val));
 
     MemoryContext *mem = vm_get_mem(vm);
     VariableContext *var = vm_get_var(vm);
 
-    /* Allocate stacks from scratch arena */
-    BValue *val_stack = (BValue *)mem_scratch_alloc(mem, sizeof(BValue) * MAX_EVAL_DEPTH);
-    if (!val_stack) {
-        out_err->code = 14;
-        out_err->message = "Evaluation stack overflow (scratch exhausted)";
-        return null_val;
-    }
+    // Allocate stacks from local stack
+    BValue val_stack[MAX_EVAL_DEPTH];
+    runtime_memset(val_stack, 0, sizeof(val_stack));
+
 
     size_t val_ptr = 0;
     int open_parens = 0;
@@ -99,22 +60,16 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
     while (tok.type != TOK_EOF && tok.type != TOK_EOL && tok.type != TOK_COMMA &&
            tok.type != TOK_SEMICOLON && (tok.type != TOK_RPAREN || open_parens > 0) &&
            tok.type != TOK_RBRACKET &&
-           (tok.type != TOK_KEYWORD || tok.as.keyword == KW_NONE ||
-            tok.as.keyword == KW_PLAY || tok.as.keyword == KW_HELP ||
-            tok.as.keyword == KW_SCREEN || tok.as.keyword == KW_SEEK ||
-            tok.as.keyword == KW_TIMER ||
-            tok.as.keyword == KW_REMOVE || tok.as.keyword == KW_REMOVE_STR ||
-            tok.as.keyword == KW_ALARM || tok.as.keyword == KW_ALARM_STR ||
-            tok.as.keyword == KW_RANDOMIZE)) {
+           (open_parens > 0 || !eval_is_clause_delimiter(tok))) {
 
-        /* Stop parsing if we see 'AT' identifier */
+        // Stop parsing if we see 'AT' identifier
         if (tok.type == TOK_IDENT && tok.length == 2 &&
             (tok.start[0] == 'A' || tok.start[0] == 'a') &&
             (tok.start[1] == 'T' || tok.start[1] == 't')) {
             break;
         }
 
-        /* Read the peeked token */
+        // Read the peeked token
         lex_next(lex);
 
         if (tok.type == TOK_NUMBER) {
@@ -135,7 +90,7 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                 out_err->message = "Scratch memory exhausted";
                 return null_val;
             }
-            memcpy(rpn_str, tok.as.string, tok.length);
+            runtime_memcpy(rpn_str, tok.as.string, tok.length);
             rpn_str[tok.length] = '\0';
 
             LexerContext *rpn_lex = lex_init(mem, rpn_str);
@@ -145,13 +100,13 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
 
             val_stack[val_ptr++] = res;
         } else if (tok.type == TOK_IDENT) {
-            /* Variable or function lookup */
+            // Variable or function lookup
             char name_buf[256];
             size_t copy_len = (tok.length < sizeof(name_buf) - 1) ? tok.length : sizeof(name_buf) - 1;
-            memcpy(name_buf, tok.start, copy_len);
+            runtime_memcpy(name_buf, tok.start, copy_len);
             name_buf[copy_len] = '\0';
 
-            if (strcasecmp(name_buf, "DUP") == 0) {
+            if (runtime_strcasecmp(name_buf, "DUP") == 0) {
                 if (val_ptr < 1) {
                     out_err->code = 24;
                     out_err->message = "RPN stack underflow on DUP";
@@ -162,7 +117,7 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                     str_add_ref(val.as.string);
                 }
                 val_stack[val_ptr++] = val;
-            } else if (strcasecmp(name_buf, "DROP") == 0) {
+            } else if (runtime_strcasecmp(name_buf, "DROP") == 0) {
                 if (val_ptr < 1) {
                     out_err->code = 24;
                     out_err->message = "RPN stack underflow on DROP";
@@ -173,7 +128,7 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                 if (val.type == VAL_STRING && val.as.string) {
                     str_release(vm_get_str(vm), val.as.string);
                 }
-            } else if (strcasecmp(name_buf, "SWAP") == 0) {
+            } else if (runtime_strcasecmp(name_buf, "SWAP") == 0) {
                 if (val_ptr < 2) {
                     out_err->code = 24;
                     out_err->message = "RPN stack underflow on SWAP";
@@ -182,7 +137,7 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                 BValue temp = val_stack[val_ptr - 1];
                 val_stack[val_ptr - 1] = val_stack[val_ptr - 2];
                 val_stack[val_ptr - 2] = temp;
-            } else if (strcasecmp(name_buf, "OVER") == 0) {
+            } else if (runtime_strcasecmp(name_buf, "OVER") == 0) {
                 if (val_ptr < 2) {
                     out_err->code = 24;
                     out_err->message = "RPN stack underflow on OVER";
@@ -193,7 +148,7 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                     str_add_ref(val.as.string);
                 }
                 val_stack[val_ptr++] = val;
-            } else if (strcasecmp(name_buf, "ROT") == 0) {
+            } else if (runtime_strcasecmp(name_buf, "ROT") == 0) {
                 if (val_ptr < 3) {
                     out_err->code = 24;
                     out_err->message = "RPN stack underflow on ROT";
@@ -205,7 +160,7 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                 val_stack[val_ptr - 3] = b;
                 val_stack[val_ptr - 2] = c;
                 val_stack[val_ptr - 1] = a;
-            } else if (strcasecmp(name_buf, "CLEAR") == 0) {
+            } else if (runtime_strcasecmp(name_buf, "CLEAR") == 0) {
                 while (val_ptr > 0) {
                     val_ptr--;
                     BValue val = val_stack[val_ptr];
@@ -213,12 +168,12 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                         str_release(vm_get_str(vm), val.as.string);
                     }
                 }
-            } else if (strcasecmp(name_buf, "DEPTH") == 0) {
+            } else if (runtime_strcasecmp(name_buf, "DEPTH") == 0) {
                 BValue val;
                 val.type = VAL_NUMBER;
                 val.as.number = (double)val_ptr;
                 val_stack[val_ptr++] = val;
-            } else if (strcasecmp(name_buf, "PICK") == 0) {
+            } else if (runtime_strcasecmp(name_buf, "PICK") == 0) {
                 if (val_ptr < 1) {
                     out_err->code = 24;
                     out_err->message = "RPN stack underflow on PICK";
@@ -241,12 +196,13 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                     str_add_ref(picked.as.string);
                 }
                 val_stack[val_ptr++] = picked;
-            } else if (strcasecmp(name_buf, "ROLL") == 0) {
+            } else if (runtime_strcasecmp(name_buf, "ROLL") == 0) {
                 if (val_ptr < 1) {
                     out_err->code = 24;
                     out_err->message = "RPN stack underflow on ROLL";
                     return null_val;
                 }
+
                 BValue idx_val = val_stack[--val_ptr];
                 if (idx_val.type != VAL_NUMBER) {
                     out_err->code = 13;
@@ -267,9 +223,9 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                     val_stack[(int)val_ptr - 1] = rolled;
                 }
             } else {
-                /* Check if followed by '(' */
+                // Check if followed by '('
                 if (lex_peek(lex).type == TOK_LPAREN) {
-                    lex_next(lex); /* Consume '(' */
+                    lex_next(lex); // Consume '('
                     if (eval_is_builtin_function(name_buf)) {
                         BValue val = eval_builtin_function(vm, name_buf, lex, true, out_err);
                         if (out_err->code != 0) return null_val;
@@ -317,7 +273,7 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                         if (out_err->code != 0) return null_val;
                         val_stack[val_ptr++] = val;
                     } else {
-                        /* Array access */
+                        // Array access
                         int indices[4];
                         int num_indices = 0;
                         while (true) {
@@ -360,13 +316,13 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                         val_stack[val_ptr++] = val;
                     }
                 } else {
-                    /* Simple variable lookup */
+                    // Simple variable lookup
                     BValue *v = var_lookup(var, name_buf, false);
                     if (!v) {
                         char base_name[256];
                         char member_chain[8][64];
                         int member_count = 0;
-                        eval_split_member_chain(name_buf, strlen(name_buf), base_name, sizeof(base_name), member_chain, &member_count);
+                        eval_split_member_chain(name_buf, runtime_strlen(name_buf), base_name, sizeof(base_name), member_chain, &member_count);
                         if (member_count > 0) {
                             v = var_lookup(var, base_name, false);
                             if (v) {
@@ -374,7 +330,7 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                                 if (val.type == VAL_STRING && val.as.string) str_add_ref(val.as.string);
                                 else if (val.type == VAL_MAP && val.as.map) map_add_ref(val.as.map);
                                 
-                                /* Walk up to the last member */
+                                // Walk up to the last member
                                 bool walk_err = false;
                                 for (int m = 0; m < member_count - 1; m++) {
                                     if (val.type != VAL_MAP || !val.as.map) {
@@ -394,14 +350,14 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                                 }
                                 
                                 if (!walk_err) {
-                                    /* Check if followed by '(' -> Method call */
+                                    // Check if followed by '(' -> Method call
                                     if (lex_peek(lex).type == TOK_LPAREN) {
-                                        lex_next(lex); /* Consume '(' */
+                                        lex_next(lex); // Consume '('
                                         if (val.type == VAL_MAP && val.as.map) {
                                             BValue type_val;
                                             if (map_get(val.as.map, "__type__", &type_val) && type_val.type == VAL_STRING && type_val.as.string) {
                                                 char fully_qualified_method[512];
-                                                snprintf(fully_qualified_method, sizeof(fully_qualified_method), "%s.%s",
+                                                runtime_snprintf(fully_qualified_method, sizeof(fully_qualified_method), "%s.%s",
                                                          str_data(type_val.as.string), member_chain[member_count - 1]);
                                                 
                                                 BValue args[9];
@@ -445,7 +401,7 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                                                         continue;
                                                     }
                                                 } else {
-                                                    /* Cleanup leaked args on walk_err */
+                                                    // Cleanup leaked args on walk_err
                                                     for (int i = 0; i < argc; i++) {
                                                         if (args[i].type == VAL_STRING && args[i].as.string) str_release(vm_get_str(vm), args[i].as.string);
                                                         else if (args[i].type == VAL_MAP && args[i].as.map) map_release(vm_get_str(vm), args[i].as.map);
@@ -454,7 +410,7 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                                             }
                                         }
                                     } else {
-                                        /* Standard field lookup on last member */
+                                        // Standard field lookup on last member
                                         int m = member_count - 1;
                                         if (val.type == VAL_MAP && val.as.map) {
                                             BValue next_val;
@@ -477,7 +433,7 @@ BValue eval_expression_rpn(VMContext *vm, LexerContext *lex, BppError *out_err) 
                             }
                         }
                         
-                        /* Return uninitialized variable (numeric 0.0) */
+                        // Return uninitialized variable (numeric 0.0)
                         BValue val;
                         val.type = VAL_NUMBER;
                         val.as.number = 0.0;

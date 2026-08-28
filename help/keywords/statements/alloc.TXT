@@ -1,0 +1,20 @@
+BASIC++ FUNCTION REFERENCE: ALLOC
+======================================================================
+
+1. SYNTAX & DESCRIPTION
+  ptr% = ALLOC(byte_size&)
+
+Allocates an uninitialized block of dynamic memory from the interpreter heap
+and returns the starting memory address pointer.
+
+2. PARAMETERS & RETURN VALUES
+- byte_size&: Number of bytes to allocate.
+- Returns: Integer pointer address (or 0 on failure).
+
+3. ERROR CODES
+- Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Negative or zero byte size.
+- Error 70 (ERR_PERMISSION_DENIED): Prohibited in strict sandbox modes.
+
+4. EXAMPLES
+  10 P% = ALLOC(1024)
+  20 FREE(P%)

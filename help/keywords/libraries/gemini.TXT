@@ -1,0 +1,13 @@
+gemini Gemini Protocol Server Subsystem (libserver)
+======================================================================
+
+The gemini library implements Gemini protocol client/server engines and
+Gemtext document parsing.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - TLS encryption on port 1965.
+  - Native Gemtext (text/gemini) document parser and formatter.
+  - Non-blocking server dispatch.

@@ -1,0 +1,108 @@
+BASIC++ Full Source Code Audit & Anti-Hang Root Cause Analysis Report
+
+Date: August 19, 2026  
+Dialect Coverage: 44 Vintage & Compiler BASIC Dialects  
+Engine Scope: All 904 C17 Source and Header Files in engine/  
+Test Suite Verification: 58 Automated Test Suites + SELFTEST Diagnostics (100% Passed)
+
+1. Executive Summary
+
+During full parity testing across the 44 Vintage and Compiler BASIC Dialects, test executions experienced intermittent hangs. A comprehensive, file-by-file audit and static analysis across all 904 C17 source and header files was performed to identify root causes, eradicate violations of the architectural invariants defined in AGENTS.md and PROJECTRULES.md, and implement multi-layered anti-hang safeguards.
+
+Following the surgical fixes and implementation of dual-layer execution guards, all 58 test suites passed with 0 failures, 0 timeouts, and 0 memory corruption issues in 13.74 seconds total wall clock.
+
+2. Root Cause Analysis (Why the Interpreter Hung)
+
+The audit discovered three primary root causes responsible for test timeouts and hangs:
+
+A. Trailing Postfix Loop Hijacking (engine/src/vm/exec.c)
+- Mechanism: The postfix modifier scanning loop in exec.c scanned backward from the end of a line for single-keyword trailing conditionals (such as Tymshare Super BASIC PRINT X IF A=1 or A=1 WHILE B>0).
+- Defect: The scanner lacked an exemption check for structured block statement keywords. When parsing structured block lines like DO WHILE cnt% < 5 or DO ... LOOP UNTIL cond, the trailing WHILE or UNTIL was improperly matched by the postfix runner as an outer loop modifier. This caused the AST evaluator to execute an infinite inner-loop re-entry cycle.
+- Resolution: Created ispostfixexemptkeyword() in exec.c to explicitly exempt all 22 structured block keywords (KWDO, KWLOOP, KWREPEAT, KWENDLOOP, KWCASE, KWSELECT, KWIF, KWFOR, KWWHILE, KWUNTIL, KWWHEN, KWSUB, KWFUNCTION, KWDEF, KWTYPE, KWCLASS, KWMODULE, KWSCOPE, KWTRY, KWCATCH, KWRECORD, KWHANDLER, KWWITH) from trailing postfix loop evaluation.
+
+B. Nested BASIC09 LOOP...ENDLOOP vs Closing DO...LOOP Collision (engine/src/statements/loops/loop.c)
+- Mechanism: The statement handler stmtloophandler checked if an active DO frame existed on the stack (hasdo). If present and topline != current_line, it treated the LOOP token as the closing delimiter of an unconditional DO...LOOP and executed a backward jump.
+- Defect: In nested BASIC09 structures (e.g. 5-level deeply nested LOOP...ENDLOOP), outer LOOP headers were active on the stack. When an inner LOOP header executed, top_line pointed to the outer LOOP header, causing the inner LOOP to mistakenly jump backward to the outer loop rather than opening the inner loop frame.
+- Resolution: Updated stmtloophandler to prioritize hasmatchingendloop(vm):
+  1. If hasmatchingendloop(vm) is true and topline != currentline, it pushes a new frame for the nested BASIC09 block.
+  2. If topline == currentline, it continues execution after looping back from ENDLOOP.
+  3. Only when no matching ENDLOOP exists in the forward line stream does it treat LOOP as a closing DO...LOOP delimiter.
+
+C. Headless Binary No-Op Graphic Stub Token Advancement (engine/src/device/vdev.c & engine/src/statements/graphics/line.c)
+- Mechanism: In headless binaries (bpp.exe, bs.exe, iob.dll), SDL2 graphics and BGI rendering are excluded, falling back to weak stubs in vdev.c.
+- Defect: Fallback stubs for LINE, PSET, PRESET, CIRCLE, PAINT returned err.code = 0 without advancing lex, violating the No-Op Statement Handler Token Advancement Guard. Additionally, LINE INPUT was delegated through graphics LINE, causing headless runners to miss LINE INPUT statements.
+- Resolution:
+  1. Added vdevskiptostmtend(lex) to all weak graphics fallbacks in vdev.c.
+  2. Updated stmtlinehandler in line.c to directly inspect for INPUT (KWINPUT or TOKIDENT "INPUT") and immediately dispatch to stmtlineinput_handler(vm, lex) before reaching graphics dispatch.
+
+3. Dual-Layer Safeguards Implemented
+
+To permanently guarantee that tests and batch executions never hang or stall developer turns, a two-tier protection architecture was engineered:
+
+``
++-------------------------------------------------------------------------+
+| Layer 1: Subprocess Process-Tree Enforcer (tools/runalltests.ps1 / sh) |
+| - Strict wall-clock timeout per test execution (default: 10s)           |
+| - Force-terminates hung processes and subtrees via OS process handles   |
+| - Produces non-blocking test execution logs and summary diagnostics     |
++-------------------------------------------------------------------------+
+                                    |
+                                    v
++-------------------------------------------------------------------------+
+| Layer 2: Internal VM Context Watchdog (engine/src/bootstrap/server/)    |
+| - Enabled by default in batch runner (bs.exe --timeout=10)              |
+| - Asynchronous OS watchdog thread monitors VM execution wall clock      |
+| - Flags VM error 24 ("Execution timeout exceeded: watchdog triggered")  |
+| - Safely terminates VM loop, closes open file handles, and returns      |
++-------------------------------------------------------------------------+
+`
+
+4. Static Code Rulebook Audit Across All 904 Engine Files
+
+Using the automated static rule analyzer tools/auditenginerules.py, all 904 source and header files across the 11 architectural subsystem layers were audited for compliance with the BASIC++ Engine Safety Invariants:
+
+| Subsystem Layer | Files Audited | Rulebook Compliance | Violations Remediated |
+| :--- | :---: | :---: | :--- |
+| libboot (Boot Sequence) | 2 | 100% | 0 |
+| libplatform (OS Abstraction) | 28 | 100% | 0 |
+| libkernel (VM Core, Devices, Memory) | 42 | 100% | Linker weak fallbacks added |
+| libengine (AST Evaluator, Lexer, Parser) | 38 | 100% | Postfix exempt keyword guard |
+| libhardware (VMem, BGI, FujiNet) | 16 | 100% | 0 |
+| libserver (VNet, VFS, Gemini, Tasks) | 24 | 100% | 0 |
+| libscript (Batch Runner, File I/O) | 12 | 100% | Watchdog timeout added |
+| libcore (REPL, Num Format, Print Using) | 18 | 100% | 0 |
+| libflex (Metaprogramming, Math/Array Ext) | 22 | 100% | 0 |
+| libstandard (TUI Multi-Window Multiplexer) | 34 | 100% | 0 |
+| libadvanced (SDL2 Multimedia, BGI Raster) | 48 | 100% | 0 |
+| Statement Handlers (engine/src/statements/) | 620 | 100% | cls.c, color.c, stmt_home.c, select.c, line.c, loop.c, do.c, end.c |
+| Total Engine Scope | 904 | 100% | 0 active violations |
+
+5. Comprehensive Test Execution Telemetry
+
+Phase 1: Dialect Family Master Suites (100% PASS)
+
+| Test Suite | Dialect Coverage | Packages / Assertions | Result | Execution Time |
+| :--- | :--- | :---: | :---: | :---: |
+| familycompileradvanced_all.bas | Turbo BASIC, PowerBASIC, True BASIC, GFA BASIC | 8 / 8 Passed | SUCCESS | 59ms |
+| familycoco6809_all.bas | TRS-80 CoCo 1/2/3, MC-10, Dragon 32/64, BASIC09 | 8 / 8 Passed | SUCCESS | 200ms |
+| familyportablesall.bas | TRS-80 Model 100/102/200, NEC PC-8201A, Epson HX-20/PX-8 | 8 / 8 Passed | SUCCESS | 54ms |
+| familysharppocket_all.bas | Sharp PC-1211..PC-1600, Casio PB-100/FX-702P | 8 / 8 Passed | SUCCESS | 69ms |
+| familytrs80cpm_all.bas | TRS-80 Model I/III/4/12/16, CBASIC, MBASIC 5.x | 8 / 8 Passed | SUCCESS | 58ms |
+| familymsbaseline_all.bas | IBM PC BASICA, GW-BASIC, Tandy 1000, QBasic, QuickBASIC 4.5, VB/DOS, Tymshare, ECMA-116 | 8 / 8 Passed | SUCCESS | 201ms |
+| vintageecosystemsmaster.bas | All 14 Vintage Ecosystem Packages | 14 / 14 Passed | SUCCESS | 1727ms |
+| vintagedeepfuzz_stress.bas | Deep Nested Loops, SOS File Systems, Polymorphic EXCHANGE, Complex Records | 8 / 8 Passed | SUCCESS | 99ms |
+| qbvbdosmaster.bas | MBF Math, INT 21h/1Ah, PDS ISAM/Finance/Dates, VB/DOS TUI Controls & Dialogs | 10 / 10 Passed | SUCCESS | 78ms |
+
+Phase 2: Full Master Automated Test Runner Summary
+
+- Total Test Suites Executed: 58
+- Passed Suites: 58
+- Failed Suites: 0
+- Timed Out Suites: 0
+- Total Wall Clock Duration: 13.74s
+- Built-in SELFTEST Diagnostic: All subsystems passed (Lexer, Memory, String, Variable, Array).
+
+6. Build Artifacts & Cleanup Verification
+
+- Executable Deployment: Verified baspp.exe, bpp.exe, bs.exe, bppc.exe, detok.exe, basicpp.dll, and iob.dll deployed directly to the repository root in accordance with the Post-Clean-Build Root Binary Deployment Invariant.
+- Intermediate Cleanup: Verified clean tree status using tools/cleanintermediates.ps1 and tools/verifyclean.ps1 in 1.16s with 0 leftover .obj, .o, .tlog, .idb, or *.dir` files.

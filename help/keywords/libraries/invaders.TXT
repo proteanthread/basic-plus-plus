@@ -1,0 +1,13 @@
+invaders Classic Fixed-Matrix Arcade Shooter Template
+======================================================================
+
+The invaders template implements 5x11 marching alien armadas, destructible
+bunkers, and laser collision detection.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Dynamic armada speed scaling as alien count decreases.
+  - Pixel-mask bunker destruction.
+  - Mystery saucer bonus point scoring.

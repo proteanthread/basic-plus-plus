@@ -1,0 +1,13 @@
+defender Horizontal Scrolling Radar & Arcade Template
+======================================================================
+
+The defender template implements horizontal wraparound world scrolling,
+radar scanner displays, and particle thrust physics.
+
+
+FEATURES
+----------------------------------------------------------------------
+
+  - Top-screen minimap radar scanner.
+  - Seamless wraparound coordinate space.
+  - Particle explosion rendering.

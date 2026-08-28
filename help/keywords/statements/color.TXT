@@ -1,0 +1,30 @@
+COLOR Color Attribute Configuration Statement
+=============================================
+
+Sets active text foreground, background, and screen border color attributes.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    COLOR [foreground%] [, [background%] [, border%]]
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 5 (ERR_ILLEGAL_FUNCTION_CALL): Color index outside palette range.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Supports standard 16-color ANSI/CGA palettes and 256-color extended modes.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 COLOR 15, 1 : REM Bright white on blue
+    20 CLS
+    30 PRINT "White on Blue Header"

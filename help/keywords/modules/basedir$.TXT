@@ -1,0 +1,32 @@
+BASEDIR$ Directory Path Extraction Function
+======================================================================
+
+The BASEDIR$ function extracts the directory path component from a full
+file path string.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    dir_path$ = BASEDIR$(full_path$)
+
+
+OPERATIONAL RULES
+----------------------------------------------------------------------
+
+  - Strips the trailing file name.
+  - Supports both '/' and '\' path separators.
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  13          ERR_TYPE_MISMATCH     Non-string argument provided
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT BASEDIR$("src/engine/vm.c")   : REM Outputs "src/engine"

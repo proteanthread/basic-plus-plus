@@ -1,0 +1,25 @@
+CHR$ Character from ASCII Code Function
+======================================================================
+
+The CHR$ function returns a single-character string corresponding to the
+provided ASCII code (0 to 255).
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    char_str$ = CHR$(code_point%)
+
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error Code  Name                  Condition
+  ----------  --------------------  ----------------------------------
+  5           ERR_ILLEGAL_FUNCTION  Code not in range 0..255
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT CHR$(66)   : REM Outputs "B"

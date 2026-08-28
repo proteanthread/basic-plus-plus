@@ -1,33 +1,12 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-/**
- * @file mod_mux.c
- * @brief Implementation of Unified Multiplexing & Binary Serialization Algorithms.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Performs array, matrix, string, and variant data interleaving (MUX/DEMUX)
- *   and binary field serialization (PACK$/UNPACK).
- * - Why it exists: Provides dynamic data structure multiplexing and record packing natively.
- * - Why it works this way: Iterates elements or matrix rows/cols according to MuxMode,
- *   handling unequal lengths with zero/empty string padding. PACK$ encodes typed length prefixes.
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Binary serialization format tags, strided interleave step sizes.
- * - What cannot be changed: Memory safety, pointer bounds checking, BValue refcount invariants.
- * - What to expect: Algorithms return true on success or false on invalid params/memory errors.
- * - What to do if something breaks: Check destination array allocation sizes.
- *
- * SECTION 3: ASSUMPTIONS & PORTABILITY CONCERNS
- * - Assumptions: Input arrays are initialized DimArray structures.
- * - Portability concerns: Strict C17 compliant, pure 7-bit ASCII text output.
- *
- * SECTION 4: FUTURE EXPANSIONS & EXTENSION HOOKS
- * - How future expansion can occur safely: Add 3D/tensor matrix multiplexing modes.
- * - How to write external extensions: Call mux_arrays or pack_fields directly.
- */
+// FILENAME: mux.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine (pack.c, unpack.c)
+// NEEDS: libcore (feature_reg.h, feature_reg.c, string.h)
+// NEEDS: libengine (mux.h, string.c)
+// Provides core logic and interface definitions for mux within BASIC++.
+//
+// ---- Includes ----
 
 #include "runtime/mux.h"
 #include "core/feature_reg.h"
@@ -54,7 +33,7 @@ bool mux_arrays(DimArray *dst, DimArray **srcs, size_t count, MuxMode mode, size
 
     memset(dst->data, 0, (size_t)dst->total_size * sizeof(BValue));
 
-    /* Interleave element-by-element */
+    // Interleave element-by-element
     j = 0;
     for (i = 0; ; i += step) {
         bool added_any = false;
@@ -152,9 +131,9 @@ char* pack_fields(const BValue *values, size_t count, size_t *out_len) {
 
     if (!values || count == 0 || !out_len) return NULL;
 
-    /* First pass: calculate total byte size required */
+    // First pass: calculate total byte size required
     for (i = 0; i < count; i++) {
-        total_bytes += 1; /* Type tag byte */
+        total_bytes += 1; // Type tag byte
         if (values[i].type == VAL_NUMBER) {
             total_bytes += sizeof(double);
         } else if (values[i].type == VAL_STRING) {
@@ -166,7 +145,7 @@ char* pack_fields(const BValue *values, size_t count, size_t *out_len) {
     buf = (char*)calloc(total_bytes + 1, sizeof(char));
     if (!buf) return NULL;
 
-    /* Second pass: encode type tags and data */
+    // Second pass: encode type tags and data
     for (i = 0; i < count; i++) {
         buf[offset++] = (char)values[i].type;
         if (values[i].type == VAL_NUMBER) {

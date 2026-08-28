@@ -1,0 +1,16 @@
+COS Cosine Trigonometric Function
+======================================================================
+
+The COS function calculates the cosine of an angle in radians.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    result# = COS(angle_radians)
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT COS(0)   : REM Outputs 1

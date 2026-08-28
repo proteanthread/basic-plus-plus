@@ -1,26 +1,13 @@
-/* Copyleft (c) 2026, BASIC++ Community. All wrongs reserved.
- *
- * This file is part of BASIC++ - a modular, portable BASIC language framework.
- * See LICENSE for terms. See docs/ for programmer guides.
- */
-
-/**
- * @file aalib.c
- * @brief Standalone mini-aalib core rendering engine implementation.
- *
- * SECTION 1: WHAT IT DOES, WHY IT EXISTS, AND WHY IT WORKS THIS WAY
- * - What it does: Implements core aalib API functions for context initialization,
- *   VRAM buffer management, 2x2 block grayscale average character mapping, and console output.
- * - Why it exists: Provides a zero-dependency vended fallback for ASCII art rendering
- *   that compiles out-of-the-box on Windows and POSIX targets.
- * - Why it works this way: It queries terminal sizing via OS-specific APIs, down-samples
- *   internal grayscale pixel arrays to ASCII character indices, and outputs frames using
- *   optimized terminal escapes (\033[H).
- *
- * SECTION 2: DEVELOPER MAINTENANCE & MODIFICATION GUIDE
- * - What can be changed: Character ramp patterns for higher legibility, query limits.
- * - What cannot be changed: API signatures (must keep exact standard aalib signatures).
- */
+// FILENAME: aalib.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libengine, BASIC++ runtime
+// NEEDS: libcore (string.h)
+// NEEDS: libengine (string.c)
+// NEEDS: libkernel (aalib.h)
+// Implements virtual device and graphics rendering logic for aalib.
+//
+// ---- Includes ----
 
 #include "aalib.h"
 #include <stdlib.h>

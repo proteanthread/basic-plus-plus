@@ -1,0 +1,34 @@
+FUNCTION Multi-Line Function Definition Statement Block
+=======================================================
+
+Defines a modular, multi-line user function with local variable scope.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    FUNCTION FuncName [(param1 [, param2...])]
+      [statements]
+      FuncName = return_value
+    END FUNCTION
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 37 (ERR_DUPLICATE_DEFINITION): Function already defined with different signature.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  Supports recursion and local variable isolation.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 PRINT Area(5, 10)
+    20 FUNCTION Area(W, H)
+    30   Area = W * H
+    40 END FUNCTION

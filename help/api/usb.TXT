@@ -1,0 +1,25 @@
+C17 API REFERENCE: VIRTUAL USB SUBSYSTEM (device/usb.h)
+======================================================================
+
+1. SUBSYSTEM OVERVIEW
+The Virtual USB Subsystem provides host controller emulation, 4-port root
+hub management, and peripheral hot-plugging (Keyboard, Mouse, Storage, Display).
+
+2. DEVICE CLASSES (BppUsbDevType)
+- USB_DEV_KEYBOARD, USB_DEV_MOUSE, USB_DEV_STORAGE, USB_DEV_DISPLAY.
+
+3. KEY TYPES & STRUCTS
+- BppUsbDevice: type, name, vendor_id, product_id, connected.
+- UsbContext: Opaque USB host controller handle.
+
+4. CORE API FUNCTIONS
+- usb_init(mem) -> UsbContext *
+- usb_shutdown(ctx)
+- usb_connect(ctx, port, type, vid, pid) -> bool
+- usb_disconnect(ctx, port)
+- usb_get_port_status(ctx, port, out_dev) -> bool
+- usb_get_connected_count(ctx) -> int
+
+5. ARCHITECTURAL INVARIANTS
+- Supports up to 4 virtual USB ports (USB_MAX_PORTS).
+- Requires CAP_USB security capability.

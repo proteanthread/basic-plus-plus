@@ -1,0 +1,31 @@
+POINTER File Record Byte Position Query Function
+================================================
+
+Returns the exact 64-bit byte seek position within an open file channel.
+
+
+SYNTAX
+----------------------------------------------------------------------
+
+    byte_pos& = POINTER(filenum%)
+
+
+ERROR CONDITIONS
+----------------------------------------------------------------------
+
+  - Error 52 (ERR_BAD_FILE_NUMBER): Channel is not open.
+
+
+OPERATIONAL NOTES
+----------------------------------------------------------------------
+
+  High-precision seek pointer query.
+
+
+CODE EXAMPLES
+----------------------------------------------------------------------
+
+    10 OPEN "B", #1, "DATA.BIN"
+    20 SEEK #1, 1024
+    30 PRINT "Pointer position: "; POINTER(1) : REM Outputs 1024
+    40 CLOSE #1

@@ -1,242 +1,133 @@
-# SuperBASIC (Sinclair QL) Dialect Reference
+# BASIC++ v6.5.2 SuperBASIC (Sinclair QL) Dialect
 
-**Version 4.2.3**
+## 1. HISTORY
 
----
+SuperBASIC is the built-in BASIC dialect of the Sinclair QL (Quantum Leap), released in 1984. It was one of the most advanced BASIC dialects of the 8-bit era, featuring structured programming constructs (REPeat, DEFine PROCedure, DEFine FuNction), local variables, and a flexible syntax. BASIC++ implements SuperBASIC compatibility through the SQLB dialect configuration.
 
-## Table of Contents
-
-- History
-  - Key Innovations
-- Activation
-- Structured Programming Features
-  - Block IF / END IF
-  - FOR / END FOR
-  - REPeat / END REPeat
-  - SELect ON
-  - DEF PROCedure / DEF FuNction
-- QDOS and Memory Map
-  - Display Modes
-- configuration
-- Example Programs
-  - Fibonacci sequence (structured)
-  - Using SELECT CASE
-- See Also
-
----
-
-**Dialect Code:** `SQLB`
-
----
-
-## History
-
-SuperBASIC was the built-in programming language of the Sinclair QL (Quantum Leap), released in January 1984. The QL used a Motorola 68008 CPU running at 7.5 MHz with 128K of RAM (expandable to 640K).
-
-SuperBASIC was developed by Jan Jones and was a radical departure from contemporary microcomputer BASICs. It introduced true structured programming constructs — procedures, functions, local variables, and named loops — making it one of the most advanced BASICs of the 1980s.
-
-The QL ran QDOS (later evolved into SMSQ/E), a preemptive multitasking operating system. Programs were stored on twin Microdrive tape loops — unreliable but innovative for 1984.
-
-### Key Innovations
-
-- Named procedures (`DEF PROCedure`) and functions (`DEF FuNction`)
-- Local variables (`LOCal`) with proper scoping
-- Structured loops: `FOR/END FOR`, `REPeat/END REPeat`
-- Block `IF/ELSE/END IF` (no line-number GOTO required)
-- `SELect ON` (computed multi-way branch)
-- Line numbers optional (could be omitted entirely)
-- Coercion between integers and floats
-- QDOS device driver integration
-
----
-
-## Activation
-
-```basic
-DIALECT "SQLB"
-```
-
-This changes:
-- Statement separator: `:` (colon)
-- `LET` is optional
-- `THEN` is required in IF statements
-- Maximum line number: 32767
-- Ready prompt: `SuperBASIC`
-- Print zone width: 16
-- `CLS` available
-- `WHILE/WEND` and `DO/LOOP` not available (uses REPeat/END REPeat)
-- Extended variable names
-
-To combine with the Sinclair QL memory map:
-
-```basic
-DIALECT "SQLB"
-MEMMAP "QL"
-```
-
----
-
-## Structured Programming Features
-
-### Block IF / END IF
-
-```basic
-IF condition THEN
-  ... statements ...
-ELSE
-  ... statements ...
-END IF
-```
-
-Unlike GW-BASIC, SuperBASIC supported multi-line IF blocks from the start. No line number targets needed.
-
-### FOR / END FOR
-
-```basic
-FOR I = 1 TO 10
-  PRINT I
-END FOR I
-```
-
-SuperBASIC used `END FOR` instead of `NEXT`. Both are accepted in BASIC++ when in SQLB dialect.
-
-### REPeat / END REPeat
-
-```basic
-REPeat loop_name
-  ... statements ...
-  IF condition THEN EXIT loop_name
-END REPeat loop_name
-```
-
-Named infinite loops with explicit `EXIT`. The loop name makes it clear which loop you're exiting in nested cases.
-
-### SELect ON
-
-```basic
-SELect ON X
-  = 1: PRINT "One"
-  = 2: PRINT "Two"
-  = 3 TO 5: PRINT "Three to Five"
-  = REMAINDER: PRINT "Other"
-END SELect
-```
-
-Similar to `SELECT CASE` but with different syntax. `REMAINDER` handles the default case.
-
-### DEF PROCedure / DEF FuNction
-
-```basic
-DEF PROCedure greeting(name$)
-  LOCal i
-  FOR i = 1 TO 3
-    PRINT "Hello, "; name$
-  END FOR i
-END DEF
-
-DEF FuNction square(x)
-  RETurn x * x
-END DEF
-```
-
-Procedures and functions with local variables. `LOCal` declares variables scoped to the routine.
-
----
-
-## QDOS and Memory Map
-
-The Sinclair QL used a Motorola 68008 with 24-bit addressing. The real address space extends to 1MB, but BASIC++ maps key regions into the 64K virtual window:
-
-| Address | Description |
-|---------|-------------|
-| `$0000–$BFFF` | System ROM (48K, partial) |
-| `$2000–$3FFF` | Screen RAM (partial, 32K on real QL) |
-| `$0100` | `SV.IDENT` (QL type identifier) |
-| `$0102` | `SV.VERSN` (QDOS version) |
-| `$0104` | Memory size in KB |
-| `$0110` | Display mode (0=mode 4, 8=mode 8) |
-| `$0140` | IPC keyboard controller status |
-
-### Display Modes
-
-| Mode | Resolution | Colors |
-|------|-----------|--------|
-| Mode 4 | 512×256 | 4 colors (black, red, green, white) |
-| Mode 8 | 256×256 | 8 colors (full palette) |
-
----
-
-## configuration
-
-| Property | Value |
-|----------|-------|
-| Dialect ID | `DIALECT_SUPERBASIC` |
-| Dialect code | `SQLB` |
-| Dialect flag | `DFLAG_SUPA` (bit 14) |
-| Statement separator | `:` (colon) |
-| Optional LET | Yes |
-| Required THEN | Yes |
-| Max line number | 32767 |
-| Ready prompt | `"SuperBASIC"` |
-| Print zone width | 16 |
-| CLS available | Yes |
-| Floating point | Yes |
-| Strings | Yes |
-| Arrays | Yes (DIM) |
-| FOR/NEXT | Yes |
-| WHILE/WEND | No |
-| DO/LOOP | No |
-| DATA/READ | Yes |
-| DEF FN | Yes |
-| Extended variables | Yes |
-| ON ERROR | Yes |
-| TRON/TROFF | Yes |
-| MERGE/CHAIN | No |
-
----
-
-## Example Programs
-
-### Fibonacci sequence (structured)
+## 2. ACTIVATING SUPERBASIC MODE
 
 ```basic
 10 DIALECT "SQLB"
-20 LET A = 0
-30 LET B = 1
-40 FOR I = 1 TO 20
-50   PRINT A;
-60   LET C = A + B
-70   LET A = B
-80   LET B = C
-90 NEXT I
-100 PRINT
-110 END
 ```
 
-### Using SELECT CASE
+Or launch with: `baspp --dialect=SQLB`.
+
+## 3. STRUCTURED LOOPS
+
+SuperBASIC uses REPeat/END REPeat instead of WHILE/WEND for indefinite loops:
 
 ```basic
-10 DIALECT "SQLB"
-20 INPUT "Enter a grade (A-F): "; G$
-30 SELECT CASE UCASE$(G$)
-40   CASE "A"
-50     PRINT "Excellent!"
-60   CASE "B"
-70     PRINT "Good work!"
-80   CASE "C"
-90     PRINT "Satisfactory."
-100  CASE ELSE
-110    PRINT "Needs improvement."
-120 END SELECT
-130 END
+10 REPeat MainLoop
+20   INPUT "Number (0 to quit): "; N
+30   IF N = 0 THEN EXIT MainLoop
+40   PRINT N; "squared ="; N * N
+50 END REPeat MainLoop
 ```
 
----
+REPeat loops are named and can be exited from anywhere within the loop body using EXIT name. This is more flexible than WHILE/WEND because the exit condition can appear at any point, not just at the top.
 
-## See Also
+## 4. FOR LOOPS
 
-- [Quick_Reference](Quick_Reference.md) — Complete keyword listing
-- [Memory_Maps](Memory_Maps.md) — MEMMAP "QL" details
-- [Structured_BASIC](Structured_BASIC.md) — Structured programming tutorial
+SuperBASIC FOR loops also support named EXIT:
 
-*@COPYLEFT ALL WRONGS RESERVED*
+```basic
+10 FOR I = 1 TO 100
+20   IF A(I) = Target THEN EXIT I
+30 END FOR I
+```
+
+Note the END FOR terminator — SuperBASIC uses END FOR instead of NEXT. BASIC++ accepts both forms.
+
+## 5. PROCEDURES
+
+DEFine PROCedure defines a named procedure with parameters and local variables:
+
+```basic
+1000 DEFine PROCedure DrawBox(x, y, w, h)
+1010   LOCal i
+1020   FOR i = x TO x + w
+1030     PRINT AT y, i; "*"
+1040     PRINT AT y + h, i; "*"
+1050   END FOR i
+1060 END DEFine DrawBox
+```
+
+Procedures are called by name: `DrawBox 10, 5, 20, 10`. Note that SuperBASIC does not use CALL or parentheses for procedure calls — arguments follow the procedure name separated by commas.
+
+## 6. FUNCTIONS
+
+DEFine FuNction defines a named function that returns a value. The return value is assigned using RETurn:
+
+```basic
+2000 DEFine FuNction Factorial(n)
+2010   LOCal result, i
+2020   result = 1
+2030   FOR i = 2 TO n
+2040     result = result * i
+2050   END FOR i
+2060   RETurn result
+2070 END DEFine Factorial
+```
+
+Functions are called in expressions: `PRINT Factorial(10)`.
+
+## 7. LOCAL VARIABLES
+
+LOCal declares variables as local to the current procedure or function:
+
+```basic
+1000 DEFine PROCedure Example
+1010   LOCal x, y, temp$
+1020   x = 10
+1030   y = 20
+1040   ' x and y exist only within this procedure
+1050 END DEFine Example
+```
+
+## 8. IF/END IF
+
+SuperBASIC uses IF/THEN/ELSE/END IF with the same block structure as BASIC++:
+
+```basic
+10 IF Score > 90 THEN
+20   PRINT "Excellent"
+30 ELSE IF Score > 70 THEN
+40   PRINT "Good"
+50 ELSE
+60   PRINT "Try again"
+70 END IF
+```
+
+Note: SuperBASIC uses `ELSE IF` (two words) rather than ELSEIF. BASIC++ accepts both forms.
+
+## 9. SELECT ON
+
+SuperBASIC uses SELECT ON instead of SELECT CASE:
+
+```basic
+10 SELECT ON Choice
+20   = 1 : PRINT "One"
+30   = 2 : PRINT "Two"
+40   = 3 : PRINT "Three"
+50   = REMAINDER : PRINT "Other"
+60 END SELECT
+```
+
+`= REMAINDER` is equivalent to CASE ELSE.
+
+## 10. WHEN ERROR
+
+SuperBASIC structured error handling uses WHEN ERROR:
+
+```basic
+10 WHEN ERROR
+20   PRINT "An error occurred: "; ERR
+30   CONTINUE
+40 END WHEN
+```
+
+CONTINUE inside the error handler resumes execution at the statement after the one that caused the error. RETRY re-executes the statement that caused the error.
+
+## 11. COMPATIBILITY NOTES
+
+The SQLB dialect maps SuperBASIC syntax to BASIC++ internal representations: REPeat maps to a specialized loop construct, DEFine PROCedure maps to SUB, DEFine FuNction maps to FUNCTION, LOCal maps to LOCAL, and RETurn maps to the function return mechanism. All standard BASIC++ keywords remain available in SQLB mode.

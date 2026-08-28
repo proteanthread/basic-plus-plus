@@ -1,69 +1,92 @@
-# INFO
+# INFO Statement Reference
 
-## 1. Syntax & Parameters
-`INFO`
-`INFO [category_or_topic]`
+The `INFO` statement displays real-time runtime diagnostics, memory allocation statistics, virtual device metrics, security levels, and engine version telemetry directly to the virtual console.
 
-**Parameters:**
-* `category_or_topic` (Optional): Specific subject to filter the introspective output.
+## Syntax
 
-## 2. Description & Usage
-The `INFO` keyword serves as a comprehensive introspection facility for the BASIC++ environment. It traverses the internal dictionaries and system registries to output diagnostic, structural, and user-facing documentation. The functionality accommodates deep NLP querying, boundary validation, and real-time environment status. It is designed to expose state safely without side-effects.
-
-## 3. Code Examples
 ```basic
-10 REM Basic invocation
-20 INFO
-30 REM Filtered invocation
-40 INFO "STRINGS"
+INFO
 ```
 
-## 4. Internal C-Source Mapping
-* `source/help/help.c` - Core registry and output formatting.
-* `source/help/parser_help.c` - Syntax parsing and lexer integration.
-* `source/core/interp.c` - Runtime dispatcher.
-* `source/virtual/vm.c` - Bytecode OP mapping.
-* `source/core/debug.c` - Deep memory introspection and state logging.
-* `source/standalone/mock_bios/mock_bios_core.c` - Hardware abstraction layers (for BIOS-related data).
+## Parameters
 
-## 5. Implementation Details
-Execution path: `pi_parse_info` is triggered by `KW_INFO` in the lexer (`lexer.c`) and evaluated via `parser.c`. The `RuntimeState *rt` struct is referenced exclusively in a read-only context to extract current configuration variables, version hashes, and registered identifiers. The string pool is queried, and output is routed via the abstract VFS/console layer (`console.h`) to prevent raw `printf` divergence between GUI (SDL) and headless terminals. 
-Struct mutations: None (Guaranteed zero side effects, no mutation of `Lexer` state apart from pointer advancement).
-Boundary conditions: Handling null pointer references on unregistered topics, maximum string buffer limits (typically 2048 bytes), and stack overflow prevention during recursive struct traversal. 
+*(No parameters required.)*
 
-## 6. Cross-References / See Also
-* `HELP` - Interactive user assistance.
-* `CATALOG` - Categorized keyword and function listings.
-* `INFO` - System and memory diagnostics.
-* `VER` - Interpreter versioning and build hashes.
-* `BIOS` - Low-level mock BIOS configurations (IBM PC, PCjr, XT, AT).
+## Description
 
-## 7. Historical Context
-In traditional 16-bit dialects (GW-BASIC, QBASIC), introspection was limited to rudimentary `SYSTEM` or `FILES` commands. The `INFO` command bridges the gap between classic minimalism and modern ECMA-116/Full BASIC standards, providing 64-bit safe, cross-platform telemetry that matches POSIX and Windows 11 architectures perfectly.
+`INFO` provides a comprehensive runtime dashboard for developers and system administrators. It interrogates the `VMContext`, `MemoryContext`, `StringContext`, `VariableContext`, and `VDevContext` structures to output an instantaneous snapshot of system resource consumption.
 
-## 8. Manual Testing Guide
-To manually test the `INFO` command:
-1. Open terminal and run: `basicpp-console.exe --log -c "INFO"`
-2. Verify the output matches the expected introspection tree without throwing syntax errors.
-3. Check `blite.log` or console output for memory leaks or C4311/C4312 warning artifacts.
-4. Launch the SDL build: `basicpp.exe`
-5. Execute `INFO` and ensure the GUI console buffers the text symmetrically without raw stdout bypasses.
+### Displayed Telemetry:
+1. **Engine Version & Identity**: Engine version (v6.5.2 "Phoenix"), build edition (`Standard`, `Lite`, `Server`), and target bitness (32-bit / 64-bit).
+2. **Active Dialect**: Current active dialect mode (`GW-BASIC`, `QBASIC`, `ECMA-116`, `Super BASIC`).
+3. **Memory Metrics**:
+   - **Program Memory**: Total bytes allocated vs. bytes consumed by stored program lines.
+   - **Variable Space**: Number of active variables, arrays dimensioned, and memory consumed.
+   - **String Pool**: Total string heap capacity, active string count, and free string bytes.
+   - **Stack Depth**: Current call stack frames vs. `BASIC_MAX_STACK_DEPTH`.
+4. **Security & Sandbox Level**: Current security level (0 = OPEN to 5 = RESTRICTED) and active capability restrictions.
+5. **Virtual Devices**: Count of registered virtual devices and active open file channels.
 
+```
+======================================================================
+BASIC++ v6.5.2 Standard Edition (64-Bit) — System Information
+======================================================================
+Dialect:              GW-BASIC (GWBS)
+Memory Pool:          640.00 MB Total (671,088,640 bytes)
+  - Program Storage:  128.00 MB (Used: 4,120 bytes, 18 lines)
+  - Variable Space:   128.00 MB (Used: 256 bytes, 6 variables)
+  - String Heap:      256.00 MB (Used: 1,024 bytes, 12 strings)
+  - Scratch Arena:    128.00 MB
+Call Stack:           0 / 1023 frames active
+Security Level:       0 (OPEN - All capabilities enabled)
+Active Devices:       8 registered (CON:, COM1:, VFS0:, N1:, LPT1:)
+Open Channels:        0 / 16 active
+======================================================================
+Ok
+```
 
-### 9. Memory Management & Garbage Collection Profile
-Under the hood, this keyword operates within the strict bounds of the BASIC++ deterministic memory manager (`core/memory.c`). When executed, any intermediate strings generated by this operation are routed to the Transient Memory Arena within the String Pool (`core/stringpool.c`). If the arena exceeds its high-water mark, an aggressive mark-and-sweep garbage collection pass is immediately triggered before the instruction completes. On embedded architectures (compiled with `-DBPP_LITE_BUILD`), this transient arena is statically clamped (default 4KB), meaning iterative loops invoking this keyword must be designed carefully to avoid `ERR_OUT_OF_MEMORY` traps. Developers porting to bare-metal systems must verify that the `memory.c` heap allocator correctly points to a continuous SRAM block without fragmentation.
+---
 
-### 10. Portability & Hardware Porting Concerns
-Because BASIC++ is strictly C17 ISO/IEC 9899:2018 compliant, this keyword relies on zero proprietary OS APIs. When compiling for headless microcontrollers (such as the Arduino Mega or ESP32) using the `-DNO_SDL2` macro, this instruction routes all its graphical or I/O side effects through the Platform Abstraction Layer (PAL). Hardware implementers must ensure that `platform_sleep()` and `platform_get_ticks()` are properly mapped in `core/platform.c` if this keyword involves timing, yielding, or hardware-level interrupts. In cases where the underlying hardware lacks a floating-point unit (FPU), the lexer automatically maps numeric outputs to 32-bit fixed integer types if `-DBPP_NO_FLOAT` is enforced.
+## Code Examples
 
-### 11. Abstract Syntax Tree (AST) Life Cycle
-During the parsing phase, the Recursive Descent Parser encounters the token associated with this keyword. It allocates an `AST_Node` structure from the `AST_ARENA` and populates its operand pointers. At runtime, the `ast_interpreter.c` engine performs a post-order traversal to evaluate all child expression nodes before triggering the final execution hook. This two-pass system guarantees that syntax errors (like mismatched parentheses or missing commas) are caught globally before any destructive side-effects occur. Once parsed, the `AST_Node` resides in memory until `NEW` or `RUN` is executed, at which point the entire arena is zeroed out to prevent memory leaks.
+### Example 1: Immediate Diagnostic Inspection
+```basic
+INFO
+REM Prints the complete runtime telemetry snapshot to the console
+```
 
-### 12. C17 Standard Safety & Security Boundaries
-Security and isolation are paramount. This keyword utilizes strict bounds-checking to prevent buffer overflows. Internally, any array indexing or string manipulation defaults to `size_t` for addressing, preventing negative index wraps. Stack-smashing protections are enforced virtually by the `MAX_CALL_STACK` limit defined in `config.h`. Any attempt by this keyword to access unallocated heap memory will trigger the interpreter's internal fault handler, raising a trappable BASIC error rather than causing a segmentation fault at the OS level.
+---
 
-### 13. Deterministic Execution & Regression Prevention
-To prevent regressions across builds (Windows, Linux, or MCU), the execution of this keyword is entirely deterministic. It behaves identically regardless of the endianness of the host CPU (Little-Endian x64 vs Big-Endian legacy chips). The testing suite in `selftests_all.c` ensures that the byte-for-byte output of this operation remains identical. If a developer modifies the underlying C source code for this keyword, they MUST run the `SELFTEST` suite to verify that parsing precedence, token mapping, and garbage collection behavior have not drifted.
+## Engine Implementation (`system.c` & `vm/context.c`)
 
-### 14. Performance Profiling & Optimization Rules
-For developers writing performance-critical algorithms in BASIC++, be aware that calling this keyword inside a `FOR...NEXT` or `WHILE...WEND` loop incurs a minimal virtual dispatch overhead. Because the interpreter uses a switch-case dispatch engine in `exec.c`, the branch predictor on modern CPUs will optimize repeated calls. However, on 8-bit or 16-bit chips, minimizing the use of string-mutating variants of this keyword will drastically improve frame rates and execution speed.
+In `engine/src/statements/system/system.c`, `stmt_info_handler` gathers metrics via accessor APIs:
+- `mem_get_total_free()`, `mem_get_total_used()` (`engine/include/memory/memory.h`)
+- `str_get_total_allocated()`, `str_get_string_count()` (`engine/include/runtime/strings.h`)
+- `var_get_count()` (`engine/include/runtime/variables.h`)
+- `vdev_get_registered_count()` (`engine/include/device/vdev.h`)
+
+Output is dispatched via `vdev_printf(vm_get_vdev(vm), ...)`.
+
+---
+
+## Error Codes
+
+| Error Code | Name | Condition |
+|------------|------|-----------|
+| 2 | Syntax Error (`ERR_SYNTAX_ERROR`) | Trailing unexpected arguments passed to `INFO` |
+
+---
+
+## Cross-References
+
+- **`VER`** — Displays concise engine and program version numbers.
+- **`MEMMAP$`** — Queries active BIOS memory map model name.
+- **`HELP`** — Queries interactive documentation.
+- **`CATALOG`** — Lists language keyword categories.
+
+---
+
+## Proposed Expansion or Changes
+
+1. **`INFO$` Function**: Introduce `telemetry$ = INFO$("MEMORY")` or `INFO$("STACK")` to query specific telemetry values programmatically in BASIC scripts.
+2. **Interactive Benchmark Metric**: Include CPU cycle count or MIPS estimate in the diagnostic dashboard.

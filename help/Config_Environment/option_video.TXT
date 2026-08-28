@@ -1,118 +1,182 @@
 OPTION VIDEO
+======================================================================
 
-1. Syntax & Parameters
+SYNTAX
+----------------------------------------------------------------------
 
-Syntax:
-OPTION VIDEO <mode>
+    OPTION VIDEO {PAL | SECAM | NTSC}
 
-Parameters:
-- <mode>: A literal named variable representing the desired video standard. Supported values are:
-  - PAL: Configures the timing multiplier for 50 Hz video systems.
-  - SECAM: Functionally identical to PAL, configuring the timing multiplier for 50 Hz video systems.
-  - NTSC: Configures the timing multiplier for 60 Hz video systems.
+PARAMETERS
+----------------------------------------------------------------------
 
-2. Description & Usage
+  PAL   - Configures the timing multiplier for 50 Hz video systems
+          (European broadcast standard).
+  SECAM - Functionally identical to PAL, configuring the timing
+          multiplier for 50 Hz video systems (French/Eastern European
+          broadcast standard).
+  NTSC  - Configures the timing multiplier for 60 Hz video systems
+          (North American/Japanese broadcast standard). This is the
+          default.
 
-The OPTION VIDEO statement allows developers to configure the global timing metric environment for the interpreter, specifically adjusting the internal system's definition of "Jiffies" to match historical 50 Hz (PAL/SECAM) or 60 Hz (NTSC) television and monitor refresh rates. 
 
-In classic BASIC programming, timing loops and software delays were often coupled with screen refreshes (VBLANK intervals). A "Jiffy" originally described a single tick of the system clock, tied to these refresh rates (1/50th of a second for PAL, 1/60th of a second for NTSC). OPTION VIDEO sets the rt->jiffies_multiplier property in the runtime state, which dictates how the JIFFIES function calculates the number of ticks elapsed since system startup.
+DESCRIPTION
+----------------------------------------------------------------------
 
-By default, without being set, it may rely on whatever default initialization exists in the runtime state. Invoking OPTION VIDEO PAL scales the elapsed system time (in seconds) by 50, whereas OPTION VIDEO NTSC scales it by 60.
+OPTION VIDEO selects the simulated video timing standard used by the
+JIFFIES function. In legacy systems like the Commodore 64 or ZX
+Spectrum, the system timer was physically tied to hardware interrupts
+triggered by the video chip drawing the screen. PAL systems generated
+50 interrupts per second; NTSC systems generated 60. GW-BASIC and
+IBM PCs used the Intel 8253 timer chip (ticking at 18.2 Hz), but
+many retro programs assumed either 50 Hz or 60 Hz timing.
 
-This statement is useful when running legacy timing loops, game delays, or simulations where the original logic expected a specific Jiffy progression rate. It allows seamless porting of classic BASIC programs without rewriting all of the timing code.
+OPTION VIDEO bridges this compatibility gap by setting the
+jiffies_multiplier field in the VM context. The JIFFIES function
+reads this multiplier to convert raw uptime into video-frequency-
+scaled tick counts, allowing programs to use consistent timing
+regardless of the actual host clock.
 
-3. Code Examples
+    10 OPTION VIDEO NTSC
+    20 PRINT "Waiting for 60 jiffies (1 second in NTSC)..."
+    30 START_TIME = JIFFIES
+    40 IF JIFFIES < START_TIME + 60 THEN GOTO 40
+    50 PRINT "Done."
 
-Example 1: Setting up an NTSC timing loop
-`basic
-10 OPTION VIDEO NTSC
-20 PRINT "Waiting for 60 jiffies (1 second in NTSC)..."
-30 START_TIME = JIFFIES
-40 IF JIFFIES < START_TIME + 60 THEN GOTO 40
-50 PRINT "Done."
-`
+    100 REM Simulate a 50Hz environment for European software
+    110 OPTION VIDEO PAL
+    120 START_T = JIFFIES
+    130 GOSUB 1000
+    140 END_T = JIFFIES
+    150 PRINT "Processing took "; END_T - START_T; " PAL jiffies."
+    160 END
+    1000 REM Processing subroutine
+    1010 FOR I = 1 TO 1000 : NEXT I
+    1020 RETURN
 
-Example 2: Cross-compatibility using PAL
-`basic
-100 REM Simulate a 50Hz environment for European software
-110 OPTION VIDEO PAL
-120 START_T = JIFFIES
-130 GOSUB 1000 : REM Call some processing routine
-140 END_T = JIFFIES
-150 PRINT "Processing took "; ENDT - STARTT; " PAL jiffies."
-160 END
-1000 REM Dummy subroutine
-1010 FOR I = 1 TO 1000 : NEXT I
-1020 RETURN
-`
 
-4. Internal C-Source Mapping
+MULTIPLIER VALUES
+----------------------------------------------------------------------
 
-- Parser Configuration (source/config/parserconfig.c): The piparseoption function handles the lexical interpretation of OPTION VIDEO. It checks the following token (the mode) as a TOKNAMEDVAR and parses "PAL", "SECAM", or "NTSC", directly writing to rt->jiffiesmultiplier.
-- Runtime State Definition (source/runtime.h): RuntimeState struct contains the double jiffies_multiplier property, which persists this configuration throughout the session.
-- Expression Parser (source/parser/parserexpr.c): The JIFFIES function implementation around line 1324 fetches rt->jiffiesmultiplier to multiply against vdevgettime().
+  Mode    Multiplier  Ticks Per Second
+  ------  ----------  ----------------
+  NTSC    60.0        ~60 jiffies/sec
+  PAL     50.0        ~50 jiffies/sec
+  SECAM   50.0        ~50 jiffies/sec
 
-5. Implementation Details
+The multiplier is applied by JIFFIES as:
 
-- Parser Expectations: The statement demands exact syntax parsing. The lexer will identify OPTION as a statement keyword, then piparseoption reads the next tokens. Both VIDEO and the mode (PAL, SECAM, or NTSC) are parsed as TOKNAMEDVAR due to extended variable handling, matched by character string checks.
-- Mutability Constraints: rt->jiffies_multiplier is fully mutable at any point during runtime. Subsequent calls to OPTION VIDEO will override the previous settings dynamically, affecting all future evaluations of the JIFFIES function.
-- Failure Modes & Troubleshooting: 
-  - If a mode other than PAL, SECAM, or NTSC is provided, the parser triggers errorraise(ERRWHAT, line_num). Check for misspellings (e.g., OPTION VIDEO NSTC).
-  - The JIFFIES function can temporarily override this global multiplier if passed an argument string (e.g., JIFFIES("PAL")), which acts independently of OPTION VIDEO.
-- NLP Indexing Note: The mutation occurs as a direct structural write to a double-precision floating-point field in RuntimeState. No memory allocation is involved, ensuring deterministic $O(1)$ execution time.
+    result = platform_get_uptime() * multiplier
 
-6. Cross-References / See Also
 
-- JIFFIES
-- TICKS
-- OPTION ARITHMETIC
-- OPTION BASE
-- OPTION STRICT
+JIFFIES FUNCTION INTERACTION
+----------------------------------------------------------------------
 
-7. Historical Context
+The JIFFIES function (implemented in
+engine/src/eval/eval_builtins.c) reads the current multiplier via
+vm_get_jiffies_multiplier(vm) and multiplies it against
+platform_get_uptime() to produce the tick count.
 
-In legacy systems like the Commodore 64 or ZX Spectrum, the system variable for time was physically tied to hardware interrupts triggered by the video chip drawing the screen. GW-BASIC and IBM PCs relied on the Intel 8253 timer chip (usually ticking at 18.2 Hz), but many graphics-heavy programs were developed assuming either a 50Hz or 60Hz timing metric. OPTION VIDEO is a modern BASIC++ extension designed to bridge this compatibility gap, allowing developers to explicitly define the simulated hardware environment timing without altering the underlying OS clock dependencies. 
+JIFFIES also accepts an optional string argument that temporarily
+overrides the multiplier for that single call without changing the
+persistent setting:
 
-8. Manual Testing Guide
+    OPTION VIDEO PAL
+    PRINT JIFFIES           ' Uses PAL (50 Hz) multiplier
+    PRINT JIFFIES("NTSC")   ' Temporarily uses NTSC (60 Hz)
+    PRINT JIFFIES           ' Still PAL (50 Hz)
 
-To manually verify the functionality of OPTION VIDEO and its effect on JIFFIES, follow these steps:
+The JIFFIES argument override does not mutate jiffies_multiplier --
+it only affects the return value of that single function call.
 
-1. Open your terminal in the project directory.
-2. Launch the BASIC++ console application:
-   - Windows: basicpp-console.exe (or basicpp.exe for SDL)
-   - Linux: ./baspp-console (or ./baspp for SDL)
-3. Enter direct mode or write a short program to test NTSC timing:
-   `basic
-   OPTION VIDEO NTSC
-   PRINT JIFFIES
-   `
-   Expectation: The value returned should grow by roughly 60 units per second of real time.
-4. Now switch to PAL timing:
-   `basic
-   OPTION VIDEO PAL
-   PRINT JIFFIES
-   `
-   Expectation: The value returned should grow by roughly 50 units per second.
-5. To test failure modes, try an invalid mode:
-   `basic
-   OPTION VIDEO CGA
-   `
-   Expectation: The interpreter should throw a WHAT? error indicating a syntax failure.
 
-9. Memory Management & Garbage Collection Profile
-Under the hood, this keyword operates within the strict bounds of the BASIC++ deterministic memory manager (core/memory.c). When executed, any intermediate strings generated by this operation are routed to the Transient Memory Arena within the String Pool (core/stringpool.c). If the arena exceeds its high-water mark, an aggressive mark-and-sweep garbage collection pass is immediately triggered before the instruction completes. On embedded architectures (compiled with -DBPPLITEBUILD), this transient arena is statically clamped (default 4KB), meaning iterative loops invoking this keyword must be designed carefully to avoid ERROUTOF_MEMORY traps. Developers porting to bare-metal systems must verify that the memory.c heap allocator correctly points to a continuous SRAM block without fragmentation.
+ENGINE IMPLEMENTATION (v6.5.2)
+----------------------------------------------------------------------
 
-10. Portability & Hardware Porting Concerns
-Because BASIC++ is strictly C17 ISO/IEC 9899:2018 compliant, this keyword relies on zero proprietary OS APIs. When compiling for headless microcontrollers (such as the Arduino Mega or ESP32) using the -DNOSDL2 macro, this instruction routes all its graphical or I/O side effects through the Platform Abstraction Layer (PAL). Hardware implementers must ensure that platformsleep() and platformgetticks() are properly mapped in core/platform.c if this keyword involves timing, yielding, or hardware-level interrupts. In cases where the underlying hardware lacks a floating-point unit (FPU), the lexer automatically maps numeric outputs to 32-bit fixed integer types if -DBPPNOFLOAT is enforced.
+VM Context Infrastructure:
 
-11. Abstract Syntax Tree (AST) Life Cycle
-During the parsing phase, the Recursive Descent Parser encounters the token associated with this keyword. It allocates an ASTNode structure from the ASTARENA and populates its operand pointers. At runtime, the astinterpreter.c engine performs a post-order traversal to evaluate all child expression nodes before triggering the final execution hook. This two-pass system guarantees that syntax errors (like mismatched parentheses or missing commas) are caught globally before any destructive side-effects occur. Once parsed, the ASTNode resides in memory until NEW or RUN is executed, at which point the entire arena is zeroed out to prevent memory leaks.
+  File                               Symbol
+  -----------------------------------  ---------------------------------
+  engine/src/vm/vm_internal.h:197    double jiffies_multiplier
+  engine/src/vm/context.c:97         vm_get_jiffies_multiplier()
+  engine/src/vm/context.c:98         vm_set_jiffies_multiplier()
+  engine/src/vm/context.c:299        Default initialization (60.0)
+  engine/src/eval/eval_builtins.c    JIFFIES evaluator reads multiplier
 
-12. C17 Standard Safety & Security Boundaries
-Security and isolation are paramount. This keyword utilizes strict bounds-checking to prevent buffer overflows. Internally, any array indexing or string manipulation defaults to sizet for addressing, preventing negative index wraps. Stack-smashing protections are enforced virtually by the MAXCALL_STACK limit defined in config.h. Any attempt by this keyword to access unallocated heap memory will trigger the interpreter's internal fault handler, raising a trappable BASIC error rather than causing a segmentation fault at the OS level.
+OPTION Statement Handler:
 
-13. Deterministic Execution & Regression Prevention
-To prevent regressions across builds (Windows, Linux, or MCU), the execution of this keyword is entirely deterministic. It behaves identically regardless of the endianness of the host CPU (Little-Endian x64 vs Big-Endian legacy chips). The testing suite in selftests_all.c ensures that the byte-for-byte output of this operation remains identical. If a developer modifies the underlying C source code for this keyword, they MUST run the SELFTEST suite to verify that parsing precedence, token mapping, and garbage collection behavior have not drifted.
+The OPTION statement handler (engine/src/statements/variables/option.c)
+currently routes BASE and EXPLICIT sub-commands but does not yet route
+VIDEO. Attempting OPTION VIDEO NTSC in v6.5.2 will produce Error 2
+(Syntax Error in OPTION statement) because the else branch catches
+unrecognized sub-keywords.
 
-14. Performance Profiling & Optimization Rules
-For developers writing performance-critical algorithms in BASIC++, be aware that calling this keyword inside a FOR...NEXT or WHILE...WEND loop incurs a minimal virtual dispatch overhead. Because the interpreter uses a switch-case dispatch engine in exec.c, the branch predictor on modern CPUs will optimize repeated calls. However, on 8-bit or 16-bit chips, minimizing the use of string-mutating variants of this keyword will drastically improve frame rates and execution speed.
+
+ERROR CODES
+----------------------------------------------------------------------
+
+  Error   Condition
+  ------  --------------------------------------------------------
+  2       OPTION VIDEO not yet routed in v6.5.2 OPTION handler
+
+When fully wired, invalid modes should produce Error 5 (Illegal
+Function Call), matching the original v5 behavior.
+
+
+HELP SYSTEM REGISTRATION
+----------------------------------------------------------------------
+
+JIFFIES is registered in engine/src/statements/dialect/help_data.h:
+
+    {"JIFFIES", "System & Environ",
+     "JIFFIES([mode$])",
+     "Get uptime ticks based on frequency multiplier
+      (NTSC/PAL/SECAM)"}
+
+OPTION VIDEO does not yet have its own help entry.
+
+
+BUILD TARGET AVAILABILITY
+----------------------------------------------------------------------
+
+  Target                Available  Notes
+  --------------------  ---------  ---------------------------
+  baspp (Standard)      Yes        Full JIFFIES + multiplier
+  bpp (Lite)            Yes        Full JIFFIES + multiplier
+  bs (Script Runner)    Yes        Full JIFFIES + multiplier
+
+
+CROSS-REFERENCES
+----------------------------------------------------------------------
+
+  - JIFFIES: Uptime ticks scaled by video timing multiplier.
+  - TICKS: Uptime ticks at fixed 100 Hz (not affected by
+    OPTION VIDEO).
+  - OPTION BASE: Configures array subscript indexing base.
+  - OPTION EXPLICIT: Requires explicit variable declaration.
+
+
+PROPOSED EXPANSION OR CHANGES
+----------------------------------------------------------------------
+
+The following capabilities existed in v5.0.5 but have not yet been
+wired into the v6.5.2 OPTION statement handler:
+
+  1. OPTION VIDEO sub-command routing: The v5 parser
+     (source/config/parser_config.c, function pi_parse_option)
+     handled OPTION VIDEO by reading the next token and writing
+     to rt->jiffies_multiplier. In v6.5.2, the infrastructure
+     exists (vm_set_jiffies_multiplier()) but the OPTION handler
+     in engine/src/statements/variables/option.c needs a new
+     branch for "VIDEO".
+
+  2. Help system registration: OPTION VIDEO should be added to
+     help_data.h as a separate entry.
+
+  3. Micro-library metadata update: The OPTION statement's .syntax
+     field should be expanded to include OPTION VIDEO.
+
+  4. OPTION ARITHMETIC: Referenced in v5 cross-references but not
+     yet implemented in v6.5.2.
+
+  5. OPTION STRICT: Referenced in v5 cross-references but not yet
+     implemented in v6.5.2. May overlap with OPTION EXPLICIT.

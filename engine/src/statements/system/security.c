@@ -1,49 +1,14 @@
-/**
- * @file security.c
- * @brief SECURITY statement parser and sandbox capability manager handler for BASIC++.
- *
- * 1. WHAT IT DOES:
- * Implements SECURITY statement handler for querying and configuring sandbox security levels (SECURITY LEVEL level_num, SECURITY RESTRICT capability_name$, SECURITY LIST, SECURITY RESET).
- *
- * 2. WHY IT EXISTS:
- * Exposes security manager APIs to BASIC++ program space for enforcing sandboxing and capability restrictions.
- *
- * 3. WHY IT WORKS THIS WAY:
- * Decodes security subcommands, validates one-way security ratchet rules (security levels can only be elevated, never lowered), and updates security manager state.
- *
- * 4. DEPENDENCIES & COMPILATION:
- * Compiled into CMake micro-library target 'stmt_security'. Includes "statements/system/security.h",
- * "lexer/lexer.h", "security/security.h", "device/vdev.h".
- *
- * 5. EDITION INCLUSION & EXCLUSION:
- * Core feature included in all editions ('baspp', 'bpp', 'bs').
- *
- * 6. HOW TO MODIFY OR EXTEND IT:
- * Support fine-grained per-directory file access control lists and IP address white-lists.
- *
- * 7. WHAT CANNOT BE CHANGED:
- * One-way ratchet security invariant: Security level MUST NOT be lowered at runtime once elevated.
- *
- * 8. WHAT TO EXPECT:
- * Configures sandbox security levels or lists active capabilities; returns ERR_NONE or ERR_PERMISSION_DENIED.
- *
- * 9. WHAT TO DO IF SOMETHING BREAKS:
- * Check security_get_level() and security_set_level() state in engine/src/security/security.c.
- *
- * 10. ASSUMPTIONS & PRECONDITIONS:
- * Valid initialized VMContext and LexerContext.
- *
- * 11. PORTABILITY & C17 CONCERNS:
- * Strict C17 compliance. Uses str_case_compare helper for bounded ASCII string matching.
- *
- * 12. COMPONENT DEPENDENCIES & PREREQUISITE SOURCE FILES:
- * Prerequisite Source Files:
- * - engine/src/security/security.c
- * Prerequisite Header Files:
- * - engine/include/statements/system/security.h
- * - engine/include/security/security.h
- * - engine/include/lexer/lexer.h
- */
+// FILENAME: security.c
+// LICENSE: Copyleft (c) 2026 BASIC++ Community — All Wrongs Reserved
+// VERSION: 6.5.2.0
+// NEEDED BY: libboot, libcore, libengine, libkernel
+// NEEDS: libcore (ctype.h, ctype.c, micro_lib_metadata.h, micro_lib_metadata.c)
+// NEEDS: libcore (string.h)
+// NEEDS: libengine (lexer.h, lexer.c, stmt.h, string.c)
+// NEEDS: libkernel (security.h, vdev.h, vdev.c)
+// Provides runtime implementation for the SECURITY statement in BASIC++.
+//
+// ---- Includes ----
 
 #ifndef BASIC_LITE_BUILD
 
@@ -75,7 +40,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
     BppToken tok = lex_peek(lex);
     BppSecLevel cur_level = security_get_level();
 
-    /* 1. SECURITY (no args) */
+    // 1. SECURITY (no args)
     if (tok.type == TOK_EOL || tok.type == TOK_EOF) {
         vdev_printf(vdev, "Security Level: %s", security_level_name(cur_level));
         switch (cur_level) {
@@ -104,7 +69,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-    /* 2. SECURITY "level_name" or SECURITY subcommands */
+    // 2. SECURITY "level_name" or SECURITY subcommands
     if (tok.type == TOK_STRING) {
         lex_next(lex);
         char s_val[128];
@@ -112,11 +77,11 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
         memcpy(s_val, tok.as.string, len);
         s_val[len] = '\0';
 
-        /* Subcommand: RESTRICT */
+        // Subcommand: RESTRICT
         if (str_case_compare(s_val, "RESTRICT") == 0) {
             BppToken next_tok = lex_peek(lex);
             if (next_tok.type != TOK_STRING) {
-                err.code = 2; /* Syntax error */
+                err.code = 2; // Syntax error
                 err.message = "Expected string target for RESTRICT";
                 return err;
             }
@@ -126,7 +91,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
             memcpy(op_str, next_tok.as.string, op_len);
             op_str[op_len] = '\0';
 
-            /* Check if keyword restriction */
+            // Check if keyword restriction
             if (str_case_compare(op_str, "KEYWORD") == 0) {
                 BppToken kw_tok = lex_peek(lex);
                 if (kw_tok.type != TOK_STRING) {
@@ -140,7 +105,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
                 memcpy(kw_name, kw_tok.as.string, kw_len);
                 kw_name[kw_len] = '\0';
 
-                /* Map keyword name to ID */
+                // Map keyword name to ID
                 BppKeywordId target_kw = lex_find_keyword_by_name(kw_name);
 
                 if (target_kw != KW_NONE) {
@@ -152,7 +117,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
                 return err;
             }
 
-            /* Map operation name to enum */
+            // Map operation name to enum
             BppSecOperation target_op = SECOP_COUNT;
             if (str_case_compare(op_str, "file read") == 0) target_op = SECOP_FILE_READ;
             else if (str_case_compare(op_str, "file write") == 0) target_op = SECOP_FILE_WRITE;
@@ -170,13 +135,13 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
             return err;
         }
 
-        /* Subcommand: LIST */
+        // Subcommand: LIST
         if (str_case_compare(s_val, "LIST") == 0) {
             security_restrict_list();
             return err;
         }
 
-        /* Subcommand: RESET */
+        // Subcommand: RESET
         if (str_case_compare(s_val, "RESET") == 0) {
             if (cur_level >= SEC_STANDARD) {
                 vdev_printf(vdev, "Cannot RESET restrictions under security level: %s\n", security_level_name(cur_level));
@@ -187,7 +152,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
             return err;
         }
 
-        /* Otherwise, treat as named security level */
+        // Otherwise, treat as named security level
         int idx = security_find_level_by_name(s_val);
         if (idx == -1) {
             err.code = 2;
@@ -207,7 +172,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-    /* 3. SECURITY LEVEL n */
+    // 3. SECURITY LEVEL n
     if (tok.type == TOK_KEYWORD && tok.as.keyword == KW_LEVEL) {
         lex_next(lex);
         BppToken val_tok = lex_next(lex);
@@ -233,7 +198,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
         return err;
     }
 
-    /* 4. SECURITY n (numeric form) */
+    // 4. SECURITY n (numeric form)
     if (tok.type == TOK_NUMBER) {
         lex_next(lex);
         int idx = (int)tok.as.number;
@@ -258,7 +223,7 @@ BppError stmt_security_handler(VMContext *vm, LexerContext *lex) {
     return err;
 }
 
-#endif /* BASIC_LITE_BUILD */
+#endif // BASIC_LITE_BUILD
 
 void stmt_security_register(void) {
     static const MicroLibMetadata meta = {
