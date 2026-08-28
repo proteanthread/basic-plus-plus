@@ -1,5 +1,7 @@
 # BASIC++ v6.5.2 Security System
 
+( proposed only )
+
 ## 1. OVERVIEW
 
 BASIC++ implements a six-level security system that controls access to operating system resources, file operations, network connections, and system commands. The security system is enforced at the virtual device layer — security checks occur in the VFS, VNet, and VDev subsystems before operations reach the platform layer. This means individual statement handlers do not need security logic; the device layer handles enforcement uniformly.
